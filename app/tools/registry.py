@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -161,8 +162,19 @@ def tool_specs(world: World, names: list[str] | None = None) -> list[dict[str, A
     return out
 
 
+KEY_LEN = 64  # длина колонки events.idempotency_key
+
+
+def _fit_key(key: str | None) -> str | None:
+    """Длинный ключ (Gemini приклеивает к id вызова подпись мысли) сжимается в устойчивый хеш той же длины."""
+    if key is None or len(key) <= KEY_LEN:
+        return key
+    return "h:" + hashlib.sha256(key.encode()).hexdigest()[: KEY_LEN - 2]
+
+
 async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, key: str | None = None) -> dict:
     """Выполняет вызов. Повтор с тем же ключом идемпотентности возвращает прежний результат и ничего не меняет."""
+    key = _fit_key(key)
     t = REGISTRY.get(name)
     if t is None:
         return {"ok": False, "error": f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}"}

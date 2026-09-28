@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 
 from tests.conftest import login
@@ -29,6 +30,15 @@ def test_health_and_auth(client, root):
     assert client.get("/api/auth/me", headers=root).json()["platform_role"] == "super_admin"
     assert client.post("/api/auth/login", json={"name": "root", "password": "nope"}).status_code == 401
     assert client.get("/api/auth/me", headers={"Authorization": "Bearer junk"}).status_code == 401
+
+
+def test_index_scripts_are_served(client):
+    # скрипт из index.html, которого нет в белом списке, роняет комнату: openRoom падает до подключения к WebSocket
+    html = client.get("/").text
+    scripts = re.findall(r'<script src="(/static/[^"]+)"', html)
+    assert scripts
+    for src in scripts:
+        assert client.get(src).status_code == 200, src
 
 
 def test_only_superadmin_creates_users(client, admin):

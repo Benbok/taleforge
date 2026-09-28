@@ -86,6 +86,25 @@ def test_invalid_ids_and_idempotency(game):
     assert first["result"]["total"] == 12 + 3 + 2  # Сила 15 + 1 от человека → +3, мастерство +2
 
 
+def test_long_call_key_fits_column(game):
+    # Gemini приклеивает к id вызова подпись мысли на сотни символов, а колонка ключа — varchar(64)
+    settings, cid, hero = game
+    key = "t_test:call_81e71ab14bfd__thought__" + "CtIFAWkUfRM6X2RoXUgHNoabUNsyGg1A" * 20
+    args = {"character_id": hero, "stat": "athletics", "difficulty": "dc.medium", "reason": "выбить дверь"}
+
+    async def fn(ctx):
+        return await call(ctx, "roll_check", args, key=key), await call(ctx, "roll_check", args, key=key)
+
+    first, second = play(settings, cid, [12, 1], fn)
+    assert first["ok"] and second.get("repeated") and second["result"] == first["result"]
+
+    async def keys(s):
+        return (await s.scalars(select(Event.idempotency_key).where(Event.tool == "roll_check"))).all()
+
+    (stored,) = run(settings, keys)
+    assert len(stored) <= 64
+
+
 def test_fall_prone_and_advantage(game):
     settings, cid, hero = game
 
