@@ -187,3 +187,51 @@ def test_withdraw_in_combat_clears_submitted(client, admin, settings):
         withdraw(ws, m["id"])
     assert run(settings, lambda s: s.get(Scene, c["id"])).state["submitted"] is False
 
+
+DONE = {"text": "готово"}
+
+
+def test_turn_publishes_states(settings, llm):
+    import_base(settings)
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([]))) as c:
+        root = login(c, "root", "rootpass")
+        ok(c.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root), 201)
+        adm = login(c, "Arty", "secret1")
+        camp, (p1,), _ = party(c, adm)
+        llm.replies += [DONE, DONE, {"text": "Стена оказалась скользкой."}]
+        with connect(c, p1, camp["id"]) as (ws, _):
+            m = say(ws, "Лезу на стену")["payload"]
+            states = []
+            for _ in range(40):
+                e = ws.receive_json()
+                if e["type"] == "message.state":
+                    states.append((e["payload"]["ids"], e["payload"]["state"]))
+                if len(states) == 2:
+                    break
+            c.portal.call(c.app.state.master.wait_idle, camp["id"])
+    assert states == [([m["id"]], "processing"), ([m["id"]], "answered")]
+
+
+def test_empty_batch_is_skipped_without_model(client, admin, settings, llm):
+    c, (p1,), _ = party(client, admin)
+    with connect(client, p1, c["id"]) as (ws, _):
+        m = say(ws, "Лезу на стену")["payload"]
+        withdraw(ws, m["id"])
+
+    async def turn(s):
+        t = MasterTurn(campaign_id=c["id"], upto_seq=m["seq"], trace={"from_seq": m["seq"]})
+        s.add(t)
+        await s.commit()
+        return t.id
+
+    tid = run(settings, turn)
+
+    async def play():
+        async with client.app.state.sessionmaker() as s:
+            return await client.app.state.master._play(s, c["id"], tid, [])
+
+    out = client.portal.call(play)
+    assert out["skipped"] and out["messages"] == [] and llm.requests == []
+    assert run(settings, lambda s: s.get(MasterTurn, tid)).status == "skipped"
+
+

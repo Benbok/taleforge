@@ -264,6 +264,10 @@ class MasterService:
     async def _status(self, cid: str, stage: str) -> None:
         await self.bus.publish(cid, envelope("master.status", cid, {"stage": stage}), None)
 
+    async def _states(self, cid: str, ids: list[str], state: str) -> None:
+        if ids:
+            await self.bus.publish(cid, envelope("message.state", cid, {"ids": ids, "state": state}), None)
+
     async def run_turn(self, cid: str) -> str | None:
         lock = self._locks.setdefault(cid, asyncio.Lock())
         async with lock:
@@ -299,12 +303,15 @@ class MasterService:
                     s.add(turn)
                     await s.commit()
                     await publish_message(self.bus, msg)
+                    await self._states(cid, [m.id for m in new], "failed")
                     return None
             turn = MasterTurn(campaign_id=cid, session_id=game.id, upto_seq=new[-1].seq, trace={"from_seq": new[0].seq})
             s.add(turn)
             await s.commit()
             turn_id = turn.id
+            ids = [m.id for m in new]
 
+        await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
         calls: list[LlmCall] = []
         replan = False
@@ -312,7 +319,10 @@ class MasterService:
         try:
             async with self.maker() as s:
                 published = await self._play(s, cid, turn_id, calls)
+            if published["skipped"]:
+                return turn_id
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
+            await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
@@ -331,6 +341,7 @@ class MasterService:
                     sc.state = {**sc.state, "submitted": False}  # заявку можно повторить
                 await s.commit()
             await publish_message(self.bus, msg)
+            await self._states(cid, ids, "failed")
         finally:
             await self._status(cid, "idle")
             if calls:
@@ -391,8 +402,12 @@ class MasterService:
         cfg = await s.get(AgentConfig, seat.agent_config_id)
         ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id)
         new = await _player_messages(s, c, int(turn.trace.get("from_seq", 0)), turn.upto_seq)
-        history = await _history(s, c, new[0].seq if new else turn.upto_seq + 1)
         names = await _names(s, c)
+        if not new:  # все реплики пакета отменены, пока ход начинался: модель не зовём
+            turn.status, turn.finished_at = "skipped", now()
+            await s.commit()
+            return {"ctx": ctx, "messages": [], "names": names, "ids": [], "skipped": True}
+        history = await _history(s, c, new[0].seq if new else turn.upto_seq + 1)
         char_by_seat = {
             ch.seat_id: ch
             for ch in ctx.world.characters.values()
@@ -543,7 +558,7 @@ class MasterService:
             "plot_clock": plot_notes,
         }
         await s.commit()
-        return {"ctx": ctx, "messages": [*whispers, msg], "names": names}
+        return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _narrate(
         self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=()
