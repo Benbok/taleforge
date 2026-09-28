@@ -23,7 +23,7 @@ from app.api.schemas import (
 from app.content.catalog import CatalogError, resolve_chain
 from app.content.importer import latest_version
 from app.core import campaigns as svc
-from app.core import chat
+from app.core import chat, master_log
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, ModelProfile, User
 from app.gateway.events import envelope, publish_message
@@ -255,6 +255,20 @@ async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session:
         s.plot = body.plot
     await session.commit()
     return {"setting": s.setting, "plot": s.plot}
+
+
+# --- Журнал мастера ---
+
+
+@router.get("/campaigns/{campaign_id}/master-log")
+async def get_master_log(
+    campaign_id: str, user: UserDep, session: SessionDep, settings: SettingsDep, limit: int = 30
+) -> dict:
+    """Что делал мастер по ходам: вызовы, броски, результаты, обращения к модели. Только Admin и Super Admin."""
+    await _viewer(session, user, campaign_id)
+    if not svc.is_admin(user):
+        raise AccessDenied("журнал мастера доступен только администраторам")
+    return await master_log.build(session, campaign_id, settings, max(1, min(limit, 100)))
 
 
 # --- Места и участники ---
