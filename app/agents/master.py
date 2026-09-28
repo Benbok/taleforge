@@ -29,10 +29,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents import intent as intents
-from app.agents import memory
+from app.agents import memory, rhythm
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
-from app.core import combat, plot
+from app.core import bonds, combat, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
@@ -103,6 +103,7 @@ class MasterService:
         self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
         self._reactions: dict[str, tuple[str, asyncio.Future]] = {}  # prompt_id → (место, ответ)
         self._summarizing: set[str] = set()
+        self._intro_locks: dict[str, asyncio.Lock] = {}
 
     # --- очередь ---
 
@@ -119,6 +120,59 @@ class MasterService:
 
     def schedule_summary(self, campaign_id: str, kind: str = "rolling", session_id: str | None = None) -> None:
         self._spawn(self.summarize(campaign_id, kind, session_id=session_id))
+
+    def schedule_bonds(self, campaign_id: str, character_id: str) -> None:
+        from app.agents import prelude
+
+        self._spawn(prelude.ask_questions(self, campaign_id, character_id))
+
+    def schedule_hook(self, campaign_id: str, character_id: str) -> None:
+        from app.agents import prelude
+
+        self._spawn(prelude.make_hook(self, campaign_id, character_id))
+
+    def schedule_session_open(self, campaign_id: str, session_id: str | None) -> None:
+        """Старт сессии: вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
+        from app.agents import rhythm
+
+        async def run() -> None:
+            await self.introduce(campaign_id)
+            if session_id:
+                await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+
+        self._spawn(run())
+
+    def schedule_session_close(self, campaign_id: str, session_id: str | None, ended: bool) -> None:
+        """Конец сессии: сводка, затем зацепка на следующий раз или, при завершении кампании, эпилог."""
+        from app.agents import rhythm
+
+        async def run() -> None:
+            # сначала сводка сессии: эпилог и зацепка опираются на неё, а запись по очереди не спорит за базу
+            await self._safe(self.summarize(campaign_id, "session", session_id=session_id), "сводка сессии")
+            if ended:
+                await self._safe(rhythm.epilogue(self, campaign_id), "эпилог")
+            else:
+                await self._safe(rhythm.session_hook(self, campaign_id, session_id), "зацепка на следующую сессию")
+
+        self._spawn(run())
+
+    async def _safe(self, coro, what: str):
+        try:
+            return await coro
+        except Exception:  # noqa: BLE001 — ритм сессии не должен ронять сервер
+            log.exception("%s не удалось", what)
+            return None
+
+    async def introduce(self, campaign_id: str) -> str | None:
+        """Вступление для ещё не представленных героев; одно на кампанию за раз."""
+        from app.agents import prelude
+
+        async with self._intro_locks.setdefault(campaign_id, asyncio.Lock()):
+            try:
+                return await prelude.introduce(self, campaign_id)
+            except Exception:  # noqa: BLE001 — без вступления игра всё равно идёт
+                log.exception("вступление в кампании %s не удалось", campaign_id)
+                return None
 
     def schedule_replan(self, campaign_id: str) -> None:
         """Пересмотр оставшихся актов после закрытия акта (раздел 3): в фоне, ход его не ждёт."""
@@ -251,6 +305,7 @@ class MasterService:
             await s.commit()
             turn_id = turn.id
 
+        await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
         calls: list[LlmCall] = []
         replan = False
         await self._status(cid, "listening")
@@ -554,6 +609,13 @@ class MasterService:
             secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
+        ties = [
+            f"{ch.name} ({ch.id}):\n{text}"
+            for ch in ctx.world.characters.values()
+            if ch.status in ("approved", "active") and (text := bonds.render(ch, private=True))
+        ]
+        if ties:
+            secrets = (secrets + "\n" if secrets else "") + "Связи героев (ответы игроков):\n" + "\n".join(ties)
         dc = ", ".join(f"{e.id} = {e.data['value']} ({e.name})" for e in ctx.world.catalog.dc_scale())
         return render(
             "master_system.j2",
@@ -564,6 +626,7 @@ class MasterService:
             public_intro=c.public_intro,
             secrets=secrets,
             has_plot=has_plot,
+            pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
         )
@@ -945,7 +1008,8 @@ class MasterService:
                     "content": (
                         "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
                         "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
-                        "Можешь тайно связать историю героя с сюжетом через secret_link.\n\n"
+                        "Можешь тайно связать историю героя с сюжетом через secret_link, а если есть каркас — "
+                        "привязать эту связь к узлу, NPC, злодею или месту каркаса через hook_ref.\n\n"
                         + json.dumps(sheet, ensure_ascii=False, default=str)
                     ),
                 },
