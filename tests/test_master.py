@@ -56,6 +56,8 @@ def act(client, head, cid, text):
             ):
                 if e["payload"]["kind"] == "system" and "повторите" not in e["payload"]["content"]:
                     continue
+                # ход дописывает учёт вызовов модели уже после повествования: ждём, чтобы не спорить за SQLite
+                client.portal.call(client.app.state.master.wait_idle, cid)
                 return e["payload"]
     raise AssertionError("мастер не ответил")
 

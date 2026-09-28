@@ -19,6 +19,7 @@ from app.db.models import Campaign, Message
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import master as _tools  # noqa: F401 — регистрирует инструменты в реестре
+from app.tools import plot as _plot_tools  # noqa: F401 — инструменты ведения по каркасу
 from app.tools.registry import ToolContext
 
 

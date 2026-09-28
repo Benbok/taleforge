@@ -200,6 +200,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
 async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None:
     """Живой мастер вызывает те же инструменты, что и ИИ-мастер: с той же проверкой и журналом (раздел 7)."""
+    from app.tools.plot import run_clock
     from app.tools.registry import execute
     from app.tools.runtime import flush_outbox, open_context, publish_changes
 
@@ -219,6 +220,10 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
         )
         key = f"live:{viewer.seat.id}:{request_id}" if request_id else None
         result = await execute(ctx, str(name), args if isinstance(args, dict) else {}, key=key)
+        if result.get("ok"):
+            notes = await run_clock(ctx)  # часы угроз каркаса идут и у живого мастера
+            if notes:
+                result["plot_clock"] = notes
         messages = await flush_outbox(session, ctx)
         await session.commit()
     await conn.send(envelope("master.tool.result", conn.campaign_id, {"request_id": request_id, **result}))

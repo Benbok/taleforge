@@ -176,11 +176,15 @@ function renderPlan() {
     generating: "Архитектор готовит сюжет… Это может занять пару минут, страницу можно не держать открытой.",
     ready: `Сюжет готов (вариант ${p.version}).`, failed: "Не получилось подготовить сюжет: " + (p.error || "") }[st] || st;
   $("planState").innerHTML = `<p class="${st === "failed" ? "bad" : "muted"}">${esc(text)}</p>`;
+  const rev = p.revision && p.revision.status;
+  if (rev === "revising") $("planState").innerHTML += '<p class="muted">Акт закрыт: мастер пересматривает дальнейшие акты с учётом того, что уже случилось.</p>';
+  if (rev === "failed") $("planState").innerHTML += '<p class="muted">Пересмотреть дальнейшие акты не вышло: игра идёт по прежнему плану.</p>';
+  if (rev === "ready" && p.note) $("planState").innerHTML += `<p class="muted">Последний пересмотр — ${esc(p.note.replace(/^пересмотр: /, ""))}</p>`;
   $("planControls").classList.toggle("hidden", !p.can_generate || st === "generating");
   $("planBtn").textContent = st === "ready" ? "Другой вариант" : "Подготовить сюжет";
   if (!p.can_generate && st !== "generating") $("planState").innerHTML += '<p class="muted">Игра уже началась: дальше сюжет меняется по ходу, а не заново.</p>';
   renderPoster(p.poster, p.public_intro);
-  if (st === "generating") schedulePlanPoll();
+  if (st === "generating" || rev === "revising") schedulePlanPoll();
   const full = p.plan && p.plan.title;
   $("planDetails").classList.toggle("hidden", !full);
   if (full) $("planFull").innerHTML = planHtml(p.plan);
@@ -194,14 +198,19 @@ async function loadPlanOptions(structureId) {
     $("planEstimate").textContent = `Примерно ${Math.round((e.tokens_in + e.tokens_out) / 1000)} тыс. токенов на модели ${e.model}` + (e.usd != null ? `, около $${e.usd.toFixed(2)}.` : ": цена неизвестна или модель локальная.") + " Если сервер вернёт каркас на доработку, будет до трёх попыток.";
   } catch (e) { $("planEstimate").textContent = ""; }
 }
+const ACT_MARK = { active: "идёт", done: "пройден", pending: "впереди" };
+const NODE_MARK = { done: "✓", skipped: "обойдён" };
 function planHtml(p) {
   const li = (xs, f) => `<ul>${(xs || []).map(x => `<li>${f(x)}</li>`).join("")}</ul>`;
+  const mark = t => t ? ` <span class="muted">[${esc(t)}]</span>` : "";
+  const outcome = x => x.outcome ? `<br><span class="muted">Итог: ${esc(x.outcome)}</span>` : "";
+  const details = x => x.status === "developed" ? mark("развёрнут") + (x.details ? `<br><span class="muted">Детали: ${esc(x.details)}</span>` : "") : "";
   return `<p><b>Конфликт:</b> ${esc(p.conflict)} <b>Ставки:</b> ${esc(p.stakes)}</p>
-    <b>Антагонисты</b>${li(p.antagonists, a => `<b>${esc(a.name)}</b>: ${esc(a.goal)}. Слабость: ${esc(a.weakness)}. Тайна: ${esc(a.secret)}<br><span class="muted">План угрозы: ${(a.threat || []).map(esc).join(" → ")}</span>`)}
-    <b>Акты</b>${li(p.acts, a => `<b>${esc(a.title)}</b> — ${esc(a.goal)}${li(a.nodes, n => `${esc(n.title)}: ${esc(n.summary)}`)}`)}
-    <b>Места</b>${li(p.locations, l => `<b>${esc(l.name)}</b>: ${esc(l.role)} <span class="muted">Секрет: ${esc(l.secret)}</span>`)}
-    <b>NPC</b>${li(p.npcs, n => `<b>${esc(n.name)}</b>: ${esc(n.role)}; хочет — ${esc(n.want)} <span class="muted">Тайна: ${esc(n.secret)}</span>`)}
-    <b>Тайны</b>${li(p.reveals, r => `${esc(r.truth)} <span class="muted">(${(r.clues || []).length} зацепки)</span>`)}
+    <b>Антагонисты</b>${li(p.antagonists, a => `<b>${esc(a.name)}</b>: ${esc(a.goal)}. Слабость: ${esc(a.weakness)}. Тайна: ${esc(a.secret)}<br><span class="muted">План угрозы (сделано шагов: ${a.threat_step || 0} из ${(a.threat || []).length}): ${(a.threat || []).map((t, i) => i < (a.threat_step || 0) ? `<s>${esc(t)}</s>` : esc(t)).join(" → ")}</span>`)}
+    <b>Акты</b>${li(p.acts, a => `<b>${esc(a.title)}</b>${mark(ACT_MARK[a.status])} — ${esc(a.goal)}${outcome(a)}${li(a.nodes, n => `${esc(n.title)}${mark(NODE_MARK[n.status])}: ${esc(n.summary)}${outcome(n)}`)}`)}
+    <b>Места</b>${li(p.locations, l => `<b>${esc(l.name)}</b>${details(l)}: ${esc(l.role)} <span class="muted">Секрет: ${esc(l.secret)}</span>`)}
+    <b>NPC</b>${li(p.npcs, n => `<b>${esc(n.name)}</b>${details(n)}: ${esc(n.role)}; хочет — ${esc(n.want)} <span class="muted">Тайна: ${esc(n.secret)}</span>`)}
+    <b>Тайны</b>${li(p.reveals, r => `${esc(r.truth)}${mark(r.revealed ? "раскрыта" : "")} <span class="muted">(${(r.clues || []).length} зацепки)</span>`)}
     <b>Финалы</b>${li(p.endings, e => esc(e))}`;
 }
 let planPoll = null;
@@ -211,7 +220,7 @@ function schedulePlanPoll() {
   const id = room.id;
   planPoll = setTimeout(async () => {
     if (!room || room.id !== id) return;
-    try { planState = await api(`/api/campaigns/${id}/plan`); renderPlan(); if (planState.status !== "generating") { room.public_intro = planState.public_intro; if (planState.can_generate) loadPlanOptions(); } } catch { /* комната закрыта */ }
+    try { planState = await api(`/api/campaigns/${id}/plan`); renderPlan(); if (planState.status !== "generating" && planState.revision?.status !== "revising") { room.public_intro = planState.public_intro; if (planState.can_generate) loadPlanOptions(); } } catch { /* комната закрыта */ }
   }, 4000);
 }
 function onPlanEvent(payload) {

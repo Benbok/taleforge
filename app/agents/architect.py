@@ -167,23 +167,7 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
             if plan is not None:
                 break
             call.error = "; ".join(errors)[:2000]
-            msgs.append(
-                reply.message
-                or {
-                    "role": "assistant",
-                    "content": reply.text,
-                    "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.name,
-                                "arguments": tc.raw_arguments or json.dumps(tc.arguments, ensure_ascii=False),
-                            },
-                        }
-                    ],
-                }
-            )
+            msgs.append(_assistant(reply, tc))
             msgs.append(
                 {
                     "role": "tool",
@@ -238,8 +222,139 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
         return None
 
 
+def _assistant(reply, tc) -> dict:
+    """Ответ модели с вызовом инструмента — чтобы вернуть ей ошибки сервера сообщением роли tool."""
+    return reply.message or {
+        "role": "assistant",
+        "content": reply.text,
+        "tool_calls": [
+            {
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.name,
+                    "arguments": tc.raw_arguments or json.dumps(tc.arguments, ensure_ascii=False),
+                },
+            }
+        ],
+    }
+
+
 async def _level_cap(s, c: Campaign) -> int | None:
     if not c.pack_id:
         return None
     pack = await s.get(ContentPack, (c.pack_id, c.pack_version))
     return (pack.manifest or {}).get("level_cap") if pack else None
+
+
+async def revise(svc, cid: str) -> str | None:
+    """Пересмотр оставшихся актов после закрытия акта (раздел 3). Только у ИИ-мастера и если владелец не отключил
+    (``settings.replan = false``). Сбой не трогает каркас: игра идёт по прежнему плану."""
+    try:
+        async with svc.maker() as s:
+            c = await s.get(Campaign, cid)
+            secret = await s.get(CampaignSecret, cid)
+            if c is None or secret is None or not plot.has_plan(secret.plot):
+                return None
+            seat = master_seat(c)
+            if seat.occupant_type != "agent" or (c.settings or {}).get("replan") is False:
+                return None
+            if not plot.open_acts(secret.plot):
+                return None
+            provider, model, api_base, temperature = await model_of(s, c)
+            catalog = await campaign_catalog(s, c)
+            length = length_of(c)
+            excluded = list((c.settings or {}).get("excluded_themes") or [])
+            level_cap = int((await _level_cap(s, c)) or 20)
+            prompt = plot.revise_input(secret.plot, brief_text=brief_text(c.brief or {}), excluded=excluded)
+            await set_status(s, c, revision={"status": "revising"})
+            await s.commit()
+            await publish(svc, cid, c)
+        msgs = [{"role": "system", "content": plot.REVISE_SYSTEM}, {"role": "user", "content": prompt}]
+        revision, errors, calls = None, ["модель не сдала пересмотр"], []
+        for _ in range(ATTEMPTS):
+            call = LlmCall(campaign_id=cid, seat_id=seat.id, turn_id=None, purpose="replan", model=model)
+            calls.append(call)
+            try:
+                reply = await svc.llm.complete(
+                    msgs,
+                    model=model,
+                    tools=[plot.revision_spec()],
+                    max_tokens=MAX_TOKENS,
+                    temperature=min(max(temperature, 0.7), 1.0),
+                    api_base=api_base,
+                )
+            except LLMError as e:
+                call.error = str(e)[:2000]
+                errors = [f"модель недоступна: {e}"]
+                break
+            call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            call.cost, call.latency_ms = reply.cost, reply.latency_ms
+            tc = next((t for t in reply.tool_calls if t.name == plot.REVISE_TOOL), None)
+            if tc is None:
+                errors = ["модель не вызвала submit_plan_revision"]
+                call.error = errors[0]
+                msgs.append(reply.message or {"role": "assistant", "content": reply.text})
+                msgs.append({"role": "user", "content": "Сдай пересмотр вызовом submit_plan_revision."})
+                continue
+            async with svc.maker() as s:
+                current = (await s.get(CampaignSecret, cid)).plot
+            merged, errors = plot.merge_revision(current, tc.arguments)
+            if not errors:
+                merged, errors = plot.check(
+                    merged, length=length, catalog=catalog, excluded=excluded, level_cap=level_cap, keep_state=True
+                )
+            if not errors:
+                revision = tc.arguments
+                break
+            call.error = "; ".join(errors)[:2000]
+            msgs.append(_assistant(reply, tc))
+            msgs.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": json.dumps(
+                        {"ok": False, "errors": errors, "hint": "исправь и сдай пересмотр целиком ещё раз"},
+                        ensure_ascii=False,
+                    ),
+                }
+            )
+        async with svc.maker() as s:
+            s.add_all(calls)
+            c = await s.get(Campaign, cid)
+            secret = await s.get(CampaignSecret, cid)
+            version_id = None
+            if revision is not None:
+                # накладываем на свежий каркас: пока модель думала, игра могла уйти вперёд
+                merged, errors = plot.merge_revision(secret.plot, revision)
+                if not errors:
+                    merged, errors = plot.check(
+                        merged, length=length, catalog=catalog, excluded=excluded, level_cap=level_cap, keep_state=True
+                    )
+            if revision is not None and not errors:
+                prev = await s.scalar(select(func.max(CampaignPlan.version)).where(CampaignPlan.campaign_id == cid))
+                version = int(prev or 0) + 1
+                merged["version"] = version
+                summary = str(revision.get("summary") or "")[:600]
+                row = CampaignPlan(campaign_id=cid, version=version, content=merged, note=f"пересмотр: {summary}")
+                s.add(row)
+                secret.plot = merged
+                # итог пересмотра — только в версии каркаса: настройки кампании видят и игроки
+                await set_status(s, c, version=version, revision={"status": "ready"})
+                await s.flush()
+                version_id = row.id
+            else:
+                log.warning("пересмотр каркаса кампании %s не принят: %s", cid, "; ".join(errors))
+                await set_status(s, c, revision={"status": "failed"})
+            await s.commit()
+            await publish(svc, cid, c)
+            return version_id
+    except Exception:  # noqa: BLE001 — сбой пересмотра не должен ронять сервер
+        log.exception("пересмотр каркаса кампании %s не удался", cid)
+        async with svc.maker() as s:
+            c = await s.get(Campaign, cid)
+            if c is not None:
+                await set_status(s, c, revision={"status": "failed"})
+                await s.commit()
+                await publish(svc, cid, c)
+        return None

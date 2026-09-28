@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView, Entry
-from app.db.models import ActiveEffect, Campaign, Character, Entity, InventoryItem, Scene
+from app.db.models import ActiveEffect, Campaign, CampaignSecret, Character, Entity, InventoryItem, Scene
 from app.rules.base import DeathSaves, HitPoints
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.character import derive
@@ -243,6 +244,7 @@ class World:
     entities: dict[str, Entity]
     inventory: dict[str, list[InventoryItem]]
     effects: list[ActiveEffect]
+    plot: dict[str, Any] = field(default_factory=dict)  # каркас сюжета (скрыт от игроков, см. app/core/plot.py)
     _actors: dict[str, Actor] = field(default_factory=dict)
 
     def actor(self, actor_id: str) -> Actor:
@@ -370,6 +372,7 @@ async def load_world(session: AsyncSession, campaign: Campaign, catalog: Catalog
     for it in inv_rows:
         inventory.setdefault(it.character_id, []).append(it)
     effects = list((await session.scalars(select(ActiveEffect).where(ActiveEffect.campaign_id == campaign.id))).all())
+    secret = await session.get(CampaignSecret, campaign.id)
     return World(
         campaign=campaign,
         catalog=catalog,
@@ -378,4 +381,5 @@ async def load_world(session: AsyncSession, campaign: Campaign, catalog: Catalog
         entities={e.id: e for e in ents},
         inventory=inventory,
         effects=effects,
+        plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
     )

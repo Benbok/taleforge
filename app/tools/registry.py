@@ -43,6 +43,7 @@ class ToolContext:
     changed: set[str] = field(default_factory=set)  # id персонажей и сущностей, изменённых за ход
     outbox: list[dict[str, Any]] = field(default_factory=list)  # сообщения чата от инструментов (шёпот мастера)
     closed: set[str] = field(default_factory=set)  # персонажи, чьи действия закрыты вызовом или отказом
+    signals: set[str] = field(default_factory=set)  # что сделать после фиксации хода (например, "replan")
     call_key: str | None = None
     _first_event: Event | None = None
 
@@ -113,6 +114,10 @@ def _enum_values(world: World, key: str) -> list[str]:
         return [e.id for e in world.catalog.dc_scale()]
     if key.startswith("templates:"):
         return [e.id for e in world.catalog.by_kind(key.split(":", 1)[1])]
+    if key.startswith("plot:"):
+        from app.core.plot import valid_ids
+
+        return valid_ids(world.plot, key.split(":", 1)[1])
     if key == "seats":
         return [s.id for s in world.campaign.seats if s.role == "player" and s.occupant_type != "empty"]
     return world.valid_ids().get(key, [])
