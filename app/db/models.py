@@ -80,6 +80,20 @@ class ModelProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class MasterPersona(Base):
+    """Персона ИИ-мастера в профиле Admin: характер подачи (app/core/personas.py). Кампания получает копию."""
+
+    __tablename__ = "master_personas"
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("per"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    settings: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 # --- Пакеты контента (раздел 3.2) ---
 
 
@@ -129,6 +143,7 @@ class Campaign(Base):
     difficulty: Mapped[str] = mapped_column(String(16), default="normal")  # easy | normal | hard | deadly
     party_size_recommended: Mapped[int] = mapped_column(Integer, default=4)
     settings: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    brief: Mapped[dict[str, Any]] = mapped_column(default=dict)  # анкета кампании (app/core/brief.py)
     last_seq: Mapped[int] = mapped_column(Integer, default=0)
     # Цепочка пакетов кампании от базового к верхнему: [[id, version], ...]. Фиксируется при создании,
     # новая версия пакета идущую кампанию не меняет (раздел 3.2).

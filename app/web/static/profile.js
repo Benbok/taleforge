@@ -20,7 +20,8 @@ async function openProfile() {
   renderAccount(); loadProfileHeroes();
   $("pModels").classList.toggle("hidden", !prof.can_manage_models);
   $("pUsers").classList.toggle("hidden", !prof.can_manage_users);
-  if (prof.can_manage_models) await loadModels();
+  $("pPersonas").classList.toggle("hidden", !prof.can_manage_models);
+  if (prof.can_manage_models) await Promise.all([loadModels(), loadPersonas()]);
   if (prof.can_manage_users) await loadUsers();
 }
 

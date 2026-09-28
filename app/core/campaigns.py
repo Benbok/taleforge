@@ -8,12 +8,14 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import personas
 from app.db.models import (
     AgentConfig,
     Campaign,
     CampaignSecret,
     ContentPack,
     Invite,
+    MasterPersona,
     ModelProfile,
     Seat,
     User,
@@ -134,7 +136,40 @@ def apply_model(agent: AgentConfig, provider: str, model: str, temperature: floa
     }
 
 
-async def agent_for_master(session: AsyncSession, master: dict, agent: AgentConfig | None = None) -> AgentConfig:
+async def apply_persona(session: AsyncSession, owner: User, agent: AgentConfig, choice: dict) -> None:
+    """Персона мастера: своя из профиля владельца, встроенная или настройки напрямую; style — дополнение словами.
+    В кампанию пишется копия: и готовый абзац стиля для промпта, и сами настройки для показа и правки."""
+    name, source, settings = None, None, None
+    if choice.get("persona_id"):
+        p = await session.get(MasterPersona, choice["persona_id"])
+        if p is None or p.user_id != owner.id:
+            raise NotFound("персона мастера не найдена")
+        name, source, settings = p.name, "profile", dict(p.settings)
+    elif choice.get("preset") or choice.get("persona_preset"):
+        preset = personas.preset(choice.get("preset") or choice.get("persona_preset"))
+        if preset is None:
+            raise NotFound("встроенная персона не найдена")
+        name, source, settings = preset["name"], "preset", dict(preset["settings"])
+    elif choice.get("settings") or choice.get("persona"):
+        name, source, settings = None, "custom", dict(choice.get("settings") or choice.get("persona"))
+    style = (choice.get("style") or "").strip() or None
+    meta = dict(agent.settings or {})
+    if settings is None:
+        agent.persona = style
+        meta.pop("persona", None)
+    else:
+        agent.persona = personas.compose_style(settings, style)
+        meta["persona"] = {"name": name, "source": source, "settings": settings, "style": style}
+    agent.settings = meta
+
+
+def has_persona_choice(master: dict) -> bool:
+    return any(master.get(k) for k in ("persona_id", "persona_preset", "persona", "preset", "settings"))
+
+
+async def agent_for_master(
+    session: AsyncSession, master: dict, agent: AgentConfig | None = None, owner: User | None = None
+) -> AgentConfig:
     """Настройки ИИ-мастера: профиль модели из админки, явные провайдер и модель или профиль по умолчанию.
     Кампания хранит копию: правка профиля потом не меняет идущие кампании без явной смены модели."""
     agent = agent or AgentConfig(settings={})
@@ -158,7 +193,9 @@ async def agent_for_master(session: AsyncSession, master: dict, agent: AgentConf
             raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
         t = (agent.temperature if agent.temperature is not None else 0.8) if temperature is None else float(temperature)
         apply_model(agent, provider, str(master.get("model") or ""), t, master.get("api_base"), None)
-    if "style" in master:
+    if owner is not None and has_persona_choice(master):
+        await apply_persona(session, owner, agent, master)
+    elif "style" in master:
         agent.persona = master.get("style")
     return agent
 
@@ -176,6 +213,7 @@ async def create_campaign(
     public_intro: str = "",
     settings: dict | None = None,
     owner_plays: bool = True,
+    brief: dict | None = None,
 ) -> Campaign:
     if not is_admin(owner):
         raise AccessDenied("кампании создаёт только Admin")
@@ -190,7 +228,7 @@ async def create_campaign(
     if master_type == "owner":
         m = Seat(role="master", position=0, occupant_type="human", user_id=owner.id, joined_at=now())
     elif master_type == "agent":
-        agent = await agent_for_master(session, master)
+        agent = await agent_for_master(session, master, owner=owner)
         session.add(agent)
         await session.flush()
         m = Seat(role="master", position=0, occupant_type="agent", agent_config_id=agent.id, joined_at=now())
@@ -208,6 +246,7 @@ async def create_campaign(
         difficulty=difficulty,
         party_size_recommended=rec["recommended"],
         settings={**DEFAULT_SETTINGS, **(settings or {})},
+        brief=brief or {},
         seats=[m, *(Seat(role="player", position=i) for i in range(1, count + 1))],
     )
     if master_type != "owner" and owner_plays:
