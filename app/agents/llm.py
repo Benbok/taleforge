@@ -15,6 +15,8 @@ from typing import Any, Protocol
 
 # Модель по умолчанию для мастера: сильная, с хорошим творческим письмом (раздел 3, «Абстракция провайдеров»).
 DEFAULT_MODELS = {"claude": "anthropic/claude-opus-5"}
+# Парсер намерений — дешёвая быстрая модель (раздел 6). У остальных провайдеров парсер работает на модели мастера.
+PARSER_MODELS = {"claude": "anthropic/claude-haiku-4-5"}
 # local — модель, запущенная в LM Studio (OpenAI-совместимый сервер)
 PROVIDER_PREFIX = {"claude": "anthropic/", "gemini": "gemini/", "local": "lm_studio/"}
 
@@ -64,6 +66,10 @@ def model_for(provider: str, model: str | None) -> str:
     if provider in DEFAULT_MODELS:
         return DEFAULT_MODELS[provider]
     raise LLMError(f"для провайдера {provider} укажите модель в настройках мастера кампании")
+
+
+def parser_model_for(provider: str, model: str | None) -> str:
+    return PARSER_MODELS.get(provider) or model_for(provider, model)
 
 
 def _parse_args(raw: Any) -> dict[str, Any]:
@@ -136,9 +142,18 @@ class ScriptedLLM:
     def __init__(self, replies: list[Any]):
         self.replies = list(replies)
         self.requests: list[dict[str, Any]] = []
+        self.parser_requests: list[dict[str, Any]] = []
 
     async def complete(self, messages, *, model, tools=None, max_tokens=4096, temperature=None) -> LLMReply:
-        self.requests.append({"messages": [dict(m) for m in messages], "tools": tools, "model": model})
+        req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model}
+        if _is_parser(tools) and not self._next_is_intent():
+            # Парсер намерений в тестах, где его ответ не задан: действие без разбора, мастер решает сам.
+            # Такие запросы идут в parser_requests, чтобы не сдвигать нумерацию запросов мастера.
+            self.parser_requests.append(req)
+            args = {"kind": "action", "actions": [{"verb": "custom"}], "confidence": 1.0}
+            call = ToolCall(f"call_p{len(self.parser_requests)}", "submit_intent", args, json.dumps(args))
+            return LLMReply(text="", tool_calls=[call], model=model, tokens_in=10, tokens_out=5)
+        self.requests.append(req)
         if not self.replies:
             raise LLMError("ScriptedLLM: ответы закончились")
         r = self.replies.pop(0)
@@ -159,3 +174,11 @@ class ScriptedLLM:
         return LLMReply(
             text=r.get("text", ""), tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5
         )
+
+    def _next_is_intent(self) -> bool:
+        r = self.replies[0] if self.replies else None
+        return isinstance(r, dict) and any(name == "submit_intent" for name, _ in r.get("tool_calls") or [])
+
+
+def _is_parser(tools) -> bool:
+    return bool(tools) and any(t.get("function", {}).get("name") == "submit_intent" for t in tools)

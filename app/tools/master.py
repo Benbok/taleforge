@@ -13,6 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from app.core import combat
 from app.core.campaigns import master_seat
 from app.core.world import PLAYABLE, ZONE_FT, ZONE_NAMES, Actor, WorldError, format_time
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem, Knowledge
@@ -258,6 +259,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
 
     dist = w.distance_ft(att, tgt)
     extra = []
+    if weapon["kind"] == "melee" and dist > int(weapon.get("reach_ft") or 5) and weapon.get("normal_ft"):
+        weapon = {**weapon, "kind": "ranged"}  # метательное оружие (дротик, копьё) бросают издалека
     if weapon["kind"] == "melee":
         if dist > int(weapon.get("reach_ft") or 5):
             raise ToolError(
@@ -888,10 +891,11 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     sc = ctx.world.scene
     inverse = [
         {"table": "scenes", "id": ctx.campaign.id, "field": f, "before": copy.deepcopy(getattr(sc, f))}
-        for f in ("mode", "round", "turn_order")
+        for f in ("mode", "round", "turn_order", "state")
     ]
     if a.mode == "free":
         sc.mode, sc.round, sc.turn_order = "free", 0, []
+        combat.end_combat(ctx)
         await ctx.record("set_scene_mode", payload={"mode": "free"}, inverse=inverse)
         return {"mode": "free"}
     ids = a.participants
@@ -914,6 +918,7 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     totals = {e[0]: e[1].total for e in entries}
     sc.mode, sc.round = "combat", 1
     sc.turn_order = [{"id": i, "initiative": totals[i]} for i in order]
+    combat.start_combat(ctx)
     names = [f"{ctx.world.actor(i).name} ({totals[i]})" for i in order]
     await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
     return {"mode": "combat", "round": 1, "initiative": names}
