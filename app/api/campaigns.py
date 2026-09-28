@@ -16,6 +16,7 @@ from app.api.schemas import (
     SeatOut,
     SecretsIn,
 )
+from app.content.catalog import CatalogError, resolve_chain
 from app.content.importer import latest_version
 from app.core import campaigns as svc
 from app.core import chat
@@ -122,8 +123,21 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
         players=body.players,
         master=body.master.model_dump(),
         public_intro=body.public_intro,
-        settings={"turn_timeout_sec": body.turn_timeout_sec, "spend_limit_usd": body.spend_limit_usd},
+        settings={
+            "turn_timeout_sec": body.turn_timeout_sec,
+            "spend_limit_usd": body.spend_limit_usd,
+            "collect_window_sec": body.collect_window_sec,
+            "excluded_themes": body.excluded_themes,
+            "creation_rules": body.creation_rules.model_dump(),
+            "allow_proposals": body.test_mode,
+        },
     )
+    try:
+        campaign.content_chain = await resolve_chain(session, pack)
+    except CatalogError as e:
+        if pack is not None:
+            raise Conflict(str(e)) from None
+        # без пакета мира цепочка — базовый пакет правил; если он ещё не импортирован, её найдут при первой игре
     await session.commit()
     return await campaign_out(session, campaign, user)
 
@@ -147,7 +161,7 @@ async def patch_campaign(campaign_id: str, body: CampaignPatchIn, user: UserDep,
     if body.difficulty is not None:
         c.difficulty = body.difficulty
     settings = dict(c.settings)
-    for key in ("turn_timeout_sec", "spend_limit_usd"):
+    for key in ("turn_timeout_sec", "spend_limit_usd", "collect_window_sec", "excluded_themes"):
         if key in body.model_fields_set:
             settings[key] = getattr(body, key)
     c.settings = settings

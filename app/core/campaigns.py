@@ -133,6 +133,8 @@ async def create_campaign(
         provider = master.get("provider")
         if provider not in PROVIDERS:
             raise Conflict(f"провайдер один из: {', '.join(PROVIDERS)}")
+        if provider != "claude" and not master.get("model"):
+            raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
         agent = AgentConfig(
             provider=provider,
             model=str(master.get("model") or ""),

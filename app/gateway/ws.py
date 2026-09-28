@@ -2,7 +2,8 @@
 
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
 ``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
-(``turn.pass``, ``vote.cast``, ``entity.inspect``, ``master.tool``) пока отвечают ``error: not_implemented``.
+(``turn.pass``, ``vote.cast``, ``entity.inspect``) пока отвечают ``error: not_implemented``.
+``master.tool`` — инструменты мастера для живого мастера (этап 3).
 """
 
 from __future__ import annotations
@@ -24,7 +25,8 @@ from app.gateway.hub import Connection
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-LATER_STAGES = {"turn.pass", "vote.cast", "entity.inspect", "master.tool"}
+LATER_STAGES = {"turn.pass", "vote.cast", "entity.inspect"}
+MASTER_TRIGGER_KINDS = ("action", "speech", "whisper")
 
 
 def _error(code: str, message: str, campaign_id: str | None = None) -> dict[str, Any]:
@@ -162,6 +164,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         )
                         continue
                 await publish_message(bus, m, names)
+                if m.kind in MASTER_TRIGGER_KINDS:
+                    app.state.master.notify(conn.campaign_id)
+                continue
+
+            if kind == "master.tool":
+                await _master_tool(app, user, conn, payload)
                 continue
 
             if kind in LATER_STAGES:
@@ -177,6 +185,34 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         if conn is not None:
             hub.remove(conn)
             await _presence(bus, hub, conn, "offline")
+
+
+async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None:
+    """Живой мастер вызывает те же инструменты, что и ИИ-мастер: с той же проверкой и журналом (раздел 7)."""
+    from app.tools.registry import execute
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    name, args = payload.get("tool"), payload.get("args") or {}
+    request_id = payload.get("request_id")
+    async with app.state.sessionmaker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+        except NotFound as e:
+            await conn.send(_error("not_found", str(e), conn.campaign_id))
+            return
+        if not viewer.is_master:
+            await conn.send(_error("forbidden", "инструменты мастера доступны только месту мастера", conn.campaign_id))
+            return
+        ctx = await open_context(
+            session, viewer.campaign, app.state.dice_factory(), turn_id=None, seat_id=viewer.seat.id
+        )
+        key = f"live:{viewer.seat.id}:{request_id}" if request_id else None
+        result = await execute(ctx, str(name), args if isinstance(args, dict) else {}, key=key)
+        messages = await flush_outbox(session, ctx)
+        await session.commit()
+    await conn.send(envelope("master.tool.result", conn.campaign_id, {"request_id": request_id, **result}))
+    if result.get("ok"):
+        await publish_changes(app.state.bus, ctx, messages)
 
 
 async def _presence(bus, hub, conn: Connection, status: str) -> None:
