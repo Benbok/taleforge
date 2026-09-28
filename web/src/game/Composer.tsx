@@ -11,6 +11,12 @@ export function secondsLeft(deadline: number | null | undefined, now: number): n
   return Math.max(0, Math.round(deadline - now / 1000));
 }
 
+/** Секунд до хода мастера по окну сбора реплик; null — окна нет или время неизвестно. */
+export function waitLeft(createdAt: string | null, windowSec: number, now: number): number | null {
+  if (!createdAt || !windowSec) return null;
+  return Math.max(0, Math.round((Date.parse(createdAt) + windowSec * 1000 - now) / 1000));
+}
+
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -24,7 +30,7 @@ function useNow(active: boolean): number {
 /** Поле ввода — нативный чат: игрок пишет как есть, тип реплики определяет сервер. Отдельно только шёпот
  *  мастеру. Что можно сейчас, решает сервер (actions/blocked): закрытое не прячется молча — над полем причина. */
 export default function Composer() {
-  const { socket, connection, actions, blocked, turn, rejected, notice, snapshot, addPending, clearRejected } = useGame();
+  const { socket, connection, actions, blocked, turn, rejected, notice, snapshot, myPending, restored, clearRestored, addPending, clearRejected } = useGame();
   const { text, whisper, setText, setWhisper } = useDraft();
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -38,6 +44,15 @@ export default function Composer() {
   const myTurn = !!turn && !!snapshot?.me.seat_id && turn.seat_id === snapshot.me.seat_id;
   const now = useNow(!!turn?.deadline);
   const left = myTurn ? secondsLeft(turn?.deadline, now) : null;
+  const nowWait = useNow(!!myPending);
+  const wait = myPending ? waitLeft(myPending.created_at, snapshot?.collect_window_sec ?? 0, nowWait) : null;
+
+  // отменённая реплика возвращается в поле, чтобы её поправить
+  useEffect(() => {
+    if (restored === null) return;
+    if (!useDraft.getState().text) useDraft.getState().setText(restored);
+    clearRestored();
+  }, [restored, clearRestored]);
 
   // отклонённая реплика возвращается в поле, чтобы её можно было поправить
   useEffect(() => {
@@ -124,6 +139,11 @@ export default function Composer() {
         </p>
       )}
       {notice && !rejected && <p className="tf-pop text-xs text-muted">{notice}</p>}
+      {myPending && (
+        <p className="text-xs text-muted" role="status">
+          Ответ мастера — когда напишут все{wait ? ` или примерно через ${wait} с` : ""}.
+        </p>
+      )}
       {(sendError || hint) && (
         <p role={sendError ? "alert" : undefined} className={`text-xs ${sendError || !allowed ? "text-warn" : "text-muted"}`}>
           {sendError ?? hint}

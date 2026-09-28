@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { sideEffects } from "../lib/useGameSocket";
 import type { Envelope } from "../lib/types";
 import { useToasts } from "../stores/toasts";
-import { secondsLeft } from "./Composer";
+import { secondsLeft, waitLeft } from "./Composer";
 
 const env = (type: string, payload: object = {}): Envelope => ({ type, campaign_id: "c1", seq: null, payload: payload as Record<string, unknown> });
 
@@ -27,5 +27,13 @@ describe("игровой экран", () => {
     sideEffects(env("message.state", { ids: ["m1"], state: "answered" }), { send });
     sideEffects(env("message.withdrawn", { id: "m1", seq: 1 }), { send });
     expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("подсказка считает секунды до хода мастера", () => {
+    const t0 = Date.parse("2026-09-28T10:00:00Z");
+    expect(waitLeft("2026-09-28T10:00:00Z", 60, t0 + 15_000)).toBe(45);
+    expect(waitLeft("2026-09-28T10:00:00Z", 60, t0 + 90_000)).toBe(0);
+    expect(waitLeft(null, 60, t0)).toBeNull();
+    expect(waitLeft("2026-09-28T10:00:00Z", 0, t0)).toBeNull();
   });
 });
