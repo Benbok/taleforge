@@ -42,10 +42,16 @@
   .tabs button.on { background:var(--accent); color:#fff; } .tabs button:not(.on) { background:transparent; color:var(--accent); border:1px solid var(--line); }
   .pick { border:1px solid var(--line); border-radius:8px; padding:10px; margin:6px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .pick span { flex:1; min-width:180px; }
+  .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--sys); color:var(--ink); font-weight:500; }
+  .ok { color:#2e8b57; } .bad { color:#c0392b; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; }
+  .stats div { border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .stats b { display:block; font-size:20px; } .stats span { color:var(--muted); font-size:13px; }
+  li.model > span > div { font-size:13px; margin-top:2px; }
+  ul.plain li .badge { flex:none; min-width:0; }
 </style>
 </head>
 <body>
-<header><h1>Taleforge <span class="muted">· временный клиент</span></h1><span id="whoami" class="muted"></span><button class="ghost hidden" id="logout">Выйти</button></header>
+<header><h1>Taleforge <span class="muted">· временный клиент</span></h1><span id="whoami" class="muted"></span><button class="ghost hidden" id="profileBtn">Профиль</button><button class="ghost hidden" id="logout">Выйти</button></header>
 <main>
   <section id="auth" class="card hidden">
     <div id="inviteInfo" class="hidden"><h3 id="inviteTitle"></h3><p id="inviteIntro" class="muted"></p><p class="muted">Войдите или зарегистрируйтесь — приглашение не потеряется.</p></div>
@@ -69,8 +75,7 @@
         <div><label>Пакет мира</label><select id="cPack"><option value="">без пакета (SRD)</option></select></div>
         <div><label>Сложность</label><select id="cDiff"><option value="easy">лёгкая</option><option value="normal" selected>обычная</option><option value="hard">сложная</option><option value="deadly">смертельная</option></select></div>
         <div><label>Игроков <span id="rec" class="muted"></span></label><input id="cPlayers" type="number" min="1" max="6" value="4"></div>
-        <div><label>Мастер</label><select id="cMaster"><option value="claude">ИИ-агент (Claude)</option><option value="local">ИИ-агент (LM Studio)</option><option value="owner">Я сам</option></select></div>
-        <div id="cModelBox" class="hidden"><label>Модель в LM Studio</label><input id="cModel" placeholder="например qwen2.5-14b-instruct"></div>
+        <div><label>Мастер <span id="cMasterHint" class="muted"></span></label><select id="cMaster"><option value="claude">ИИ: Claude (модель по умолчанию)</option><option value="owner">Я сам</option></select></div>
         <div><label>Проверка героев</label><select id="cReview"><option value="master">мастером</option><option value="auto">автоматически</option></select></div>
       </div>
       <label id="cPlaysBox" class="inline"><input type="checkbox" id="cPlays" checked> Я тоже играю: сразу занять место игрока</label>
@@ -81,9 +86,11 @@
 
   <section id="room" class="hidden">
     <div class="card row"><div><h3 id="roomTitle" style="margin:0"></h3><span id="roomStatus" class="muted"></span></div>
-      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button></div>
+      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button></div>
       <div style="flex:0 0 auto"><button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
+    <div class="card hidden" id="masterModelCard"><h4 style="margin-top:0">Модель ИИ-мастера</h4><p class="muted" id="mmCurrent"></p>
+      <div class="row"><div><select id="mmSelect"></select></div><div style="flex:0 0 auto"><button id="mmSave">Сменить</button> <button class="ghost" id="mmClose">Закрыть</button></div></div><div class="err" id="mmErr"></div></div>
     <div class="card hidden" id="chooseCard"></div>
     <div id="game">
       <div><div class="card"><h4 style="margin-top:0">Места</h4><div id="seats"></div></div>
@@ -99,6 +106,35 @@
         <div class="err" id="sendErr"></div>
       </div>
     </div>
+  </section>
+
+  <section id="profile" class="hidden">
+    <p><button class="ghost" id="pBack">К кампаниям</button></p>
+    <div class="card" id="pAccount"></div>
+    <div class="card"><h4 style="margin-top:0">Аккаунт</h4>
+      <div class="row"><div><label>Имя</label><input id="pNewName" autocomplete="username"></div><div style="flex:0 0 auto"><button class="ghost" id="pRenameBtn">Сохранить имя</button></div></div>
+      <div class="row"><div><label>Текущий пароль</label><input id="pOldPass" type="password" autocomplete="current-password"></div><div><label>Новый пароль (не короче 6)</label><input id="pNewPass" type="password" autocomplete="new-password"></div><div style="flex:0 0 auto"><button class="ghost" id="pPassBtn">Сменить пароль</button></div></div>
+      <div class="err" id="pAccErr"></div></div>
+    <div class="card hidden" id="pModels"><h4 style="margin-top:0">Модели ИИ</h4>
+      <p class="muted">Модель, которую выбирают мастером кампании. Ключи провайдеров хранятся только в окружении сервера: здесь видно лишь, задан ли ключ.</p>
+      <ul class="plain" id="pProviders"></ul>
+      <h4>Настроенные модели</h4><ul class="plain" id="pModelList"></ul>
+      <p><button id="mNewBtn">Добавить модель</button></p>
+      <div class="card hidden" id="mForm"><h4 style="margin-top:0" id="mFormTitle"></h4>
+        <div class="row">
+          <div><label>Название</label><input id="mName" placeholder="например «Opus для кампаний»"></div>
+          <div><label>Провайдер</label><select id="mProvider"><option value="claude">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="local">Локальная (LM Studio)</option></select></div>
+          <div><label>Модель</label><input id="mModel" list="mLocalList"><datalist id="mLocalList"></datalist></div>
+          <div style="flex:0 0 110px"><label>Температура</label><input id="mTemp" type="number" min="0" max="2" step="0.1"></div>
+        </div>
+        <div class="row" id="mBaseBox"><div><label>Адрес LM Studio</label><input id="mBase"></div><div style="flex:0 0 auto"><button class="ghost" id="mLocalBtn">Загрузить модели из LM Studio</button></div></div>
+        <label id="mDefaultBox" class="inline"><input type="checkbox" id="mDefault"> Модель по умолчанию для новых кампаний</label>
+        <p class="row" style="flex-wrap:wrap"><button class="ghost" id="mTryBtn" style="flex:0 0 auto">Проверить связь</button><button id="mSave" style="flex:0 0 auto">Сохранить</button><button class="ghost" id="mCancel" style="flex:0 0 auto">Отмена</button></p>
+        <div id="mCheckOut"></div><div class="err" id="mErr"></div></div></div>
+    <div class="card hidden" id="pUsers"><h4 style="margin-top:0">Пользователи и роли</h4>
+      <ul class="plain" id="pUserList"></ul>
+      <div class="row"><div><label>Имя</label><input id="uName"></div><div><label>Пароль</label><input id="uPass" type="password" autocomplete="new-password"></div><div><label>Роль</label><select id="uRole"><option value="admin">Админ</option><option value="player">Игрок</option></select></div><div style="flex:0 0 auto"><button id="uCreate">Создать</button></div></div>
+      <div class="err" id="uErr"></div></div>
   </section>
 
   <section id="builder" class="card hidden">
@@ -138,7 +174,7 @@ async function api(path, opts = {}) {
   if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "ошибка сервера (" + res.status + ")");
   return data;
 }
-function show(id) { for (const s of ["auth","lobby","room","builder"]) $(s).classList.toggle("hidden", s !== id); }
+function show(id) { for (const s of ["auth","lobby","room","builder","profile"]) $(s).classList.toggle("hidden", s !== id); }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
 // --- вход ---
@@ -155,7 +191,7 @@ async function boot() {
   }
   if (token) { try { me = await api("/api/auth/me"); } catch { token = null; store.set("tf_token", null); } }
   if (!me) { setAuthMode(inv ? "signup" : "login"); return show("auth"); }
-  $("whoami").textContent = me.name + (me.platform_role !== "player" ? " · " + me.platform_role : ""); $("logout").classList.remove("hidden");
+  setWhoami(); $("logout").classList.remove("hidden");
   if (inv) {
     sstore.set("tf_invite", null);
     try { const c = await api(`/api/invites/${inv}/accept`, { method: "POST" }); return openRoom(c.id); }
@@ -184,7 +220,7 @@ async function lobby() {
     $("createCard").classList.remove("hidden");
     const packs = await api("/api/packs").catch(() => []);
     $("cPack").innerHTML = '<option value="">без пакета (SRD)</option>' + packs.map(p => `<option value="${esc(p.id)}">${esc(p.name)} ${esc(p.version)}</option>`).join("");
-    updateRec();
+    updateRec(); fillMasterSelect();
   }
 }
 async function loadLibrary() {
@@ -199,9 +235,9 @@ async function updateRec() {
 $("cDiff").onchange = updateRec; $("cPack").onchange = updateRec;
 $("createBtn").onclick = async () => {
   try {
-    const m = $("cMaster").value;
+    const master = masterChoice();
     const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value,
-      master: m === "owner" ? { type: "owner" } : { type: "agent", provider: m, model: $("cModel").value || null }, creation_rules: { review: $("cReview").value }, owner_plays: m !== "owner" && $("cPlays").checked } });
+      master, creation_rules: { review: $("cReview").value }, owner_plays: master.type !== "owner" && $("cPlays").checked } });
     openRoom(c.id);
   } catch (e) { $("createErr").textContent = e.message; }
 };
@@ -212,7 +248,8 @@ async function openRoom(id) {
   room = await api("/api/campaigns/" + id); mySeat = room.my_seat_id;
   $("roomTitle").textContent = room.name; $("roomStatus").textContent = room.status;
   const manage = room.is_owner || room.my_role === "master";
-  $("ownerTools").classList.toggle("hidden", !manage);
+  $("ownerTools").classList.toggle("hidden", !manage); $("masterModelCard").classList.add("hidden");
+  $("masterModelBtn").classList.toggle("hidden", !(room.is_owner && room.seats.some(s => s.role === "master" && s.occupant_type === "agent")));
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
   $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
   connect();
@@ -384,7 +421,7 @@ document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (["bClass", "bOrigin", "bMethod"].includes(t.id)) renderBuilder(builderData());
   if (t.dataset.eq !== undefined) { const cls = opts.classes.find(c => c.id === $("bClass").value); document.querySelector(`[data-eqx="${t.dataset.eq}"]`).innerHTML = weaponPicks(cls.equipment_choices[+t.dataset.eq][+t.value] || [], [], t.dataset.eq); }
-  if (t.id === "cMaster") { $("cModelBox").classList.toggle("hidden", t.value !== "local"); $("cPlaysBox").classList.toggle("hidden", t.value === "owner"); }
+  if (t.id === "cMaster") $("cPlaysBox").classList.toggle("hidden", t.value === "owner");
 });
 document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button"); if (!t) return;
@@ -421,7 +458,8 @@ $("inviteBtn").onclick = async () => { try { const i = await api(`/api/campaigns
 function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }
 $("sendBtn").onclick = send; $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
 setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "ping" })), 25000);
-boot();
 </script>
+<script src="/static/profile.js"></script>
+<script>boot();</script>
 </body>
 </html>

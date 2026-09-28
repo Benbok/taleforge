@@ -249,6 +249,7 @@ class MasterService:
                 tools=tools,
                 max_tokens=4096 if tools else 2048,
                 temperature=0.2 if purpose == "decide" else cfg.temperature,
+                api_base=(cfg.settings or {}).get("api_base"),
             )
         except LLMError as e:
             calls.append(

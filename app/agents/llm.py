@@ -52,6 +52,7 @@ class LLM(Protocol):
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         temperature: float | None = None,
+        api_base: str | None = None,
     ) -> LLMReply: ...
 
 
@@ -85,10 +86,13 @@ class LiteLLMClient:
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         temperature: float | None = None,
+        api_base: str | None = None,
     ) -> LLMReply:
         import litellm
 
         kwargs: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
+        if api_base:
+            kwargs["api_base"] = api_base
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
@@ -137,8 +141,12 @@ class ScriptedLLM:
         self.replies = list(replies)
         self.requests: list[dict[str, Any]] = []
 
-    async def complete(self, messages, *, model, tools=None, max_tokens=4096, temperature=None) -> LLMReply:
-        self.requests.append({"messages": [dict(m) for m in messages], "tools": tools, "model": model})
+    async def complete(
+        self, messages, *, model, tools=None, max_tokens=4096, temperature=None, api_base=None
+    ) -> LLMReply:
+        self.requests.append(
+            {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
+        )
         if not self.replies:
             raise LLMError("ScriptedLLM: ответы закончились")
         r = self.replies.pop(0)

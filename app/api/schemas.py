@@ -43,12 +43,109 @@ class UserCreateIn(BaseModel):
     platform_role: Literal["admin", "player"] = "admin"
 
 
+Provider = Literal["claude", "gemini", "local"]
+
+
 class MasterIn(BaseModel):
+    """ИИ-мастер: профиль модели из админки (model_profile_id) или явные провайдер и модель.
+    Без того и другого берётся профиль по умолчанию, а если его нет — Claude."""
+
     type: Literal["owner", "agent"] = "agent"
-    provider: Literal["claude", "gemini", "local"] | None = "claude"
+    model_profile_id: str | None = None
+    provider: Provider | None = None
     model: str | None = None
-    temperature: float = Field(default=0.8, ge=0, le=2)
+    temperature: float | None = Field(default=None, ge=0, le=2)
     style: str | None = Field(default=None, max_length=2000)
+
+
+class MasterModelIn(BaseModel):
+    """Смена модели ИИ-мастера у существующей кампании."""
+
+    model_profile_id: str | None = None
+    provider: Provider | None = None
+    model: str | None = None
+    temperature: float | None = Field(default=None, ge=0, le=2)
+
+
+class MasterModelOut(BaseModel):
+    provider: str
+    model: str
+    resolved_model: str | None
+    temperature: float
+    api_base: str | None
+    model_profile_id: str | None
+    model_profile_name: str | None
+
+
+class ModelProfileIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    provider: Provider
+    model: str = Field(default="", max_length=128)
+    api_base: str | None = Field(default=None, max_length=255, pattern=r"^https?://\S+$")
+    temperature: float = Field(default=0.8, ge=0, le=2)
+    is_default: bool = False
+
+
+class ModelProfilePatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    provider: Provider | None = None
+    model: str | None = Field(default=None, max_length=128)
+    api_base: str | None = Field(default=None, max_length=255, pattern=r"^https?://\S+$")
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    is_default: bool | None = None
+
+
+class ModelProfileOut(BaseModel):
+    id: str
+    name: str
+    provider: str
+    model: str
+    resolved_model: str | None
+    api_base: str | None
+    temperature: float
+    is_default: bool
+    created_by_name: str | None
+    last_check: dict
+    campaigns: int
+    updated_at: datetime
+
+
+class ModelCheckIn(BaseModel):
+    """Проверка ещё не сохранённой модели из формы."""
+
+    provider: Provider
+    model: str = Field(default="", max_length=128)
+    api_base: str | None = Field(default=None, max_length=255, pattern=r"^https?://\S+$")
+
+
+class ProviderOut(BaseModel):
+    id: str
+    title: str
+    key_env: str | None
+    key_set: bool | None
+    default_model: str | None
+    api_base: str | None
+
+
+class ProfileOut(BaseModel):
+    user: UserOut
+    created_at: datetime
+    stats: dict
+    can_manage_models: bool
+    can_manage_users: bool
+
+
+class MePatchIn(BaseModel):
+    name: str = Name
+
+
+class PasswordIn(BaseModel):
+    old_password: str
+    new_password: str = Password
+
+
+class UserRoleIn(BaseModel):
+    platform_role: Literal["super_admin", "admin", "player"]
 
 
 class CreationRulesIn(BaseModel):

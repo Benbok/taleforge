@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
-from app.api import admin, auth, campaigns, characters, library
+from app.api import admin, auth, campaigns, characters, library, models, profile
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
@@ -84,6 +84,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(campaigns.router)
     app.include_router(characters.router)
     app.include_router(library.router)
+    app.include_router(models.router)
+    app.include_router(profile.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")
@@ -95,6 +97,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     @app.get("/invite/{token}", include_in_schema=False)
     async def index(token: str | None = None) -> FileResponse:
         return FileResponse(STATIC / "index.html")
+
+    @app.get("/static/profile.js", include_in_schema=False)
+    async def profile_js() -> FileResponse:
+        return FileResponse(STATIC / "profile.js", media_type="text/javascript")
 
     return app
 

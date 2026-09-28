@@ -16,6 +16,10 @@ FIELDS = {
     "players": "Число игроков",
     "public_bio": "Внешность и история",
     "private_backstory": "Тайная предыстория",
+    "new_password": "Новый пароль",
+    "api_base": "Адрес сервера",
+    "model": "Модель",
+    "temperature": "Температура",
 }
 
 
@@ -33,7 +37,9 @@ def describe(err: dict[str, Any]) -> str:
         "missing": "нужно заполнить",
         "string_too_short": f"не короче {ctx.get('min_length')} символов",
         "string_too_long": f"не длиннее {ctx.get('max_length')} символов",
-        "string_pattern_mismatch": "только буквы, цифры, пробел, точка, дефис и подчёркивание",
+        "string_pattern_mismatch": "адрес вида http://host:port/v1"
+        if ctx.get("pattern", "").startswith("^https?")
+        else "только буквы, цифры, пробел, точка, дефис и подчёркивание",
         "greater_than_equal": f"не меньше {ctx.get('ge')}",
         "less_than_equal": f"не больше {ctx.get('le')}",
         "literal_error": f"одно из: {ctx.get('expected')}",
