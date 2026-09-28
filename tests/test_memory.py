@@ -47,7 +47,8 @@ def add_whisper(settings, cid, text):
 
     async def go(s):
         c = await s.get(Campaign, cid)
-        seat = next(x for x in c.seats if x.role == "player")
+        # последнее место игрока: при ожидающей реплике шёпот первого игрока не дал бы ему сходить
+        seat = [x for x in c.seats if x.role == "player"][-1]
         s.add(
             Message(
                 campaign_id=cid,
@@ -83,7 +84,7 @@ def test_rules_in_decision_prompt(game_client, admin_g, llm, settings):
 
 
 def test_rolling_summary_and_context(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
+    c, (p1, _), hero = party(game_client, admin_g, players=2)
     set_every(settings, c["id"], 3)
     llm.replies += [
         DONE,
