@@ -41,6 +41,7 @@ function sheetHtml(c, { library = false } = {}) {
   }
   if (c.public_bio) h += `<h4>Внешность и история</h4><p>${esc(c.public_bio)}</p>`;
   if (c.private_backstory) h += `<h4>Тайная предыстория</h4><p>${esc(c.private_backstory)}</p>`;
+  if (!library && !c.sheet && c.bonds?.length) h += `<h4>Связи</h4><ul>${c.bonds.map(b => `<li><span class="muted">${esc(b.question)}</span> ${esc(b.answer)}</li>`).join("")}</ul>`;
   const pers = Object.entries(c.personality || {}).filter(([, v]) => v);
   if (pers.length) h += `<h4>Характер</h4><ul>${pers.map(([k, v]) => `<li><span class="muted">${esc(k)}:</span> ${esc(v)}</li>`).join("")}</ul>`;
   if (library && c.copies) {
@@ -61,8 +62,41 @@ function openSheet(c, ctx) {
   }
   if (ctx.kind === "mine" && c.status === "submitted" && c.reviewer === "ai" && c.review_error) act.push(`<p><button class="ghost" id="sheetRetryAi">Повторить проверку ИИ</button></p>`);
   if (ctx.kind === "library") act.push(`<p class="row" style="flex-wrap:wrap"><button id="sheetEdit" style="flex:0 0 auto">Изменить</button><button class="ghost" id="sheetDelete" style="flex:0 0 auto">Удалить</button></p>`);
+  const withBonds = ctx.kind !== "library" && c.sheet && ["approved", "active"].includes(c.status);
+  if (withBonds) act.unshift('<div id="sheetBonds"></div>');
   $("sheetActions").innerHTML = act.join(""); $("sheetErr").textContent = "";
   $("sheetModal").classList.remove("hidden"); document.body.classList.add("modal-open");
+  if (withBonds) loadBonds(c.id);
+}
+
+// Связи героя: игрок отвечает на вопросы мастера, мастер видит все ответы, остальные — только открытые.
+async function loadBonds(id) {
+  try { renderBonds(id, await api(`/api/campaigns/${room.id}/characters/${id}/bonds`)); } catch { /* нет доступа */ }
+}
+function renderBonds(id, data) {
+  const box = $("sheetBonds"); if (!box || sheetCtx?.c.id !== id) return;
+  const b = data.bonds || {}, ans = b.answers || {}, qs = b.questions || [];
+  let h = "<h4>Связи героя</h4>";
+  if (b.status === "asking") h += '<p class="muted">Мастер готовит вопросы под эту кампанию…</p>';
+  if (!qs.length) { box.innerHTML = h + '<p class="muted">Вопросов пока нет.</p>'; return; }
+  if (!data.can_answer) {
+    box.innerHTML = h + `<ul>${qs.map(q => `<li><span class="muted">${esc(q.text)}</span> ${ans[q.id] ? esc(ans[q.id].text) + (ans[q.id].private ? ' <span class="muted">(лично)</span>' : "") : '<span class="muted">нет ответа</span>'}</li>`).join("")}</ul>`;
+    return;
+  }
+  h += '<p class="muted">Ответы свяжут героя с историей и отрядом. Открытые увидят все за столом, личные — только мастер.</p>';
+  h += qs.map(q => `<label>${esc(q.text)}</label><textarea rows="2" maxlength="600" data-bond="${esc(q.id)}">${esc(ans[q.id]?.text || "")}</textarea>
+    <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-bondpriv="${esc(q.id)}" style="width:auto"${ans[q.id]?.private ? " checked" : ""}> лично, только мастеру</label>`).join("");
+  h += '<p><button id="bondsSave" style="flex:0 0 auto">Сохранить ответы</button> <span class="muted" id="bondsNote"></span></p>';
+  box.innerHTML = h;
+  if (b.status === "asking") setTimeout(() => sheetCtx?.c.id === id && loadBonds(id), 4000);
+}
+function onBondsEvent(p) {
+  if (sheetCtx?.c.id === p.character_id && !document.activeElement?.dataset?.bond) loadBonds(p.character_id);
+}
+async function saveBonds() {
+  const answers = [...document.querySelectorAll("[data-bond]")].map(t => ({ id: t.dataset.bond, text: t.value.trim(), private: document.querySelector(`[data-bondpriv="${t.dataset.bond}"]`).checked }));
+  const r = await api(`/api/campaigns/${room.id}/characters/${sheetCtx.c.id}/bonds`, { method: "PUT", body: { answers } });
+  renderBonds(sheetCtx.c.id, r); $("bondsNote").textContent = "Сохранено.";
 }
 function closeSheet() { $("sheetModal").classList.add("hidden"); document.body.classList.remove("modal-open"); sheetCtx = null; }
 
@@ -92,6 +126,7 @@ document.addEventListener("click", async (ev) => {
     if (t.dataset.sheet) return openCampaignSheet(t.dataset.sheet, t.dataset.sheetKind || "mine");
     if (t.id === "heroSheetBtn" && hero) return openCampaignSheet(hero.id, "mine");
     if (t.id === "sheetApprove") return reviewAction(true);
+    if (t.id === "bondsSave") return saveBonds();
     if (t.id === "sheetReturn") return reviewAction(false);
     if (t.id === "sheetRetryAi" || t.dataset.retryai) {
       const id = t.dataset.retryai || sheetCtx.c.id;

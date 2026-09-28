@@ -414,4 +414,6 @@ async def control_session(
     await bus.publish(campaign_id, envelope(event, campaign_id, {"status": v.campaign.status}), None)
     if action in ("pause", "end"):
         request.app.state.master.schedule_summary(campaign_id, "session", session_id=game_id)
+    else:
+        request.app.state.master.schedule_intro(campaign_id)  # ИИ-мастер с каркасом представляет отряд
     return await campaign_out(session, v.campaign, user)

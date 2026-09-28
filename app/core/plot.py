@@ -530,6 +530,10 @@ def render(plan: dict) -> str:
         lines.append(f"Тайна {r.get('id')} ({mark}) → {r.get('node_id')}: {r.get('truth')} Зацепки: {clues}")
     if plan.get("endings"):
         lines.append("Возможные финалы: " + " | ".join(plan["endings"]))
+    hooks = hooks_text(plan)
+    if hooks:
+        lines.append("Личные крючки героев:")
+        lines += hooks
     return "\n".join(lines)
 
 
@@ -582,6 +586,8 @@ def valid_ids(plan: dict | None, kind: str) -> list[str]:
         return [r["id"] for r in plan.get("reveals") or [] if not r.get("revealed")]
     if kind == "antagonists":
         return [a["id"] for a in plan.get("antagonists") or []]
+    if kind == "hooks":
+        return hook_targets(plan)
     return []
 
 
@@ -643,6 +649,38 @@ def develop_sketch(plan: dict, sketch_id: str, details: str, entity_id: str | No
     if entity_id:
         x["entity_id"] = entity_id
     return kind, x
+
+
+HOOK_KINDS = ("node", "npc", "antagonist", "location")
+
+
+def hook_targets(plan: dict | None) -> list[str]:
+    """К чему можно привязать личный крючок героя: открытые узлы, NPC, злодеи и места каркаса."""
+    if not has_plan(plan):
+        return []
+    idx = _index(plan)
+    return [k for k, (kind, x) in idx.items() if kind in HOOK_KINDS and x.get("status") not in CLOSED]
+
+
+def set_hook(plan: dict, character_id: str, name: str, ref: str, text: str) -> dict:
+    """Личный крючок: тайная связь истории героя с узлом, NPC, злодеем или местом каркаса."""
+    if ref not in hook_targets(plan):
+        raise PlotError(f"нельзя привязать к {ref}: нужен открытый узел, NPC, злодей или место каркаса")
+    hook = {"name": name, "ref": ref, "text": text}
+    plan.setdefault("hooks", {})[character_id] = hook
+    return hook
+
+
+def hooks_text(plan: dict) -> list[str]:
+    lines = [
+        f"- {h.get('name')} ({cid}) → {h.get('ref')}: {h.get('text')}" for cid, h in (plan.get("hooks") or {}).items()
+    ]
+    lines += [
+        f"- {cid}: {text}"
+        for cid, text in (plan.get("character_links") or {}).items()
+        if cid not in (plan.get("hooks") or {})
+    ]
+    return lines
 
 
 def sketch_entity(plan: dict, sketch_id: str | None) -> str | None:
@@ -745,6 +783,10 @@ def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
     if locs or npcs:
         lines.append("Места и люди рядом:")
         lines += [_sketch_line(x, "location") for x in locs] + [_sketch_line(x, "npc") for x in npcs]
+    hooks = hooks_text(plan)
+    if hooks:
+        lines.append("Личные крючки героев (вплетай в сцены, прямо не раскрывай):")
+        lines += hooks
     later = [a for a in acts if a.get("status") == "pending"]
     if later:
         lines.append("Дальше: " + "; ".join(f"«{a.get('title')}» — {a.get('goal')}" for a in later))

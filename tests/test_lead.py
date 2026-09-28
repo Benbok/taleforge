@@ -6,7 +6,7 @@ import copy
 import pytest
 
 from app.core import plot
-from app.db.models import Campaign, CampaignPlan, CampaignSecret, Entity, Event, MasterTurn, Scene
+from app.db.models import Campaign, CampaignPlan, CampaignSecret, Entity, Event, MasterTurn, Message, Scene
 from tests.game import ok, party, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_plan import FakeCatalog, good_plan
@@ -145,15 +145,19 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
         ],
     }
     llm.replies += [
+        {"text": "Бран сходит на берег."},  # с каркасом мастер сначала представляет отряд
         {"tool_calls": calls},
         DONE,
         {"text": "Туман густеет над бухтой."},
         {"tool_calls": [(plot.REVISE_TOOL, revision)]},
     ]
     n = act(game_client, p1, cid, "Осматриваю порт и расспрашиваю смотрителя")
-    assert n["content"] == "Туман густеет над бухтой."
+    assert n["content"] == "Бран сходит на берег."
+    last = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")[-1]
+    assert last.content == "Туман густеет над бухтой."
 
-    decide, _, narrate, replan = llm.requests[start:]
+    intro, decide, _, narrate, replan = llm.requests[start:]
+    assert "120–200 слов" in intro["messages"][1]["content"]
     assert {"advance_plot", "develop", "threat_tick", "end_act", "get_plot"} <= names(decide)
     enum = next(t for t in decide["tools"] if t["function"]["name"] == "develop")["function"]["parameters"]
     assert "loc_port" in enum["properties"]["sketch_id"]["enum"]

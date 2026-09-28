@@ -1177,12 +1177,16 @@ class ReviewArgs(BaseModel):
     secret_link: str | None = Field(
         None, max_length=2000, description="тайная связь истории героя с сюжетом, игрок её не увидит"
     )
+    hook_ref: str | None = Field(
+        None, description="к чему в каркасе привязать эту связь: id узла, NPC, злодея или места (если каркас есть)"
+    )
 
 
 @tool(
     "review_character",
     "Решение мастера по персонажу на проверке: одобрить или вернуть с комментарием.",
     ReviewArgs,
+    ids={"hook_ref": "plot:hooks"},
     closes=False,
 )
 async def review_character(ctx: ToolContext, a: ReviewArgs) -> dict:
@@ -1191,6 +1195,7 @@ async def review_character(ctx: ToolContext, a: ReviewArgs) -> dict:
         raise ToolError("персонаж не на проверке")
     if not a.approve and not a.comment:
         raise ToolError("при возврате на доработку нужен комментарий")
+    from app.core.campaigns import Conflict
     from app.core.characters import approve_character, record_secret_link
 
     before = ch.status
@@ -1199,8 +1204,13 @@ async def review_character(ctx: ToolContext, a: ReviewArgs) -> dict:
     else:
         ch.status = "draft"
     ch.review_comment = a.comment or None
+    if a.hook_ref and not a.secret_link:
+        raise ToolError("hook_ref задаётся вместе с secret_link")
     if a.secret_link:
-        await record_secret_link(ctx.session, ctx.campaign.id, ch, a.secret_link)
+        try:
+            await record_secret_link(ctx.session, ctx.campaign.id, ch, a.secret_link, ref=a.hook_ref)
+        except Conflict as e:
+            raise ToolError(str(e)) from e
     await ctx.record(
         "review_character",
         target_id=ch.id,

@@ -196,6 +196,12 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 if secret is None:
                     secret = CampaignSecret(campaign_id=cid)
                     s.add(secret)
+                for key in ("character_links", "hooks"):  # связи героев переживают новый вариант каркаса
+                    if (secret.plot or {}).get(key):
+                        plan[key] = secret.plot[key]
+                if plan.get("hooks"):
+                    targets = set(plot.hook_targets(plan))
+                    plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
                 secret.plot = plan
                 settings = dict(c.settings or {})
                 settings["poster"] = plot.poster(plan)

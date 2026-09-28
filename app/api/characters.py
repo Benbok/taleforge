@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.api.deps import SessionDep, UserDep
 from app.content.catalog import campaign_catalog
+from app.core import bonds
 from app.core import characters as svc
 from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat
@@ -232,3 +233,77 @@ async def from_library(campaign_id: str, library_id: str, user: UserDep, session
     ch = await lib.copy_to_campaign(session, v, lc, await svc.creation_rules(session, v.campaign))
     await session.commit()
     return await _view(session, v, ch)
+
+
+# --- связи героев (проект «Подготовка кампании», раздел 7.1) ---
+
+
+class BondAnswerIn(BaseModel):
+    id: str
+    text: str = Field("", max_length=600)
+    private: bool = False
+
+
+class BondsIn(BaseModel):
+    answers: list[BondAnswerIn] = Field(max_length=3)
+
+
+async def _bonds_target(session, v: Viewer, character_id: str) -> tuple[Character, bool]:
+    ch = await svc.get_character(session, v, character_id)
+    mine = v.seat is not None and ch.seat_id == v.seat.id
+    if not (mine or v.is_master or v.can_review):
+        raise AccessDenied("вопросы о связях видят игрок героя и мастер")
+    if ch.status in ("dead", "retired", "premade"):
+        raise Conflict("у этого героя связей не спрашивают")
+    return ch, mine
+
+
+@router.get("/characters/{character_id}/bonds")
+async def get_bonds(campaign_id: str, character_id: str, user: UserDep, session: SessionDep, request: Request):
+    """Вопросы о связях. Первое открытие игроком даёт вопросы по умолчанию; ИИ-мастер с каркасом в фоне
+    заменяет их своими, пока на них не ответили."""
+    from app.agents import prelude
+
+    v = await get_viewer(session, user, campaign_id)
+    ch, mine = await _bonds_target(session, v, character_id)
+    b = bonds.bonds_of(ch)
+    changed = mine and bonds.ensure_questions(ch)
+    ask = False
+    if mine and bonds.bonds_of(ch).get("source") == "default" and not b.get("status"):
+        cfg, _ = await prelude._ai_plan(session, v.campaign)
+        if cfg is not None:
+            b = bonds.bonds_of(ch)
+            b["status"] = "asking"
+            bonds._save(ch, b)
+            changed = ask = True
+    if changed:
+        await session.commit()
+    if ask:
+        request.app.state.master.schedule_bonds(campaign_id, ch.id)
+    return {"bonds": bonds.bonds_of(ch), "can_answer": mine}
+
+
+@router.put("/characters/{character_id}/bonds")
+async def answer_bonds(
+    campaign_id: str, character_id: str, body: BondsIn, user: UserDep, session: SessionDep, request: Request
+) -> dict:
+    """Ответы игрока. Открытые ответы видят все за столом, личные — только игрок и мастер."""
+    from app.agents import prelude
+
+    v = await get_viewer(session, user, campaign_id)
+    ch, mine = await _bonds_target(session, v, character_id)
+    if not mine:
+        raise AccessDenied("отвечает игрок героя")
+    try:
+        b = bonds.answer(ch, [a.model_dump() for a in body.answers])
+    except bonds.BondsError as e:
+        raise Conflict(str(e)) from e
+    cfg, _ = await prelude._ai_plan(session, v.campaign)
+    await session.commit()
+    await prelude.publish_bonds(request.app.state.bus, v.campaign, ch)
+    await request.app.state.bus.publish(
+        campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
+    )
+    if cfg is not None and b.get("answers"):
+        request.app.state.master.schedule_hook(campaign_id, ch.id)  # мастер тайно вплетает ответы в каркас
+    return {"bonds": b, "can_answer": True}
