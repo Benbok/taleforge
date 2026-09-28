@@ -116,6 +116,7 @@ async def create_campaign(
     master: dict,
     public_intro: str = "",
     settings: dict | None = None,
+    owner_plays: bool = True,
 ) -> Campaign:
     if not is_admin(owner):
         raise AccessDenied("кампании создаёт только Admin")
@@ -160,6 +161,10 @@ async def create_campaign(
         settings={**DEFAULT_SETTINGS, **(settings or {})},
         seats=[m, *(Seat(role="player", position=i) for i in range(1, count + 1))],
     )
+    if master_type != "owner" and owner_plays:
+        # владелец, который не ведёт игру сам, сразу садится на первое место игрока
+        first = campaign.seats[1]
+        first.occupant_type, first.user_id, first.joined_at = "human", owner.id, now()
     session.add(campaign)
     await session.flush()
     session.add(CampaignSecret(campaign_id=campaign.id))
@@ -208,6 +213,20 @@ async def accept_invite(session: AsyncSession, user: User, token: str) -> Seat:
         raise Conflict("свободных мест нет")
     free.occupant_type, free.user_id, free.joined_at = "human", user.id, now()
     invite.uses += 1
+    await session.flush()
+    return free
+
+
+async def take_seat(session: AsyncSession, viewer: Viewer) -> Seat:
+    """Владелец садится на свободное место игрока в своей кампании (без приглашения)."""
+    if not viewer.is_owner:
+        raise AccessDenied("занять место без приглашения может только владелец")
+    if viewer.seat is not None:
+        raise Conflict("вы уже на месте " + ("мастера" if viewer.is_master else "игрока"))
+    free = next((s for s in viewer.campaign.seats if s.role == "player" and s.occupant_type == "empty"), None)
+    if free is None:
+        raise Conflict("свободных мест нет")
+    free.occupant_type, free.user_id, free.joined_at = "human", viewer.user.id, now()
     await session.flush()
     return free
 

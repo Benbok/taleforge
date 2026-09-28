@@ -7,12 +7,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
-from app.api import admin, auth, campaigns, characters
+from app.api import admin, auth, campaigns, characters, library
+from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.core.security import hash_password
@@ -75,11 +77,13 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             return JSONResponse({"detail": str(e)}, status_code=code)
 
         app.add_exception_handler(exc, handler)
+    app.add_exception_handler(RequestValidationError, validation_handler)
 
     app.include_router(auth.router)
     app.include_router(admin.router)
     app.include_router(campaigns.router)
     app.include_router(characters.router)
+    app.include_router(library.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")

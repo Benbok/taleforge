@@ -210,7 +210,7 @@ class Character(Base):
     seat_id: Mapped[str | None] = mapped_column(ForeignKey("seats.id", ondelete="SET NULL"))
     owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     name: Mapped[str] = mapped_column(String(64))
-    # draft | submitted | approved | active | dead | retired (раздел 5.1)
+    # draft | submitted | approved | active | dead | retired (раздел 5.1); premade — заготовка владельца без игрока
     status: Mapped[str] = mapped_column(String(16), default="draft")
     creation_method: Mapped[str] = mapped_column(String(16), default="builder")  # builder | pregen
     sheet: Mapped[dict[str, Any]] = mapped_column(default=dict)
@@ -220,6 +220,23 @@ class Character(Base):
     personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
     review_comment: Mapped[str | None] = mapped_column(Text)
     location_id: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class LibraryCharacter(Base):
+    """Герой в профиле игрока, вне кампаний. В кампанию уходит копия: дальше она развивается отдельно,
+    поэтому одним героем можно играть в нескольких кампаниях."""
+
+    __tablename__ = "library_characters"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("lc"))
+    owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    sheet: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    public_bio: Mapped[str] = mapped_column(Text, default="")
+    private_backstory: Mapped[str] = mapped_column(Text, default="")
+    personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

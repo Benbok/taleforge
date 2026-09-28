@@ -131,6 +131,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
         },
+        owner_plays=body.owner_plays,
     )
     try:
         campaign.content_chain = await resolve_chain(session, pack)
@@ -216,6 +217,15 @@ async def kick(campaign_id: str, seat_id: str, user: UserDep, session: SessionDe
     await svc.free_seat(session, v, seat_id)
     await session.commit()
     await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat_id}), None)
+    return await campaign_out(session, v.campaign, user)
+
+
+@router.post("/campaigns/{campaign_id}/seats/take")
+async def take_seat(campaign_id: str, user: UserDep, session: SessionDep, request: Request) -> CampaignOut:
+    v = await _viewer(session, user, campaign_id)
+    seat = await svc.take_seat(session, v)
+    await session.commit()
+    await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat.id}), None)
     return await campaign_out(session, v.campaign, user)
 
 

@@ -4,7 +4,8 @@ from tests.conftest import login
 
 
 def make_campaign(client, admin, **kw):
-    body = {"name": "Тест", "master": {"type": "agent", "provider": "claude", "model": "x"}, **kw}
+    # в тестах владелец не садится за стол сам, чтобы места достались приглашённым
+    body = {"name": "Тест", "master": {"type": "agent", "provider": "claude", "model": "x"}, "owner_plays": False, **kw}
     r = client.post("/api/campaigns", json=body, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()

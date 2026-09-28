@@ -28,6 +28,7 @@ class Settings:
     ws_auth_timeout_sec: float = 10.0
     message_max_len: int = 4000
     history_on_join: int = 50
+    open_signup: bool = True  # регистрация игрока без приглашения; кампании он всё равно видит только по приглашению
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -44,4 +45,5 @@ class Settings:
             superadmin_name=_env("SUPERADMIN_NAME"),
             superadmin_password=_env("SUPERADMIN_PASSWORD"),
             content_dir=Path(_env("CONTENT_DIR", str(ROOT / "content"))),
+            open_signup=(_env("OPEN_SIGNUP", "1") or "1").lower() not in ("0", "false", "no"),
         )
