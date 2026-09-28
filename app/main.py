@@ -61,6 +61,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         await bootstrap_superadmin(app.state.sessionmaker, settings)
         app.state.dice_factory = dice_factory
         app.state.master = MasterService(app.state.sessionmaker, app.state.bus, llm or LiteLLMClient(), dice_factory)
+        await app.state.master.resume_timers()
         try:
             yield
         finally:

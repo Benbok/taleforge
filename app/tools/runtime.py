@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
+from app.core import combat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
 from app.core.world import ZONE_NAMES, World, load_world
@@ -79,6 +80,7 @@ def scene_public(world: World) -> dict[str, Any]:
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": ents,
         "turn_order": world.scene.turn_order,
+        "turn": combat.public_turn(world),
     }
 
 

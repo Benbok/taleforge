@@ -100,7 +100,7 @@ def test_turn_with_tool_and_markup_audit(game_client, admin_g, llm, dice, settin
     (ev,) = rows(settings, Event, Event.tool == "roll_check")
     assert ev.turn_id == turn.id
     calls = rows(settings, LlmCall)
-    assert [x.purpose for x in calls] == ["decide", "decide", "narrate", "narrate"]
+    assert [x.purpose for x in calls] == ["parse", "decide", "decide", "narrate", "narrate"]
 
 
 def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
@@ -126,7 +126,7 @@ def test_failed_turn_rolls_back(game_client, admin_g, llm, settings):
     assert turn.status == "failed" and "LLMError" in turn.trace["error"]
     assert rows(settings, Event, Event.tool == "spawn_entity") == []  # гоблин не остался в мире
     calls = rows(settings, LlmCall)
-    assert len(calls) == 2 and calls[-1].error
+    assert len(calls) == 3 and calls[-1].error
 
 
 def test_ai_master_reviews_character(game_client, admin_g, llm, settings):  # noqa: ARG001
