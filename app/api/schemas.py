@@ -16,6 +16,11 @@ class LoginIn(BaseModel):
     password: str
 
 
+class SignupIn(BaseModel):
+    name: str = Name
+    password: str = Password
+
+
 class RegisterByInviteIn(BaseModel):
     name: str = Name
     password: str = Password
@@ -70,6 +75,7 @@ class CampaignCreateIn(BaseModel):
     excluded_themes: list[str] = Field(default_factory=list, max_length=20)
     creation_rules: CreationRulesIn = CreationRulesIn()
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
+    owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
 
 
 class CampaignPatchIn(BaseModel):

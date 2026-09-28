@@ -36,25 +36,32 @@
   .abil { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; } .abil label { margin:0; text-align:center; }
   .skills { columns:2; font-size:14px; } .skills label { color:var(--ink); margin:2px 0; } .skills input, .inline input { width:auto; }
   #masterStatus { font-size:13px; min-height:1.3em; }
-  ul.plain { list-style:none; padding:0; margin:0; } ul.plain li { padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; }
-  ul.plain li span { flex:1; }
+  ul.plain { list-style:none; padding:0; margin:0; } ul.plain li { padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  ul.plain li span { flex:1; min-width:160px; }
+  .tabs { display:flex; gap:6px; margin-bottom:10px; } .tabs button { flex:0 0 auto; }
+  .tabs button.on { background:var(--accent); color:#fff; } .tabs button:not(.on) { background:transparent; color:var(--accent); border:1px solid var(--line); }
+  .pick { border:1px solid var(--line); border-radius:8px; padding:10px; margin:6px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .pick span { flex:1; min-width:180px; }
 </style>
 </head>
 <body>
 <header><h1>Taleforge <span class="muted">· временный клиент</span></h1><span id="whoami" class="muted"></span><button class="ghost hidden" id="logout">Выйти</button></header>
 <main>
   <section id="auth" class="card hidden">
-    <div id="inviteInfo" class="hidden"><h3 id="inviteTitle"></h3><p id="inviteIntro" class="muted"></p></div>
+    <div id="inviteInfo" class="hidden"><h3 id="inviteTitle"></h3><p id="inviteIntro" class="muted"></p><p class="muted">Войдите или зарегистрируйтесь — приглашение не потеряется.</p></div>
+    <div class="tabs"><button id="tabLogin" class="on">Вход</button><button id="tabSignup">Регистрация</button></div>
     <div class="row">
       <div><label>Имя</label><input id="name" autocomplete="username"></div>
-      <div><label>Пароль</label><input id="password" type="password" autocomplete="current-password"></div>
+      <div><label>Пароль <span id="pwHint" class="hidden">(не короче 6 символов)</span></label><input id="password" type="password" autocomplete="current-password"></div>
     </div>
-    <p class="row"><button id="loginBtn">Войти</button><button id="registerBtn" class="ghost hidden">Создать героя-игрока по приглашению</button></p>
+    <p><button id="authBtn">Войти</button></p>
     <div class="err" id="authErr"></div>
   </section>
 
   <section id="lobby" class="hidden">
+    <div class="card hidden" id="pendingInvite"></div>
     <div class="card"><h3>Мои кампании</h3><ul class="plain" id="campaigns"></ul></div>
+    <div class="card"><h3>Мои герои</h3><p class="muted">Герои профиля. В кампанию уходит копия: там она развивается отдельно, поэтому одним героем можно играть в разных кампаниях.</p><ul class="plain" id="library"></ul><p><button id="newLibHero">Создать героя</button></p></div>
     <div class="card hidden" id="createCard">
       <h3>Новая кампания</h3>
       <div class="row">
@@ -66,6 +73,7 @@
         <div id="cModelBox" class="hidden"><label>Модель в LM Studio</label><input id="cModel" placeholder="например qwen2.5-14b-instruct"></div>
         <div><label>Проверка героев</label><select id="cReview"><option value="master">мастером</option><option value="auto">автоматически</option></select></div>
       </div>
+      <label id="cPlaysBox" class="inline"><input type="checkbox" id="cPlays" checked> Я тоже играю: сразу занять место игрока</label>
       <label>Публичная вводная</label><textarea id="cIntro" rows="2"></textarea>
       <p><button id="createBtn">Создать</button></p><div class="err" id="createErr"></div>
     </div>
@@ -73,12 +81,13 @@
 
   <section id="room" class="hidden">
     <div class="card row"><div><h3 id="roomTitle" style="margin:0"></h3><span id="roomStatus" class="muted"></span></div>
-      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button></div>
+      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button></div>
       <div style="flex:0 0 auto"><button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
+    <div class="card hidden" id="chooseCard"></div>
     <div id="game">
       <div><div class="card"><h4 style="margin-top:0">Места</h4><div id="seats"></div></div>
-        <div class="card sheet" id="heroCard"></div><div class="card sheet hidden" id="reviewCard"></div></div>
+        <div class="card sheet" id="heroCard"></div><div class="card sheet hidden" id="reviewCard"></div><div class="card sheet hidden" id="premadesCard"></div></div>
       <div class="card">
         <div id="masterStatus" class="muted"></div>
         <div id="log"></div>
@@ -90,58 +99,87 @@
         <div class="err" id="sendErr"></div>
       </div>
     </div>
-    <div class="card hidden" id="builder">
-      <h3 style="margin-top:0">Новый герой</h3>
-      <div class="row">
-        <div><label>Имя</label><input id="bName"></div>
-        <div><label>Класс</label><select id="bClass"></select></div>
-        <div><label>Происхождение</label><select id="bOrigin"></select></div>
-        <div><label>Характеристики</label><select id="bMethod"></select></div>
-      </div>
-      <p class="muted" id="bMethodHint"></p>
-      <div class="abil" id="bAbil"></div>
-      <div id="bChoose"></div>
-      <label>Навыки класса <span id="bSkillsHint"></span></label><div class="skills" id="bSkills"></div>
-      <label>Снаряжение</label><div id="bEquip"></div>
-      <label>Внешность и публичная история</label><textarea id="bBio" rows="2"></textarea>
-      <label>Тайная предыстория (видит только мастер)</label><textarea id="bSecret" rows="2"></textarea>
-      <p class="row"><button id="bSave" class="ghost">Сохранить черновик</button><button id="bSubmit">Отправить мастеру</button><button id="bClose" class="ghost">Закрыть</button></p>
-      <div class="err" id="bErr"></div>
+  </section>
+
+  <section id="builder" class="card hidden">
+    <h3 style="margin-top:0" id="bTitle">Новый герой</h3>
+    <div class="row">
+      <div><label>Имя</label><input id="bName"></div>
+      <div><label>Класс</label><select id="bClass"></select></div>
+      <div><label>Происхождение</label><select id="bOrigin"></select></div>
+      <div><label>Характеристики</label><select id="bMethod"></select></div>
     </div>
+    <p class="muted" id="bMethodHint"></p>
+    <div class="abil" id="bAbil"></div>
+    <div id="bChoose"></div>
+    <label>Навыки класса <span id="bSkillsHint"></span></label><div class="skills" id="bSkills"></div>
+    <label>Снаряжение</label><div id="bEquip"></div>
+    <label>Внешность и публичная история</label><textarea id="bBio" rows="2"></textarea>
+    <label>Тайная предыстория (видит только мастер)</label><textarea id="bSecret" rows="2"></textarea>
+    <p class="row"><button id="bSave" class="ghost">Сохранить</button><button id="bSubmit">Отправить мастеру</button><button id="bClose" class="ghost">Закрыть</button></p>
+    <div class="err" id="bErr"></div>
   </section>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { v==null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch {} } };
-let token = store.get("tf_token"), me = null, ws = null, room = null, lastSeq = null, seatsById = {}, mySeat = null, hero = null, opts = null;
-const inviteToken = (location.pathname.match(/^\/invite\/([^/]+)/) || [])[1];
+const sstore = { get(k){ try { return sessionStorage.getItem(k); } catch { return null; } }, set(k,v){ try { v==null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch {} } };
+let token = store.get("tf_token"), me = null, ws = null, room = null, lastSeq = null, seatsById = {}, mySeat = null;
+let hero = null, premades = [], library = [], opts = null, bctx = null, authMode = "login";
+// приглашение из ссылки живёт, пока человек входит или регистрируется
+const urlInvite = (location.pathname.match(/^\/invite\/([^/]+)/) || [])[1];
+if (urlInvite) { sstore.set("tf_invite", urlInvite); history.replaceState(null, "", "/"); }
+const pendingInvite = () => sstore.get("tf_invite");
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "ошибка сервера (" + res.status + ")");
   return data;
 }
-function show(id) { for (const s of ["auth","lobby","room"]) $(s).classList.toggle("hidden", s !== id); }
+function show(id) { for (const s of ["auth","lobby","room","builder"]) $(s).classList.toggle("hidden", s !== id); }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
+// --- вход ---
+function setAuthMode(m) {
+  authMode = m; $("tabLogin").classList.toggle("on", m === "login"); $("tabSignup").classList.toggle("on", m === "signup");
+  $("authBtn").textContent = m === "login" ? "Войти" : "Зарегистрироваться"; $("pwHint").classList.toggle("hidden", m === "login");
+  $("password").autocomplete = m === "login" ? "current-password" : "new-password"; $("authErr").textContent = "";
+}
 async function boot() {
-  if (inviteToken) {
-    const p = await api("/api/invites/" + inviteToken).catch(() => null);
+  const inv = pendingInvite();
+  if (inv) {
+    const p = await api("/api/invites/" + inv).catch(() => null);
     if (p) { $("inviteInfo").classList.remove("hidden"); $("inviteTitle").textContent = "Приглашение: " + p.campaign_name; $("inviteIntro").textContent = p.valid ? (p.public_intro || "") : ("Нельзя войти: " + p.problem); }
-    $("registerBtn").classList.remove("hidden");
   }
   if (token) { try { me = await api("/api/auth/me"); } catch { token = null; store.set("tf_token", null); } }
-  if (!me) return show("auth");
-  $("whoami").textContent = me.name + " · " + me.platform_role; $("logout").classList.remove("hidden");
-  if (inviteToken) { try { const c = await api(`/api/invites/${inviteToken}/accept`, { method: "POST" }); history.replaceState(null, "", "/"); return openRoom(c.id); } catch (e) { alert(e.message); history.replaceState(null, "", "/"); } }
+  if (!me) { setAuthMode(inv ? "signup" : "login"); return show("auth"); }
+  $("whoami").textContent = me.name + (me.platform_role !== "player" ? " · " + me.platform_role : ""); $("logout").classList.remove("hidden");
+  if (inv) {
+    sstore.set("tf_invite", null);
+    try { const c = await api(`/api/invites/${inv}/accept`, { method: "POST" }); return openRoom(c.id); }
+    catch (e) { await lobby(); $("pendingInvite").classList.remove("hidden"); $("pendingInvite").textContent = "Приглашение не принято: " + e.message; return; }
+  }
   lobby();
 }
+$("tabLogin").onclick = () => setAuthMode("login"); $("tabSignup").onclick = () => setAuthMode("signup");
+$("authBtn").onclick = async () => {
+  try {
+    const body = { name: $("name").value.trim(), password: $("password").value };
+    const r = await api(authMode === "login" ? "/api/auth/login" : "/api/auth/signup", { method: "POST", body });
+    token = r.token; store.set("tf_token", token); boot();
+  } catch (e) { $("authErr").textContent = e.message + (authMode === "login" && /неверное/.test(e.message) ? ". Нет аккаунта? Откройте вкладку «Регистрация»." : ""); }
+};
+$("password").onkeydown = (e) => { if (e.key === "Enter") $("authBtn").click(); };
+$("logout").onclick = () => { token = null; store.set("tf_token", null); location.href = "/"; };
+
+// --- лобби: кампании и герои профиля ---
 async function lobby() {
-  show("lobby"); closeWs();
+  show("lobby"); closeWs(); room = null; $("pendingInvite").classList.add("hidden");
   const list = await api("/api/campaigns");
-  $("campaigns").innerHTML = list.length ? list.map(c => `<li><span><b>${esc(c.name)}</b> <span class="muted">${esc(c.status)} · ${c.is_owner ? "владелец" : (c.my_role === "master" ? "мастер" : "игрок")}</span></span><button class="ghost" data-open="${c.id}">Открыть</button>${c.is_owner ? `<button class="ghost" data-del="${c.id}">Удалить</button>` : ""}</li>`).join("") : '<li class="muted">Пока нет кампаний.</li>';
+  $("campaigns").innerHTML = list.length ? list.map(c => `<li><span><b>${esc(c.name)}</b> <span class="muted">${esc(c.status)} · ${[c.is_owner ? "владелец" : "", c.my_role === "master" ? "мастер" : c.my_role === "player" ? "игрок" : ""].filter(Boolean).join(", ")}</span></span><button class="ghost" data-open="${c.id}">Открыть</button>${c.is_owner ? `<button class="ghost" data-del="${c.id}">Удалить</button>` : ""}</li>`).join("") : '<li class="muted">Пока нет кампаний. Чтобы присоединиться, откройте ссылку-приглашение.</li>';
+  await loadLibrary();
   if (me.platform_role !== "player") {
     $("createCard").classList.remove("hidden");
     const packs = await api("/api/packs").catch(() => []);
@@ -149,17 +187,34 @@ async function lobby() {
     updateRec();
   }
 }
+async function loadLibrary() {
+  library = await api("/api/me/characters").catch(() => []);
+  $("library").innerHTML = library.length ? library.map(h => `<li><span><b>${esc(h.name || "без имени")}</b> <span class="muted">${esc([h.origin_name, h.class_name].filter(Boolean).join(", ") || "не собран")}${h.errors?.length ? " · не закончен" : ""}</span></span><button class="ghost" data-libedit="${h.id}">Изменить</button><button class="ghost" data-libdel="${h.id}">Удалить</button></li>`).join("") : '<li class="muted">Пока нет героев.</li>';
+}
 async function updateRec() {
   const q = new URLSearchParams({ difficulty: $("cDiff").value }); if ($("cPack").value) q.set("pack_id", $("cPack").value);
   const r = await api("/api/party-size?" + q).catch(() => null);
   if (r) { $("rec").textContent = `(рекомендуется ${r.recommended}, ${r.min}–${r.max})`; $("cPlayers").value = r.recommended; }
 }
+$("cDiff").onchange = updateRec; $("cPack").onchange = updateRec;
+$("createBtn").onclick = async () => {
+  try {
+    const m = $("cMaster").value;
+    const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value,
+      master: m === "owner" ? { type: "owner" } : { type: "agent", provider: m, model: $("cModel").value || null }, creation_rules: { review: $("cReview").value }, owner_plays: m !== "owner" && $("cPlays").checked } });
+    openRoom(c.id);
+  } catch (e) { $("createErr").textContent = e.message; }
+};
+
+// --- комната кампании ---
 async function openRoom(id) {
   show("room"); $("log").innerHTML = ""; lastSeq = null; $("inviteOut").classList.add("hidden");
-  room = await api("/api/campaigns/" + id);
+  room = await api("/api/campaigns/" + id); mySeat = room.my_seat_id;
   $("roomTitle").textContent = room.name; $("roomStatus").textContent = room.status;
-  $("ownerTools").classList.toggle("hidden", !(room.is_owner || room.my_role === "master"));
+  const manage = room.is_owner || room.my_role === "master";
+  $("ownerTools").classList.toggle("hidden", !manage);
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
+  $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
   connect();
   loadHeroes();
 }
@@ -173,13 +228,13 @@ function connect() {
 function closeWs() { if (ws) { ws.__keep = false; ws.close(); ws = null; } }
 function handle(e) {
   if (e.type === "auth.ok") return ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } }));
-  if (e.type === "state.snapshot") { const p = e.payload; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; return; }
+  if (e.type === "state.snapshot") { const p = e.payload; const seatChanged = mySeat !== p.me.seat_id; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; if (seatChanged) { room.my_seat_id = mySeat; room.my_role = p.me.role; $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !mySeat)); loadHeroes(); } return; }
   if (e.type === "message.new") { if (lastSeq == null || e.seq > lastSeq) { addMsg(e.payload); lastSeq = e.seq; } return; }
   if (e.type === "message.rejected") { $("sendErr").textContent = e.payload.reason; return; }
   if (e.type === "presence.changed") { const s = seatsById[e.payload.seat_id]; if (s) { s.presence = e.payload.status; renderSeats(); } return; }
   if (e.type === "seat.changed" || e.type.startsWith("session.")) { ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } })); return; }
   if (e.type === "character.sheet" || e.type === "character.reviewed") { if (e.payload.character) { hero = e.payload.character; renderHero(); } else loadHeroes(); if (e.type === "character.reviewed") addMsg({ kind: "system", content: e.payload.status === "approved" ? "Мастер одобрил героя." + (e.payload.comment ? " " + e.payload.comment : "") : "Мастер вернул героя: " + (e.payload.comment || "") }); return; }
-  if (e.type === "character.updated") { if (room.my_role === "master" || room.is_owner) loadHeroes(); return; }
+  if (e.type === "character.updated") { loadHeroes(); return; }
   if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
@@ -187,7 +242,7 @@ function handle(e) {
 function renderSeats() {
   $("seats").innerHTML = Object.values(seatsById).sort((a,b) => a.position - b.position).map(s => {
     const who = s.occupant_type === "agent" ? "ИИ-агент" : (s.user_name || "свободно");
-    const kick = room.is_owner && s.role === "player" && s.occupant_type !== "empty" ? ` <button class="ghost" data-kick="${s.id}">×</button>` : "";
+    const kick = room.is_owner && s.role === "player" && s.occupant_type !== "empty" && s.id !== mySeat ? ` <button class="ghost" data-kick="${s.id}">×</button>` : "";
     return `<div class="seat"><span class="dot ${s.presence === "online" ? "online" : ""}"></span>${s.role === "master" ? "Мастер" : "Игрок " + s.position}: ${esc(who)}${kick}</div>`;
   }).join("");
 }
@@ -199,26 +254,44 @@ function addMsg(m) {
   $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
 }
 
+// --- герои в кампании ---
 const AB = ["str","dex","con","int","wis","cha"], AB_RU = { str:"Сил", dex:"Лов", con:"Тел", int:"Инт", wis:"Мдр", cha:"Хар" };
 const SK_RU = { acrobatics:"Акробатика", animal_handling:"Уход за животными", arcana:"Магия", athletics:"Атлетика", deception:"Обман", history:"История", insight:"Проницательность", intimidation:"Запугивание", investigation:"Анализ", medicine:"Медицина", nature:"Природа", perception:"Восприятие", performance:"Выступление", persuasion:"Убеждение", religion:"Религия", sleight_of_hand:"Ловкость рук", stealth:"Скрытность", survival:"Выживание" };
-const ST_RU = { draft:"черновик", submitted:"на проверке у мастера", approved:"в игре", active:"в игре", dead:"погиб", retired:"ушёл" };
+const ST_RU = { draft:"черновик", submitted:"на проверке у мастера", approved:"в игре", active:"в игре", dead:"погиб", retired:"ушёл", premade:"готовый герой" };
 const METHOD_RU = { standard_array:"стандартный набор", point_buy:"покупка очков", roll:"броски 4d6" };
 async function loadHeroes() {
+  if (!room) return;
   const base = `/api/campaigns/${room.id}`;
   const list = await api(base + "/characters").catch(() => []);
-  hero = list.find(c => c.seat_id && c.seat_id === mySeat && c.status !== "dead" && c.status !== "retired") || null;
-  if (hero) hero = await api(`${base}/characters/${hero.id}`);
-  renderHero();
-  const isMaster = room.my_role === "master";
+  if (room.my_role === "player") library = await api("/api/me/characters").catch(() => []);
+  premades = list.filter(c => c.status === "premade");
+  hero = list.find(c => mySeat && c.seat_id === mySeat && !["dead", "retired", "premade"].includes(c.status)) || null;
+  if (hero && !hero.sheet) hero = await api(`${base}/characters/${hero.id}`);
+  renderHero(); renderChoose();
+  const manage = room.is_owner || room.my_role === "master";
   const waiting = list.filter(c => c.status === "submitted");
-  $("reviewCard").classList.toggle("hidden", !(isMaster && waiting.length));
+  $("reviewCard").classList.toggle("hidden", !(room.my_role === "master" && waiting.length));
   $("reviewCard").innerHTML = "<b>Ждут проверки</b>" + waiting.map(c => `<div class="seat">${esc(c.name)} <button class="ghost" data-look="${c.id}">Смотреть</button></div>`).join("");
+  $("premadesCard").classList.toggle("hidden", !(manage && premades.length));
+  $("premadesCard").innerHTML = "<b>Готовые герои</b>" + premades.map(c => `<div class="seat">${esc(c.name || "без имени")}${c.errors?.length ? ' <span class="muted">(не закончен)</span>' : ""} <button class="ghost" data-preedit="${c.id}">Изменить</button> <button class="ghost" data-predel="${c.id}">×</button></div>`).join("");
+}
+function heroLine(c) { const d = c.derived || {}; return `<b>${esc(c.name || "без имени")}</b> <span class="muted">${esc([c.origin_name, c.class_name].filter(Boolean).join(", "))}${d.hp_max ? " · хиты " + d.hp_max : ""}</span>${c.public_bio ? `<div class="muted">${esc(c.public_bio)}</div>` : ""}`; }
+function renderChoose() {
+  const box = $("chooseCard");
+  const need = room.my_role === "player" && (!hero || (hero.status === "draft" && !hero.sheet?.class_id));
+  box.classList.toggle("hidden", !need);
+  if (!need) return;
+  let html = "<h3 style=\"margin-top:0\">Кем вы будете играть?</h3>";
+  const ready = premades.filter(p => !p.errors?.length);
+  if (ready.length) html += "<b>Готовые герои от владельца</b>" + ready.map(p => `<div class="pick"><span>${heroLine(p)}</span><button data-claim="${p.id}">Играть им</button></div>`).join("");
+  if (library.length) html += "<b>Мои герои из профиля</b>" + library.map(h => `<div class="pick"><span><b>${esc(h.name || "без имени")}</b> <span class="muted">${esc([h.origin_name, h.class_name].filter(Boolean).join(", "))}</span></span><button data-fromlib="${h.id}">Взять копию в кампанию</button></div>`).join("");
+  html += `<div class="pick"><span>Собрать нового героя прямо сейчас</span><button id="newHero" class="ghost">Создать героя</button></div>`;
+  box.innerHTML = html;
 }
 function renderHero() {
   const box = $("heroCard");
-  if (room.my_role !== "player") { box.classList.add("hidden"); return; }
+  if (room.my_role !== "player" || !hero) { box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
-  if (!hero) { box.innerHTML = `<b>Герой</b><p class="muted">У вас пока нет героя.</p><button id="newHero">Создать героя</button>`; return; }
   const d = hero.derived || {}, r = hero.resources || {};
   let html = `<b>${esc(hero.name || "без имени")}</b> <span class="muted">· ${ST_RU[hero.status] || hero.status}</span>`;
   if (hero.review_comment) html += `<p class="muted">Мастер: ${esc(hero.review_comment)}</p>`;
@@ -230,23 +303,35 @@ function renderHero() {
   if (hero.status === "draft") html += `<button id="editHero">Продолжить создание</button>`;
   box.innerHTML = html;
 }
-async function openBuilder() {
-  const base = `/api/campaigns/${room.id}`;
-  opts = await api(base + "/character-options");
+
+// --- конструктор: герой кампании, заготовка владельца или герой профиля ---
+const MODES = {
+  campaign: { title: "Герой кампании", save: "Сохранить черновик", submit: true },
+  premade: { title: "Готовый герой для игроков", save: "Сохранить заготовку", submit: false },
+  library: { title: "Герой профиля", save: "Сохранить героя", submit: false },
+};
+async function openBuilder(mode, obj) {
+  bctx = { mode, obj: obj || null, back: room ? "room" : "lobby" };
+  opts = await api(mode === "library" ? "/api/me/character-options" : `/api/campaigns/${room.id}/character-options`);
+  const methods = opts.ability_methods.filter(m => mode !== "premade" || m !== "roll");
+  $("bTitle").textContent = MODES[mode].title; $("bSave").textContent = MODES[mode].save; $("bSubmit").classList.toggle("hidden", !MODES[mode].submit);
   $("bClass").innerHTML = opts.classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   $("bOrigin").innerHTML = opts.origins.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join("");
-  $("bMethod").innerHTML = opts.ability_methods.map(m => `<option value="${m}">${METHOD_RU[m] || m}</option>`).join("");
-  const s = hero?.sheet || {};
-  $("bName").value = hero?.name || ""; $("bBio").value = hero?.public_bio || ""; $("bSecret").value = hero?.private_backstory || "";
-  if (s.class_id) $("bClass").value = s.class_id; if (s.origin_id) $("bOrigin").value = s.origin_id; if (s.ability_method) $("bMethod").value = s.ability_method;
+  $("bMethod").innerHTML = methods.map(m => `<option value="${m}">${METHOD_RU[m] || m}</option>`).join("");
+  const s = obj?.sheet || {};
+  $("bName").value = obj?.name || ""; $("bBio").value = obj?.public_bio || ""; $("bSecret").value = obj?.private_backstory || "";
+  if (s.class_id) $("bClass").value = s.class_id; if (s.origin_id) $("bOrigin").value = s.origin_id; if (s.ability_method && methods.includes(s.ability_method)) $("bMethod").value = s.ability_method;
   $("bAbil").innerHTML = AB.map(a => `<label>${AB_RU[a]}<input type="number" min="3" max="18" data-ab="${a}" value="${s.abilities?.[a] ?? ""}"></label>`).join("");
-  renderBuilder(s); $("builder").classList.remove("hidden"); $("builder").scrollIntoView();
+  $("bErr").textContent = (obj?.errors || []).join("; ");
+  renderBuilder(s); show("builder"); window.scrollTo(0, 0);
 }
+function closeBuilder() { const back = bctx?.back || "lobby"; bctx = null; if (back === "room" && room) { show("room"); loadHeroes(); } else lobby(); }
 function renderBuilder(s = {}) {
   const cls = opts.classes.find(c => c.id === $("bClass").value), org = opts.origins.find(o => o.id === $("bOrigin").value), m = $("bMethod").value;
+  const rolls = bctx?.obj?.sheet?.ability_rolls;
   $("bMethodHint").innerHTML = m === "standard_array" ? "Разложите 15, 14, 13, 12, 10, 8 — каждое по разу. Бонусы происхождения добавит сервер."
     : m === "point_buy" ? `Значения 8–15, бюджет ${opts.point_buy.budget} очков.`
-    : (hero?.sheet?.ability_rolls ? "Выпало: " + hero.sheet.ability_rolls.join(", ") + ". Разложите эти числа." : `<button id="bRoll" class="ghost">Бросить 4d6 (один раз)</button> <span>сначала сохраните черновик</span>`);
+    : (rolls ? "Выпало: " + rolls.join(", ") + ". Разложите эти числа." : `<button id="bRoll" class="ghost">Бросить 4d6 (один раз)</button>`);
   $("bChoose").innerHTML = org?.ability_choose ? `<label>+1 к характеристикам (${org.ability_choose.count}): ${AB.filter(a => !(org.ability_choose.exclude || []).includes(a)).map(a => `<span class="inline"><input type="checkbox" data-ac="${a}" ${(s.ability_choice || []).includes(a) ? "checked" : ""}> ${AB_RU[a]}</span>`).join(" ")}</label>` : "";
   const sc = cls?.skills_choose || {}; $("bSkillsHint").textContent = `(выберите ${sc.count || 0})`;
   $("bSkills").innerHTML = (sc.from || Object.keys(SK_RU)).map(k => `<label><input type="checkbox" data-sk="${k}" ${(s.skills || []).includes(k) ? "checked" : ""}> ${SK_RU[k] || k}</label>`).join("");
@@ -271,43 +356,66 @@ function builderData() {
     ability_choice: [...document.querySelectorAll("[data-ac]:checked")].map(e => e.dataset.ac), skills: [...document.querySelectorAll("[data-sk]:checked")].map(e => e.dataset.sk),
     equipment_choices, public_bio: $("bBio").value, private_backstory: $("bSecret").value };
 }
-async function saveHero() {
-  const base = `/api/campaigns/${room.id}/characters`;
-  hero = hero ? await api(`${base}/${hero.id}`, { method: "PUT", body: builderData() }) : await api(base, { method: "POST", body: builderData() });
-  $("bErr").textContent = (hero.errors || []).join("; "); renderHero(); return hero;
+function builderUrl() {
+  const id = bctx.obj?.id;
+  if (bctx.mode === "library") return id ? `/api/me/characters/${id}` : "/api/me/characters";
+  if (bctx.mode === "premade") return id ? `/api/campaigns/${room.id}/premades/${id}` : `/api/campaigns/${room.id}/premades`;
+  return id ? `/api/campaigns/${room.id}/characters/${id}` : `/api/campaigns/${room.id}/characters`;
 }
+async function saveBuilder() {
+  bctx.obj = await api(builderUrl(), { method: bctx.obj ? "PUT" : "POST", body: builderData() });
+  if (bctx.mode === "campaign") hero = bctx.obj;
+  $("bErr").textContent = (bctx.obj.errors || []).join("; ");
+  return bctx.obj;
+}
+async function rollBuilder() {
+  await saveBuilder();
+  const url = bctx.mode === "library" ? `/api/me/characters/${bctx.obj.id}/roll-abilities` : `/api/campaigns/${room.id}/characters/${bctx.obj.id}/roll-abilities`;
+  const r = await api(url, { method: "POST" });
+  bctx.obj.sheet = { ...(bctx.obj.sheet || {}), ability_method: "roll", ability_rolls: r.rolls };
+  renderBuilder(builderData());
+}
+async function submitHero(id) {
+  const r = await api(`/api/campaigns/${room.id}/characters/${id}/submit`, { method: "POST" });
+  return r.errors || [];
+}
+
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (["bClass", "bOrigin", "bMethod"].includes(t.id)) renderBuilder(builderData());
   if (t.dataset.eq !== undefined) { const cls = opts.classes.find(c => c.id === $("bClass").value); document.querySelector(`[data-eqx="${t.dataset.eq}"]`).innerHTML = weaponPicks(cls.equipment_choices[+t.dataset.eq][+t.value] || [], [], t.dataset.eq); }
-  if (t.id === "cMaster") $("cModelBox").classList.toggle("hidden", t.value !== "local");
+  if (t.id === "cMaster") { $("cModelBox").classList.toggle("hidden", t.value !== "local"); $("cPlaysBox").classList.toggle("hidden", t.value === "owner"); }
 });
-
 document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button"); if (!t) return;
+  const base = room ? `/api/campaigns/${room.id}` : "";
   try {
     if (t.dataset.open) return openRoom(t.dataset.open);
     if (t.dataset.del && confirm("Удалить кампанию безвозвратно?")) { await api("/api/campaigns/" + t.dataset.del, { method: "DELETE" }); return lobby(); }
-    if (t.dataset.kick) { await api(`/api/campaigns/${room.id}/seats/${t.dataset.kick}/occupant`, { method: "DELETE" }); return; }
-    if (t.id === "newHero" || t.id === "editHero") return openBuilder();
-    if (t.id === "bClose") return $("builder").classList.add("hidden");
-    if (t.id === "bSave") { $("bErr").textContent = ""; return await saveHero(); }
-    if (t.id === "bRoll") { await saveHero(); const r = await api(`/api/campaigns/${room.id}/characters/${hero.id}/roll-abilities`, { method: "POST" }); hero.sheet = { ...(hero.sheet || {}), ability_rolls: r.rolls }; return renderBuilder(builderData()); }
-    if (t.id === "bSubmit") { await saveHero(); if (hero.errors?.length) return; const r = await api(`/api/campaigns/${room.id}/characters/${hero.id}/submit`, { method: "POST" }); if (r.errors?.length) { $("bErr").textContent = r.errors.join("; "); return; } $("builder").classList.add("hidden"); return loadHeroes(); }
-    if (t.dataset.look) { const c = await api(`/api/campaigns/${room.id}/characters/${t.dataset.look}`); const comment = prompt(`${c.name}: ${c.public_bio || ""}\n\nТайная история: ${c.private_backstory || "—"}\n\nОставьте поле пустым, чтобы одобрить, или напишите, что исправить:`); if (comment === null) return; await api(`/api/campaigns/${room.id}/characters/${c.id}/review`, { method: "POST", body: { approve: !comment, comment: comment || "" } }); return loadHeroes(); }
-    if (t.dataset.act) { await api(`/api/campaigns/${room.id}/session/${t.dataset.act}`, { method: "POST" }); return; }
-  } catch (e) { alert(e.message); }
+    if (t.dataset.kick) { await api(`${base}/seats/${t.dataset.kick}/occupant`, { method: "DELETE" }); return; }
+    if (t.dataset.act) { await api(`${base}/session/${t.dataset.act}`, { method: "POST" }); return; }
+    if (t.id === "newLibHero") return openBuilder("library", null);
+    if (t.dataset.libedit) return openBuilder("library", await api(`/api/me/characters/${t.dataset.libedit}`));
+    if (t.dataset.libdel && confirm("Удалить героя из профиля? Его копии в кампаниях останутся.")) { await api(`/api/me/characters/${t.dataset.libdel}`, { method: "DELETE" }); return loadLibrary(); }
+    if (t.id === "premadeBtn") return openBuilder("premade", null);
+    if (t.dataset.preedit) return openBuilder("premade", premades.find(p => p.id === t.dataset.preedit));
+    if (t.dataset.predel && confirm("Удалить заготовку?")) { await api(`${base}/premades/${t.dataset.predel}`, { method: "DELETE" }); return loadHeroes(); }
+    if (t.id === "takeSeatBtn") { room = await api(`${base}/seats/take`, { method: "POST" }); mySeat = room.my_seat_id; $("takeSeatBtn").classList.add("hidden"); return loadHeroes(); }
+    if (t.dataset.claim) { await api(`${base}/characters/${t.dataset.claim}/claim`, { method: "POST" }); return loadHeroes(); }
+    if (t.dataset.fromlib) {
+      const copy = await api(`${base}/characters/from-library/${t.dataset.fromlib}`, { method: "POST" });
+      if (!copy.errors?.length && !(await submitHero(copy.id)).length) return loadHeroes();
+      return openBuilder("campaign", await api(`${base}/characters/${copy.id}`));
+    }
+    if (t.id === "newHero") return openBuilder("campaign", hero);
+    if (t.id === "editHero") return openBuilder("campaign", hero);
+    if (t.id === "bClose") return closeBuilder();
+    if (t.id === "bSave") { await saveBuilder(); if (bctx.mode !== "campaign" && !bctx.obj.errors?.length) closeBuilder(); return; }
+    if (t.id === "bRoll") return rollBuilder();
+    if (t.id === "bSubmit") { await saveBuilder(); if (bctx.obj.errors?.length) return; const errs = await submitHero(bctx.obj.id); if (errs.length) { $("bErr").textContent = errs.join("; "); return; } return closeBuilder(); }
+    if (t.dataset.look) { const c = await api(`${base}/characters/${t.dataset.look}`); const comment = prompt(`${c.name}: ${c.public_bio || ""}\n\nТайная история: ${c.private_backstory || "—"}\n\nОставьте поле пустым, чтобы одобрить, или напишите, что исправить:`); if (comment === null) return; await api(`${base}/characters/${c.id}/review`, { method: "POST", body: { approve: !comment, comment: comment || "" } }); return loadHeroes(); }
+  } catch (e) { if (bctx) $("bErr").textContent = e.message; else alert(e.message); }
 });
-$("loginBtn").onclick = async () => { try { const r = await api("/api/auth/login", { method: "POST", body: { name: $("name").value, password: $("password").value } }); token = r.token; store.set("tf_token", token); boot(); } catch (e) { $("authErr").textContent = e.message; } };
-$("registerBtn").onclick = async () => { try { const r = await api("/api/auth/register/" + inviteToken, { method: "POST", body: { name: $("name").value, password: $("password").value } }); token = r.token; store.set("tf_token", token); history.replaceState(null, "", "/"); me = r.user; $("whoami").textContent = me.name; $("logout").classList.remove("hidden"); const list = await api("/api/campaigns"); openRoom(list[0].id); } catch (e) { $("authErr").textContent = e.message; } };
-$("logout").onclick = () => { token = null; store.set("tf_token", null); location.href = "/"; };
-$("cDiff").onchange = updateRec; $("cPack").onchange = updateRec;
-$("createBtn").onclick = async () => {
-  try {
-    const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value, master: $("cMaster").value === "owner" ? { type: "owner" } : { type: "agent", provider: $("cMaster").value, model: $("cModel").value || null }, creation_rules: { review: $("cReview").value } } });
-    openRoom(c.id);
-  } catch (e) { $("createErr").textContent = e.message; }
-};
 $("backBtn").onclick = () => { room = null; lobby(); };
 $("inviteBtn").onclick = async () => { try { const i = await api(`/api/campaigns/${room.id}/invites`, { method: "POST", body: {} }); $("inviteOut").classList.remove("hidden"); $("inviteOut").innerHTML = `Ссылка для друзей (действует 72 часа): <input readonly value="${esc(i.url)}" onclick="this.select()">`; } catch (e) { alert(e.message); } };
 function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }

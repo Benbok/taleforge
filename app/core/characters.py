@@ -60,7 +60,10 @@ def _items(cat: CatalogView) -> dict[str, dict]:
 
 
 async def options(session: AsyncSession, campaign: Campaign, cat: CatalogView) -> dict:
-    rules = await creation_rules(session, campaign)
+    return await options_for_rules(await creation_rules(session, campaign), cat)
+
+
+async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
     items = _items(cat)
     classes = []
     for e in cat.by_kind("class"):
@@ -281,6 +284,70 @@ async def review(session: AsyncSession, viewer: Viewer, ch: Character, cat: Cata
         )
     )
     await session.flush()
+
+
+# --- готовые герои от владельца (раздел 5.1, «готовые варианты») ---
+
+
+def _can_prepare(viewer: Viewer) -> None:
+    if not (viewer.is_owner or viewer.is_master):
+        raise AccessDenied("готовых героев заготавливает владелец или мастер")
+
+
+async def create_premade(session: AsyncSession, viewer: Viewer, data: dict[str, Any], rules: dict) -> Character:
+    """Заготовка без игрока: её выберет игрок при входе в кампанию."""
+    _can_prepare(viewer)
+    ch = Character(
+        campaign_id=viewer.campaign.id,
+        seat_id=None,
+        owner_user_id=None,
+        name="",
+        status="premade",
+        creation_method="pregen",
+        sheet={"level": int(rules.get("start_level") or 1)},
+    )
+    _apply(ch, data)
+    session.add(ch)
+    await session.flush()
+    return ch
+
+
+async def update_premade(session: AsyncSession, viewer: Viewer, ch: Character, data: dict[str, Any]) -> Character:
+    _can_prepare(viewer)
+    if ch.status != "premade":
+        raise Conflict("героя уже выбрали: менять его может только игрок")
+    _apply(ch, data)
+    await session.flush()
+    return ch
+
+
+async def delete_premade(session: AsyncSession, viewer: Viewer, ch: Character) -> None:
+    _can_prepare(viewer)
+    if ch.status != "premade":
+        raise Conflict("героя уже выбрали: удалить нельзя")
+    await session.delete(ch)
+    await session.flush()
+
+
+async def claim(session: AsyncSession, viewer: Viewer, ch: Character, cat: CatalogView, rules: dict) -> Character:
+    """Игрок берёт готового героя: он сразу в игре — его уже собрал и проверил владелец."""
+    if not viewer.is_player:
+        raise AccessDenied("выбрать героя может игрок на своём месте")
+    if ch.status != "premade":
+        raise Conflict("этого героя уже выбрали")
+    q = select(Character).where(Character.seat_id == viewer.seat.id, Character.status.in_(ACTIVE))
+    mine = (await session.scalars(q)).first()
+    if mine is not None:
+        if mine.status != "draft":
+            raise Conflict("у этого места уже есть персонаж")
+        await session.delete(mine)  # незаконченный черновик уступает место выбранному герою
+        await session.flush()
+    errs = errors_for(ch, cat, rules)
+    if errs:
+        raise Conflict("заготовка собрана не по правилам кампании: " + "; ".join(errs))
+    ch.seat_id, ch.owner_user_id = viewer.seat.id, viewer.user.id
+    await approve_character(session, viewer.campaign, ch, cat)
+    return ch
 
 
 async def record_secret_link(session: AsyncSession, campaign_id: str, ch: Character, text: str) -> None:

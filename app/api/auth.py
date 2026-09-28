@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, SettingsDep, UserDep
-from app.api.schemas import LoginIn, RegisterByInviteIn, TokenOut, UserOut
-from app.core.campaigns import Conflict, accept_invite, invite_problem
+from app.api.schemas import LoginIn, RegisterByInviteIn, SignupIn, TokenOut, UserOut
+from app.core.campaigns import AccessDenied, Conflict, accept_invite, invite_problem
 from app.core.security import create_token, hash_password, verify_password
 from app.db.models import Invite, User
 
@@ -21,6 +21,19 @@ async def login(body: LoginIn, session: SessionDep, settings: SettingsDep) -> To
     user = (await session.scalars(select(User).where(User.name == body.name))).first()
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "неверное имя или пароль")
+    return TokenOut(token=create_token(user.id, settings.jwt_secret, settings.jwt_ttl_hours), user=user_out(user))
+
+
+@router.post("/signup")
+async def signup(body: SignupIn, session: SessionDep, settings: SettingsDep) -> TokenOut:
+    """Быстрая регистрация игрока: имя и пароль. Приглашение принимается уже после входа."""
+    if not settings.open_signup:
+        raise AccessDenied("регистрация закрыта: попросите приглашение у владельца кампании")
+    if (await session.scalars(select(User).where(User.name == body.name))).first() is not None:
+        raise Conflict("имя занято: если это вы — войдите")
+    user = User(name=body.name, password_hash=hash_password(body.password), platform_role="player")
+    session.add(user)
+    await session.commit()
     return TokenOut(token=create_token(user.id, settings.jwt_secret, settings.jwt_ttl_hours), user=user_out(user))
 
 
