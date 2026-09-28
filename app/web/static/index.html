@@ -102,7 +102,8 @@
       <label>Какие эмоции <span class="muted">(до трёх)</span></label><div class="chips" id="bEmotions"></div>
       <label>Пожелания <span class="muted">(необязательно: «морское путешествие», «злодей — кто-то из своих»)</span></label><textarea id="bWishes" rows="2" maxlength="1000"></textarea>
       <label>Запретные темы <span class="muted">(через запятую)</span></label><input id="cExcluded">
-      <label>Публичная вводная</label><textarea id="cIntro" rows="2"></textarea>
+      <label>Публичная вводная <span class="muted">(можно оставить пустой: её напишет архитектор сюжета)</span></label><textarea id="cIntro" rows="2"></textarea>
+      <label class="inline"><input type="checkbox" id="cPlanNow" checked> Сразу подготовить сюжет: завязку, злодеев, акты, места и тайны</label>
       <p><button id="createBtn">Создать</button></p><div class="err" id="createErr"></div>
     </div>
   </section>
@@ -112,6 +113,15 @@
       <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button> <button class="ghost hidden" id="masterPersonaBtn">Характер мастера</button></div>
       <div style="flex:0 0 auto"><button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
+    <div class="card hidden" id="posterCard"><div id="posterBody"></div></div>
+    <div class="card hidden" id="planCard"><h4 style="margin-top:0">Сюжет кампании</h4>
+      <div id="planState"></div>
+      <div id="planControls" class="hidden">
+        <div class="row"><div><label>Шаблон сюжета</label><select id="planStructure"></select></div><div><label>Пожелание к варианту <span class="muted">(«мрачнее», «короче»)</span></label><input id="planNote" maxlength="500"></div></div>
+        <p class="muted" id="planEstimate" style="font-size:13px"></p>
+        <p><button id="planBtn">Подготовить сюжет</button></p></div>
+      <details id="planDetails" class="hidden"><summary>Каркас целиком (видит только мастер)</summary><div id="planFull" style="font-size:14px"></div></details>
+      <div class="err" id="planErr"></div></div>
     <div class="card hidden" id="masterPersonaCard"><h4 style="margin-top:0">Характер ИИ-мастера</h4><p class="muted" id="mpCurrent" style="white-space:pre-line"></p>
       <div class="row"><div><select id="mpSelect"></select></div></div>
       <label>Дополнить своими словами</label><textarea id="mpStyle" rows="2" maxlength="2000"></textarea>
@@ -282,6 +292,7 @@ $("createBtn").onclick = async () => {
     const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value,
       master: { ...master, ...personaChoice(master) }, brief: briefBody(), excluded_themes: excludedThemes(),
       creation_rules: { review: $("cReview").value }, owner_plays: master.type !== "owner" && $("cPlays").checked } });
+    if ($("cPlanNow").checked) await api(`/api/campaigns/${c.id}/plan`, { method: "POST", body: {} }).catch(e => alert("Сюжет не запущен: " + e.message));
     openRoom(c.id);
   } catch (e) { $("createErr").textContent = e.message; }
 };
@@ -295,7 +306,7 @@ async function openRoom(id) {
   $("ownerTools").classList.toggle("hidden", !manage); $("masterModelCard").classList.add("hidden");
   const aiMaster = room.is_owner && room.seats.some(s => s.role === "master" && s.occupant_type === "agent");
   $("masterModelBtn").classList.toggle("hidden", !aiMaster); $("masterPersonaBtn").classList.toggle("hidden", !aiMaster);
-  $("masterPersonaCard").classList.add("hidden");
+  $("masterPersonaCard").classList.add("hidden"); openPlan();
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
   $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
   connect();
@@ -325,6 +336,7 @@ function handle(e) {
   if (e.type === "character.updated" || e.type === "character.review_failed") { loadHeroes(); return; }
   if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
+  if (e.type === "campaign.plan") { onPlanEvent(e.payload); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
 }
 // Пошаговый режим: чей ход, сколько осталось, кнопка реакции с таймером (раздел 5, 7.2)

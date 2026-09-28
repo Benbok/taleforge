@@ -166,6 +166,20 @@ class CampaignSecret(Base):
     plot: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
+class CampaignPlan(Base):
+    """Версии каркаса кампании (app/core/plot.py). Текущая копия лежит в campaign_secrets.plot."""
+
+    __tablename__ = "campaign_plans"
+    __table_args__ = (UniqueConstraint("campaign_id", "version"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("pl"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Seat(Base):
     """Место мастера или игрока. Занимает человек (user_id) или агент (agent_config_id)."""
 

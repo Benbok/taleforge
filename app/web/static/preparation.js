@@ -152,3 +152,78 @@ document.addEventListener("click", async (ev) => {
     if (t.id === "mpClose") { $("masterPersonaCard").classList.add("hidden"); return; }
   } catch (e) { alert(e.message); }
 });
+
+// --- сюжет кампании: афиша для всех, подготовка у владельца и мастера ---
+let planState = null;
+function renderPoster(poster, intro) {
+  if (!poster || !poster.title) { $("posterCard").classList.add("hidden"); return; }
+  $("posterBody").innerHTML = `<h3 style="margin:0">${esc(poster.title)}</h3><p style="margin:4px 0"><i>${esc(poster.tagline || "")}</i></p>
+    <p style="margin:4px 0">${(poster.tags || []).map(t => `<span class="badge">${esc(t)}</span>`).join(" ")}</p>
+    ${intro ? `<p class="muted" style="white-space:pre-line;margin-bottom:0">${esc(intro)}</p>` : ""}`;
+  $("posterCard").classList.remove("hidden");
+}
+async function openPlan() {
+  $("planCard").classList.add("hidden"); $("planErr").textContent = "";
+  renderPoster(room.settings?.poster, room.public_intro);
+  if (!(room.is_owner || room.my_role === "master")) return;
+  try { planState = await api(`/api/campaigns/${room.id}/plan`); } catch { return; }
+  $("planCard").classList.remove("hidden"); renderPlan();
+  if (planState.can_generate) loadPlanOptions();
+}
+function renderPlan() {
+  const p = planState, st = p.status;
+  const text = { none: "Сюжет ещё не подготовлен. Архитектор построит каркас по анкете и лору мира: завязку, злодеев с планом угрозы, акты, места и тайны. Детали мастер допишет по ходу игры.",
+    generating: "Архитектор готовит сюжет… Это может занять пару минут, страницу можно не держать открытой.",
+    ready: `Сюжет готов (вариант ${p.version}).`, failed: "Не получилось подготовить сюжет: " + (p.error || "") }[st] || st;
+  $("planState").innerHTML = `<p class="${st === "failed" ? "bad" : "muted"}">${esc(text)}</p>`;
+  $("planControls").classList.toggle("hidden", !p.can_generate || st === "generating");
+  $("planBtn").textContent = st === "ready" ? "Другой вариант" : "Подготовить сюжет";
+  if (!p.can_generate && st !== "generating") $("planState").innerHTML += '<p class="muted">Игра уже началась: дальше сюжет меняется по ходу, а не заново.</p>';
+  renderPoster(p.poster, p.public_intro);
+  if (st === "generating") schedulePlanPoll();
+  const full = p.plan && p.plan.title;
+  $("planDetails").classList.toggle("hidden", !full);
+  if (full) $("planFull").innerHTML = planHtml(p.plan);
+}
+async function loadPlanOptions(structureId) {
+  try {
+    const q = structureId ? "?structure_id=" + encodeURIComponent(structureId) : "";
+    const o = await api(`/api/campaigns/${room.id}/plan/options${q}`);
+    if (!structureId) $("planStructure").innerHTML = '<option value="">Автоматически по анкете</option>' + o.structures.map(x => `<option value="${esc(x.id)}" title="${esc(x.description)}">${esc(x.name)}${x.best ? " — лучше всего подходит" : ""}</option>`).join("");
+    const e = o.estimate;
+    $("planEstimate").textContent = `Примерно ${Math.round((e.tokens_in + e.tokens_out) / 1000)} тыс. токенов на модели ${e.model}` + (e.usd != null ? `, около $${e.usd.toFixed(2)}.` : ": цена неизвестна или модель локальная.") + " Если сервер вернёт каркас на доработку, будет до трёх попыток.";
+  } catch (e) { $("planEstimate").textContent = ""; }
+}
+function planHtml(p) {
+  const li = (xs, f) => `<ul>${(xs || []).map(x => `<li>${f(x)}</li>`).join("")}</ul>`;
+  return `<p><b>Конфликт:</b> ${esc(p.conflict)} <b>Ставки:</b> ${esc(p.stakes)}</p>
+    <b>Антагонисты</b>${li(p.antagonists, a => `<b>${esc(a.name)}</b>: ${esc(a.goal)}. Слабость: ${esc(a.weakness)}. Тайна: ${esc(a.secret)}<br><span class="muted">План угрозы: ${(a.threat || []).map(esc).join(" → ")}</span>`)}
+    <b>Акты</b>${li(p.acts, a => `<b>${esc(a.title)}</b> — ${esc(a.goal)}${li(a.nodes, n => `${esc(n.title)}: ${esc(n.summary)}`)}`)}
+    <b>Места</b>${li(p.locations, l => `<b>${esc(l.name)}</b>: ${esc(l.role)} <span class="muted">Секрет: ${esc(l.secret)}</span>`)}
+    <b>NPC</b>${li(p.npcs, n => `<b>${esc(n.name)}</b>: ${esc(n.role)}; хочет — ${esc(n.want)} <span class="muted">Тайна: ${esc(n.secret)}</span>`)}
+    <b>Тайны</b>${li(p.reveals, r => `${esc(r.truth)} <span class="muted">(${(r.clues || []).length} зацепки)</span>`)}
+    <b>Финалы</b>${li(p.endings, e => esc(e))}`;
+}
+let planPoll = null;
+function schedulePlanPoll() {
+  // событие по WebSocket может прийти раньше подписки, поэтому, пока сюжет готовится, статус ещё и опрашивается
+  clearTimeout(planPoll);
+  const id = room.id;
+  planPoll = setTimeout(async () => {
+    if (!room || room.id !== id) return;
+    try { planState = await api(`/api/campaigns/${id}/plan`); renderPlan(); if (planState.status !== "generating") { room.public_intro = planState.public_intro; if (planState.can_generate) loadPlanOptions(); } } catch { /* комната закрыта */ }
+  }, 4000);
+}
+function onPlanEvent(payload) {
+  if (!room) return;
+  room.settings = { ...(room.settings || {}), plan: payload.plan, poster: payload.poster }; room.public_intro = payload.public_intro;
+  if (planState) openPlan(); else renderPoster(payload.poster, payload.public_intro);
+}
+$("planStructure").onchange = () => loadPlanOptions($("planStructure").value || undefined);
+$("planBtn").onclick = async () => {
+  $("planErr").textContent = "";
+  try {
+    planState = await api(`/api/campaigns/${room.id}/plan`, { method: "POST", body: { note: $("planNote").value.trim(), structure_id: $("planStructure").value || null } });
+    $("planNote").value = ""; renderPlan();
+  } catch (e) { $("planErr").textContent = e.message; }
+};
