@@ -32,7 +32,7 @@ from app.agents import intent as intents
 from app.agents import memory
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
-from app.core import combat
+from app.core import combat, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
@@ -515,7 +515,11 @@ class MasterService:
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)
         secrets = ""
-        if secret and (secret.setting or secret.plot):
+        if secret and secret.plot and secret.plot.get("title"):
+            # каркас от архитектора — текстом; прочие скрытые данные — как есть
+            extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
+            secrets = (plot.render(secret.plot) + ("\n" + extra if extra else ""))[:16000]
+        elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
         dc = ", ".join(f"{e.id} = {e.data['value']} ({e.name})" for e in ctx.world.catalog.dc_scale())
         return render(

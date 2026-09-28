@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
-from app.api import admin, auth, campaigns, characters, library, models, personas, profile
+from app.api import admin, auth, campaigns, characters, library, models, personas, plan, profile
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
@@ -87,6 +87,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(library.router)
     app.include_router(models.router)
     app.include_router(personas.router)
+    app.include_router(plan.router)
     app.include_router(profile.router)
     app.include_router(ws.router)
 

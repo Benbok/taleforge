@@ -1,0 +1,24 @@
+# Шаблоны локаций общего фэнтези (ТЗ, раздел 8.1: «таверна, пещера, склеп, лес»). Механики в них нет: шаблон
+# даёт тип места для create_location и каркаса кампании. Пакет мира добавляет свои места и переопределяет эти.
+kind: location_template
+items:
+  - {id: location.tavern, name: Таверна, status: canon, tags: [settlement, social], description: "Общий зал, стойка, комнаты наверху, погреб. Слухи, наёмники, сделки."}
+  - {id: location.market, name: Рынок, status: canon, tags: [settlement, social], description: "Ряды лавок и навесов, толпа, карманники, стража у ворот."}
+  - {id: location.temple, name: Храм, status: canon, tags: [settlement, sacred], description: "Святилище, алтарь, кельи, склеп под полом. Служители, паломники, реликвии."}
+  - {id: location.keep, name: Крепость, status: canon, tags: [military], description: "Стены, ворота, двор, донжон, казармы, тюрьма. Гарнизон и командир."}
+  - {id: location.port, name: Порт, status: canon, tags: [settlement, water], description: "Причалы, склады, таможня, корабли на рейде. Контрабанда и вести из-за моря."}
+  - {id: location.village, name: Деревня, status: canon, tags: [settlement, rural], description: "Десяток дворов, мельница, староста, поля и лес за околицей."}
+  - {id: location.city_slums, name: Трущобы, status: canon, tags: [settlement, crime], description: "Тесные переулки, ночлежки, притоны, банды и те, кого никто не ищет."}
+  - {id: location.manor, name: Особняк знати, status: canon, tags: [settlement, social], description: "Приёмный зал, кабинет, сад, покои, слуги. Интриги за закрытыми дверями."}
+  - {id: location.library, name: Библиотека или архив, status: canon, tags: [knowledge], description: "Стеллажи, хранитель, запретная секция. Здесь ищут ответы."}
+  - {id: location.road, name: Тракт, status: canon, tags: [wild, travel], description: "Дорога между поселениями: постоялые дворы, мосты, засады, патрули."}
+  - {id: location.forest, name: Лес, status: canon, tags: [wild], description: "Чаща, тропы, поляны, звериные норы. Легко заблудиться и легко спрятаться."}
+  - {id: location.swamp, name: Болото, status: canon, tags: [wild, hazard], description: "Топи, туман, гнилые гати, островки суши. Тропу знают немногие."}
+  - {id: location.mountain_pass, name: Горный перевал, status: canon, tags: [wild, travel, hazard], description: "Узкая тропа над обрывом, осыпи, холод, пещеры для ночлега."}
+  - {id: location.cave, name: Пещера, status: canon, tags: [underground], description: "Проходы, гроты, подземная вода, темнота. Логово или убежище."}
+  - {id: location.crypt, name: Склеп, status: canon, tags: [underground, sacred], description: "Ниши с саркофагами, печати, ловушки для расхитителей, тишина мёртвых."}
+  - {id: location.ruins, name: Руины, status: canon, tags: [wild, ancient], description: "Остатки древних стен и залов, засыпанные проходы, следы прежних хозяев."}
+  - {id: location.dungeon, name: Подземелье, status: canon, tags: [underground], description: "Коридоры, камеры, запертые двери, стражи и то, что они охраняют."}
+  - {id: location.lair, name: Логово, status: canon, tags: [underground, danger], description: "Место, где живёт опасный хозяин: кости, добыча, запасной выход."}
+  - {id: location.ship, name: Корабль, status: canon, tags: [water, travel], description: "Палуба, трюм, каюты, капитан и команда. Бежать некуда."}
+  - {id: location.camp, name: Лагерь, status: canon, tags: [wild, military], description: "Шатры, костры, часовые, коновязь. Временный дом отряда или врага."}
