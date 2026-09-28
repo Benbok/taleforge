@@ -104,8 +104,10 @@ def test_native_chat_kind_from_parser(game_client, admin_g, llm, settings):
     assert e["payload"]["kind"] == "action"
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
     assert send_auto(game_client, p1, c["id"], "// перерыв 5 минут")["payload"]["kind"] == "ooc"
+    llm.replies += [DONE, {"text": "Мастер кивает."}]
     e = send_auto(game_client, p1, c["id"], "Прячу кольцо в сапог", kind="whisper")
     assert e["payload"]["kind"] == "whisper" and e["payload"]["whisper"]
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
     # мастер-человек пишет повествование без выбора типа
     from tests.test_api import make_campaign
 
