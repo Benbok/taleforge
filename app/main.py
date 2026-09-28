@@ -6,14 +6,14 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
-from app.api import admin, auth, campaigns, characters, library
+from app.api import admin, auth, campaigns, characters, library, models, profile
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
@@ -85,6 +85,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(campaigns.router)
     app.include_router(characters.router)
     app.include_router(library.router)
+    app.include_router(models.router)
+    app.include_router(profile.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")
@@ -96,6 +98,12 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     @app.get("/invite/{token}", include_in_schema=False)
     async def index(token: str | None = None) -> FileResponse:
         return FileResponse(STATIC / "index.html")
+
+    @app.get("/static/{name}.js", include_in_schema=False)
+    async def script(name: str) -> FileResponse:
+        if name not in ("profile", "heroes"):
+            raise HTTPException(404)
+        return FileResponse(STATIC / f"{name}.js", media_type="text/javascript")
 
     return app
 

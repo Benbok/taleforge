@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import CatalogView, load_catalog, resolve_chain
 from app.core.campaigns import Conflict, NotFound, Viewer
 from app.core.characters import DEFAULT_RULES, SHEET_FIELDS, _items, create_draft
-from app.db.models import Character, LibraryCharacter, User
+from app.core.world import character_actor
+from app.db.models import Campaign, Character, LibraryCharacter, User
 from app.rules.dice import Dice
 from app.rules.dnd5e.character import roll_ability_scores, validate_character
 
@@ -59,6 +60,45 @@ def view(lc: LibraryCharacter, cat: CatalogView | None = None) -> dict[str, Any]
         out["class_name"] = cls.name if cls else None
         out["origin_name"] = origin.name if origin else None
         out["errors"] = errors_for(lc, cat)
+    return out
+
+
+async def detail(session: AsyncSession, lc: LibraryCharacter, cat: CatalogView) -> dict[str, Any]:
+    """Карточка героя профиля: характеристики, спасброски, навыки и где играют его копии.
+    Снаряжение героя профиля — выбор из стартовых наборов; предметы появятся у копии после одобрения в кампании."""
+    out = view(lc, cat)
+    if not out["errors"]:
+        try:
+            a = character_actor(Character(id=lc.id, name=lc.name, sheet=lc.sheet, resources={}), cat, [], [])
+            out["derived"] = {
+                "abilities": a.abilities,
+                "mods": a.mods,
+                "hp_max": a.hp.maximum,
+                "saves": a.saves,
+                "skills": a.skills,
+                "pb": a.pb,
+            }
+        except Exception:  # noqa: BLE001 — лист без производных всё равно показываем
+            pass
+    q = (
+        select(Character, Campaign.name)
+        .join(Campaign, Campaign.id == Character.campaign_id)
+        .where(
+            Character.owner_user_id == lc.owner_user_id,
+            Character.sheet["source_library_id"].as_string() == lc.id,
+        )
+        .order_by(Character.created_at)
+    )
+    out["copies"] = [
+        {
+            "campaign_id": ch.campaign_id,
+            "campaign_name": name,
+            "character_id": ch.id,
+            "status": ch.status,
+            "level": (ch.sheet or {}).get("level", 1),
+        }
+        for ch, name in (await session.execute(q)).all()
+    ]
     return out
 
 

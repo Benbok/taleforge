@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import CatalogView
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import character_actor, get_scene
-from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem
+from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
 from app.rules.dnd5e.character import (
     ABILITY_METHODS,
@@ -263,8 +263,8 @@ async def approve_character(session: AsyncSession, campaign: Campaign, ch: Chara
 
 
 async def review(session: AsyncSession, viewer: Viewer, ch: Character, cat: CatalogView, approve: bool, comment: str):
-    """Проверка живым мастером (место мастера занято человеком)."""
-    if not viewer.is_master:
+    """Проверка человеком: мастером или, когда мастер — ИИ, владельцем кампании."""
+    if not viewer.can_review:
         raise AccessDenied("проверяет мастер")
     if ch.status != "submitted":
         raise Conflict("персонаж не на проверке")
@@ -357,6 +357,23 @@ async def record_secret_link(session: AsyncSession, campaign_id: str, ch: Charac
     plot.setdefault("character_links", {})[ch.id] = text
     secret.plot = plot
     await session.flush()
+
+
+async def review_failure(session: AsyncSession, ch: Character) -> str | None:
+    """Почему ИИ-мастер не проверил героя, если последняя попытка после отправки сорвалась."""
+    if ch.status != "submitted":
+        return None
+    ev = (
+        await session.scalars(
+            select(Event)
+            .where(Event.campaign_id == ch.campaign_id, Event.target_id == ch.id, Event.tool == "review_failed")
+            .order_by(Event.created_at.desc())
+            .limit(1)
+        )
+    ).first()
+    if ev is None or (ch.updated_at and as_utc(ev.created_at) < as_utc(ch.updated_at)):
+        return None
+    return (ev.payload or {}).get("error") or "неизвестная ошибка"
 
 
 def public_view(ch: Character) -> dict:

@@ -8,7 +8,18 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, Seat, User, as_utc, now
+from app.db.models import (
+    AgentConfig,
+    Campaign,
+    CampaignSecret,
+    ContentPack,
+    Invite,
+    ModelProfile,
+    Seat,
+    User,
+    as_utc,
+    now,
+)
 
 MAX_PLAYERS = 6
 DIFFICULTIES = ("easy", "normal", "hard", "deadly")
@@ -52,6 +63,12 @@ class Viewer:
     @property
     def is_player(self) -> bool:
         return self.seat is not None and self.seat.role == "player"
+
+    @property
+    def can_review(self) -> bool:
+        """Героев проверяет мастер. Если мастер — ИИ, владелец тоже может проверить вручную: вдруг модель
+        недоступна или не справилась."""
+        return self.is_master or (self.is_owner and master_seat(self.campaign).occupant_type == "agent")
 
     @property
     def can_manage_members(self) -> bool:
@@ -104,6 +121,48 @@ async def list_campaigns(session: AsyncSession, user: User) -> list[Campaign]:
     return list((await session.scalars(q.order_by(Campaign.created_at.desc()))).all())
 
 
+async def default_model_profile(session: AsyncSession) -> ModelProfile | None:
+    return (await session.scalars(select(ModelProfile).where(ModelProfile.is_default.is_(True)))).first()
+
+
+def apply_model(agent: AgentConfig, provider: str, model: str, temperature: float, api_base: str | None, profile_id):
+    agent.provider, agent.model, agent.temperature = provider, model, temperature
+    agent.settings = {
+        **(agent.settings or {}),
+        "api_base": api_base if provider == "local" else None,
+        "model_profile_id": profile_id,
+    }
+
+
+async def agent_for_master(session: AsyncSession, master: dict, agent: AgentConfig | None = None) -> AgentConfig:
+    """Настройки ИИ-мастера: профиль модели из админки, явные провайдер и модель или профиль по умолчанию.
+    Кампания хранит копию: правка профиля потом не меняет идущие кампании без явной смены модели."""
+    agent = agent or AgentConfig(settings={})
+    temperature = master.get("temperature")
+    profile_id = master.get("model_profile_id")
+    profile = None
+    if profile_id:
+        profile = await session.get(ModelProfile, profile_id)
+        if profile is None:
+            raise NotFound("профиль модели не найден")
+    elif not master.get("provider"):
+        profile = await default_model_profile(session)
+    if profile is not None:
+        t = profile.temperature if temperature is None else float(temperature)
+        apply_model(agent, profile.provider, profile.model, t, profile.api_base, profile.id)
+    else:
+        provider = master.get("provider") or "claude"
+        if provider not in PROVIDERS:
+            raise Conflict(f"провайдер один из: {', '.join(PROVIDERS)}")
+        if provider != "claude" and not master.get("model"):
+            raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
+        t = (agent.temperature if agent.temperature is not None else 0.8) if temperature is None else float(temperature)
+        apply_model(agent, provider, str(master.get("model") or ""), t, master.get("api_base"), None)
+    if "style" in master:
+        agent.persona = master.get("style")
+    return agent
+
+
 async def create_campaign(
     session: AsyncSession,
     owner: User,
@@ -131,17 +190,7 @@ async def create_campaign(
     if master_type == "owner":
         m = Seat(role="master", position=0, occupant_type="human", user_id=owner.id, joined_at=now())
     elif master_type == "agent":
-        provider = master.get("provider")
-        if provider not in PROVIDERS:
-            raise Conflict(f"провайдер один из: {', '.join(PROVIDERS)}")
-        if provider != "claude" and not master.get("model"):
-            raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
-        agent = AgentConfig(
-            provider=provider,
-            model=str(master.get("model") or ""),
-            temperature=float(master.get("temperature", 0.8)),
-            persona=master.get("style"),
-        )
+        agent = await agent_for_master(session, master)
         session.add(agent)
         await session.flush()
         m = Seat(role="master", position=0, occupant_type="agent", agent_config_id=agent.id, joined_at=now())

@@ -86,6 +86,10 @@ def test_library_hero_copied_into_campaign(client, admin, base):
     ok(client.put(f"/api/me/characters/{hero['id']}", json={"public_bio": "Другая история"}, headers=h))
     camp = ok(client.get(f"/api/campaigns/{c['id']}/characters/{copy['id']}", headers=h))
     assert camp["public_bio"] == FIGHTER["public_bio"] and camp["name"] == "Бран Седой"
+    # карточка героя профиля: производные и где играют его копии
+    card = ok(client.get(f"/api/me/characters/{hero['id']}", headers=h))
+    assert card["derived"]["hp_max"] > 0 and card["derived"]["abilities"]["str"] >= 8
+    assert [(x["campaign_name"], x["status"]) for x in card["copies"]] == [("Тест", "approved")]
     # чужого героя в кампанию не взять
     r = client.post(f"/api/campaigns/{c['id']}/characters/from-library/{hero['id']}", headers=other)
     assert r.status_code == 404

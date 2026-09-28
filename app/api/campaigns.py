@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, Response
 from sqlalchemy import select
 
 from app.agents import memory
+from app.agents.llm import LLMError, model_for
 from app.api.deps import SessionDep, SettingsDep, UserDep
 from app.api.schemas import (
     CampaignCreateIn,
@@ -14,6 +15,8 @@ from app.api.schemas import (
     InviteCreateIn,
     InviteOut,
     InvitePreviewOut,
+    MasterModelIn,
+    MasterModelOut,
     SeatOut,
     SecretsIn,
 )
@@ -22,7 +25,7 @@ from app.content.importer import latest_version
 from app.core import campaigns as svc
 from app.core import chat
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
-from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, User
+from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, ModelProfile, User
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -169,6 +172,51 @@ async def patch_campaign(campaign_id: str, body: CampaignPatchIn, user: UserDep,
     c.settings = settings
     await session.commit()
     return await campaign_out(session, c, user)
+
+
+async def _master_agent(session, user: User, campaign_id: str) -> AgentConfig:
+    v = await _viewer(session, user, campaign_id)
+    if not v.is_owner:
+        raise AccessDenied("модель мастера меняет только владелец кампании")
+    seat = next((s for s in v.campaign.seats if s.role == "master"), None)
+    agent = await session.get(AgentConfig, seat.agent_config_id) if seat and seat.agent_config_id else None
+    if agent is None:
+        raise Conflict("мастер этой кампании — человек, модель не нужна")
+    return agent
+
+
+async def master_model_out(session, agent: AgentConfig) -> MasterModelOut:
+    extra = agent.settings or {}
+    profile = await session.get(ModelProfile, extra["model_profile_id"]) if extra.get("model_profile_id") else None
+    try:
+        resolved = model_for(agent.provider, agent.model)
+    except LLMError:
+        resolved = None
+    return MasterModelOut(
+        provider=agent.provider,
+        model=agent.model,
+        resolved_model=resolved,
+        temperature=agent.temperature,
+        api_base=extra.get("api_base"),
+        model_profile_id=profile.id if profile else None,
+        model_profile_name=profile.name if profile else None,
+    )
+
+
+@router.get("/campaigns/{campaign_id}/master-model")
+async def get_master_model(campaign_id: str, user: UserDep, session: SessionDep) -> MasterModelOut:
+    return await master_model_out(session, await _master_agent(session, user, campaign_id))
+
+
+@router.put("/campaigns/{campaign_id}/master-model")
+async def put_master_model(campaign_id: str, body: MasterModelIn, user: UserDep, session: SessionDep) -> MasterModelOut:
+    """Сменить модель ИИ-мастера: следующий ход мастер сделает уже новой моделью."""
+    agent = await _master_agent(session, user, campaign_id)
+    if not body.model_profile_id and not body.provider:
+        raise Conflict("выберите профиль модели или провайдера")
+    await svc.agent_for_master(session, body.model_dump(), agent)
+    await session.commit()
+    return await master_model_out(session, agent)
 
 
 @router.delete("/campaigns/{campaign_id}", status_code=204)

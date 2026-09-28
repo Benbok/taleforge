@@ -15,7 +15,7 @@ from app.api.deps import SessionDep, UserDep
 from app.content.catalog import campaign_catalog
 from app.core import characters as svc
 from app.core import library as lib
-from app.core.campaigns import Viewer, get_viewer, master_seat
+from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat
 from app.db.models import ActiveEffect, Character, InventoryItem
 from app.gateway.events import envelope
 
@@ -47,13 +47,17 @@ async def _view(session, viewer: Viewer, ch: Character) -> dict:
     for key, kind in (("class", "class"), ("origin", "origin")):
         rec = cat.find((ch.sheet or {}).get(f"{key}_id") or "", kind)
         out[f"{key}_name"] = rec.name if rec else None
+    if ch.status == "submitted":
+        ai = master_seat(viewer.campaign).occupant_type == "agent"
+        out["reviewer"] = "ai" if ai else "master"
+        out["review_error"] = await svc.review_failure(session, ch) if ai else None
     return out
 
 
 async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:
     mine = viewer.seat is not None and ch.seat_id == viewer.seat.id
     # заготовку без игрока показываем целиком: игрок выбирает, кем играть
-    if not (mine or viewer.is_master or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)):
+    if not (mine or viewer.can_review or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)):
         return svc.public_view(ch)
     cat = await campaign_catalog(session, viewer.campaign)
     inv = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
@@ -77,8 +81,10 @@ async def list_characters(campaign_id: str, user: UserDep, session: SessionDep) 
     out = []
     for ch in rows:
         mine = v.seat is not None and ch.seat_id == v.seat.id
-        if ch.status in ("draft", "submitted") and not (mine or v.is_master):
-            continue  # чужие черновики не видны
+        hidden = ch.status == "draft" and not (mine or v.is_master)
+        hidden = hidden or ch.status == "submitted" and not (mine or v.can_review)
+        if hidden:
+            continue  # чужие черновики не видны; героя на проверке видит тот, кто может его проверить
         out.append(await _view(session, v, ch))
     return out
 
@@ -154,6 +160,24 @@ async def review(
             [ch.seat_id],
         )
     return view
+
+
+@router.post("/characters/{character_id}/review/retry-ai", status_code=202)
+async def retry_ai_review(
+    campaign_id: str, character_id: str, user: UserDep, session: SessionDep, request: Request
+) -> dict:
+    """Ещё раз отдать героя на проверку ИИ-мастеру, например после смены модели."""
+    v = await get_viewer(session, user, campaign_id)
+    ch = await svc.get_character(session, v, character_id)
+    mine = v.seat is not None and ch.seat_id == v.seat.id
+    if not (mine or v.can_review):
+        raise AccessDenied("повторить проверку может игрок героя, мастер или владелец")
+    if ch.status != "submitted":
+        raise Conflict("персонаж не на проверке")
+    if master_seat(v.campaign).occupant_type != "agent":
+        raise Conflict("героя проверяет живой мастер")
+    request.app.state.master.schedule_review(campaign_id, ch.id)
+    return {"status": ch.status}
 
 
 # --- готовые герои и герои из профиля ---
