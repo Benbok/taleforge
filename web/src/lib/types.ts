@@ -122,6 +122,9 @@ export interface HeroPublic {
   hp_max: number | null;
   dead: boolean;
   public_bio?: string;
+  class_name?: string | null;
+  origin_name?: string | null;
+  bonds?: { question: string; answer: string }[];
 }
 
 export type EntityType = "creature" | "npc" | "item" | "location" | "lore" | "hero";
@@ -142,6 +145,8 @@ export interface EntityCard {
   vulnerable?: string[];
   stats?: Record<string, unknown>;
   hero?: HeroPublic;
+  facts?: string[];
+  heard?: string[];
   error?: string;
 }
 

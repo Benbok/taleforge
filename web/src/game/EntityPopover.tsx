@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useGame } from "../stores/game";
 import { Spinner } from "../components/ActionButton";
 import { useDraft } from "./draft";
@@ -67,11 +67,23 @@ export default function EntityPopover() {
       )}
       {card?.error && <p className="text-bad">{card.error}</p>}
       {card?.hero && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <p className="text-muted">
-            {card.hero.level} уровень{card.hero.dead ? " · погиб" : ""}
+            {[card.hero.origin_name, card.hero.class_name, `${card.hero.level} уровень`].filter(Boolean).join(" · ")}
+            {card.hero.dead ? " · погиб" : ""}
           </p>
           {card.hero.public_bio && <p className="font-narration">{card.hero.public_bio}</p>}
+          {card.hero.bonds && card.hero.bonds.length > 0 && (
+            <Section title="Известно отряду">
+              {card.hero.bonds.map((b) => (
+                <li key={b.question}>
+                  <span className="text-muted">{b.question} </span>
+                  {b.answer}
+                </li>
+              ))}
+            </Section>
+          )}
+          <Learned facts={card.facts} heard={card.heard} />
         </div>
       )}
       {card && !card.error && !card.hero && (
@@ -91,6 +103,7 @@ export default function EntityPopover() {
                 .join(" · ")}
             </p>
           )}
+          <Learned facts={card.facts} heard={card.heard} />
           {card.locked && card.locked.length > 0 && (
             <p className="text-xs text-muted">Скрыто: ещё можно узнать ({card.locked.join(", ")})</p>
           )}
@@ -111,5 +124,38 @@ export default function EntityPopover() {
         </div>
       )}
     </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs uppercase tracking-wide text-muted">{title}</p>
+      <ul className="flex list-none flex-col gap-1 p-0">{children}</ul>
+    </div>
+  );
+}
+
+/** Что именно этот герой узнал в игре: факты от мастера и фразы из рассказа, которые видел этот игрок. */
+function Learned({ facts, heard }: { facts?: string[]; heard?: string[] }) {
+  return (
+    <>
+      {facts && facts.length > 0 && (
+        <Section title="Вы знаете">
+          {facts.map((f) => (
+            <li key={f}>• {f}</li>
+          ))}
+        </Section>
+      )}
+      {heard && heard.length > 0 && (
+        <Section title="Что вы слышали">
+          {heard.map((h) => (
+            <li key={h} className="border-l-2 border-line pl-2 font-narration text-muted">
+              {h}
+            </li>
+          ))}
+        </Section>
+      )}
+    </>
   );
 }

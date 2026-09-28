@@ -126,8 +126,8 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
     for ev in ctx.events:
         # «Вы узнали больше о…»: плашка только тому, кто узнал
         ch = w.characters.get(ev.actor_id or "")
-        if ev.tool == "reveal_knowledge" and ch is not None and ch.seat_id:
-            en = w.entities.get(ev.target_id or "")
+        if ev.tool in ("reveal_knowledge", "learn_fact") and ch is not None and ch.seat_id:
+            en = w.entities.get(ev.target_id or "") or w.characters.get(ev.target_id or "")
             level = (ev.payload or {}).get("level")
             info = {"entity_id": ev.target_id, "name": en.name if en else None, "level": level}
             await bus.publish(cid, envelope("knowledge.revealed", cid, info), [ch.seat_id])

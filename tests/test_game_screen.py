@@ -2,8 +2,8 @@
 """Игровой экран (этап 7, часть 2): карточки бросков в чате, карточки сущностей по уровню знаний."""
 
 from app.core import rolls
-from app.db.models import Entity, Event, Knowledge, Message
-from tests.game import ok, party, run
+from app.db.models import Character, Entity, Event, Knowledge, Message
+from tests.game import FIGHTER, ok, party, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
 
@@ -183,3 +183,76 @@ def test_actions_follow_state(game_client, admin_g, settings):
 
     ok(game_client.post(f"/api/campaigns/{cid}/session/end", headers=admin_g))
     assert state(admin_g)["actions"] == ["chat.ooc"]  # кампания завершена: управлять больше нечем
+
+
+def test_autolink_names_in_master_text():
+    from app.core.linker import autolink
+
+    names = {
+        "ch_1": "Иван",
+        "en_v": "Деревня Туманный Ручей",
+        "en_g": "Гоблин-разведчик",
+        "en_f": "Тёмный лес",
+        "en_a": "Бертольд",
+        "en_b": "Бертольд",
+    }
+    text = (
+        "**Иван**, вы прибыли в Деревню Туманный Ручей. Туманный Ручей молчит, тёмный туман ползёт из леса, "
+        "Тёмный лес ждёт. Из-под досок выглядывает гоблин, [[en_g|он]] ждёт Ивана. Бертольд кивает."
+    )
+    assert autolink(text, names) == (
+        "[[ch_1|Иван]], вы прибыли в [[en_v|Деревню Туманный Ручей]]. [[en_v|Туманный Ручей]] молчит, тёмный туман "
+        "ползёт из леса, [[en_f|Тёмный лес]] ждёт. Из-под досок выглядывает [[en_g|гоблин]], [[en_g|он]] ждёт "
+        "[[ch_1|Ивана]]. Бертольд кивает."  # два Бертольда: не угадываем
+    )
+
+
+def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, settings):
+    c, (p1, p2), hero = party(game_client, admin_g, players=2)
+    cid = c["id"]
+    gimli = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=p2), 201)
+    ok(game_client.post(f"/api/campaigns/{cid}/characters/{gimli['id']}/submit", headers=p2))
+    goblin = _spawn(settings, cid, kind="creature", name="Гоблин-разведчик", template_id="creature.goblin",
+                    description="Мелкий, в грязной коже", state={"attitude": "hostile"})  # fmt: skip
+    learn = {"character_ids": [hero["id"]], "subject_id": goblin, "fact": "Гоблин  боится огня."}
+    about = {"character_ids": [hero["id"]], "subject_id": gimli["id"], "fact": "Гимли служил в страже."}
+    llm.replies += [
+        {"tool_calls": [("learn_fact", learn), ("learn_fact", about)]},
+        DONE,
+        {"text": "Гоблин-разведчик скалится на **Гимли**. Бран поднимает факел."},
+    ]
+    with connect(game_client, p1, cid) as (ws, _):
+        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Расспрашиваю пленника"}})
+        assert next_of(ws, "knowledge.revealed")["payload"]["entity_id"] == goblin
+        narration = next_of(ws, "message.new")
+        while narration["payload"]["kind"] != "narration":
+            narration = next_of(ws, "message.new")
+    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
+    assert narration["payload"]["content"] == (
+        f"[[{goblin}|Гоблин-разведчик]] скалится на [[{gimli['id']}|Гимли]]. [[{hero['id']}|Бран]] поднимает факел."
+    )
+
+    async def whisper(s):
+        from app.core.chat import next_seq
+
+        seat = (await s.get(Character, hero["id"])).seat_id
+        s.add(Message(campaign_id=cid, seq=await next_seq(s, cid), kind="whisper", visible_to=[seat],
+                      content=f"[[{goblin}|Гоблин]] прячет ключ в сапоге."))  # fmt: skip
+        await s.commit()
+
+    run(settings, whisper)
+
+    def inspect(head, eid):
+        with connect(game_client, head, cid) as (ws, _):
+            ws.send_json({"type": "entity.inspect", "payload": {"entity_id": eid}})
+            return next_of(ws, "entity.card")["payload"]
+
+    mine, theirs = inspect(p1, goblin), inspect(p2, goblin)
+    assert mine["facts"] == ["Гоблин боится огня."] and theirs["facts"] == []
+    assert mine["heard"] == ["Гоблин-разведчик скалится на Гимли.", "Гоблин прячет ключ в сапоге."]
+    assert theirs["heard"] == ["Гоблин-разведчик скалится на Гимли."]  # чужой шёпот не попадает
+
+    card = inspect(p1, gimli["id"])
+    assert card["type"] == "hero" and card["facts"] == ["Гимли служил в страже."]
+    assert card["hero"]["class_name"] and card["heard"] == ["Гоблин-разведчик скалится на Гимли."]
+    assert inspect(p2, hero["id"])["facts"] == []

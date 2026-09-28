@@ -344,6 +344,20 @@ class Knowledge(Base):
     level: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class KnownFact(Base):
+    """Факт, который герой узнал о сущности, месте или другом герое (просьба Arty, этап 7): карточка по клику
+    показывает ровно то, что этот герой знает. Пишет мастер инструментом ``learn_fact``."""
+
+    __tablename__ = "known_facts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("kf"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
+    subject_id: Mapped[str] = mapped_column(String(32))  # en_… или ch_…
+    text: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Scene(Base):
     """Текущая сцена кампании: режим, локация, очередь инициативы. Ход по очереди — этап 4."""
 
