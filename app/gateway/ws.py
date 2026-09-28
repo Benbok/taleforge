@@ -43,7 +43,11 @@ async def _names(session: AsyncSession, campaign: Campaign) -> dict[str, str]:
     return {s.user_id: s.user.name for s in campaign.seats if s.user is not None}
 
 
-async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None, hub, history_limit: int) -> dict:
+async def _snapshot(
+    session: AsyncSession, viewer: Viewer, last_seq: int | None, hub, history_limit: int, master=None
+) -> dict:
+    from app.agents import memory
+
     c = viewer.campaign
     await session.refresh(c, ["last_seq", "status"])
     names = await _names(session, c)
@@ -53,6 +57,8 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
     states = await chat.message_states(session, c, msgs)
     game = await chat.active_session(session, c.id)
     online = hub.online_users(c.id) | {viewer.user.id}
+    seat_id = viewer.seat.id if viewer.seat else None
+    last = None if game else await memory.latest(session, c.id)
     return envelope(
         "state.snapshot",
         c.id,
@@ -78,6 +84,9 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
                 for s in c.seats
             ],
             "turn": await _turn(session, c.id),
+            # открытая кнопка реакции переживает переподключение; между сессиями — итог прошлой
+            "reaction": master.pending_reaction(c.id, seat_id) if master is not None and seat_id else None,
+            "summary": memory.public_summary(last.content) if last is not None else None,
             "heroes": await _heroes(session, c.id),
             "scene": await _scene(session, c),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
@@ -117,12 +126,17 @@ async def _scene(session: AsyncSession, c: Campaign) -> dict:
         for e in ents
         if e.kind != "location" and (sc.location_id is None or e.location_id == sc.location_id)
     ]
+    chars = {}
+    if sc.turn_order:
+        q = select(Character).where(Character.campaign_id == c.id)
+        chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
     return {
         "mode": sc.mode,
         "round": sc.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": out,
         "turn_order": sc.turn_order,
+        "order": combat.public_order(sc.turn_order, chars, {e.id: e for e in ents}),
         "turn": await _turn(session, c.id),
     }
 
@@ -198,7 +212,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         await _presence(bus, hub, conn, "offline")
                     conn = Connection(ws, user.id, viewer.campaign.id, viewer.seat.id if viewer.seat else None)
                     snap = await _snapshot(
-                        session, viewer, int(last_seq) if last_seq is not None else None, hub, settings.history_on_join
+                        session,
+                        viewer,
+                        int(last_seq) if last_seq is not None else None,
+                        hub,
+                        settings.history_on_join,
+                        app.state.master,
                     )
                     hub.add(conn)
                 await conn.send(snap)

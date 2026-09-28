@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import Avatar from "../components/Avatar";
 import type { EntityType, HeroPublic, SceneEntity } from "../lib/types";
 import { useGame } from "../stores/game";
+import DeathSaves from "./DeathSaves";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
 
@@ -79,6 +80,7 @@ export function PartyPanel() {
                   </span>
                 )}
                 {h && !h.dead && <Hp h={h} />}
+                {h && !h.dead && h.hp === 0 && h.death_saves && <DeathSaves saves={h.death_saves} label="Без сознания:" />}
               </span>
             </li>
           );

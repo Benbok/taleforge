@@ -404,6 +404,8 @@ def public_view(ch: Character) -> dict:
         "hp": res.get("hp"),
         "hp_max": res.get("hp_max"),
         "dead": bool(res.get("dead")),
+        # спасброски от смерти бросаются открыто, как за столом: трекер видят все
+        "death_saves": (res.get("death_saves") or [0, 0]) if res.get("hp") == 0 and not res.get("dead") else None,
         "bonds": bonds.public_bonds(ch),
     }
 

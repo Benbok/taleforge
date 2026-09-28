@@ -107,6 +107,7 @@ def scene_public(world: World) -> dict[str, Any]:
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": ents,
         "turn_order": world.scene.turn_order,
+        "order": combat.public_order(world.scene.turn_order, world.characters, world.entities),
         "turn": combat.public_turn(world),
     }
 

@@ -350,6 +350,28 @@ def public_turn(world) -> dict[str, Any] | None:
     }
 
 
+def public_order(turn_order: list[dict], characters: dict[str, Character], entities: dict[str, Any]) -> list[dict]:
+    """Полоса инициативы для игроков: имя, сторона и выбыл ли участник. Хиты существ не раскрываются."""
+    out = []
+    for entry in turn_order or []:
+        i = entry["id"]
+        item: dict[str, Any] = {"id": i, "initiative": entry.get("initiative")}
+        ch = characters.get(i)
+        en = entities.get(i)
+        if ch is not None:
+            res = ch.resources or {}
+            item |= {"name": ch.name, "side": "hero", "seat_id": ch.seat_id}
+            item["out"] = "пал" if res.get("dead") else "без сознания" if res.get("hp") == 0 else None
+        elif en is not None:
+            st = en.state or {}
+            item |= {"name": en.name, "side": "enemy" if st.get("attitude", "hostile") == "hostile" else "ally"}
+            item["out"] = "мёртв" if st.get("dead") else "бежал" if st.get("fled") else None
+        else:
+            item |= {"name": "существо", "side": "enemy", "out": "ушёл"}
+        out.append(item)
+    return out
+
+
 async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str | None:
     """В бою пишет только игрок, чей ход (раздел 5). Вне игры (//) — всегда можно.
     Действие занимает ход: второе действие до ответа мастера не принимается. Вне боя при ИИ-мастере у игрока одна

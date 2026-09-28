@@ -4,14 +4,19 @@ import { useParams } from "react-router-dom";
 import ConnectionBanner from "../components/ConnectionBanner";
 import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
+import { useTurnAlerts } from "../game/combat";
+import CombatStrip from "../game/CombatStrip";
 import Composer from "../game/Composer";
 import { useDraft } from "../game/draft";
 import EntityPopover from "../game/EntityPopover";
 import ExplainPopover from "../game/ExplainPopover";
+import FallenScene from "../game/FallenScene";
 import { myHero } from "../game/hero";
 import HeroHud from "../game/HeroHud";
 import HeroWindow from "../game/HeroWindow";
 import { PartyPanel, ScenePanel } from "../game/Panels";
+import PauseOverlay from "../game/PauseOverlay";
+import ReactionPanel from "../game/ReactionPanel";
 import SessionControls from "../game/SessionControls";
 import { api } from "../lib/api";
 import { actionOf, STATUS_TEXT, statusOf } from "../lib/cards";
@@ -49,6 +54,7 @@ function About({ card }: { card: CampaignCard | undefined }) {
 export default function GamePage() {
   const { id = "" } = useParams();
   useGameSocket(id);
+  useTurnAlerts();
   const snapshot = useGame((s) => s.snapshot);
   const setTheme = useSession((s) => s.setTheme);
   const [tab, setTab] = useState<Tab>("chat");
@@ -120,10 +126,13 @@ export default function GamePage() {
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           <PartyPanel />
         </aside>
-        <main className={`min-h-0 flex-col overflow-hidden md:flex md:rounded-lg md:border md:border-line md:bg-surface ${tab === "chat" ? "flex" : "hidden"}`}>
+        <main className={`relative min-h-0 flex-col overflow-hidden md:flex md:rounded-lg md:border md:border-line md:bg-surface ${tab === "chat" ? "flex" : "hidden"}`}>
+          <CombatStrip />
           <ChatFeed campaignId={id} />
+          <ReactionPanel />
           <HeroHud />
           <Composer />
+          <PauseOverlay controls={<SessionControls campaignId={id} />} />
         </main>
         <aside
           className={`min-h-0 flex-col gap-4 overflow-y-auto p-4 md:flex md:p-0 ${tab === "chat" ? "hidden" : "flex"}`}
@@ -152,6 +161,7 @@ export default function GamePage() {
       <EntityPopover />
       <ExplainPopover />
       <HeroWindow />
+      <FallenScene builderHref={`/legacy?campaign=${id}`} />
     </div>
   );
 }
