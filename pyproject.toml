@@ -37,7 +37,7 @@ include = ["app*"]
 
 [tool.setuptools.package-data]
 "app.content" = ["schema/*.yaml"]
-"app.web" = ["static/*"]
+"app.web" = ["static/*", "dist/*", "dist/assets/*"]
 "app.agents" = ["prompts/*.j2"]
 
 [tool.pytest.ini_options]

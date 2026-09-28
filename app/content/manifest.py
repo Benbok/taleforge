@@ -6,6 +6,8 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.content.theme import Theme
+
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 
 
@@ -53,6 +55,7 @@ class PackManifest(BaseModel):
     languages: list[str] = Field(default_factory=lambda: ["ru"])
     license: str | None = None
     source_docs: dict[str, str] = Field(default_factory=dict)
+    theme: Theme | None = None  # вид интерфейса: палитра, шрифты, подписи (app/content/theme.py)
 
     @field_validator("version")
     @classmethod

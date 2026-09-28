@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* Токены темы. Значения приходят с сервера (тема пакета поверх базовой) и ставятся в :root — см. lib/theme.ts.
+   Здесь — запасные значения базовой тёмной темы, чтобы первый кадр не мигал. */
+:root {
+  --tf-bg: #14161a;
+  --tf-surface: #1c1f25;
+  --tf-raised: #252932;
+  --tf-border: #343a45;
+  --tf-text: #e8e4dc;
+  --tf-muted: #a19c93;
+  --tf-accent: #c9954d;
+  --tf-accent-text: #14161a;
+  --tf-entity-creature: #e06c5f;
+  --tf-entity-npc: #6ea8e0;
+  --tf-entity-item: #d9b44a;
+  --tf-entity-location: #6fbf86;
+  --tf-entity-lore: #9a9fa8;
+  --tf-font-narration: Georgia, serif;
+  --tf-font-ui: system-ui, sans-serif;
+  --tf-font-heading: Georgia, serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Цвета состояний одинаковы для любого мира: пакет их не меняет. */
+@theme inline {
+  --color-bg: var(--tf-bg);
+  --color-surface: var(--tf-surface);
+  --color-raised: var(--tf-raised);
+  --color-line: var(--tf-border);
+  --color-ink: var(--tf-text);
+  --color-muted: var(--tf-muted);
+  --color-accent: var(--tf-accent);
+  --color-on-accent: var(--tf-accent-text);
+  --color-creature: var(--tf-entity-creature);
+  --color-npc: var(--tf-entity-npc);
+  --color-item: var(--tf-entity-item);
+  --color-place: var(--tf-entity-location);
+  --color-lore: var(--tf-entity-lore);
+  --color-ok: #3fa267;
+  --color-bad: #d2504a;
+  --color-warn: #d99a2b;
+  --font-narration: var(--tf-font-narration);
+  --font-ui: var(--tf-font-ui);
+  --font-heading: var(--tf-font-heading);
+}
+
+html,
+body {
+  background: var(--tf-bg);
+  color: var(--tf-text);
+  font-family: var(--tf-font-ui);
+  font-size: 14px;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--tf-font-heading);
+}
+:focus-visible {
+  outline: 2px solid var(--tf-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-raised px-3 py-2 text-ink transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-on-accent hover:brightness-110;
+  }
+  .field {
+    @apply w-full rounded-md border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-surface;
+  }
+}
