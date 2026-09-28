@@ -50,6 +50,8 @@ PARSER_SYSTEM = (
     "подробностей. Глагол — из списка; если ни один не подходит — custom. target_id и instrument_id бери только из "
     "перечней ниже; если игрок назвал цель, которой нет в сцене, оставь target_id пустым и понизь confidence. "
     "Если игрок заявляет результат («и убиваю его одним ударом»), убери его и поставь outcome_claim_removed. "
+    "kind: action — персонаж что-то делает (даже если при этом говорит); speech — только говорит, без действий; "
+    "question_to_master — игрок спрашивает мастера о мире («что я вижу?»). "
     "problem: offtopic — реплика не про игру; other_character — игрок решает за другого героя; unclear — непонятно, "
     "что делает персонаж (тогда задай короткий вопрос в question). Прямую речь героя положи в speech."
 )
@@ -79,6 +81,7 @@ class ParseResult:
     intent: dict[str, Any] | None = None  # сохраняется в сообщении и уходит мастеру
     reject: str | None = None  # реплика не принимается: причина или уточняющий вопрос
     notice: str | None = None  # реплика принята, но игроку есть что сказать (лишние действия вернули)
+    kind: str | None = None  # какой реплика стала в чате: action | speech | ooc (None — как прислал клиент)
     notes: list[str] = field(default_factory=list)
 
 
@@ -146,7 +149,7 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
     except ValidationError:
         return ParseResult(notes=["ответ парсера не прошёл схему"])
     if intent.problem == "offtopic":
-        return ParseResult(reject="Похоже, это не про игру. Напишите это вне игры, начав сообщение с //.")
+        return ParseResult(kind="ooc", notice="Похоже, это не про игру: сообщение ушло во внеигровой чат.")
     if intent.problem == "other_character":
         return ParseResult(reject=f"Нельзя решать за чужого героя: опишите, что делает {ch.name}.")
     if intent.problem == "unclear" or intent.confidence < LOW_CONFIDENCE:
@@ -179,7 +182,8 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
 
     out = intent.model_dump()
     out.update(character_id=ch.id, actions=keep)
-    return ParseResult(intent=out, notice=notice, notes=notes)
+    kind = "speech" if intent.kind == "speech" and not keep else "action"
+    return ParseResult(intent=out, notice=notice, notes=notes, kind=kind)
 
 
 VERB_RU = {

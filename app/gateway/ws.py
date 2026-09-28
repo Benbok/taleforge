@@ -234,32 +234,40 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
 async def _send(app, user: User, conn: Connection, payload: dict) -> None:
     """Реплика игрока: очередь хода в бою → парсер намерений (для действий при ИИ-мастере) → запись в чат."""
     settings, maker, bus = app.state.settings, app.state.sessionmaker, app.state.bus
-    kind, text = str(payload.get("kind", "action")), str(payload.get("text", ""))
+    # Нативный чат: клиент по умолчанию шлёт kind=auto, тип реплики определяет сервер. Игрок выбирает только шёпот.
+    kind, text = str(payload.get("kind") or "auto"), str(payload.get("text", ""))
 
     async def reject(reason: str) -> None:
         await conn.send(
             envelope("message.rejected", conn.campaign_id, {"reason": reason, "client_id": payload.get("client_id")})
         )
 
+    if kind in ("auto", "action") and text.strip().startswith(chat.OOC_PREFIX):
+        kind = "ooc"
     parsed = None
-    if kind == "action" and not text.strip().startswith(chat.OOC_PREFIX) and text.strip():
+    if kind in ("auto", "action") and text.strip():
         async with maker() as session:
             try:
                 viewer = await get_viewer(session, user, conn.campaign_id)
             except NotFound as e:
                 await reject(str(e))
                 return
+            if kind == "auto":
+                kind = "narration" if viewer.is_master else "action" if viewer.is_player else "ooc"
             reason = await combat.gate_message(session, viewer, kind, mark=False)
             seat_id = viewer.seat.id if viewer.seat and viewer.is_player else None
             await session.rollback()
-        if reason:
+        if reason and kind == "action":
             await reject(reason)
             return
-        if seat_id and len(text) <= settings.message_max_len:
+        if kind == "action" and seat_id and len(text) <= settings.message_max_len:
             parsed = await app.state.master.parse_intent(conn.campaign_id, seat_id, text)
             if parsed.reject:
                 await reject(parsed.reject)
                 return
+            kind = parsed.kind or kind
+    if kind == "auto":
+        kind = "action"  # пустой текст: отказ даст проверка сообщения
 
     async with maker() as session:
         try:
