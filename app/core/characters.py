@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView
+from app.core import bonds
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import character_actor, get_scene
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
@@ -350,11 +351,24 @@ async def claim(session: AsyncSession, viewer: Viewer, ch: Character, cat: Catal
     return ch
 
 
-async def record_secret_link(session: AsyncSession, campaign_id: str, ch: Character, text: str) -> None:
-    """Тайная связь истории героя с сюжетом: в скрытые данные кампании, игрок её не видит."""
+async def record_secret_link(
+    session: AsyncSession, campaign_id: str, ch: Character, text: str, *, ref: str | None = None
+) -> None:
+    """Тайная связь истории героя с сюжетом: в скрытые данные кампании, игрок её не видит. С ``ref`` она
+    становится личным крючком — привязкой к узлу, NPC, злодею или месту каркаса."""
+    from app.core import plot as plots
+
     secret = await session.get(CampaignSecret, campaign_id)
+    if secret is None:
+        secret = CampaignSecret(campaign_id=campaign_id)
+        session.add(secret)
     plot = copy.deepcopy(secret.plot or {})
     plot.setdefault("character_links", {})[ch.id] = text
+    if ref:
+        try:
+            plots.set_hook(plot, ch.id, ch.name, ref, text)
+        except plots.PlotError as e:
+            raise Conflict(str(e)) from e
     secret.plot = plot
     await session.flush()
 
@@ -390,6 +404,7 @@ def public_view(ch: Character) -> dict:
         "hp": res.get("hp"),
         "hp_max": res.get("hp_max"),
         "dead": bool(res.get("dead")),
+        "bonds": bonds.public_bonds(ch),
     }
 
 

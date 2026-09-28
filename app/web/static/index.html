@@ -337,6 +337,7 @@ function handle(e) {
   if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "campaign.plan") { onPlanEvent(e.payload); return; }
+  if (e.type === "character.bonds") { onBondsEvent(e.payload); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
 }
 // Пошаговый режим: чей ход, сколько осталось, кнопка реакции с таймером (раздел 5, 7.2)
