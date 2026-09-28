@@ -1,3 +1,4 @@
 node_modules/
 src/**/*.js
 *.tsbuildinfo
+vite.config.js
