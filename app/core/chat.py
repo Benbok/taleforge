@@ -32,6 +32,7 @@ def message_payload(msg: Message, names: dict[str, str] | None = None) -> dict[s
         "author": (names or {}).get(msg.author_user_id or "", None),
         "content": msg.content,
         "whisper": msg.visible_to is not None,
+        "data": msg.data,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,
     }
 

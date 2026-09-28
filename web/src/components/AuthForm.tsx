@@ -3,6 +3,8 @@ import { api } from "../lib/api";
 import type { User } from "../lib/types";
 import { useAsync } from "../lib/useAsync";
 import { useSession } from "../stores/session";
+import { toast } from "../stores/toasts";
+import { Spinner } from "./ActionButton";
 
 type Mode = "login" | "signup";
 
@@ -29,6 +31,7 @@ export default function AuthForm({
     const r = await run(() => api<{ token: string; user: User }>(url, { body: { name: name.trim(), password } }));
     if (r) {
       signIn(r.token, r.user);
+      toast.ok(mode === "login" ? `С возвращением, ${r.user.name}` : `Добро пожаловать, ${r.user.name}`);
       onDone?.(mode === "signup" && !!inviteToken);
     }
   }
@@ -71,7 +74,8 @@ export default function AuthForm({
           {mode === "login" && /неверное/.test(error) ? ". Нет аккаунта? Откройте вкладку «Регистрация»." : ""}
         </p>
       )}
-      <button className="btn btn-primary" disabled={busy}>
+      <button className="btn btn-primary" disabled={busy} aria-busy={busy}>
+        {busy && <Spinner />}
         {mode === "login" ? "Войти" : "Зарегистрироваться"}
       </button>
     </form>

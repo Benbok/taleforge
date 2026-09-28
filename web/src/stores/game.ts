@@ -1,19 +1,60 @@
 // Видимое этому участнику состояние кампании. Меняется только событиями сервера (документ дизайна: клиент
-// ничего не считает и не угадывает).
+// ничего не считает и не угадывает). Своя реплика видна сразу с пометкой «отправляется», пока сервер её не примет.
 import { create } from "zustand";
-import type { Connection } from "../lib/socket";
-import type { ChatMessage, Envelope, SeatState, Snapshot } from "../lib/types";
+import type { Connection, GameSocket } from "../lib/socket";
+import type {
+  ChatMessage,
+  EntityCard,
+  EntityType,
+  Envelope,
+  HeroPublic,
+  Scene,
+  SeatState,
+  Snapshot,
+  Turn,
+} from "../lib/types";
 
 export const HISTORY_CAP = 500;
 
+export interface Pending {
+  clientId: string;
+  text: string;
+  whisper: boolean;
+  at: number;
+}
+
+/** Плашка в ленте, которую видит только этот игрок: «Вы узнали больше о…». */
+export interface LocalNote {
+  id: string;
+  afterSeq: number;
+  text: string;
+  entityId?: string;
+}
+
 interface GameState {
+  socket: GameSocket | null;
   connection: Connection;
   connectionDetail: string | null;
-  snapshot: Omit<Snapshot, "messages"> | null;
+  snapshot: Omit<Snapshot, "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn"> | null;
   seats: SeatState[];
+  heroes: Record<string, HeroPublic>;
+  scene: Scene | null;
+  turn: Turn | null;
+  actions: string[];
+  blocked: Record<string, string>;
   messages: ChatMessage[];
+  pending: Pending[];
+  rejected: { text: string; reason: string } | null;
+  notice: string | null;
+  notes: LocalNote[];
   masterStage: string | null;
+  cards: Record<string, EntityCard>;
+  types: Record<string, EntityType>;
+  setSocket(s: GameSocket | null): void;
   setConnection(c: Connection, detail?: string): void;
+  addPending(p: Pending): void;
+  clearRejected(): void;
+  setTypes(t: Record<string, EntityType>): void;
   apply(e: Envelope): void;
   reset(): void;
 }
@@ -28,43 +69,136 @@ export function mergeMessages(have: ChatMessage[], add: ChatMessage[]): ChatMess
 }
 
 const initial = {
+  socket: null,
   connection: "connecting" as Connection,
   connectionDetail: null,
   snapshot: null,
   seats: [],
+  heroes: {},
+  scene: null,
+  turn: null,
+  actions: [],
+  blocked: {},
   messages: [],
+  pending: [],
+  rejected: null,
+  notice: null,
+  notes: [],
   masterStage: null,
+  cards: {},
+  types: {},
 };
 
-export const useGame = create<GameState>((set) => ({
+export const useGame = create<GameState>((set, get) => ({
   ...initial,
+
+  setSocket(socket) {
+    set({ socket });
+  },
 
   setConnection(connection, detail) {
     set({ connection, connectionDetail: detail ?? null });
   },
 
+  addPending(p) {
+    set((s) => ({ pending: [...s.pending, p], rejected: null, notice: null }));
+  },
+
+  clearRejected() {
+    set({ rejected: null });
+  },
+
+  setTypes(t) {
+    set((s) => ({ types: { ...s.types, ...t } }));
+  },
+
   apply(e) {
+    const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, ...rest } = e.payload as unknown as Snapshot;
+        const { messages, seats, heroes, scene, actions, blocked, turn, ...rest } = p as unknown as Snapshot;
         set((s) => ({
           snapshot: rest,
-          seats: rest.seats,
+          seats,
+          heroes: Object.fromEntries((heroes ?? []).map((h) => [h.id, h])),
+          scene: scene ?? null,
+          turn: turn ?? null,
+          actions: actions ?? [],
+          blocked: blocked ?? {},
           messages: rest.replay ? mergeMessages(s.messages, messages) : mergeMessages([], messages),
         }));
         return;
       }
-      case "message.new":
-        set((s) => ({ messages: mergeMessages(s.messages, [e.payload as unknown as ChatMessage]) }));
+      case "message.new": {
+        const m = p as unknown as ChatMessage;
+        const mine = get().snapshot?.me?.seat_id;
+        set((s) => {
+          // своя реплика пришла от сервера — снимаем самую раннюю пометку «отправляется»
+          const pending =
+            mine && m.seat_id === mine && ["action", "speech", "whisper", "ooc", "narration"].includes(m.kind)
+              ? s.pending.slice(1)
+              : s.pending;
+          return { messages: mergeMessages(s.messages, [m]), pending };
+        });
+        return;
+      }
+      case "message.rejected": {
+        const clientId = p.client_id as string | undefined;
+        set((s) => {
+          const gone = s.pending.find((x) => x.clientId === clientId) ?? s.pending[0];
+          return {
+            pending: s.pending.filter((x) => x !== gone),
+            rejected: { text: gone?.text ?? "", reason: String(p.reason ?? "реплика не принята") },
+          };
+        });
+        return;
+      }
+      case "message.notice":
+        set({ notice: String(p.text ?? "") });
         return;
       case "presence.changed": {
-        const p = e.payload as { seat_id: string | null; status: "online" | "offline" };
-        set((s) => ({ seats: s.seats.map((x) => (x.id === p.seat_id ? { ...x, presence: p.status } : x)) }));
+        const x = p as { seat_id: string | null; status: "online" | "offline" };
+        set((s) => ({ seats: s.seats.map((seat) => (seat.id === x.seat_id ? { ...seat, presence: x.status } : seat)) }));
         return;
       }
       case "master.status": {
-        const stage = (e.payload as { stage: string }).stage;
+        const stage = String(p.stage);
         set({ masterStage: stage === "idle" ? null : stage });
+        return;
+      }
+      case "turn.changed":
+        set((s) => ({ turn: (p.turn as Turn) ?? null, scene: s.scene ? { ...s.scene, turn: (p.turn as Turn) ?? null } : s.scene }));
+        return;
+      case "scene.updated":
+        set({ scene: p as unknown as Scene, turn: ((p as unknown as Scene).turn as Turn) ?? null });
+        return;
+      case "state.actions":
+        set({ actions: (p.actions as string[]) ?? [], blocked: (p.blocked as Record<string, string>) ?? {} });
+        return;
+      case "character.updated": {
+        const h = p.character as HeroPublic;
+        if (h?.id) set((s) => ({ heroes: { ...s.heroes, [h.id]: h } }));
+        return;
+      }
+      case "entity.card": {
+        const c = p as unknown as EntityCard;
+        set((s) => ({
+          cards: { ...s.cards, [c.id]: c },
+          types: c.type ? { ...s.types, [c.id]: c.type } : s.types,
+        }));
+        return;
+      }
+      case "knowledge.revealed": {
+        const id = String(p.entity_id);
+        const last = get().messages.at(-1)?.seq ?? 0;
+        set((s) => {
+          const { [id]: _stale, ...cards } = s.cards; // карточку надо запросить заново: знаний стало больше
+          void _stale;
+          return {
+            cards,
+            notes: [...s.notes, { id: `k${Date.now()}`, afterSeq: last, text: `Вы узнали больше о: ${p.name ?? "…"}`, entityId: id }],
+          };
+        });
         return;
       }
     }

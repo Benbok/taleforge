@@ -237,10 +237,11 @@ class Message(Base):
     seq: Mapped[int] = mapped_column(Integer)
     seat_id: Mapped[str | None] = mapped_column(ForeignKey("seats.id", ondelete="SET NULL"))
     author_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    kind: Mapped[str] = mapped_column(String(16))  # action | speech | whisper | ooc | narration | system
+    kind: Mapped[str] = mapped_column(String(16))  # action | speech | whisper | ooc | narration | system | roll
     visible_to: Mapped[list[Any] | None] = mapped_column(JSONType)  # None — все; иначе id мест
     content: Mapped[str] = mapped_column(Text)
     intent: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    data: Mapped[dict[str, Any] | None] = mapped_column(JSONType)  # данные карточки броска (app/core/rolls.py)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

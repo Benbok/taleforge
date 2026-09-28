@@ -2,7 +2,9 @@
 
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
 ``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
-(``vote.cast``, ``entity.inspect``) пока отвечают ``error: not_implemented``.
+(``vote.cast``) пока отвечают ``error: not_implemented``.
+``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
+``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
 игрок, чей ход; ``turn.pass`` — пропустить ход (мастер так закрывает ход героя), ``reaction.choose`` — ответ на
 кнопку реакции.
@@ -18,6 +20,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import chat, combat
+from app.core.actions import available
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer
 from app.core.security import read_token
 from app.db.models import Campaign, Character, Entity, User
@@ -27,7 +30,7 @@ from app.gateway.hub import Connection
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-LATER_STAGES = {"vote.cast", "entity.inspect"}
+LATER_STAGES = {"vote.cast"}
 MASTER_TRIGGER_KINDS = ("action", "speech", "whisper")
 
 
@@ -73,11 +76,52 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
                 for s in c.seats
             ],
             "turn": await _turn(session, c.id),
+            "heroes": await _heroes(session, c.id),
+            "scene": await _scene(session, c),
+            **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
             "messages": [chat.message_payload(m, names) for m in msgs],
             "replay": last_seq is not None,
         },
         seq=c.last_seq,
     )
+
+
+async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
+    """Публичные части героев отряда: имя, уровень, примерные хиты (полный лист — только своему месту)."""
+    from sqlalchemy import select
+
+    from app.core.characters import public_view
+
+    q = select(Character).where(
+        Character.campaign_id == campaign_id, Character.status.in_(("approved", "active", "dead"))
+    )
+    return [public_view(ch) for ch in (await session.scalars(q)).all()]
+
+
+async def _scene(session: AsyncSession, c: Campaign) -> dict:
+    """Сцена для снимка — то же, что ``scene.updated`` (app/tools/runtime.scene_public), но без загрузки
+    каталога: только чтение, чтобы вход в кампанию ничего не блокировал."""
+    from sqlalchemy import select
+
+    from app.core.world import get_scene
+    from app.tools.runtime import public_entity
+
+    sc = await get_scene(session, c.id)
+    ents = (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()
+    loc = next((e for e in ents if e.id == sc.location_id), None)
+    out = [
+        public_entity(e)
+        for e in ents
+        if e.kind != "location" and (sc.location_id is None or e.location_id == sc.location_id)
+    ]
+    return {
+        "mode": sc.mode,
+        "round": sc.round,
+        "location": {"id": loc.id, "name": loc.name} if loc else None,
+        "entities": out,
+        "turn_order": sc.turn_order,
+        "turn": await _turn(session, c.id),
+    }
 
 
 async def _turn(session: AsyncSession, campaign_id: str) -> dict | None:
@@ -181,6 +225,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "master.tool":
                 await _master_tool(app, user, conn, payload)
+                continue
+
+            if kind == "actions.get":
+                async with maker() as session:
+                    viewer = await get_viewer(session, user, conn.campaign_id)
+                    await conn.send(envelope("state.actions", conn.campaign_id, await available(session, viewer)))
+                continue
+
+            if kind == "entity.inspect":
+                await _inspect(maker, user, conn, payload)
                 continue
 
             if kind in LATER_STAGES:
@@ -342,3 +396,17 @@ async def _presence(bus, hub, conn: Connection, status: str) -> None:
         )
     except Exception:  # noqa: BLE001
         log.debug("presence не отправлен", exc_info=True)
+
+
+async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:
+    from app.core.inspect import InspectError, entity_card
+
+    entity_id = str(payload.get("entity_id") or "")
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+            card = await entity_card(session, viewer, entity_id)
+        except (InspectError, NotFound) as e:
+            await conn.send(envelope("entity.card", conn.campaign_id, {"id": entity_id, "error": str(e)}))
+            return
+    await conn.send(envelope("entity.card", conn.campaign_id, card))

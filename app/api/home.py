@@ -17,6 +17,7 @@ from app.agents import memory
 from app.api.deps import SessionDep, UserDep
 from app.content import theme as themes
 from app.core import campaigns as svc
+from app.core.inspect import types_for
 from app.db.models import Campaign, Character, ContentPack, GameSession
 
 router = APIRouter(prefix="/api", tags=["home"])
@@ -73,6 +74,13 @@ async def campaign_theme(campaign_id: str, user: UserDep, session: SessionDep) -
         if pack and (pack.manifest or {}).get("theme"):
             layers.append(pack.manifest["theme"])
     return themes.merge(layers)
+
+
+@router.get("/campaigns/{campaign_id}/entity-types")
+async def entity_types(campaign_id: str, ids: str, user: UserDep, session: SessionDep) -> dict[str, str]:
+    """Типы сущностей из разметки ``[[id|текст]]`` — чтобы подчеркнуть слово цветом типа до клика."""
+    v = await svc.get_viewer(session, user, campaign_id)
+    return await types_for(session, v, ids.split(","))
 
 
 @router.get("/me/campaigns")

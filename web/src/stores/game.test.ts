@@ -51,4 +51,35 @@ describe("хранилище игры", () => {
     expect(g().masterStage).toBeNull();
     g().apply(env("что-то.новое", {})); // неизвестные события игнорируются
   });
+
+  it("снимает «отправляется» своей реплики, а отказ возвращает текст с причиной", () => {
+    const g = useGame.getState;
+    const me = { user_id: "u1", seat_id: "s1", role: "player", is_owner: false };
+    g().apply(env("state.snapshot", { messages: [], seats: [], replay: false, me, actions: ["chat.play"], blocked: {} }, 0));
+    g().addPending({ clientId: "a", text: "Открываю дверь", whisper: false, at: 1 });
+    g().addPending({ clientId: "b", text: "Кричу", whisper: false, at: 2 });
+    g().apply(env("message.new", { ...msg(1), kind: "action", seat_id: "s1" }, 1));
+    expect(g().pending.map((p) => p.clientId)).toEqual(["b"]);
+    g().apply(env("message.rejected", { client_id: "b", reason: "Идёт бой, сейчас ход: Гоблин." }));
+    expect(g().pending).toEqual([]);
+    expect(g().rejected).toEqual({ text: "Кричу", reason: "Идёт бой, сейчас ход: Гоблин." });
+    g().clearRejected();
+    expect(g().rejected).toBeNull();
+  });
+
+  it("кнопки и причины приходят от сервера", () => {
+    const g = useGame.getState;
+    g().apply(env("state.actions", { actions: ["session.pause", "chat.ooc"], blocked: { "chat.play": "пауза" } }));
+    expect(g().actions).toEqual(["session.pause", "chat.ooc"]);
+    expect(g().blocked["chat.play"]).toBe("пауза");
+  });
+
+  it("новое знание сбрасывает карточку и добавляет плашку", () => {
+    const g = useGame.getState;
+    g().apply(env("entity.card", { id: "en1", type: "creature", name: "Гоблин", level: 0 }));
+    expect(g().types.en1).toBe("creature");
+    g().apply(env("knowledge.revealed", { entity_id: "en1", name: "Гоблин", level: 1 }));
+    expect(g().cards.en1).toBeUndefined();
+    expect(g().notes[0].text).toContain("Гоблин");
+  });
 });
