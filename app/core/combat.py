@@ -395,4 +395,3 @@ async def unsubmit(session, viewer) -> None:
     ch = await session.get(Character, sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"])
     if ch is not None and ch.seat_id == viewer.seat.id:
         sc.state = {**st, "submitted": False}
-

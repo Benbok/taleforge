@@ -118,7 +118,6 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
     set_plan(settings, cid, checked())
     start = len(llm.requests)
     calls = [
-        ("develop", {"sketch_id": "loc_port", "details": "Сети сушатся на ветру", "here": True}),
         ("develop", {"sketch_id": "npc_warden", "details": "Говорит медленно, потеет", "here": True}),
         ("advance_plot", {"node_id": "n_arrival", "outcome": "Герои видели, как «Чайка» ушла в туман"}),
         ("advance_plot", {"node_id": "n_rumors", "result": "skipped", "outcome": "В таверну не пошли"}),
@@ -152,7 +151,7 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
         {"tool_calls": [(plot.REVISE_TOOL, revision)]},
     ]
     n = act(game_client, p1, cid, "Осматриваю порт и расспрашиваю смотрителя")
-    assert n["content"] == "Бран сходит на берег."
+    assert n["content"] == f"[[{hero['id']}|Бран]] сходит на берег."  # имя героя сервер размечает сам
     last = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")[-1]
     assert last.content == "Туман густеет над бухтой."
 
@@ -160,7 +159,11 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
     assert "120–200 слов" in intro["messages"][1]["content"]
     assert {"advance_plot", "develop", "threat_tick", "end_act", "get_plot"} <= names(decide)
     enum = next(t for t in decide["tools"] if t["function"]["name"] == "develop")["function"]["parameters"]
-    assert "loc_port" in enum["properties"]["sketch_id"]["enum"]
+    # место первой сцены вступление уже внесло в мир: разворачивать его повторно нельзя
+    assert (
+        "loc_port" not in enum["properties"]["sketch_id"]["enum"]
+        and "loc_tavern" in enum["properties"]["sketch_id"]["enum"]
+    )
     system = decide["messages"][0]["content"]
     assert "Сюжет сейчас — «Туман над Солёной бухтой»" in system and "Как вести по каркасу" in system
     assert "Текущий акт 1 из 3" in system and "loc_crypt" not in system

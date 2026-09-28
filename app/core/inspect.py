@@ -7,6 +7,10 @@
 - 2 — изучил: примерное здоровье словами, видимые атаки, уязвимости;
 - 3 — знает всё: КБ, хиты, характеристики, скорость, сопротивления — без секретов сюжета.
 
+Кроме уровня карточка несёт то, что герой узнал в игре: факты от мастера (``known_facts``, только этого героя)
+и «что вы слышали» — фразы из сообщений, которые видел этот игрок, где упомянута сущность. Карточка другого
+героя — открытая биография, открытые ответы о связях и те же факты.
+
 Место мастера видит уровень 3. Поля берутся по белому списку: секреты каркаса (``plot_id``), подсказки добычи и
 заметки мастера в карточку не попадают никогда. Сущность, которую герой не видел (нет строки знаний, её нет
 в текущей сцене и она не упоминалась в видимых ему сообщениях), для него не существует.
@@ -14,6 +18,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sqlalchemy import select
@@ -24,7 +29,7 @@ from app.core.campaigns import Viewer
 from app.core.characters import public_view
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
 from app.core.world import get_scene
-from app.db.models import Character, Entity, Knowledge, Message
+from app.db.models import Character, Entity, Knowledge, KnownFact, Message
 
 LEVELS = {0: "видел", 1: "наслышан", 2: "изучил", 3: "знает всё"}
 # манера поведения из шаблона (behavior.profile); заметки и ярлыки шаблона могут раскрывать тайны — их не показываем
@@ -86,6 +91,63 @@ async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> int | N
     return None
 
 
+MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
+SENTENCE = re.compile(r"(?<=[.!?…»])\s+")
+HEARD_LIMIT = 4
+HEARD_LEN = 240
+
+
+def _plain(text: str) -> str:
+    return MARKUP.sub(lambda m: m.group(2), text)
+
+
+def _sentence_about(content: str, subject_id: str) -> str | None:
+    """Фраза сообщения, где упомянута сущность, без разметки."""
+    for s in SENTENCE.split(content):
+        if f"[[{subject_id}|" in s:
+            out = _plain(s).strip()
+            return out if len(out) <= HEARD_LEN else out[: HEARD_LEN - 1].rstrip() + "…"
+    return None
+
+
+async def heard(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[str]:
+    """Что этот игрок слышал о сущности: последние фразы из видимых ему сообщений мастера, по порядку."""
+    q = (
+        select(Message.content, Message.visible_to)
+        .where(
+            Message.campaign_id == viewer.campaign.id,
+            Message.kind.in_(("narration", "whisper")),
+            Message.content.contains(f"[[{subject_id}|"),
+        )
+        .order_by(Message.seq.desc())
+        .limit(40)
+    )
+    seat = viewer.seat.id if viewer.seat else None
+    master = viewer.seat is not None and viewer.seat.role == "master"
+    out: list[str] = []
+    for content, visible_to in (await session.execute(q)).all():
+        if visible_to is not None and not master and seat not in visible_to:
+            continue  # чужой шёпот
+        s = _sentence_about(content, subject_id)
+        if s and s not in out:
+            out.append(s)
+        if len(out) >= HEARD_LIMIT:
+            break
+    return list(reversed(out))
+
+
+async def facts(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[str]:
+    """Факты, которые мастер открыл герою зрителя. Место мастера видит факты всех героев."""
+    q = select(KnownFact.text).where(KnownFact.campaign_id == viewer.campaign.id, KnownFact.subject_id == subject_id)
+    if not (viewer.seat is not None and viewer.seat.role == "master"):
+        hero = await viewer_hero(session, viewer)
+        if hero is None:
+            return []
+        q = q.where(KnownFact.character_id == hero.id)
+    rows = (await session.scalars(q.order_by(KnownFact.created_at))).all()
+    return list(dict.fromkeys(rows))
+
+
 def _condition(state: dict[str, Any]) -> str | None:
     if state.get("dead"):
         return "мёртв"
@@ -100,7 +162,22 @@ def _condition(state: dict[str, Any]) -> str | None:
 async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> dict[str, Any]:
     ch = await session.get(Character, entity_id)
     if ch is not None and ch.campaign_id == viewer.campaign.id:
-        return {"id": ch.id, "type": "hero", "name": ch.name, "level": None, "hero": public_view(ch)}
+        if ch.status in ("draft", "submitted", "rejected"):
+            raise InspectError("такого в мире нет")
+        catalog = await campaign_catalog(session, viewer.campaign)
+        pv = public_view(ch)
+        for key in ("class", "origin"):
+            rec = catalog.find(pv.get(f"{key}_id") or "")
+            pv[f"{key}_name"] = rec.name if rec else None
+        return {
+            "id": ch.id,
+            "type": "hero",
+            "name": ch.name,
+            "level": None,
+            "hero": pv,
+            "facts": await facts(session, viewer, ch.id),
+            "heard": await heard(session, viewer, ch.id),
+        }
     e = await session.get(Entity, entity_id)
     if e is None or e.campaign_id != viewer.campaign.id:
         raise InspectError("такого в мире нет")
@@ -146,6 +223,8 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
             if data.get(key):
                 stats[word] = [DAMAGE_RU.get(x, x) for x in data[key]]
         card["stats"] = stats
+    card["facts"] = await facts(session, viewer, e.id)
+    card["heard"] = await heard(session, viewer, e.id)
     return card
 
 

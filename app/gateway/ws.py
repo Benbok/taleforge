@@ -244,6 +244,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _inspect(maker, user, conn, payload)
                 continue
 
+            if kind == "stat.explain":
+                await _explain(maker, user, conn, payload)
+                continue
+
             if kind in LATER_STAGES:
                 await conn.send(_error("not_implemented", f"{kind} появится на следующих этапах", conn.campaign_id))
                 continue
@@ -327,7 +331,11 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
             await reject(reason)
             return
         if kind == "action" and seat_id and len(text) <= settings.message_max_len:
-            parsed = await app.state.master.parse_intent(conn.campaign_id, seat_id, text)
+            quick = payload.get("quick")
+            if isinstance(quick, dict):
+                parsed = await _quick_intent(app, conn.campaign_id, seat_id, quick)
+            else:
+                parsed = await app.state.master.parse_intent(conn.campaign_id, seat_id, text)
             if parsed.reject:
                 await reject(parsed.reject)
                 return
@@ -381,7 +389,6 @@ async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
     await conn.send(envelope("state.actions", conn.campaign_id, actions))
 
 
-
 _tasks: set[asyncio.Task] = set()
 
 
@@ -427,6 +434,56 @@ async def _presence(bus, hub, conn: Connection, status: str) -> None:
         )
     except Exception:  # noqa: BLE001
         log.debug("presence не отправлен", exc_info=True)
+
+
+async def _explain(maker, user: User, conn: Connection, payload: dict) -> None:
+    """«Почему такое число»: разбор величины своего героя. Чужой лист закрыт, мастер видит любой."""
+    from app.content.catalog import campaign_catalog
+    from app.core.explain import ExplainError, explain_for
+
+    stat = str(payload.get("stat") or "")
+    character_id = str(payload.get("character_id") or "")
+    base = {"stat": stat, "character_id": character_id}
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+            ch = await session.get(Character, character_id)
+            if ch is None or ch.campaign_id != viewer.campaign.id:
+                raise ExplainError("нет такого героя")
+            mine = viewer.seat is not None and ch.seat_id == viewer.seat.id
+            if not (mine or viewer.is_master):
+                raise ExplainError("чужой лист закрыт: разбор видит только игрок этого героя и мастер")
+            out = await explain_for(session, ch, await campaign_catalog(session, viewer.campaign), stat)
+        except (ExplainError, NotFound) as e:
+            await conn.send(envelope("stat.explained", conn.campaign_id, {**base, "error": str(e)}))
+            return
+    await conn.send(envelope("stat.explained", conn.campaign_id, {**base, **out}))
+
+
+async def _quick_intent(app, campaign_id: str, seat_id: str, quick: dict):
+    """Быстрое действие из интерфейса: намерение собрано кнопками, модель его не разбирает, но сервер проверяет
+    тем же валидатором, что и ответ парсера (цели и предметы — только из сцены и снаряжения героя)."""
+    from app.agents import intent as intents
+    from app.tools.runtime import open_context
+
+    acts = quick.get("actions")
+    if not isinstance(acts, list) or not acts:
+        return intents.ParseResult(reject="быстрое действие пустое")
+    raw = {"kind": "action", "actions": acts[:8], "confidence": 1.0}
+    async with app.state.sessionmaker() as s:
+        c = await s.get(Campaign, campaign_id)
+        ctx = await open_context(s, c, app.state.dice_factory(), turn_id=None, seat_id=seat_id)
+        ch = next(
+            (x for x in ctx.world.characters.values() if x.seat_id == seat_id and x.status in ("approved", "active")),
+            None,
+        )
+        parsed = intents.check(raw, ctx.world, ch) if ch is not None else None
+        await s.rollback()
+    if parsed is None:
+        return intents.ParseResult(reject="у вас нет героя в игре")
+    if parsed.intent is None and parsed.reject is None:
+        return intents.ParseResult(reject="быстрое действие не прошло проверку")
+    return parsed
 
 
 async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:

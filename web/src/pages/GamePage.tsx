@@ -7,11 +7,15 @@ import ChatFeed from "../game/ChatFeed";
 import Composer from "../game/Composer";
 import { useDraft } from "../game/draft";
 import EntityPopover from "../game/EntityPopover";
+import ExplainPopover from "../game/ExplainPopover";
+import { myHero } from "../game/hero";
+import HeroHud from "../game/HeroHud";
+import HeroWindow from "../game/HeroWindow";
 import { PartyPanel, ScenePanel } from "../game/Panels";
 import SessionControls from "../game/SessionControls";
 import { api } from "../lib/api";
 import { actionOf, STATUS_TEXT, statusOf } from "../lib/cards";
-import type { CampaignCard, Theme } from "../lib/types";
+import type { CampaignCard, HeroSheet, Theme } from "../lib/types";
 import { useGameSocket } from "../lib/useGameSocket";
 import { useGame } from "../stores/game";
 import { useSession } from "../stores/session";
@@ -48,6 +52,20 @@ export default function GamePage() {
   const snapshot = useGame((s) => s.snapshot);
   const setTheme = useSession((s) => s.setTheme);
   const [tab, setTab] = useState<Tab>("chat");
+  const heroes = useGame((s) => s.heroes);
+  const heroId = myHero(heroes, snapshot?.me.seat_id)?.id ?? null;
+
+  // полный лист своего героя: при входе — REST, дальше сервер присылает character.sheet после каждого изменения
+  useEffect(() => {
+    if (!heroId) {
+      useGame.getState().setSheet(null);
+      return;
+    }
+    api<HeroSheet>(`/api/campaigns/${id}/characters/${heroId}`).then(
+      (h) => useGame.getState().setSheet(h),
+      () => useGame.getState().setSheet(null),
+    );
+  }, [id, heroId]);
 
   useEffect(() => useDraft.getState().load(id), [id]);
 
@@ -104,6 +122,7 @@ export default function GamePage() {
         </aside>
         <main className={`min-h-0 flex-col overflow-hidden md:flex md:rounded-lg md:border md:border-line md:bg-surface ${tab === "chat" ? "flex" : "hidden"}`}>
           <ChatFeed campaignId={id} />
+          <HeroHud />
           <Composer />
         </main>
         <aside
@@ -131,6 +150,8 @@ export default function GamePage() {
         ))}
       </nav>
       <EntityPopover />
+      <ExplainPopover />
+      <HeroWindow />
     </div>
   );
 }

@@ -295,6 +295,8 @@ class World:
             "entities": ents,
             "combatants": living,
             "locations": [e.id for e in self.entities.values() if e.kind == "location"],
+            # о ком можно узнать факт: герои, места и все сущности мира
+            "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
         }
 

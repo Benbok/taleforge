@@ -37,3 +37,31 @@ describe("игровой экран", () => {
     expect(waitLeft("2026-09-28T10:00:00Z", 0, t0)).toBeNull();
   });
 });
+
+describe("герой", () => {
+  it("лист обновляется событием сервера и сбрасывает старые разборы", async () => {
+    const { useGame } = await import("../stores/game");
+    const g = useGame.getState;
+    g().reset();
+    g().setSheet({ id: "ch1", name: "Бран", class_name: "Воин", resources: { hp: 12 } } as never);
+    g().apply(env("stat.explained", { stat: "ac", character_id: "ch1", value: 16, parts: [] }));
+    expect(g().explained.ac.value).toBe(16);
+    g().apply(env("character.sheet", { character: { id: "ch1", name: "Бран", resources: { hp: 5 } } }));
+    expect(g().sheet?.resources.hp).toBe(5);
+    expect(g().sheet?.class_name).toBe("Воин"); // имя класса из REST сохраняется
+    expect(g().explained).toEqual({});
+  });
+
+  it("свой герой — живой на месте зрителя, быстрое действие без права — с причиной", async () => {
+    const { myHero } = await import("./hero");
+    const { sendQuick } = await import("./quick");
+    const { useGame } = await import("../stores/game");
+    const h = (id: string, seat: string, dead = false) =>
+      ({ id, name: id, seat_id: seat, status: "active", level: 1, hp: 1, hp_max: 1, dead }) as never;
+    expect(myHero({ a: h("a", "s1", true), b: h("b", "s1") }, "s1")?.id).toBe("b");
+    expect(myHero({ a: h("a", "s2") }, "s1")).toBeNull();
+    useGame.getState().reset();
+    useGame.getState().apply(env("state.actions", { actions: ["chat.ooc"], blocked: { "chat.play": "Идёт бой, сейчас ход: Гоблин." } }));
+    expect(sendQuick("Атакую", [{ verb: "attack" }])).toBe("Идёт бой, сейчас ход: Гоблин.");
+  });
+});

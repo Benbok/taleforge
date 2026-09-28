@@ -36,6 +36,7 @@ from app.core import bonds, combat, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
+from app.core.linker import link_text
 from app.db.models import (
     AgentConfig,
     Campaign,
@@ -544,7 +545,7 @@ class MasterService:
             seq=await next_seq(s, cid),
             seat_id=seat.id,
             kind="narration",
-            content=narration,
+            content=await link_text(s, cid, narration),
         )
         s.add(msg)
         await s.flush()

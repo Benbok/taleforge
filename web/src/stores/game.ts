@@ -7,6 +7,8 @@ import type {
   EntityCard,
   EntityType,
   Envelope,
+  Explained,
+  HeroSheet,
   HeroPublic,
   PendingReply,
   Scene,
@@ -53,6 +55,10 @@ interface GameState {
   masterStage: string | null;
   cards: Record<string, EntityCard>;
   types: Record<string, EntityType>;
+  /** Полный лист своего героя и его разборы «почему такое число» по ключу величины. */
+  sheet: HeroSheet | null;
+  explained: Record<string, Explained>;
+  setSheet(s: HeroSheet | null): void;
   setSocket(s: GameSocket | null): void;
   setConnection(c: Connection, detail?: string): void;
   addPending(p: Pending): void;
@@ -93,6 +99,8 @@ const initial = {
   masterStage: null,
   cards: {},
   types: {},
+  sheet: null,
+  explained: {},
 };
 
 export const useGame = create<GameState>((set, get) => ({
@@ -116,6 +124,10 @@ export const useGame = create<GameState>((set, get) => ({
 
   clearRestored() {
     set({ restored: null });
+  },
+
+  setSheet(sheet) {
+    set({ sheet, explained: {} });
   },
 
   setTypes(t) {
@@ -203,6 +215,22 @@ export const useGame = create<GameState>((set, get) => ({
           myPending: s.myPending?.id === id ? null : s.myPending,
           restored: typeof p.text === "string" ? p.text : s.restored,
         }));
+        return;
+      }
+      case "character.sheet": {
+        const h = p.character as HeroSheet;
+        // лист пришёл после изменения: прежние разборы чисел могли устареть
+        if (h?.id)
+          set((s) => ({
+            sheet: { ...(s.sheet?.id === h.id ? s.sheet : {}), ...h } as HeroSheet, // имена класса и происхождения — из REST
+            explained: {},
+            heroes: { ...s.heroes, [h.id]: { ...s.heroes[h.id], ...h } },
+          }));
+        return;
+      }
+      case "stat.explained": {
+        const x = p as unknown as Explained;
+        set((s) => ({ explained: { ...s.explained, [x.stat]: x } }));
         return;
       }
       case "character.updated": {

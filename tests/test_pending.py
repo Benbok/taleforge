@@ -257,5 +257,3 @@ def test_empty_batch_is_skipped_without_model(client, admin, settings, llm):
     out = client.portal.call(play)
     assert out["skipped"] and out["messages"] == [] and llm.requests == []
     assert run(settings, lambda s: s.get(MasterTurn, tid)).status == "skipped"
-
-
