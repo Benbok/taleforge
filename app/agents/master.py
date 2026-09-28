@@ -29,7 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents import intent as intents
-from app.agents import memory
+from app.agents import memory, rhythm
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
 from app.core import bonds, combat, plot
@@ -131,8 +131,37 @@ class MasterService:
 
         self._spawn(prelude.make_hook(self, campaign_id, character_id))
 
-    def schedule_intro(self, campaign_id: str) -> None:
-        self._spawn(self.introduce(campaign_id))
+    def schedule_session_open(self, campaign_id: str, session_id: str | None) -> None:
+        """Старт сессии: вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
+        from app.agents import rhythm
+
+        async def run() -> None:
+            await self.introduce(campaign_id)
+            if session_id:
+                await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+
+        self._spawn(run())
+
+    def schedule_session_close(self, campaign_id: str, session_id: str | None, ended: bool) -> None:
+        """Конец сессии: сводка, затем зацепка на следующий раз или, при завершении кампании, эпилог."""
+        from app.agents import rhythm
+
+        async def run() -> None:
+            # сначала сводка сессии: эпилог и зацепка опираются на неё, а запись по очереди не спорит за базу
+            await self._safe(self.summarize(campaign_id, "session", session_id=session_id), "сводка сессии")
+            if ended:
+                await self._safe(rhythm.epilogue(self, campaign_id), "эпилог")
+            else:
+                await self._safe(rhythm.session_hook(self, campaign_id, session_id), "зацепка на следующую сессию")
+
+        self._spawn(run())
+
+    async def _safe(self, coro, what: str):
+        try:
+            return await coro
+        except Exception:  # noqa: BLE001 — ритм сессии не должен ронять сервер
+            log.exception("%s не удалось", what)
+            return None
 
     async def introduce(self, campaign_id: str) -> str | None:
         """Вступление для ещё не представленных героев; одно на кампанию за раз."""
@@ -597,6 +626,7 @@ class MasterService:
             public_intro=c.public_intro,
             secrets=secrets,
             has_plot=has_plot,
+            pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
         )
