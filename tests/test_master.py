@@ -1,6 +1,8 @@
 """Ход ИИ-мастера целиком, с моделью на заданных ответах: инструменты, контракт намерения, аудитор разметки,
 откат при сбое, учёт вызовов модели и проверка персонажа."""
 
+from dataclasses import replace
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -188,3 +190,47 @@ def test_failed_ai_review_is_visible_and_owner_can_approve(game_client, admin_g,
     assert ok(game_client.get(f"{base}/{ch['id']}", headers=p1))["review_error"]
     approved = ok(game_client.post(f"{base}/{ch['id']}/review", json={"approve": True}, headers=admin_g))
     assert approved["status"] == "approved"
+
+
+def test_master_log_for_admins_with_secret_switch(game_client, admin_g, llm, dice):
+    c, (p1,), hero = party(game_client, admin_g)
+    dice += [14, 3]
+    check = {"character_id": hero["id"], "difficulty": "dc.medium"}
+    llm.replies += [
+        {
+            "tool_calls": [
+                ("roll_check", {**check, "stat": "athletics", "reason": "дверь"}),
+                ("roll_check", {**check, "stat": "perception", "reason": "засада"}),
+                ("whisper", {"character_id": hero["id"], "text": "Ты слышишь шорох за дверью"}),
+            ]
+        },
+        DONE,
+        {"text": f"[[{hero['id']}|Бран]] вышибает дверь."},
+    ]
+    act(game_client, p1, c["id"], "Вышибаю дверь и прислушиваюсь")
+    url = f"/api/campaigns/{c['id']}/master-log"
+
+    assert game_client.get(url, headers=p1).status_code == 403  # игрок журнал не видит
+
+    log = ok(game_client.get(url, headers=admin_g))
+    assert log["secrets_visible"] is True
+    (turn,) = log["turns"]
+    assert turn["status"] == "done" and turn["session_id"]
+    athletics, perception, whisper = turn["calls"]
+    assert athletics["tool"] == "roll_check" and not athletics["secret"]
+    assert athletics["result"]["total"] == 19 and athletics["result"]["success"] is True
+    assert athletics["args"]["reason"] == "дверь"
+    assert perception["secret"] and perception["result"]["stat"] == "perception"
+    assert whisper["secret"] and "шорох" in whisper["args"]["text"]
+    assert [x["purpose"] for x in turn["llm"]] == ["decide", "decide", "narrate"]
+    assert turn["audit"] == {"regenerated": False, "stripped": []}
+    assert [x["purpose"] for x in log["service_llm"]] == ["parse"]
+
+    # Переключатель: секретное остаётся в журнале только как факт, без содержимого
+    game_client.app.state.settings = replace(game_client.app.state.settings, master_log_secrets=False)
+    log = ok(game_client.get(url, headers=admin_g))
+    assert log["secrets_visible"] is False
+    athletics, perception, whisper = log["turns"][0]["calls"]
+    assert athletics["result"]["total"] == 19
+    assert perception == {"tool": "roll_check", "secret": True}
+    assert whisper == {"tool": "whisper", "secret": True}

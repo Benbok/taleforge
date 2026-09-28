@@ -29,6 +29,8 @@ class Settings:
     message_max_len: int = 4000
     history_on_join: int = 50
     open_signup: bool = True  # регистрация игрока без приглашения; кампании он всё равно видит только по приглашению
+    # Журнал мастера показывает скрытые броски и шёпот. Выключите — останется только факт такого действия
+    master_log_secrets: bool = True
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -46,4 +48,5 @@ class Settings:
             superadmin_password=_env("SUPERADMIN_PASSWORD"),
             content_dir=Path(_env("CONTENT_DIR", str(ROOT / "content"))),
             open_signup=(_env("OPEN_SIGNUP", "1") or "1").lower() not in ("0", "false", "no"),
+            master_log_secrets=(_env("MASTER_LOG_SECRETS", "1") or "1").lower() not in ("0", "false", "no"),
         )

@@ -31,6 +31,10 @@
   @media (max-width: 700px) { #game { grid-template-columns: 1fr; } }
   #log { height:55vh; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
   .msg { padding:6px 10px; border-radius:8px; border:1px solid var(--line); }
+  .ent { color:var(--accent); font-weight:600; }
+  #mlBody { max-height:50vh; overflow-y:auto; font-size:13px; margin-top:8px; }
+  #mlBody details { border-bottom:1px solid var(--line); padding:4px 0; } #mlBody summary { cursor:pointer; }
+  #mlBody ul { margin:4px 0; padding-left:18px; } #mlBody .bad { color:#c0392b; } #mlBody .secret { background:var(--whisper); }
   .msg.whisper { background:var(--whisper); } .msg.system { background:var(--sys); font-style:italic; }
   .msg .who { font-size:12px; color:var(--muted); }
   .seat { padding:4px 0; border-bottom:1px dashed var(--line); font-size:14px; }
@@ -111,7 +115,7 @@
   <section id="room" class="hidden">
     <div class="card row"><div><h3 id="roomTitle" style="margin:0"></h3><span id="roomStatus" class="muted"></span></div>
       <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button> <button class="ghost hidden" id="masterPersonaBtn">Характер мастера</button></div>
-      <div style="flex:0 0 auto"><button class="ghost" id="backBtn">К кампаниям</button></div></div>
+      <div style="flex:0 0 auto"><button class="ghost hidden" id="masterLogBtn">Журнал мастера</button> <button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
     <div class="card hidden" id="posterCard"><div id="posterBody"></div></div>
     <div class="card hidden" id="planCard"><h4 style="margin-top:0">Сюжет кампании</h4>
@@ -128,6 +132,8 @@
       <p><button id="mpSave">Сменить</button> <button class="ghost" id="mpClose">Закрыть</button></p><div class="err" id="mpErr"></div></div>
     <div class="card hidden" id="masterModelCard"><h4 style="margin-top:0">Модель ИИ-мастера</h4><p class="muted" id="mmCurrent"></p>
       <div class="row"><div><select id="mmSelect"></select></div><div style="flex:0 0 auto"><button id="mmSave">Сменить</button> <button class="ghost" id="mmClose">Закрыть</button></div></div><div class="err" id="mmErr"></div></div>
+    <div class="card hidden" id="masterLogCard"><div class="row"><div><h4 style="margin:0">Журнал мастера</h4><span class="muted" id="mlNote"></span></div>
+      <div style="flex:0 0 auto"><button class="ghost" id="mlRefresh">Обновить</button> <button class="ghost" id="mlClose">Закрыть</button></div></div><div id="mlBody"></div><div class="err" id="mlErr"></div></div>
     <div class="card hidden" id="chooseCard"></div>
     <div id="game">
       <div><div class="card"><h4 style="margin-top:0">Места</h4><div id="seats"></div></div>
@@ -309,6 +315,7 @@ async function openRoom(id) {
   $("masterPersonaCard").classList.add("hidden"); openPlan();
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
   $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
+  masterLogOnRoom();
   connect();
   loadHeroes();
 }
@@ -334,7 +341,7 @@ function handle(e) {
   if (e.type === "seat.changed" || e.type.startsWith("session.")) { ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } })); return; }
   if (e.type === "character.sheet" || e.type === "character.reviewed") { if (e.payload.character) { hero = e.payload.character; renderHero(); } else loadHeroes(); if (e.type === "character.reviewed") addMsg({ kind: "system", content: e.payload.status === "approved" ? "Мастер одобрил героя." + (e.payload.comment ? " " + e.payload.comment : "") : "Мастер вернул героя: " + (e.payload.comment || "") }); return; }
   if (e.type === "character.updated" || e.type === "character.review_failed") { loadHeroes(); return; }
-  if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
+  if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; if (e.payload.stage === "idle") masterLogRefresh(); return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "campaign.plan") { onPlanEvent(e.payload); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
@@ -375,11 +382,14 @@ function renderSeats() {
     return `<div class="seat"><span class="dot ${s.presence === "online" ? "online" : ""}"></span>${s.role === "master" ? "Мастер" : "Игрок " + s.position}: ${esc(who)}${kick}</div>`;
   }).join("");
 }
+// Мастер размечает сущности как [[id|текст]]; в чате показываем только текст, id — в data-атрибуте.
+const ENTITY = /\[\[([^|\]]+)\|([^\]]+)\]\]/g;
+function richText(s) { return esc(s).replace(ENTITY, (_, id, t) => `<span class="ent" data-id="${id}">${t}</span>`); }
 const KIND = { action: "действие", speech: "речь", whisper: "шёпот", ooc: "вне игры", narration: "мастер", system: "система" };
 function addMsg(m) {
   const d = document.createElement("div");
   d.className = "msg " + (m.whisper ? "whisper " : "") + (m.kind === "system" ? "system" : "");
-  d.innerHTML = `<div class="who">${esc(m.author || "")} · ${KIND[m.kind] || m.kind}</div>${esc(m.content)}`;
+  d.innerHTML = `<div class="who">${esc(m.author || "")} · ${KIND[m.kind] || m.kind}</div>${richText(m.content)}`;
   $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
 }
 
@@ -563,6 +573,7 @@ setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "p
 <div id="sheetModal" class="hidden"><div class="card"><div class="row" style="align-items:start"><div id="sheetBody"></div><div style="flex:0 0 auto"><button class="ghost" id="sheetClose">Закрыть</button></div></div><div id="sheetActions"></div><div class="err" id="sheetErr"></div></div></div>
 <script src="/static/profile.js"></script>
 <script src="/static/heroes.js"></script>
+<script src="/static/masterlog.js"></script>
 <script src="/static/preparation.js"></script>
 <script>boot();</script>
 </body>
