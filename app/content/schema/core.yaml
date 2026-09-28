@@ -52,5 +52,6 @@ kinds:
   faction: {required: [goal]}
   location_template: {}
   lore_fact: {required: [text, knowledge]}
+  rule_section: {required: [text]}
   campaign_secret: {required: [text]}
   dc_scale: {required: [value], properties: {value: {type: integer, minimum: 1, maximum: 40}}}

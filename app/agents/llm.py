@@ -152,12 +152,13 @@ class ScriptedLLM:
         self, messages, *, model, tools=None, max_tokens=4096, temperature=None, api_base=None
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
-        if _is_parser(tools) and not self._next_is_intent():
-            # Парсер намерений в тестах, где его ответ не задан: действие без разбора, мастер решает сам.
+        auto = _auto_tool(tools)
+        if auto and not self._next_is(auto):
+            # Парсер намерений и сводки в тестах, где их ответ не задан: действие без разбора, пустая сводка.
             # Такие запросы идут в parser_requests, чтобы не сдвигать нумерацию запросов мастера.
             self.parser_requests.append(req)
-            args = {"kind": "action", "actions": [{"verb": "custom"}], "confidence": 1.0}
-            call = ToolCall(f"call_p{len(self.parser_requests)}", "submit_intent", args, json.dumps(args))
+            args = AUTO_REPLIES[auto]
+            call = ToolCall(f"call_p{len(self.parser_requests)}", auto, args, json.dumps(args))
             return LLMReply(text="", tool_calls=[call], model=model, tokens_in=10, tokens_out=5)
         self.requests.append(req)
         if not self.replies:
@@ -181,10 +182,17 @@ class ScriptedLLM:
             text=r.get("text", ""), tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5
         )
 
-    def _next_is_intent(self) -> bool:
+    def _next_is(self, tool: str) -> bool:
         r = self.replies[0] if self.replies else None
-        return isinstance(r, dict) and any(name == "submit_intent" for name, _ in r.get("tool_calls") or [])
+        return isinstance(r, dict) and any(name == tool for name, _ in r.get("tool_calls") or [])
 
 
-def _is_parser(tools) -> bool:
-    return bool(tools) and any(t.get("function", {}).get("name") == "submit_intent" for t in tools)
+AUTO_REPLIES = {
+    "submit_intent": {"kind": "action", "actions": [{"verb": "custom"}], "confidence": 1.0},
+    "submit_summary": {"events": ["(сводка тестовой модели)"], "recap": "Герои продолжают путь."},
+}
+
+
+def _auto_tool(tools) -> str | None:
+    names = {t.get("function", {}).get("name") for t in tools or []}
+    return next((n for n in AUTO_REPLIES if n in names), None)
