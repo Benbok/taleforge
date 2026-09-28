@@ -4,6 +4,9 @@ import { Spinner } from "../components/ActionButton";
 import { useDraft } from "./draft";
 import { cardActions, TYPE_COLOR, TYPE_ICON, TYPE_NAME } from "./entities";
 import { useInspector } from "./inspector";
+import { attack } from "./quick";
+import { signed } from "./hero";
+import { toast } from "../stores/toasts";
 
 const STAT_NAMES: Record<string, string> = { ac: "КБ", hp: "Хиты", hp_max: "из", speed: "Скорость" };
 
@@ -107,6 +110,7 @@ export default function EntityPopover() {
           {card.locked && card.locked.length > 0 && (
             <p className="text-xs text-muted">Скрыто: ещё можно узнать ({card.locked.join(", ")})</p>
           )}
+          {type === "creature" && <QuickAttack id={id} name={name} onDone={close} />}
           <div className="mt-1 flex flex-wrap gap-2">
             {cardActions(type, name).map((a) => (
               <button
@@ -157,5 +161,33 @@ function Learned({ facts, heard }: { facts?: string[]; heard?: string[] }) {
         </Section>
       )}
     </>
+  );
+}
+
+/** Атака одной кнопкой: оружие героя против этого существа. Проверяет сервер, модель намерение не разбирает. */
+function QuickAttack({ id, name, onDone }: { id: string; name: string; onDone: () => void }) {
+  const sheet = useGame((s) => s.sheet);
+  const canAct = useGame((s) => s.actions.includes("chat.play"));
+  const attacks = sheet?.derived?.attacks ?? [];
+  if (!canAct || !attacks.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-xs uppercase tracking-wide text-muted">Атаковать сразу</p>
+      <div className="flex flex-wrap gap-2">
+        {attacks.map((a) => (
+          <button
+            key={a.key}
+            className="btn border-creature px-2 py-1 text-xs"
+            onClick={() => {
+              const err = attack(id, name, a);
+              if (err) toast.error(err);
+              else onDone();
+            }}
+          >
+            {a.name} {signed(a.attack_bonus)}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

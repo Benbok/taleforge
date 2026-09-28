@@ -34,7 +34,7 @@ def test_health_and_auth(client, root):
 
 def test_index_scripts_are_served(client):
     # скрипт из index.html, которого нет в белом списке, роняет комнату: openRoom падает до подключения к WebSocket
-    html = client.get("/").text
+    html = client.get("/legacy").text  # прежний клиент; «/» отдаёт новый, если он собран
     scripts = re.findall(r'<script src="(/static/[^"]+)"', html)
     assert scripts
     for src in scripts:
