@@ -46,6 +46,71 @@ class UserCreateIn(BaseModel):
 Provider = Literal["claude", "gemini", "local"]
 
 
+Amount = Literal["low", "mid", "high"]
+
+
+class BriefIn(BaseModel):
+    """Анкета кампании (app/core/brief.py). Все поля необязательны: без ответа генератор решает сам."""
+
+    length: Literal["oneshot", "short", "long"] | None = None
+    pillars: dict[Literal["combat", "exploration", "social", "mystery", "puzzles"], Amount] = Field(
+        default_factory=dict
+    )
+    emotions: list[Literal["heroism", "fear", "mystery", "tragedy", "humor", "adventure", "moral"]] = Field(
+        default_factory=list, max_length=3
+    )
+    threat: Literal["personal", "regional", "world"] | None = None
+    wishes: str = Field(default="", max_length=1000)
+
+
+class PersonaSettingsIn(BaseModel):
+    """Характер подачи ИИ-мастера (app/core/personas.py). Механику и сложность не меняет."""
+
+    seriousness: int = Field(default=4, ge=1, le=5)
+    humor: Literal["none", "dry", "light", "absurd"] = "dry"
+    darkness: int = Field(default=3, ge=1, le=5)
+    verbosity: Literal["short", "medium", "long"] = "medium"
+    pace: Literal["fast", "even", "slow"] = "even"
+    manner: Literal["narrator", "theatrical", "chronicler", "referee"] = "narrator"
+    harshness: int = Field(default=3, ge=1, le=5)
+    notes: str = Field(default="", max_length=500)
+
+
+class MasterPersonaIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    settings: PersonaSettingsIn = PersonaSettingsIn()
+
+
+class MasterPersonaPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    settings: PersonaSettingsIn | None = None
+
+
+class MasterPersonaOut(BaseModel):
+    id: str
+    name: str
+    settings: dict
+    style: str
+    updated_at: datetime | None = None
+
+
+class PersonaChoiceIn(BaseModel):
+    """Выбор персоны мастера: своя из профиля (persona_id), встроенная (preset) или настройки напрямую.
+    style — дополнение своими словами поверх персоны."""
+
+    persona_id: str | None = None
+    preset: str | None = None
+    settings: PersonaSettingsIn | None = None
+    style: str | None = Field(default=None, max_length=2000)
+
+
+class CampaignPersonaOut(BaseModel):
+    name: str | None
+    source: str | None  # profile | preset | custom | legacy
+    settings: dict | None
+    style: str | None
+
+
 class MasterIn(BaseModel):
     """ИИ-мастер: профиль модели из админки (model_profile_id) или явные провайдер и модель.
     Без того и другого берётся профиль по умолчанию, а если его нет — Claude."""
@@ -56,6 +121,9 @@ class MasterIn(BaseModel):
     model: str | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
     style: str | None = Field(default=None, max_length=2000)
+    persona_id: str | None = None
+    persona_preset: str | None = None
+    persona: PersonaSettingsIn | None = None
 
 
 class MasterModelIn(BaseModel):
@@ -170,6 +238,7 @@ class CampaignCreateIn(BaseModel):
     spend_limit_usd: float | None = Field(default=None, ge=0)
     collect_window_sec: int = Field(default=60, ge=0, le=300, description="окно сбора реплик до ответа мастера")
     excluded_themes: list[str] = Field(default_factory=list, max_length=20)
+    brief: BriefIn = BriefIn()
     creation_rules: CreationRulesIn = CreationRulesIn()
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
@@ -183,6 +252,7 @@ class CampaignPatchIn(BaseModel):
     spend_limit_usd: float | None = Field(default=None, ge=0)
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
+    brief: BriefIn | None = None
 
 
 class SeatOut(BaseModel):
@@ -211,6 +281,7 @@ class CampaignOut(BaseModel):
     party_size_recommended: int
     public_intro: str
     settings: dict
+    brief: dict | None = None  # анкета: только владельцу и мастеру, в пожеланиях могут быть спойлеры
     seats: list[SeatOut]
     created_at: datetime
 

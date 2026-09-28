@@ -12,11 +12,13 @@ from app.api.schemas import (
     CampaignCreateIn,
     CampaignOut,
     CampaignPatchIn,
+    CampaignPersonaOut,
     InviteCreateIn,
     InviteOut,
     InvitePreviewOut,
     MasterModelIn,
     MasterModelOut,
+    PersonaChoiceIn,
     SeatOut,
     SecretsIn,
 )
@@ -55,6 +57,7 @@ async def campaign_out(session, campaign: Campaign, user: User) -> CampaignOut:
         party_size_recommended=campaign.party_size_recommended,
         public_intro=campaign.public_intro,
         settings=campaign.settings,
+        brief=campaign.brief if campaign.owner_id == user.id or (mine and mine.role == "master") else None,
         seats=[
             SeatOut(
                 id=s.id,
@@ -136,6 +139,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "allow_proposals": body.test_mode,
         },
         owner_plays=body.owner_plays,
+        brief=body.brief.model_dump(exclude_defaults=True),
     )
     try:
         campaign.content_chain = await resolve_chain(session, pack)
@@ -170,18 +174,20 @@ async def patch_campaign(campaign_id: str, body: CampaignPatchIn, user: UserDep,
         if key in body.model_fields_set:
             settings[key] = getattr(body, key)
     c.settings = settings
+    if body.brief is not None:
+        c.brief = body.brief.model_dump(exclude_defaults=True)
     await session.commit()
     return await campaign_out(session, c, user)
 
 
-async def _master_agent(session, user: User, campaign_id: str) -> AgentConfig:
+async def _master_agent(session, user: User, campaign_id: str, what: str = "модель мастера") -> AgentConfig:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:
-        raise AccessDenied("модель мастера меняет только владелец кампании")
+        raise AccessDenied(f"{what} меняет только владелец кампании")
     seat = next((s for s in v.campaign.seats if s.role == "master"), None)
     agent = await session.get(AgentConfig, seat.agent_config_id) if seat and seat.agent_config_id else None
     if agent is None:
-        raise Conflict("мастер этой кампании — человек, модель не нужна")
+        raise Conflict("мастер этой кампании — человек, а не ИИ")
     return agent
 
 
@@ -217,6 +223,33 @@ async def put_master_model(campaign_id: str, body: MasterModelIn, user: UserDep,
     await svc.agent_for_master(session, body.model_dump(), agent)
     await session.commit()
     return await master_model_out(session, agent)
+
+
+def persona_out(agent: AgentConfig) -> CampaignPersonaOut:
+    meta = (agent.settings or {}).get("persona")
+    if not meta:
+        return CampaignPersonaOut(
+            name=None, source="legacy" if agent.persona else None, settings=None, style=agent.persona
+        )
+    return CampaignPersonaOut(
+        name=meta.get("name"), source=meta.get("source"), settings=meta.get("settings"), style=meta.get("style")
+    )
+
+
+@router.get("/campaigns/{campaign_id}/master-persona")
+async def get_master_persona(campaign_id: str, user: UserDep, session: SessionDep) -> CampaignPersonaOut:
+    return persona_out(await _master_agent(session, user, campaign_id, "характер мастера"))
+
+
+@router.put("/campaigns/{campaign_id}/master-persona")
+async def put_master_persona(
+    campaign_id: str, body: PersonaChoiceIn, user: UserDep, session: SessionDep
+) -> CampaignPersonaOut:
+    """Сменить характер ИИ-мастера: следующий ход мастер ведёт уже в новом тоне."""
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    await svc.apply_persona(session, user, agent, body.model_dump())
+    await session.commit()
+    return persona_out(agent)
 
 
 @router.delete("/campaigns/{campaign_id}", status_code=204)

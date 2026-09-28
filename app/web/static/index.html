@@ -53,6 +53,8 @@
   .pick span { flex:1; min-width:180px; }
   .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--sys); color:var(--ink); font-weight:500; }
   .ok { color:#2e8b57; } .bad { color:#c0392b; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; } .chips label { display:flex; gap:4px; align-items:center; margin:0; padding:3px 10px; border:1px solid var(--line); border-radius:14px; color:var(--ink); cursor:pointer; }
+  .chips input { width:auto; } .chips label.on { border-color:var(--accent); background:var(--sys); }
   .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; }
   .stats div { border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .stats b { display:block; font-size:20px; } .stats span { color:var(--muted); font-size:13px; }
   li.model > span > div { font-size:13px; margin-top:2px; }
@@ -93,6 +95,17 @@
         <div><label>Проверка героев</label><select id="cReview"><option value="master">мастером</option><option value="auto">автоматически</option></select></div>
       </div>
       <label id="cPlaysBox" class="inline"><input type="checkbox" id="cPlays" checked> Я тоже играю: сразу занять место игрока</label>
+      <div id="cPersonaBox" class="row"><div><label>Характер мастера <span class="muted">(свои персоны — в профиле)</span></label><select id="cPersona"></select></div></div>
+      <p class="muted hidden" id="cPersonaStyle" style="white-space:pre-line;font-size:13px"></p>
+      <h4>Чего вы ждёте от кампании</h4>
+      <div class="row">
+        <div><label>Длительность</label><select id="bLength"></select></div>
+        <div><label>Масштаб угрозы</label><select id="bThreat"></select></div>
+      </div>
+      <label>Чего больше</label><div class="row" id="bPillars"></div>
+      <label>Какие эмоции <span class="muted">(до трёх)</span></label><div class="chips" id="bEmotions"></div>
+      <label>Пожелания <span class="muted">(необязательно: «морское путешествие», «злодей — кто-то из своих»)</span></label><textarea id="bWishes" rows="2" maxlength="1000"></textarea>
+      <label>Запретные темы <span class="muted">(через запятую)</span></label><input id="cExcluded">
       <label>Публичная вводная</label><textarea id="cIntro" rows="2"></textarea>
       <p><button id="createBtn">Создать</button></p><div class="err" id="createErr"></div>
     </div>
@@ -100,9 +113,13 @@
 
   <section id="room" class="hidden">
     <div class="card row"><div><h3 id="roomTitle" style="margin:0"></h3><span id="roomStatus" class="muted"></span></div>
-      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button></div>
+      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button> <button class="ghost hidden" id="masterPersonaBtn">Характер мастера</button></div>
       <div style="flex:0 0 auto"><button class="ghost hidden" id="masterLogBtn">Журнал мастера</button> <button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
+    <div class="card hidden" id="masterPersonaCard"><h4 style="margin-top:0">Характер ИИ-мастера</h4><p class="muted" id="mpCurrent" style="white-space:pre-line"></p>
+      <div class="row"><div><select id="mpSelect"></select></div></div>
+      <label>Дополнить своими словами</label><textarea id="mpStyle" rows="2" maxlength="2000"></textarea>
+      <p><button id="mpSave">Сменить</button> <button class="ghost" id="mpClose">Закрыть</button></p><div class="err" id="mpErr"></div></div>
     <div class="card hidden" id="masterModelCard"><h4 style="margin-top:0">Модель ИИ-мастера</h4><p class="muted" id="mmCurrent"></p>
       <div class="row"><div><select id="mmSelect"></select></div><div style="flex:0 0 auto"><button id="mmSave">Сменить</button> <button class="ghost" id="mmClose">Закрыть</button></div></div><div class="err" id="mmErr"></div></div>
     <div class="card hidden" id="masterLogCard"><div class="row"><div><h4 style="margin:0">Журнал мастера</h4><span class="muted" id="mlNote"></span></div>
@@ -152,6 +169,17 @@
         <label id="mDefaultBox" class="inline"><input type="checkbox" id="mDefault"> Модель по умолчанию для новых кампаний</label>
         <p class="row" style="flex-wrap:wrap"><button class="ghost" id="mTryBtn" style="flex:0 0 auto">Проверить связь</button><button id="mSave" style="flex:0 0 auto">Сохранить</button><button class="ghost" id="mCancel" style="flex:0 0 auto">Отмена</button></p>
         <div id="mCheckOut"></div><div class="err" id="mErr"></div></div></div>
+    <div class="card hidden" id="pPersonas"><h4 style="margin-top:0">Персоны мастера</h4>
+      <p class="muted">Характер подачи ИИ-мастера: тон, юмор, манера. Механику и сложность персона не меняет. Кампания получает копию, поэтому правка здесь идущие кампании не трогает.</p>
+      <ul class="plain" id="perList"></ul>
+      <p><button id="perNewBtn">Добавить персону</button></p>
+      <div class="card hidden" id="perForm"><h4 style="margin-top:0" id="perFormTitle"></h4>
+        <div class="row"><div><label>Название</label><input id="perName" maxlength="64" placeholder="например «Мрачный летописец»"></div><div><label>Взять за основу</label><select id="perFrom"></select></div></div>
+        <div class="row" id="perFields"></div>
+        <label>Своими словами</label><textarea id="perNotes" rows="2" maxlength="500" placeholder="например «говорит медленно, любит старые поговорки»"></textarea>
+        <p class="muted" id="perPreview" style="white-space:pre-line;font-size:13px"></p>
+        <p class="row" style="flex-wrap:wrap"><button id="perSave" style="flex:0 0 auto">Сохранить</button><button class="ghost" id="perCancel" style="flex:0 0 auto">Отмена</button></p>
+        <div class="err" id="perErr"></div></div></div>
     <div class="card hidden" id="pUsers"><h4 style="margin-top:0">Пользователи и роли</h4>
       <ul class="plain" id="pUserList"></ul>
       <div class="row"><div><label>Имя</label><input id="uName"></div><div><label>Пароль</label><input id="uPass" type="password" autocomplete="new-password"></div><div><label>Роль</label><select id="uRole"><option value="admin">Админ</option><option value="player">Игрок</option></select></div><div style="flex:0 0 auto"><button id="uCreate">Создать</button></div></div>
@@ -241,7 +269,7 @@ async function lobby() {
     $("createCard").classList.remove("hidden");
     const packs = await api("/api/packs").catch(() => []);
     $("cPack").innerHTML = '<option value="">без пакета (SRD)</option>' + packs.map(p => `<option value="${esc(p.id)}">${esc(p.name)} ${esc(p.version)}</option>`).join("");
-    updateRec(); fillMasterSelect();
+    updateRec(); fillMasterSelect(); fillPreparation();
   }
 }
 async function loadLibrary() {
@@ -258,7 +286,8 @@ $("createBtn").onclick = async () => {
   try {
     const master = masterChoice();
     const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value,
-      master, creation_rules: { review: $("cReview").value }, owner_plays: master.type !== "owner" && $("cPlays").checked } });
+      master: { ...master, ...personaChoice(master) }, brief: briefBody(), excluded_themes: excludedThemes(),
+      creation_rules: { review: $("cReview").value }, owner_plays: master.type !== "owner" && $("cPlays").checked } });
     openRoom(c.id);
   } catch (e) { $("createErr").textContent = e.message; }
 };
@@ -270,7 +299,9 @@ async function openRoom(id) {
   $("roomTitle").textContent = room.name; $("roomStatus").textContent = room.status;
   const manage = room.is_owner || room.my_role === "master";
   $("ownerTools").classList.toggle("hidden", !manage); $("masterModelCard").classList.add("hidden");
-  $("masterModelBtn").classList.toggle("hidden", !(room.is_owner && room.seats.some(s => s.role === "master" && s.occupant_type === "agent")));
+  const aiMaster = room.is_owner && room.seats.some(s => s.role === "master" && s.occupant_type === "agent");
+  $("masterModelBtn").classList.toggle("hidden", !aiMaster); $("masterPersonaBtn").classList.toggle("hidden", !aiMaster);
+  $("masterPersonaCard").classList.add("hidden");
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
   $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
   masterLogOnRoom();
@@ -531,6 +562,7 @@ setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "p
 <script src="/static/profile.js"></script>
 <script src="/static/heroes.js"></script>
 <script src="/static/masterlog.js"></script>
+<script src="/static/preparation.js"></script>
 <script>boot();</script>
 </body>
 </html>
