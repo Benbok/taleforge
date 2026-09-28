@@ -1,0 +1,217 @@
+# 15 состояний SRD 5.1 (Appendix PH-A: Conditions) и «застигнутый врасплох» из правил боя. Пакет сеттинга
+# {op: condition, condition: <имя>}; запись ищется как condition.<имя>.
+kind: effect_template
+items:
+  - id: condition.blinded
+    name: Ослеплённый
+    description: Ничего не видит. Проверки, где нужно зрение, проваливаются; свои атаки с помехой, атаки по нему с преимуществом.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Blinded}
+    modifiers:
+      - {op: set, target: check_result, auto: fail, if: {requires: sight}}
+      - {op: disadvantage, "on": attack}
+      - {op: advantage, "on": attack, who: attackers}
+
+  - id: condition.charmed
+    name: Очарованный
+    description: Не может атаковать очаровавшего и делать его целью вредных эффектов. Очаровавший получает преимущество в социальных проверках с ним.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Charmed}
+    modifiers:
+      - {op: set, target: can_target_source_harmfully, value: false}
+      - {op: advantage, "on": check, who: source, if: {social: true}}
+
+  - id: condition.deafened
+    name: Оглохший
+    description: Ничего не слышит. Проверки, где нужен слух, проваливаются.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Deafened}
+    modifiers:
+      - {op: set, target: check_result, auto: fail, if: {requires: hearing}}
+
+  - id: condition.exhaustion
+    name: Истощение
+    description: Шесть уровней, эффекты складываются. Продолжительный отдых с едой и питьём снимает один уровень. На 6-м уровне смерть.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd, track]
+    srd_ref: {type: condition, name: Exhaustion}
+    stat_ref: stat.exhaustion
+    modifiers: []
+    levels:
+      "1": [{op: disadvantage, "on": check}]
+      "2": [{op: multiply, target: speed, factor: 0.5}]
+      "3": [{op: disadvantage, "on": attack}, {op: disadvantage, "on": save}]
+      "4": [{op: multiply, target: hp_max, factor: 0.5}]
+      "5": [{op: set, target: speed, value: 0}]
+      "6": [{op: set, target: alive, value: false}]
+    triggers:
+      - {"on": long_rest, if: {ate_and_drank: true}, do: [{op: resource, stat: exhaustion, delta: -1}]}
+
+  - id: condition.frightened
+    name: Испуганный
+    description: Пока источник страха в поле зрения, проверки и атаки с помехой. Не может добровольно приблизиться к источнику.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Frightened}
+    modifiers:
+      - {op: disadvantage, "on": check, if: {source_visible: true}}
+      - {op: disadvantage, "on": attack, if: {source_visible: true}}
+      - {op: set, target: can_move_closer_to_source, value: false}
+
+  - id: condition.grappled
+    name: Схваченный
+    description: Скорость 0. Кончается, если схвативший недееспособен или цель вытащили из его досягаемости.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Grappled}
+    modifiers:
+      - {op: set, target: speed, value: 0}
+
+  - id: condition.incapacitated
+    name: Недееспособный
+    description: Не может совершать действия и реакции.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Incapacitated}
+    modifiers:
+      - {op: set, target: can_act, value: false}
+      - {op: set, target: can_react, value: false}
+
+  - id: condition.invisible
+    name: Невидимый
+    description: Его нельзя увидеть без магии или особого чувства. Свои атаки с преимуществом, атаки по нему с помехой.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Invisible}
+    modifiers:
+      - {op: set, target: heavily_obscured, value: true}
+      - {op: advantage, "on": attack}
+      - {op: disadvantage, "on": attack, who: attackers}
+
+  - id: condition.paralyzed
+    name: Парализованный
+    description: Недееспособен, не двигается и не говорит. Спасброски Силы и Ловкости проваливает. Атаки по нему с преимуществом, попадание вплотную (5 футов) — критическое.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Paralyzed}
+    modifiers:
+      - {op: condition, condition: incapacitated}
+      - {op: set, target: speed, value: 0}
+      - {op: set, target: can_speak, value: false}
+      - {op: set, target: save_result, auto: fail, stat: str}
+      - {op: set, target: save_result, auto: fail, stat: dex}
+      - {op: advantage, "on": attack, who: attackers}
+      - {op: set, target: hit_is_critical, value: true, who: attackers, within_ft: 5}
+
+  - id: condition.petrified
+    name: Окаменевший
+    description: Превращён в неживое вещество, вес ×10, не стареет. Недееспособен, не двигается, не говорит, не осознаёт окружение. Атаки по нему с преимуществом, спасброски Силы и Ловкости проваливает, сопротивление всему урону, иммунитет к яду и болезням.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Petrified}
+    modifiers:
+      - {op: condition, condition: incapacitated}
+      - {op: set, target: speed, value: 0}
+      - {op: set, target: can_speak, value: false}
+      - {op: multiply, target: weight, factor: 10}
+      - {op: advantage, "on": attack, who: attackers}
+      - {op: set, target: save_result, auto: fail, stat: str}
+      - {op: set, target: save_result, auto: fail, stat: dex}
+      - {op: resistance, damage: all}
+      - {op: immunity, condition: poisoned}
+      - {op: immunity, damage: poison}
+      - {op: immunity, disease: all}
+
+  - id: condition.poisoned
+    name: Отравленный
+    description: Атаки и проверки характеристик с помехой.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Poisoned}
+    modifiers:
+      - {op: disadvantage, "on": attack}
+      - {op: disadvantage, "on": check}
+
+  - id: condition.prone
+    name: Сбитый с ног
+    description: Двигается только ползком, встать стоит половину скорости. Свои атаки с помехой. Атаки по нему вплотную (5 футов) с преимуществом, издалека — с помехой.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Prone}
+    modifiers:
+      - {op: disadvantage, "on": attack}
+      - {op: advantage, "on": attack, who: attackers, within_ft: 5}
+      - {op: disadvantage, "on": attack, who: attackers, beyond_ft: 5}
+      - {op: set, target: stand_up_cost, value: half_speed}
+
+  - id: condition.restrained
+    name: Опутанный
+    description: Скорость 0. Свои атаки с помехой, атаки по нему с преимуществом, спасброски Ловкости с помехой.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Restrained}
+    modifiers:
+      - {op: set, target: speed, value: 0}
+      - {op: disadvantage, "on": attack}
+      - {op: advantage, "on": attack, who: attackers}
+      - {op: disadvantage, "on": save, stat: dex}
+
+  - id: condition.stunned
+    name: Ошеломлённый
+    description: Недееспособен, не двигается, говорит с трудом. Спасброски Силы и Ловкости проваливает. Атаки по нему с преимуществом.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Stunned}
+    modifiers:
+      - {op: condition, condition: incapacitated}
+      - {op: set, target: speed, value: 0}
+      - {op: set, target: save_result, auto: fail, stat: str}
+      - {op: set, target: save_result, auto: fail, stat: dex}
+      - {op: advantage, "on": attack, who: attackers}
+
+  - id: condition.unconscious
+    name: Без сознания
+    description: Недееспособен, не двигается, не говорит, не осознаёт окружение. Роняет то, что держит, и падает. Спасброски Силы и Ловкости проваливает. Атаки по нему с преимуществом, попадание вплотную (5 футов) — критическое.
+    status: canon
+    doc: "SRD 5.1: Conditions"
+    tags: [condition, srd]
+    srd_ref: {type: condition, name: Unconscious}
+    modifiers:
+      - {op: condition, condition: incapacitated}
+      - {op: condition, condition: prone}
+      - {op: set, target: speed, value: 0}
+      - {op: set, target: can_speak, value: false}
+      - {op: set, target: drops_held_items, value: true}
+      - {op: set, target: save_result, auto: fail, stat: str}
+      - {op: set, target: save_result, auto: fail, stat: dex}
+      - {op: advantage, "on": attack, who: attackers}
+      - {op: set, target: hit_is_critical, value: true, who: attackers, within_ft: 5}
+
+  - id: condition.surprised
+    name: Застигнутый врасплох
+    description: Не заметил угрозу к началу боя. В свой первый ход не двигается и не действует, реакции недоступны до конца этого хода. Не состояние SRD, а правило внезапности из раздела боя.
+    status: canon
+    doc: "SRD 5.1: Combat, Surprise"
+    tags: [combat_state, srd]
+    duration: {unit: round, value: 1}
+    modifiers:
+      - {op: set, target: speed, value: 0}
+      - {op: set, target: can_act, value: false}
+      - {op: set, target: can_react, value: false}

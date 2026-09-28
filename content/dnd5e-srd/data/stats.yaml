@@ -1,0 +1,23 @@
+# Характеристики и ресурсы героя по SRD 5.1. Производные величины считает движок (app/rules/dnd5e).
+kind: stat_definition
+items:
+  - {id: stat.str, name: Сила, abbr: Сил, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.dex, name: Ловкость, abbr: Лов, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.con, name: Телосложение, abbr: Тел, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.int, name: Интеллект, abbr: Инт, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.wis, name: Мудрость, abbr: Мдр, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.cha, name: Харизма, abbr: Хар, status: canon, tags: [ability], widget_type: number, min: 1, max: 30, default: 10}
+  - {id: stat.hp, name: Хиты, status: canon, tags: [resource, derived], widget_type: bar, min: 0,
+     description: "Максимум — движок по кости хитов и Телосложению. При 0 — спасброски от смерти."}
+  - {id: stat.temp_hp, name: Временные хиты, status: canon, tags: [resource], widget_type: number, min: 0,
+     description: "Теряются первыми и не складываются: остаётся большее значение."}
+  - {id: stat.hit_dice, name: Кости хитов, status: canon, tags: [resource], widget_type: counter, min: 0,
+     description: "Тратятся на коротком отдыхе. На продолжительном возвращается половина от уровня (не меньше 1)."}
+  - {id: stat.death_saves, name: Спасброски от смерти, status: canon, tags: [resource], widget_type: track, min: 0, max: 3,
+     description: "Три успеха — стабилизация, три провала — смерть. Натуральная 1 — два провала, 20 — 1 хит."}
+  - {id: stat.exhaustion, name: Истощение, status: canon, tags: [condition_track], widget_type: track, min: 0, max: 6,
+     description: "Уровни истощения, эффекты — condition.exhaustion."}
+  - {id: stat.ac, name: Класс доспеха, abbr: КД, status: canon, tags: [derived], widget_type: number, min: 0}
+  - {id: stat.speed, name: Скорость, status: canon, tags: [derived], widget_type: number, min: 0,
+     description: "В футах за ход; в интерфейсе — зоны дальности."}
+  - {id: stat.proficiency_bonus, name: Бонус мастерства, status: canon, tags: [derived], widget_type: number, min: 2, max: 6}
