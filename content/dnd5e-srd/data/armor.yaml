@@ -1,0 +1,183 @@
+# Доспехи и щит SRD 5.1 (Equipment: Armor). КД = ac_base + Ловкость, но не больше dex_cap
+# (null — без предела, 0 — Ловкость не добавляется). str_required — без этой Силы скорость −10 футов.
+kind: item_template
+items:
+  - id: item.padded
+    name: Стёганый доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Padded"}
+    category: armor
+    armor_type: light
+    price: {gp: 5}
+    ac_base: 11
+    dex_cap: null
+    stealth_disadvantage: true
+    str_required: null
+    weight: 8
+  - id: item.leather
+    name: Кожаный доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Leather"}
+    category: armor
+    armor_type: light
+    price: {gp: 10}
+    ac_base: 11
+    dex_cap: null
+    stealth_disadvantage: false
+    str_required: null
+    weight: 10
+  - id: item.studded_leather
+    name: Проклёпанная кожа
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Studded leather"}
+    category: armor
+    armor_type: light
+    price: {gp: 45}
+    ac_base: 12
+    dex_cap: null
+    stealth_disadvantage: false
+    str_required: null
+    weight: 13
+  - id: item.hide
+    name: Шкурный доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Hide"}
+    category: armor
+    armor_type: medium
+    price: {gp: 10}
+    ac_base: 12
+    dex_cap: 2
+    stealth_disadvantage: false
+    str_required: null
+    weight: 12
+  - id: item.chain_shirt
+    name: Кольчужная рубаха
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Chain shirt"}
+    category: armor
+    armor_type: medium
+    price: {gp: 50}
+    ac_base: 13
+    dex_cap: 2
+    stealth_disadvantage: false
+    str_required: null
+    weight: 20
+  - id: item.scale_mail
+    name: Чешуйчатый доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Scale mail"}
+    category: armor
+    armor_type: medium
+    price: {gp: 50}
+    ac_base: 14
+    dex_cap: 2
+    stealth_disadvantage: true
+    str_required: null
+    weight: 45
+  - id: item.breastplate
+    name: Кираса
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Breastplate"}
+    category: armor
+    armor_type: medium
+    price: {gp: 400}
+    ac_base: 14
+    dex_cap: 2
+    stealth_disadvantage: false
+    str_required: null
+    weight: 20
+  - id: item.half_plate
+    name: Полулаты
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Half plate"}
+    category: armor
+    armor_type: medium
+    price: {gp: 750}
+    ac_base: 15
+    dex_cap: 2
+    stealth_disadvantage: true
+    str_required: null
+    weight: 40
+  - id: item.ring_mail
+    name: Колечный доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Ring mail"}
+    category: armor
+    armor_type: heavy
+    price: {gp: 30}
+    ac_base: 14
+    dex_cap: 0
+    stealth_disadvantage: true
+    str_required: null
+    weight: 40
+  - id: item.chain_mail
+    name: Кольчуга
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Chain mail"}
+    category: armor
+    armor_type: heavy
+    price: {gp: 75}
+    ac_base: 16
+    dex_cap: 0
+    stealth_disadvantage: true
+    str_required: 13
+    weight: 55
+  - id: item.splint
+    name: Наборный доспех
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Splint"}
+    category: armor
+    armor_type: heavy
+    price: {gp: 200}
+    ac_base: 17
+    dex_cap: 0
+    stealth_disadvantage: true
+    str_required: 15
+    weight: 60
+  - id: item.plate
+    name: Латы
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, srd]
+    srd_ref: {type: item, name: "Plate"}
+    category: armor
+    armor_type: heavy
+    price: {gp: 1500}
+    ac_base: 18
+    dex_cap: 0
+    stealth_disadvantage: true
+    str_required: 15
+    weight: 65
+  - id: item.shield
+    name: Щит
+    status: canon
+    doc: "SRD 5.1: Armor"
+    tags: [armor, shield, srd]
+    srd_ref: {type: item, name: "Shield"}
+    category: armor
+    armor_type: shield
+    price: {gp: 10}
+    ac_bonus: 2
+    weight: 6

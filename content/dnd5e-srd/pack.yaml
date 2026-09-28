@@ -1,0 +1,10 @@
+id: dnd5e-srd
+name: "D&D 5e SRD 5.1 — базовый пакет правил"
+version: 0.1.0
+ruleset: dnd5e
+provides: srd-5.1
+level_cap: 20
+languages: [ru]
+license: "This work includes material taken from the System Reference Document 5.1 (SRD 5.1) by Wizards of the Coast LLC, licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/legalcode"
+engine:
+  min_version: 0.1.0

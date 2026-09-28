@@ -1,0 +1,10 @@
+# Шкала сложностей SRD 5.1 («Typical Difficulty Classes»). Мастер берёт сложность отсюда,
+# если её нет у объекта, локации или в отношении NPC.
+kind: dc_scale
+items:
+  - {id: dc.very_easy, name: Очень легко, value: 5, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.easy, name: Легко, value: 10, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.medium, name: Средне, value: 15, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.hard, name: Трудно, value: 20, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.very_hard, name: Очень трудно, value: 25, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.nearly_impossible, name: Почти невозможно, value: 30, status: canon, doc: "SRD 5.1: Difficulty Class"}
