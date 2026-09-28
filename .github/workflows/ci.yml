@@ -8,6 +8,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: taleforge
+          POSTGRES_PASSWORD: taleforge
+          POSTGRES_DB: taleforge_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U taleforge" --health-interval 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,5 +26,17 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -q
+      - name: Тесты на SQLite
+        run: pytest -q
+      - name: Миграции и тесты на PostgreSQL
+        env:
+          DATABASE_URL: postgresql+asyncpg://taleforge:taleforge@localhost/taleforge_test
+          TEST_DATABASE_URL: postgresql+asyncpg://taleforge:taleforge@localhost/taleforge_test
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          pytest -q
       - run: python -m app.content validate content/dnd5e-srd --strict
+      - name: Сборка образа
+        run: docker build -q -t taleforge:ci .
