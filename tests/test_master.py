@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.agents.llm import ScriptedLLM
+from app.agents.llm import LLMError, ScriptedLLM
 from app.db.models import CampaignSecret, Event, LlmCall, MasterTurn
 from app.main import create_app
 from tests.conftest import login
@@ -153,3 +153,38 @@ def test_ai_master_reviews_character(game_client, admin_g, llm, settings):  # no
     assert secret.plot["character_links"][ch["id"]] == "Гарнизон ищет"
     view = ok(game_client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=p1))
     assert "Гарнизон" not in str(view)
+
+
+def test_failed_ai_review_is_visible_and_owner_can_approve(game_client, admin_g, llm, settings):  # noqa: ARG001
+    """Модель недоступна: герой не висит молча, игрок и владелец видят причину, владелец проверяет сам."""
+    c = make_campaign(game_client, admin_g, players=1)
+    p1 = register(game_client, invite(game_client, admin_g, c["id"])["token"], "Арагорн")
+    ch = ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=p1), 201)
+
+    def down(messages, tools):
+        raise LLMError("AuthenticationError: invalid x-api-key")
+
+    llm.replies += [down]
+    base = f"/api/campaigns/{c['id']}/characters"
+    with connect(game_client, p1, c["id"]) as (ws, _):
+        ok(game_client.post(f"{base}/{ch['id']}/submit", headers=p1))
+        e = next_of(ws, "character.review_failed")
+    assert "отклонил ключ" in e["payload"]["error"]
+    mine = ok(game_client.get(f"{base}/{ch['id']}", headers=p1))
+    assert mine["reviewer"] == "ai" and "отклонил ключ" in mine["review_error"]
+    # владелец (мастер — ИИ) видит героя на проверке целиком
+    listed = {x["id"]: x for x in ok(game_client.get(base, headers=admin_g))}
+    assert listed[ch["id"]]["status"] == "submitted" and "sheet" in listed[ch["id"]]
+    # повтор проверки ИИ после смены модели
+    llm.replies += [
+        {"tool_calls": [("review_character", {"character_id": ch["id"], "approve": False, "comment": "Имя?"})]}
+    ]
+    assert game_client.post(f"{base}/{ch['id']}/review/retry-ai", headers=admin_g).status_code == 202
+    game_client.portal.call(game_client.app.state.master.wait_idle)
+    back = ok(game_client.get(f"{base}/{ch['id']}", headers=p1))
+    assert back["status"] == "draft" and back["review_comment"] == "Имя?"
+    ok(game_client.post(f"{base}/{ch['id']}/submit", headers=p1))
+    game_client.portal.call(game_client.app.state.master.wait_idle)  # ответов у модели нет — снова сбой
+    assert ok(game_client.get(f"{base}/{ch['id']}", headers=p1))["review_error"]
+    approved = ok(game_client.post(f"{base}/{ch['id']}/review", json={"approve": True}, headers=admin_g))
+    assert approved["status"] == "approved"

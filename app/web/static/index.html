@@ -48,6 +48,11 @@
   .stats div { border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .stats b { display:block; font-size:20px; } .stats span { color:var(--muted); font-size:13px; }
   li.model > span > div { font-size:13px; margin-top:2px; }
   ul.plain li .badge { flex:none; min-width:0; }
+  #sheetModal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-start; justify-content:center; padding:24px 12px; overflow-y:auto; z-index:10; }
+  #sheetModal.hidden { display:none; }
+  #sheetModal > .card { width:100%; max-width:720px; margin:0; }
+  #sheetBody h4 { margin:14px 0 6px; } .abox { border:1px solid var(--line); border-radius:8px; padding:6px; text-align:center; display:flex; flex-direction:column; }
+  .abox b { font-size:18px; } body.modal-open { overflow:hidden; }
 </style>
 </head>
 <body>
@@ -115,6 +120,8 @@
       <div class="row"><div><label>Имя</label><input id="pNewName" autocomplete="username"></div><div style="flex:0 0 auto"><button class="ghost" id="pRenameBtn">Сохранить имя</button></div></div>
       <div class="row"><div><label>Текущий пароль</label><input id="pOldPass" type="password" autocomplete="current-password"></div><div><label>Новый пароль (не короче 6)</label><input id="pNewPass" type="password" autocomplete="new-password"></div><div style="flex:0 0 auto"><button class="ghost" id="pPassBtn">Сменить пароль</button></div></div>
       <div class="err" id="pAccErr"></div></div>
+    <div class="card"><h4 style="margin-top:0">Мои герои</h4><p class="muted">Герои профиля. В кампанию уходит копия: она развивается там отдельно, поэтому правка или удаление героя здесь её не меняет.</p>
+      <ul class="plain" id="pHeroList"></ul><p><button id="pNewHero">Создать героя</button></p></div>
     <div class="card hidden" id="pModels"><h4 style="margin-top:0">Модели ИИ</h4>
       <p class="muted">Модель, которую выбирают мастером кампании. Ключи провайдеров хранятся только в окружении сервера: здесь видно лишь, задан ли ключ.</p>
       <ul class="plain" id="pProviders"></ul>
@@ -225,7 +232,7 @@ async function lobby() {
 }
 async function loadLibrary() {
   library = await api("/api/me/characters").catch(() => []);
-  $("library").innerHTML = library.length ? library.map(h => `<li><span><b>${esc(h.name || "без имени")}</b> <span class="muted">${esc([h.origin_name, h.class_name].filter(Boolean).join(", ") || "не собран")}${h.errors?.length ? " · не закончен" : ""}</span></span><button class="ghost" data-libedit="${h.id}">Изменить</button><button class="ghost" data-libdel="${h.id}">Удалить</button></li>`).join("") : '<li class="muted">Пока нет героев.</li>';
+  $("library").innerHTML = libraryListHtml(library);
 }
 async function updateRec() {
   const q = new URLSearchParams({ difficulty: $("cDiff").value }); if ($("cPack").value) q.set("pack_id", $("cPack").value);
@@ -271,7 +278,7 @@ function handle(e) {
   if (e.type === "presence.changed") { const s = seatsById[e.payload.seat_id]; if (s) { s.presence = e.payload.status; renderSeats(); } return; }
   if (e.type === "seat.changed" || e.type.startsWith("session.")) { ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } })); return; }
   if (e.type === "character.sheet" || e.type === "character.reviewed") { if (e.payload.character) { hero = e.payload.character; renderHero(); } else loadHeroes(); if (e.type === "character.reviewed") addMsg({ kind: "system", content: e.payload.status === "approved" ? "Мастер одобрил героя." + (e.payload.comment ? " " + e.payload.comment : "") : "Мастер вернул героя: " + (e.payload.comment || "") }); return; }
-  if (e.type === "character.updated") { loadHeroes(); return; }
+  if (e.type === "character.updated" || e.type === "character.review_failed") { loadHeroes(); return; }
   if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
@@ -307,8 +314,10 @@ async function loadHeroes() {
   renderHero(); renderChoose();
   const manage = room.is_owner || room.my_role === "master";
   const waiting = list.filter(c => c.status === "submitted");
-  $("reviewCard").classList.toggle("hidden", !(room.my_role === "master" && waiting.length));
-  $("reviewCard").innerHTML = "<b>Ждут проверки</b>" + waiting.map(c => `<div class="seat">${esc(c.name)} <button class="ghost" data-look="${c.id}">Смотреть</button></div>`).join("");
+  // чужих героев на проверке сервер отдаёт только тому, кто может их проверить: мастеру или владельцу при ИИ-мастере
+  const toReview = waiting.filter(c => !mySeat || c.seat_id !== mySeat);
+  $("reviewCard").classList.toggle("hidden", !toReview.length);
+  $("reviewCard").innerHTML = "<b>Ждут проверки</b>" + toReview.map(c => `<div class="seat">${esc(c.name)}${c.review_error ? ' <span class="bad">ИИ не проверил</span>' : c.reviewer === "ai" ? ' <span class="muted">у ИИ-мастера</span>' : ""} <button class="ghost" data-sheet="${c.id}" data-sheet-kind="review">Проверить</button></div>`).join("");
   $("premadesCard").classList.toggle("hidden", !(manage && premades.length));
   $("premadesCard").innerHTML = "<b>Готовые герои</b>" + premades.map(c => `<div class="seat">${esc(c.name || "без имени")}${c.errors?.length ? ' <span class="muted">(не закончен)</span>' : ""} <button class="ghost" data-preedit="${c.id}">Изменить</button> <button class="ghost" data-predel="${c.id}">×</button></div>`).join("");
 }
@@ -330,14 +339,15 @@ function renderHero() {
   if (room.my_role !== "player" || !hero) { box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
   const d = hero.derived || {}, r = hero.resources || {};
-  let html = `<b>${esc(hero.name || "без имени")}</b> <span class="muted">· ${ST_RU[hero.status] || hero.status}</span>`;
+  let html = `<b>${esc(hero.name || "без имени")}</b> <span class="muted">· ${statusText(hero)}</span>`;
+  if (hero.review_error) html += `<p class="bad">ИИ-мастер не смог проверить героя: ${esc(hero.review_error.replace(/ \(.*$/s, ""))}. Владелец кампании может проверить его сам.</p><p><button class="ghost" data-retryai="${hero.id}">Повторить проверку ИИ</button></p>`;
   if (hero.review_comment) html += `<p class="muted">Мастер: ${esc(hero.review_comment)}</p>`;
   if (r.hp_max) html += `<div>Хиты ${r.hp}/${r.hp_max}${r.temp_hp ? " (+" + r.temp_hp + ")" : ""} · КД ${d.ac ?? "?"}</div>`;
   if (d.abilities) html += `<div class="muted">${AB.map(a => `${AB_RU[a]} ${d.abilities[a]}`).join(" · ")}</div>`;
   if (d.attacks?.length) html += `<div>Атаки:<ul>${d.attacks.map(a => `<li>${esc(a.name)} +${a.attack_bonus}, ${esc(a.damage)}</li>`).join("")}</ul></div>`;
   if (d.effects?.length) html += `<div>Состояния: ${d.effects.map(e => esc(e.name)).join(", ")}</div>`;
   if (hero.inventory?.length) html += `<div>Снаряжение:<ul>${hero.inventory.map(i => `<li>${esc(i.name)}${i.qty > 1 ? " ×" + i.qty : ""}${i.equipped ? " (надето)" : ""}</li>`).join("")}</ul></div>`;
-  if (hero.status === "draft") html += `<button id="editHero">Продолжить создание</button>`;
+  html += `<p class="row" style="flex-wrap:wrap">${hero.status === "draft" ? '<button id="editHero" style="flex:0 0 auto">Продолжить создание</button>' : ""}<button class="ghost" id="heroSheetBtn" style="flex:0 0 auto">Лист героя</button></p>`;
   box.innerHTML = html;
 }
 
@@ -348,7 +358,7 @@ const MODES = {
   library: { title: "Герой профиля", save: "Сохранить героя", submit: false },
 };
 async function openBuilder(mode, obj) {
-  bctx = { mode, obj: obj || null, back: room ? "room" : "lobby" };
+  bctx = { mode, obj: obj || null, back: room ? "room" : !$("profile").classList.contains("hidden") ? "profile" : "lobby" };
   opts = await api(mode === "library" ? "/api/me/character-options" : `/api/campaigns/${room.id}/character-options`);
   const methods = opts.ability_methods.filter(m => mode !== "premade" || m !== "roll");
   $("bTitle").textContent = MODES[mode].title; $("bSave").textContent = MODES[mode].save; $("bSubmit").classList.toggle("hidden", !MODES[mode].submit);
@@ -362,7 +372,7 @@ async function openBuilder(mode, obj) {
   $("bErr").textContent = (obj?.errors || []).join("; ");
   renderBuilder(s); show("builder"); window.scrollTo(0, 0);
 }
-function closeBuilder() { const back = bctx?.back || "lobby"; bctx = null; if (back === "room" && room) { show("room"); loadHeroes(); } else lobby(); }
+function closeBuilder() { const back = bctx?.back || "lobby"; bctx = null; if (back === "room" && room) { show("room"); loadHeroes(); } else if (back === "profile") openProfile(); else lobby(); }
 function renderBuilder(s = {}) {
   const cls = opts.classes.find(c => c.id === $("bClass").value), org = opts.origins.find(o => o.id === $("bOrigin").value), m = $("bMethod").value;
   const rolls = bctx?.obj?.sheet?.ability_rolls;
@@ -431,9 +441,9 @@ document.addEventListener("click", async (ev) => {
     if (t.dataset.del && confirm("Удалить кампанию безвозвратно?")) { await api("/api/campaigns/" + t.dataset.del, { method: "DELETE" }); return lobby(); }
     if (t.dataset.kick) { await api(`${base}/seats/${t.dataset.kick}/occupant`, { method: "DELETE" }); return; }
     if (t.dataset.act) { await api(`${base}/session/${t.dataset.act}`, { method: "POST" }); return; }
-    if (t.id === "newLibHero") return openBuilder("library", null);
+    if (t.id === "newLibHero" || t.id === "pNewHero") return openBuilder("library", null);
     if (t.dataset.libedit) return openBuilder("library", await api(`/api/me/characters/${t.dataset.libedit}`));
-    if (t.dataset.libdel && confirm("Удалить героя из профиля? Его копии в кампаниях останутся.")) { await api(`/api/me/characters/${t.dataset.libdel}`, { method: "DELETE" }); return loadLibrary(); }
+    if (t.dataset.libdel && confirm("Удалить героя из профиля? Его копии в кампаниях останутся.")) { await api(`/api/me/characters/${t.dataset.libdel}`, { method: "DELETE" }); return $("profile").classList.contains("hidden") ? loadLibrary() : loadProfileHeroes(); }
     if (t.id === "premadeBtn") return openBuilder("premade", null);
     if (t.dataset.preedit) return openBuilder("premade", premades.find(p => p.id === t.dataset.preedit));
     if (t.dataset.predel && confirm("Удалить заготовку?")) { await api(`${base}/premades/${t.dataset.predel}`, { method: "DELETE" }); return loadHeroes(); }
@@ -450,7 +460,6 @@ document.addEventListener("click", async (ev) => {
     if (t.id === "bSave") { await saveBuilder(); if (bctx.mode !== "campaign" && !bctx.obj.errors?.length) closeBuilder(); return; }
     if (t.id === "bRoll") return rollBuilder();
     if (t.id === "bSubmit") { await saveBuilder(); if (bctx.obj.errors?.length) return; const errs = await submitHero(bctx.obj.id); if (errs.length) { $("bErr").textContent = errs.join("; "); return; } return closeBuilder(); }
-    if (t.dataset.look) { const c = await api(`${base}/characters/${t.dataset.look}`); const comment = prompt(`${c.name}: ${c.public_bio || ""}\n\nТайная история: ${c.private_backstory || "—"}\n\nОставьте поле пустым, чтобы одобрить, или напишите, что исправить:`); if (comment === null) return; await api(`${base}/characters/${c.id}/review`, { method: "POST", body: { approve: !comment, comment: comment || "" } }); return loadHeroes(); }
   } catch (e) { if (bctx) $("bErr").textContent = e.message; else alert(e.message); }
 });
 $("backBtn").onclick = () => { room = null; lobby(); };
@@ -459,7 +468,9 @@ function send() { const text = $("text").value; if (!text.trim() || !ws) return;
 $("sendBtn").onclick = send; $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
 setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "ping" })), 25000);
 </script>
+<div id="sheetModal" class="hidden"><div class="card"><div class="row" style="align-items:start"><div id="sheetBody"></div><div style="flex:0 0 auto"><button class="ghost" id="sheetClose">Закрыть</button></div></div><div id="sheetActions"></div><div class="err" id="sheetErr"></div></div></div>
 <script src="/static/profile.js"></script>
+<script src="/static/heroes.js"></script>
 <script>boot();</script>
 </body>
 </html>

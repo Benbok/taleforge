@@ -65,6 +65,12 @@ class Viewer:
         return self.seat is not None and self.seat.role == "player"
 
     @property
+    def can_review(self) -> bool:
+        """Героев проверяет мастер. Если мастер — ИИ, владелец тоже может проверить вручную: вдруг модель
+        недоступна или не справилась."""
+        return self.is_master or (self.is_owner and master_seat(self.campaign).occupant_type == "agent")
+
+    @property
     def can_manage_members(self) -> bool:
         return self.is_owner
 

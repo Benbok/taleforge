@@ -27,6 +27,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents.llm import LLM, LLMError, LLMReply, model_for
+from app.agents.providers import explain
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.db.models import (
@@ -34,6 +35,7 @@ from app.db.models import (
     Campaign,
     CampaignSecret,
     Character,
+    Event,
     LlmCall,
     MasterTurn,
     Message,
@@ -451,81 +453,105 @@ class MasterService:
     # --- проверка персонажа ИИ-мастером (раздел 5.1) ---
 
     async def review_character(self, cid: str, character_id: str) -> str | None:
+        """Проверка героя ИИ-мастером. Если модель недоступна или так и не вынесла решения, герой остаётся
+        на проверке, а причина пишется в журнал и видна игроку и владельцу: владелец может проверить сам."""
         lock = self._locks.setdefault(cid, asyncio.Lock())
         async with lock:
             calls: list[LlmCall] = []
+            error = None
             try:
-                async with self.maker() as s:
-                    c = await s.get(Campaign, cid)
-                    seat = master_seat(c)
-                    if seat.occupant_type != "agent":
-                        return None
-                    cfg = await s.get(AgentConfig, seat.agent_config_id)
-                    ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
-                    ch = ctx.world.characters.get(character_id)
-                    if ch is None or ch.status != "submitted":
-                        return None
-                    from app.core.characters import full_view
-
-                    sheet = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), [])
-                    system = await self._system_prompt(s, c, cfg, ctx)
-                    msgs = [
-                        {"role": "system", "content": system},
-                        {
-                            "role": "user",
-                            "content": (
-                                "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
-                                "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
-                                "Можешь тайно связать историю героя с сюжетом через secret_link.\n\n"
-                                + json.dumps(sheet, ensure_ascii=False, default=str)
-                            ),
-                        },
-                    ]
-                    status = None
-                    for _ in range(3):
-                        reply = await self._ask(
-                            calls, cfg, cid, seat.id, None, "review", msgs, tool_specs(ctx.world, ["review_character"])
-                        )
-                        msgs.append(reply.message or {"role": "assistant", "content": reply.text})
-                        if not reply.tool_calls:
-                            msgs.append({"role": "user", "content": "Вызови review_character."})
-                            continue
-                        for call in reply.tool_calls:
-                            args = {**call.arguments, "character_id": ch.id}
-                            r = (
-                                await execute(ctx, "review_character", args)
-                                if call.name == "review_character"
-                                else {"ok": False, "error": "здесь доступен только review_character"}
-                            )
-                            msgs.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": call.id,
-                                    "content": json.dumps(r, ensure_ascii=False, default=str),
-                                }
-                            )
-                            if r.get("ok"):
-                                status = r["result"]["status"]
-                        if status:
-                            break
-                    await s.commit()
-                    if status and ch.seat_id:
-                        full = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), ctx.world.effects)
-                        await self.bus.publish(
-                            cid,
-                            envelope(
-                                "character.reviewed",
-                                cid,
-                                {"character": full, "status": status, "comment": ch.review_comment},
-                            ),
-                            [ch.seat_id],
-                        )
-                    return status
+                attempted, status = await self._review(cid, character_id, calls)
+                if attempted and not status:
+                    error = "модель не вынесла решения за три попытки"
+            except asyncio.CancelledError:
+                raise
+            except LLMError as e:
+                attempted, status, error = True, None, explain(str(e))
+            except Exception as e:  # noqa: BLE001 — сбой проверки не должен теряться молча
+                log.exception("проверка героя %s сорвалась", character_id)
+                attempted, status, error = True, None, f"{type(e).__name__}: {e}"[:500]
             finally:
                 if calls:
                     async with self.maker() as s:
                         s.add_all(calls)
                         await s.commit()
+            if error:
+                async with self.maker() as s:
+                    failed = {"error": error}
+                    s.add(Event(campaign_id=cid, tool="review_failed", target_id=character_id, payload=failed))
+                    await s.commit()
+                await self.bus.publish(
+                    cid, envelope("character.review_failed", cid, {"character_id": character_id, "error": error}), None
+                )
+            return status
+
+    async def _review(self, cid: str, character_id: str, calls: list) -> tuple[bool, str | None]:
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            seat = master_seat(c)
+            if seat.occupant_type != "agent":
+                return False, None
+            cfg = await s.get(AgentConfig, seat.agent_config_id)
+            ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+            ch = ctx.world.characters.get(character_id)
+            if ch is None or ch.status != "submitted":
+                return False, None
+            from app.core.characters import full_view
+
+            sheet = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), [])
+            system = await self._system_prompt(s, c, cfg, ctx)
+            msgs = [
+                {"role": "system", "content": system},
+                {
+                    "role": "user",
+                    "content": (
+                        "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
+                        "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
+                        "Можешь тайно связать историю героя с сюжетом через secret_link.\n\n"
+                        + json.dumps(sheet, ensure_ascii=False, default=str)
+                    ),
+                },
+            ]
+            status = None
+            for _ in range(3):
+                reply = await self._ask(
+                    calls, cfg, cid, seat.id, None, "review", msgs, tool_specs(ctx.world, ["review_character"])
+                )
+                msgs.append(reply.message or {"role": "assistant", "content": reply.text})
+                if not reply.tool_calls:
+                    msgs.append({"role": "user", "content": "Вызови review_character."})
+                    continue
+                for call in reply.tool_calls:
+                    args = {**call.arguments, "character_id": ch.id}
+                    r = (
+                        await execute(ctx, "review_character", args)
+                        if call.name == "review_character"
+                        else {"ok": False, "error": "здесь доступен только review_character"}
+                    )
+                    msgs.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": call.id,
+                            "content": json.dumps(r, ensure_ascii=False, default=str),
+                        }
+                    )
+                    if r.get("ok"):
+                        status = r["result"]["status"]
+                if status:
+                    break
+            await s.commit()
+            if status and ch.seat_id:
+                full = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), ctx.world.effects)
+                await self.bus.publish(
+                    cid,
+                    envelope(
+                        "character.reviewed",
+                        cid,
+                        {"character": full, "status": status, "comment": ch.review_comment},
+                    ),
+                    [ch.seat_id],
+                )
+            return True, status
 
 
 async def _new_player_messages(s, c: Campaign) -> list[Message]:

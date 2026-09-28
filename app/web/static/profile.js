@@ -17,7 +17,7 @@ async function openProfile() {
   if (typeof closeWs === "function") closeWs();
   room = null; show("profile");
   prof = await api("/api/me/profile");
-  renderAccount();
+  renderAccount(); loadProfileHeroes();
   $("pModels").classList.toggle("hidden", !prof.can_manage_models);
   $("pUsers").classList.toggle("hidden", !prof.can_manage_users);
   if (prof.can_manage_models) await loadModels();
