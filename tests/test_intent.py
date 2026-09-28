@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.agents import intent as intents
 from app.db.models import Campaign, InventoryItem, LlmCall, MasterTurn, Message
 from app.tools.runtime import open_context
-from tests.game import QueueDice, party, run
+from tests.game import QueueDice, ok, party, run
 from tests.test_combat import _fight, scene  # noqa: F401
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
@@ -71,7 +71,7 @@ def test_rejects_offtopic_and_unclear(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [intent(confidence=0.9, problem="offtopic")]
     e = send(game_client, p1, c["id"], "а кто смотрел вчера футбол?")
-    assert e["type"] == "message.rejected" and "//" in e["payload"]["reason"]
+    assert e["type"] == "message.new" and e["payload"]["kind"] == "ooc"  # оффтоп сам уходит во внеигровой чат
     llm.replies += [intent({"verb": "custom"}, confidence=0.3, question="Кого именно вы хотите позвать?")]
     e = send(game_client, p1, c["id"], "зову его")
     assert e["payload"]["reason"] == "Кого именно вы хотите позвать?"
@@ -80,6 +80,38 @@ def test_rejects_offtopic_and_unclear(game_client, admin_g, llm, settings):
     assert "чужого героя" in e["payload"]["reason"]
     assert rows(settings, Message, Message.kind == "action") == []
     assert [x.purpose for x in rows(settings, LlmCall)] == ["parse"] * 3
+
+
+def send_auto(client, head, cid, text, **extra):
+    with connect(client, head, cid) as (ws, _):
+        ws.send_json({"type": "message.send", "payload": {"text": text, **extra}})
+        e = ws.receive_json()
+        while e["type"] not in ("message.rejected", "message.new"):
+            e = ws.receive_json()
+        return e
+
+
+def test_native_chat_kind_from_parser(game_client, admin_g, llm, settings):
+    """Игрок не выбирает тип реплики: речь, действие и оффтоп различает парсер, шёпот — отдельный флаг."""
+    c, (p1,), hero = party(game_client, admin_g)
+    speech = {"tool_calls": [("submit_intent", {"kind": "speech", "speech": "Кто здесь?", "confidence": 0.9})]}
+    llm.replies += [speech, DONE, {"text": "Тишина."}]
+    e = send_auto(game_client, p1, c["id"], "— Кто здесь? — шепчу в темноту")
+    assert e["payload"]["kind"] == "speech"
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    llm.replies += [intent({"verb": "search"}), DONE, {"text": "Пыль и паутина."}]
+    e = send_auto(game_client, p1, c["id"], "Обыскиваю сундук")
+    assert e["payload"]["kind"] == "action"
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    assert send_auto(game_client, p1, c["id"], "// перерыв 5 минут")["payload"]["kind"] == "ooc"
+    e = send_auto(game_client, p1, c["id"], "Прячу кольцо в сапог", kind="whisper")
+    assert e["payload"]["kind"] == "whisper" and e["payload"]["whisper"]
+    # мастер-человек пишет повествование без выбора типа
+    from tests.test_api import make_campaign
+
+    c2 = make_campaign(game_client, admin_g, master={"type": "owner"})
+    ok(game_client.post(f"/api/campaigns/{c2['id']}/session/start", headers=admin_g))
+    assert send_auto(game_client, admin_g, c2["id"], "Ветер стихает.")["payload"]["kind"] == "narration"
 
 
 def test_router_attack_and_intent_saved(game_client, admin_g, llm, dice, settings):

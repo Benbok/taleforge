@@ -21,6 +21,8 @@
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
   .row > * { flex:1; min-width:140px; }
   .muted { color:var(--muted); }
+  .whisper-toggle { display:flex; gap:6px; align-items:center; white-space:nowrap; color:var(--muted); cursor:pointer; }
+  #text.whispering { background:var(--whisper); }
   .turnbar { border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .turnbar.mine { border-color:var(--accent); } .turnbar button { padding:3px 10px; }
   .reaction { border:2px solid var(--accent); border-radius:6px; padding:8px 10px; margin-bottom:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -109,8 +111,8 @@
         <div id="masterStatus" class="muted"></div>
         <div id="log"></div>
         <div class="row" style="margin-top:10px">
-          <div style="flex:0 0 150px"><select id="kind"><option value="action">Действие</option><option value="speech">Речь</option><option value="whisper">Шёпот мастеру</option><option value="ooc">Вне игры</option><option value="narration">Повествование (мастер)</option></select></div>
-          <div><input id="text" placeholder="Что делает ваш герой? (// — вне игры)"></div>
+          <div><input id="text" placeholder="Что делает или говорит ваш герой?"></div>
+          <div style="flex:0 0 auto" id="whisperBox"><label class="whisper-toggle" title="Увидит только мастер"><input type="checkbox" id="whisper"> Шёпот мастеру</label></div>
           <div style="flex:0 0 auto"><button id="sendBtn">Отправить</button></div>
         </div>
         <div class="err" id="sendErr"></div>
@@ -278,7 +280,7 @@ function connect() {
 function closeWs() { if (ws) { ws.__keep = false; ws.close(); ws = null; } }
 function handle(e) {
   if (e.type === "auth.ok") return ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } }));
-  if (e.type === "state.snapshot") { const p = e.payload; const seatChanged = mySeat !== p.me.seat_id; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; setTurn(p.turn); if (seatChanged) { room.my_seat_id = mySeat; room.my_role = p.me.role; $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !mySeat)); loadHeroes(); } return; }
+  if (e.type === "state.snapshot") { const p = e.payload; const seatChanged = mySeat !== p.me.seat_id; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; setTurn(p.turn); setComposer(p.me.role); if (seatChanged) { room.my_seat_id = mySeat; room.my_role = p.me.role; $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !mySeat)); loadHeroes(); } return; }
   if (e.type === "message.new") { if (lastSeq == null || e.seq > lastSeq) { addMsg(e.payload); lastSeq = e.seq; } return; }
   if (e.type === "message.rejected") { $("sendErr").textContent = e.payload.reason; return; }
   if (e.type === "message.notice") { $("sendNote").textContent = e.payload.text; return; }
@@ -504,7 +506,14 @@ document.addEventListener("click", async (ev) => {
 });
 $("backBtn").onclick = () => { room = null; lobby(); };
 $("inviteBtn").onclick = async () => { try { const i = await api(`/api/campaigns/${room.id}/invites`, { method: "POST", body: {} }); $("inviteOut").classList.remove("hidden"); $("inviteOut").innerHTML = `Ссылка для друзей (действует 72 часа): <input readonly value="${esc(i.url)}" onclick="this.select()">`; } catch (e) { alert(e.message); } };
-function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; $("sendNote").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }
+function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; $("sendNote").textContent = ""; const whisper = $("whisper").checked; ws.send(JSON.stringify({ type: "message.send", payload: { kind: whisper ? "whisper" : "auto", text } })); $("text").value = ""; $("whisper").checked = false; $("text").classList.remove("whispering"); }
+// Нативный чат: тип реплики (действие, речь, вне игры) определяет сервер; игрок выбирает только шёпот мастеру
+function setComposer(role) {
+  const master = role === "master";
+  $("whisperBox").classList.toggle("hidden", master || !role);
+  $("text").placeholder = master ? "Что происходит в мире?" : role ? "Что делает или говорит ваш герой?" : "Сообщение вне игры";
+}
+$("whisper").onchange = () => $("text").classList.toggle("whispering", $("whisper").checked);
 $("sendBtn").onclick = send; $("passBtn").onclick = () => ws && ws.send(JSON.stringify({ type: "turn.pass", payload: {} })); $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
 setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "ping" })), 25000);
 </script>
