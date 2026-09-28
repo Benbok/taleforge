@@ -12,6 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
+from app.core.linker import link_text
 from app.db.models import Campaign, GameSession, Message, now
 
 PLAYER_KINDS = ("action", "speech", "whisper", "ooc")
@@ -74,6 +75,9 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
     game = await active_session(session, viewer.campaign.id)
     if kind != "ooc" and game is None:
         raise Conflict("сессия не запущена: пока доступны только внеигровые сообщения (//)")
+
+    if kind == "narration":
+        text = await link_text(session, viewer.campaign.id, text)  # живой мастер тоже получает ссылки на имена
 
     visible_to = None
     if kind == "whisper":

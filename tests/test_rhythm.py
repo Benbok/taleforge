@@ -29,7 +29,7 @@ def test_session_rhythm_and_epilogue(game_client, admin_g, llm, settings):
     llm.replies += [{"tool_calls": [(rhythm.NEXT_TOOL, {"hook": "Туман шепчет имя Брана."})]}]
     ok(game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g))
     idle()
-    assert narrations(settings, cid)[-1] == "В следующий раз: Туман шепчет имя Брана."
+    assert narrations(settings, cid)[-1] == f"В следующий раз: Туман шепчет имя [[{hero['id']}|Брана]]."
     assert "Сессия окончена" in llm.requests[0]["messages"][1]["content"]
 
     llm.replies += [
@@ -39,7 +39,7 @@ def test_session_rhythm_and_epilogue(game_client, admin_g, llm, settings):
     ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     idle()
     assert narrations(settings, cid)[-2:] == [
-        "Бран сходит на берег.",
+        f"[[{hero['id']}|Бран]] сходит на берег.",
         "Цель на этот вечер: Узнать, куда уходят корабли.",
     ]
     assert "Сюжет сейчас" in llm.requests[2]["messages"][1]["content"]
@@ -54,7 +54,7 @@ def test_session_rhythm_and_epilogue(game_client, admin_g, llm, settings):
     assert "нет судьбы героев: Бран" in llm.requests[4]["messages"][-1]["content"]
     assert narrations(settings, cid)[-2:] == [
         "Эпилог. Туман ушёл.",
-        f"Судьбы героев.\n\n[[{hero['id']}|Бран]]: Бран стал смотрителем маяка.",
+        f"Судьбы героев.\n\n[[{hero['id']}|Бран]]: [[{hero['id']}|Бран]] стал смотрителем маяка.",
     ]
     (camp,) = rows(settings, Campaign, Campaign.id == cid)
     assert camp.status == "ended" and camp.settings["epilogue"]["fates"] == {hero["id"]: "Бран стал смотрителем маяка."}

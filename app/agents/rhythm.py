@@ -16,6 +16,7 @@ from app.agents.prelude import _ai_plan, _call_tool, _hero, _spec
 from app.core import plot
 from app.core.campaigns import master_seat
 from app.core.chat import next_seq
+from app.core.linker import link_text
 from app.db.models import Campaign, Character, GameSession, MasterTurn, Message
 from app.gateway.events import envelope, publish_message
 
@@ -61,7 +62,7 @@ async def _post(svc, cid: str, text: str, session_id: str | None) -> str:
             seq=await next_seq(s, cid),
             seat_id=master_seat(c).id,
             kind="narration",
-            content=text,
+            content=await link_text(s, cid, text),
         )
         s.add(msg)
         await s.commit()

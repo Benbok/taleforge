@@ -18,6 +18,7 @@ from app.content.catalog import campaign_catalog
 from app.core import bonds, plot
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
+from app.core.linker import link_text
 from app.db.models import AgentConfig, Campaign, CampaignSecret, Character, LlmCall, Message, Scene
 from app.gateway.events import envelope, publish_message
 
@@ -281,6 +282,26 @@ async def pending(s, c: Campaign) -> list[Character]:
     return [ch for ch in rows if ch.id not in done]
 
 
+async def _open_first_place(svc, cid: str, where: dict) -> None:
+    """Место первой сцены попадает в мир до вступления: у него появляется карточка, и имя в тексте становится
+    ссылкой. Детали и тайна места остаются в каркасе, в карточку идёт только настроение («mood»)."""
+    from app.tools.registry import execute
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
+        details = where.get("mood") or where.get("name") or "место первой сцены"
+        result = await execute(ctx, "develop", {"sketch_id": where["id"], "details": details, "here": True})
+        if not result.get("ok"):
+            log.warning("место первой сцены не открылось: %s", result.get("error"))
+            await s.rollback()
+            return
+        messages = await flush_outbox(s, ctx)
+        await s.commit()
+    await publish_changes(svc.bus, ctx, messages)
+
+
 async def introduce(svc, cid: str) -> str | None:
     """Вступление: как герои встретились (120–200 слов) или, если отряд уже в игре, короткое появление новичков.
     Возвращает id сообщения или None."""
@@ -304,6 +325,8 @@ async def introduce(svc, cid: str) -> str | None:
     act = plot.active_act(p) or {}
     node = next((n for n in act.get("nodes") or [] if n.get("status") not in plot.CLOSED), None)
     where = next((x for x in p.get("locations") or [] if node and x["id"] == node.get("location_id")), None)
+    if first and where and not where.get("entity_id"):
+        await _open_first_place(svc, cid, where)
     scene_hint = ""
     if node:
         scene_hint = (
@@ -371,7 +394,7 @@ async def introduce(svc, cid: str) -> str | None:
                 seq=await next_seq(s, cid),
                 seat_id=seat_id,
                 kind="narration",
-                content=text,
+                content=await link_text(s, cid, text),
             )
             s.add(msg)
             # представленными считаем только после удачного вступления: при сбое мастер попробует на следующем ходу

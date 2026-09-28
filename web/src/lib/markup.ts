@@ -14,7 +14,8 @@ export function parseMarkup(s: string): Piece[] {
     at = m.index! + m[0].length;
   }
   if (at < s.length) out.push({ text: s.slice(at) });
-  return out;
+  // жирный шрифт модели в старых сообщениях: выделение имени теперь ссылка, звёздочки не показываем
+  return out.map((p) => ("id" in p ? p : { text: p.text.replace(/\*\*(.+?)\*\*/gs, "$1") }));
 }
 
 export function plain(s: string): string {

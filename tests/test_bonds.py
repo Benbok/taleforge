@@ -3,7 +3,7 @@
 
 from app.agents import prelude, rhythm
 from app.core import bonds, plot
-from app.db.models import Character, LlmCall, Message, Scene
+from app.db.models import Character, Entity, LlmCall, Message, Scene
 from tests.game import FIGHTER, ok, party
 from tests.test_api import invite, make_campaign, register
 from tests.test_lead import checked, set_plan
@@ -99,7 +99,7 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     # новая сессия: мастер представляет отряд; каркас и личные ответы в текст для всех не попадают
     llm.replies += [
         {"tool_calls": [(rhythm.NEXT_TOOL, {"hook": "Туман зовёт."})]},
-        {"text": f"[[{hero['id']}|Бран]] стоит у причала, рядом [[en_x|незнакомец]]."},
+        {"text": "**Бран** стоит у причала Солёной бухты, рядом [[en_x|незнакомец]]."},
         {"tool_calls": [(rhythm.GOAL_TOOL, {"goal": "Найти корабль."})]},
     ]
     ok(game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g))
@@ -111,8 +111,12 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     assert "120–200 слов" in text and "Брата" in text and "Капитану Марте" not in text
     assert "Первая сцена (тайно" in text and "Бертольд сдал брата" in text
     msg = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")[-2]
-    assert msg.content == f"[[{hero['id']}|Бран]] стоит у причала, рядом незнакомец."
+    # место первой сцены вошло в мир до вступления, имена стали ссылками сами, жирный шрифт модели снят
+    (bay,) = rows(settings, Entity, Entity.campaign_id == cid, Entity.kind == "location")
+    assert bay.name == "Солёная бухта" and bay.description == "Сырость и тревога"
+    assert msg.content == f"[[{hero['id']}|Бран]] стоит у причала [[{bay.id}|Солёной бухты]], рядом незнакомец."
     (scene,) = rows(settings, Scene, Scene.campaign_id == cid)
+    assert scene.location_id == bay.id
     assert scene.state["introduced"] == [hero["id"]]
 
     # новичок посреди сессии: короткое появление перед ходом мастера
@@ -122,7 +126,7 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     )
     llm.replies += [{"text": "Гимли выходит из тумана."}, DONE, DONE, {"text": "Причал пуст."}]
     first = act(game_client, p1, cid, "Жду")
-    assert first["content"] == "Гимли выходит из тумана."
+    assert first["content"] == f"[[{ch2['id']}|Гимли]] выходит из тумана."
     assert "50–100 слов" in llm.requests[6]["messages"][1]["content"]
     assert (
         "Гимли" in llm.requests[6]["messages"][1]["content"]
