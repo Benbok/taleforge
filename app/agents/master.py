@@ -33,6 +33,7 @@ from app.agents import memory
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
 from app.core import combat
+from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.db.models import (
@@ -521,6 +522,7 @@ class MasterService:
             "master_system.j2",
             campaign_name=c.name,
             style=cfg.persona,
+            brief=brief_text(c.brief),
             excluded_themes=", ".join((c.settings or {}).get("excluded_themes") or []),
             public_intro=c.public_intro,
             secrets=secrets,
