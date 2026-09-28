@@ -58,6 +58,15 @@ export interface Envelope<P = Record<string, unknown>> {
   payload: P;
 }
 
+/** Статус реплики игрока при ИИ-мастере: ждёт хода, мастер отвечает, отвечено, не обработано. */
+export type ReplyState = "pending" | "processing" | "answered" | "failed";
+
+/** Своя реплика, ждущая хода мастера: её можно отменить. */
+export interface PendingReply {
+  id: string;
+  created_at: string | null;
+}
+
 export interface ChatMessage {
   id: string;
   seq: number;
@@ -68,6 +77,7 @@ export interface ChatMessage {
   whisper: boolean;
   data?: RollCard | null;
   created_at: string | null;
+  state?: ReplyState | null;
 }
 
 export interface RollCard {
@@ -165,6 +175,8 @@ export interface Snapshot {
   scene: Scene;
   actions: string[];
   blocked: Record<string, string>;
+  pending: PendingReply | null;
+  collect_window_sec: number;
   messages: ChatMessage[];
   replay: boolean;
 }

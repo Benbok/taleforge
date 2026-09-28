@@ -82,4 +82,24 @@ describe("хранилище игры", () => {
     expect(g().cards.en1).toBeUndefined();
     expect(g().notes[0].text).toContain("Гоблин");
   });
+
+  it("статус реплики, отмена и возврат текста автору", () => {
+    const g = useGame.getState;
+    const me = { user_id: "u1", seat_id: "s1", role: "player", is_owner: false };
+    const a = { ...msg(1), kind: "action", seat_id: "s1", state: "pending" as const };
+    const pending = { id: "m1", created_at: "2026-09-28T10:00:00+00:00" };
+    g().apply(env("state.snapshot", { messages: [a], seats: [], replay: false, me, actions: [], blocked: {}, pending, collect_window_sec: 60 }, 1));
+    expect(g().myPending).toEqual(pending);
+    g().apply(env("message.state", { ids: ["m1", "чужой"], state: "processing" }));
+    expect(g().messages[0].state).toBe("processing");
+    g().apply(env("state.actions", { actions: [], blocked: {}, pending: null }));
+    expect(g().myPending).toBeNull();
+    g().apply(env("message.withdrawn", { id: "m1", seq: 1 }));
+    expect(g().messages).toEqual([]);
+    expect(g().restored).toBeNull();
+    g().apply(env("message.withdrawn", { id: "m1", seq: 1, text: "Лезу на стену" }));
+    expect(g().restored).toBe("Лезу на стену");
+    g().clearRestored();
+    expect(g().restored).toBeNull();
+  });
 });

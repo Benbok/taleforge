@@ -21,4 +21,11 @@ describe("игровой экран", () => {
     expect(secondsLeft(100, 70_000)).toBe(30);
     expect(secondsLeft(100, 120_000)).toBe(0);
   });
+
+  it("статус и отмена реплики перезапрашивают кнопки", () => {
+    const send = vi.fn(() => true);
+    sideEffects(env("message.state", { ids: ["m1"], state: "answered" }), { send });
+    sideEffects(env("message.withdrawn", { id: "m1", seq: 1 }), { send });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
 });
