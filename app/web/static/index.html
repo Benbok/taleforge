@@ -45,10 +45,21 @@
   .tabs button.on { background:var(--accent); color:#fff; } .tabs button:not(.on) { background:transparent; color:var(--accent); border:1px solid var(--line); }
   .pick { border:1px solid var(--line); border-radius:8px; padding:10px; margin:6px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .pick span { flex:1; min-width:180px; }
+  .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--sys); color:var(--ink); font-weight:500; }
+  .ok { color:#2e8b57; } .bad { color:#c0392b; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; }
+  .stats div { border:1px solid var(--line); border-radius:8px; padding:8px 10px; } .stats b { display:block; font-size:20px; } .stats span { color:var(--muted); font-size:13px; }
+  li.model > span > div { font-size:13px; margin-top:2px; }
+  ul.plain li .badge { flex:none; min-width:0; }
+  #sheetModal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-start; justify-content:center; padding:24px 12px; overflow-y:auto; z-index:10; }
+  #sheetModal.hidden { display:none; }
+  #sheetModal > .card { width:100%; max-width:720px; margin:0; }
+  #sheetBody h4 { margin:14px 0 6px; } .abox { border:1px solid var(--line); border-radius:8px; padding:6px; text-align:center; display:flex; flex-direction:column; }
+  .abox b { font-size:18px; } body.modal-open { overflow:hidden; }
 </style>
 </head>
 <body>
-<header><h1>Taleforge <span class="muted">· временный клиент</span></h1><span id="whoami" class="muted"></span><button class="ghost hidden" id="logout">Выйти</button></header>
+<header><h1>Taleforge <span class="muted">· временный клиент</span></h1><span id="whoami" class="muted"></span><button class="ghost hidden" id="profileBtn">Профиль</button><button class="ghost hidden" id="logout">Выйти</button></header>
 <main>
   <section id="auth" class="card hidden">
     <div id="inviteInfo" class="hidden"><h3 id="inviteTitle"></h3><p id="inviteIntro" class="muted"></p><p class="muted">Войдите или зарегистрируйтесь — приглашение не потеряется.</p></div>
@@ -72,8 +83,7 @@
         <div><label>Пакет мира</label><select id="cPack"><option value="">без пакета (SRD)</option></select></div>
         <div><label>Сложность</label><select id="cDiff"><option value="easy">лёгкая</option><option value="normal" selected>обычная</option><option value="hard">сложная</option><option value="deadly">смертельная</option></select></div>
         <div><label>Игроков <span id="rec" class="muted"></span></label><input id="cPlayers" type="number" min="1" max="6" value="4"></div>
-        <div><label>Мастер</label><select id="cMaster"><option value="claude">ИИ-агент (Claude)</option><option value="local">ИИ-агент (LM Studio)</option><option value="owner">Я сам</option></select></div>
-        <div id="cModelBox" class="hidden"><label>Модель в LM Studio</label><input id="cModel" placeholder="например qwen2.5-14b-instruct"></div>
+        <div><label>Мастер <span id="cMasterHint" class="muted"></span></label><select id="cMaster"><option value="claude">ИИ: Claude (модель по умолчанию)</option><option value="owner">Я сам</option></select></div>
         <div><label>Проверка героев</label><select id="cReview"><option value="master">мастером</option><option value="auto">автоматически</option></select></div>
       </div>
       <label id="cPlaysBox" class="inline"><input type="checkbox" id="cPlays" checked> Я тоже играю: сразу занять место игрока</label>
@@ -84,9 +94,11 @@
 
   <section id="room" class="hidden">
     <div class="card row"><div><h3 id="roomTitle" style="margin:0"></h3><span id="roomStatus" class="muted"></span></div>
-      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button></div>
+      <div id="ownerTools" class="hidden" style="flex:0 0 auto"><button class="ghost" data-act="start">Начать сессию</button> <button class="ghost" data-act="pause">Пауза</button> <button class="ghost" id="inviteBtn">Приглашение</button> <button class="ghost" id="premadeBtn">Заготовить героя</button> <button class="ghost hidden" id="takeSeatBtn">Занять место игрока</button> <button class="ghost hidden" id="masterModelBtn">Модель мастера</button></div>
       <div style="flex:0 0 auto"><button class="ghost" id="backBtn">К кампаниям</button></div></div>
     <div class="card hidden" id="inviteOut"></div>
+    <div class="card hidden" id="masterModelCard"><h4 style="margin-top:0">Модель ИИ-мастера</h4><p class="muted" id="mmCurrent"></p>
+      <div class="row"><div><select id="mmSelect"></select></div><div style="flex:0 0 auto"><button id="mmSave">Сменить</button> <button class="ghost" id="mmClose">Закрыть</button></div></div><div class="err" id="mmErr"></div></div>
     <div class="card hidden" id="chooseCard"></div>
     <div id="game">
       <div><div class="card"><h4 style="margin-top:0">Места</h4><div id="seats"></div></div>
@@ -105,6 +117,37 @@
         <div class="muted" id="sendNote"></div>
       </div>
     </div>
+  </section>
+
+  <section id="profile" class="hidden">
+    <p><button class="ghost" id="pBack">К кампаниям</button></p>
+    <div class="card" id="pAccount"></div>
+    <div class="card"><h4 style="margin-top:0">Аккаунт</h4>
+      <div class="row"><div><label>Имя</label><input id="pNewName" autocomplete="username"></div><div style="flex:0 0 auto"><button class="ghost" id="pRenameBtn">Сохранить имя</button></div></div>
+      <div class="row"><div><label>Текущий пароль</label><input id="pOldPass" type="password" autocomplete="current-password"></div><div><label>Новый пароль (не короче 6)</label><input id="pNewPass" type="password" autocomplete="new-password"></div><div style="flex:0 0 auto"><button class="ghost" id="pPassBtn">Сменить пароль</button></div></div>
+      <div class="err" id="pAccErr"></div></div>
+    <div class="card"><h4 style="margin-top:0">Мои герои</h4><p class="muted">Герои профиля. В кампанию уходит копия: она развивается там отдельно, поэтому правка или удаление героя здесь её не меняет.</p>
+      <ul class="plain" id="pHeroList"></ul><p><button id="pNewHero">Создать героя</button></p></div>
+    <div class="card hidden" id="pModels"><h4 style="margin-top:0">Модели ИИ</h4>
+      <p class="muted">Модель, которую выбирают мастером кампании. Ключи провайдеров хранятся только в окружении сервера: здесь видно лишь, задан ли ключ.</p>
+      <ul class="plain" id="pProviders"></ul>
+      <h4>Настроенные модели</h4><ul class="plain" id="pModelList"></ul>
+      <p><button id="mNewBtn">Добавить модель</button></p>
+      <div class="card hidden" id="mForm"><h4 style="margin-top:0" id="mFormTitle"></h4>
+        <div class="row">
+          <div><label>Название</label><input id="mName" placeholder="например «Opus для кампаний»"></div>
+          <div><label>Провайдер</label><select id="mProvider"><option value="claude">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="local">Локальная (LM Studio)</option></select></div>
+          <div><label>Модель</label><input id="mModel" list="mLocalList"><datalist id="mLocalList"></datalist></div>
+          <div style="flex:0 0 110px"><label>Температура</label><input id="mTemp" type="number" min="0" max="2" step="0.1"></div>
+        </div>
+        <div class="row" id="mBaseBox"><div><label>Адрес LM Studio</label><input id="mBase"></div><div style="flex:0 0 auto"><button class="ghost" id="mLocalBtn">Загрузить модели из LM Studio</button></div></div>
+        <label id="mDefaultBox" class="inline"><input type="checkbox" id="mDefault"> Модель по умолчанию для новых кампаний</label>
+        <p class="row" style="flex-wrap:wrap"><button class="ghost" id="mTryBtn" style="flex:0 0 auto">Проверить связь</button><button id="mSave" style="flex:0 0 auto">Сохранить</button><button class="ghost" id="mCancel" style="flex:0 0 auto">Отмена</button></p>
+        <div id="mCheckOut"></div><div class="err" id="mErr"></div></div></div>
+    <div class="card hidden" id="pUsers"><h4 style="margin-top:0">Пользователи и роли</h4>
+      <ul class="plain" id="pUserList"></ul>
+      <div class="row"><div><label>Имя</label><input id="uName"></div><div><label>Пароль</label><input id="uPass" type="password" autocomplete="new-password"></div><div><label>Роль</label><select id="uRole"><option value="admin">Админ</option><option value="player">Игрок</option></select></div><div style="flex:0 0 auto"><button id="uCreate">Создать</button></div></div>
+      <div class="err" id="uErr"></div></div>
   </section>
 
   <section id="builder" class="card hidden">
@@ -144,7 +187,7 @@ async function api(path, opts = {}) {
   if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "ошибка сервера (" + res.status + ")");
   return data;
 }
-function show(id) { for (const s of ["auth","lobby","room","builder"]) $(s).classList.toggle("hidden", s !== id); }
+function show(id) { for (const s of ["auth","lobby","room","builder","profile"]) $(s).classList.toggle("hidden", s !== id); }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
 // --- вход ---
@@ -161,7 +204,7 @@ async function boot() {
   }
   if (token) { try { me = await api("/api/auth/me"); } catch { token = null; store.set("tf_token", null); } }
   if (!me) { setAuthMode(inv ? "signup" : "login"); return show("auth"); }
-  $("whoami").textContent = me.name + (me.platform_role !== "player" ? " · " + me.platform_role : ""); $("logout").classList.remove("hidden");
+  setWhoami(); $("logout").classList.remove("hidden");
   if (inv) {
     sstore.set("tf_invite", null);
     try { const c = await api(`/api/invites/${inv}/accept`, { method: "POST" }); return openRoom(c.id); }
@@ -190,12 +233,12 @@ async function lobby() {
     $("createCard").classList.remove("hidden");
     const packs = await api("/api/packs").catch(() => []);
     $("cPack").innerHTML = '<option value="">без пакета (SRD)</option>' + packs.map(p => `<option value="${esc(p.id)}">${esc(p.name)} ${esc(p.version)}</option>`).join("");
-    updateRec();
+    updateRec(); fillMasterSelect();
   }
 }
 async function loadLibrary() {
   library = await api("/api/me/characters").catch(() => []);
-  $("library").innerHTML = library.length ? library.map(h => `<li><span><b>${esc(h.name || "без имени")}</b> <span class="muted">${esc([h.origin_name, h.class_name].filter(Boolean).join(", ") || "не собран")}${h.errors?.length ? " · не закончен" : ""}</span></span><button class="ghost" data-libedit="${h.id}">Изменить</button><button class="ghost" data-libdel="${h.id}">Удалить</button></li>`).join("") : '<li class="muted">Пока нет героев.</li>';
+  $("library").innerHTML = libraryListHtml(library);
 }
 async function updateRec() {
   const q = new URLSearchParams({ difficulty: $("cDiff").value }); if ($("cPack").value) q.set("pack_id", $("cPack").value);
@@ -205,9 +248,9 @@ async function updateRec() {
 $("cDiff").onchange = updateRec; $("cPack").onchange = updateRec;
 $("createBtn").onclick = async () => {
   try {
-    const m = $("cMaster").value;
+    const master = masterChoice();
     const c = await api("/api/campaigns", { method: "POST", body: { name: $("cName").value, pack_id: $("cPack").value || null, difficulty: $("cDiff").value, players: +$("cPlayers").value, public_intro: $("cIntro").value,
-      master: m === "owner" ? { type: "owner" } : { type: "agent", provider: m, model: $("cModel").value || null }, creation_rules: { review: $("cReview").value }, owner_plays: m !== "owner" && $("cPlays").checked } });
+      master, creation_rules: { review: $("cReview").value }, owner_plays: master.type !== "owner" && $("cPlays").checked } });
     openRoom(c.id);
   } catch (e) { $("createErr").textContent = e.message; }
 };
@@ -218,7 +261,8 @@ async function openRoom(id) {
   room = await api("/api/campaigns/" + id); mySeat = room.my_seat_id;
   $("roomTitle").textContent = room.name; $("roomStatus").textContent = room.status;
   const manage = room.is_owner || room.my_role === "master";
-  $("ownerTools").classList.toggle("hidden", !manage);
+  $("ownerTools").classList.toggle("hidden", !manage); $("masterModelCard").classList.add("hidden");
+  $("masterModelBtn").classList.toggle("hidden", !(room.is_owner && room.seats.some(s => s.role === "master" && s.occupant_type === "agent")));
   $("inviteBtn").classList.toggle("hidden", !room.is_owner);
   $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !room.my_seat_id));
   connect();
@@ -245,7 +289,7 @@ function handle(e) {
   if (e.type === "presence.changed") { const s = seatsById[e.payload.seat_id]; if (s) { s.presence = e.payload.status; renderSeats(); } return; }
   if (e.type === "seat.changed" || e.type.startsWith("session.")) { ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } })); return; }
   if (e.type === "character.sheet" || e.type === "character.reviewed") { if (e.payload.character) { hero = e.payload.character; renderHero(); } else loadHeroes(); if (e.type === "character.reviewed") addMsg({ kind: "system", content: e.payload.status === "approved" ? "Мастер одобрил героя." + (e.payload.comment ? " " + e.payload.comment : "") : "Мастер вернул героя: " + (e.payload.comment || "") }); return; }
-  if (e.type === "character.updated") { loadHeroes(); return; }
+  if (e.type === "character.updated" || e.type === "character.review_failed") { loadHeroes(); return; }
   if (e.type === "master.status") { const st = { listening: "Мастер слушает…", remembering: "Мастер вспоминает…", rolling: "Мастер бросает кубики…", describing: "Мастер описывает…", idle: "" }; $("masterStatus").textContent = st[e.payload.stage] ?? ""; return; }
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
@@ -310,8 +354,10 @@ async function loadHeroes() {
   renderHero(); renderChoose();
   const manage = room.is_owner || room.my_role === "master";
   const waiting = list.filter(c => c.status === "submitted");
-  $("reviewCard").classList.toggle("hidden", !(room.my_role === "master" && waiting.length));
-  $("reviewCard").innerHTML = "<b>Ждут проверки</b>" + waiting.map(c => `<div class="seat">${esc(c.name)} <button class="ghost" data-look="${c.id}">Смотреть</button></div>`).join("");
+  // чужих героев на проверке сервер отдаёт только тому, кто может их проверить: мастеру или владельцу при ИИ-мастере
+  const toReview = waiting.filter(c => !mySeat || c.seat_id !== mySeat);
+  $("reviewCard").classList.toggle("hidden", !toReview.length);
+  $("reviewCard").innerHTML = "<b>Ждут проверки</b>" + toReview.map(c => `<div class="seat">${esc(c.name)}${c.review_error ? ' <span class="bad">ИИ не проверил</span>' : c.reviewer === "ai" ? ' <span class="muted">у ИИ-мастера</span>' : ""} <button class="ghost" data-sheet="${c.id}" data-sheet-kind="review">Проверить</button></div>`).join("");
   $("premadesCard").classList.toggle("hidden", !(manage && premades.length));
   $("premadesCard").innerHTML = "<b>Готовые герои</b>" + premades.map(c => `<div class="seat">${esc(c.name || "без имени")}${c.errors?.length ? ' <span class="muted">(не закончен)</span>' : ""} <button class="ghost" data-preedit="${c.id}">Изменить</button> <button class="ghost" data-predel="${c.id}">×</button></div>`).join("");
 }
@@ -333,14 +379,15 @@ function renderHero() {
   if (room.my_role !== "player" || !hero) { box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
   const d = hero.derived || {}, r = hero.resources || {};
-  let html = `<b>${esc(hero.name || "без имени")}</b> <span class="muted">· ${ST_RU[hero.status] || hero.status}</span>`;
+  let html = `<b>${esc(hero.name || "без имени")}</b> <span class="muted">· ${statusText(hero)}</span>`;
+  if (hero.review_error) html += `<p class="bad">ИИ-мастер не смог проверить героя: ${esc(hero.review_error.replace(/ \(.*$/s, ""))}. Владелец кампании может проверить его сам.</p><p><button class="ghost" data-retryai="${hero.id}">Повторить проверку ИИ</button></p>`;
   if (hero.review_comment) html += `<p class="muted">Мастер: ${esc(hero.review_comment)}</p>`;
   if (r.hp_max) html += `<div>Хиты ${r.hp}/${r.hp_max}${r.temp_hp ? " (+" + r.temp_hp + ")" : ""} · КД ${d.ac ?? "?"}</div>`;
   if (d.abilities) html += `<div class="muted">${AB.map(a => `${AB_RU[a]} ${d.abilities[a]}`).join(" · ")}</div>`;
   if (d.attacks?.length) html += `<div>Атаки:<ul>${d.attacks.map(a => `<li>${esc(a.name)} +${a.attack_bonus}, ${esc(a.damage)}</li>`).join("")}</ul></div>`;
   if (d.effects?.length) html += `<div>Состояния: ${d.effects.map(e => esc(e.name)).join(", ")}</div>`;
   if (hero.inventory?.length) html += `<div>Снаряжение:<ul>${hero.inventory.map(i => `<li>${esc(i.name)}${i.qty > 1 ? " ×" + i.qty : ""}${i.equipped ? " (надето)" : ""}</li>`).join("")}</ul></div>`;
-  if (hero.status === "draft") html += `<button id="editHero">Продолжить создание</button>`;
+  html += `<p class="row" style="flex-wrap:wrap">${hero.status === "draft" ? '<button id="editHero" style="flex:0 0 auto">Продолжить создание</button>' : ""}<button class="ghost" id="heroSheetBtn" style="flex:0 0 auto">Лист героя</button></p>`;
   box.innerHTML = html;
 }
 
@@ -351,7 +398,7 @@ const MODES = {
   library: { title: "Герой профиля", save: "Сохранить героя", submit: false },
 };
 async function openBuilder(mode, obj) {
-  bctx = { mode, obj: obj || null, back: room ? "room" : "lobby" };
+  bctx = { mode, obj: obj || null, back: room ? "room" : !$("profile").classList.contains("hidden") ? "profile" : "lobby" };
   opts = await api(mode === "library" ? "/api/me/character-options" : `/api/campaigns/${room.id}/character-options`);
   const methods = opts.ability_methods.filter(m => mode !== "premade" || m !== "roll");
   $("bTitle").textContent = MODES[mode].title; $("bSave").textContent = MODES[mode].save; $("bSubmit").classList.toggle("hidden", !MODES[mode].submit);
@@ -365,7 +412,7 @@ async function openBuilder(mode, obj) {
   $("bErr").textContent = (obj?.errors || []).join("; ");
   renderBuilder(s); show("builder"); window.scrollTo(0, 0);
 }
-function closeBuilder() { const back = bctx?.back || "lobby"; bctx = null; if (back === "room" && room) { show("room"); loadHeroes(); } else lobby(); }
+function closeBuilder() { const back = bctx?.back || "lobby"; bctx = null; if (back === "room" && room) { show("room"); loadHeroes(); } else if (back === "profile") openProfile(); else lobby(); }
 function renderBuilder(s = {}) {
   const cls = opts.classes.find(c => c.id === $("bClass").value), org = opts.origins.find(o => o.id === $("bOrigin").value), m = $("bMethod").value;
   const rolls = bctx?.obj?.sheet?.ability_rolls;
@@ -424,7 +471,7 @@ document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (["bClass", "bOrigin", "bMethod"].includes(t.id)) renderBuilder(builderData());
   if (t.dataset.eq !== undefined) { const cls = opts.classes.find(c => c.id === $("bClass").value); document.querySelector(`[data-eqx="${t.dataset.eq}"]`).innerHTML = weaponPicks(cls.equipment_choices[+t.dataset.eq][+t.value] || [], [], t.dataset.eq); }
-  if (t.id === "cMaster") { $("cModelBox").classList.toggle("hidden", t.value !== "local"); $("cPlaysBox").classList.toggle("hidden", t.value === "owner"); }
+  if (t.id === "cMaster") $("cPlaysBox").classList.toggle("hidden", t.value === "owner");
 });
 document.addEventListener("click", async (ev) => {
   const t = ev.target.closest("button"); if (!t) return;
@@ -434,9 +481,9 @@ document.addEventListener("click", async (ev) => {
     if (t.dataset.del && confirm("Удалить кампанию безвозвратно?")) { await api("/api/campaigns/" + t.dataset.del, { method: "DELETE" }); return lobby(); }
     if (t.dataset.kick) { await api(`${base}/seats/${t.dataset.kick}/occupant`, { method: "DELETE" }); return; }
     if (t.dataset.act) { await api(`${base}/session/${t.dataset.act}`, { method: "POST" }); return; }
-    if (t.id === "newLibHero") return openBuilder("library", null);
+    if (t.id === "newLibHero" || t.id === "pNewHero") return openBuilder("library", null);
     if (t.dataset.libedit) return openBuilder("library", await api(`/api/me/characters/${t.dataset.libedit}`));
-    if (t.dataset.libdel && confirm("Удалить героя из профиля? Его копии в кампаниях останутся.")) { await api(`/api/me/characters/${t.dataset.libdel}`, { method: "DELETE" }); return loadLibrary(); }
+    if (t.dataset.libdel && confirm("Удалить героя из профиля? Его копии в кампаниях останутся.")) { await api(`/api/me/characters/${t.dataset.libdel}`, { method: "DELETE" }); return $("profile").classList.contains("hidden") ? loadLibrary() : loadProfileHeroes(); }
     if (t.id === "premadeBtn") return openBuilder("premade", null);
     if (t.dataset.preedit) return openBuilder("premade", premades.find(p => p.id === t.dataset.preedit));
     if (t.dataset.predel && confirm("Удалить заготовку?")) { await api(`${base}/premades/${t.dataset.predel}`, { method: "DELETE" }); return loadHeroes(); }
@@ -453,7 +500,6 @@ document.addEventListener("click", async (ev) => {
     if (t.id === "bSave") { await saveBuilder(); if (bctx.mode !== "campaign" && !bctx.obj.errors?.length) closeBuilder(); return; }
     if (t.id === "bRoll") return rollBuilder();
     if (t.id === "bSubmit") { await saveBuilder(); if (bctx.obj.errors?.length) return; const errs = await submitHero(bctx.obj.id); if (errs.length) { $("bErr").textContent = errs.join("; "); return; } return closeBuilder(); }
-    if (t.dataset.look) { const c = await api(`${base}/characters/${t.dataset.look}`); const comment = prompt(`${c.name}: ${c.public_bio || ""}\n\nТайная история: ${c.private_backstory || "—"}\n\nОставьте поле пустым, чтобы одобрить, или напишите, что исправить:`); if (comment === null) return; await api(`${base}/characters/${c.id}/review`, { method: "POST", body: { approve: !comment, comment: comment || "" } }); return loadHeroes(); }
   } catch (e) { if (bctx) $("bErr").textContent = e.message; else alert(e.message); }
 });
 $("backBtn").onclick = () => { room = null; lobby(); };
@@ -461,7 +507,10 @@ $("inviteBtn").onclick = async () => { try { const i = await api(`/api/campaigns
 function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; $("sendNote").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }
 $("sendBtn").onclick = send; $("passBtn").onclick = () => ws && ws.send(JSON.stringify({ type: "turn.pass", payload: {} })); $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
 setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "ping" })), 25000);
-boot();
 </script>
+<div id="sheetModal" class="hidden"><div class="card"><div class="row" style="align-items:start"><div id="sheetBody"></div><div style="flex:0 0 auto"><button class="ghost" id="sheetClose">Закрыть</button></div></div><div id="sheetActions"></div><div class="err" id="sheetErr"></div></div></div>
+<script src="/static/profile.js"></script>
+<script src="/static/heroes.js"></script>
+<script>boot();</script>
 </body>
 </html>

@@ -54,6 +54,7 @@ class LLM(Protocol):
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         temperature: float | None = None,
+        api_base: str | None = None,
     ) -> LLMReply: ...
 
 
@@ -91,10 +92,13 @@ class LiteLLMClient:
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int = 4096,
         temperature: float | None = None,
+        api_base: str | None = None,
     ) -> LLMReply:
         import litellm
 
         kwargs: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
+        if api_base:
+            kwargs["api_base"] = api_base
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
@@ -144,8 +148,10 @@ class ScriptedLLM:
         self.requests: list[dict[str, Any]] = []
         self.parser_requests: list[dict[str, Any]] = []
 
-    async def complete(self, messages, *, model, tools=None, max_tokens=4096, temperature=None) -> LLMReply:
-        req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model}
+    async def complete(
+        self, messages, *, model, tools=None, max_tokens=4096, temperature=None, api_base=None
+    ) -> LLMReply:
+        req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
         if _is_parser(tools) and not self._next_is_intent():
             # Парсер намерений в тестах, где его ответ не задан: действие без разбора, мастер решает сам.
             # Такие запросы идут в parser_requests, чтобы не сдвигать нумерацию запросов мастера.

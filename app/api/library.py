@@ -33,7 +33,7 @@ async def create_hero(body: CharacterIn, user: UserDep, session: SessionDep) -> 
 
 @router.get("/characters/{library_id}")
 async def get_hero(library_id: str, user: UserDep, session: SessionDep) -> dict:
-    return svc.view(await svc.get_mine(session, user, library_id), await svc.base_catalog(session))
+    return await svc.detail(session, await svc.get_mine(session, user, library_id), await svc.base_catalog(session))
 
 
 @router.put("/characters/{library_id}")

@@ -61,6 +61,25 @@ class AgentConfig(Base):
     settings: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
+class ModelProfile(Base):
+    """Модель ИИ, настроенная админом: провайдер, имя модели, адрес локального сервера. Кампания при создании
+    копирует профиль в AgentConfig мастера. Ключи провайдеров — только в окружении сервера, не здесь."""
+
+    __tablename__ = "model_profiles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("mp"))
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    provider: Mapped[str] = mapped_column(String(16))  # claude | gemini | local
+    model: Mapped[str] = mapped_column(String(128), default="")
+    api_base: Mapped[str | None] = mapped_column(String(255))  # только local: адрес LM Studio
+    temperature: Mapped[float] = mapped_column(Float, default=0.8)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    last_check: Mapped[dict[str, Any]] = mapped_column(default=dict)  # {ok, at, latency_ms, reply, error, model}
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 # --- Пакеты контента (раздел 3.2) ---
 
 
