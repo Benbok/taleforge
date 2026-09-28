@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
-from app.api import admin, auth, campaigns, characters, library, models, personas, plan, profile
+from app.api import admin, auth, campaigns, characters, home, library, models, personas, plan, profile
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
@@ -26,6 +26,7 @@ from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
 STATIC = Path(__file__).parent / "web" / "static"
+DIST = Path(__file__).parent / "web" / "dist"  # сборка нового клиента (web/, npm run build)
 
 
 async def bootstrap_superadmin(maker, settings: Settings) -> None:
@@ -84,6 +85,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(admin.router)
     app.include_router(campaigns.router)
     app.include_router(characters.router)
+    app.include_router(home.router)
     app.include_router(library.router)
     app.include_router(models.router)
     app.include_router(personas.router)
@@ -95,17 +97,34 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     async def health() -> dict:
         return {"status": "ok"}
 
-    # Временный веб-клиент для проверки каркаса. Настоящий интерфейс — этап «Интерфейс» (React).
-    @app.get("/", include_in_schema=False)
-    @app.get("/invite/{token}", include_in_schema=False)
-    async def index(token: str | None = None) -> FileResponse:
+    # Прежний клиент на чистом JS живёт по адресу /legacy, пока новый (web/, React) не повторит всё, что он умеет.
+    # Без сборки нового клиента (разработка сервера, тесты) прежний отдаётся и на /.
+    @app.get("/legacy", include_in_schema=False)
+    async def legacy() -> FileResponse:
         return FileResponse(STATIC / "index.html")
 
     @app.get("/static/{name}.js", include_in_schema=False)
     async def script(name: str) -> FileResponse:
-        if name not in ("profile", "heroes", "preparation"):
+        if name not in ("profile", "heroes", "masterlog", "preparation"):
             raise HTTPException(404)
         return FileResponse(STATIC / f"{name}.js", media_type="text/javascript")
+
+    @app.get("/assets/{name}", include_in_schema=False)
+    async def asset(name: str) -> FileResponse:
+        path = DIST / "assets" / name
+        if "/" in name or not path.is_file():
+            raise HTTPException(404)
+        return FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+    # Все остальные адреса — страницы одностраничного клиента, маршруты разбирает он сам.
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa(path: str) -> FileResponse:
+        if path.startswith(("api/", "assets/", "static/")) or path == "ws":
+            raise HTTPException(404)
+        index = DIST / "index.html"
+        if not index.is_file():
+            return FileResponse(STATIC / "index.html")
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
     return app
 

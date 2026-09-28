@@ -1,6 +1,6 @@
 id: echo-leviathans
 name: "Эхо Левиафанов"
-version: 0.1.0
+version: 0.1.1
 ruleset: dnd5e
 ruleset_base: srd-5.1
 license: "Setting: © Arty. Rules base: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0"
@@ -14,3 +14,41 @@ source_docs:
   locations: design/setting/locations.md
   items: design/setting/items.md
   decisions: design/setting/open-questions.md
+# Вид интерфейса: тёмная медь и бирюза ликвора на графите. Раскладку и виджеты пакет не меняет.
+theme:
+  dark:
+    bg: "#121417"
+    surface: "#1a1d21"
+    raised: "#23272c"
+    border: "#353b42"
+    text: "#e6e1d8"
+    muted: "#9d978c"
+    accent: "#b87333"
+    accent_text: "#121417"
+    entity_creature: "#d9604f"
+    entity_npc: "#4fb8b0"
+    entity_item: "#c9a24a"
+    entity_location: "#7fae6e"
+    entity_lore: "#8f959c"
+  light:
+    bg: "#f3f0ea"
+    surface: "#fbfaf7"
+    raised: "#e9e4da"
+    border: "#cfc7b8"
+    text: "#1c1e21"
+    muted: "#5a554c"
+    accent: "#8a4f1d"
+    accent_text: "#ffffff"
+    entity_creature: "#a8352a"
+    entity_npc: "#1f6f6a"
+    entity_item: "#7d6112"
+    entity_location: "#3f6b30"
+    entity_lore: "#5a5f66"
+  fonts:
+    narration: "'Lora', Georgia, serif"
+    ui: "'IBM Plex Sans', system-ui, sans-serif"
+    heading: "'Lora', Georgia, serif"
+  font_css: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+  labels:
+    master_status.remembering: "Мастер поднимает хроники…"
+    origin: "Происхождение"

@@ -225,6 +225,8 @@ let hero = null, premades = [], library = [], opts = null, bctx = null, authMode
 const urlInvite = (location.pathname.match(/^\/invite\/([^/]+)/) || [])[1];
 if (urlInvite) { sstore.set("tf_invite", urlInvite); history.replaceState(null, "", "/"); }
 const pendingInvite = () => sstore.get("tf_invite");
+// новый клиент открывает здесь игру кампании: /legacy?campaign=<id>
+const urlCampaign = new URLSearchParams(location.search).get("campaign");
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
@@ -256,6 +258,7 @@ async function boot() {
     try { const c = await api(`/api/invites/${inv}/accept`, { method: "POST" }); return openRoom(c.id); }
     catch (e) { await lobby(); $("pendingInvite").classList.remove("hidden"); $("pendingInvite").textContent = "Приглашение не принято: " + e.message; return; }
   }
+  if (urlCampaign) { history.replaceState(null, "", location.pathname); try { return await openRoom(urlCampaign); } catch { /* нет доступа — в лобби */ } }
   lobby();
 }
 $("tabLogin").onclick = () => setAuthMode("login"); $("tabSignup").onclick = () => setAuthMode("signup");
