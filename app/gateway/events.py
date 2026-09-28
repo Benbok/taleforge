@@ -14,7 +14,9 @@ def envelope(type_: str, campaign_id: str | None, payload: dict[str, Any], seq: 
     return {"type": type_, "campaign_id": campaign_id, "seq": seq, "payload": payload}
 
 
-async def publish_message(bus, msg: Message, names: dict[str, str] | None = None) -> None:
+async def publish_message(bus, msg: Message, names: dict[str, str] | None = None, state: str | None = None) -> None:
     await bus.publish(
-        msg.campaign_id, envelope("message.new", msg.campaign_id, message_payload(msg, names), msg.seq), msg.visible_to
+        msg.campaign_id,
+        envelope("message.new", msg.campaign_id, message_payload(msg, names, state), msg.seq),
+        msg.visible_to,
     )

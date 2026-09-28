@@ -49,6 +49,7 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
     owner = await session.get(User, c.owner_id)
     names[c.owner_id] = owner.name
     msgs = await chat.history(session, viewer, last_seq, history_limit)
+    states = await chat.message_states(session, c, msgs)
     game = await chat.active_session(session, c.id)
     online = hub.online_users(c.id) | {viewer.user.id}
     return envelope(
@@ -79,8 +80,9 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
             "heroes": await _heroes(session, c.id),
             "scene": await _scene(session, c),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
-            "messages": [chat.message_payload(m, names) for m in msgs],
+            "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
             "replay": last_seq is not None,
+            "collect_window_sec": int((c.settings or {}).get("collect_window_sec", 60)),
         },
         seq=c.last_seq,
     )
@@ -340,11 +342,12 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
                 m.intent = parsed.intent
             await session.commit()
             names = await _names(session, viewer.campaign)
+            state = (await chat.message_states(session, viewer.campaign, [m])).get(m.id)
         except (Conflict, AccessDenied, NotFound) as e:
             await session.rollback()
             await reject(str(e))
             return
-    await publish_message(bus, m, names)
+    await publish_message(bus, m, names, state)
     if parsed is not None and parsed.notice:
         await conn.send(envelope("message.notice", conn.campaign_id, {"text": parsed.notice, "message_id": m.id}))
     if m.kind in MASTER_TRIGGER_KINDS:
