@@ -63,7 +63,9 @@ def model_for(provider: str, model: str | None) -> str:
     модель нужно указать при создании кампании."""
     if model:
         prefix = PROVIDER_PREFIX.get(provider, "")
-        return model if "/" in model or not prefix else prefix + model
+        if prefix and not model.startswith(prefix):
+            return prefix + model
+        return model
     if provider in DEFAULT_MODELS:
         return DEFAULT_MODELS[provider]
     raise LLMError(f"для провайдера {provider} укажите модель в настройках мастера кампании")
