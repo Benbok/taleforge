@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agents.llm import ScriptedLLM
-from app.db.models import MasterTurn, Message  # noqa: F401
+from app.db.models import MasterTurn, Message
 from app.main import create_app
 from tests.conftest import login
 from tests.game import QueueDice, import_base, ok, party, run
@@ -122,3 +122,68 @@ def test_no_pending_state_when_session_paused(client, admin):
     with connect(client, p1, c["id"]) as (_, snap):
         states = {m["id"]: m["state"] for m in snap["payload"]["messages"]}
         assert states[a["id"]] is None and snap["payload"]["pending"] is None
+
+
+def withdraw(ws, mid):
+    ws.send_json({"type": "message.withdraw", "payload": {"message_id": mid}})
+    for _ in range(20):
+        e = ws.receive_json()
+        if e["type"] in ("message.withdrawn", "message.rejected") and (
+            "text" in e["payload"] or e["type"] == "message.rejected"
+        ):
+            return e
+    raise AssertionError("нет ответа на отмену")
+
+
+def test_withdraw_own_pending(client, admin, settings):
+    c, (p1,), _ = party(client, admin)
+    with connect(client, p1, c["id"]) as (ws, _):
+        m = say(ws, "Лезу на стену")["payload"]
+        e = withdraw(ws, m["id"])
+        assert e["payload"] == {"id": m["id"], "seq": m["seq"], "text": "Лезу на стену"}
+        assert say(ws, "Прыгаю на уступ")["type"] == "message.new"  # ограничение снято
+    assert run(settings, lambda s: s.get(Message, m["id"])) is None
+    with connect(client, p1, c["id"], last_seq=0) as (_, snap):  # досылка не возвращает отменённое
+        assert m["id"] not in {x["id"] for x in snap["payload"]["messages"]}
+
+
+def test_others_see_withdrawn(client, admin):
+    c, (p1, p2), _ = party(client, admin, players=2)
+    with connect(client, p2, c["id"]) as (ws2, _):
+        with connect(client, p1, c["id"]) as (ws1, _):
+            m = say(ws1, "Лезу на стену")["payload"]
+            withdraw(ws1, m["id"])
+        e = next_of(ws2, "message.withdrawn")
+        assert e["payload"] == {"id": m["id"], "seq": m["seq"]}
+
+
+def test_withdraw_refused_for_taken_and_foreign(client, admin, settings):
+    c, (p1, p2), _ = party(client, admin, players=2)
+    with connect(client, p1, c["id"]) as (ws1, _):
+        m = say(ws1, "Лезу на стену")["payload"]
+        with connect(client, p2, c["id"]) as (ws2, _):
+            e = withdraw(ws2, m["id"])
+            assert e["type"] == "message.rejected" and e["payload"]["reason"] == "Эту реплику отменить нельзя."
+            assert withdraw(ws2, "m_nope")["payload"]["reason"] == "Эту реплику отменить нельзя."
+        add_turn(settings, c["id"], m["seq"], "running")
+        e = withdraw(ws1, m["id"])
+        assert e["type"] == "message.rejected" and e["payload"]["reason"] == "Мастер уже отвечает на эту реплику."
+
+
+def test_withdraw_in_combat_clears_submitted(client, admin, settings):
+    from app.db.models import Scene
+
+    c, (p1,), hero = party(client, admin)
+
+    async def fight(s):
+        sc = await s.get(Scene, c["id"])
+        sc.mode, sc.turn_order, sc.state = "combat", [{"id": hero["id"], "initiative": 10}], {"turn": 0}
+        await s.commit()
+
+    run(settings, fight)
+    with connect(client, p1, c["id"]) as (ws, _):
+        m = say(ws, "Бью мечом")["payload"]
+        assert run(settings, lambda s: s.get(Scene, c["id"])).state["submitted"] is True
+        withdraw(ws, m["id"])
+    assert run(settings, lambda s: s.get(Scene, c["id"])).state["submitted"] is False
+

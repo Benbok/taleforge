@@ -214,3 +214,24 @@ async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[M
         else:
             out[m.id] = TURN_STATES.get(t[1], "answered")
     return out
+
+
+async def withdraw_message(session: AsyncSession, viewer: Viewer, message_id: str) -> Message:
+    """Игрок отменяет свою реплику, пока её не взял ход ИИ-мастера. Реплика удаляется."""
+    m = await session.get(Message, message_id)
+    seat = viewer.seat
+    if (
+        m is None
+        or m.campaign_id != viewer.campaign.id
+        or seat is None
+        or m.seat_id != seat.id
+        or m.kind not in PENDING_KINDS
+        or not await _ai_live(session, viewer.campaign)
+    ):
+        raise Conflict("Эту реплику отменить нельзя.")
+    if m.seq <= await claimed_upto(session, viewer.campaign.id):
+        raise Conflict("Мастер уже отвечает на эту реплику.")
+    await session.delete(m)
+    await session.flush()
+    return m
+

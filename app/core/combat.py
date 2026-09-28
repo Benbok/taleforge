@@ -378,3 +378,17 @@ async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str 
         if mark:
             sc.state = {**st, "submitted": True}
     return None
+
+
+async def unsubmit(session, viewer) -> None:
+    """Отменённое действие освобождает ход: заявку можно сделать заново."""
+    from app.core.world import get_scene
+
+    sc = await get_scene(session, viewer.campaign.id)
+    st = dict(sc.state or {})
+    if sc.mode != "combat" or not sc.turn_order or not st.get("submitted") or viewer.seat is None:
+        return
+    ch = await session.get(Character, sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"])
+    if ch is not None and ch.seat_id == viewer.seat.id:
+        sc.state = {**st, "submitted": False}
+

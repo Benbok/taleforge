@@ -3,6 +3,7 @@
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
 ``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
 (``vote.cast``) пока отвечают ``error: not_implemented``.
+``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
@@ -212,6 +213,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _send(app, user, conn, payload)
                 continue
 
+            if kind == "message.withdraw":
+                await _withdraw(app, user, conn, payload)
+                continue
+
             if kind == "turn.pass":
                 # в фоне: ходы существ могут ждать кнопку реакции от этого же сокета
                 _background(_turn_pass(app, user, conn))
@@ -352,6 +357,29 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
         await conn.send(envelope("message.notice", conn.campaign_id, {"text": parsed.notice, "message_id": m.id}))
     if m.kind in MASTER_TRIGGER_KINDS:
         app.state.master.notify(conn.campaign_id)
+
+
+async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
+    """Игрок отменяет ожидающую реплику: она исчезает у всех, автору текст возвращается в поле ввода."""
+    maker, bus = app.state.sessionmaker, app.state.bus
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+            m = await chat.withdraw_message(session, viewer, str(payload.get("message_id") or ""))
+            gone = {"id": m.id, "seq": m.seq}
+            text, visible_to = m.content, m.visible_to
+            if m.kind == "action":
+                await combat.unsubmit(session, viewer)
+            await session.commit()
+            actions = await available(session, viewer)
+        except (Conflict, NotFound) as e:
+            await session.rollback()
+            await conn.send(envelope("message.rejected", conn.campaign_id, {"reason": str(e)}))
+            return
+    await bus.publish(conn.campaign_id, envelope("message.withdrawn", conn.campaign_id, gone), visible_to)
+    await conn.send(envelope("message.withdrawn", conn.campaign_id, {**gone, "text": text}))
+    await conn.send(envelope("state.actions", conn.campaign_id, actions))
+
 
 
 _tasks: set[asyncio.Task] = set()
