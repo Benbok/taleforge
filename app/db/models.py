@@ -327,6 +327,23 @@ class MasterTurn(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Summary(Base):
+    """Сводка кампании (раздел 9): прошлая сводка + новые сообщения → новая версия; старые версии хранятся.
+    ``rolling`` — каждые N сообщений, ``session`` — в конце сессии (по ней мастер открывает следующую)."""
+
+    __tablename__ = "summaries"
+    __table_args__ = (UniqueConstraint("campaign_id", "version"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sm"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    kind: Mapped[str] = mapped_column(String(16))  # rolling | session
+    version: Mapped[int] = mapped_column(Integer)
+    upto_seq: Mapped[int] = mapped_column(Integer)  # сообщения до этого seq учтены
+    content: Mapped[dict[str, Any]] = mapped_column(default=dict)  # квесты, события, NPC, нити, обещания, пересказ
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Event(Base):
     """Журнал изменений состояния. Любое изменение мира — событие с кубиками и обратной дельтой."""
 

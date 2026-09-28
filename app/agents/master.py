@@ -29,6 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents import intent as intents
+from app.agents import memory
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.core import combat
 from app.core.campaigns import master_seat
@@ -42,6 +43,7 @@ from app.db.models import (
     MasterTurn,
     Message,
     Scene,
+    Summary,
     User,
     as_utc,
     now,
@@ -88,6 +90,7 @@ class MasterService:
         self._background: set[asyncio.Task] = set()
         self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
         self._reactions: dict[str, tuple[str, asyncio.Future]] = {}  # prompt_id → (место, ответ)
+        self._summarizing: set[str] = set()
 
     # --- очередь ---
 
@@ -100,7 +103,13 @@ class MasterService:
         self._tasks[campaign_id] = asyncio.create_task(self._loop(campaign_id))
 
     def schedule_review(self, campaign_id: str, character_id: str) -> None:
-        t = asyncio.create_task(self.review_character(campaign_id, character_id))
+        self._spawn(self.review_character(campaign_id, character_id))
+
+    def schedule_summary(self, campaign_id: str, kind: str = "rolling", session_id: str | None = None) -> None:
+        self._spawn(self.summarize(campaign_id, kind, session_id=session_id))
+
+    def _spawn(self, coro) -> None:
+        t = asyncio.create_task(coro)
         self._background.add(t)
         t.add_done_callback(self._background.discard)
 
@@ -227,6 +236,7 @@ class MasterService:
                 published = await self._play(s, cid, turn_id, calls)
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
             await self.after_turn(published["ctx"])
+            self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
             async with self.maker() as s:
@@ -345,12 +355,14 @@ class MasterService:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
 
         await self._status(cid, "remembering")
+        memory_note = await self._memory_block(s, c, ctx, new)
         msgs: list[dict] = [
             {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": (
-                    f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\nТаблица сцены:\n{ctx.world.scene_table()}\n\n"
+                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n"
+                    f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
                     "Когда все действия закрыты, ответь одним словом «готово» без вызовов."
@@ -512,6 +524,93 @@ class MasterService:
             dc_scale=dc,
             max_calls=MAX_CALLS,
         )
+
+    # --- память (раздел 9) ---
+
+    async def _memory_block(self, s, c: Campaign, ctx: ToolContext, new: list[Message]) -> str:
+        """Сводка кампании и фрагменты правил и лора, найденные по новым репликам и месту действия."""
+        parts = []
+        last = await memory.latest(s, c.id)
+        text = memory.render_content(last.content) if last else ""
+        if text:
+            parts.append("Сводка кампании (без чисел: числа только в таблице сцены):\n" + text)
+        loc = ctx.world.entities.get(ctx.world.scene.location_id or "")
+        query = " ".join(
+            [m.content for m in new]
+            + [intents.describe(m.intent) for m in new if m.intent]
+            + ([loc.name] if loc else [])
+        )
+        found = memory.knowledge_block(ctx.world.catalog, query)
+        if found:
+            parts.append(found)
+        return "".join(p + "\n\n" for p in parts)
+
+    async def summarize(self, cid: str, kind: str = "rolling", *, session_id: str | None = None, force=False):
+        """Новая версия сводки. ``rolling`` — только если набралось ``summary_every`` публичных сообщений,
+        ``session`` — в конце сессии, если есть что добавить. Сбой модели сводку просто пропускает."""
+        if cid in self._summarizing:
+            return None
+        self._summarizing.add(cid)
+        try:
+            async with self.maker() as s:
+                c = await s.get(Campaign, cid)
+                seat = master_seat(c) if c else None
+                if c is None or seat is None or seat.occupant_type != "agent":
+                    return None
+                prev = await memory.latest(s, cid)
+                after = prev.upto_seq if prev else 0
+                every = int((c.settings or {}).get("summary_every") or memory.SUMMARY_EVERY)
+                rows = await memory.public_messages(s, cid, after)
+                if not rows or (kind == "rolling" and not force and len(rows) < every):
+                    return None
+                cfg = await s.get(AgentConfig, seat.agent_config_id)
+                ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+                char_by_seat = {ch.seat_id: ch for ch in ctx.world.characters.values() if ch.seat_id}
+                names = await _names(s, c)
+                prompt = memory.summary_input(prev, rows, lambda m: _who(m, char_by_seat, names))
+                upto = rows[-1].seq
+                prev_version = prev.version if prev else 0
+                model = parser_model_for(cfg.provider, cfg.model)
+                master_seat_id = seat.id
+                await s.rollback()
+            call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="summary", model=model)
+            content = None
+            try:
+                reply = await self.llm.complete(
+                    [{"role": "system", "content": memory.SUMMARY_SYSTEM}, {"role": "user", "content": prompt}],
+                    model=model,
+                    tools=[memory.tool_spec()],
+                    max_tokens=2000,
+                    temperature=0.2,
+                )
+                call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+                call.cost, call.latency_ms = reply.cost, reply.latency_ms
+                raw = next((t.arguments for t in reply.tool_calls if t.name == "submit_summary"), None)
+                content = memory.check(raw) if raw is not None else None
+                if content is None:
+                    call.error = "сводка не прошла схему"
+            except LLMError as e:
+                call.error = str(e)[:2000]
+            async with self.maker() as s:
+                s.add(call)
+                row = None
+                if content is not None:
+                    row = Summary(
+                        campaign_id=cid,
+                        session_id=session_id,
+                        kind=kind,
+                        version=prev_version + 1,
+                        upto_seq=upto,
+                        content=content,
+                    )
+                    s.add(row)
+                await s.commit()
+                return row.id if row else None
+        except Exception:  # noqa: BLE001 — сводка не должна ронять ход
+            log.exception("сводка кампании %s не удалась", cid)
+            return None
+        finally:
+            self._summarizing.discard(cid)
 
     # --- парсер намерений (раздел 6) ---
 

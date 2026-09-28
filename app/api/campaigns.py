@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import select
 
+from app.agents import memory
 from app.api.deps import SessionDep, SettingsDep, UserDep
 from app.api.schemas import (
     CampaignCreateIn,
@@ -310,16 +311,26 @@ async def control_session(
     campaign_id: str, action: str, user: UserDep, session: SessionDep, request: Request
 ) -> CampaignOut:
     v = await _viewer(session, user, campaign_id)
+    recap = None
     if action == "start":
-        _, msg = await chat.start_session(session, v)
+        game, msg = await chat.start_session(session, v)
         event = "session.started"
+        last = await memory.latest(session, campaign_id)
+        if last is not None and last.content.get("recap"):
+            # мастер открывает сессию коротким «Ранее в кампании…» по сводке (раздел 5)
+            recap = await chat.system_message(session, v.campaign, "Ранее в кампании: " + last.content["recap"], game)
     elif action in ("pause", "end"):
-        _, msg = await chat.stop_session(session, v, "paused" if action == "pause" else "ended")
+        game, msg = await chat.stop_session(session, v, "paused" if action == "pause" else "ended")
         event = "session.paused" if action == "pause" else "session.ended"
     else:
         raise NotFound("действие: start, pause или end")
+    game_id = game.id if game else None
     await session.commit()
     bus = request.app.state.bus
     await publish_message(bus, msg)
+    if recap is not None:
+        await publish_message(bus, recap)
     await bus.publish(campaign_id, envelope(event, campaign_id, {"status": v.campaign.status}), None)
+    if action in ("pause", "end"):
+        request.app.state.master.schedule_summary(campaign_id, "session", session_id=game_id)
     return await campaign_out(session, v.campaign, user)
