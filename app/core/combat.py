@@ -352,19 +352,23 @@ def public_turn(world) -> dict[str, Any] | None:
 
 async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str | None:
     """В бою пишет только игрок, чей ход (раздел 5). Вне игры (//) — всегда можно.
-    Действие занимает ход: второе действие до ответа мастера не принимается. При ИИ-мастере у игрока одна
-    ожидающая реплика (действие, речь или шёпот) — и в бою, и вне боя. Возвращает причину отказа."""
+    Действие занимает ход: второе действие до ответа мастера не принимается. Вне боя при ИИ-мастере у игрока одна
+    ожидающая реплика (действие, речь или шёпот). В бою это правило не действует: ход мастера там запускает
+    только действие героя, и речь или шёпот до него иначе заперли бы действие. Возвращает причину отказа."""
     from app.core.chat import PENDING_KINDS, PENDING_REASON, pending_message
     from app.core.world import get_scene
 
     if not viewer.is_player:
         return None
-    if kind in PENDING_KINDS and await pending_message(session, viewer.campaign, viewer.seat.id) is not None:
-        return PENDING_REASON
-    if kind not in ("action", "speech"):
-        return None
     sc = await get_scene(session, viewer.campaign.id)
-    if sc.mode != "combat" or not sc.turn_order:
+    in_combat = sc.mode == "combat" and bool(sc.turn_order)
+    if (
+        not in_combat
+        and kind in PENDING_KINDS
+        and await pending_message(session, viewer.campaign, viewer.seat.id) is not None
+    ):
+        return PENDING_REASON
+    if kind not in ("action", "speech") or not in_combat:
         return None
     st = dict(sc.state or {})
     cid = sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"]

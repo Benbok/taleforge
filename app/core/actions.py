@@ -64,15 +64,12 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 actions.append("turn.pass")
         return {"actions": actions, "blocked": blocked, "pending": pending}
 
-    msg = await pending_message(session, c, seat.id)
+    # одна ожидающая реплика — только вне боя: в бою ход ограничивает флаг submitted (combat.gate_message)
+    msg = None if in_combat else await pending_message(session, c, seat.id)
     if msg is not None:
         pending = {"id": msg.id, "created_at": msg.created_at.isoformat() if msg.created_at else None}
         blocked["chat.play"] = blocked["chat.whisper"] = PENDING_REASON
         actions.append("chat.withdraw")
-        if in_combat:
-            ch = await session.get(Character, current) if current else None
-            if ch is not None and ch.seat_id == seat.id:
-                actions.append("turn.pass")
         return {"actions": actions, "blocked": blocked, "pending": pending}
 
     actions.append("chat.whisper")

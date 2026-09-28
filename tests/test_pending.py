@@ -188,6 +188,30 @@ def test_withdraw_in_combat_clears_submitted(client, admin, settings):
     assert run(settings, lambda s: s.get(Scene, c["id"])).state["submitted"] is False
 
 
+def test_speech_in_combat_does_not_block_action(client, admin, settings):
+    # в бою ход мастера запускает только действие героя, чей ход: речь и шёпот до него не должны запирать действие
+    from app.db.models import Scene
+
+    c, (p1,), hero = party(client, admin)
+
+    async def fight(s):
+        sc = await s.get(Scene, c["id"])
+        sc.mode, sc.turn_order, sc.state = "combat", [{"id": hero["id"], "initiative": 10}], {"turn": 0}
+        await s.commit()
+
+    run(settings, fight)
+    with connect(client, p1, c["id"]) as (ws, _):
+        assert say(ws, "Сдавайтесь!", kind="speech")["type"] == "message.new"
+        assert say(ws, "мастер, тут есть ловушки?", kind="whisper")["type"] == "message.new"
+        ws.send_json({"type": "actions.get", "payload": {}})
+        st = next_of(ws, "state.actions")["payload"]
+        assert "chat.play" in st["actions"] and "chat.whisper" in st["actions"] and st["pending"] is None
+        assert say(ws, "Бью мечом")["type"] == "message.new"
+        # второе действие за ход по-прежнему отклоняет боевое правило
+        again = say(ws, "И ещё раз")["payload"]
+        assert again["reason"] == "Действие на этот ход уже заявлено: дождитесь ответа мастера."
+
+
 DONE = {"text": "готово"}
 
 
