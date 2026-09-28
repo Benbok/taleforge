@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 import re
 from typing import Any
 
@@ -264,13 +265,26 @@ def check(
     catalog,
     excluded: list[str],
     level_cap: int = 20,
+    keep_state: bool = False,
 ) -> tuple[dict | None, list[str]]:
-    """Проверяет каркас. Возвращает (нормализованный каркас, []) или (None, ошибки по-русски для архитектора)."""
+    """Проверяет каркас. Возвращает (нормализованный каркас, []) или (None, ошибки по-русски для архитектора).
+
+    ``keep_state`` — проверка каркаса, который уже идёт в игре (пересмотр между актами): статусы, шаги угроз и
+    служебные поля сохраняются, а объём мест, NPC, актов и тайн не ограничивается — за игру их становится больше.
+    """
     errors: list[str] = []
     if not isinstance(raw, dict):
         return None, ["каркас должен быть объектом"]
     lim = LIMITS.get(length) or LIMITS["short"]
-    plan = {k: raw.get(k) for k in tool_spec()["function"]["parameters"]["properties"]}
+    props = tool_spec()["function"]["parameters"]["properties"]
+    plan = copy.deepcopy(raw) if keep_state else {k: raw.get(k) for k in props}
+
+    def state(obj: dict, key: str, value: Any) -> None:
+        if keep_state:
+            obj.setdefault(key, value)
+        else:
+            obj[key] = value
+
     for k in ("antagonists", "locations", "npcs", "factions", "acts", "reveals", "endings", "tags"):
         if not isinstance(plan.get(k), list):
             plan[k] = []
@@ -310,7 +324,7 @@ def check(
             template("creature_template", a.get("template_id"), f"антагонист {oid}", False)
             if not 4 <= len(a.get("threat") or []) <= 6:
                 errors.append(f"антагонист {oid}: план угрозы — от 4 до 6 шагов")
-            a["threat_step"] = 0
+            state(a, "threat_step", 0)
     if not 1 <= len(plan["antagonists"]) <= 3:
         errors.append("антагонистов от 1 до 3")
     for loc in plan["locations"]:
@@ -319,12 +333,12 @@ def check(
             template("location_template", loc.get("template_id"), f"локация {oid}", has_locations)
             if loc.get("lore_ref") and catalog.find(str(loc["lore_ref"])) is None:
                 errors.append(f"локация {oid}: нет записи лора {loc['lore_ref']}")
-            loc["status"] = "sketch"
+            state(loc, "status", "sketch")
     for npc in plan["npcs"]:
         oid = reg("NPC", npc)
         if oid:
             template("creature_template", npc.get("template_id"), f"NPC {oid}", True)
-            npc["status"] = "sketch"
+            state(npc, "status", "sketch")
     for f in plan["factions"]:
         if isinstance(f, dict) and f.get("ref") and catalog.find(str(f["ref"]), "faction") is None:
             errors.append(f"фракция {f.get('name')}: нет фракции {f['ref']} в пакете")
@@ -337,17 +351,17 @@ def check(
 
     for key, ru in (("locations", "локаций"), ("npcs", "NPC")):
         lo, hi = lim[key]
-        if not lo <= len(plan[key]) <= hi:
+        if not keep_state and not lo <= len(plan[key]) <= hi:
             errors.append(f"{ru} для длительности «{LENGTHS[length]}»: от {lo} до {hi}, сейчас {len(plan[key])}")
     lo, hi = lim["acts"]
-    if not lo <= len(plan["acts"]) <= hi:
+    if not keep_state and not lo <= len(plan["acts"]) <= hi:
         errors.append(f"актов для длительности «{LENGTHS[length]}»: от {lo} до {hi}, сейчас {len(plan['acts'])}")
     node_ids: set[str] = set()
     for act in plan["acts"]:
         aid = reg("акт", act)
         if not aid:
             continue
-        act["status"] = "pending"
+        state(act, "status", "pending")
         lvl = act.get("milestone_level")
         if lvl is not None and not (isinstance(lvl, int) and 2 <= lvl <= level_cap):
             errors.append(f"акт {aid}: веха уровня от 2 до {level_cap}")
@@ -361,24 +375,29 @@ def check(
             if not nid:
                 continue
             node_ids.add(nid)
-            n["status"] = "sketch"
+            state(n, "status", "sketch")
             if n.get("location_id") and n["location_id"] not in loc_ids:
                 errors.append(f"узел {nid}: нет локации {n['location_id']}")
             for x in n.get("npc_ids") or []:
                 if x not in npc_ids and x not in {a.get("id") for a in plan["antagonists"] if isinstance(a, dict)}:
                     errors.append(f"узел {nid}: нет NPC {x}")
-    if plan["acts"]:
-        plan["acts"][0]["status"] = "active"
+    acts = [a for a in plan["acts"] if isinstance(a, dict)]
+    if acts and not keep_state:
+        acts[0]["status"] = "active"
+    elif acts and not any(a.get("status") == "active" for a in acts):
+        nxt = next((a for a in acts if a.get("status") == "pending"), None)
+        if nxt is not None:
+            nxt["status"] = "active"
 
     lo, hi = lim["reveals"]
-    if not lo <= len(plan["reveals"]) <= hi:
+    if not keep_state and not lo <= len(plan["reveals"]) <= hi:
         errors.append(f"тайн от {lo} до {hi}, сейчас {len(plan['reveals'])}")
     places = loc_ids | npc_ids | {a.get("id") for a in plan["antagonists"] if isinstance(a, dict)}
     for r in plan["reveals"]:
         rid = reg("тайна", r)
         if not rid:
             continue
-        r["revealed"] = False
+        state(r, "revealed", False)
         if r.get("node_id") not in node_ids:
             errors.append(f"тайна {rid}: нет узла {r.get('node_id')}")
         clues = [c for c in r.get("clues") or [] if isinstance(c, dict)]
@@ -476,34 +495,358 @@ def render(plan: dict) -> str:
         lines.append(
             f"Антагонист {a.get('id')} {a.get('name')}: цель — {a.get('goal')}; методы — {a.get('methods')}; "
             f"слабость — {a.get('weakness')}; тайна — {a.get('secret')}. Следующий шаг угрозы: {nxt}"
+            + (f" Уже сделано: {'; '.join(x['step'] for x in a['threat_log'])}." if a.get("threat_log") else "")
         )
     for act in plan.get("acts") or []:
         lines.append(
             f"Акт {act.get('id')} «{act.get('title')}» [{act.get('status')}]: цель — {act.get('goal')}; "
             f"переход — {act.get('exit')}"
             + (f"; веха: уровень {act['milestone_level']}" if act.get("milestone_level") else "")
+            + (f"; итог — {act['outcome']}" if act.get("outcome") else "")
         )
         for n in act.get("nodes") or []:
             where = f" @{n['location_id']}" if n.get("location_id") else ""
             who = f" ({', '.join(n['npc_ids'])})" if n.get("npc_ids") else ""
-            lines.append(f"  узел {n.get('id')} [{n.get('status')}] {n.get('title')}{where}{who}: {n.get('summary')}")
+            done = f" Итог — {n['outcome']}" if n.get("outcome") else ""
+            lines.append(
+                f"  узел {n.get('id')} [{n.get('status')}] {n.get('title')}{where}{who}: {n.get('summary')}{done}"
+            )
     lines.append("Локации (наброски):")
     for loc in plan.get("locations") or []:
         lines.append(
             f"- {loc.get('id')} {loc.get('name')} [{loc.get('status')}]: {loc.get('role')} {loc.get('mood')} "
-            f"Секрет: {loc.get('secret')}"
+            f"Секрет: {loc.get('secret')}" + (f" Детали: {loc['details']}" if loc.get("details") else "")
         )
     lines.append("NPC (наброски):")
     for npc in plan.get("npcs") or []:
         lines.append(
             f"- {npc.get('id')} {npc.get('name')} [{npc.get('status')}]: {npc.get('role')}; хочет — {npc.get('want')}; "
             f"боится — {npc.get('fear')}; тайна — {npc.get('secret')}; к героям — {npc.get('attitude')}; "
-            f"{npc.get('look')}"
+            f"{npc.get('look')}" + (f" Детали: {npc['details']}" if npc.get("details") else "")
         )
     for r in plan.get("reveals") or []:
         clues = "; ".join(f"{c.get('at')}: {c.get('text')}" for c in r.get("clues") or [])
-        mark = "раскрыта" if r.get("revealed") else "не раскрыта"
+        mark = f"раскрыта: {r.get('how')}" if r.get("revealed") else "не раскрыта"
         lines.append(f"Тайна {r.get('id')} ({mark}) → {r.get('node_id')}: {r.get('truth')} Зацепки: {clues}")
     if plan.get("endings"):
         lines.append("Возможные финалы: " + " | ".join(plan["endings"]))
     return "\n".join(lines)
+
+
+# --- каркас в игре (проект «Подготовка кампании», раздел 3) ---
+
+CLOSED = ("done", "skipped")
+# Раз во сколько игровых дней антагонисты сами делают шаг угрозы, если герои медлят. В ваншоте часы не идут.
+THREAT_DAYS = {"oneshot": 0, "short": 3, "long": 5}
+DAY = 24 * 3600
+
+
+class PlotError(Exception):
+    """Отказ операции над каркасом с причиной для мастера."""
+
+
+def has_plan(plan: dict | None) -> bool:
+    return bool(plan and plan.get("title"))
+
+
+def active_act(plan: dict) -> dict | None:
+    return next((a for a in plan.get("acts") or [] if a.get("status") == "active"), None)
+
+
+def _index(plan: dict) -> dict[str, tuple[str, dict]]:
+    out: dict[str, tuple[str, dict]] = {}
+    for key, kind in (("antagonists", "antagonist"), ("locations", "location"), ("npcs", "npc"), ("reveals", "reveal")):
+        for x in plan.get(key) or []:
+            out[x["id"]] = (kind, x)
+    for act in plan.get("acts") or []:
+        out[act["id"]] = ("act", act)
+        for n in act.get("nodes") or []:
+            out[n["id"]] = ("node", n)
+    return out
+
+
+def node_act(plan: dict, node_id: str) -> dict | None:
+    return next((a for a in plan.get("acts") or [] if any(n["id"] == node_id for n in a.get("nodes") or [])), None)
+
+
+def valid_ids(plan: dict | None, kind: str) -> list[str]:
+    """Допустимые id для инструментов мастера: открытые узлы, наброски, нераскрытые тайны, антагонисты."""
+    if not has_plan(plan):
+        return []
+    if kind == "nodes":
+        acts = [a for a in plan["acts"] if a.get("status") != "done"]
+        return [n["id"] for a in acts for n in a["nodes"] if n.get("status") not in CLOSED]
+    if kind == "sketches":
+        return [x["id"] for k in ("locations", "npcs") for x in plan.get(k) or [] if x.get("status") == "sketch"]
+    if kind == "reveals":
+        return [r["id"] for r in plan.get("reveals") or [] if not r.get("revealed")]
+    if kind == "antagonists":
+        return [a["id"] for a in plan.get("antagonists") or []]
+    return []
+
+
+def close_node(plan: dict, node_id: str, result: str, outcome: str) -> dict:
+    kind, n = _index(plan).get(node_id, (None, None))
+    if kind != "node":
+        raise PlotError(f"нет узла {node_id}")
+    if n.get("status") in CLOSED:
+        raise PlotError(f"узел {node_id} уже закрыт: {n.get('outcome')}")
+    act = node_act(plan, node_id)
+    if act and act.get("status") == "done":
+        raise PlotError(f"акт {act['id']} уже завершён")
+    n["status"], n["outcome"] = result, outcome
+    return n
+
+
+def mark_revealed(plan: dict, reveal_id: str, how: str) -> dict:
+    kind, r = _index(plan).get(reveal_id, (None, None))
+    if kind != "reveal":
+        raise PlotError(f"нет тайны {reveal_id}")
+    if r.get("revealed"):
+        raise PlotError(f"тайна {reveal_id} уже раскрыта")
+    r["revealed"], r["how"] = True, how
+    return r
+
+
+def end_act(plan: dict, outcome: str) -> tuple[dict, dict | None]:
+    """Закрывает текущий акт и открывает следующий. Незакрытые узлы остаются наброском: их можно не проходить."""
+    act = active_act(plan)
+    if act is None:
+        raise PlotError("нет текущего акта: сюжет уже завершён")
+    act["status"], act["outcome"] = "done", outcome
+    nxt = next((a for a in plan["acts"] if a.get("status") == "pending"), None)
+    if nxt is not None:
+        nxt["status"] = "active"
+    return act, nxt
+
+
+def threat_step(plan: dict, antagonist_id: str, reason: str) -> tuple[dict, str, str | None]:
+    """Антагонист делает следующий шаг плана. Возвращает (антагонист, сделанный шаг, следующий шаг или None)."""
+    kind, a = _index(plan).get(antagonist_id, (None, None))
+    if kind != "antagonist":
+        raise PlotError(f"нет антагониста {antagonist_id}")
+    steps, i = a.get("threat") or [], int(a.get("threat_step") or 0)
+    if i >= len(steps):
+        raise PlotError(f"план угрозы {a['name']} уже исполнен до конца")
+    a["threat_step"] = i + 1
+    a.setdefault("threat_log", []).append({"step": steps[i], "reason": reason})
+    return a, steps[i], steps[i + 1] if i + 1 < len(steps) else None
+
+
+def develop_sketch(plan: dict, sketch_id: str, details: str, entity_id: str | None) -> tuple[str, dict]:
+    kind, x = _index(plan).get(sketch_id, (None, None))
+    if kind not in ("location", "npc"):
+        raise PlotError(f"нет наброска места или NPC {sketch_id}")
+    if x.get("status") != "sketch":
+        raise PlotError(f"{sketch_id} уже развёрнут")
+    x["status"], x["details"] = "developed", details
+    if entity_id:
+        x["entity_id"] = entity_id
+    return kind, x
+
+
+def sketch_entity(plan: dict, sketch_id: str | None) -> str | None:
+    if not sketch_id:
+        return None
+    x = _index(plan).get(sketch_id, (None, {}))[1]
+    return x.get("entity_id")
+
+
+def clock(plan: dict, game_time: int, length: str) -> list[tuple[dict, str, str | None]]:
+    """Часы угроз: за каждые ``THREAT_DAYS`` игровых дней каждый антагонист делает шаг, если не остановлен.
+    Первый вызов только запоминает точку отсчёта."""
+    days = THREAT_DAYS.get(length, 0)
+    if not days or not has_plan(plan):
+        return []
+    if "clock_at" not in plan:
+        plan["clock_at"] = game_time
+        return []
+    periods = max(0, (game_time - int(plan["clock_at"])) // (days * DAY))
+    out = []
+    for _ in range(periods):
+        plan["clock_at"] = int(plan["clock_at"]) + days * DAY
+        for a in plan.get("antagonists") or []:
+            if a.get("stopped") or int(a.get("threat_step") or 0) >= len(a.get("threat") or []):
+                continue
+            out.append(threat_step(plan, a["id"], f"прошло {days} дн. игрового времени"))
+    return out
+
+
+def _sketch_line(x: dict, kind: str) -> str:
+    if kind == "location":
+        body = f"{x.get('role')} {x.get('mood')} Секрет: {x.get('secret')}"
+    else:
+        body = (
+            f"{x.get('role')}; хочет — {x.get('want')}; боится — {x.get('fear')}; тайна — {x.get('secret')}; "
+            f"к героям — {x.get('attitude')}; {x.get('look')}"
+        )
+    if x.get("status") == "developed":
+        ent = f", в реестре {x['entity_id']}" if x.get("entity_id") else ""
+        return f"- {x['id']} {x.get('name')} [развёрнут{ent}]: {body} Детали: {x.get('details')}"
+    return f"- {x['id']} {x.get('name')} [набросок]: {body}"
+
+
+def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
+    """«Сюжет сейчас»: текущий акт, его узлы и тайны, места и люди рядом, следующий шаг злодеев.
+    Остальной каркас мастер читает инструментом get_plot."""
+    acts = plan.get("acts") or []
+    act = active_act(plan)
+    lines = [f"Сюжет сейчас — «{plan.get('title')}». Конфликт: {plan.get('conflict')} Ставки: {plan.get('stakes')}"]
+    for a in acts:
+        if a.get("status") == "done":
+            lines.append(f"Пройден акт {a['id']} «{a.get('title')}»: {a.get('outcome')}")
+    if act is None:
+        lines.append("Все акты пройдены: веди к финалу. Возможные финалы: " + " | ".join(plan.get("endings") or []))
+    else:
+        num = acts.index(act) + 1
+        lines.append(
+            f"Текущий акт {num} из {len(acts)}: {act['id']} «{act.get('title')}». Цель — {act.get('goal')}; "
+            f"переход — {act.get('exit')}"
+            + (f"; веха: уровень {act['milestone_level']}" if act.get("milestone_level") else "")
+        )
+        for n in act.get("nodes") or []:
+            where = f" @{n['location_id']}" if n.get("location_id") else ""
+            who = f" ({', '.join(n['npc_ids'])})" if n.get("npc_ids") else ""
+            if n.get("status") in CLOSED:
+                mark = "пройден" if n["status"] == "done" else "обойдён"
+                lines.append(f"  узел {n['id']} [{mark}] {n.get('title')}: итог — {n.get('outcome')}")
+            else:
+                lines.append(f"  узел {n['id']} [открыт] {n.get('title')}{where}{who}: {n.get('summary')}")
+    node_ids = {n["id"] for n in (act or {}).get("nodes") or []}
+    open_reveals = [r for r in plan.get("reveals") or [] if not r.get("revealed") and r.get("node_id") in node_ids]
+    for r in open_reveals:
+        clues = "; ".join(f"{c.get('at')}: {c.get('text')}" for c in r.get("clues") or [])
+        lines.append(f"Тайна {r['id']} → {r.get('node_id')} (не раскрыта): {r.get('truth')} Зацепки: {clues}")
+    found = [r for r in plan.get("reveals") or [] if r.get("revealed")]
+    if found:
+        lines.append("Уже раскрыто: " + "; ".join(f"{r['id']} — {r.get('truth')}" for r in found))
+    for a in plan.get("antagonists") or []:
+        steps, i = a.get("threat") or [], int(a.get("threat_step") or 0)
+        nxt = f"следующий шаг угрозы ({i + 1}/{len(steps)}): {steps[i]}" if i < len(steps) else "план угрозы исполнен"
+        done = f" Уже сделано: {'; '.join(steps[:i])}." if i else ""
+        lines.append(
+            f"Антагонист {a['id']} {a.get('name')}: цель — {a.get('goal')}; методы — {a.get('methods')}; "
+            f"слабость — {a.get('weakness')}; {nxt}.{done}"
+        )
+    # места и люди рядом: из открытых узлов акта, текущей локации сцены и NPC, которые там живут
+    live = [n for n in (act or {}).get("nodes") or [] if n.get("status") not in CLOSED]
+    near_loc = {n.get("location_id") for n in live}
+    near_npc = {i for n in live for i in n.get("npc_ids") or []}
+    here = None
+    if location_entity_id:
+        here = next((x for x in plan.get("locations") or [] if x.get("entity_id") == location_entity_id), None)
+    if here is not None:
+        near_loc.add(here["id"])
+    near_npc |= {x["id"] for x in plan.get("npcs") or [] if x.get("location_id") in near_loc}
+    locs = [x for x in plan.get("locations") or [] if x["id"] in near_loc]
+    npcs = [x for x in plan.get("npcs") or [] if x["id"] in near_npc]
+    if here is not None:
+        lines.append(f"Отряд сейчас в месте каркаса {here['id']} {here.get('name')}.")
+    if locs or npcs:
+        lines.append("Места и люди рядом:")
+        lines += [_sketch_line(x, "location") for x in locs] + [_sketch_line(x, "npc") for x in npcs]
+    later = [a for a in acts if a.get("status") == "pending"]
+    if later:
+        lines.append("Дальше: " + "; ".join(f"«{a.get('title')}» — {a.get('goal')}" for a in later))
+    if act is not None and plan.get("endings"):
+        lines.append("Возможные финалы: " + " | ".join(plan["endings"]))
+    return "\n".join(lines)
+
+
+# --- пересмотр между актами ---
+
+REVISE_TOOL = "submit_plan_revision"
+
+REVISE_SYSTEM = """Ты — архитектор кампании для текстовой ролевой игры по D&D 5e (SRD 5.1) на русском языке.
+Отряд только что закончил акт. Пересмотри оставшиеся акты с учётом того, что уже произошло: итогов узлов,
+раскрытых тайн, шагов злодеев. Сохрани то, что ещё работает, поменяй то, что после решений игроков потеряло смысл,
+и подхвати ниточки, которые игроки тянут сами. Это наброски: по одной-две фразы на пункт.
+
+Правила:
+- Верни все оставшиеся акты целиком (текущий и следующие), с узлами. Пройденные акты не трогай.
+- Id узлов, на которые ссылаются нераскрытые тайны, сохрани, либо сдай эти тайны заново с новым node_id.
+- Новые места, NPC и тайны — только если они нужны; id не должны повторять существующие.
+- Запретные темы нельзя упоминать нигде.
+Сдай пересмотр одним вызовом submit_plan_revision."""
+
+
+def revision_spec() -> dict:
+    props = tool_spec()["function"]["parameters"]["properties"]
+    schema = {
+        "type": "object",
+        "properties": {
+            "summary": _str("Что изменилось и почему, для владельца кампании: 1–3 фразы.", 600),
+            "acts": {**props["acts"], "description": "Все оставшиеся акты: текущий и следующие."},
+            "locations": {**props["locations"], "description": "Только новые места."},
+            "npcs": {**props["npcs"], "description": "Только новые NPC."},
+            "reveals": {**props["reveals"], "description": "Новые или переписанные тайны (тот же id — замена)."},
+        },
+        "required": ["summary", "acts"],
+    }
+    return {
+        "type": "function",
+        "function": {"name": REVISE_TOOL, "description": "Сдать пересмотр оставшихся актов.", "parameters": schema},
+    }
+
+
+def open_acts(plan: dict) -> list[dict]:
+    """Акты, которые можно пересмотреть: следующие и текущий, если в нём ещё ничего не пройдено."""
+    out = []
+    for a in plan.get("acts") or []:
+        if a.get("status") == "pending":
+            out.append(a)
+        elif a.get("status") == "active" and not any(n.get("status") in CLOSED for n in a.get("nodes") or []):
+            out.append(a)
+    return out
+
+
+def merge_revision(plan: dict, raw: dict) -> tuple[dict, list[str]]:
+    """Накладывает пересмотр на текущий каркас. Акт, в котором за время пересмотра что-то прошли, не меняется."""
+    if not isinstance(raw, dict):
+        return plan, ["пересмотр должен быть объектом"]
+    new = copy.deepcopy(plan)
+    replaceable = {a["id"] for a in open_acts(new)}
+    kept = [a for a in new["acts"] if a["id"] not in replaceable]
+    incoming = [a for a in raw.get("acts") or [] if isinstance(a, dict)]
+    if not incoming:
+        return plan, ["нужны оставшиеся акты"]
+    was_active = next((a["id"] for a in new["acts"] if a.get("status") == "active"), None)
+    fresh = []
+    for a in incoming:
+        a = copy.deepcopy(a)
+        if a.get("id") in {k["id"] for k in kept}:
+            continue  # этот акт уже нельзя переписать
+        a.pop("status", None)
+        for n in a.get("nodes") or []:
+            if isinstance(n, dict):
+                n.pop("status", None)
+                n.pop("outcome", None)
+        fresh.append(a)
+    if was_active in replaceable and fresh:
+        fresh[0]["status"] = "active"
+    new["acts"] = kept + fresh
+    for key in ("locations", "npcs"):
+        new[key] = list(new.get(key) or []) + [copy.deepcopy(x) for x in raw.get(key) or [] if isinstance(x, dict)]
+    by_id = {r["id"]: r for r in new.get("reveals") or []}
+    for r in raw.get("reveals") or []:
+        if not isinstance(r, dict):
+            continue
+        old = by_id.get(r.get("id"))
+        if old is not None and old.get("revealed"):
+            continue  # раскрытое уже не переписать
+        r = copy.deepcopy(r)
+        r.pop("revealed", None)
+        by_id[r.get("id")] = r
+    new["reveals"] = list(by_id.values())
+    return new, []
+
+
+def revise_input(plan: dict, *, brief_text: str, excluded: list[str]) -> str:
+    parts = [
+        "Анкета владельца:\n" + (brief_text or "не заполнена."),
+        "Каркас с отметками прогресса:\n" + render(plan),
+        "Можно переписать акты: " + ", ".join(a["id"] for a in open_acts(plan)),
+    ]
+    if excluded:
+        parts.append("Запретные темы: " + ", ".join(excluded))
+    return "\n\n".join(parts)

@@ -50,6 +50,11 @@ async def plan_out(session, v) -> dict:
     if v.is_master:
         secret = await session.get(CampaignSecret, c.id)
         out["plan"] = secret.plot if secret else {}
+        out["revision"] = (st.get("plan") or {}).get("revision")
+        last = await session.scalar(
+            select(CampaignPlan).where(CampaignPlan.campaign_id == c.id).order_by(CampaignPlan.version.desc()).limit(1)
+        )
+        out["note"] = last.note if last else None
     return out
 
 

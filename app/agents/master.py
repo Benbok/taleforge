@@ -53,6 +53,7 @@ from app.db.models import (
 )
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
+from app.tools import plot as plot_tools
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
@@ -66,6 +67,14 @@ PLAYER_KINDS = ("action", "speech", "whisper")
 ROLL_TOOLS = ("roll_check", "resolve_attack", "death_save", "apply_hazard", "set_scene_mode", "rest", "use_item")
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 DECISION_TOOLS = [n for n in REGISTRY if n != "review_character"]
+
+
+def decision_tools(ctx: ToolContext) -> list[str]:
+    """Инструменты фазы решения. Инструменты сюжета — только когда у кампании есть каркас."""
+    if plot.has_plan(ctx.world.plot):
+        return DECISION_TOOLS
+    return [n for n in DECISION_TOOLS if n not in plot_tools.PLOT_TOOLS]
+
 
 _env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(Path(__file__).parent / "prompts"),
@@ -111,16 +120,26 @@ class MasterService:
     def schedule_summary(self, campaign_id: str, kind: str = "rolling", session_id: str | None = None) -> None:
         self._spawn(self.summarize(campaign_id, kind, session_id=session_id))
 
+    def schedule_replan(self, campaign_id: str) -> None:
+        """Пересмотр оставшихся актов после закрытия акта (раздел 3): в фоне, ход его не ждёт."""
+        from app.agents import architect
+
+        self._spawn(architect.revise(self, campaign_id))
+
     def _spawn(self, coro) -> None:
         t = asyncio.create_task(coro)
         self._background.add(t)
         t.add_done_callback(self._background.discard)
 
     async def wait_idle(self, campaign_id: str | None = None) -> None:
-        while self._background:
-            await asyncio.wait(set(self._background))
-        while (t := self._tasks.get(campaign_id)) is not None and not t.done():
-            await asyncio.wait({t})
+        # ход может запустить фоновую задачу в самом конце (пересмотр каркаса), поэтому проверяем по кругу
+        while True:
+            if self._background:
+                await asyncio.wait(set(self._background))
+            elif (t := self._tasks.get(campaign_id)) is not None and not t.done():
+                await asyncio.wait({t})
+            else:
+                return
 
     async def stop(self) -> None:
         tasks = [*self._tasks.values(), *self._background, *self._timers.values()]
@@ -233,12 +252,14 @@ class MasterService:
             turn_id = turn.id
 
         calls: list[LlmCall] = []
+        replan = False
         await self._status(cid, "listening")
         try:
             async with self.maker() as s:
                 published = await self._play(s, cid, turn_id, calls)
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
             await self.after_turn(published["ctx"])
+            replan = "replan" in published["ctx"].signals
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
@@ -261,6 +282,8 @@ class MasterService:
                 async with self.maker() as s:
                     s.add_all(calls)
                     await s.commit()
+        if replan:
+            self.schedule_replan(cid)  # после учёта вызовов: пересмотр пишет в ту же кампанию
         return turn_id
 
     async def _ask(
@@ -376,7 +399,7 @@ class MasterService:
         done_calls = retries = 0
         for _ in range(MAX_STEPS):
             reply = await self._ask(
-                calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, DECISION_TOOLS)
+                calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, decision_tools(ctx))
             )
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             if not reply.tool_calls:
@@ -437,8 +460,12 @@ class MasterService:
             await self._status(cid, "rolling")
             combat_notes += await combat.run_until_hero(ctx, f"{turn_id}:combat", self._ask_reaction)
 
+        plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
+
         await self._status(cid, "describing")
-        narration, audit = await self._narrate(calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes)
+        narration, audit = await self._narrate(
+            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
+        )
 
         whispers = await flush_outbox(s, ctx)
         msg = Message(
@@ -458,11 +485,14 @@ class MasterService:
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
+            "plot_clock": plot_notes,
         }
         await s.commit()
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names}
 
-    async def _narrate(self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=()):
+    async def _narrate(
+        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=()
+    ):
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
         prompt = render(
@@ -471,6 +501,7 @@ class MasterService:
             scene=ctx.world.scene_table(),
             length="от одного до четырёх абзацев",
             combat_notes=list(notes),
+            plot_notes=list(plot_notes),
             next_turn=turn["name"] if turn else None,
         )
         base = [
@@ -515,10 +546,12 @@ class MasterService:
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)
         secrets = ""
-        if secret and secret.plot and secret.plot.get("title"):
-            # каркас от архитектора — текстом; прочие скрытые данные — как есть
+        has_plot = bool(secret and plot.has_plan(secret.plot))
+        if has_plot:
+            # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
             extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            secrets = (plot.render(secret.plot) + ("\n" + extra if extra else ""))[:16000]
+            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.scene.location_id)
+            secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
         dc = ", ".join(f"{e.id} = {e.data['value']} ({e.name})" for e in ctx.world.catalog.dc_scale())
@@ -530,6 +563,7 @@ class MasterService:
             excluded_themes=", ".join((c.settings or {}).get("excluded_themes") or []),
             public_intro=c.public_intro,
             secrets=secrets,
+            has_plot=has_plot,
             dc_scale=dc,
             max_calls=MAX_CALLS,
         )
@@ -1033,6 +1067,9 @@ def _render_results(ctx: ToolContext) -> str:
     out = []
     for ev in ctx.events:
         res = ev.payload.get("result", ev.payload)
-        mark = " [СКРЫТЫЙ БРОСОК: игрокам только последствия]" if ev.hidden else ""
+        if ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock":
+            mark = " [СЮЖЕТ: только для мастера, прямо не называй]"
+        else:
+            mark = " [СКРЫТЫЙ БРОСОК: игрокам только последствия]" if ev.hidden else ""
         out.append(f"- {ev.tool}{mark}: {json.dumps(res, ensure_ascii=False, default=str)}")
     return "\n".join(out)
