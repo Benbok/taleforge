@@ -18,6 +18,8 @@ import asyncio
 import json
 import logging
 import re
+import time
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,8 +28,10 @@ import jinja2
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.agents.llm import LLM, LLMError, LLMReply, model_for
+from app.agents import intent as intents
+from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
+from app.core import combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.db.models import (
@@ -39,6 +43,7 @@ from app.db.models import (
     LlmCall,
     MasterTurn,
     Message,
+    Scene,
     User,
     as_utc,
     now,
@@ -51,6 +56,7 @@ from app.tools.runtime import flush_outbox, open_context, publish_changes
 log = logging.getLogger(__name__)
 
 MAX_CALLS = 8  # вызовов инструментов за ход (раздел 7)
+PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит мастеру без разбора
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
 PLAYER_KINDS = ("action", "speech", "whisper")
@@ -82,6 +88,8 @@ class MasterService:
         self._pending: set[str] = set()
         self._locks: dict[str, asyncio.Lock] = {}
         self._background: set[asyncio.Task] = set()
+        self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
+        self._reactions: dict[str, tuple[str, asyncio.Future]] = {}  # prompt_id → (место, ответ)
 
     # --- очередь ---
 
@@ -105,7 +113,7 @@ class MasterService:
             await asyncio.wait({t})
 
     async def stop(self) -> None:
-        tasks = [*self._tasks.values(), *self._background]
+        tasks = [*self._tasks.values(), *self._background, *self._timers.values()]
         for t in tasks:
             t.cancel()
         for t in tasks:
@@ -145,6 +153,14 @@ class MasterService:
                 return None
             new = await _new_player_messages(s, c)
             if not new:
+                return None
+            sc = await s.get(Scene, cid)
+            if sc is not None and sc.mode == "combat" and sc.turn_order:
+                # в бою мастер отвечает сразу на действие героя, чей ход; остальное ждёт этого ответа
+                st = sc.state or {}
+                cur = await s.get(Character, sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"])
+                if cur is not None and any(m.kind == "action" and m.seat_id == cur.seat_id for m in new):
+                    return 0
                 return None
             players = {
                 ch.seat_id
@@ -212,6 +228,7 @@ class MasterService:
             async with self.maker() as s:
                 published = await self._play(s, cid, turn_id, calls)
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
+            await self.after_turn(published["ctx"])
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
             async with self.maker() as s:
@@ -222,6 +239,9 @@ class MasterService:
                 msg = await system_message(
                     s, c, "Мастер не смог завершить ход. Ничего не изменилось: повторите действие.", None
                 )
+                sc = await s.get(Scene, cid)
+                if sc is not None and (sc.state or {}).get("submitted"):
+                    sc.state = {**sc.state, "submitted": False}  # заявку можно повторить
                 await s.commit()
             await publish_message(self.bus, msg)
         finally:
@@ -300,6 +320,32 @@ class MasterService:
             and m.seat_id in char_by_seat
             and char_by_seat[m.seat_id].status in ("approved", "active")
         }
+        hero_turn = combat.current_character(ctx)  # в бою: чей ход закрывает этот ответ мастера
+        combat_note = ""
+        if hero_turn is not None:
+            combat_note = (
+                f"\n\nИдёт бой, раунд {ctx.world.scene.round}. Сейчас ход {hero_turn.name} ({hero_turn.id}): "
+                "обработай только его действие. Ходы существ сервер проведёт сам после твоего ответа по их "
+                "профилю поведения — не атакуй за существ и не меняй очередь."
+            )
+
+        # Маршрутизатор механик (раздел 7): однозначную атаку оружием сервер проводит сам, модель её только опишет
+        trace_calls: list[dict] = []
+        routed: list[str] = []
+        for m in new:
+            args = intents.routable_attack(m.intent) if m.kind == "action" else None
+            if not args or args["attacker_id"] not in required:
+                continue
+            if hero_turn is not None and args["attacker_id"] != hero_turn.id:
+                continue
+            await self._status(cid, "rolling")
+            r = await execute(ctx, "resolve_attack", args, key=f"{turn_id}:route:{m.id}")
+            trace_calls.append({"tool": "resolve_attack", "args": args, "result": r, "routed": True})
+            if r.get("ok"):
+                routed.append(f"{args['attacker_id']}: resolve_attack уже выполнен сервером по намерению")
+        route_note = ""
+        if routed:
+            route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
 
         await self._status(cid, "remembering")
         msgs: list[dict] = [
@@ -308,12 +354,12 @@ class MasterService:
                 "role": "user",
                 "content": (
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\nТаблица сцены:\n{ctx.world.scene_table()}\n\n"
-                    f"Новые реплики игроков:\n{news}\n\nФаза решения: вызови нужные инструменты. "
+                    f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
+                    "инструменты. "
                     "Когда все действия закрыты, ответь одним словом «готово» без вызовов."
                 ),
             },
         ]
-        trace_calls: list[dict] = []
         done_calls = retries = 0
         for _ in range(MAX_STEPS):
             reply = await self._ask(
@@ -370,8 +416,16 @@ class MasterService:
             )
             trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
 
+        combat_notes: list[str] = []
+        if combat.in_combat(ctx):
+            acted = hero_turn is not None and any(m.kind == "action" and m.seat_id == hero_turn.seat_id for m in new)
+            if acted and combat.current_id(ctx) == hero_turn.id:
+                await combat.finish_turn(ctx, combat_notes)
+            await self._status(cid, "rolling")
+            combat_notes += await combat.run_until_hero(ctx, f"{turn_id}:combat", self._ask_reaction)
+
         await self._status(cid, "describing")
-        narration, audit = await self._narrate(calls, cfg, c, seat.id, turn_id, system, convo, news, ctx)
+        narration, audit = await self._narrate(calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes)
 
         whispers = await flush_outbox(s, ctx)
         msg = Message(
@@ -385,14 +439,26 @@ class MasterService:
         s.add(msg)
         await s.flush()
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
-        turn.trace = {"calls": trace_calls, "audit": audit, "required": sorted(required), "closed": sorted(ctx.closed)}
+        turn.trace = {
+            "calls": trace_calls,
+            "audit": audit,
+            "required": sorted(required),
+            "closed": sorted(ctx.closed),
+            "combat": combat_notes,
+        }
         await s.commit()
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names}
 
-    async def _narrate(self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext):
+    async def _narrate(self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=()):
         results = _render_results(ctx)
+        turn = combat.public_turn(ctx.world)
         prompt = render(
-            "narrate.j2", results=results, scene=ctx.world.scene_table(), length="от одного до четырёх абзацев"
+            "narrate.j2",
+            results=results,
+            scene=ctx.world.scene_table(),
+            length="от одного до четырёх абзацев",
+            combat_notes=list(notes),
+            next_turn=turn["name"] if turn else None,
         )
         base = [
             {"role": "system", "content": system},
@@ -449,6 +515,237 @@ class MasterService:
             dc_scale=dc,
             max_calls=MAX_CALLS,
         )
+
+    # --- парсер намерений (раздел 6) ---
+
+    async def parse_intent(self, cid: str, seat_id: str | None, text: str) -> intents.ParseResult:
+        """Разбирает действие игрока до записи в чат. Только при ИИ-мастере: у живого мастера модели нет.
+        Любой сбой парсера — реплика проходит без намерения."""
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            seat = master_seat(c) if c else None
+            if c is None or seat is None or seat.occupant_type != "agent" or seat_id is None:
+                return intents.ParseResult()
+            if await active_session(s, cid) is None:
+                return intents.ParseResult()  # вне сессии действие всё равно не примут
+            cfg = await s.get(AgentConfig, seat.agent_config_id)
+            ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+            ch = next(
+                (
+                    x
+                    for x in ctx.world.characters.values()
+                    if x.seat_id == seat_id and x.status in ("approved", "active")
+                ),
+                None,
+            )
+            if ch is None:
+                return intents.ParseResult()
+            info, values = intents.context_for(ctx.world, ch)
+            ch_id, provider, cfg_model, master_seat_id = ch.id, cfg.provider, cfg.model, seat.id
+            api_base = (cfg.settings or {}).get("api_base")
+            await s.rollback()
+        model = parser_model_for(provider, cfg_model)
+        call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="parse", model=model)
+        try:
+            reply = await asyncio.wait_for(self._parse_call(model, info, text, values, api_base), timeout=PARSE_TIMEOUT)
+        except TimeoutError:
+            call.error = f"парсер не ответил за {PARSE_TIMEOUT} с"
+            reply = None
+        except LLMError as e:
+            call.error = str(e)[:2000]
+            reply = None
+        if reply is not None:
+            call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            call.cost, call.latency_ms = reply.cost, reply.latency_ms
+        raw = next((t.arguments for t in (reply.tool_calls if reply else []) if t.name == "submit_intent"), None)
+        async with self.maker() as s:
+            s.add(call)
+            await s.commit()
+            if raw is None:
+                return intents.ParseResult(notes=["парсер не ответил"])
+            c = await s.get(Campaign, cid)
+            ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat_id)
+            ch = ctx.world.characters.get(ch_id)
+            if ch is None:
+                return intents.ParseResult()
+            return intents.check(raw, ctx.world, ch)
+
+    async def _parse_call(
+        self, model: str, info: str, text: str, values: dict, api_base: str | None = None
+    ) -> LLMReply:
+        return await self.llm.complete(
+            [
+                {"role": "system", "content": intents.PARSER_SYSTEM},
+                {"role": "user", "content": f"{info}\n\nРеплика игрока:\n{text}"},
+            ],
+            model=model,
+            tools=[intents.tool_spec(values)],
+            max_tokens=800,
+            temperature=0.0,
+            api_base=api_base,
+        )
+
+    # --- пошаговый режим: ход, таймаут, реакции (раздел 5, 7.2) ---
+
+    async def after_turn(self, ctx: ToolContext) -> None:
+        """После фиксации хода: всем — чей ход, и таймер хода героя."""
+        cid = ctx.campaign.id
+        turn = combat.public_turn(ctx.world)
+        await self.bus.publish(cid, envelope("turn.changed", cid, {"turn": turn}), None)
+        old = self._timers.pop(cid, None)
+        if old is not None and old is not asyncio.current_task():
+            old.cancel()
+        if turn and turn.get("deadline"):
+            marker = combat.turn_marker(ctx.world.scene)
+            self._timers[cid] = asyncio.create_task(self._timeout_after(cid, marker, float(turn["deadline"])))
+
+    async def _timeout_after(self, cid: str, marker: str | None, deadline: float) -> None:
+        try:
+            await asyncio.sleep(max(0.0, deadline - time.time()))
+            await self.run_timeout(cid, marker)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            log.exception("таймаут хода в кампании %s", cid)
+
+    async def resume_timers(self) -> None:
+        """После перезапуска сервера: снова завести таймеры ходов в идущих боях."""
+        async with self.maker() as s:
+            rows = (await s.scalars(select(Scene).where(Scene.mode == "combat"))).all()
+        for sc in rows:
+            deadline = (sc.state or {}).get("deadline")
+            if deadline:
+                marker = combat.turn_marker(sc)
+                self._timers[sc.campaign_id] = asyncio.create_task(
+                    self._timeout_after(sc.campaign_id, marker, float(deadline))
+                )
+
+    async def run_timeout(self, cid: str, marker: str | None) -> str | None:
+        """Время хода героя вышло: действие по умолчанию — «выжидает», затем ходят существа."""
+        return await self.advance(cid, "timeout", marker=marker)
+
+    async def advance(self, cid: str, reason: str, *, marker: str | None = None, seat_id: str | None = None):
+        """Сдвигает очередь боя без заявки героя и проводит ходы существ до следующего героя.
+
+        ``timeout`` — вышло время (герой выжидает); ``pass`` — игрок сам пропустил ход (только место героя, чей ход);
+        ``master`` — живой мастер закрыл ход героя; ``sync`` — очередь только что собрана: первыми могут быть существа.
+        Возвращает id хода мастера или None, если сдвигать нечего."""
+        lock = self._locks.setdefault(cid, asyncio.Lock())
+        async with lock:
+            calls: list[LlmCall] = []
+            try:
+                async with self.maker() as s:
+                    c = await s.get(Campaign, cid)
+                    sc = await s.get(Scene, cid)
+                    if c is None or sc is None or combat.turn_marker(sc) is None:
+                        return None
+                    if marker is not None and combat.turn_marker(sc) != marker:
+                        return None
+                    if reason == "timeout" and (sc.state or {}).get("submitted"):
+                        return None  # герой успел заявить действие: ход ведёт мастер
+                    game = await active_session(s, cid)
+                    seat = master_seat(c)
+                    last = await s.scalar(select(func.max(MasterTurn.upto_seq)).where(MasterTurn.campaign_id == cid))
+                    turn = MasterTurn(
+                        campaign_id=cid,
+                        session_id=game.id if game else None,
+                        upto_seq=last or 0,
+                        trace={"advance": reason, "marker": combat.turn_marker(sc)},
+                    )
+                    s.add(turn)
+                    await s.flush()
+                    ctx = await open_context(s, c, self.dice_factory(), turn_id=turn.id, seat_id=seat.id)
+                    hero = combat.current_character(ctx)
+                    if reason == "pass" and (hero is None or hero.seat_id is None or hero.seat_id != seat_id):
+                        await s.rollback()
+                        return None
+                    notes: list[str] = []
+                    if hero is not None and reason != "sync":
+                        what = {"timeout": "выжидает", "pass": "пропускает ход", "master": "завершает ход"}[reason]
+                        await ctx.record("turn_end", actor_id=hero.id, payload={"reason": reason, "action": what})
+                        if reason == "timeout":
+                            notes.append(f"время хода {hero.name} вышло: {hero.name} выжидает")
+                        elif reason == "pass":
+                            notes.append(f"{hero.name} пропускает ход")
+                        await combat.finish_turn(ctx, notes)
+                    await self._status(cid, "rolling")
+                    notes += await combat.run_until_hero(ctx, f"{turn.id}:combat", self._ask_reaction)
+                    names = await _names(s, c)
+                    messages = await flush_outbox(s, ctx)
+                    acted = [e for e in ctx.events if e.tool != "turn_end"]
+                    msg = None
+                    if seat.occupant_type == "agent" and acted:
+                        cfg = await s.get(AgentConfig, seat.agent_config_id)
+                        await self._status(cid, "describing")
+                        system = await self._system_prompt(s, c, cfg, ctx)
+                        news = "- " + "\n- ".join(notes) if notes else "нет"
+                        text, audit = await self._narrate(calls, cfg, c, seat.id, turn.id, system, "", news, ctx, notes)
+                        kind, trace_extra = "narration", {"audit": audit}
+                    elif notes:
+                        joined = "; ".join(notes)
+                        text, kind, trace_extra = joined[:1].upper() + joined[1:] + ".", "system", {}
+                    else:
+                        text, kind, trace_extra = None, None, {}
+                    if text is not None:
+                        msg = Message(
+                            campaign_id=cid,
+                            session_id=ctx.game_session_id,
+                            seq=await next_seq(s, cid),
+                            seat_id=seat.id if kind == "narration" else None,
+                            kind=kind,
+                            content=text,
+                        )
+                        s.add(msg)
+                        await s.flush()
+                    turn.status, turn.finished_at = "done", now()
+                    turn.narration_message_id = msg.id if msg else None
+                    turn.trace = {**turn.trace, "combat": notes, **trace_extra}
+                    await s.commit()
+                await publish_changes(self.bus, ctx, [*messages, *([msg] if msg else [])], names)
+                await self.after_turn(ctx)
+                return turn.id
+            finally:
+                await self._status(cid, "idle")
+                if calls:
+                    async with self.maker() as s:
+                        s.add_all(calls)
+                        await s.commit()
+
+    async def _ask_reaction(self, ctx: ToolContext, ch: Character, creature) -> bool:
+        """Кнопка реакции игроку с таймером (по умолчанию 15 с). Нет ответа — реакция не используется."""
+        if not ch.seat_id:
+            return False
+        cid = ctx.campaign.id
+        wait = float((ctx.campaign.settings or {}).get("reaction_sec") or combat.REACTION_SEC)
+        prompt_id = "rx_" + uuid.uuid4().hex[:12]
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        self._reactions[prompt_id] = (ch.seat_id, fut)
+        hero = ctx.world.actor(ch.id)
+        payload = {
+            "prompt_id": prompt_id,
+            "character_id": ch.id,
+            "trigger": f"«{creature.name}» выходит из ближнего боя",
+            "options": combat.reaction_options(hero, creature),
+            "expires_at": time.time() + wait,
+        }
+        await self.bus.publish(cid, envelope("reaction.prompt", cid, payload), [ch.seat_id])
+        try:
+            choice = await asyncio.wait_for(fut, timeout=wait)
+        except TimeoutError:
+            choice = "skip"
+        finally:
+            self._reactions.pop(prompt_id, None)
+        await self.bus.publish(
+            cid, envelope("reaction.closed", cid, {"prompt_id": prompt_id, "choice": choice}), [ch.seat_id]
+        )
+        return choice == "opportunity_attack"
+
+    def resolve_reaction(self, prompt_id: str, seat_id: str | None, option: str) -> bool:
+        entry = self._reactions.get(prompt_id)
+        if entry is None or entry[0] != seat_id or entry[1].done():
+            return False
+        entry[1].set_result(option)
+        return True
 
     # --- проверка персонажа ИИ-мастером (раздел 5.1) ---
 
@@ -620,6 +917,8 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
     for m in rows:
         note = "" if m.seat_id in char_by_seat else " (у игрока ещё нет персонажа)"
         out.append(f"- [{KIND_RU.get(m.kind, m.kind)}] {_who(m, char_by_seat, names)}{note}: {m.content}")
+        if m.kind == "action" and m.intent:
+            out.append(f"  намерение (разбор парсера): {intents.describe(m.intent)}")
     return "\n".join(out)
 
 

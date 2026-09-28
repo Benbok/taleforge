@@ -21,6 +21,9 @@
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
   .row > * { flex:1; min-width:140px; }
   .muted { color:var(--muted); }
+  .turnbar { border:1px solid var(--line); border-radius:6px; padding:6px 10px; margin-bottom:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .turnbar.mine { border-color:var(--accent); } .turnbar button { padding:3px 10px; }
+  .reaction { border:2px solid var(--accent); border-radius:6px; padding:8px 10px; margin-bottom:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .err { color:#c0392b; min-height:1.2em; }
   #game { display:grid; grid-template-columns: 220px 1fr; gap:14px; }
   @media (max-width: 700px) { #game { grid-template-columns: 1fr; } }
@@ -101,6 +104,8 @@
       <div><div class="card"><h4 style="margin-top:0">Места</h4><div id="seats"></div></div>
         <div class="card sheet" id="heroCard"></div><div class="card sheet hidden" id="reviewCard"></div><div class="card sheet hidden" id="premadesCard"></div></div>
       <div class="card">
+        <div id="turnBar" class="turnbar hidden"><span id="turnText"></span> <span id="turnClock" class="muted"></span> <button class="ghost" id="passBtn">Пропустить ход</button></div>
+        <div id="reactionBox" class="reaction hidden"></div>
         <div id="masterStatus" class="muted"></div>
         <div id="log"></div>
         <div class="row" style="margin-top:10px">
@@ -109,6 +114,7 @@
           <div style="flex:0 0 auto"><button id="sendBtn">Отправить</button></div>
         </div>
         <div class="err" id="sendErr"></div>
+        <div class="muted" id="sendNote"></div>
       </div>
     </div>
   </section>
@@ -272,9 +278,14 @@ function connect() {
 function closeWs() { if (ws) { ws.__keep = false; ws.close(); ws = null; } }
 function handle(e) {
   if (e.type === "auth.ok") return ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } }));
-  if (e.type === "state.snapshot") { const p = e.payload; const seatChanged = mySeat !== p.me.seat_id; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; if (seatChanged) { room.my_seat_id = mySeat; room.my_role = p.me.role; $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !mySeat)); loadHeroes(); } return; }
+  if (e.type === "state.snapshot") { const p = e.payload; const seatChanged = mySeat !== p.me.seat_id; mySeat = p.me.seat_id; seatsById = {}; for (const s of p.seats) seatsById[s.id] = s; renderSeats(); $("roomStatus").textContent = p.campaign.status + (p.session ? " · идёт сессия" : ""); if (!p.replay) $("log").innerHTML = ""; p.messages.forEach(addMsg); lastSeq = e.seq; setTurn(p.turn); if (seatChanged) { room.my_seat_id = mySeat; room.my_role = p.me.role; $("takeSeatBtn").classList.toggle("hidden", !(room.is_owner && !mySeat)); loadHeroes(); } return; }
   if (e.type === "message.new") { if (lastSeq == null || e.seq > lastSeq) { addMsg(e.payload); lastSeq = e.seq; } return; }
   if (e.type === "message.rejected") { $("sendErr").textContent = e.payload.reason; return; }
+  if (e.type === "message.notice") { $("sendNote").textContent = e.payload.text; return; }
+  if (e.type === "turn.changed") { setTurn(e.payload.turn); return; }
+  if (e.type === "scene.updated") { setTurn(e.payload.turn); return; }
+  if (e.type === "reaction.prompt") { showReaction(e.payload); return; }
+  if (e.type === "reaction.closed") { if (reaction && reaction.prompt_id === e.payload.prompt_id) hideReaction(); return; }
   if (e.type === "presence.changed") { const s = seatsById[e.payload.seat_id]; if (s) { s.presence = e.payload.status; renderSeats(); } return; }
   if (e.type === "seat.changed" || e.type.startsWith("session.")) { ws.send(JSON.stringify({ type: "campaign.join", payload: { campaign_id: room.id, last_seq: lastSeq } })); return; }
   if (e.type === "character.sheet" || e.type === "character.reviewed") { if (e.payload.character) { hero = e.payload.character; renderHero(); } else loadHeroes(); if (e.type === "character.reviewed") addMsg({ kind: "system", content: e.payload.status === "approved" ? "Мастер одобрил героя." + (e.payload.comment ? " " + e.payload.comment : "") : "Мастер вернул героя: " + (e.payload.comment || "") }); return; }
@@ -283,6 +294,35 @@ function handle(e) {
   if (e.type === "campaign.deleted") { room = null; lobby(); return; }
   if (e.type === "error") $("sendErr").textContent = e.payload.message;
 }
+// Пошаговый режим: чей ход, сколько осталось, кнопка реакции с таймером (раздел 5, 7.2)
+let turn = null, reaction = null, clockTimer = null;
+function setTurn(t) {
+  turn = t || null;
+  const bar = $("turnBar");
+  bar.classList.toggle("hidden", !turn);
+  if (!turn) return;
+  ensureClock();
+  const mine = turn.seat_id && turn.seat_id === mySeat;
+  bar.classList.toggle("mine", !!mine);
+  $("turnText").textContent = `Бой · раунд ${turn.round} · ` + (mine ? "ваш ход" : `ходит ${turn.name}`);
+  $("passBtn").classList.toggle("hidden", !(mine || (room && room.my_role === "master")));
+  tick();
+}
+function tick() {
+  const left = (x) => Math.max(0, Math.round(x - Date.now() / 1000));
+  $("turnClock").textContent = turn && turn.deadline ? `${Math.floor(left(turn.deadline) / 60)}:${String(left(turn.deadline) % 60).padStart(2, "0")}` : "";
+  if (reaction) { const n = left(reaction.expires_at); $("rxClock").textContent = n + " с"; if (n <= 0) hideReaction(); }
+}
+function ensureClock() { if (!clockTimer) clockTimer = setInterval(tick, 1000); }
+function showReaction(p) {
+  reaction = p; ensureClock();
+  const box = $("reactionBox");
+  box.innerHTML = `<b>Реакция:</b> <span>${esc(p.trigger)}</span> <span class="muted" id="rxClock"></span>` + p.options.map(o => `<button ${o.id === "skip" ? 'class="ghost"' : ""} data-rx="${esc(o.id)}">${esc(o.label)}</button>`).join(" ");
+  box.classList.remove("hidden");
+  box.querySelectorAll("[data-rx]").forEach(b => b.onclick = () => { ws.send(JSON.stringify({ type: "reaction.choose", payload: { prompt_id: p.prompt_id, option: b.dataset.rx } })); hideReaction(); });
+  tick();
+}
+function hideReaction() { reaction = null; $("reactionBox").classList.add("hidden"); $("reactionBox").innerHTML = ""; }
 function renderSeats() {
   $("seats").innerHTML = Object.values(seatsById).sort((a,b) => a.position - b.position).map(s => {
     const who = s.occupant_type === "agent" ? "ИИ-агент" : (s.user_name || "свободно");
@@ -464,8 +504,8 @@ document.addEventListener("click", async (ev) => {
 });
 $("backBtn").onclick = () => { room = null; lobby(); };
 $("inviteBtn").onclick = async () => { try { const i = await api(`/api/campaigns/${room.id}/invites`, { method: "POST", body: {} }); $("inviteOut").classList.remove("hidden"); $("inviteOut").innerHTML = `Ссылка для друзей (действует 72 часа): <input readonly value="${esc(i.url)}" onclick="this.select()">`; } catch (e) { alert(e.message); } };
-function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }
-$("sendBtn").onclick = send; $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
+function send() { const text = $("text").value; if (!text.trim() || !ws) return; $("sendErr").textContent = ""; $("sendNote").textContent = ""; ws.send(JSON.stringify({ type: "message.send", payload: { kind: $("kind").value, text } })); $("text").value = ""; }
+$("sendBtn").onclick = send; $("passBtn").onclick = () => ws && ws.send(JSON.stringify({ type: "turn.pass", payload: {} })); $("text").onkeydown = (e) => { if (e.key === "Enter") send(); };
 setInterval(() => ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: "ping" })), 25000);
 </script>
 <div id="sheetModal" class="hidden"><div class="card"><div class="row" style="align-items:start"><div id="sheetBody"></div><div style="flex:0 0 auto"><button class="ghost" id="sheetClose">Закрыть</button></div></div><div id="sheetActions"></div><div class="err" id="sheetErr"></div></div></div>

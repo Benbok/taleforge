@@ -2,8 +2,10 @@
 
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
 ``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
-(``turn.pass``, ``vote.cast``, ``entity.inspect``) пока отвечают ``error: not_implemented``.
-``master.tool`` — инструменты мастера для живого мастера (этап 3).
+(``vote.cast``, ``entity.inspect``) пока отвечают ``error: not_implemented``.
+``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
+игрок, чей ход; ``turn.pass`` — пропустить ход (мастер так закрывает ход героя), ``reaction.choose`` — ответ на
+кнопку реакции.
 """
 
 from __future__ import annotations
@@ -15,17 +17,17 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import chat
+from app.core import chat, combat
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer
 from app.core.security import read_token
-from app.db.models import Campaign, User
+from app.db.models import Campaign, Character, Entity, User
 from app.gateway.events import PROTOCOL_VERSION, envelope, publish_message
 from app.gateway.hub import Connection
 
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-LATER_STAGES = {"turn.pass", "vote.cast", "entity.inspect"}
+LATER_STAGES = {"vote.cast", "entity.inspect"}
 MASTER_TRIGGER_KINDS = ("action", "speech", "whisper")
 
 
@@ -70,11 +72,32 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
                 }
                 for s in c.seats
             ],
+            "turn": await _turn(session, c.id),
             "messages": [chat.message_payload(m, names) for m in msgs],
             "replay": last_seq is not None,
         },
         seq=c.last_seq,
     )
+
+
+async def _turn(session: AsyncSession, campaign_id: str) -> dict | None:
+    from app.core.world import get_scene
+
+    sc = await get_scene(session, campaign_id)
+    if sc.mode != "combat" or not sc.turn_order:
+        return None
+    st = sc.state or {}
+    entry = sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]
+    ch = await session.get(Character, entry["id"])
+    en = None if ch else await session.get(Entity, entry["id"])
+    return {
+        "round": sc.round,
+        "actor_id": entry["id"],
+        "name": ch.name if ch else (en.name if en else "существо"),
+        "seat_id": ch.seat_id if ch else None,
+        "deadline": st.get("deadline"),
+        "submitted": bool(st.get("submitted")),
+    }
 
 
 @router.websocket("/ws")
@@ -140,32 +163,20 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 continue
 
             if kind == "message.send":
-                async with maker() as session:
-                    try:
-                        viewer = await get_viewer(session, user, conn.campaign_id)
-                        conn.seat_id = viewer.seat.id if viewer.seat else None
-                        m = await chat.post_message(
-                            session,
-                            viewer,
-                            str(payload.get("kind", "action")),
-                            str(payload.get("text", "")),
-                            settings.message_max_len,
-                        )
-                        await session.commit()
-                        names = await _names(session, viewer.campaign)
-                    except (Conflict, AccessDenied, NotFound) as e:
-                        await session.rollback()
-                        await conn.send(
-                            envelope(
-                                "message.rejected",
-                                conn.campaign_id,
-                                {"reason": str(e), "client_id": payload.get("client_id")},
-                            )
-                        )
-                        continue
-                await publish_message(bus, m, names)
-                if m.kind in MASTER_TRIGGER_KINDS:
-                    app.state.master.notify(conn.campaign_id)
+                await _send(app, user, conn, payload)
+                continue
+
+            if kind == "turn.pass":
+                # в фоне: ходы существ могут ждать кнопку реакции от этого же сокета
+                _background(_turn_pass(app, user, conn))
+                continue
+
+            if kind == "reaction.choose":
+                ok = app.state.master.resolve_reaction(
+                    str(payload.get("prompt_id")), conn.seat_id, str(payload.get("option", "skip"))
+                )
+                if not ok:
+                    await conn.send(_error("reaction_closed", "время реакции вышло", conn.campaign_id))
                 continue
 
             if kind == "master.tool":
@@ -213,6 +224,95 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
     await conn.send(envelope("master.tool.result", conn.campaign_id, {"request_id": request_id, **result}))
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
+        if name == "set_scene_mode":
+            if combat.in_combat(ctx):
+                _background(app.state.master.advance(conn.campaign_id, "sync"))  # первыми могут ходить существа
+            else:
+                await app.state.master.after_turn(ctx)
+
+
+async def _send(app, user: User, conn: Connection, payload: dict) -> None:
+    """Реплика игрока: очередь хода в бою → парсер намерений (для действий при ИИ-мастере) → запись в чат."""
+    settings, maker, bus = app.state.settings, app.state.sessionmaker, app.state.bus
+    kind, text = str(payload.get("kind", "action")), str(payload.get("text", ""))
+
+    async def reject(reason: str) -> None:
+        await conn.send(
+            envelope("message.rejected", conn.campaign_id, {"reason": reason, "client_id": payload.get("client_id")})
+        )
+
+    parsed = None
+    if kind == "action" and not text.strip().startswith(chat.OOC_PREFIX) and text.strip():
+        async with maker() as session:
+            try:
+                viewer = await get_viewer(session, user, conn.campaign_id)
+            except NotFound as e:
+                await reject(str(e))
+                return
+            reason = await combat.gate_message(session, viewer, kind, mark=False)
+            seat_id = viewer.seat.id if viewer.seat and viewer.is_player else None
+            await session.rollback()
+        if reason:
+            await reject(reason)
+            return
+        if seat_id and len(text) <= settings.message_max_len:
+            parsed = await app.state.master.parse_intent(conn.campaign_id, seat_id, text)
+            if parsed.reject:
+                await reject(parsed.reject)
+                return
+
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+            conn.seat_id = viewer.seat.id if viewer.seat else None
+            reason = await combat.gate_message(session, viewer, kind)
+            if reason:
+                raise Conflict(reason)
+            m = await chat.post_message(session, viewer, kind, text, settings.message_max_len)
+            if parsed is not None and parsed.intent and m.kind == "action":
+                m.intent = parsed.intent
+            await session.commit()
+            names = await _names(session, viewer.campaign)
+        except (Conflict, AccessDenied, NotFound) as e:
+            await session.rollback()
+            await reject(str(e))
+            return
+    await publish_message(bus, m, names)
+    if parsed is not None and parsed.notice:
+        await conn.send(envelope("message.notice", conn.campaign_id, {"text": parsed.notice, "message_id": m.id}))
+    if m.kind in MASTER_TRIGGER_KINDS:
+        app.state.master.notify(conn.campaign_id)
+
+
+_tasks: set[asyncio.Task] = set()
+
+
+def _background(coro) -> None:
+    task = asyncio.create_task(coro)
+    _tasks.add(task)
+
+    def done(t: asyncio.Task) -> None:
+        _tasks.discard(t)
+        if not t.cancelled() and t.exception() is not None:
+            log.error("фоновая задача сокета упала", exc_info=t.exception())
+
+    task.add_done_callback(done)
+
+
+async def _turn_pass(app, user: User, conn: Connection) -> None:
+    """Игрок пропускает свой ход; место мастера так закрывает ход текущего героя."""
+    async with app.state.sessionmaker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+        except NotFound as e:
+            await conn.send(_error("not_found", str(e), conn.campaign_id))
+            return
+        seat_id = viewer.seat.id if viewer.seat else None
+        is_master = viewer.is_master
+    reason = "master" if is_master else "pass"
+    done = await app.state.master.advance(conn.campaign_id, reason, seat_id=seat_id)
+    if done is None:
+        await conn.send(_error("not_your_turn", "сейчас не ваш ход", conn.campaign_id))
 
 
 async def _presence(bus, hub, conn: Connection, status: str) -> None:
