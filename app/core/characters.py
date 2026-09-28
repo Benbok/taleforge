@@ -420,6 +420,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
     if ch.status in ("approved", "active", "dead") or (ch.sheet or {}).get("class_id"):
         try:
             a = character_actor(ch, cat, inventory, effects)
+            origin = cat.find((ch.sheet or {}).get("origin_id") or "", "origin")
             out["derived"] = {
                 "abilities": a.abilities,
                 "mods": a.mods,
@@ -428,6 +429,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
                 "saves": a.saves,
                 "skills": a.skills,
                 "pb": a.pb,
+                "speed": int((origin.data if origin else {}).get("speed") or 30),
                 "attacks": a.attacks,
                 "effects": [{"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks} for e, r in a.effects],
             }

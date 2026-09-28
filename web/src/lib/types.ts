@@ -150,6 +150,57 @@ export interface EntityCard {
   error?: string;
 }
 
+export interface HeroAttack {
+  key: string;
+  name: string;
+  attack_bonus: number;
+  damage: string;
+  damage_type: string;
+  kind: "melee" | "ranged";
+  inventory_id?: string | null;
+}
+
+/** Полный лист своего героя (сервер отдаёт его только игроку этого героя и мастеру). */
+export interface HeroSheet extends HeroPublic {
+  class_name?: string | null;
+  origin_name?: string | null;
+  sheet: Record<string, unknown> & { level?: number; skills?: string[] };
+  resources: {
+    hp?: number;
+    hp_max?: number;
+    temp_hp?: number;
+    hit_dice?: number;
+    death_saves?: [number, number];
+    dead?: boolean;
+  };
+  private_backstory?: string | null;
+  personality?: string | null;
+  derived?: {
+    abilities: Record<string, number>;
+    mods: Record<string, number>;
+    ac: number;
+    hp_max: number;
+    saves: Record<string, number>;
+    skills: Record<string, number>;
+    pb: number;
+    speed?: number;
+    attacks: HeroAttack[];
+    effects: { id: string; template: string; name: string; stacks: number }[];
+  };
+  inventory: { id: string; item: string; name: string; qty: number; equipped: boolean }[];
+}
+
+export interface Explained {
+  stat: string;
+  character_id: string;
+  label?: string;
+  value?: number | string | null;
+  parts?: { label: string; value: string }[];
+  note?: string | null;
+  history?: string[];
+  error?: string;
+}
+
 export interface SeatState {
   id: string;
   role: "master" | "player";
