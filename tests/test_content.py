@@ -63,7 +63,11 @@ def test_base_pack_is_valid():
     assert report.ok, report.errors
     assert pack.manifest.provides == "srd-5.1"
     assert report.counts["effect_template"] == 16
-    assert report.counts["item_template"] == 50
+    assert report.counts["item_template"] == 64  # оружие, доспехи, снаряжение и зелья
+    assert report.counts["creature_template"] == 334
+    assert report.counts["class"] == 12
+    assert report.counts["origin"] == 9
+    assert report.counts["hazard_template"] == 1
     assert report.customs == []
 
 

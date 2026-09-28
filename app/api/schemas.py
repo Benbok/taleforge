@@ -46,6 +46,16 @@ class MasterIn(BaseModel):
     style: str | None = Field(default=None, max_length=2000)
 
 
+class CreationRulesIn(BaseModel):
+    """Настройки создания персонажа (раздел 5.1)."""
+
+    ability_methods: list[Literal["standard_array", "point_buy", "roll"]] = Field(
+        default=["standard_array", "point_buy", "roll"], min_length=1
+    )
+    start_level: int = Field(default=1, ge=1, le=20)
+    review: Literal["master", "auto"] = "master"
+
+
 class CampaignCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     pack_id: str | None = None
@@ -56,6 +66,10 @@ class CampaignCreateIn(BaseModel):
     public_intro: str = Field(default="", max_length=10000)
     turn_timeout_sec: int = Field(default=300, ge=30, le=300)
     spend_limit_usd: float | None = Field(default=None, ge=0)
+    collect_window_sec: int = Field(default=60, ge=0, le=300, description="окно сбора реплик до ответа мастера")
+    excluded_themes: list[str] = Field(default_factory=list, max_length=20)
+    creation_rules: CreationRulesIn = CreationRulesIn()
+    test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
 
 
 class CampaignPatchIn(BaseModel):
@@ -64,6 +78,8 @@ class CampaignPatchIn(BaseModel):
     difficulty: Literal["easy", "normal", "hard", "deadly"] | None = None
     turn_timeout_sec: int | None = Field(default=None, ge=30, le=300)
     spend_limit_usd: float | None = Field(default=None, ge=0)
+    collect_window_sec: int | None = Field(default=None, ge=0, le=300)
+    excluded_themes: list[str] | None = Field(default=None, max_length=20)
 
 
 class SeatOut(BaseModel):

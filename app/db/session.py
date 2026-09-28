@@ -15,6 +15,13 @@ def make_engine(url: str) -> AsyncEngine:
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
+            # Драйвер sqlite сам решает, когда открыть транзакцию, и ломает точки сохранения (SAVEPOINT):
+            # отключаем его логику и открываем транзакцию явно — так откат хода мастера откатывает и инструменты
+            dbapi_conn.isolation_level = None
+
+        @event.listens_for(engine.sync_engine, "begin")
+        def _begin(conn):
+            conn.exec_driver_sql("BEGIN")
 
     return engine
 

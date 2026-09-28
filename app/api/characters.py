@@ -1,0 +1,145 @@
+"""REST: создание персонажа, лист, проверка мастером (ТЗ, раздел 5.1).
+
+Свой лист целиком видят игрок и мастер, остальные — только публичную часть (раздел 2).
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from app.api.deps import SessionDep, UserDep
+from app.content.catalog import campaign_catalog
+from app.core import characters as svc
+from app.core.campaigns import Viewer, get_viewer, master_seat
+from app.db.models import ActiveEffect, Character, InventoryItem
+from app.gateway.events import envelope
+
+router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
+
+
+class CharacterIn(BaseModel):
+    name: str | None = Field(None, max_length=64)
+    class_id: str | None = None
+    origin_id: str | None = None
+    ability_method: Literal["standard_array", "point_buy", "roll"] | None = None
+    abilities: dict[str, int] | None = None
+    ability_choice: list[str] | None = None
+    skills: list[str] | None = None
+    equipment_choices: list[dict[str, Any]] | None = None
+    public_bio: str | None = Field(None, max_length=4000)
+    private_backstory: str | None = Field(None, max_length=4000)
+    personality: dict[str, str] | None = None
+
+
+class ReviewIn(BaseModel):
+    approve: bool
+    comment: str = Field("", max_length=2000)
+
+
+async def _view(session, viewer: Viewer, ch: Character) -> dict:
+    mine = viewer.seat is not None and ch.seat_id == viewer.seat.id
+    if not (mine or viewer.is_master):
+        return svc.public_view(ch)
+    cat = await campaign_catalog(session, viewer.campaign)
+    inv = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
+    eff = (await session.scalars(select(ActiveEffect).where(ActiveEffect.target_id == ch.id))).all()
+    out = svc.full_view(ch, cat, list(inv), list(eff))
+    if ch.status == "draft" and mine:
+        out["errors"] = svc.errors_for(ch, cat, await svc.creation_rules(session, viewer.campaign))
+    return out
+
+
+@router.get("/character-options")
+async def character_options(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    return await svc.options(session, v.campaign, await campaign_catalog(session, v.campaign))
+
+
+@router.get("/characters")
+async def list_characters(campaign_id: str, user: UserDep, session: SessionDep) -> list[dict]:
+    v = await get_viewer(session, user, campaign_id)
+    rows = (await session.scalars(select(Character).where(Character.campaign_id == campaign_id))).all()
+    out = []
+    for ch in rows:
+        mine = v.seat is not None and ch.seat_id == v.seat.id
+        if ch.status in ("draft", "submitted") and not (mine or v.is_master):
+            continue  # чужие черновики не видны
+        out.append(await _view(session, v, ch))
+    return out
+
+
+@router.post("/characters", status_code=201)
+async def create_character(campaign_id: str, body: CharacterIn, user: UserDep, session: SessionDep) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    rules = await svc.creation_rules(session, v.campaign)
+    ch = await svc.create_draft(session, v, body.model_dump(exclude_none=True), rules)
+    await session.commit()
+    return await _view(session, v, ch)
+
+
+@router.get("/characters/{character_id}")
+async def get_character(campaign_id: str, character_id: str, user: UserDep, session: SessionDep) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    return await _view(session, v, await svc.get_character(session, v, character_id))
+
+
+@router.put("/characters/{character_id}")
+async def update_character(
+    campaign_id: str, character_id: str, body: CharacterIn, user: UserDep, session: SessionDep
+) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    ch = await svc.update_draft(
+        session, v, await svc.get_character(session, v, character_id), body.model_dump(exclude_none=True)
+    )
+    await session.commit()
+    return await _view(session, v, ch)
+
+
+@router.post("/characters/{character_id}/roll-abilities")
+async def roll_abilities(campaign_id: str, character_id: str, user: UserDep, session: SessionDep, request: Request):
+    v = await get_viewer(session, user, campaign_id)
+    ch = await svc.get_character(session, v, character_id)
+    totals = await svc.roll_abilities(session, v, ch, request.app.state.dice_factory())
+    await session.commit()
+    return {"rolls": totals}
+
+
+@router.post("/characters/{character_id}/submit")
+async def submit(campaign_id: str, character_id: str, user: UserDep, session: SessionDep, request: Request) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    ch = await svc.get_character(session, v, character_id)
+    cat = await campaign_catalog(session, v.campaign)
+    errors = await svc.submit(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
+    await session.commit()
+    if errors:
+        return {"status": ch.status, "errors": errors}
+    bus = request.app.state.bus
+    await bus.publish(campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None)
+    if ch.status == "submitted" and master_seat(v.campaign).occupant_type == "agent":
+        # проверку ведёт ИИ-мастер; ответ придёт событием character.reviewed
+        request.app.state.master.schedule_review(campaign_id, ch.id)
+    return {"status": ch.status, "errors": []}
+
+
+@router.post("/characters/{character_id}/review")
+async def review(
+    campaign_id: str, character_id: str, body: ReviewIn, user: UserDep, session: SessionDep, request: Request
+) -> dict:
+    v = await get_viewer(session, user, campaign_id)
+    ch = await svc.get_character(session, v, character_id)
+    await svc.review(session, v, ch, await campaign_catalog(session, v.campaign), body.approve, body.comment)
+    await session.commit()
+    view = await _view(session, v, ch)
+    bus = request.app.state.bus
+    await bus.publish(campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None)
+    if ch.seat_id:
+        await bus.publish(
+            campaign_id,
+            envelope("character.reviewed", campaign_id, {"status": ch.status, "comment": ch.review_comment}),
+            [ch.seat_id],
+        )
+    return view

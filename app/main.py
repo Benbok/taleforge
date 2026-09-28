@@ -10,7 +10,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 
-from app.api import admin, auth, campaigns
+from app.agents.llm import LLM, LiteLLMClient
+from app.agents.master import MasterService
+from app.api import admin, auth, campaigns, characters
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.core.security import hash_password
@@ -18,6 +20,7 @@ from app.db.models import User
 from app.db.session import make_engine, make_sessionmaker
 from app.gateway import ws
 from app.gateway.hub import Hub, MemoryBus, RedisBus
+from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
 STATIC = Path(__file__).parent / "web" / "static"
@@ -41,7 +44,8 @@ async def bootstrap_superadmin(maker, settings: Settings) -> None:
             log.info("создан Super Admin %s", settings.superadmin_name)
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_factory=Dice) -> FastAPI:
+    """``llm`` и ``dice_factory`` подменяются в тестах: модель с заданными ответами и кубики с seed."""
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
@@ -53,13 +57,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.bus = RedisBus(hub, settings.redis_url) if settings.redis_url else MemoryBus(hub)
         await app.state.bus.start()
         await bootstrap_superadmin(app.state.sessionmaker, settings)
+        app.state.dice_factory = dice_factory
+        app.state.master = MasterService(app.state.sessionmaker, app.state.bus, llm or LiteLLMClient(), dice_factory)
         try:
             yield
         finally:
+            await app.state.master.stop()
             await app.state.bus.stop()
             await engine.dispose()
 
-    app = FastAPI(title="Taleforge", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="Taleforge", version="0.3.0", lifespan=lifespan)
     app.state.settings = settings
 
     for exc, code in ((NotFound, 404), (AccessDenied, 403), (Conflict, 409)):
@@ -72,6 +79,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(admin.router)
     app.include_router(campaigns.router)
+    app.include_router(characters.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")

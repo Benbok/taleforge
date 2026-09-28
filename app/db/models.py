@@ -1,5 +1,6 @@
-"""Модель данных этапа 2 (ТЗ, раздел 4): пользователи, пакеты контента, кампании, места,
-приглашения, сеансы и чат. Персонажи, сущности, события и память — следующими этапами."""
+"""Модель данных (ТЗ, раздел 4): пользователи, пакеты контента, кампании, места, приглашения, сеансы и чат
+(этап 2); персонажи, сущности мира, сцена, эффекты, журнал событий, ходы мастера и лог обращений к моделям
+(этап 3). Сводки, голосования и база знаний — следующими этапами."""
 
 from __future__ import annotations
 
@@ -110,6 +111,9 @@ class Campaign(Base):
     party_size_recommended: Mapped[int] = mapped_column(Integer, default=4)
     settings: Mapped[dict[str, Any]] = mapped_column(default=dict)
     last_seq: Mapped[int] = mapped_column(Integer, default=0)
+    # Цепочка пакетов кампании от базового к верхнему: [[id, version], ...]. Фиксируется при создании,
+    # новая версия пакета идущую кампанию не меняет (раздел 3.2).
+    content_chain: Mapped[list[Any]] = mapped_column(default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -189,4 +193,159 @@ class Message(Base):
     visible_to: Mapped[list[Any] | None] = mapped_column(JSONType)  # None — все; иначе id мест
     content: Mapped[str] = mapped_column(Text)
     intent: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --- Мир кампании (этап 3) ---
+
+
+class Character(Base):
+    """Персонаж игрока. Механика в ``sheet`` (выборы конструктора), текущие ресурсы в ``resources``;
+    производные величины (КД, хиты, модификаторы) считает движок правил при каждом чтении."""
+
+    __tablename__ = "characters"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ch"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    seat_id: Mapped[str | None] = mapped_column(ForeignKey("seats.id", ondelete="SET NULL"))
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(String(64))
+    # draft | submitted | approved | active | dead | retired (раздел 5.1)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    creation_method: Mapped[str] = mapped_column(String(16), default="builder")  # builder | pregen
+    sheet: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    resources: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    public_bio: Mapped[str] = mapped_column(Text, default="")
+    private_backstory: Mapped[str] = mapped_column(Text, default="")
+    personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    review_comment: Mapped[str | None] = mapped_column(Text)
+    location_id: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class InventoryItem(Base):
+    __tablename__ = "inventory"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("inv"))
+    character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
+    item_template_id: Mapped[str] = mapped_column(String(128))
+    display_name: Mapped[str | None] = mapped_column(String(128))  # имя от мастера, статы — из шаблона
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    equipped: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Entity(Base):
+    """Всё, с чем можно взаимодействовать, кроме персонажей игроков: существа, NPC, локации, объекты.
+    Нет записи — нет сущности (раздел 8.1). Состояние экземпляра (хиты, отношение, жив ли) — в ``state``."""
+
+    __tablename__ = "entities"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("en"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # creature | location | object
+    name: Mapped[str] = mapped_column(String(128))
+    template_id: Mapped[str | None] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(Text, default="")
+    state: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    location_id: Mapped[str | None] = mapped_column(String(32))
+    # Зона дальности относительно отряда (раздел 7.1): melee — вплотную, near — близко, far — далеко
+    zone: Mapped[str] = mapped_column(String(16), default="near")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ActiveEffect(Base):
+    """Наложенный эффект или состояние на персонаже или сущности. Снимает его сервер по игровым часам."""
+
+    __tablename__ = "active_effects"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ef"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    target_id: Mapped[str] = mapped_column(String(32), index=True)  # ch_… или en_…
+    effect_template_id: Mapped[str] = mapped_column(String(128))
+    stacks: Mapped[int] = mapped_column(Integer, default=1)
+    expires_at: Mapped[int | None] = mapped_column(Integer)  # игровое время, секунды; None — пока не снимут
+    source_event_id: Mapped[str | None] = mapped_column(String(32))
+
+
+class Knowledge(Base):
+    """Что персонаж знает о сущности: 0 — видел, 1 — наслышан, 2 — изучил, 3 — знает всё (раздел 10)."""
+
+    __tablename__ = "knowledge"
+
+    character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), primary_key=True)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Scene(Base):
+    """Текущая сцена кампании: режим, локация, очередь инициативы. Ход по очереди — этап 4."""
+
+    __tablename__ = "scenes"
+
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(16), default="free")  # free | combat
+    location_id: Mapped[str | None] = mapped_column(String(32))
+    round: Mapped[int] = mapped_column(Integer, default=0)
+    turn_order: Mapped[list[Any]] = mapped_column(default=list)  # [{id, initiative}]
+    # Игровые часы кампании, секунды от начала (раздел 7.2). Живут в сцене, а не в кампании: ход мастера
+    # держит изменённые строки до конца транзакции, а строку кампании нужна чату для порядковых номеров.
+    game_time: Mapped[int] = mapped_column(Integer, default=0)
+    state: Mapped[dict[str, Any]] = mapped_column(default=dict)  # служебное: время последнего долгого отдыха
+
+
+class MasterTurn(Base):
+    """Один ход мастера: какие реплики он закрыл, вызовы инструментов, повествование, срабатывания проверок."""
+
+    __tablename__ = "master_turns"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("t"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(16), default="running")  # running | done | failed
+    upto_seq: Mapped[int] = mapped_column(Integer, default=0)  # реплики игроков до этого seq закрыты ходом
+    trace: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    narration_message_id: Mapped[str | None] = mapped_column(String(32))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Event(Base):
+    """Журнал изменений состояния. Любое изменение мира — событие с кубиками и обратной дельтой."""
+
+    __tablename__ = "events"
+    __table_args__ = (UniqueConstraint("campaign_id", "idempotency_key"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ev"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    turn_id: Mapped[str | None] = mapped_column(String(32), index=True)
+    tool: Mapped[str] = mapped_column(String(32))
+    actor_id: Mapped[str | None] = mapped_column(String(32))  # кто действовал: ch_…, en_… или место мастера
+    target_id: Mapped[str | None] = mapped_column(String(32))
+    payload: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    dice: Mapped[list[Any]] = mapped_column(default=list)
+    inverse: Mapped[list[Any]] = mapped_column(default=list)  # как откатить: [{table, id, field, before}]
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)  # скрытый бросок: видят мастер и журнал
+    idempotency_key: Mapped[str | None] = mapped_column(String(64))
+    game_time: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class LlmCall(Base):
+    """Каждое обращение к модели: токены, стоимость, задержка (раздел 13)."""
+
+    __tablename__ = "llm_calls"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("llm"))
+    campaign_id: Mapped[str | None] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    seat_id: Mapped[str | None] = mapped_column(String(32))
+    turn_id: Mapped[str | None] = mapped_column(String(32))
+    purpose: Mapped[str] = mapped_column(String(32))  # decide | narrate | review
+    model: Mapped[str] = mapped_column(String(128))
+    tokens_in: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, default=0)
+    cost: Mapped[float] = mapped_column(Float, default=0.0)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

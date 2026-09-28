@@ -1,0 +1,14 @@
+# Опасности среды SRD 5.1 (The Environment). Урон считает формула шаблона, мастер передаёт только параметры.
+# per: урон за каждый шаг параметра: падение — 1к6 за каждые 10 футов, не больше 20к6.
+kind: hazard_template
+items:
+  - id: hazard.falling
+    name: Падение
+    description: 1к6 дробящего урона за каждые 10 футов падения, не больше 20к6. Упавший приземляется лёжа, если получил урон.
+    status: canon
+    doc: "SRD 5.1: Falling"
+    tags: [environment, srd]
+    params_schema: {height_ft: {type: integer, minimum: 0, maximum: 1000}}
+    modifiers:
+      - {op: extra_damage, dice: "1d6", damage_type: bludgeoning, per: {param: height_ft, step: 10, max: 20}}
+      - {op: condition, condition: prone, after_damage: true}
