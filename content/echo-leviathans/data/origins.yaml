@@ -1,0 +1,216 @@
+# Происхождения героев (вместо рас SRD). Источник: rules.md#2, canon.md#2 (таблица происхождений).
+# Статус: [Канон, предварительно: набор из шести]; Мореход добавлен по ответу Arty (open-questions #16).
+# ability_bonuses: {ability, value} — фиксированная прибавка; {choose, from, value, distinct_from_fixed} — на выбор игрока.
+kind: origin
+items:
+  - id: origin.tushevik
+    name: Тушевик
+    description: Рождён в городе на спине туши. Привык к трупному газу, теплу и тесноте, внутри туши чувствует дорогу наружу.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary]
+    ability_bonuses:
+      - {ability: con, value: 2}
+      - {choose: 1, from: any, value: 1, distinct_from_fixed: true}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+      suggested: mine_cant
+    proficiencies:
+      skills: [survival]
+    features:
+      - key: gas_habit
+        name: Привычка к газу
+        description: Преимущество на спасброски против яда и состояния «отравлен».
+        modifiers:
+          - {op: advantage, "on": save, vs: poison}
+          - {op: advantage, "on": save, vs: poisoned}
+      - key: carcass_sense
+        name: Чувство туши
+        description: Владение Выживанием. Внутри туши вы всегда знаете направление к ближайшему выходу.
+        modifiers:
+          - {op: proficiency, kind: skill, value: survival}
+          - {op: custom, engine: dev_request, need: "op раскрытия знания/направления (reveal: nearest_exit) и условие location_tag: carcass", text: "Внутри локации-туши (location_template с тегом carcass) персонаж всегда знает направление к ближайшему выходу."}
+
+  - id: origin.okrainets
+    name: Окраинец
+    description: Выходец из Старых земель — ферм, рыбацких деревень, остатков королевств. Выносливый и недоверчивый.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary]
+    ability_bonuses:
+      - {ability: wis, value: 2}
+      - {choose: 1, from: any, value: 1, distinct_from_fixed: true}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+      suggested: old_lands
+    proficiencies:
+      skills: [nature]
+      tools_choose: {count: 1, from: artisan_tools}
+    features:
+      - key: stubbornness
+        name: Упрямство
+        description: Преимущество на спасброски против испуга.
+        modifiers:
+          - {op: advantage, "on": save, vs: frightened}
+      - key: hands_of_earth
+        name: Руки земли
+        description: Владение одним инструментом ремесленника и навыком Природа.
+        modifiers: []
+
+  - id: origin.krovnik
+    name: Кровник
+    description: Из семьи, что поколениями пьёт очищенную кровь титанов. Сильнее и живучее, но зависим от флаконов ФК.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary, addiction]
+    ability_bonuses:
+      - {choose: 1, from: [str, con], value: 2}
+      - {choose: 1, from: any, value: 1, distinct_from_fixed: true}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+    features:
+      - key: thick_blood
+        name: Густая кровь
+        description: Раз за короткий отдых, когда хиты падают до 0, но вы не убиты, у вас остаётся 1 хит.
+        uses: {count: 1, per: short_rest}
+        triggers:
+          - "on": drop_to_0
+            if: {killed_outright: false}
+            do:
+              - {op: set, target: hp, value: 1}
+      - key: dependence
+        name: Зависимость
+        description: Если за последние 7 дней вы не выпили флакон ФК, помеха на спасброски Телосложения до следующего флакона.
+        triggers:
+          - "on": long_rest
+            if: {days_since_marker: {marker: blood_vial_drunk, gt: 7}}
+            do:
+              - {op: disadvantage, "on": save, stat: con, until: blood_vial_drunk}
+        modifiers:
+          - {op: custom, engine: dev_request, need: "stat_definition даты последнего флакона ФК (как stat.last_liquor_dose_day) и условие по нему в if; снятие помехи событием «выпит флакон»", text: "Движку нужен маркер даты последнего флакона ФК (1 шт.) в state персонажа; эффект снимается при выпитом флаконе."}
+
+  - id: origin.slomlenny
+    name: Сломленный
+    description: Бывший ребёнок-шахтёр с остановленной мутацией. Нитевик заморожен, и он слышит два голоса — Резонанса и снов экипажей.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary, two_voices]
+    ability_bonuses:
+      - {ability: cha, value: 2}
+      - {choose: 1, from: [con, wis], value: 1}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+      suggested: mine_cant
+    spells_known:
+      - {name: Указание, srd_ref: {type: spell, name: Guidance}, spell_ref: spell.guidance, ability: cha}
+    features:
+      - key: frozen_threadworm
+        name: Замороженный нитевик
+        description: Преимущество на спасброски против Скверны. На испытании Порога — преимущество (по таблице Порога, rules.md#3.4).
+        modifiers:
+          - {op: advantage, "on": save, vs: corruption}
+          - {op: advantage, "on": check, vs: threshold_trial}
+      - key: two_voices
+        name: Два голоса
+        description: Вы знаете заговор «Указание»; ваша характеристика для него — Харизма. Штраф настроя за противоположную сторону эха начинается с 4, а не с 3.
+        modifiers:
+          - {op: grant_action, name: Указание, action: action, spell: {srd_ref: {type: spell, name: Guidance}, spell_ref: spell.guidance, ability: cha}, do: []}
+          - {op: set, target: echo_opposite_side_penalty_from, value: 4, text: "Штраф настроя за противоположную сторону эха (стоимость +1) начинается с |4|, а не с |3| (rules.md#6.3)"}
+      - key: vibration_sense
+        name: Чувство вибраций
+        description: Слепое зрение 10 футов.
+        modifiers:
+          - {op: sense, sense: blindsight, range: 10}
+      - key: brand
+        name: Клеймо
+        description: Если NPC видит ваши мутации, сложность ваших проверок Убеждения против него +2.
+        modifiers:
+          - {op: add, target: check_dc, skill: persuasion, value: 2, when: npc_sees_mutations}
+
+  - id: origin.syndicate
+    name: Синдикатский
+    description: Вырос в верхних кварталах, образован, связан долгами и связями с одним из трёх Домов.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary, debt]
+    ability_bonuses:
+      - {choose: 3, from: any, value: 1, distinct: true}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+      suggested: guild_cipher
+    proficiencies:
+      skills_choose: {count: 2, from: any}
+      tools_choose: {count: 1, from: any}
+    features:
+      - key: education
+        name: Образование
+        description: Владение двумя навыками и одним инструментом на выбор.
+        modifiers: []
+      - key: house_ties
+        name: Связи Дома
+        description: В городе Синдикатов вы можете получить кредит до 50 ФК × уровень; он записывается как долг в state.
+        modifiers:
+          - op: grant_action
+            name: Кредит Дома
+            action: free
+            if: {location_tag: syndicate_city}
+            do:
+              - {op: resource, stat: money_fk, delta: amount, max: "50 * level - debt"}
+              - {op: resource, stat: debt, delta: amount, creditor: chosen_house}
+
+  - id: origin.morekhod
+    name: Мореход
+    description: Человек портов и палуб, ходивший к далёким островам и в батискафе над разломами. Не теряет курс ни в тумане, ни под водой.
+    status: canon
+    doc: rules.md#2
+    tags: [origin, human, preliminary, sea]
+    ability_bonuses:
+      - {choose: 1, from: [dex, wis], value: 2}
+      - {choose: 1, from: any, value: 1, distinct_from_fixed: true}
+    size: medium
+    speed: 30
+    languages:
+      fixed: [common]
+      choose: 1
+      options: [mine_cant, old_lands, church_canon, guild_cipher]
+    proficiencies:
+      tools: [vehicles_water, navigators_tools]
+    features:
+      - key: sea_training
+        name: Морская выучка
+        description: Владение водным транспортом и навигационными инструментами; вы не теряете ориентацию в тумане и под водой в батискафе.
+        modifiers:
+          - {op: proficiency, kind: vehicle, value: water}
+          - {op: proficiency, kind: tool, value: navigators_tools}
+          - {op: immunity, condition: effect.lost_direction, if: {any: [{in_area: fog}, {in_area: underwater_bathysphere}]}, text: "Не теряет ориентацию в тумане и под водой в батискафе"}
+      - key: steady_nerves
+        name: Крепкие нервы
+        description: Преимущество на спасброски против испуга, пока вы на судне или у воды.
+        modifiers:
+          - {op: advantage, "on": save, vs: frightened, when: on_ship_or_near_water}
+      - key: harbor_rumors
+        name: Портовые слухи
+        description: В любом порту вы находите знакомого капитана. Раз за кампанию можно узнать один слух об островах.
+        uses: {count: 1, per: campaign}
+        modifiers:
+          - {op: custom, engine: dev_request, need: "uses.per: campaign; op раскрытия lore_fact (reveal_knowledge с фильтром тега islands и уровня «слухи»); появление NPC-знакомого в порту (условие location_tag: port)", text: "Раз за кампанию: выдать один lore_fact про острова с уровнем знания «слухи». В порту всегда есть знакомый капитан (NPC)."}

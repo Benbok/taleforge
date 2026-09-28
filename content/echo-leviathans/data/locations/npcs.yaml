@@ -1,0 +1,338 @@
+# Ключевые NPC опорных туш (entities kind = npc в ТЗ). Источник: locations.md#2.1–2.4.
+# base_ref — существующий шаблон из creatures/*.yaml, если NPC — его именной вариант; иначе srd_ref.
+# secret_ref — тайна NPC в secrets_locations.yaml (мастер видит, игроки нет).
+# Живые дети здесь не заводятся: они — creature.child_* (npc_only, noncombatant).
+kind: creature_template
+items:
+# ---------------------------------------------------------------- Старая Мать
+- id: creature.npc_agrafena_kostrishcheva
+  name: Аграфена Кострищева
+  description: Глава Дома Кострищевых. Держит Утробу, железную дорогу и Хвост Старой Матери.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, syndicate, old_mother]
+  base_ref: creature.syndicate_noble
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8, note: в бой не вступает; за неё дерётся охрана}
+  escort: {srd_monsters: [Veteran], count: '2', note: 'Охрана Veteran (ПО 3)'}
+  faction_ref: faction.house_kostrishchev
+  location_ref: location.old_mother_womb
+  goal: Протянуть магистраль до Переднего края и забрать топливный подряд Кордона целиком.
+  secret_ref: secret.npc_agrafena_sold_towers
+
+- id: creature.npc_miron_lad
+  name: Мирон Лад
+  description: Смотритель Тихого этажа под биржей, Дом Ликвора. Официально держит Протокол, чтобы никто не узнал, что туша жива.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, syndicate, liquor, old_mother]
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  alteration: 4
+  behavior: {profile: defender, flee_threshold: 0.4}
+  faction_ref: faction.house_liquor
+  location_ref: location.old_mother_skull
+  goal: Держать Протокол, чтобы никто не узнал, что туша жива.
+  secret_ref: secret.npc_miron_wants_sleeper
+
+- id: creature.npc_efrosinya_velk
+  name: Ефросинья Вельк
+  description: Председатель Лимфатической компании, хозяйка магистрата, банка и Сердечной насосной.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, syndicate, old_mother]
+  base_ref: creature.syndicate_noble
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8}
+  faction_ref: faction.lymph_company
+  location_ref: location.old_mother_skull
+  goal: Монополия на ФК и выкуп долгов всего Кольца.
+  secret_ref: secret.npc_efrosinya_diluted_reserves
+
+- id: creature.npc_ulita_krivaya
+  name: Улита Кривая
+  description: Надсмотрщица детских артелей в Утробе. Жёсткая, но следит, чтобы никто не погиб.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, mine, old_mother]
+  srd_ref: {type: monster, name: Spy}
+  cr: 1
+  behavior: {profile: cowardly, flee_threshold: 0.5, note: 'в бою первым делом уводит детей из сцены'}
+  faction_ref: faction.house_kostrishchev
+  hidden_faction_ref: faction.miners_underground
+  location_ref: location.old_mother_womb
+  goal: Чтобы её артель выполняла норму и никто не погиб.
+  secret_ref: secret.npc_ulita_informant
+
+- id: creature.npc_pavel_rovny
+  name: Павел Ровный
+  description: Счетовод биржи, раздувает панику и жадность на торгах. На деле — Глашатай стадии I.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, herald, old_mother]
+  base_ref: creature.herald_double
+  srd_ref: {type: monster, name: Doppelganger}
+  cr: 3
+  stage: 1
+  behavior: {profile: cowardly, flee_threshold: 0.5, note: 'раскрытый, бежит в толпу и меняет облик'}
+  faction_ref: faction.resonance
+  cover_faction_ref: faction.syndicates
+  location_ref: location.old_mother_skull
+  goal: Раздувать панику и жадность на торгах.
+  secret_ref: secret.npc_pavel_herald
+
+- id: creature.npc_eldest
+  name: Старшая
+  description: 'Глубинная, ушедшая в жилы около 70 лет назад. Взрослая. Растёт в коконе у Сердца, чтобы стать матерью и забрать тушу.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [npc, unique, echoed, caste_deep, adult_only, future_mother, boss, old_mother]
+  base_ref: creature.deepkin_elder
+  srd_ref: {type: monster, name: Ghast}
+  cr: 2
+  transforms_to_ref: creature.mother_human
+  transform_when: 'Туша проснулась на стороне Резонанса, или кокон дозрел (решает мастер по сценарию)'
+  behavior: {profile: capturer, nonlethal: true, flee_threshold: 0.2}
+  faction_ref: faction.resonance
+  location_ref: location.old_mother_heart
+  goal: Вырасти в мать и забрать тушу.
+  secret_ref: secret.old_mother_brood_ship
+  note: 'В locations.md шаблон Ghast (ПО 2), у base_ref creature.deepkin_elder основа Ghoul (ПО 3). После перерождения — Aboleth (ПО 10), creature.mother_human.'
+
+# ---------------------------------------------------------------- Утопленник
+- id: creature.npc_varvara_mel
+  name: Варвара Мель
+  description: Старшина Капитанской управы Утопленника. Держит порт на деле, а не на бумаге.
+  status: proposal
+  doc: locations.md#2.2
+  tags: [npc, unique, port, drowned]
+  base_ref: creature.smuggler_captain
+  srd_ref: {type: monster, name: Bandit Captain}
+  cr: 2
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction: Капитанская управа (нет записи в factions.yaml)
+  ally_faction_ref: faction.islanders
+  location_ref: location.drowned_rib_harbor
+  goal: Держать порт свободным от Домов.
+  secret_ref: secret.npc_varvara_island_chart
+
+- id: creature.npc_taras_gorky
+  name: Тарас Горький
+  description: Управляющий концессии Дома Ликвора в Утопленнике.
+  status: proposal
+  doc: locations.md#2.2
+  tags: [npc, unique, syndicate, liquor, drowned]
+  base_ref: creature.syndicate_noble
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8}
+  escort: {srd_monsters: [Veteran], count: '2', note: 'Охрана Veteran (ПО 3)'}
+  faction_ref: faction.house_liquor
+  location_ref: location.drowned_lighthouse
+  goal: Поднять «мокрый» ликвор из затопленных отсеков.
+  secret_ref: secret.npc_taras_charges
+
+- id: creature.npc_yan_kroha
+  name: Ян Кроха
+  description: Батискафщик Гильдии в Затопленной утробе. Тайно — «Слушатель».
+  status: proposal
+  doc: locations.md#2.2
+  tags: [npc, unique, guild, listeners, drowned]
+  srd_ref: {type: monster, name: Scout}
+  cr: 0.5
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.guild_listeners
+  cover_faction_ref: faction.guild
+  location_ref: location.drowned_flooded_womb
+  goal: Спуститься к резонатору в хвосте.
+  secret_ref: secret.npc_yan_answer
+
+- id: creature.npc_ida_islands
+  name: Ида с Островов
+  description: Старая островитянка, торгует солью на рынке в Горле.
+  status: proposal
+  doc: locations.md#2.2
+  tags: [npc, unique, islanders, social, drowned]
+  base_ref: creature.islander
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.9}
+  faction_ref: faction.islanders
+  location_ref: location.drowned_throat
+  goal: Вернуться домой.
+  secret_ref: secret.npc_ida_envoy
+
+- id: creature.npc_salt_mother
+  name: Солёная мать
+  description: Мать в Затопленной утробе. Стражи клапанов служат ей. Растёт к резонатору в хвосте.
+  status: proposal
+  doc: locations.md#2.2
+  tags: [npc, unique, echoed, mother, boss, aquatic, drowned]
+  base_ref: creature.mother_human
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 10
+  behavior: {profile: capturer, nonlethal: true, flee_threshold: 0.3}
+  modifiers:
+  - {op: set, target: habitat, value: underwater, note: 'Водная привязка: живёт и действует только в затопленных отсеках и под водой'}
+  faction_ref: faction.resonance
+  location_ref: location.drowned_flooded_womb
+  goal: Забрать корабль, пока он спит.
+  secret_ref: secret.npc_salt_mother_origin
+
+# ---------------------------------------------------------------- Шепчущий
+- id: creature.npc_ioakim
+  name: Иоаким Светлый
+  description: Первосвященник Собора Вознесения. Ведёт верхушку через «возвышение».
+  status: proposal
+  doc: locations.md#2.3
+  tags: [npc, unique, church, church_top, invited, future_mother, boss, whisperer]
+  base_ref: creature.invited
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 2
+  subclass_note: Домен голода
+  transforms_to_ref: creature.mother_human
+  transform_when: при раскрытии или по завершении возвышения
+  behavior: {profile: capturer, flee_threshold: 0.3}
+  faction_ref: faction.church_top
+  location_ref: location.whisperer_ascension
+  goal: Завершить возвышение и «соединиться с ангелом».
+  secret_ref: secret.npc_ioakim_mother
+
+- id: creature.npc_malasha
+  name: Сестра Малаша
+  description: Настоятельница Шейных келий. Прячет беглых детей и кормит бедных.
+  status: proposal
+  doc: locations.md#2.3
+  tags: [npc, unique, church, lower_clergy, whisperer]
+  base_ref: creature.church_acolyte
+  srd_ref: {type: monster, name: Acolyte}
+  cr: 0.25
+  behavior: {profile: defender, flee_threshold: 0.5, note: защищает детей и уводит их из сцены}
+  faction_ref: faction.church_lower_clergy
+  location_ref: location.whisperer_neck_cells
+  goal: Спрятать беглых детей и кормить бедных.
+  secret_ref: secret.npc_malasha_registry
+
+- id: creature.npc_demyan_skala
+  name: Демьян Скала
+  description: Брат-рыцарь, страж Ковчега мощей.
+  status: proposal
+  doc: locations.md#2.3
+  tags: [npc, unique, church, whisperer]
+  base_ref: creature.church_knight
+  srd_ref: {type: monster, name: Knight}
+  cr: 3
+  alteration: 3
+  behavior: {profile: defender, flee_threshold: 0.1}
+  faction_ref: faction.church
+  location_ref: location.whisperer_reliquary
+  goal: Охранять мощи.
+  secret_ref: secret.npc_demyan_breathing_relic
+
+- id: creature.npc_filipp_cantor
+  name: Кантор Филипп
+  description: Регент хора Шепчущего. Тайно — «Слушатель» Гильдии.
+  status: proposal
+  doc: locations.md#2.3
+  tags: [npc, unique, church, listeners, whisperer]
+  srd_ref: {type: monster, name: Spy}
+  cr: 1
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.guild_listeners
+  cover_faction_ref: faction.church
+  location_ref: location.whisperer_choirs
+  goal: Держать хор в голосе.
+  secret_ref: secret.npc_filipp_choir_mutes
+
+- id: creature.npc_anna_pilgrim
+  name: Паломница Анна
+  description: Вечная паломница, 20 лет живёт на Паперти и приводит новых паломников к Иоакиму. Глашатай стадии II.
+  status: proposal
+  doc: locations.md#2.3
+  tags: [npc, unique, herald, whisperer]
+  base_ref: creature.herald_double
+  srd_ref: {type: monster, name: Doppelganger}
+  cr: 3
+  stage: 2
+  behavior: {profile: capturer, flee_threshold: 0.4}
+  faction_ref: faction.resonance
+  cover_faction_ref: faction.church
+  location_ref: location.whisperer_porch
+  goal: Приводить новых паломников к Иоакиму.
+  secret_ref: secret.npc_anna_herald
+
+# ---------------------------------------------------------------- Рёберный лес
+- id: creature.npc_olkha
+  name: Ольха Тихая
+  description: Старейшина Круга, течение «лечения».
+  status: proposal
+  doc: locations.md#2.4
+  tags: [npc, unique, broken, rib_forest]
+  srd_ref: {type: monster, name: Druid}
+  cr: 2
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction_ref: faction.broken
+  location_ref: location.rib_forest_thicket
+  goal: Сохранить лес нейтральным и живым.
+  secret_ref: secret.npc_olkha_knows
+
+- id: creature.npc_savva
+  name: Савва Гремучий
+  description: Вожак Сломленных, «слушающих зов». Проповедует, что Сломленные — следующая ступень человека.
+  status: proposal
+  doc: locations.md#2.4
+  tags: [npc, unique, broken, invited, rib_forest]
+  base_ref: creature.broken_zealot
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 2
+  behavior: {profile: capturer, flee_threshold: 0.3}
+  faction_ref: faction.broken
+  hidden_faction_ref: faction.resonance
+  location_ref: location.rib_forest_marrow_canal
+  goal: Доказать, что Сломленные — следующая ступень человека.
+  secret_ref: secret.npc_savva_invited
+
+- id: creature.npc_lisa
+  name: Лиса Сновидица
+  description: Вожак Сломленных, «слушающих сны». Ведёт обряды слушания в Черепе-Молельне.
+  status: proposal
+  doc: locations.md#2.4
+  tags: [npc, unique, broken, rib_forest]
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  behavior: {profile: defender, flee_threshold: 0.4}
+  faction_ref: faction.broken
+  location_ref: location.rib_forest_skull_chapel
+  goal: Разбудить Спящего из канала.
+  secret_ref: secret.npc_lisa_sleeper_talks
+  note: 'Ближайший шаблон creature.broken_dreamer (Mage, ПО 4); в locations.md Лиса — Mage ПО 6, поэтому base_ref не взят.'
+
+- id: creature.npc_praskovya
+  name: Мать Прасковья
+  description: Беглая жрица, голос подполья. Печатает листовки в Споровых низинах.
+  status: proposal
+  doc: locations.md#2.4
+  tags: [npc, unique, underground, rib_forest]
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: defender, flee_threshold: 0.4, note: прячет детей и уводит их из сцены}
+  faction_ref: faction.miners_underground
+  location_ref: location.rib_forest_spore_lowlands
+  goal: Печатать листовки и прятать детей.
+  secret_ref: secret.npc_praskovya_protocol_copy
+
+- id: creature.npc_prokhor
+  name: Прохор Ржавый
+  description: Охотник за беглыми на жалованье Кострищевых. Бывший шахтёр.
+  status: proposal
+  doc: locations.md#2.4
+  tags: [npc, unique, syndicate, hunter, rib_forest]
+  srd_ref: {type: monster, name: Bandit Captain}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  faction_ref: faction.house_kostrishchev
+  location_ref: location.rib_forest_spine_path
+  goal: Вернуть «имущество Дома».
+  secret_ref: secret.npc_prokhor_brand

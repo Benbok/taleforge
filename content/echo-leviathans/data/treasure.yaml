@@ -1,0 +1,202 @@
+# Таблицы добычи (items.md 7). В SRD 5.1 таблиц сокровищ нет — все числа свои (предложение).
+# Строка: roll (диапазон d20), item_refs (+ qty в том же порядке), fk (число или формула), text (для мастера).
+# choose: one — выдать один из item_refs; by_scenario: true — только если сценарий/перелом разрешает (реликвии).
+# Живые люди — не добыча: строки npc: true порождают NPC для спасения (spawn_entity), а не give_item.
+# Если выпал предмет сверх бюджета яруса (loot_table.treasure_budget), приложение заменяет его на ФК
+# по нижней границе полосы редкости (price_index.rarity_bands).
+kind: loot_table
+items:
+  # --- Бюджет сокровищ (items.md 7.1) ---
+  - id: loot_table.treasure_budget
+    name: Бюджет сокровищ по ярусам
+    description: Потолок для give_item вне таблиц добычи, на отряд из 4 героев (для другого размера — пропорционально). Импланты считаются постоянными предметами; реликвий — не больше 3 за кампанию.
+    status: proposal
+    doc: items.md#7.1
+    tags: [treasure, budget]
+    dice: null
+    rows:
+      - {tier: "1-4", fk_per_party_level: 200, consumables_per_level: [4, 6], consumable_max_rarity: uncommon, permanent: {uncommon: 4, rare: 1}, rare_min_level: 4}
+      - {tier: "5-10", fk_per_party_level: 800, consumables_per_level: [4, 6], consumable_max_rarity: rare, permanent: {uncommon: 6, rare: 5, very_rare: 1}, very_rare_min_level: 9}
+      - {tier: "11-15", fk_per_party_level: 3000, consumables_per_level: [4, 6], consumable_max_rarity: very_rare, permanent: {rare: 3, very_rare: 4, relic: 1}, relic_only_via: [pivot, scenario]}
+    campaign_limits: {relics_max: 3, nest_share_max_in_pilgrim_ring: 0.5}
+
+  # --- Уровни 1–4 ---
+  - id: loot_table.tier1_carcass
+    name: Добыча 1–4, туша и шахта
+    description: Бросок d20 при обыске туши или шахты на уровнях 1–4.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier1, carcass]
+    tier: "1-4"
+    place: carcass
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: 2d6, item_refs: [item.trade_raw_chitin], qty: [1d4], text: "2d6 ФК и 1d4 фунта сырого хитина"}
+      - {roll: "5-8", item_refs: [item.trade_lymph, item.miner_cleaver], qty: [1d4, 1], text: "1d4 колбы лимфы и тесак шахтёра"}
+      - {roll: "9-11", item_refs: [item.liquor_dirty], qty: [1], text: "1 доза грязного ликвора"}
+      - {roll: "12-14", item_refs: [item.blood_serum, item.filter_mask], qty: [1, 1]}
+      - {roll: "15-17", item_refs: [item.jelly_grenade, item.lymph_lamp], qty: [2, 1]}
+      - {roll: "18-19", item_refs: [item.vein_boots], qty: [1], text: "Необычный: мягкие боты жилолаза"}
+      - {roll: "20", fk: 100, reveal_knowledge: {level: initiated, count: 1}, text: "Архив-осколок: один слух (lore_facts уровня «посвящённые») и 100 ФК"}
+  - id: loot_table.tier1_nest
+    name: Добыча 1–4, гнездо и налёт
+    description: Бросок d20 при обыске гнезда или налёта на уровнях 1–4.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier1, nest]
+    tier: "1-4"
+    place: nest
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: 1d6, text: "Снаряжение пропавших: простое оружие (любое простое SRD) и 1d6 ФК"}
+      - {roll: "5-8", item_refs: [item.trade_echolith_grain], qty: [1], text: "1 крупица эхолита (вне закона)"}
+      - {roll: "9-11", item_refs: [item.blood_serum], qty: [1d2]}
+      - {roll: "12-14", npc: true, not_loot: true, creature_refs: [creature.cocoon], count: 1, text: "Кокон стадии I с человеком — NPC для спасения, не добыча. Награда — репутация и деньги от семьи или фракции"}
+      - {roll: "15-17", fk: 25, fk_from: cordon, text: "Жетон погибшего выжигателя: Кордон платит 25 ФК, если вернуть"}
+      - {roll: "18-19", item_refs: [item.implant_sanitar_eye], qty: [1], text: "Необычный имплант «Глаз санитара» (нужно вживить)"}
+      - {roll: "20", lead_item_ref: item.relic_hunger_compass, text: "Наводка на Компас голода (сюжетная зацепка, не сам предмет)"}
+  - id: loot_table.tier1_syndicate
+    name: Добыча 1–4, Синдикаты
+    description: Склад, сейф или курьер Синдикатов на уровнях 1–4.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier1, syndicate]
+    tier: "1-4"
+    place: syndicate
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: "3d6*5", text: "3d6 × 5 ФК в ампулах крови"}
+      - {roll: "5-8", fk: 50, promissory: {house_bound: true, other_house_factor: 0.5}, text: "Вексель на 50 ФК (в городах другого Дома — половина)"}
+      - {roll: "9-11", item_refs: [item.blood_serum, item.injector], qty: [2, 1]}
+      - {roll: "12-14", item_refs: [item.cats_eye, item.smelling_salts], qty: [1, 3], choose: one, text: "Кошачий глаз или нюхательная соль × 3"}
+      - {roll: "15-17", item_refs: [item.scattergun, item.ammo_buckshot], qty: [1, 2], text: "Картечница и 20 зарядов"}
+      - {roll: "18-19", item_refs: [item.liquor_weapon_1], qty: [1], text: "Необычный: оружие ликворной закалки +1"}
+      - {roll: "20", item_refs: [item.relic_protocol_seal], qty: [1], by_scenario: true, text: "Печать Протокола (5.7)"}
+
+  # --- Уровни 5–10 ---
+  - id: loot_table.tier2_carcass
+    name: Добыча 5–10, туша и шахта
+    description: Бросок d20 при обыске туши или шахты на уровнях 5–10.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier2, carcass]
+    tier: "5-10"
+    place: carcass
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: "4d6*10", fk_as_goods: true, item_refs: [item.trade_chitin_alloy, item.trade_nerve_fiber], text: "4d6 × 10 ФК в товарах: хитиновый сплав, нервное волокно"}
+      - {roll: "5-8", item_refs: [item.liquor_purified], qty: [1d2]}
+      - {roll: "9-11", item_refs: [item.thick_serum], qty: [2]}
+      - {roll: "12-14", item_refs: [item.implant_sound_resonator], qty: [1], text: "Слуховой резонатор (реликвия Кормчих, редкий имплант)"}
+      - {roll: "15-17", item_refs: [item.burner_carapace, item.bathysphere_armor], qty: [1, 1], choose: one}
+      - {roll: "18-19", item_refs: [item.relic_archive_crystal], qty: [1], by_scenario: true, text: "Редкий: Архив-кристалл (5.6)"}
+      - {roll: "20", item_refs: [item.relic_quiet_chime, item.relic_sounding_port], qty: [1, 1], choose: one, by_scenario: true, text: "Порт в рубку: сюжетная находка, пустой кокон и Тихий звон или Порт-обруч (по сценарию)"}
+  - id: loot_table.tier2_nest
+    name: Добыча 5–10, гнездо и налёт
+    description: Бросок d20 при обыске гнезда или налёта на уровнях 5–10.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier2, nest]
+    tier: "5-10"
+    place: nest
+    dice: d20
+    rows:
+      - {roll: "1-4", item_refs: [item.trade_echolith_grain], qty: [1d4]}
+      - {roll: "5-8", item_refs: [item.chitin_longsword], qty: [1], text: "Оружие поглощённого офицера Кордона: хитиновое, 1d4 ядом или кислотой (вид оружия — любой хитиновый вариант)"}
+      - {roll: "9-11", item_refs: [item.trade_whisper_gland], qty: [1], text: "Трофей: железа Шёпота (сырьё для шлема, вне закона)"}
+      - {roll: "12-14", npc: true, not_loot: true, effect_ref: effect.swarm_captive, count: 1d4, text: "Пленники роя: 1d4 NPC для спасения, у одного — карта гнезда. Не добыча"}
+      - {roll: "15-17", item_refs: [item.relic_herald_mask], qty: [1], by_scenario: true, text: "Маска Глашатая (5.10)"}
+      - {roll: "18-19", item_refs: [item.implant_nerve_shunt], qty: [1], text: "Редкий имплант «Нервный шунт»"}
+      - {roll: "20", item_refs: [item.relic_silent_guard_blade], qty: [1], by_scenario: true, creature_refs: [creature.helmsman_silent_guard], text: "Очень редкий: Клинок тихого стража у тела матери-стража"}
+  - id: loot_table.tier2_syndicate
+    name: Добыча 5–10, Синдикаты
+    description: Склад, сейф или курьер Синдикатов на уровнях 5–10.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier2, syndicate]
+    tier: "5-10"
+    place: syndicate
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: "2d6*50"}
+      - {roll: "5-8", item_refs: [item.lymph_ward, item.antitoxin], qty: [2, 2]}
+      - {roll: "9-11", item_refs: [item.revolver_six, item.ammo_steam_bullets], qty: [1, 3], text: "Револьвер «Шестёрка» и 30 пуль"}
+      - {roll: "12-14", fk: 500, promissory: {house_bound: true}, on_cash: {effect: house_mark}, text: "Вексель на 500 ФК и «Метка Дома», если его обналичить"}
+      - {roll: "15-17", item_refs: [item.pleura_cloak, item.vertebra_ring], qty: [1, 1], choose: one, text: "Редкий: плащ из плевры или кольцо из позвонка"}
+      - {roll: "18-19", item_refs: [item.discharge_wand], qty: [1], text: "Редкий: жезл разряда"}
+      - {roll: "20", story: true, lead_item_ref: item.relic_protocol_seal, text: "Приказ по Протоколу Тишины (сюжетный документ, пара к Печати)"}
+
+  # --- Уровни 11–15 ---
+  - id: loot_table.tier3_carcass
+    name: Добыча 11–15, туша и шахта
+    description: Бросок d20 при обыске туши или шахты на уровнях 11–15.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier3, carcass]
+    tier: "11-15"
+    place: carcass
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: "2d6*250", fk_as_goods: true, item_refs: [item.trade_chitin_alloy, item.trade_marrow_fuel], text: "2d6 × 250 ФК в сплавах и топливе"}
+      - {roll: "5-8", item_refs: [item.giant_serum, item.liquor_purified], qty: [2, 1d4]}
+      - {roll: "9-11", item_refs: [item.implant_muscle_strands], qty: [1], text: "Очень редкий: мышечные тяжи (имплант)"}
+      - {roll: "12-14", item_refs: [item.relic_archive_crystal], qty: [1], by_scenario: true, text: "Архив-кристалл, полный (3 заряда)"}
+      - {roll: "15-17", item_refs: [item.liquor_armor_2], qty: [1], text: "Очень редкий: панцирь ликворной закалки +2"}
+      - {roll: "18-19", npc: true, not_loot: true, creature_refs: [creature.sleeper_cocoon], text: "Кокон Кормчего: живой Спящий (сюжет, не добыча)"}
+      - {roll: "20", item_refs: [item.relic_sounding_port], qty: [1], by_scenario: true, text: "Реликвия по сценарию: Порт-обруч (5.4)"}
+  - id: loot_table.tier3_nest
+    name: Добыча 11–15, гнездо и налёт
+    description: Бросок d20 при обыске гнезда или налёта на уровнях 11–15.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier3, nest]
+    tier: "11-15"
+    place: nest
+    dice: d20
+    rows:
+      - {roll: "1-4", item_refs: [item.trade_echolith_grain], qty: [2d6], text: "2d6 крупиц эхолита и наросты матери"}
+      - {roll: "5-8", item_refs: [item.liquor_weapon_2], qty: [1], text: "Оружие ликворной закалки +2 у поглощённого паладина"}
+      - {roll: "9-11", item_refs: [item.implant_echolith_spur], qty: [1], text: "Эхолитовая шпора (имплант, вне закона)"}
+      - {roll: "12-14", npc: true, not_loot: true, effect_ref: effect.swarm_captive, count: 2d4, text: "Пленники: 2d4 NPC, среди них — офицер или жрец с тайной. Не добыча"}
+      - {roll: "15-17", item_refs: [item.relic_crown_of_ascension], qty: [1], by_scenario: true, text: "Венец возвышения (5.11)"}
+      - {roll: "18-19", item_refs: [item.relic_hunger_compass], qty: [1], by_scenario: true, text: "Компас голода (5.1)"}
+      - {roll: "20", item_refs: [item.relic_silent_guard_blade], qty: [1], by_scenario: true, text: "Реликвия по сценарию: Клинок тихого стража (5.5)"}
+  - id: loot_table.tier3_syndicate
+    name: Добыча 11–15, Синдикаты
+    description: Склад, сейф или курьер Синдикатов на уровнях 11–15.
+    status: proposal
+    doc: items.md#7.2
+    tags: [treasure, tier3, syndicate]
+    tier: "11-15"
+    place: syndicate
+    dice: d20
+    rows:
+      - {roll: "1-4", fk: "4d6*100"}
+      - {roll: "5-8", item_refs: [item.backpack_bonfire, item.bonfire_tank], qty: [1, 2], text: "Ранцевое «Кострище» с 2 баками"}
+      - {roll: "9-11", item_refs: [item.titan_mutagen], qty: [1]}
+      - {roll: "12-14", item_refs: [item.relic_lymph_ark], qty: [1], by_scenario: true, npc_inside: true, text: "Очень редкий: Ковчег (5.9) с должником внутри — должник NPC, не добыча"}
+      - {roll: "15-17", item_refs: [item.relic_undying_igniter], qty: [1], by_scenario: true, text: "Неугасимый запальник (5.8)"}
+      - {roll: "18-19", item_refs: [item.communion_staff], qty: [1], text: "Очень редкий: посох причастия"}
+      - {roll: "20", item_refs: [item.relic_last_fortress_tongue], qty: [1], by_scenario: true, text: "Реликвия по сценарию: Язык Последней крепости (5.2) из частной коллекции"}
+
+  # --- Разделка (items.md 7.3) ---
+  - id: loot_table.butchering
+    name: Разделка туш и существ
+    description: 1 час, инструменты или тесак. Проверка Мдр (Выживание) или Инт (Медицина), сл. 12. Провал — половина выхода; провал на 5+ — ещё и спасбросок против Скверны, сл. 10. Выход — сырьё, его надо переработать.
+    status: proposal
+    doc: items.md#7.3
+    tags: [treasure, butchering]
+    dice: by_source
+    check: {time: {unit: hour, value: 1}, skill_options: [{stat: wis, skill: survival}, {stat: int, skill: medicine}], dc: 12, requires_any_refs: [item.miner_cleaver, item.surgeon_tools]}
+    on_fail: {yield_factor: 0.5}
+    on_fail_by_5:
+      - {op: save, stat: con, dc: 10, vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    rows:
+      - {source: Санитар, creature_refs: [creature.organism_sanitar, creature.organism_sanitar_large], item_refs: [item.trade_raw_chitin, item.trade_sanitar_gland], qty: [1d4, 1]}
+      - {source: Кровяная медуза, creature_refs: [creature.organism_blood_jelly, creature.organism_blood_jelly_small], item_refs: [item.trade_lymph], qty: [1d4]}
+      - {source: Нитевики, creature_refs: [creature.organism_threadworm_swarm], text: "Ничего полезного. Сжечь"}
+      - {source: Шёпот, creature_refs: [creature.organism_whisper], item_refs: [item.trade_whisper_gland], qty: [1], text: "Вне закона: сырьё для шлемов и масок"}
+      - {source: Выводок (любой), item_refs: [item.trade_raw_chitin], qty: [1d4], infected: true, text: "Хитин выводка заражён: переработка только через сожжение, иначе у кузнеца спасбросок против Скверны, сл. 10"}
+      - {source: Штамм стадии III, creature_refs: [creature.strain_ram, creature.strain_shellback, creature.strain_spiker], item_refs: [item.trade_raw_chitin], qty: [2d4], infected: true, fk: "50-200", text: "Хитин ×2 и органы штамма (сюжет для Гильдии, 50–200 ФК)"}
+      - {source: Мать, creature_refs: [creature.mother_human, creature.mother_alien], item_refs: [item.trade_echolith_grain, item.trade_raw_chitin], qty: [2d6, 4d10], text: "Наросты эхолита и хитин. Сердцевина матери — сюжетный предмет"}
+      - {source: "Туша-Левиафан, смена в шахте", fk: "1d6*10", fk_as_goods: true, item_refs: [item.trade_blood, item.trade_lymph, item.trade_marrow_fuel, item.trade_raw_chitin], choose: by_mine_type, text: "1d6 × 10 ФК в крови, лимфе, мозге или хитине по типу шахты. Ликвор — только в желудочках"}

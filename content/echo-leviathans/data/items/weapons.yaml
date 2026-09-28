@@ -1,0 +1,658 @@
+# Оружие: свойства мира (хитиновый сплав, «Шумное»), хитиновые варианты SRD, новое холодное оружие,
+# огнестрел, оружие против роя и Резонанса.
+# Источник: rules.md#5.3, #5.5, #5.6; items.md#2.
+# Поля: category, weapon_type, damage {dice, type}, properties, range {normal, long} (футы), price {fk}, weight (фунты),
+# rarity, source (chitin|blood|liquor|echolith|relic|tech), legality (legal|cordon_pass|cordon_only|outlaw), proficiency.
+# Веса новых образцов не заданы в тексте — это предложение.
+kind: item_template
+items:
+  # --- Свойства и варианты ---
+  - id: item.property_chitin_alloy
+    name: Хитиновый сплав (вариант оружия)
+    description: Любое оружие SRD в хитиновом варианте за цену ×10. Всегда наносит дополнительно 1d4 ядом или кислотой (выбирается при изготовлении). Не портится и не трескается, чинится как обычное.
+    status: canon
+    doc: rules.md#5.3
+    tags: [property, variant, chitin]
+    category: weapon
+    weapon_type: variant
+    source: chitin
+    rarity: common
+    price: {multiplier: 10, of: base_weapon}
+    alloy_damage_choice: [poison, acid]
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid], choice_at: crafting, stored_in: instance, when: hit}
+    # Вид доп. урона выбирается при изготовлении и хранится в экземпляре. Счётчиков свежести и трещин нет [Канон, вопрос 20].
+    # Паразиты и Глубинные устойчивы к яду — для глубин нужен кислотный вариант.
+
+  - id: item.property_noisy
+    name: Шумное (свойство оружия)
+    description: Атака этим оружием выдаёт стрелка и создаёт сильный шум в 10 футах до начала его следующего хода.
+    status: proposal
+    doc: items.md#2.1
+    tags: [property, noise]
+    category: weapon
+    weapon_type: property
+    source: tech
+    price: {fk: 0}
+    effect_ref: effect.loud_noise
+    triggers:
+      - "on": attack
+        do:
+          - {op: set, target: can_hide, value: false, duration: {until: turn_end}, text: "До конца хода атакующий не может быть скрыт"}
+          - {op: run, ref: effect.loud_noise, area: {shape: sphere, radius: 10, center: self}, duration: {until: next_turn_start}, text: "Выводки теряют «Связь резонансом» — по эффекту"}
+          - {op: condition, condition: blinded, if: {target_tag: helmsman}, area: {shape: sphere, radius: 10, center: self}, duration: {until: next_turn_start}, text: "Кормчие слепнут"}
+          - {op: disadvantage, "on": check, skill: perception, vs: hearing, target: allies_in_area, area: {shape: sphere, radius: 10, center: self}, duration: {until: next_turn_start}}
+
+  # --- Хитиновые варианты оружия SRD (цена ×10) ---
+  - id: item.chitin_dagger
+    name: Хитиновый кинжал
+    description: Кинжал из хитинового сплава. Любимое оружие жилолазов и курьеров.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Dagger}
+    category: weapon
+    weapon_type: simple_melee
+    source: chitin
+    damage: {dice: 1d4, type: piercing}
+    properties: [finesse, light, thrown]
+    range: {normal: 20, long: 60}
+    price: {fk: 20}
+    weight: 1
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_shortsword
+    name: Хитиновый короткий меч
+    description: Короткий клинок из сплава панциря, серо-зелёный, с масляным блеском.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Shortsword}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d6, type: piercing}
+    properties: [finesse, light]
+    price: {fk: 100}
+    weight: 2
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_longsword
+    name: Хитиновый длинный меч
+    description: Длинный меч из хитинового сплава. Табельное оружие офицеров Кордона.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Longsword}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d8, type: slashing, versatile: 1d10}
+    properties: [versatile]
+    price: {fk: 150}
+    weight: 3
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_rapier
+    name: Хитиновая рапира
+    description: Тонкий клинок из сплава. Мода синдикатских дуэлянтов.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Rapier}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d8, type: piercing}
+    properties: [finesse]
+    price: {fk: 250}
+    weight: 2
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_battleaxe
+    name: Хитиновый боевой топор
+    description: Топор с лезвием из сплава панциря.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Battleaxe}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d8, type: slashing, versatile: 1d10}
+    properties: [versatile]
+    price: {fk: 100}
+    weight: 4
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_greataxe
+    name: Хитиновая секира
+    description: Тяжёлая двуручная секира из сплава. Любимица выжигателей.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Greataxe}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d12, type: slashing}
+    properties: [heavy, two_handed]
+    price: {fk: 300}
+    weight: 7
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_spear
+    name: Хитиновое копьё
+    description: Древко с наконечником из сплава. Дешёвое оружие ополчения черты.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Spear}
+    category: weapon
+    weapon_type: simple_melee
+    source: chitin
+    damage: {dice: 1d6, type: piercing, versatile: 1d8}
+    properties: [thrown, versatile]
+    range: {normal: 20, long: 60}
+    price: {fk: 10}
+    weight: 3
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+  - id: item.chitin_warhammer
+    name: Хитиновый боевой молот
+    description: Молот с бойком из сплава кости и панциря.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, melee]
+    srd_ref: {type: item, name: Warhammer}
+    category: weapon
+    weapon_type: martial_melee
+    source: chitin
+    damage: {dice: 1d8, type: bludgeoning, versatile: 1d10}
+    properties: [versatile]
+    price: {fk: 150}
+    weight: 2
+    rarity: common
+    variant_of_ref: item.property_chitin_alloy
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: chosen, choice: [poison, acid]}
+
+  # --- Холодное оружие (items.md 2.2) ---
+  - id: item.miner_cleaver
+    name: Тесак шахтёра
+    description: Широкий тесак для рубки тканей туши. Есть у каждого шахтёра.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, mine]
+    category: weapon
+    weapon_type: simple_melee
+    source: tech
+    damage: {dice: 1d6, type: slashing}
+    properties: [light]
+    price: {fk: 3}
+    weight: 2
+    rarity: common
+    modifiers:
+      - {op: multiply, target: flesh_cutting_time, factor: 0.5, text: "Прорубает ткани туши вдвое быстрее"}
+  - id: item.vein_hook
+    name: Крюк жилолаза
+    description: Короткий крюк для лазания по плоти и хитину, в драке — колющее оружие.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, mine, climbing]
+    category: weapon
+    weapon_type: simple_melee
+    source: tech
+    damage: {dice: 1d4, type: piercing}
+    properties: [light, finesse]
+    price: {fk: 2}
+    weight: 1
+    rarity: common
+    modifiers:
+      - {op: advantage, "on": check, stat: str, skill: athletics, vs: climb_flesh_or_chitin, if: {held: true}}
+  - id: item.pit_knuckles
+    name: Кастет ям
+    description: Кастет бойцовых ям трущоб.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee]
+    category: weapon
+    weapon_type: simple_melee
+    source: tech
+    damage: {dice: 1d4, type: bludgeoning}
+    properties: [light]
+    price: {fk: 2}
+    weight: 1
+    rarity: common
+    modifiers:
+      - {op: immunity, condition: effect.disarmed, text: "Нельзя обезоружить"}
+  - id: item.bone_saw
+    name: Костяная пила
+    description: Пила разделщиков туш. Раны от неё долго кровоточат.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 1d6, type: slashing}
+    properties: [light]
+    price: {fk: 15}
+    weight: 3
+    rarity: common
+    triggers:
+      - "on": critical_hit
+        do:
+          - {op: run, ref: effect.bleeding, target: hit_target}
+  - id: item.valve_hammer
+    name: Клапанный молот
+    description: Тяжёлый молот ремонтников, которым выбивают клапаны и двери.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 1d10, type: bludgeoning}
+    properties: [heavy, two_handed]
+    price: {fk: 20}
+    weight: 10
+    rarity: common
+    modifiers:
+      - {op: multiply, target: damage, factor: 2, if: {target_is: object}, text: "Урон по объектам (двери, клапаны, котлы) удвоен"}
+  - id: item.burner_pike
+    name: Пика выжигателя
+    description: Длинная пика Кордона с запальником у наконечника.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, fire, anti_swarm]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 1d10, type: piercing}
+    properties: [heavy, two_handed, reach]
+    price: {fk: 40}
+    weight: 8
+    rarity: common
+    charges: {max: 3, refill_ref: item.igniter_tank}
+    modifiers:
+      - {op: grant_action, name: Запальник, action: bonus, cost: {charges: 1}, do: [{op: set, target: igniter_lit, value: true, duration: {unit: minute, value: 1}}]}
+      - {op: extra_damage, dice: 1d4, damage_type: fire, when: igniter_lit}
+  - id: item.bell_flail
+    name: Колокольный кистень
+    description: Кистень с колокольцем вместо гири. Звон выдаёт скрытых выводков.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, noise, anti_swarm]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 1d8, type: bludgeoning}
+    properties: [noisy]
+    property_refs: [item.property_noisy]
+    price: {fk: 60}
+    weight: 3
+    rarity: common
+    triggers:
+      - "on": hit
+        if: {target_stage: [1, 2]}
+        do:
+          - {op: save, stat: con, dc: 12, target: hit_target, if: {target_stage: [1, 2]}, text: "Проба звоном (effect.brood_mimicry, reveal_methods)", on_fail: [{op: remove_condition, condition: effect.brood_mimicry, text: "вздрагивает — облик раскрыт для всех смотревших"}]}
+  - id: item.steam_hammer
+    name: Паровой молот
+    description: Молот с котлом на поясе. Стравленный пар сбивает цель с ног.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, noise, tech]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 2d6, type: bludgeoning}
+    properties: [heavy, two_handed, noisy]
+    property_refs: [item.property_noisy]
+    price: {fk: 250}
+    weight: 18
+    rarity: uncommon
+    charges: {max: 10, refill_ref: item.steam_hammer_refill}
+    triggers:
+      - "on": hit
+        if: {once_per_turn: true, spend_charge: 1}
+        do:
+          - op: save
+            stat: str
+            dc: 13
+            on_fail:
+              - {op: move, mode: push, distance: 10}
+              - {op: condition, condition: prone}
+  - id: item.chain_cutter
+    name: Цепной резак
+    description: Цепная пила шахт на костном топливе. Рвёт незащищённую плоть.
+    status: proposal
+    doc: items.md#2.2
+    tags: [melee, noise, tech]
+    category: weapon
+    weapon_type: martial_melee
+    source: tech
+    damage: {dice: 1d12, type: slashing}
+    properties: [heavy, two_handed, noisy]
+    property_refs: [item.property_noisy]
+    price: {fk: 300}
+    weight: 20
+    rarity: uncommon
+    fuel: {duration: {unit: hour, value: 1}, refill_ref: item.chain_cutter_fuel}
+    triggers:
+      - "on": hit
+        if: {target_has_natural_armor: false, target_wears_armor: false}
+        do:
+          - {op: run, ref: effect.bleeding, target: hit_target}
+
+  # --- Огнестрел (rules.md 5.5) ---
+  - id: item.steam_pistol
+    name: Паровой пистоль
+    description: Однозарядный пистоль на пар-капсулах. Табельное оружие офицеров и диагностов.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [firearm]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 1d10, type: piercing}
+    properties: [ammunition, loading, light]
+    range: {normal: 30, long: 90}
+    ammo_ref: item.ammo_steam_bullets
+    price: {fk: 150}
+    weight: 3
+    rarity: common
+  - id: item.steam_rifle
+    name: Паровое ружьё
+    description: Длинноствольное ружьё на пар-капсулах.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [firearm]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 1d12, type: piercing}
+    properties: [ammunition, loading, two_handed]
+    range: {normal: 40, long: 120}
+    ammo_ref: item.ammo_steam_bullets
+    price: {fk: 300}
+    weight: 10
+    rarity: common
+  - id: item.pneumatic_harpoon
+    name: Гарпун-пневматик
+    description: Пневматический гарпун на тросе. Держит цель, как якорь.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [firearm, grapple]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 1d8, type: piercing}
+    properties: [ammunition, loading]
+    range: {normal: 20, long: 60}
+    price: {fk: 100}
+    weight: 8
+    rarity: common
+    triggers:
+      - "on": hit
+        do:
+          - {op: condition, condition: grappled, escape_dc: 13, text: "Цель схвачена тросом, сложность высвобождения 13"}
+  - id: item.dart_launcher
+    name: Дротикомет
+    description: Лёгкий пневматический дротикомет. Можно зарядить препаратом или стимулятором.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [firearm, injector]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 1d4, type: piercing}
+    properties: [ammunition, light]
+    range: {normal: 20, long: 60}
+    price: {fk: 75}
+    weight: 2
+    rarity: common
+    modifiers:
+      - {op: set, target: loadable_payload, value: [preparation_dose, stimulant], text: "Дротик можно зарядить дозой препарата или стимулятора"}
+    triggers:
+      - "on": hit
+        if: {payload_loaded: true}
+        do: [{op: run, ref: loaded_payload, target: hit_target, text: "Доза вводится цели"}]
+
+  # --- Огнестрел (items.md 2.3) ---
+  - id: item.nail_gun
+    name: Гвоздомёт шахтёра
+    description: Шахтный инструмент, продаётся без пропуска. Считается простым оружием.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm, mine]
+    category: weapon
+    weapon_type: firearm
+    proficiency: simple
+    source: tech
+    damage: {dice: 1d6, type: piercing}
+    properties: [ammunition, light]
+    range: {normal: 20, long: 60}
+    ammo_ref: item.ammo_nails
+    price: {fk: 50}
+    weight: 4
+    rarity: common
+  - id: item.flare_gun
+    name: Ракетница
+    description: Сигнальная ракетница. Освещает цель и поджигает налёт. Считается простым оружием.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm, fire, light_source]
+    category: weapon
+    weapon_type: firearm
+    proficiency: simple
+    source: tech
+    damage: {dice: 1d4, type: fire}
+    properties: [ammunition, loading, light]
+    range: {normal: 60, long: 180}
+    ammo_ref: item.ammo_flares
+    price: {fk: 20}
+    weight: 2
+    rarity: common
+    triggers:
+      - "on": shot
+        do:
+          - {op: set, target: light, value: {bright: 30}, area: impact_point, duration: {unit: minute, value: 1}, text: "Точка попадания освещена ярким светом 30 футов"}
+          - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: burning, area: impact_point, text: "Поджигает налёт (дальше — по правилу hazard.blight)"}
+  - id: item.revolver_six
+    name: Револьвер «Шестёрка»
+    description: Шестизарядный револьвер. Дорогая редкость Синдикатов.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 1d8, type: piercing}
+    properties: [ammunition, light, cylinder]
+    range: {normal: 40, long: 120}
+    ammo_ref: item.ammo_steam_bullets
+    price: {fk: 500}
+    weight: 3
+    rarity: uncommon
+    charges: {max: 6, reload: action}
+    # Барабан: 6 выстрелов без перезарядки; зарядить барабан — действие (charges).
+  - id: item.scattergun
+    name: Картечница
+    description: Короткое ружьё с картечью. Лучшее средство от роя в тесном туннеле.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm, anti_swarm]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: {dice: 2d6, type: piercing}
+    properties: [ammunition, two_handed, loading]
+    range: {normal: 15, long: 45}
+    ammo_ref: item.ammo_buckshot
+    price: {fk: 250}
+    weight: 7
+    rarity: common
+    modifiers:
+      - {op: advantage, "on": attack, vs: swarm, text: "Разброс: преимущество против роя (swarm)"}
+      - {op: set, target: damage_dice, value: 1d6, if: {distance_over: 15}}
+  - id: item.cordon_rifle
+    name: Винтовка Кордона
+    description: Дальнобойная винтовка стрелков Кордона. Продаётся только по пропуску.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm, cordon]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    legality: cordon_pass
+    requires_ref: item.cordon_token
+    damage: {dice: 1d12, type: piercing}
+    properties: [ammunition, two_handed, heavy, loading]
+    range: {normal: 100, long: 400}
+    ammo_ref: item.ammo_steam_bullets
+    price: {fk: 600}
+    weight: 12
+    rarity: uncommon
+  - id: item.hand_mortar
+    name: Ручная мортирка
+    description: Короткая труба для метания гранат. Бьёт дальше руки.
+    status: proposal
+    doc: items.md#2.3
+    tags: [firearm, grenade_launcher]
+    category: weapon
+    weapon_type: firearm
+    proficiency: firearms
+    source: tech
+    damage: null
+    properties: [two_handed, heavy, loading]
+    range: {normal: 60, long: 180}
+    ammo_refs: [item.jelly_grenade, item.thunderclap]
+    price: {fk: 400}
+    weight: 15
+    rarity: uncommon
+    modifiers:
+      - {op: set, target: grenade_range, value: "60/180", text: "Метает гранаты на 60/180 вместо 20/60"}
+
+  # --- Против Резонанса и роя (rules.md 5.6, items.md 2.4) ---
+  - id: item.jelly_flamethrower
+    name: Огнемёт на желе
+    description: Наследие Пепельной лиги. Конус огня без ячеек, подходит герою 1-го уровня.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [fire, anti_swarm, cordon]
+    category: weapon
+    weapon_type: martial_ranged
+    proficiency: martial
+    source: tech
+    damage: {dice: 2d6, type: fire}
+    properties: [heavy, two_handed, area]
+    area: {shape: cone, size: 15}
+    price: {fk: 250}
+    weight: 25
+    rarity: common
+    anti_resonance: true
+    charges: {max: 3, refill_ref: item.jelly_tank, reload: action}
+    modifiers:
+      - op: save
+        stat: dex
+        dc: 12
+        on_fail: [{op: extra_damage, dice: 2d6, damage_type: fire}]
+        on_success: [{op: extra_damage, dice: 2d6, damage_type: fire, multiplier: 0.5}]
+  - id: item.backpack_bonfire
+    name: Ранцевое «Кострище»
+    description: Тяжёлый огнемёт Кордона для героев 5–10 уровней. Слабее «Огненного шара», но без ячеек.
+    status: proposal
+    doc: items.md#2.4
+    tags: [fire, anti_swarm, cordon]
+    category: weapon
+    weapon_type: martial_ranged
+    proficiency: [subclass.line_warden, "martial + обучение Кордона"]
+    source: tech
+    legality: cordon_only
+    damage: {dice: 4d6, type: fire}
+    properties: [heavy, two_handed, area]
+    area: {shape: cone, size: 30}
+    price: {fk: 1500}
+    weight: 50
+    rarity: rare
+    anti_resonance: true
+    charges: {max: 5, refill_ref: item.bonfire_tank, reload: action}
+    modifiers:
+      - op: save
+        stat: dex
+        dc: 13
+        on_fail: [{op: extra_damage, dice: 4d6, damage_type: fire}]
+        on_success: [{op: extra_damage, dice: 4d6, damage_type: fire, multiplier: 0.5}]
+  - id: item.jelly_grenade
+    name: Желейная граната
+    description: Глиняный шар с горящим желе. Выжигает налёт.
+    status: proposal
+    doc: items.md#2.4
+    tags: [grenade, fire, anti_swarm, consumable]
+    category: weapon
+    weapon_type: grenade
+    consumable: true
+    source: tech
+    damage: {dice: 2d6, type: fire}
+    range: {normal: 20, long: 60}
+    area: {shape: sphere, size: 5}
+    price: {fk: 20}
+    weight: 1
+    rarity: common
+    anti_resonance: true
+    modifiers:
+      - op: save
+        stat: dex
+        dc: 12
+        on_fail:
+          - {op: extra_damage, dice: 2d6, damage_type: fire}
+          - {op: run, ref: effect.burning}
+        on_success: [{op: extra_damage, dice: 2d6, damage_type: fire, multiplier: 0.5, text: "без горения"}]
+      - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: burned, area: {shape: sphere, size: 5}, text: "Выжигает налёт в зоне"}
+  - id: item.thunderclap
+    name: Громобой
+    description: Шумовая граната. Сбивает ритм роя в большой сфере.
+    status: proposal
+    doc: items.md#2.4
+    tags: [grenade, noise, anti_swarm, consumable]
+    category: weapon
+    weapon_type: grenade
+    consumable: true
+    source: tech
+    range: {normal: 20, long: 60}
+    area: {shape: sphere, size: 20}
+    price: {fk: 15}
+    weight: 1
+    rarity: common
+    anti_resonance: true
+    effect_ref: effect.loud_noise
+    modifiers:
+      - {op: run, ref: effect.loud_noise, area: {shape: sphere, size: 20}, duration: {until: thrower_next_turn_end}}
+      - op: save
+        stat: con
+        dc: 12
+        if: {normal_hearing: true}
+        on_fail: [{op: condition, condition: deafened, duration: {unit: minute, value: 1}}]

@@ -1,0 +1,535 @@
+# Таблицы встреч по поясам и волны у Пепельной черты по резонансу.
+# Живые дети встречаются только в npc_refs как невраждебные NPC — никогда в creature_refs врагов.
+# srd_monsters — обычные звери SRD без изменений мира.
+kind: encounter_table
+items:
+- id: encounter.old_lands
+  name: Старые земли
+  description: 'Окраины: остатки королевств, поглощённые провинции с тихим налётом, пустые скелеты туш. Рой здесь — одиночки и разведка.'
+  status: proposal
+  doc: canon.md#7; rules.md#6
+  tags: [encounters, old_lands]
+  belt: old_lands
+  dice: 1d12
+  rows:
+  - roll: '1'
+    creature_refs: [creature.brood_swarm_rats]
+    count: '1'
+    note: 'Из тихого налёта поглощённой провинции: почва мертва, под ней спит налёт'
+  - roll: '2'
+    creature_refs: [creature.brood_walker]
+    count: 1d4
+    note: Ходоки поднимаются из тихого налёта, если на нём шумно или льётся кровь
+  - roll: '3'
+    creature_refs: [creature.brood_hound]
+    count: 1d3
+    note: Одиночки, прорвавшиеся через черту давным-давно; тощие и злые
+  - roll: '4'
+    creature_refs: [creature.hidden_hound, creature.hidden_raven]
+    count: 1 + 1
+    note: 'Разведка матери: мать узнаёт состав отряда (событие «разведка»)'
+  - roll: '5'
+    creature_refs: [creature.smuggler, creature.smuggler_captain]
+    count: 1d6 + 1
+    note: Тропа контрабанды ликвора к портам
+  - roll: '6'
+    creature_refs: [creature.stalker]
+    count: '1'
+    note: Проводник предлагает услуги за ФК
+    hostile: false
+  - roll: '7'
+    creature_refs: []
+    count: 2d6
+    note: 'Окраинцы-фермеры: недоверчивы к чужакам и к «слишком спокойным», проверяют колокольцем'
+    hostile: false
+    srd_monsters: [Commoner]
+  - roll: '8'
+    creature_refs: [creature.invited]
+    count: '1'
+    note: 'Приглашённый в деревне со старой храмовой плитой из эхолита: там чаще убивают из-за наследства'
+  - roll: '9'
+    creature_refs: [creature.organism_sanitar]
+    count: 1d4
+    note: Санитары из «пустого» скелета туши — последние, кто ещё охраняет мёртвые ткани
+  - roll: '10'
+    creature_refs: []
+    count: 2d4
+    note: Обычные волки — не рой; но рядом с тихим налётом проверь пробу звоном
+    srd_monsters: [Wolf]
+  - roll: '11'
+    creature_refs: [creature.brood_swarm_ravens]
+    count: '1'
+    note: Воронья стая над руинами старого королевства
+  - roll: '12'
+    creature_refs: [creature.hybrid_human]
+    count: '1'
+    note: 'Ночные похищения в деревне: гибрид уносит людей к налёту'
+- id: encounter.middle_belt
+  name: Средний пояс
+  description: Города Синдикатов на спинах туш, железные дороги, заводы на желе. Война кажется далёкой, а рой приходит скрытно.
+  status: proposal
+  doc: canon.md#7; rules.md#6
+  tags: [encounters, middle_belt]
+  belt: middle_belt
+  dice: 1d12
+  rows:
+  - roll: '1'
+    creature_refs: [creature.syndicate_guard]
+    count: 2d4
+    note: Патруль Дома проверяет пропуска и маски
+  - roll: '2'
+    creature_refs: [creature.syndicate_enforcer, creature.house_agent]
+    count: 1d4 + 1
+    note: Долг Дому взыскивают прямо на улице
+  - roll: '3'
+    creature_refs: [creature.house_agent]
+    count: '1'
+    note: Кто-то следит за отрядом; Дом Ликвора интересуется теми, кто лазит в рубки
+  - roll: '4'
+    creature_refs: [creature.slum_berserker]
+    count: 1d3
+    note: Кровники трущоб без дозы
+  - roll: '5'
+    creature_refs: [creature.pit_fighter]
+    count: '1'
+    note: 'Вызов в бойцовую яму: ставки в ФК, Голод в воздухе (+эхо Голода)'
+  - roll: '6'
+    creature_refs: [creature.church_acolyte]
+    count: 1d4
+    note: Раздача хлеба у прихода; служки могут спрятать беглых
+    hostile: false
+  - roll: '7'
+    creature_refs: [creature.hidden_human]
+    count: '1'
+    note: Сосед, вернувшийся со смены «каким-то спокойным»
+  - roll: '8'
+    creature_refs: [creature.herald_double]
+    count: '1'
+    note: Глашатай на рынке или бирже ФК раздувает жадность; разговор может стоить очка Скверны
+  - roll: '9'
+    creature_refs: [creature.underground_saboteur]
+    count: 1d4
+    note: Подполье переводит беглых детей и просит помощи. Дети — невраждебные NPC, не цели боя
+    hostile: false
+    npc_refs: [creature.child_runaway]
+  - roll: '10'
+    creature_refs: [creature.smuggler]
+    count: 1d4
+    note: Сбыт грязного ликвора в подворотне
+  - roll: '11'
+    creature_refs: [creature.organism_sanitar]
+    count: 1d2
+    note: Санитары вырвались из шахты в городской квартал на спине туши
+  - roll: '12'
+    creature_refs: [creature.guild_diagnost]
+    count: '1'
+    note: Полевой диагност ищет добровольцев для проб или платит за образцы
+    hostile: false
+- id: encounter.pilgrim_ring
+  name: Кольцо Паломников
+  description: 'Туши у самой кромки: больше всего ликвора, больше всего Глубинных, туши ближе всего к пробуждению.'
+  status: proposal
+  doc: canon.md#7; rules.md#6
+  tags: [encounters, pilgrim_ring]
+  belt: pilgrim_ring
+  dice: 1d12
+  rows:
+  - roll: '1'
+    creature_refs: [creature.deepkin]
+    count: 1d4
+    note: Глубинные на тропах к кратеру. Все — взрослые, мутация прошла десятилетия назад
+  - roll: '2'
+    creature_refs: [creature.organism_threadworm_swarm]
+    count: '1'
+    note: Нитевики в нервном узле; при резонансе 4+ — перехваченные (creature.organism_threadworm_captured)
+  - roll: '3'
+    creature_refs: [creature.organism_sanitar]
+    count: 2d4
+    note: Иммунная охрана свежей туши; при пробуждении туши 3+ — удвоить
+  - roll: '4'
+    creature_refs: [creature.organism_valve_guard]
+    count: '1'
+    note: Страж клапана на проходе вглубь
+  - roll: '5'
+    creature_refs: [creature.organism_blood_jelly]
+    count: '1'
+    note: Кровяная медуза в затопленном сосуде
+  - roll: '6'
+    creature_refs: [creature.organism_acid_larva_young]
+    count: 1d2
+    note: Молодые личинки в боковом желудке
+  - roll: '7'
+    creature_refs: [creature.organism_whisper]
+    count: '1'
+    note: 'Колония Шёпота: сны экипажа и шёпот Резонанса вперемешку'
+  - roll: '8'
+    creature_refs: [creature.hybrid_human]
+    count: 1d2
+    note: Гибриды среди паломников
+  - roll: '9'
+    creature_refs: [creature.mine_overseer, creature.syndicate_guard]
+    count: 1 + 1d6
+    note: Смена в шахте Кольца. Дети-шахтёры в сцене — только NPC, никогда не цели
+    npc_refs: [creature.child_miner]
+  - roll: '10'
+    creature_refs: [creature.church_ascended, creature.church_knight]
+    count: 1 + 1d2
+    note: Паломничество к Шепчущему во главе с возвысившимся
+  - roll: '11'
+    creature_refs: [creature.deepkin_elder]
+    count: '1'
+    note: Старший Глубинный врос в стену сосуда
+  - roll: '12'
+    creature_refs: [creature.broken_dreamer]
+    count: '1'
+    note: Сломленный сновидец ищет проток к рубке
+    hostile: false
+- id: encounter.carcass_interior
+  name: Внутри туши
+  description: Сосуды, желудки и желудочки мозга. Бортовые организмы продолжают работать по инстинкту.
+  status: proposal
+  doc: canon.md#3.1
+  tags: [encounters, carcass]
+  belt: carcass
+  dice: 1d10
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.organism_sanitar]
+    count: 1d4
+    note: Санитары нападают на всё чужое
+  - roll: '3'
+    creature_refs: [creature.organism_sanitar_large]
+    count: '1'
+    note: Сети фибрина в главном сосуде
+  - roll: '4'
+    creature_refs: [creature.organism_threadworm_swarm]
+    count: '1'
+    note: 'Нитевики в нервной ткани: главный путь Скверны'
+  - roll: '5'
+    creature_refs: [creature.organism_blood_jelly_small]
+    count: 1d3
+    note: Чистильщики капилляров
+  - roll: '6'
+    creature_refs: [creature.organism_acid_larva]
+    count: '1'
+    note: Озеро желудка; батискаф под угрозой
+  - roll: '7'
+    creature_refs: [creature.organism_whisper]
+    count: '1'
+    note: Желудочки мозга, рубки близко
+  - roll: '8'
+    creature_refs: [creature.organism_valve_guard_great]
+    count: '1'
+    note: Главный клапан перед рубками
+  - roll: '9'
+    creature_refs: [creature.deepkin]
+    count: 1d3
+    note: Глубинные ведут нитевиков
+  - roll: '10'
+    creature_refs: [creature.sleeper_cocoon]
+    count: '1'
+    note: Кокон в нише, похожей на кресло. Может быть пуст (1–2 на 1d6)
+    hostile: false
+- id: encounter.ash_line
+  name: Пепельная черта
+  description: Руины Огненного вала, башни Кордона, выжженная земля. Встречи между волнами; сами волны — в таблицах encounter.ash_line_wave_*.
+  status: proposal
+  doc: canon.md#7; rules.md#6
+  tags: [encounters, ash_line]
+  belt: ash_line
+  dice: 1d12
+  rows:
+  - roll: '1'
+    creature_refs: [creature.cordon_burner, creature.cordon_ringer]
+    count: 1d4 + 1
+    note: 'Патруль Кордона: проверка пробой звоном и ликвором'
+    hostile: false
+  - roll: '2'
+    creature_refs: [creature.brood_hound]
+    count: 2d4
+    note: Стая, отбившаяся от прошлой волны
+  - roll: '3'
+    creature_refs: [creature.brood_walker]
+    count: 2d6
+    note: Ходоки бредут к башне
+  - roll: '4'
+    creature_refs: [creature.echoed_warrior]
+    count: 1d2
+    note: Воители охотятся за пленными
+  - roll: '5'
+    creature_refs: [creature.strain_spiker]
+    count: '1'
+    note: Шипострел выбивает огнемётчиков
+  - roll: '6'
+    creature_refs: [creature.brood_swarm_bats]
+    count: 1d3
+    note: 'Рои над чертой: для дирижабля — бросок встречи'
+  - roll: '7'
+    creature_refs: [creature.cordon_scout]
+    count: '1'
+    note: Раненый разведчик с картой гнёзд
+    hostile: false
+  - roll: '8'
+    creature_refs: [creature.weaver_sower]
+    count: '1'
+    note: Сеятель тянет налёт за черту
+  - roll: '9'
+    creature_refs: [creature.node]
+    count: '1'
+    note: Узел налёта за чертой; выжечь — задача для отряда
+  - roll: '10'
+    creature_refs: [creature.walker_wreck, creature.hidden_rat]
+    count: 1 + 1d4
+    note: Брошенный шагоход; внутри скрытые
+  - roll: '11'
+    creature_refs: [creature.strain_ram, creature.brood_hound]
+    count: 1 + 1d4
+    note: Таран ломает ворота малой башни
+  - roll: '12'
+    creature_refs: [creature.fused]
+    count: '1'
+    note: Сросток. Только при резонансе 4+, иначе перебросить
+    resonance_min: 4
+- id: encounter.crater
+  name: Кратер
+  description: Обнажённый эхолит бывшей Отзвучной горы, матери, плоть налёта. Каждая сцена — близость Резонанса (спасбросок против Скверны сл. 17).
+  status: proposal
+  doc: canon.md#1.4; canon.md#7
+  tags: [encounters, crater]
+  belt: crater
+  dice: 1d12
+  rows:
+  - roll: '1'
+    creature_refs: [creature.echoed_warrior]
+    count: 2d4
+    note: Охрана кратера
+  - roll: '2'
+    creature_refs: [creature.strain_ram, creature.strain_shellback]
+    count: 1 + 1d2
+    note: Штаммы воителей на склоне
+  - roll: '3'
+    creature_refs: [creature.herald_whisperer]
+    count: 1d2
+    note: Шептуны зовут голосами мёртвых
+  - roll: '4'
+    creature_refs: [creature.weaver_sower, creature.node]
+    count: 1 + 1
+    note: Ткачи растят налёт
+  - roll: '5'
+    creature_refs: [creature.weaver_nest_guard]
+    count: 1d2
+    note: Гнездо с пленниками; Порог близко
+  - roll: '6'
+    creature_refs: [creature.fused]
+    count: '1'
+    note: Сросток
+  - roll: '7'
+    creature_refs: [creature.organism_threadworm_captured]
+    count: 1d3
+    note: Перехваченные нитевики
+  - roll: '8'
+    creature_refs: [creature.deepkin_elder, creature.deepkin]
+    count: 1 + 1d4
+    note: Глубинные у эхолита
+  - roll: '9'
+    creature_refs: [creature.colossus_behir]
+    count: '1'
+    note: Осадный колосс в гнезде
+  - roll: '10'
+    creature_refs: [creature.cocoon]
+    count: 1d4
+    note: Коконы перехода в налёте
+    hostile: false
+  - roll: '11'
+    creature_refs: [creature.mother_human]
+    count: '1'
+    note: Логово человеческой матери; адаптации в state
+  - roll: '12'
+    creature_refs: [creature.mother_alien]
+    count: '1'
+    note: Логово чужой матери; бортовые организмы ей подчинены
+- id: encounter.sea
+  name: Море и прибрежье
+  description: Мёртвые бухты у Утопленника, порты Старых земель, путь к островам и разломы на дне.
+  status: proposal
+  doc: canon.md#7
+  tags: [encounters, sea]
+  belt: sea
+  dice: 1d10
+  rows:
+  - roll: '1'
+    creature_refs: []
+    count: 1d2
+    note: Акулы у бухты, где гниёт туша
+    srd_monsters: [Hunter Shark]
+  - roll: '2'
+    creature_refs: [creature.brood_swarm_ravens]
+    count: '1'
+    note: Стая над портом
+  - roll: '3'
+    creature_refs: [creature.organism_blood_jelly]
+    count: '1'
+    note: Медуза из сосудов Утопленника вынесена в воду
+  - roll: '4'
+    creature_refs: [creature.smuggler_captain, creature.smuggler]
+    count: 1 + 2d4
+    note: Лодка контрабандистов у мёртвой бухты
+  - roll: '5'
+    creature_refs: [creature.islander_sailor, creature.islander]
+    count: 1 + 1d6
+    note: Редкое судно с островов, опасливы к материку
+    hostile: false
+  - roll: '6'
+    creature_refs: []
+    count: '1'
+    note: Гигантский осьминог
+    srd_monsters: [Giant Octopus]
+  - roll: '7'
+    creature_refs: [creature.brood_walker]
+    count: 1d4
+    note: Ходоки, вынесенные прибоем с налёта
+  - roll: '8'
+    creature_refs: []
+    count: '1'
+    note: Косатка, обычный зверь
+    srd_monsters: [Killer Whale]
+  - roll: '9'
+    creature_refs: [creature.organism_acid_larva]
+    count: '1'
+    note: Кислотная личинка в затопленном желудке Утопленника
+  - roll: '10'
+    creature_refs: [creature.fleet_warden]
+    count: '1'
+    note: 'Над разломами: страж спящего флота. Батискафы возвращаются не все'
+- id: encounter.ash_line_wave_r0_3
+  name: 'Волна у черты: резонанс 0–3'
+  description: 'Слабые волны: стаи и ходоки. Цель — пленные, не бойня.'
+  status: proposal
+  doc: rules.md#6; canon.md#1.5
+  tags: [encounters, ash_line, wave]
+  belt: ash_line
+  wave: true
+  resonance_min: 0
+  resonance_max: 3
+  dice: 1d6
+  outcome_note: Исход волны (отбита, прорыв, пленные) пишется событием и двигает резонанс; каждая волна может принести адаптацию матери или новый штамм.
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.brood_hound]
+    count: 2d6
+    note: Стая гончих
+  - roll: 3-4
+    creature_refs: [creature.brood_walker, creature.brood_swarm_rats]
+    count: 3d6 + 1d3
+    note: Ходоки и рои крыс
+  - roll: '5'
+    creature_refs: [creature.echoed_warrior, creature.brood_hound]
+    count: 1d3 + 1d6
+    note: Воители ведут стаю
+  - roll: '6'
+    creature_refs: [creature.strain_spiker, creature.brood_walker]
+    count: 1 + 2d6
+    note: Шипострел прикрывает ходоков
+- id: encounter.ash_line_wave_r4_6
+  name: 'Волна у черты: резонанс 4–6'
+  description: Сростки в волнах, налёт переползает за черту.
+  status: proposal
+  doc: rules.md#6; canon.md#1.5
+  tags: [encounters, ash_line, wave]
+  belt: ash_line
+  wave: true
+  resonance_min: 4
+  resonance_max: 6
+  dice: 1d6
+  outcome_note: Исход волны (отбита, прорыв, пленные) пишется событием и двигает резонанс; каждая волна может принести адаптацию матери или новый штамм.
+  rows:
+  - roll: '1'
+    creature_refs: [creature.brood_hound, creature.brood_dire_hound]
+    count: 3d6 + 1d3
+    note: Большая стая
+  - roll: '2'
+    creature_refs: [creature.echoed_warrior, creature.strain_ram]
+    count: 1d4 + 1
+    note: Штурм ворот
+  - roll: '3'
+    creature_refs: [creature.fused, creature.brood_hound]
+    count: 1 + 2d4
+    note: Сросток прорывает строй
+  - roll: '4'
+    creature_refs: [creature.strain_shellback, creature.brood_walker]
+    count: 1d2 + 2d6
+    note: Панцирники роют под башню
+  - roll: '5'
+    creature_refs: [creature.herald_whisperer, creature.brood_swarm_insects]
+    count: 1 + 1d4
+    note: Шептуны сбивают звонарей
+  - roll: '6'
+    creature_refs: [creature.fused, creature.strain_spiker]
+    count: 1 + 1d2
+    note: 'Новая мутация: мать применяет адаптацию'
+- id: encounter.ash_line_wave_r7_9
+  name: 'Волна у черты: резонанс 7–9'
+  description: Колоссы и прорывы в Старые земли.
+  status: proposal
+  doc: rules.md#6; canon.md#1.5
+  tags: [encounters, ash_line, wave]
+  belt: ash_line
+  wave: true
+  resonance_min: 7
+  resonance_max: 9
+  dice: 1d6
+  outcome_note: Исход волны (отбита, прорыв, пленные) пишется событием и двигает резонанс; каждая волна может принести адаптацию матери или новый штамм.
+  rows:
+  - roll: '1'
+    creature_refs: [creature.colossus_behir, creature.brood_hound]
+    count: 1 + 1d4
+    note: Колосс несёт стаю на спине
+  - roll: '2'
+    creature_refs: [creature.fused, creature.echoed_warrior]
+    count: 1d2 + 2d4
+    note: Сростки и воители
+  - roll: '3'
+    creature_refs: [creature.strain_ram, creature.echoed_warrior_veteran]
+    count: 1d3 + 1d4
+    note: Бывшие солдаты Кордона в строю роя
+  - roll: '4'
+    creature_refs: [creature.brood_swarm_bats, creature.strain_spiker]
+    count: 2d4 + 1d2
+    note: Удар по дирижаблям и телеграфу
+  - roll: '5'
+    creature_refs: [creature.colossus_behir, creature.fused]
+    count: 1 + 1
+    note: Башня под угрозой падения
+  - roll: '6'
+    creature_refs: [creature.brood_hound, creature.hidden_hound, creature.herald_double]
+    count: 2d6 + 1d4 + 1
+    note: 'Прорыв: часть волны уходит в Старые земли'
+- id: encounter.ash_line_wave_r10
+  name: Падение черты
+  description: 'Перелом: фронт рушится, волны идут в Средний пояс.'
+  status: proposal
+  doc: rules.md#6; canon.md#1.5
+  tags: [encounters, ash_line, wave]
+  belt: ash_line
+  wave: true
+  resonance_min: 10
+  resonance_max: 10
+  dice: 1d6
+  outcome_note: Исход волны (отбита, прорыв, пленные) пишется событием и двигает резонанс; каждая волна может принести адаптацию матери или новый штамм.
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.colossus_worm, creature.colossus_behir]
+    count: 1 + 1
+    note: Колоссы под башнями и на них
+  - roll: 3-4
+    creature_refs: [creature.fused, creature.echoed_warrior]
+    count: 1d4 + 2d6
+    note: Сростки ведут армию
+  - roll: '5'
+    creature_refs: [creature.strain_ram, creature.strain_shellback, creature.brood_hound]
+    count: 1d4 + 1d4 + 4d6
+    note: Прорыв к железной дороге
+  - roll: '6'
+    creature_refs: [creature.herald_double, creature.invited]
+    count: 1d4 + 2d4
+    note: 'Ворота открывают изнутри: приглашённые в гарнизоне'

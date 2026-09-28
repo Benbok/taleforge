@@ -1,0 +1,255 @@
+# Техники эха: Голод и Отклик. Канон: одна сила, две стороны, есть у всех героев; числа — предложение.
+# Общие правила (rules.md#6.3):
+#  - Голод: после техники спасбросок против Скверны, сл. 8 + потраченное эхо (after_use); настрой −1.
+#  - Отклик: нельзя в ход, когда вы нанесли урон, и нельзя испуганным или в ярости варвара; настрой +1.
+#  - Сложность спасбросков: Голод 8 + БМ + Хар, Отклик 8 + БМ + Мдр.
+#  - Цена и кости меняются от настроя (effect.attunement_*) и резонанса (clock.resonance_power).
+#  - «Рассеивание магии» и «Антимагическое поле» на эхо не действуют.
+kind: echo_technique
+items:
+  # --- Голод ---
+  - id: echo.hunger_strike
+    name: Удар голода
+    description: Когда вы попадаете атакой оружием, вкладываете в удар гнев.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, damage]
+    side: hunger
+    cost: 1
+    min_level: 1
+    action: on_hit
+    save_dc: "8 + pb + cha_mod"
+    has_dice: true
+    modifiers:
+      - {op: extra_damage, dice: 2d6, damage_type: psychic, when: weapon_hit}
+    scaling:
+      - {level: 11, modifiers: [{op: extra_damage, dice: 3d6, damage_type: psychic, when: weapon_hit}]}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: echo.desire_grip
+    name: Хватка желания
+    description: Желание держит цель на месте.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, control]
+    side: hunger
+    cost: 1
+    min_level: 1
+    action: bonus_action
+    range_ft: 30
+    save_dc: "8 + pb + cha_mod"
+    modifiers:
+      - op: save
+        stat: wis
+        dc: "8 + pb + cha_mod"
+        on_fail: [{op: set, target: speed, value: 0, duration: {unit: round, value: 1}, text: "до конца его следующего хода"}]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: echo.greedy_gulp
+    name: Жадный глоток
+    description: Когда вы попадаете атакой оружием, вы пьёте жизнь цели.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, damage]
+    side: hunger
+    cost: 2
+    min_level: 5
+    action: on_hit
+    save_dc: "8 + pb + cha_mod"
+    has_dice: true
+    modifiers:
+      - {op: extra_damage, dice: 3d6, damage_type: necrotic, when: weapon_hit}
+      - {op: add, target: temp_hp, value: damage_dealt_by_this, text: "столько же временных хитов"}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: echo.fear_wave
+    name: Волна страха
+    description: Конус чистого страха.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, control]
+    side: hunger
+    cost: 2
+    min_level: 5
+    action: action
+    area: {shape: cone, size_ft: 30}
+    save_dc: "8 + pb + cha_mod"
+    modifiers:
+      - op: save
+        stat: wis
+        dc: "8 + pb + cha_mod"
+        on_fail: [{op: condition, condition: frightened, duration: {unit: minute, value: 1}, repeat_save: turn_end}]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: echo.wrath_burst
+    name: Взрыв гнева
+    description: Гнев выплёскивается вокруг вас. Вас не задевает.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, damage, area]
+    side: hunger
+    cost: 3
+    min_level: 11
+    action: action
+    area: {shape: sphere, radius_ft: 20, origin: self, excludes_self: true}
+    save_dc: "8 + pb + cha_mod"
+    has_dice: true
+    modifiers:
+      - op: save
+        stat: dex
+        dc: "8 + pb + cha_mod"
+        on_fail: [{op: extra_damage, dice: 6d6, damage_type: psychic}]
+        on_success: [{op: extra_damage, dice: 6d6, damage_type: psychic, factor: 0.5}]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: echo.hunger_bonds
+    name: Узы голода
+    description: Гуманоид скован чужим желанием. Требует концентрации.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, hunger, control]
+    side: hunger
+    cost: 3
+    min_level: 11
+    action: action
+    range_ft: 60
+    target: humanoid
+    concentration: true
+    save_dc: "8 + pb + cha_mod"
+    modifiers:
+      - op: save
+        stat: wis
+        dc: "8 + pb + cha_mod"
+        on_fail: [{op: condition, condition: paralyzed, duration: {unit: minute, value: 1}, repeat_save: turn_end}]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: -1}
+      - {op: save, stat: con, dc: "8 + echo_spent", vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+
+  # --- Отклик ---
+  - id: echo.mending
+    name: Заживление
+    description: Касание, которое отдаёт силу. Равно «Лечащему слову» на 1-м уровне.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, healing]
+    side: response
+    cost: 1
+    min_level: 1
+    action: bonus_action
+    range_ft: touch
+    has_dice: true
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    modifiers:
+      - {op: add, target: hp, value: "1d8 + wis_mod"}
+    scaling:
+      - {level: 5, modifiers: [{op: add, target: hp, value: "2d8 + wis_mod"}]}
+      - {level: 11, modifiers: [{op: add, target: hp, value: "3d8 + wis_mod"}]}
+      - {level: 15, modifiers: [{op: add, target: hp, value: "4d8 + wis_mod"}]}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}
+  - id: echo.echo_step
+    name: Шаг эха
+    description: Вы проходите сквозь бой, как эхо сквозь толпу.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, movement]
+    side: response
+    cost: 1
+    min_level: 1
+    action: bonus_action
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    modifiers:
+      - {op: add, target: speed, value: 20, duration: {unit: round, value: 0, text: "до конца хода"}}
+      - {op: set, target: provokes_opportunity_attacks, value: false, duration: {unit: round, value: 0, text: "до конца хода"}, text: "До конца хода ваше перемещение не провоцирует атак"}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}
+  - id: echo.foresight
+    name: Предвидение
+    description: Вы слышите удар раньше, чем он случится.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, defense]
+    side: response
+    cost: 1
+    min_level: 1
+    action: reaction
+    reaction_trigger: "видимое существо атакует вас или союзника в 30 футах"
+    range_ft: 30
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    modifiers:
+      - {op: disadvantage, "on": attack, target: triggering_attacker}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}
+  - id: echo.quiet_mind
+    name: Тишина в голове
+    description: Спокойствие гасит страх, чары и голос роя. Снимает семя желания. Трата 2 эха на Отклик рядом с героем на испытании Порога даёт ему +1d4.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, support, threshold]
+    side: response
+    cost: 2
+    min_level: 5
+    action: action
+    range_ft: 30
+    targets: "до БМ существ"
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    modifiers:
+      - {op: remove_condition, condition: frightened}
+      - {op: remove_condition, condition: charmed}
+      - {op: advantage, "on": save, vs: corruption, duration: {unit: hour, value: 1}}
+      - {op: remove_condition, condition: effect.desire_seed, text: "Снимает семя желания (rules.md#6.5)"}
+    note: "На испытании Порога / Порога тишины — +1d4 к проверке героя от каждого такого союзника; записано в effect.threshold_trial и effect.silence_threshold_trial (per: ally_spending_2_echo_response)."
+    removes_refs: [effect.desire_seed]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}
+  - id: echo.ancestors_echo
+    name: Эхо предков
+    description: Голоса прошлых поколений предупреждают отряд.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, support]
+    side: response
+    cost: 3
+    min_level: 11
+    action: action
+    range_ft: 30
+    targets: "вы и до 5 союзников"
+    duration: {unit: minute, value: 1}
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    modifiers:
+      - {op: immunity, condition: surprised, text: "Не могут быть застигнуты врасплох"}
+      - {op: advantage, "on": check, vs: initiative}
+      - {op: advantage, "on": save, stat: dex}
+      - {op: add, target: speed, value: 10}
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}
+  - id: echo.bright_echo
+    name: Светлый отзвук
+    description: Зона светлого эха вокруг вас. Концентрация.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, response, zone, healing]
+    side: response
+    cost: 3
+    min_level: 11
+    action: action
+    area: {shape: sphere, radius_ft: 20, origin: self, moves_with_caster: true}
+    duration: {unit: minute, value: 1}
+    concentration: true
+    has_dice: true
+    restrictions: [no_damage_dealt_this_turn, not_frightened, not_raging]
+    stops_growth_refs: [hazard.blight]
+    note: "Налёт в зоне не растёт — см. dev_request роста налёта в hazard.blight."
+    modifiers:
+      - {op: disadvantage, "on": attack, if: {creature_tag: [brood, echoed]}, text: "Выводки (и Отзвучные, races.md#2.5) атакуют с помехой"}
+    triggers:
+      - "on": turn_start
+        if: {ally_in_area: true}
+        do: [{op: add, target: hp, value: 1d6}]
+    after_use:
+      - {op: resource, stat: echo_attunement, delta: 1}

@@ -1,0 +1,110 @@
+# Звери, грибница и кровососы туш: SRD-существа без изменений правил, только имя и поведение в мире.
+# Часть пакета «Эхо Левиафанов». Основа — SRD 5.1 (srd_ref); модификаторы — язык из README.
+# behavior.profile: aggressive | cowardly | defender | capturer (Захватчик, rules.md#6.5) | noncombatant; flee_threshold — доля хитов.
+kind: creature_template
+items:
+- id: creature.drowned_giant_crab
+  name: Гигантский краб затопленных складов
+  description: Краб размером с тачку, прижившийся в затопленных складах порта. Держится стаями и защищает лёжку.
+  status: proposal
+  doc: canon.md#7
+  tags: [beast, sea, carcass_port]
+  srd_ref: {type: monster, name: Giant Crab}
+  cr: 0.125
+  behavior: {profile: defender, flee_threshold: 0.3}
+  modifiers: []
+  abilities: []
+  loot_hint: панцирь краба, мясо (без Скверны)
+- id: creature.rift_octopus
+  name: Осьминог из разлома
+  description: Гигантский осьминог, выросший у разломов на ликворе, который сочится из туш. Хватает всё, что спускается к воде.
+  status: proposal
+  doc: canon.md#7
+  tags: [beast, sea, carcass_port]
+  srd_ref: {type: monster, name: Giant Octopus}
+  cr: 1
+  behavior: {profile: defender, flee_threshold: 0.5, note: при ранении уходит в чернильном облаке}
+  modifiers: []
+  abilities: []
+  loot_hint: чернильный мешок, клюв
+- id: creature.hunter_shark
+  name: Акула у батискафов
+  description: Хищная акула, которая идёт на свет и шум батискафов у борта туши. Встречается только под водой.
+  status: proposal
+  doc: canon.md#7
+  tags: [beast, sea, underwater_only]
+  srd_ref: {type: monster, name: Hunter Shark}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  modifiers: []
+  abilities: []
+  loot_hint: зубы, акулья кожа
+- id: creature.shrieker_fungus
+  name: Крикун-гриб
+  description: Грибница Рёберного леса, которая визжит, когда рядом свет или движение, и поднимает тревогу для всех окрестных тварей.
+  status: proposal
+  doc: canon.md#7
+  tags: [fungus, rib_forest, alarm]
+  srd_ref: {type: monster, name: Shrieker}
+  cr: 0
+  behavior: {profile: defender, flee_threshold: 0.0, mobile: false}
+  modifiers: []
+  abilities: []
+  loot_hint: споровые шляпки (сырьё для Гильдии)
+- id: creature.violet_fungus
+  name: Лиловая грибница
+  description: Медленная грибница на рёбрах туши. Хватает прохожих гниющими усиками.
+  status: proposal
+  doc: canon.md#7
+  tags: [fungus, rib_forest]
+  srd_ref: {type: monster, name: Violet Fungus}
+  cr: 0.25
+  behavior: {profile: aggressive, flee_threshold: 0.0}
+  modifiers: []
+  abilities: []
+  loot_hint: лиловые споры (яд для алхимика)
+- id: creature.pelvic_stirge
+  name: Кровосос Тазовой чаши
+  description: Летучий кровосос из Тазовой чаши туши. Стаями садится на тёплых и пьёт, пока не отвалится.
+  status: proposal
+  doc: canon.md#7
+  tags: [beast, parasite, rib_forest]
+  srd_ref: {type: monster, name: Stirge}
+  cr: 0.125
+  behavior: {profile: aggressive, flee_threshold: 0.0, note: насытившись, улетает}
+  modifiers: []
+  abilities: []
+  loot_hint: нет
+- id: creature.sewer_rats
+  name: Рой крыс из стоков
+  description: Обычные крысы из стоков слобод. Не выводок, Скверны не несут.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [beast, swarm, slums]
+  srd_ref: {type: monster, name: Swarm of Rats}
+  cr: 0.25
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  modifiers: []
+  abilities: []
+- id: creature.slum_robber
+  name: Грабитель слобод
+  description: Налётчик из нижних кварталов или наёмный ловец беглых.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [human, criminal]
+  srd_ref: {type: monster, name: Bandit}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  modifiers: []
+  abilities: []
+- id: creature.slum_thug
+  name: Громила слобод
+  description: Вожак налётчиков или ловцов беглых.
+  status: proposal
+  doc: locations.md#2.1
+  tags: [human, criminal]
+  srd_ref: {type: monster, name: Thug}
+  cr: 0.5
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  modifiers: []
+  abilities: []

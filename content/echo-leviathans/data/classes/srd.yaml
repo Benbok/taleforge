@@ -1,0 +1,191 @@
+# Классы SRD 5.1 в мире «Эхо Левиафанов»: записи-обёртки. Числа и умения — по SRD (levels: srd),
+# меняются только имя в мире, описание и источник силы. Источник: rules.md#1, rules.md#7.0, canon.md#1.6.
+# Потолок 15 [Канон, open-questions #21, #25]: умения 16–20 и заклинания 9-го круга недостижимы.
+# max_spell_level — наивысший круг ячеек, доступный на 15-м уровне по таблицам SRD.
+# spell_source — код источника силы (расшифровка в data/spells.yaml, spell_note.source_*).
+kind: class
+items:
+  - id: class.barbarian
+    name: Варвар
+    description: Боец на мутагенах. Ярость — это инъекция стимулятора, а не очки Скверны.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, martial]
+    srd_ref: {type: class, name: Barbarian}
+    world_role: Боец на мутагенах; ярость — инъекция.
+    hit_die: d12
+    levels: srd
+    level_cap: 15
+    max_spell_level: 0
+    spell_source: none
+    subclass_refs: [subclass.blood_tide]
+    notes:
+      - Ярость не даёт и не требует очков Скверны (corruption).
+
+  - id: class.bard
+    name: Бард (звонарь)
+    description: Звонарь и эхолокатор — магия через звук и резонанс. Звонари Кордона — прямые наследники колокольных крепостей.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, full_caster]
+    srd_ref: {type: class, name: Bard}
+    world_role: Звонарь, эхолокатор; звонари Кордона наследуют колокольные крепости.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 8
+    spell_source: sound_resonance
+    subclass_refs: [subclass.college_of_echo]
+
+  - id: class.cleric
+    name: Жрец Церкви Исполинов
+    description: Служитель Церкви Исполинов. Пьёт ликвор на причастии и черпает силу из снов спящих Кормчих, веря, что это благодать; богов нет.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, full_caster, liquor_caster]
+    srd_ref: {type: class, name: Cleric}
+    world_role: Служитель Церкви Исполинов; верхушка Церкви — Домен голода.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 8
+    spell_source: liquor_sleepers_dreams
+    subclass_refs: [subclass.domain_of_communion, subclass.hunger_domain]
+    notes:
+      - «Божественное вмешательство» работает как обращение к Спящим, а не к богу (богов нет, canon.md#1.6).
+
+  - id: class.druid
+    name: Друид (пастух паразитов)
+    description: Пастух паразитов. Облик зверя — временная мутация тела.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, full_caster]
+    srd_ref: {type: class, name: Druid}
+    world_role: Пастух паразитов; дикий облик — временная мутация.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 8
+    spell_source: parasite_herding
+    subclass_refs: [subclass.circle_of_carcass]
+
+  - id: class.fighter
+    name: Воин
+    description: Наёмник Синдикатов, стражник, сталкер или выжигатель Пепельного Кордона.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, martial]
+    srd_ref: {type: class, name: Fighter}
+    world_role: Наёмник Синдикатов, стражник, сталкер, выжигатель Кордона.
+    hit_die: d10
+    levels: srd
+    level_cap: 15
+    max_spell_level: 0
+    spell_source: none
+    subclass_refs: [subclass.deep_veteran, subclass.line_warden]
+
+  - id: class.monk
+    name: Монах (молчальник)
+    description: Молчальник — бывший шахтёр, подчинивший себе тремор.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, martial]
+    srd_ref: {type: class, name: Monk}
+    world_role: Молчальник, бывший шахтёр, подчинивший тремор.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 0
+    spell_source: none
+    subclass_refs: [subclass.way_of_silence]
+
+  - id: class.paladin
+    name: Паладин (рыцарь Церкви)
+    description: Рыцарь Церкви Исполинов. Сила — ликвор причастия.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, half_caster, liquor_caster]
+    srd_ref: {type: class, name: Paladin}
+    world_role: Рыцарь Церкви.
+    hit_die: d10
+    levels: srd
+    level_cap: 15
+    max_spell_level: 4
+    spell_source: liquor_sleepers_dreams
+    subclass_refs: [subclass.oath_to_the_giant]
+
+  - id: class.ranger
+    name: Следопыт (сталкер)
+    description: Сталкер Глубинных троп. Избранный враг по умолчанию — паразиты.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, half_caster]
+    srd_ref: {type: class, name: Ranger}
+    world_role: Сталкер Глубинных троп; избранный враг — паразиты.
+    hit_die: d10
+    levels: srd
+    level_cap: 15
+    max_spell_level: 4
+    spell_source: stalker_lore
+    subclass_refs: [subclass.parasite_hunter]
+
+  - id: class.rogue
+    name: Плут
+    description: Контрабандист ликвора, вор, шпион Дома, бывший ребёнок-шахтёр.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, martial]
+    srd_ref: {type: class, name: Rogue}
+    world_role: Контрабандист ликвора, вор, шпион Дома, бывший ребёнок-шахтёр.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 0
+    spell_source: none
+    subclass_refs: [subclass.smuggler, subclass.vein_crawler]
+
+  - id: class.sorcerer
+    name: Чародей
+    description: Человек, в чьей крови ликвор с рождения или с детской шахты.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, full_caster, liquor_caster]
+    srd_ref: {type: class, name: Sorcerer}
+    world_role: Кровь с ликвором с рождения или с шахты.
+    hit_die: d6
+    levels: srd
+    level_cap: 15
+    max_spell_level: 8
+    spell_source: liquor_blood
+    subclass_refs: [subclass.giant_blood, subclass.liquor_mind]
+
+  - id: class.warlock
+    name: Колдун
+    description: Заключил договор с тем, кто ответил из глубины — со Спящим из рубки или с Резонансом через эхолит.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, pact_caster]
+    srd_ref: {type: class, name: Warlock}
+    world_role: Договор с тем, кто ответил из глубины.
+    hit_die: d8
+    levels: srd
+    level_cap: 15
+    max_spell_level: 5
+    mystic_arcanum_max: 8
+    spell_source: pact
+    subclass_refs: [subclass.sleeper, subclass.resonance_patron]
+
+  - id: class.wizard
+    name: Волшебник (ликворовед)
+    description: Ликворовед — расшифровывает в ликворе застывшие команды и знания экипажей Кормчих.
+    status: canon
+    doc: rules.md#7.0
+    tags: [class, srd, caster, full_caster, liquor_caster]
+    srd_ref: {type: class, name: Wizard}
+    world_role: Ликворовед, читающий «формулы» экипажей.
+    hit_die: d6
+    levels: srd
+    level_cap: 15
+    max_spell_level: 8
+    spell_source: liquor_formulae
+    subclass_refs: [subclass.school_of_discharge]

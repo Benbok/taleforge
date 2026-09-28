@@ -1,0 +1,18 @@
+kind: dc_scale
+items:
+  - {id: dc.very_easy, name: Очень легко, value: 5, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.easy, name: Легко, value: 10, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.medium, name: Средне, value: 15, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.hard, name: Трудно, value: 20, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.very_hard, name: Очень трудно, value: 25, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  - {id: dc.nearly_impossible, name: Почти невозможно, value: 30, status: canon, doc: "SRD 5.1: Difficulty Class"}
+  # Типовые сложности сеттинга (rules.md). Мастер берёт отсюда, если у объекта или NPC нет своей.
+  - {id: dc.corruption_light, name: "Скверна: брызги крови, трупный газ, мясо титана", value: 10, status: canon, doc: rules.md#3.1, tags: [corruption]}
+  - {id: dc.corruption_medium, name: "Скверна: укус паразита, рана хитином Глубинного", value: 13, status: canon, doc: rules.md#3.1, tags: [corruption]}
+  - {id: dc.corruption_heavy, name: "Скверна: грязный ликвор", value: 15, status: canon, doc: rules.md#3.1, tags: [corruption]}
+  - {id: dc.corruption_extreme, name: "Скверна: долгий контакт с Шёпотом, близость Резонанса, «возвышение»", value: 17, status: canon, doc: rules.md#3.1, tags: [corruption]}
+  - {id: dc.threshold, name: "Испытание Порога (база)", value: 15, status: canon, doc: rules.md#3.4, tags: [threshold]}
+  - {id: dc.silence_threshold, name: "Порог тишины (база)", value: 15, status: canon, doc: rules.md#3.5, tags: [alteration]}
+  - {id: dc.liquor_clean, name: "Перемена: чистый ликвор", value: 15, status: proposal, doc: rules.md#5.2, tags: [alteration]}
+  - {id: dc.liquor_dirty_alteration, name: "Перемена: грязный ликвор", value: 12, status: proposal, doc: rules.md#5.2, tags: [alteration]}
+  - {id: dc.implant, name: "Вживление импланта (Тел)", value: 12, status: proposal, doc: rules.md#7.1, tags: [implant]}

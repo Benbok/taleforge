@@ -1,0 +1,134 @@
+# Броня: хитиновые переименования брони SRD и новые образцы мира.
+# Источник: rules.md#5.4; items.md#3.1. Панцирь ликворной закалки — srd_reskins.yaml.
+# Поля: armor_type (light|medium|heavy|shield), ac {base, dex_cap} (dex_cap: null — без ограничения, 0 — без Лвк),
+# str_req, stealth_disadvantage.
+kind: item_template
+items:
+  - id: item.pleural_armor
+    name: Плевральная броня
+    description: Выделанная плевра туши, пропитанная жиром. Числа кожаного доспеха SRD.
+    status: proposal
+    doc: rules.md#5.4
+    tags: [armor, chitin]
+    srd_ref: {type: item, name: Leather Armor}
+    category: armor
+    armor_type: light
+    source: chitin
+    ac: {base: 11, dex_cap: null}
+    stealth_disadvantage: false
+    price: {fk: 10}
+    weight: 10
+    rarity: common
+  - id: item.scaled_chitin
+    name: Чешуйчатый хитин
+    description: Кольчуга из сцепленных пластинок хитина. Числа кольчуги SRD.
+    status: proposal
+    doc: rules.md#5.4
+    tags: [armor, chitin]
+    srd_ref: {type: item, name: Chain Mail}
+    category: armor
+    armor_type: heavy
+    source: chitin
+    ac: {base: 16, dex_cap: 0}
+    str_req: 13
+    stealth_disadvantage: true
+    price: {fk: 75}
+    weight: 55
+    rarity: common
+  - id: item.titan_plate
+    name: Панцирь титана
+    description: Латы из цельных пластин панциря титана. Числа лат SRD и стойкость к кислоте.
+    status: proposal
+    doc: rules.md#5.4
+    tags: [armor, chitin]
+    srd_ref: {type: item, name: Plate Armor}
+    category: armor
+    armor_type: heavy
+    source: chitin
+    ac: {base: 18, dex_cap: 0}
+    str_req: 15
+    stealth_disadvantage: true
+    price: {fk: 1500}
+    weight: 65
+    rarity: common
+    modifiers:
+      - {op: advantage, "on": save, vs: acid}
+
+  - id: item.vein_suit
+    name: Жилолазный комбинезон
+    description: Прорезиненный комбинезон для лазания по сосудам туш. Защищает от налёта.
+    status: proposal
+    doc: items.md#3.1
+    tags: [armor, mine]
+    category: armor
+    armor_type: light
+    source: tech
+    ac: {base: 11, dex_cap: null}
+    stealth_disadvantage: false
+    price: {fk: 60}
+    weight: 8
+    rarity: common
+    modifiers:
+      - {op: advantage, "on": save, vs: corruption, if: {source_ref: hazard.blight}, text: "Преимущество на спасброски против Скверны от налёта"}
+  - id: item.burner_carapace
+    name: Панцирь выжигателя
+    description: Броня огнемётчиков Кордона, огнеупорная. Продаётся только Кордоном.
+    status: proposal
+    doc: items.md#3.1
+    tags: [armor, cordon, fire]
+    category: armor
+    armor_type: medium
+    source: chitin
+    legality: cordon_only
+    ac: {base: 15, dex_cap: 2}
+    stealth_disadvantage: true
+    price: {fk: 900}
+    weight: 40
+    rarity: uncommon
+    modifiers:
+      - {op: resistance, damage: fire}
+  - id: item.bathysphere_armor
+    name: Батискафный доспех
+    description: Герметичный тяжёлый доспех с баллоном. В нём ходят в газ, споры, под воду и в лимфу.
+    status: proposal
+    doc: items.md#3.1
+    tags: [armor, tech, breathing]
+    category: armor
+    armor_type: heavy
+    source: tech
+    ac: {base: 18, dex_cap: 0}
+    str_req: 15
+    stealth_disadvantage: true
+    price: {fk: 2000}
+    weight: 70
+    rarity: uncommon
+    charges: {duration: {unit: hour, value: 1}, refill_ref: item.air_cylinder}
+    modifiers:
+      - {op: set, target: air_supply, value: sealed, if: {cylinder_charged: true}, text: "Пока в баллоне есть воздух: не дышит газом и спорами, можно под водой и в лимфе"}
+      - {op: immunity, condition: poisoned, vs: [inhaled_poison, gas, spores], if: {cylinder_charged: true}}
+      - {op: immunity, damage: poison, vs: [inhaled_poison, gas, spores], if: {cylinder_charged: true}}
+      - {op: immunity, condition: effect.spore_choke, if: {cylinder_charged: true}}
+  - id: item.howler_shield
+    name: Щит-ревун
+    description: Щит со встроенным паровым гудком.
+    status: proposal
+    doc: items.md#3.1
+    tags: [armor, shield, noise]
+    category: armor
+    armor_type: shield
+    source: tech
+    ac: {bonus: 2}
+    price: {fk: 90}
+    weight: 8
+    rarity: common
+    uses: {max: 1, recharge: short_rest}
+    modifiers:
+      - op: grant_action
+        name: Гудок щита
+        action: action
+        uses: {count: 1, per: short_rest}
+        text: "Эффект ревуна (item.howler)"
+        do:
+          - {op: run, ref: effect.loud_noise, area: {shape: sphere, radius: 30, center: self}, duration: {unit: minute, value: 1}}
+          - {op: disadvantage, "on": check, skill: perception, vs: hearing, area: {shape: sphere, radius: 30, center: self}, if: {normal_hearing: true}, duration: {unit: minute, value: 1}}
+    effect_ref: effect.loud_noise

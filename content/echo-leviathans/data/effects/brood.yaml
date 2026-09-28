@@ -1,0 +1,334 @@
+# Выводки и рой: общие свойства, стадии I–III, мимикрия, связь с матерью, Раскрытие, коконы, адаптации матери, профиль «Захватчик».
+# Источник: rules.md#6.2, #6.4, #6.5; races.md#2.7.
+kind: effect_template
+items:
+  # --- Общие свойства выводков (6.2) ---
+  - id: effect.brood_resonance_link
+    name: Связь резонансом
+    description: Тактика стаи, как в SRD. Теряется в зоне сильного шума и под «Тишиной» ликвора.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait]
+    modifiers:
+      - op: advantage
+        "on": attack
+        if:
+          all:
+            - {ally_brood_within_5ft_of_target: true}
+            - {any: [{not: {in_zone: effect.loud_noise}}, {has_effect: effect.adapt_noise}], text: "«Сбитый ритм»: теряется в сильном шуме, если у матери нет адаптации к шуму"}
+            - {not: {has_effect: effect.liquor_silenced}}
+    suppressed_by_refs: [effect.loud_noise, effect.liquor_silenced]
+  - id: effect.brood_eyeless
+    name: Без глаз
+    description: Выводок видит эхом. Подобия (Doppelganger) это свойство не получают.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait]
+    not_for: [Doppelganger]
+    modifiers:
+      - {op: sense, sense: blindsight, range: 30}
+      - {op: immunity, condition: blinded}
+  - id: effect.brood_hollow
+    name: Пустые
+    description: В выводке нет собственной воли, которую можно напугать или очаровать.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait]
+    modifiers:
+      - {op: immunity, condition: charmed}
+      - {op: immunity, condition: frightened}
+  - id: effect.brood_burns
+    name: Горят
+    description: Уязвимость к огню. Подобия не получают. Снимается адаптацией матери к огню.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait]
+    not_for: [Doppelganger]
+    modifiers:
+      - {op: vulnerability, damage: fire, if: {not: {has_effect: effect.adapt_fire_1}}}
+  - id: effect.brood_broken_rhythm
+    name: Сбитый ритм
+    description: В зоне сильного шума выводок теряет «Связь резонансом», а его атаки — с помехой. Снимается адаптацией матери к шуму.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait, noise]
+    modifiers:
+      - {op: disadvantage, "on": attack, if: {all: [{in_zone: effect.loud_noise}, {not: {has_effect: effect.adapt_noise}}]}}
+    note: "Потеря «Связи резонансом» в шуме записана условием в effect.brood_resonance_link."
+  - id: effect.brood_liquor_poison
+    name: Ликвор — яд
+    description: Слабость роя к ликвору; сам эффект попадания — effect.liquor_silence.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait, liquor]
+    modifiers: []
+    effect_ref: effect.liquor_silence
+    note: "Метка уязвимости. Срабатывание — у ликворной ампулы и ликворного покрытия (items/consumables.yaml: run effect.liquor_silence при попадании по рою, applies_to: swarm); половина урона для матерей — в effect.liquor_silence."
+  - id: effect.brood_consuming_bite
+    name: Поглощающий укус
+    description: Существо, получившее урон от укуса или когтей выводка, делает спасбросок против Скверны, сл. 10.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, trait, corruption]
+    modifiers: []
+    triggers:
+      - "on": hit
+        if: {attack_name: [bite, claw], damage_dealt: true}
+        do:
+          - {op: save, stat: con, dc: 10, target: target, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+  - id: effect.brood_template
+    name: Выводок (набор свойств)
+    description: Набор общих свойств, который превращает шаблон SRD в выводок. ПО = ПО исходного шаблона + 1. Подобия не получают «Без глаз» и «Горят».
+    status: proposal
+    doc: rules.md#6.2
+    tags: [brood, bundle]
+    cr_delta: 1
+    includes_refs:
+      - effect.brood_resonance_link
+      - effect.brood_eyeless
+      - effect.brood_hollow
+      - effect.brood_burns
+      - effect.brood_broken_rhythm
+      - effect.brood_liquor_poison
+      - effect.brood_consuming_bite
+    modifiers:
+      - {op: run, ref: effect.brood_resonance_link}
+      - {op: run, ref: effect.brood_eyeless, text: "не для подобий (not_for)"}
+      - {op: run, ref: effect.brood_hollow}
+      - {op: run, ref: effect.brood_burns, text: "не для подобий (not_for)"}
+      - {op: run, ref: effect.brood_broken_rhythm}
+      - {op: run, ref: effect.brood_liquor_poison}
+      - {op: run, ref: effect.brood_consuming_bite}
+      - {op: add, target: cr, value: 1}
+
+  # --- Стадии (6.4) ---
+  - id: effect.brood_stage_1
+    name: "Стадия I: Скрытая"
+    description: Почти неотличима от исходного вида (человек, собака, ворона, крыса). Характеристики исходного существа, ПО как у исходного.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, stage]
+    cr_delta: 0
+    includes_refs: [effect.brood_mimicry, effect.brood_mother_link, effect.brood_reveal]
+    cocoon_to_next: {dice: 1d4, unit: day}
+    modifiers:
+      - {op: run, ref: effect.brood_mimicry}
+      - {op: run, ref: effect.brood_mother_link}
+      - {op: run, ref: effect.brood_reveal, text: "Раскрытие: 1d6 доп. урона (stage 1)"}
+  - id: effect.brood_stage_2
+    name: "Стадия II: Гибрид"
+    description: Облик держится с трудом. Всё от стадии I, хитин, природное оружие, слепое зрение; мимикрия работает только в темноте, в толпе или под одеждой. ПО +1.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, stage]
+    cr_delta: 1
+    includes_refs: [effect.brood_mimicry, effect.brood_mother_link, effect.brood_reveal]
+    cocoon_to_next: {dice: 1d4, unit: week}
+    modifiers:
+      - {op: run, ref: effect.brood_mimicry, text: "только в темноте, в толпе или под одеждой (stage 2, см. effect.brood_mimicry)"}
+      - {op: run, ref: effect.brood_mother_link}
+      - {op: run, ref: effect.brood_reveal, text: "Раскрытие: 2d6 доп. урона (stage 2)"}
+      - {op: add, target: ac, value: 2}
+      - {op: add, target: str, value: 2}
+      - {op: add, target: con, value: 2}
+      - {op: sense, sense: blindsight, range: 30}
+      - op: custom
+        engine: dev_request
+        need: "условие размера (size: medium) для кости natural_weapon; тип урона оружия стадии II в rules.md#6.4 не задан (канон)"
+        text: "Природное оружие 1d6 (1d8 у Среднего размера)."
+        draft: [{op: natural_weapon, name: Хитиновое оружие, damage: {dice: 1d6, type: "?"}, if: {not: {size: medium}}}, {op: natural_weapon, name: Хитиновое оружие, damage: {dice: 1d8, type: "?"}, if: {size: medium}}]
+  - id: effect.brood_stage_3
+    name: "Стадия III: Штамм"
+    description: Облик потерян. Шаблон штамма касты (races.md#2.7) плюс общие свойства выводков. Мимикрии нет, ПО по шаблону штамма.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, stage]
+    includes_refs: [effect.brood_template]
+    strains:
+      - {name: Таран, caste: Воители, srd: Minotaur}
+      - {name: Шипострел, caste: Воители, srd: Manticore}
+      - {name: Панцирник, caste: Воители, srd: Ankheg}
+      - {name: Двойник, caste: Глашатаи, srd: Doppelganger}
+      - {name: Шептун, caste: Глашатаи, srd: Gibbering Mouther}
+      - {name: Сеятель, caste: Ткачи, srd: Shambling Mound}
+      - {name: Сторож гнезда, caste: Ткачи, srd: Mimic}
+      - {name: Сросток, caste: любая, srd: Hydra}
+      - {name: Осадный колосс, caste: любая, srd: "Behir / Purple Worm"}
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "op замены базового шаблона экземпляра существа (rebase: {creature_ref штамма}) при выходе из кокона"
+        text: "Заменить основу шаблоном штамма касты (strains)."
+      - {op: run, ref: effect.brood_template, text: "кроме «Без глаз»/«Горят» у подобий (not_for)"}
+
+  - id: effect.brood_mimicry
+    name: Мимикрия
+    description: Существо стадии I выглядит как исходный вид (на стадии II — только в темноте, в толпе или под одеждой). Выдаёт себя спокойствием, запахом меди и озона и особенно вздрагиванием от звона.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, mimicry]
+    reveal_methods:
+      - {name: Разговор, how: "проверка Мудрости (Проницательность) против Харизмы (Обман) существа после разговора хотя бы в минуту"}
+      - {name: Диагностика, how: "успех «Диагностики» Диагноста раскрывает автоматически"}
+      - {name: Проба звоном, how: "резкий громкий звук: стадия I–II — спасбросок Тел сл. 12, провал — вздрагивает, видят все смотревшие", save: {stat: con, dc: 12}}
+      - {name: Проба ликвором, how: "капля на кожу раскрывает стадию I–II без проверки"}
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "встречная проверка (check с dc: contest {stat: cha, skill: deception} цели) и событие резкого громкого звука (on: loud_sound — колокол, ревун, выстрел над ухом); target revealed"
+        text: "Раскрытие мимикрии по reveal_methods: Проницательность против Обмана после минуты разговора; проба звоном — спасбросок Тел сл. 12, провал — вздрагивает. Преимущество на раскрытие: Сломленные, дар effect.gift_swarm_sense, Страж черты 10+ (последние два записаны у себя)."
+        draft:
+          - {op: check, stat: wis, skill: insight, dc: {contest: {stat: cha, skill: deception}}, adv_if: {any: [{origin: broken}, {has_effect: effect.gift_swarm_sense}]}, outcomes: [{result: success, do: [{op: set, target: revealed, value: true}]}]}
+          - {"on": loud_sound, if: {any: [{has_effect: effect.brood_stage_1}, {has_effect: effect.brood_stage_2}]}, do: [{op: save, stat: con, dc: 12, on_fail: [{op: set, target: revealed, value: true}]}]}
+  - id: effect.brood_mother_link
+    name: Связь с матерью
+    description: Всё, что видит и слышит скрытое существо, знает его мать. Приложение пишет событие «разведка», мать получает флаг знаний об отряде (состав, маршрут, слабости).
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, mother, engine_event]
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "op записи флагов в state другой сущности (state_flag: {owner: mother, flags: [knows_party_composition, knows_route, knows_weaknesses]}) и событие «разведка» (scout), когда скрытое существо видит/слышит отряд"
+        text: "Событие scout: в state матери флаги knows_party_composition / route / weaknesses; используется адаптацией и таблицами встреч."
+  - id: effect.brood_reveal
+    name: Раскрытие
+    description: Бонусным действием существо стадии I или II сбрасывает облик и бьёт из засады.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, ambush]
+    modifiers:
+      - op: grant_action
+        name: Раскрытие
+        action: bonus
+        if: {not: {has_effect: effect.liquor_silenced}}
+        do:
+          - {op: set, target: revealed, value: true}
+          - {op: advantage, "on": attack, duration: first_attack_this_turn}
+          - {op: extra_damage, dice: "1d6 * stage", damage_type: weapon, when: first_attack_this_turn, text: "1d6 на стадии I, 2d6 на II"}
+          - op: custom
+            engine: dev_request
+            need: "условие «цель не знала, что это рой» (target_unaware_of: revealed) и состояние surprised (нет в списке состояний SRD)"
+            text: "Если цель не знала, что это рой, она застигнута врасплох."
+            draft: {op: condition, condition: surprised, target: target, if: {target_unaware: true}}
+    blocked_by_refs: [effect.liquor_silenced]
+  - id: effect.brood_cocoon
+    name: Кокон
+    description: Переход между стадиями. КД 12, хиты 5 × ПО будущей формы, уязвимость к огню. Кокон стадии I можно вскрыть и вернуть человека.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, cocoon, timer]
+    stats: {ac: 12, hp: "5 * next_form_cr"}
+    timers: {"I->II": {dice: 1d4, unit: day}, "II->III": {dice: 1d4, unit: week}}
+    modifiers:
+      - {op: vulnerability, damage: fire}
+      - op: check
+        stat: wis
+        skill: medicine
+        dc: 15
+        if: {has_effect: effect.brood_stage_1}
+        text: "Вскрыть кокон стадии I без убийства (действие героя над коконом)"
+        outcomes:
+          - result: success
+            do:
+              - op: custom
+                engine: dev_request
+                need: "op возврата экземпляра к исходному шаблону (revert: снять стадию и кокон) с установкой ресурса corruption 5 спасённому"
+                text: "Человек возвращается со Скверной 5 (rules.md#3)."
+                draft: [{op: revert_form}, {op: set, target: corruption, value: 5}]
+
+  # --- Адаптации матери (до 3 в state; смерть матери их обнуляет) ---
+  - id: effect.adapt_fire_1
+    name: "Адаптация: огонь, шаг 1"
+    description: Отряд чаще всего жёг рой. Выводки этой матери теряют уязвимость к огню.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation]
+    adaptation: {trigger: fire, step: 1, max_per_mother: 3, interval_days: 3, reset_on: mother_death}
+    removes_ref: effect.brood_burns
+    modifiers: []
+    note: "Снятие уязвимости записано условием not has_effect effect.adapt_fire_1 в effect.brood_burns; адаптации матери накладываются на её выводки."
+  - id: effect.adapt_fire_2
+    name: "Адаптация: огонь, шаг 2"
+    description: Выводки этой матери получают сопротивление огню.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation]
+    adaptation: {trigger: fire, step: 2, requires_ref: effect.adapt_fire_1}
+    modifiers:
+      - {op: resistance, damage: fire}
+  - id: effect.adapt_noise
+    name: "Адаптация: шум"
+    description: Колокола, ревуны, урон звуком. Свойство «Сбитый ритм» пропадает.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation]
+    adaptation: {trigger: [bells, howlers, thunder_damage]}
+    removes_ref: effect.brood_broken_rhythm
+    modifiers: []
+    note: "Снятие «Сбитого ритма» записано условием not has_effect effect.adapt_noise в effect.brood_broken_rhythm, effect.brood_resonance_link и effect.loud_noise."
+  - id: effect.adapt_response
+    name: "Адаптация: Отклик"
+    description: Техники Отклика. Преимущество на спасброски против них.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation, echo]
+    adaptation: {trigger: echo_response}
+    modifiers:
+      - {op: advantage, "on": save, vs: echo_response}
+  - id: effect.adapt_weapon_type
+    name: "Адаптация: вид оружия"
+    description: Один вид урона оружием (рубящий, колющий или дробящий) — выводки получают к нему сопротивление.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation]
+    adaptation: {trigger: [slashing, piercing, bludgeoning], param: damage_type}
+    modifiers:
+      - {op: resistance, damage: "$damage_type"}
+  - id: effect.adapt_ambush
+    name: "Адаптация: засады и дальний бой"
+    description: Слепое зрение +30 футов, выводки идут рассыпным строем.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation]
+    adaptation: {trigger: [ambush, ranged]}
+    modifiers:
+      - {op: add, target: blindsight, value: 30}
+      - op: custom
+        engine: dev_request
+        need: "поле formation у op behavior (formation: dispersed) без смены профиля (у выводков остаётся capturer)"
+        text: "Рассыпной строй: тактика, не число — влияет на расстановку в бою."
+  - id: effect.adapt_liquor
+    name: "Адаптация: ликвор"
+    description: Спасбросок от «Тишины» с преимуществом; дополнительный урон остаётся.
+    status: proposal
+    doc: rules.md#6.4
+    tags: [brood, adaptation, liquor]
+    adaptation: {trigger: liquor}
+    modifiers:
+      - {op: advantage, "on": save, vs: liquor_silence}
+
+  # --- Поведение ---
+  - id: effect.behavior_captor
+    name: Профиль «Захватчик»
+    description: Рой сражается на захват, а не на убийство. Поле behavior шаблона существа (profile capturer).
+    status: proposal
+    doc: rules.md#6.5
+    tags: [swarm, behavior]
+    target_priority: [одиночки, раненые, Сломленные, "герои с высокой Скверной или настроем Голода"]
+    kill_first: [носители огнемётов, звонари, "герои с настроем Отклика +3 и выше"]
+    profile_params:
+      carry_captives: {speed_factor: 0.5, to: [nest, blight]}
+      retreat_when: has_captives
+      finish_downed: false
+      heals_captives: true
+      avoid_tags: [helmsman]
+      avoid_note: "Кормчих на расстоянии рой взять не может (тишина разума): обходит их или тащит к матери целиком"
+      treats_as_own: {lineage_ref: lineage.kept_self, until: attacked}
+    modifiers:
+      - {op: behavior, profile: capturer}
+    triggers:
+      - "on": reduce_target_to_0
+        if: {attack: melee}
+        do: [{op: run, ref: effect.swarm_captive, target: target, text: "оглушение вместо смерти (несмертельный урон SRD): цель без сознания и стабильна"}]
+    captive_ref: effect.swarm_captive

@@ -1,0 +1,379 @@
+# Скверна: получение, уровни 1–6, дары роя, испытание Порога, лечение.
+# Источник: rules.md#3.1–3.4, #6.5.
+kind: effect_template
+items:
+  # --- Получение ---
+  - id: effect.corruption_exposure
+    name: Спасбросок против Скверны
+    description: Телесный путь заражения. При контакте с источником — спасбросок Телосложения, сложность задаёт источник. Провал — 1 очко, провал на 5 и больше — 2.
+    status: canon
+    doc: rules.md#3.1
+    tags: [corruption, exposure]
+    save_stat: con
+    dc_by_source:
+      - {source: "брызги заражённой крови, трупный газ, мясо титана", dc: 10}
+      - {source: "укус паразита (нитевик, санитар), рана хитиновым оружием Глубинного", dc: 13}
+      - {source: "грязный ликвор", dc: 15}
+      - {source: "долгий контакт с Шёпотом, близость Резонанса, «возвышение»", dc: 17}
+    modifiers:
+      - op: save
+        stat: con
+        dc: source
+        on_fail: [{op: resource, stat: corruption, delta: 1}]
+        on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]
+      - {op: advantage, "on": save, vs: corruption, if: {origin: broken}, text: "Сломленные бросают с преимуществом"}
+      - {op: add, target: corruption_save_dc, value: "floor(resonance / 3)", if: {location_belt: pilgrim_ring}, text: "у Кольца Паломников — от резонанса (clock.resonance_power)"}
+
+  - id: effect.corruption_exposure_mental
+    name: Ментальное заражение
+    description: Ментальный путь — шёпот Глашатаев, голоса мёртвых, близость или приказ матери. Спасбросок Мудрости; провал — очко Скверны и семя желания.
+    status: proposal
+    doc: rules.md#6.5
+    tags: [corruption, exposure, mental]
+    save_stat: wis
+    modifiers:
+      - op: save
+        stat: wis
+        dc: source
+        on_fail:
+          - {op: resource, stat: corruption, delta: 1}
+          - {op: run, ref: effect.desire_seed}
+    applies_ref: effect.desire_seed
+
+  # --- Уровни (накопительные) ---
+  - id: effect.corruption_1
+    name: "Скверна 1: тремор"
+    description: Тремор и мигрени.
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level]
+    stackable: false
+    modifiers:
+      - {op: disadvantage, "on": check, stat: wis, skill: perception, if: {not: {has_effect: effect.corruption_cure_lesser_restoration}}}
+    suppressed_by: "«Малое восстановление» (SRD Lesser Restoration) — на 24 часа, очко не снимается"
+  - id: effect.corruption_2
+    name: "Скверна 2: чёрные вены"
+    description: Чёрные вены и ороговение.
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level]
+    stackable: false
+    modifiers:
+      - {op: add, target: speed, value: -10}
+      - {op: add, target: check_dc, skill: persuasion, value: 2, vs: npc_outside_depths, text: "Сложность проверок Убеждения против NPC вне Глубин +2"}
+  - id: effect.corruption_3
+    name: "Скверна 3: симбиот просыпается"
+    description: Осознанное искушение — бонус к урону уравновешен психическим уроном паразитов, Шёпота и Глубинных.
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level]
+    stackable: false
+    modifiers:
+      - {op: advantage, "on": damage_roll, vs: melee_weapon}
+      - {op: vulnerability, damage: psychic}
+      - op: custom
+        engine: dev_request
+        need: "значение sense: detect (или parasite_sense) с фильтром цели (target_tag: parasite) — чувство присутствия, не зрение"
+        text: "Чувство паразитов в 30 футах."
+        draft: {op: sense, sense: detect, range: 30, if: {target_tag: parasite}}
+  - id: effect.corruption_4
+    name: "Скверна 4: истончение"
+    description: Помеха только на Мудрость, поэтому спирали 4 → 6 нет (против Скверны бросают Телосложение).
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level]
+    stackable: false
+    modifiers:
+      - {op: multiply, target: hp_max, factor: 0.5}
+      - {op: disadvantage, "on": save, stat: wis}
+  - id: effect.corruption_5
+    name: "Скверна 5: голод берёт верх"
+    description: В бою симбиот требует крови.
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level]
+    stackable: false
+    modifiers: []
+    triggers:
+      - "on": turn_start
+        if: {in_combat: true}
+        do:
+          - op: save
+            stat: wis
+            dc: 13
+            on_fail:
+              - op: custom
+                engine: dev_request
+                need: "op принуждения героя (compel: {action: attack, target: nearest, duration: turn}) — выбор цели отнимается у игрока; op behavior рассчитан на NPC"
+                text: "В этот ход вы должны атаковать ближайшее существо (выбор цели отнимается)."
+  - id: effect.corruption_6
+    name: "Скверна 6: Порог"
+    description: Тело перерождается. В конце текущей сцены персонаж проходит испытание Порога.
+    status: canon
+    doc: rules.md#3.2
+    tags: [corruption, level, threshold]
+    stackable: false
+    modifiers: []
+    triggers:
+      - "on": scene_end
+        do: [{op: run, ref: effect.threshold_trial}]
+    trial_ref: effect.threshold_trial
+
+  # --- Дары роя ---
+  - id: effect.gift_swarm_sense
+    name: Чуткость роя
+    description: Дар роя (Скверна 1+). Вы чувствуете желания.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 1, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - {op: advantage, "on": check, skill: insight, vs: within_30ft}
+      - {op: advantage, "on": check, vs: reveal_mimicry, text: "Преимущество на раскрытие мимикрии (rules.md#6.4)"}
+  - id: effect.gift_chitin_skin
+    name: Хитиновая кожа
+    description: Дар роя (Скверна 1+).
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 1, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - {op: add, target: ac, value: 1, if: {not_wearing: heavy_armor}}
+  - id: effect.gift_echo_sight
+    name: Эхо-зрение
+    description: Дар роя (Скверна 2+). Слепое зрение 10 футов, 30 футов — если взяты оба дара 2+.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 2, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - {op: sense, sense: blindsight, range: 10}
+      - {op: sense, sense: blindsight, range: 30, if: {gifts_min_tier_2_count_gte: 2}}
+  - id: effect.gift_voices_of_dead
+    name: Голоса мёртвых
+    description: Дар роя (Скверна 2+). Вы можете точно повторить голос, который слышали.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 2, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - {op: advantage, "on": check, skill: deception, vs: voice_based}
+  - id: effect.gift_swarm_whisper
+    name: Шёпот роя
+    description: Дар роя (Скверна 3+). Телепатия.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 3, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "значение sense: telepathy (в enum sense только darkvision|blindsight|tremorsense)"
+        text: "Телепатия на 30 футов с любым существом, у которого есть язык."
+        draft: {op: sense, sense: telepathy, range: 30}
+  - id: effect.gift_brood_dominion
+    name: Власть над выводком
+    description: Дар роя (Скверна 3+). Раз за продолжительный отдых действием очаровать выводок или зверя.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 3, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    target: "выводок или зверь с ПО не выше уровень / 4"
+    dc_note: "Сложность спасброска в тексте не указана; предложено 8 + БМ + Хар (как у техник Голода)."
+    modifiers:
+      - op: grant_action
+        name: Власть над выводком
+        action: action
+        uses: {count: 1, per: long_rest}
+        range: 30
+        do:
+          - op: save
+            stat: wis
+            dc: "8 + pb + cha_mod"
+            if: {any: [{target_tag: brood}, {target_tag: beast}]}
+            on_fail: [{op: condition, condition: charmed, duration: {unit: minute, value: 1}}]
+  - id: effect.gift_acid_blood
+    name: Кислая кровь
+    description: Дар роя (Скверна 4+).
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 4, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers: []
+    triggers:
+      - "on": hit_by
+        if: {attack: melee, attacker_within_ft: 5}
+        do: [{op: extra_damage, dice: 1d6, damage_type: acid, when: to_attacker}]
+  - id: effect.gift_swarm_claws
+    name: Когти роя
+    description: Дар роя (Скверна 4+). Природное оружие.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 4, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - {op: natural_weapon, name: Когти роя, damage: {dice: 1d8, type: slashing}, properties: [finesse]}
+  - id: effect.gift_mothers_command
+    name: Приказ матери
+    description: Дар роя (Скверна 5+). Раз за продолжительный отдых — заклинание «Приказ» без ячейки.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 5, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    grants_spell: {srd_name: Command, slot: none, save_dc: "8 + pb + cha_mod"}
+    modifiers:
+      - op: grant_action
+        name: Приказ матери
+        action: action
+        uses: {count: 1, per: long_rest}
+        do:
+          - op: custom
+            engine: dev_request
+            need: "op сотворения SRD-заклинания по srd_ref (cast: {srd_ref, slot: none, save_dc})"
+            text: "Сотворить Command (SRD) без ячейки, сл. 8 + БМ + Хар."
+            draft: {op: cast, srd_ref: {type: spell, name: Command}, slot: none, save_dc: "8 + pb + cha_mod"}
+  - id: effect.gift_hunger_dash
+    name: Рывок голода
+    description: Дар роя (Скверна 5+). Раз за короткий отдых бонусным действием — рывок и преимущество на следующую атаку в этот ход.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gift]
+    gift: {min_corruption: 5, attunement_shift: -1, threshold_dc: 1, permanent: true}
+    stackable: false
+    modifiers:
+      - op: grant_action
+        name: Рывок голода
+        action: bonus
+        uses: {count: 1, per: short_rest}
+        do:
+          - {op: add, target: speed, value: speed, duration: {unit: round, value: 0, text: "до конца хода"}, text: "Рывок (Dash): дополнительное перемещение, равное скорости"}
+          - {op: advantage, "on": attack, duration: next_attack_this_turn}
+
+  # --- Испытание Порога ---
+  - id: effect.threshold_trial
+    name: Испытание Порога
+    description: На 6 очках Скверны (или 3 Зова роя) в конце сцены — проверка Мудрости + БМ против сложности 15 с поправками. Порог нельзя облегчить ничем сверх условий таблицы.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, threshold, engine_event]
+    cannot_be_eased: true
+    cannot_be_eased_status: canon
+    ignores_refs: [effect.corruption_1, effect.corruption_4]
+    ignores_note: "Помеха от 1-го и 4-го уровней Скверны к испытанию не применяется (это испытание воли). Обе помехи и так не касаются проверки: Скверна 1 — только Восприятие, Скверна 4 — только спасброски Мдр."
+    modifiers:
+      - op: check
+        stat: wis
+        add: pb
+        dc_ref: dc.threshold
+        closed: true  # канон: Порог нельзя облегчить; внешние бонусы (Указание, вдохновение и т.п.) не применяются
+        adv_if: {any: [{stat_gte: {echo_attunement: 3}}, {origin: broken}]}
+        dis_if: {attunement_lte: -3}
+        outcomes:
+          - result: success
+            name: Сохранил себя
+            do: [{op: run, ref: lineage.kept_self, text: "«Сохранивший себя» со шкалой Зова роя (stat.hive_call)"}]
+          - result: fail
+            name: Раскол
+            do: [{op: run, ref: effect.schism}]
+          - result: fail_by_5
+            name: Поглощён
+            do:
+              - op: custom
+                engine: dev_request
+                need: "op перевода листа героя в шаблон NPC (convert_to_npc: {template_tags: [echoed], faction: swarm}) — герой уходит из отряда"
+                text: "Герой уходит к рою и становится NPC-Отзвучным; лист превращается в шаблон существа, его можно встретить позже врагом, а однажды матерью (living-lore.md#3.1)."
+      - op: custom
+        engine: dev_request
+        need: "в outcomes check — result success_by_10 и nat_20 (20 на кости); у op run — вариант записи (variant: rupture у lineage.kept_self)"
+        text: "Разрыв: успех на 10 и больше или 20 на кости — «Сохранивший себя» без Зова роя, связь с матерью оборвана (lineage.kept_self, variant rupture). Без поддержки такой бросок даёт исход «Сохранил себя»."
+        draft: {result: [success_by_10, nat_20], do: [{op: run, ref: lineage.kept_self, variant: rupture}]}
+      - {op: add, target: dc, value: 1, per: accepted_gift, text: "Каждый принятый дар: +1 к сложности"}
+      - {op: add, target: dc, value: 2, if: {mother_within_miles: 1}, text: "Мать в радиусе 1 мили: +2"}
+      - {op: add, target: check, value: 1d4, per: ally_spending_2_echo_response, text: "Союзник рядом тратит 2 эха на Отклик («Тишина в голове»): +1d4 от каждого"}
+      - {op: add, target: check, value: 2, if: {bell_or_howler_nearby: true}, text: "Колокол или ревун звучит рядом: +2"}
+      - op: custom
+        engine: dev_request
+        need: "поле closed: true у op check — движок игнорирует все внешние бонусы к броску и снижения сложности (умения, препараты, предметы, заклинания вроде Guidance/Bless, вдохновение), кроме модификаторов самой записи"
+        text: "Никакое умение класса, препарат, предмет или заклинание не даёт бонусов сверх этого списка (канон)."
+        draft: {closed: true}
+
+  # --- Лечение Скверны ---
+  - id: effect.corruption_cure_antidote
+    name: Антидот Гильдии
+    description: Продолжительный отдых с антидотом снимает 1 очко, только если сейчас 1 или 2.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, cure]
+    cost_fk: 25
+    requires: long_rest
+    modifiers:
+      - {op: resource, stat: corruption, delta: -1, if: {corruption_lte: 2}}
+  - id: effect.corruption_cure_lesser_restoration
+    name: Малое восстановление против Скверны
+    description: Подавляет эффект 1-го уровня Скверны на 24 часа; очко не снимает.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, cure]
+    srd_ref: {type: spell, name: Lesser Restoration}
+    duration: {unit: hour, value: 24}
+    modifiers: []
+    suppresses_ref: effect.corruption_1
+    note: "Подавление записано условием у effect.corruption_1 (not has_effect этой записи); длительность — duration 24 часа."
+  - id: effect.corruption_cure_clinic
+    name: Клиника Гильдии
+    description: 3 дня простоя снимают 1 очко; можно повторять. Цена 100 ФК × текущие очки и риск потерять максимум хитов.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, alteration, cure]
+    cost_fk: "100 * corruption"
+    downtime_days: 3
+    repeatable: true
+    modifiers:
+      - {op: resource, stat: corruption, delta: -1}
+      - op: save
+        stat: con
+        dc: 12
+        on_fail: [{op: add, target: hp_max, value: -1, permanent: true}]
+    also_for: "Перемена — так же, как для Скверны (rules.md#3.5); цена — предположительно 100 ФК × очки Перемены"
+  - id: effect.corruption_cure_greater_restoration
+    name: Высшее восстановление против Скверны
+    description: Снимает 1 очко Скверны (или Перемены) ценой постоянной потери максимума хитов.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, alteration, cure]
+    srd_ref: {type: spell, name: Greater Restoration}
+    modifiers:
+      - {op: resource, stat: corruption, delta: -1}
+      - {op: add, target: hp_max, value: "-1d4", permanent: true, floor: "level", text: "не ниже 1 за уровень"}
+  - id: effect.corruption_cure_titan_blood
+    name: Кровь Исполина (обряд)
+    description: Обряд Церкви снимает 2 очка. Цена — шрам-мутация без механики и долг перед Церковью.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, cure, church]
+    modifiers:
+      - {op: resource, stat: corruption, delta: -2}
+      - op: custom
+        engine: dev_request
+        need: "op добавления записи в список-стат (list_add: {stat: debt, creditor_ref, amount}); сумма долга в rules.md#3.3 не задана"
+        text: "Записать долг перед Церковью в stat.debt; шрам-мутация — только описание."
+  - id: effect.corruption_cure_diagnost
+    name: Очищение Диагноста
+    description: Диагност 14-го уровня раз за продолжительный отдых за 1 час и 50 ФК реагентов снимает 1 очко без потери максимума хитов.
+    status: canon
+    doc: rules.md#7.1
+    tags: [corruption, cure, class]
+    cost_fk: 50
+    uses: {per: long_rest, value: 1}
+    requires: {class: diagnost, level: 14}
+    modifiers:
+      - {op: resource, stat: corruption, delta: -1}

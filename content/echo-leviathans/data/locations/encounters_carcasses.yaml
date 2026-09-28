@@ -1,0 +1,256 @@
+# Таблицы встреч опорных туш (d8). Источник: locations.md#2.1–2.4.
+# Живые дети встречаются только в npc_refs как невраждебные NPC — никогда в creature_refs.
+# Строки с when заменяют обычный результат того же броска, только когда условие выполнено:
+#   awakening — clock.carcass_awakening этой туши; resonance — clock.resonance_power.
+# Количество сверяется с бюджетом встречи (ТЗ, 8.1).
+kind: encounter_table
+items:
+- id: encounter.old_mother
+  name: Старая Мать
+  description: 'Столица Синдикатов: патрули Домов, грабители слобод, санитары и кровяные медузы из жил и стоков, Глашатай в толпе.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [encounters, carcass, old_mother]
+  belt: middle_belt
+  location_ref: location.old_mother
+  check: {every_hours: 4, on_d6: [1]}
+  check_deep: {district_refs: [location.old_mother_womb], every_hours: 4, on_d6: [1, 2], note: в Утробе и жилах}
+  dice: 1d8
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.syndicate_guard]
+    count: 1d3 + 1
+    note: 'Патруль охраны Дома: проверка пропусков, взятка'
+    frequency: часто
+    hostile: false
+  - roll: '3'
+    creature_refs: [creature.slum_robber, creature.slum_thug]
+    count: 3 + 1
+    note: Грабители слобод (Bandit ×3 + Thug)
+    frequency: иногда
+  - roll: '4'
+    creature_refs: [creature.sewer_rats]
+    count: '1'
+    note: Рой крыс из стоков — обычные крысы, не выводок
+    frequency: иногда
+  - roll: '5'
+    creature_refs: [creature.organism_sanitar]
+    count: '2'
+    note: Санитары, выползшие из жилы
+    frequency: иногда
+  - roll: '6'
+    creature_refs: [creature.organism_blood_jelly_small]
+    count: '1'
+    note: Кровяная медуза в затопленном стоке
+    frequency: иногда
+  - roll: '7'
+    creature_refs: [creature.syndicate_enforcer, creature.house_agent]
+    count: 2 + 1
+    note: Сборщик долгов Лимфатической компании (Spy) с охраной (Thug ×2)
+    faction_ref: faction.lymph_company
+    frequency: редко
+  - roll: '8'
+    creature_refs: [creature.herald_double]
+    count: '1'
+    note: 'Глашатай в толпе: семя желания (rules.md#6.5)'
+    frequency: редко
+  - roll: '8'
+    when: awakening >= 3
+    replaces: true
+    creature_refs: [creature.organism_sanitar_large]
+    count: '1'
+    note: Санитар-страж выходит к жилым кварталам
+  - roll: '5'
+    when: resonance >= 4
+    replaces: true
+    creature_refs: [creature.brood_ghoul_walker]
+    count: '2'
+    note: Ходоки из нижних жил (Ghoul + свойства выводка)
+
+- id: encounter.drowned
+  name: Утопленник
+  description: 'Порт наполовину в море: контрабандисты, крабы и медузы в затопленных складах, стражи клапанов Солёной матери, морские хищники у батискафов.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [encounters, carcass, drowned, sea]
+  belt: old_lands
+  location_ref: location.drowned
+  check: {every_hours: 6, on_d6: [1], note: на суше}
+  check_deep: {district_refs: [location.drowned_flooded_womb, location.drowned_abyss_tail], every_hours: 1, on_d6: [1, 2], note: под водой и в утробе}
+  dice: 1d8
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.smuggler, creature.smuggler_captain]
+    count: 4 + 1
+    note: 'Контрабандисты: торг или нож'
+    frequency: часто
+  - roll: '3'
+    creature_refs: [creature.drowned_giant_crab]
+    count: '3'
+    note: Гигантские крабы в затопленных складах
+    frequency: иногда
+  - roll: '4'
+    creature_refs: [creature.organism_blood_jelly]
+    count: '1'
+    note: Кровяные медузы в затопленных сосудах
+    frequency: иногда
+  - roll: '5'
+    creature_refs: [creature.organism_valve_guard_great]
+    count: '1'
+    note: Страж клапана
+    frequency: иногда
+  - roll: '6'
+    creature_refs: [creature.rift_octopus]
+    count: '1'
+    note: Осьминог из разлома, выросший на ликворе
+    frequency: иногда
+  - roll: '7'
+    creature_refs: [creature.hunter_shark]
+    count: '1'
+    note: Акулы у борта батискафа (только под водой)
+    frequency: редко
+  - roll: '8'
+    creature_refs: [creature.herald_double]
+    count: '1'
+    note: Рыбак, который «вернулся спокойным»
+    frequency: редко
+  - roll: '8'
+    when: awakening >= 3
+    replaces: true
+    creature_refs: [creature.organism_orca_sanitar]
+    count: '1'
+    note: Косатка-санитар из разлома
+  - roll: '5'
+    when: resonance >= 4
+    replaces: true
+    creature_refs: [creature.organism_valve_guard_great]
+    count: '2'
+    note: Слуги Солёной матери
+    npc_refs: [creature.npc_salt_mother]
+
+- id: encounter.whisperer
+  name: Шепчущий
+  description: 'Собор в черепе: храмовая стража, фанатики, Шёпот и нитевики в Хорах, взрослые Глубинные в слуховых каналах.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [encounters, carcass, whisperer]
+  belt: pilgrim_ring
+  location_ref: location.whisperer
+  check: {every_hours: 4, on_d6: [1]}
+  check_deep: {district_refs: [location.whisperer_choirs, location.whisperer_reliquary], every_hours: 1, on_d6: [1, 2], note: в Хорах и Ковчеге}
+  dice: 1d8
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.church_acolyte, creature.temple_guard]
+    count: 3 + 1
+    note: 'Храмовая стража (Guard ×3 + Acolyte): досмотр, требует причастия'
+    faction_ref: faction.church
+    frequency: часто
+    hostile: false
+  - roll: '3'
+    creature_refs: [creature.church_ascended, creature.church_cultist]
+    count: 4 + 1
+    note: Фанатики (Cultist ×4 + Cult Fanatic), «помогающие» уйти в Хоры
+    frequency: иногда
+  - roll: '4'
+    creature_refs: [creature.organism_threadworm_swarm]
+    count: '1'
+    note: Нитевики в щелях Хоров
+    frequency: иногда
+  - roll: '5'
+    creature_refs: [creature.organism_whisper]
+    count: '1'
+    note: 'Колония Шёпота: голоса мёртвых, семя желания'
+    hazard_ref: hazard.whisper_colony
+    frequency: иногда
+  - roll: '6'
+    creature_refs: [creature.deepkin]
+    count: '3'
+    note: Глубинные в слуховых каналах — взрослые, ушедшие вглубь десятилетия назад
+    frequency: иногда
+  - roll: '7'
+    creature_refs: [creature.church_knight]
+    count: '1'
+    note: Рыцарь Церкви с вопросами
+    frequency: редко
+    hostile: false
+  - roll: '8'
+    creature_refs: [creature.weaver_nest_guard]
+    count: '1'
+    note: 'Сторож гнезда в Возвышальне: кресло, которое держит'
+    frequency: редко
+  - roll: '7'
+    when: awakening >= 3
+    replaces: true
+    creature_refs: [creature.organism_valve_guard]
+    count: '2'
+    note: Стражи клапана у Ковчега
+  - roll: '8'
+    when: resonance >= 4
+    replaces: true
+    creature_refs: [creature.church_ascended, creature.brood_ghoul_walker]
+    count: 1 + 2
+    note: Возвысившийся жрец (Cult Fanatic) с ходоками (Ghoul ×2)
+
+- id: encounter.rib_forest
+  name: Рёберный лес
+  description: 'Приют Сломленных: дозоры Круга, грибница, охотники за беглыми, кровососы из Тазовой чаши, одиночные выводки.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [encounters, carcass, rib_forest]
+  belt: old_lands
+  location_ref: location.rib_forest
+  check: {every_hours: 6, on_d6: [1]}
+  check_deep: {district_refs: [location.rib_forest_spore_lowlands, location.rib_forest_marrow_canal], every_hours: 2, on_d6: [1, 2], note: в Споровых низинах и в канале}
+  dice: 1d8
+  rows:
+  - roll: 1-2
+    creature_refs: [creature.circle_scout]
+    count: '2'
+    note: 'Дозор Круга: Сломленные с вопросами'
+    faction_ref: faction.broken
+    frequency: часто
+    hostile: false
+  - roll: '3'
+    creature_refs: [creature.shrieker_fungus]
+    count: '2'
+    note: Крикуны-грибы поднимают тревогу
+    frequency: иногда
+  - roll: '4'
+    creature_refs: [creature.violet_fungus]
+    count: '2'
+    note: Лиловая грибница хватает прохожих
+    frequency: иногда
+  - roll: '5'
+    creature_refs: [creature.syndicate_enforcer, creature.slum_robber]
+    count: 4 + 1
+    note: Охотники за беглыми (Bandit ×4 + Thug) на жалованье Кострищевых
+    faction_ref: faction.house_kostrishchev
+    frequency: иногда
+  - roll: '6'
+    creature_refs: [creature.pelvic_stirge]
+    count: '4'
+    note: Кровососы из Тазовой чаши
+    frequency: иногда
+  - roll: '7'
+    creature_refs: [creature.brood_dire_hound]
+    count: '1'
+    note: Одиночный выводок из поглощённых провинций
+    frequency: редко
+  - roll: '8'
+    creature_refs: [creature.deepkin_elder]
+    count: '1'
+    note: Глубинный в Костномозговом канале — взрослый (Ghoul + свойства Глубинных)
+    frequency: редко
+  - roll: '8'
+    when: awakening >= 3
+    replaces: true
+    creature_refs: [creature.organism_sanitar_large]
+    count: '2'
+    note: Санитары ремонта
+  - roll: '7'
+    when: resonance >= 4
+    replaces: true
+    creature_refs: [creature.brood_hound]
+    count: '4'
+    note: Гончие выводка

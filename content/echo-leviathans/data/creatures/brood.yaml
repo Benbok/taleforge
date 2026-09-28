@@ -1,0 +1,1622 @@
+# Выводки, Отзвучные, матери (рой Резонанса)
+# Часть пакета «Эхо Левиафанов». Основа — SRD 5.1 (srd_ref); модификаторы — язык из README.
+# behavior.profile: aggressive | cowardly | defender | capturer (Захватчик, rules.md#6.5) | noncombatant; flee_threshold — доля хитов.
+kind: creature_template
+items:
+- id: creature.brood_swarm_rats
+  name: Крысиный рой выводка
+  description: Серая шевелящаяся масса крыс, растворённых налётом и собранных заново. Разведка и заражение, лезет в щели шахт и подвалов.
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, swarm, small_fry]
+  srd_ref: {type: monster, name: Swarm of Rats}
+  cr: 1
+  stage: 3
+  size_class: мелочь
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: 'почти ничего: горсть хитиновой чешуи, иногда крошка эхолита в сгустке роя'
+- id: creature.brood_swarm_bats
+  name: Рой нетопырей выводка
+  description: Слепые летучие твари без глаз, которые никогда и не были нужны. Гоняют дирижабли и сторожевые огни.
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, swarm, small_fry]
+  srd_ref: {type: monster, name: Swarm of Bats}
+  cr: 1
+  stage: 3
+  size_class: мелочь
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: 'почти ничего: горсть хитиновой чешуи, иногда крошка эхолита в сгустке роя'
+- id: creature.brood_swarm_insects
+  name: Рой мошки выводка
+  description: Облако хитиновой мошки, гудящее в одном ритме. Садится на раны и разносит налёт.
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, swarm, small_fry]
+  srd_ref: {type: monster, name: Swarm of Insects}
+  cr: 1
+  stage: 3
+  size_class: мелочь
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: 'почти ничего: горсть хитиновой чешуи, иногда крошка эхолита в сгустке роя'
+- id: creature.brood_swarm_ravens
+  name: Воронья стая выводка
+  description: Вороны с молчащими клювами и лишними суставами на крыльях. Смотрят глазами матери и клюют в глаза.
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, swarm, small_fry]
+  srd_ref: {type: monster, name: Swarm of Ravens}
+  cr: 1
+  stage: 3
+  size_class: мелочь
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: 'почти ничего: горсть хитиновой чешуи, иногда крошка эхолита в сгустке роя'
+- id: creature.brood_hound
+  name: Гончая выводка
+  description: 'Волк, собака или лошадь, растворённые в налёте и выношенные матерью заново: без глаз, с хитиновыми пластинами вдоль хребта. Охотится стаей, валит и тащит к налёту.'
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, pack]
+  srd_ref: {type: monster, name: Wolf}
+  cr: 1
+  stage: 3
+  size_class: стая
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - name: Тащить добычу
+    kind: action
+    text: Схваченное или сбитое с ног существо без сознания тащит к налёту или гнезду с половинной скоростью.
+  loot_hint: хитиновые пластины (сырьё для брони), железы выводка для Гильдии
+- id: creature.brood_dire_hound
+  name: Лютая гончая выводка
+  description: Крупная гончая, собранная из лошади или нескольких псов. Ведёт стаю и сбивает всадников.
+  status: canon
+  doc: canon.md#3.3; rules.md#6.2
+  tags: [brood, pack]
+  srd_ref: {type: monster, name: Dire Wolf}
+  cr: 2
+  stage: 3
+  size_class: стая
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: крупные хитиновые пластины, железы выводка
+- id: creature.brood_walker
+  name: Ходок
+  description: 'Тело человека, умершего в налёте. Разума нет, только оболочка, которую ведёт голод. Не нежить: у ходока бьётся чужое сердце из налёта.'
+  status: canon
+  doc: canon.md#3.3
+  tags: [brood, pack, walker]
+  srd_ref: {type: monster, name: Zombie}
+  cr: 1
+  stage: 3
+  size_class: стая
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - {op: set, target: creature_type, value: aberration, note: 'не нежить: «Изгнание нежити» и эффекты против нежити не действуют'}
+  - op: set
+    target: trait:undead_fortitude
+    value: false
+    note: «Стойкость нежити» SRD заменена «упрямством налёта» (триггер drop_to_0)
+  triggers:
+  - 'on': hit
+    if: {attack_name: [slam]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  - 'on': drop_to_0
+    if: {not: {any: [{damage_type: fire}, {damage_type: radiant}, {crit: true}]}}
+    do:
+    - op: save
+      stat: con
+      dc: 5 + damage_taken
+      on_success:
+      - {op: set, target: hp, value: 1}
+      note: 'упрямство налёта: как «Стойкость нежити» SRD, но огонь её тоже отменяет'
+  abilities: []
+  loot_hint: остатки снаряжения погибшего (жетон Кордона, маска, пара жил)
+- id: creature.brood_ghoul_walker
+  name: Жадный ходок
+  description: Ходок, в котором ещё тлеет последнее желание умершего — чаще всего голод. Быстрее, когти парализуют.
+  status: canon
+  doc: canon.md#3.3
+  tags: [brood, pack, walker]
+  srd_ref: {type: monster, name: Ghoul}
+  cr: 2
+  stage: 3
+  size_class: стая
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - op: set
+    target: creature_type
+    value: aberration
+    note: не нежить; паралич когтей SRD действует на любую не-нежить (эльфов в мире нет)
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: остатки снаряжения погибшего
+- id: creature.echoed_warrior
+  name: Воитель
+  description: 'Отзвучный из гневных и мстительных: одно желание — сокрушить. Хитиновые пластины, рот для эха, а не для еды. Штурм черты и охрана кратера.'
+  status: canon
+  doc: races.md#2.3; rules.md#6.2
+  tags: [echoed, caste_warrior, pack]
+  srd_ref: {type: monster, name: Ogre}
+  cr: 3
+  stage: 3
+  size_class: стая
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.2
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [greatclub, slam, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - name: Голос мёртвых
+    kind: action
+    text: Зовёт голосом погибшего близкого цели. Спасбросок Мдр сл. 12, провал — очко Скверны и «семя желания» (ментальный путь, rules 6.5).
+  loot_hint: хитиновые пластины воителя, обломки старой брони поглощённого
+- id: creature.echoed_warrior_veteran
+  name: Воитель-ветеран
+  description: Бывший солдат Кордона или наёмник, которого поймали месть или жажда силы. Помнит строй и оружие, дерётся умело.
+  status: proposal
+  doc: races.md#2.3
+  tags: [echoed, caste_warrior]
+  srd_ref: {type: monster, name: Veteran}
+  cr: 4
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.2
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [longsword, shortsword, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: оружие Кордона или Синдикатов, проржавевшее под хитином; жетон с именем
+- id: creature.strain_ram
+  name: Таран
+  description: 'Штамм воителей: лоб из сросшегося хитина, разбег и удар. Ломает строй и ворота башен.'
+  status: proposal
+  doc: races.md#2.7
+  tags: [echoed, strain, caste_warrior]
+  srd_ref: {type: monster, name: Minotaur}
+  cr: 4
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.2
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [gore, greataxe]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: лобная хитиновая плита (щит или основа для тарана)
+- id: creature.strain_spiker
+  name: Шипострел
+  description: Штамм воителей, мечет хитиновые шипы из хвоста-пращи. Прикрывает волну издалека, выбивает огнемётчиков.
+  status: proposal
+  doc: races.md#2.7
+  tags: [echoed, strain, caste_warrior]
+  srd_ref: {type: monster, name: Manticore}
+  cr: 4
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, walker_crew]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.3
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw, tail_spike]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - {name: Полёт, kind: passive, text: 'Летает как мантикора SRD: крылья из перепонок поглощённых птиц.'}
+  loot_hint: пучок хитиновых шипов (боеприпас для дротикомета)
+- id: creature.strain_shellback
+  name: Панцирник
+  description: 'Штамм воителей: живой щит волны, роет ходы под башни.'
+  status: proposal
+  doc: races.md#2.7
+  tags: [echoed, strain, caste_warrior, digger]
+  srd_ref: {type: monster, name: Ankheg}
+  cr: 3
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.2
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: спинной панцирь (сырьё для панциря титана), кислотная железа
+- id: creature.herald_double
+  name: Двойник
+  description: 'Штамм глашатаев: полная копия поглощённого человека. Внедряется, раздувает желания в других, ведёт приглашённых.'
+  status: proposal
+  doc: races.md#2.7; rules.md#6.2
+  tags: [echoed, strain, caste_herald, mimic]
+  srd_ref: {type: monster, name: Doppelganger}
+  cr: 3
+  stage: 3
+  behavior: {profile: cowardly, label: Глашатай, flee_threshold: 0.5, note: 'избегает открытого боя, при раскрытии бежит к своим'}
+  modifiers:
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  abilities:
+  - name: Раздувание желания
+    kind: action
+    text: 'Разговор не меньше минуты: цель — спасбросок Мдр сл. 13, провал — очко Скверны и «семя желания».'
+  loot_hint: вещи и документы подменённого человека
+  excluded_trait_refs: [effect.brood_eyeless, effect.brood_burns]
+- id: creature.herald_whisperer
+  name: Шептун роя
+  description: 'Штамм глашатаев: ком ртов, повторяющих голоса мёртвых. Сводит с ума шёпотом.'
+  status: proposal
+  doc: races.md#2.7
+  tags: [echoed, strain, caste_herald]
+  srd_ref: {type: monster, name: Gibbering Mouther}
+  cr: 3
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': turn_start
+    do:
+    - op: save
+      area: radius_20
+      stat: wis
+      dc: 12
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Ментальный путь заражения вместо «Бормотания» SRD раз в сцену на существо
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: ничего ценного; иногда чужие зубы и кольца в плоти
+- id: creature.weaver_sower
+  name: Сеятель
+  description: 'Штамм ткачей из жадных и накопителей: разносит налёт, волочит за собой споровые плети.'
+  status: proposal
+  doc: races.md#2.7; rules.md#6.1
+  tags: [echoed, strain, caste_weaver, blight]
+  srd_ref: {type: monster, name: Shambling Mound}
+  cr: 6
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - op: custom
+    engine: dev_request
+    text: Каждые 10 минут покрывает налётом участок 10×10 футов вокруг себя (hazard.blight)
+    need: 'событие-таймер с интервалом в игровых минутах (например on: interval, every: {unit: minute, value: 10}); есть только turn_*/round_end/hour_passed. Действие было бы {op: run, ref: hazard.blight,
+      area: square_10}'
+  triggers:
+  - 'on': hit
+    if: {attack_name: [slam, engulf]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: комки эхолитовой крошки, накопленные ткачом
+- id: creature.weaver_nest_guard
+  name: Сторож гнезда
+  description: 'Штамм ткачей: прикидывается частью стены, двери или мебели в гнезде. Держит пленников.'
+  status: proposal
+  doc: races.md#2.7
+  tags: [echoed, strain, caste_weaver, ambush]
+  srd_ref: {type: monster, name: Mimic}
+  cr: 3
+  stage: 3
+  behavior: {profile: defender, label: Сторож, flee_threshold: 0.0, guards: nest}
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: вещи пленников гнезда
+- id: creature.node
+  name: Узел налёта
+  description: Неподвижное сердце налёта, которое растит новый налёт и выводки. Пока узел жив, выжженный налёт вокруг возвращается.
+  status: canon
+  doc: canon.md#3.3
+  tags: [brood, node, blight]
+  srd_ref: {type: monster, name: Shambling Mound}
+  cr: 6
+  stage: 3
+  behavior: {profile: defender, label: Узел, flee_threshold: 0.0, mobile: false}
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - {op: set, target: speed, value: 0}
+  triggers:
+  - 'on': turn_start
+    do:
+    - {op: resource, stat: brood_release_counter, delta: 1}
+  - 'on': resource_changed
+    if: {stat_gte: {brood_release_counter: 3}}
+    do:
+    - {op: spawn, creature_ref: creature.brood_swarm_insects, count: 1}
+    - {op: set, target: brood_release_counter, value: 0}
+    note: раз в 3 раунда выпускает 1 рой выводка
+  - 'on': hour_passed
+    do:
+    - {op: run, ref: hazard.blight, area: radius_60, note: 'выжженный налёт в 60 футах восстанавливается за 1 час, пока узел жив'}
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: 'сердцевина узла: крупный осколок эхолита (опасен, проводит голод)'
+- id: creature.fused
+  name: Сросток
+  description: Мутант из 3–7 тел, сросшихся в одно для прорыва строя. Каждая голова — бывшее существо со своей атакой; отрубленная голова отрастает, если её не прижечь.
+  status: canon
+  doc: canon.md#3.3; races.md#2.7
+  tags: [brood, fused, wave]
+  srd_ref: {type: monster, name: Hydra}
+  cr: 9
+  stage: 3
+  size_class: сросток
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - op: set
+    target: heads
+    value: 1d5+2
+    note: 3–7 голов по числу тел вместо 5 у «Гидры» SRD; гибель и отрастание голов, остановка огнём — по «Многоголовости» Гидры SRD
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: груда хитина и костей, из которой Гильдия платит за целые черепа
+- id: creature.colossus_behir
+  name: Осадный колосс
+  description: 'Десятки тел в одном: длинное многоногое чудовище, ломает стены и башни Кордона, несёт на себе стаю.'
+  status: canon
+  doc: canon.md#3.3; races.md#2.7
+  tags: [brood, colossus, wave, siege]
+  srd_ref: {type: monster, name: Behir}
+  cr: 12
+  stage: 3
+  size_class: осадный колосс
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [tower, bell, walker]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - op: set
+    target: damage_type:lightning_breath
+    value: acid
+    note: дыхание молнией SRD → струя кислотного налёта, тот же урон
+  - {op: multiply, target: damage, factor: 2, if: {target_tag: structure}, note: урон по постройкам удвоен}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - {name: Несёт стаю, kind: passive, text: 'На спине 1d4 гончих выводка, которые спрыгивают у стены.'}
+  loot_hint: сердечная плита колосса — трофей, за который Кордон даёт награду
+- id: creature.colossus_worm
+  name: Колосс-роющий
+  description: Осадный колосс, который идёт под землёй и роет ходы под башни. Приходит только при высоком резонансе.
+  status: canon
+  doc: canon.md#3.3
+  tags: [brood, colossus, wave, siege, digger]
+  srd_ref: {type: monster, name: Purple Worm}
+  cr: 16
+  stage: 3
+  size_class: осадный колосс
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [tower, walker]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  gm_note: 'Угроза масштаба сюжета (ПО выше потолка уровней 15): прямой бой — только с колоколами, шагоходами и гарнизоном'
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: ничего, что можно унести; его туша — новое месторождение хитина
+- id: creature.deepkin
+  name: Глубинный
+  description: 'Взрослое существо, которое десятилетия назад было ребёнком-шахтёром и ушло вглубь артерий. Сросся с хитином, видит вибрациями. Трагический враг: иногда бормочет обрывки детских слов.'
+  status: canon
+  doc: canon.md#3.2; races.md#2.3
+  tags: [echoed, caste_deep, adult_only]
+  srd_ref: {type: monster, name: Troglodyte}
+  cr: 1
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.3
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: resistance, damage: poison}
+  gm_note: 'Только взрослые: мутация прошла десятилетия назад. Живые дети в бою не появляются никогда'
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw, chitin_weapon]}
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - name: Эхо детства
+    kind: passive
+    text: Сломленный рядом слышит обрывки его детства; проверка Убеждения сл. 15 может остановить Глубинного на раунд.
+  loot_hint: хитиновое оружие Глубинного (кислотный вариант), старый шахтёрский жетон
+- id: creature.deepkin_elder
+  name: Старший Глубинный
+  description: 'Глубинный, проживший в туше полвека: огромный, слепой, срастается со стенами сосудов. Будущая мать.'
+  status: proposal
+  doc: canon.md#3.2; races.md#2.4
+  tags: [echoed, caste_deep, adult_only, future_mother]
+  srd_ref: {type: monster, name: Ghoul}
+  cr: 3
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.2
+  modifiers:
+  - op: advantage
+    'on': attack
+    if: {all: [{ally_brood_within_5ft_of_target: true}, {not: {in_area: effect.loud_noise}}]}
+    note: Связь резонансом; в зоне сильного шума теряется («Сбитый ритм»), под «Тишиной» — см. effect.liquor_silence
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: sense, sense: tremorsense, range: 60}
+  - {op: add, target: hp_max, value: 30}
+  - {op: set, target: size, value: large}
+  - {op: resistance, damage: poison}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - name: Зов вглубь
+    kind: action
+    text: 'Шёпот через стены туши: существа в 30 футах, спасбросок Мдр сл. 13, провал — очко Скверны и «семя желания».'
+  loot_hint: хитиновые наросты с жилами меди, кусок ликворной жилы
+- id: creature.hidden_human
+  name: Скрытый (человек)
+  description: Шахтёр, вернувшийся из смены «каким-то спокойным». Внешне прежний, хитин под кожей, не мёрзнет, пахнет медью и озоном.
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hidden, mimic, humanoid_form]
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  stage: 1
+  behavior: {profile: cowardly, label: Разведчик, flee_threshold: 0.9, note: 'избегает боя, наблюдает'}
+  modifiers: []
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  loot_hint: ничего; вещи хозяина, если был человеком
+- id: creature.hidden_hound
+  name: Скрытый пёс
+  description: Пёс, который неделю живёт у пекаря и смотрит глазами матери.
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hidden, mimic, beast_form]
+  srd_ref: {type: monster, name: Mastiff}
+  cr: 0.125
+  stage: 1
+  behavior: {profile: cowardly, label: Разведчик, flee_threshold: 0.9, note: 'избегает боя, наблюдает'}
+  modifiers: []
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  loot_hint: ничего; вещи хозяина, если был человеком
+- id: creature.hidden_raven
+  name: Скрытая ворона
+  description: Ворона на крыше казармы Кордона. Не каркает.
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hidden, mimic, beast_form]
+  srd_ref: {type: monster, name: Raven}
+  cr: 0
+  stage: 1
+  behavior: {profile: cowardly, label: Разведчик, flee_threshold: 0.9, note: 'избегает боя, наблюдает'}
+  modifiers: []
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  loot_hint: ничего; вещи хозяина, если был человеком
+- id: creature.hidden_rat
+  name: Скрытая крыса
+  description: Крыса в шахте, которая не боится ламп.
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hidden, mimic, beast_form]
+  srd_ref: {type: monster, name: Rat}
+  cr: 0
+  stage: 1
+  behavior: {profile: cowardly, label: Разведчик, flee_threshold: 0.9, note: 'избегает боя, наблюдает'}
+  modifiers: []
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  loot_hint: ничего; вещи хозяина, если был человеком
+- id: creature.hybrid_human
+  name: Гибрид (человек)
+  description: 'Человек месяцы после приглашения: под одеждой пластины, в темноте видны лишние суставы. Ночные похищения.'
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hybrid, mimic]
+  srd_ref: {type: monster, name: Thug}
+  cr: 1
+  stage: 2
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.4
+  modifiers:
+  - {op: add, target: ac, value: 2}
+  - {op: add, target: str, value: 2}
+  - {op: add, target: con, value: 2}
+  - {op: sense, sense: blindsight, range: 30}
+  - op: set
+    target: disguised
+    value: false
+    if: {not: {any: [{light: dim_or_dark}, {in_crowd: true}, {wearing: concealing_clothes}]}}
+    note: мимикрия стадии II держится только в темноте, в толпе или под одеждой
+  - {op: natural_weapon, name: Хитиновые когти, damage: {dice: 1d8, type: slashing}, reach: 5}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  - {name: Природное оружие, kind: action, text: 'Хитиновые когти: 1d8 рубящего урона + модификатор Силы.'}
+  loot_hint: личные вещи, долговые расписки Синдиката
+- id: creature.hybrid_hound
+  name: Гибрид-пёс
+  description: 'Сторожевой пёс, переросший ошейник: хитиновая морда, слишком много зубов.'
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, hybrid, mimic]
+  srd_ref: {type: monster, name: Mastiff}
+  cr: 0.5
+  stage: 2
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.4
+  modifiers:
+  - {op: add, target: ac, value: 2}
+  - {op: add, target: str, value: 2}
+  - {op: add, target: con, value: 2}
+  - {op: sense, sense: blindsight, range: 30}
+  - op: set
+    target: disguised
+    value: false
+    if: {not: {any: [{light: dim_or_dark}, {in_crowd: true}, {wearing: concealing_clothes}]}}
+    note: мимикрия стадии II держится только в темноте, в толпе или под одеждой
+  - {op: natural_weapon, name: Хитиновые когти, damage: {dice: 1d6, type: slashing}, reach: 5}
+  triggers:
+  - 'on': hit
+    if: {attack_name: [bite, claw]}
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: Поглощающий укус
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  - {name: Природное оружие, kind: action, text: 'Хитиновые когти: 1d6 рубящего урона + модификатор Силы.'}
+  loot_hint: личные вещи, долговые расписки Синдиката
+- id: creature.invited
+  name: Приглашённый
+  description: 'Человек, согласившийся на голод: слишком спокойный, слишком уверенный, глаза темнеют. Открывает ворота, гасит огни, вербует.'
+  status: canon
+  doc: canon.md#3.3; races.md#2.2
+  tags: [echoed, invited, humanoid_form]
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 2
+  stage: 1
+  behavior: {profile: cowardly, label: Приглашённый, flee_threshold: 0.5}
+  modifiers:
+  - op: set
+    target: spell_source
+    value_ref: spell_note.source_resonance_hunger
+    note: заклинания «Культиста-фанатика» — Голод, а не ликвор
+  - op: custom
+    engine: dev_request
+    text: «Рассеивание магии» на заклинания из Голода не действует
+    need: иммунитет заклинаний существа к конкретным заклинаниям (Dispel Magic) по источнику spell_source; у immunity есть только damage/condition
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+    - {op: set, target: disguised, value: false, note: проба ликвором раскрывает стадию I–II без проверки}
+  - 'on': enter_area
+    if: {in_area: effect.loud_noise}
+    do:
+    - op: save
+      stat: con
+      dc: 12
+      on_fail:
+      - {op: set, target: disguised, value: false}
+      note: 'проба звоном: провал — вздрагивает, это видят все, кто смотрел'
+  abilities:
+  - name: Мимикрия
+    kind: passive
+    text: 'Выглядит как исходный вид. Раскрытие: Мудрость (Проницательность) против Харизмы (Обман) после минуты разговора; «Диагностика»; проба звоном (спасбросок Тел сл. 12, провал — вздрагивает); проба
+      ликвором раскрывает без проверки. Сломленные и «Чуткость роя» — с преимуществом.'
+    modifiers:
+    - op: check
+      stat: wis
+      skill: insight
+      dc: 'opposed: cha (deception)'
+      adv_if: {any: [{origin: origin.slomlenny}, {has_effect: effect.gift_swarm_sense}]}
+      outcomes:
+      - result: success
+        do:
+        - {op: set, target: disguised, value: false}
+      note: проверку делает наблюдатель после разговора хотя бы в минуту; «Диагностика» Диагноста раскрывает автоматически
+  - name: Связь с матерью
+    kind: passive
+    text: 'Всё, что видит и слышит существо, знает его мать: приложение пишет событие «разведка» и ставит матери флаг знаний об отряде.'
+  - name: Раскрытие
+    kind: bonus
+    text: Сбрасывает облик. Если цель не знала, что это рой, она застигнута врасплох; первая атака в этот ход с преимуществом и +1d6 урона за стадию.
+    modifiers:
+    - {op: extra_damage, dice: 1d6, damage_type: same, when: reveal_first_attack_per_stage}
+  - {name: Вернуть можно, kind: passive, text: Сильный Отклик и отказ от желания могут вернуть приглашённого (сюжетная задача).}
+  loot_hint: кошель ФК, записка с именами завербованных, амулет из эхолита
+- id: creature.mother_human
+  name: Человеческая мать
+  description: 'Первая мать с Отзвучной горы или та, что выросла из верхушки Церкви: огромная, почти неподвижная, сросшаяся с налётом. Хитрый политик роя, ведёт глашатаев.'
+  status: canon
+  doc: canon.md#1.3; races.md#2.4
+  tags: [echoed, mother, boss]
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 10
+  stage: 4
+  behavior: {profile: defender, label: Мать, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  modifiers:
+  - op: custom
+    engine: dev_request
+    text: 'Без водной привязки: «Слизистая оболочка» и подводные способности Аболета заменены связью с налётом (в налёте — те же бонусы)'
+    need: 'переопределить условие SRD-черт Аболета («под водой» → in_area: hazard.blight); канон не уточняет, какие именно бонусы переносятся'
+  - {op: vulnerability, damage: fire}
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - {op: extra_damage, dice: 1d6, damage_type: poison, note: матери получают половину урона «Ликвор — яд»}
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - op: custom
+        engine: dev_request
+        text: '«Тишина» до конца следующего хода: выводки в 60 футах от матери теряют «Связь резонансом»'
+        need: 'наложение подавления эффекта (effect.brood_resonance_link) на союзных выводков в радиусе 60 футов на 1 раунд: у run/condition нет area + фильтра целей и длительности'
+  abilities:
+  - {name: Логово в налёте, kind: lair, text: 'Логовные действия Аболета, привязанные к налёту вместо воды.'}
+  - name: Адаптация роя
+    kind: passive
+    text: До 3 адаптаций в state (rules 6.4). Смерть матери обнуляет адаптации её роя и гасит налёт в её зоне.
+  - {name: Порабощение, kind: action, text: '«Порабощение» Аболета — это приглашение: провал даёт ещё и очко Скверны.'}
+  loot_hint: 'ядро матери: осколок эхолита размером с голову; вещи её прежней жизни'
+- id: creature.mother_alien
+  name: Чужая мать
+  description: 'Бывший Тихий страж Кормчих, взятый у дна кратера. Помнит, как управлять бортовыми организмами: это она научила Резонанс перехватывать нитевиков.'
+  status: canon
+  doc: canon.md#1.2; races.md#2.4
+  tags: [echoed, mother, boss, crew_origin]
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 11
+  stage: 4
+  behavior: {profile: defender, label: Мать, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  modifiers:
+  - op: custom
+    engine: dev_request
+    text: 'Без водной привязки: «Слизистая оболочка» и подводные способности Аболета заменены связью с налётом (в налёте — те же бонусы)'
+    need: 'переопределить условие SRD-черт Аболета («под водой» → in_area: hazard.blight); канон не уточняет, какие именно бонусы переносятся'
+  - {op: sense, sense: blindsight, range: 120}
+  - {op: vulnerability, damage: fire}
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - {op: extra_damage, dice: 1d6, damage_type: poison, note: матери получают половину урона «Ликвор — яд»}
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - op: custom
+        engine: dev_request
+        text: '«Тишина» до конца следующего хода: выводки в 60 футах от матери теряют «Связь резонансом»'
+        need: 'наложение подавления эффекта (effect.brood_resonance_link) на союзных выводков в радиусе 60 футов на 1 раунд: у run/condition нет area + фильтра целей и длительности'
+  abilities:
+  - name: Приказ бортовым организмам
+    kind: action
+    text: Паразиты туши в 120 футах становятся её союзниками до конца сцены (санитары, нитевики, стражи клапанов).
+  - {name: Захват корабля, kind: passive, text: 'Если рядом проснётся туша, мать может забрать её (перелом кампании).'}
+  - {name: Адаптация роя, kind: passive, text: Как у человеческой матери.}
+  loot_hint: биоминеральный клинок Тихого стража, осколок эхолита
+- id: creature.cocoon
+  name: Кокон перехода
+  description: Хитиновая оболочка, в которой существо переходит на следующую стадию. Найденный вовремя кокон — спасённый город.
+  status: proposal
+  doc: races.md#2.7; rules.md#6.4
+  tags: [echoed, cocoon, object]
+  cr: 0
+  stage: null
+  behavior: {profile: defender, flee_threshold: 0.0, mobile: false}
+  modifiers:
+  - {op: set, target: ac, value: 12}
+  - {op: set, target: hp_max, value: 5 * cr_of_future_form}
+  - {op: vulnerability, damage: fire}
+  abilities:
+  - {name: Таймер, kind: passive, text: 'Переход I→II — 1d4 дня, II→III — 1d4 недели.'}
+  - name: Вскрыть без убийства
+    kind: action
+    text: 'Только кокон стадии I взрослого: проверка Мдр (Медицина) сл. 15 возвращает человека со Скверной 5.'
+  loot_hint: нет

@@ -1,0 +1,286 @@
+# Магические предметы SRD 5.1 под новыми именами. Числа — из SRD по srd_ref, здесь только имя, описание,
+# источник силы, цена по полосам редкости (items.md 1.4) и доп. цена силы мира.
+# Полосы: обычный 50–100, необычный 150–500, редкий 600–5000, очень редкий 6000–40 000, легендарный — не продаётся.
+# Запрещённые предметы SRD (желания, иные планы, элементали) в мир не входят — items.md 6.3.
+kind: item_template
+items:
+  - id: item.liquor_weapon_1
+    name: Оружие ликворной закалки +1
+    description: Оружие, закалённое в ликворе. Пахнет медью и озоном, на лезвии тёмные разводы.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, weapon, liquor]
+    srd_ref: {type: item, name: "Weapon, +1"}
+    category: weapon
+    source: liquor
+    rarity: uncommon
+    price: {fk: 500}
+  - id: item.liquor_weapon_2
+    name: Оружие ликворной закалки +2
+    description: Двойная закалка в очищенном ликворе.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, weapon, liquor]
+    srd_ref: {type: item, name: "Weapon, +2"}
+    category: weapon
+    source: liquor
+    rarity: rare
+    price: {fk: 4000}
+  - id: item.liquor_weapon_3
+    name: Оружие ликворной закалки +3
+    description: Оружие мастеров Дома Ликвора. Не продаётся открыто.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, weapon, liquor]
+    srd_ref: {type: item, name: "Weapon, +3"}
+    category: weapon
+    source: liquor
+    rarity: very_rare
+    price: {fk: 20000, for_sale: contract_or_loot}
+  - id: item.liquor_armor_1
+    name: Панцирь ликворной закалки +1
+    description: Броня, пропитанная ликвором.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, armor, liquor]
+    srd_ref: {type: item, name: "Armor, +1"}
+    category: armor
+    source: liquor
+    rarity: rare
+    price: {fk: 1500}
+  - id: item.liquor_armor_2
+    name: Панцирь ликворной закалки +2
+    description: Двойная пропитка ликвором, пластины отливают медью.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, armor, liquor]
+    srd_ref: {type: item, name: "Armor, +2"}
+    category: armor
+    source: liquor
+    rarity: very_rare
+    price: {fk: 15000, for_sale: contract_or_loot}
+  - id: item.liquor_armor_3
+    name: Панцирь ликворной закалки +3
+    description: Легендарный панцирь. Не продаётся, только перелом или сценарий.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, armor, liquor]
+    srd_ref: {type: item, name: "Armor, +3"}
+    category: armor
+    source: liquor
+    rarity: legendary
+    price: {fk: null, for_sale: false}
+  - id: item.pleura_cloak
+    name: Плащ из плевры
+    description: Плащ из плевры туши, выдержанной в ликворе.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor]
+    srd_ref: {type: item, name: Cloak of Protection}
+    category: gear
+    source: liquor
+    rarity: uncommon
+    attunement: true
+    price: {fk: 400}
+  - id: item.vertebra_ring
+    name: Кольцо из позвонка санитара
+    description: Кольцо, выточенное из позвонка санитара и пропитанное ликвором.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor]
+    srd_ref: {type: item, name: Ring of Protection}
+    category: gear
+    source: liquor
+    rarity: rare
+    attunement: true
+    price: {fk: 3500}
+  - id: item.vein_boots
+    name: Мягкие боты жилолаза
+    description: Боты из мягкой кожи туши, в которых не слышно шагов по плоти.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, chitin, stealth]
+    srd_ref: {type: item, name: Boots of Elvenkind}
+    category: gear
+    source: chitin
+    rarity: uncommon
+    price: {fk: 250}
+  - id: item.sanitar_cloak
+    name: Плащ из кожи санитара
+    description: Плащ из кожи санитара, меняющей цвет под фон.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, chitin, stealth]
+    srd_ref: {type: item, name: Cloak of Elvenkind}
+    category: gear
+    source: chitin
+    rarity: uncommon
+    attunement: true
+    price: {fk: 300}
+  - id: item.listener_goggles
+    name: Очки Слушателя
+    description: Латунные очки с линзами из хрусталика туши. Техника, не магия.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, tech, darkvision]
+    srd_ref: {type: item, name: Goggles of Night}
+    category: gear
+    source: tech
+    rarity: uncommon
+    price: {fk: 250}
+  - id: item.bull_gauntlets
+    name: Перчатки быка
+    description: Перчатки с кровяными жгутами, что вливают в руки силу.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, blood, strength]
+    srd_ref: {type: item, name: Gauntlets of Ogre Power}
+    category: gear
+    source: blood
+    rarity: uncommon
+    attunement: true
+    price: {fk: 500}
+  - id: item.blood_valve_amulet
+    name: Кровяной клапан (амулет)
+    description: Амулет-клапан на шее, сгущающий кровь у раны.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, blood, healing]
+    srd_ref: {type: item, name: Periapt of Wound Closure}
+    category: gear
+    source: blood
+    rarity: uncommon
+    attunement: true
+    price: {fk: 400}
+  - id: item.paired_relays
+    name: Парные ретрансляторы
+    description: Две ликворные лампы телеграфа, мигающие в такт друг другу на любом расстоянии.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor, message]
+    srd_ref: {type: item, name: Sending Stones}
+    category: gear
+    source: liquor
+    rarity: uncommon
+    price: {fk: 400}
+  - id: item.bright_lymph_flask
+    name: Колба светлой лимфы
+    description: Колба лимфы, что светится и плывёт за хозяином.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, blood, light_source]
+    srd_ref: {type: item, name: Driftglobe}
+    category: gear
+    source: blood
+    rarity: uncommon
+    price: {fk: 200}
+  - id: item.discharge_wand
+    name: Жезл разряда
+    description: Медный жезл с ликворной жилой. Бьёт разрядом, который не промахивается.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor]
+    srd_ref: {type: item, name: Wand of Magic Missiles}
+    category: gear
+    source: liquor
+    rarity: uncommon
+    price: {fk: 500}
+  - id: item.jelly_bomb_string
+    name: Связка желейных бомб
+    description: Связка малых бомб с горящим желе. Техника, не магия.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, tech, fire, anti_swarm]
+    srd_ref: {type: item, name: Necklace of Fireballs}
+    category: gear
+    source: tech
+    rarity: rare
+    price: {fk: 3000}
+  - id: item.great_league_howler
+    name: Большой ревун Лиги
+    description: Огромный паровой ревун Пепельной лиги. Даёт только то, что стоит в таблице Порога.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, tech, noise]
+    srd_ref: {type: item, name: Horn of Blasting}
+    category: gear
+    source: tech
+    rarity: rare
+    price: {fk: 2500}
+    effect_ref: effect.loud_noise
+    # Бонусов к испытанию Порога сверх таблицы rules.md#3.4 не даёт [Канон].
+  - id: item.whisper_helm
+    name: Шлем Шёпота
+    description: Шлем с живым паразитом-Шёпотом в подкладке.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, echolith, black_market]
+    srd_ref: {type: item, name: Helm of Telepathy}
+    category: gear
+    source: echolith
+    rarity: uncommon
+    legality: outlaw
+    attunement: true
+    attunement_check: {vs: corruption, stat: con, dc: 13}
+    price: {fk: 500, market: black}
+  - id: item.silence_ring
+    name: Кольцо тишины
+    description: Кольцо из биоминерала Кормчих. Разум владельца для чужого слуха — пустота.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, relic, mind]
+    srd_ref: {type: item, name: Ring of Mind Shielding}
+    category: gear
+    source: relic
+    rarity: uncommon
+    attunement: true
+    attunement_check: {vs: alteration, stat: con, dc: 12}
+    price: {fk: 500}
+  - id: item.communion_staff
+    name: Посох причастия
+    description: Посох с сосудом ликвора, из которого причащают в Церкви.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor, healing, church]
+    srd_ref: {type: item, name: Staff of Healing}
+    category: gear
+    source: liquor
+    rarity: rare
+    attunement: true
+    price: {fk: 4500}
+  - id: item.giant_oath_blade
+    name: Клинок Клятвы Исполину
+    description: Клинок паладинов Клятвы Исполину. Без богов — ликвор и сны Спящих. Не продаётся.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor, weapon]
+    srd_ref: {type: item, name: Holy Avenger}
+    category: weapon
+    source: liquor
+    rarity: legendary
+    attunement: true
+    attunement_by_refs: [class.paladin]
+    price: {fk: null, for_sale: false}
+    modifiers:
+      - {op: extra_damage, dice: 2d10, damage_type: radiant, if: {any: [{target_tag: aberration}, {target_tag: brood}, {target_tag: helmsman}]}, replaces_srd: "extra damage vs fiends and undead", text: "Доп. урон SRD против исчадий и нежити перенаправлен на аберраций (рой, Кормчие) — вслед за «Божественным чувством» (items.md 6.3). Требует решения Arty"}
+  - id: item.liquor_formula
+    name: Формула (свиток)
+    description: Ампула ликвора с записанной командой Кормчих. Формула 5-го круга и выше грозит Переменой.
+    status: proposal
+    doc: items.md#1.4
+    tags: [srd_reskin, liquor, scroll]
+    srd_ref: {type: item, name: Spell Scroll}
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: by_level
+    price: {by_level: {"0": 50, "1": 100, "2": 250, "3": 500, "4": 1500, "5": 4000, "6": 8000, "7": 15000, "8": 30000}}
+    max_level: 8
+    modifiers:
+      - op: save
+        stat: con
+        dc: "10 + spell_level"
+        vs: alteration
+        if: {spell_level_gte: 5}
+        on_fail: [{op: resource, stat: alteration, delta: 1}]
+      - {op: set, target: max_spell_level, value: 8, text: "Формул 9-го круга нет [Канон]"}

@@ -1,0 +1,222 @@
+# Импланты. Вживляет Хирург плоти 3-го уровня (8 часов) или клиника Гильдии (item.service_clinic_implant).
+# Имплант занимает ячейку настройки (attunement_slots), снять её отдыхом нельзя (slot_locked) —
+# только «Иссечение» (subclass.diagnost_flesh_surgeon, 9 ур.) или клиника (item.service_clinic_implant_removal).
+# Эффект импланта не суммируется с похожим даром роя — берётся лучший (not_stack_with_refs).
+# «Отторжение импланта» (items.md 6.4): если пациент в день операции получил урон от Скверны или Перемены.
+# Источник: rules.md#7.1; items.md#3.3.
+kind: item_template
+items:
+  - id: item.implant_sanitar_eye
+    name: Глаз санитара
+    description: Хитиновая линза из глаза санитара вместо собственного глаза. Видит в темноте туши.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, darkvision]
+    category: implant
+    source: chitin
+    rarity: uncommon
+    price: {fk: 200}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    not_stack_with_refs: [effect.gift_echo_sight]
+    modifiers:
+      - {op: sense, sense: darkvision, range: 60, if: {has_darkvision: false}}
+      - {op: add, target: darkvision_range, value: 30, if: {has_darkvision: true}}
+  - id: item.implant_gill_filter
+    name: Жаберный фильтр
+    description: Кровяной фильтр в горле. Газ и споры проходят сквозь него, не задевая лёгких.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, breathing]
+    category: implant
+    source: blood
+    rarity: uncommon
+    price: {fk: 300}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    modifiers:
+      - {op: immunity, condition: poisoned, vs: [inhaled_poison, gas, spores]}
+      - {op: immunity, damage: poison, vs: [inhaled_poison, gas, spores]}
+      - {op: immunity, condition: effect.spore_choke}
+      - {op: set, target: air_supply, value: filtered, vs_refs: [hazard.corpse_gas, hazard.spore_fog], text: "Газ и споры не задевают лёгких"}
+  - id: item.implant_claw_blades
+    name: Когтевые лезвия
+    description: Хитиновые лезвия под кожей предплечий, выдвигаются по сжатию кулака.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, natural_weapon]
+    category: implant
+    source: chitin
+    rarity: uncommon
+    price: {fk: 250}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    not_stack_with_refs: [effect.gift_swarm_claws]
+    natural_weapon: {damage: {dice: 1d6, type: slashing}, properties: [finesse]}
+    modifiers:
+      - {op: natural_weapon, name: Когтевые лезвия, damage: {dice: 1d6, type: slashing}, properties: [finesse, cannot_be_disarmed]}
+  - id: item.implant_subdermal_plate
+    name: Подкожная пластина
+    description: Пластины хитинового сплава под кожей груди и спины.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, ac]
+    category: implant
+    source: chitin
+    rarity: uncommon
+    price: {fk: 400}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    not_stack_with_refs: [effect.gift_chitin_skin]
+    modifiers:
+      - {op: add, target: ac, value: 1}
+  - id: item.implant_blood_valve
+    name: Кровяной клапан
+    description: Клапан на аорте, который по команде выбрасывает в кровь запас сил.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, healing]
+    category: implant
+    source: blood
+    rarity: uncommon
+    price: {fk: 350}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    uses: {max: 1, recharge: short_rest}
+    modifiers:
+      - op: grant_action
+        name: Открыть клапан
+        action: bonus
+        uses: {count: 1, per: short_rest}
+        do:
+          - {op: resource, stat: hit_dice, delta: -1}
+          - {op: add, target: hp, value: "hit_die + con_mod", text: "Как трата кости хитов на коротком отдыхе"}
+  - id: item.implant_steel_brace
+    name: Стальная скоба
+    description: Стальной каркас вдоль позвоночника и ног. Держит груз и не даёт упасть, но гнётся плохо.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, tech]
+    category: implant
+    source: tech
+    rarity: uncommon
+    price: {fk: 300}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    modifiers:
+      - {op: multiply, target: carrying_capacity, factor: 2}
+      - {op: advantage, "on": save, vs: prone}
+      - {op: disadvantage, "on": check, stat: dex, skill: acrobatics}
+  - id: item.implant_nerve_shunt
+    name: Нервный шунт
+    description: Шунт в позвоночнике, ускоряющий рефлексы. Требует стимуляторов.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, initiative]
+    category: implant
+    source: blood
+    rarity: rare
+    price: {fk: 1500}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    modifiers:
+      - {op: add, target: initiative, value: 2}
+      - {op: set, target: reaction_before_first_turn, value: true, text: "Реакцию можно тратить до начала своего первого хода в бою"}
+    price_of_power:
+      - {op: custom, engine: dev_request, need: "stat_definition даты последней дозы стимулятора (как stat.last_liquor_dose_day) и условие по нему в if; снятие помехи событием «введён стимулятор»", text: "Раз в 7 дней нужна доза любого стимулятора (injection: true). Без неё — помеха на проверки Лвк до дозы."}
+  - id: item.implant_sound_resonator
+    name: Слуховой резонатор
+    description: Орган Кормчих из биоминерала в височной кости. Слышит форму мира, но глохнет в шуме.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, relic, blindsight]
+    category: implant
+    source: relic
+    rarity: rare
+    price: {fk: 3000}
+    attunement: true
+    slot_locked: true
+    install:
+      time: {unit: hour, value: 8}
+      by_ref: subclass.diagnost_flesh_surgeon
+      min_level: 3
+      save: {stat: con, dc: 12}
+      on_fail: [{op: resource, stat: corruption, delta: 1}]
+      extra_saves:
+        - {op: save, stat: con, dc: 12, vs: alteration, on_fail: [{op: resource, stat: alteration, delta: 1}]}
+    modifiers:
+      - {op: sense, sense: blindsight, range: 10}
+      - {op: set, target: blindsight_range, value: 20, if: {has_effect_ref: effect.alteration_2}, text: "С «Эхо-слухом» Перемены — 20 футов"}
+    price_of_power:
+      - {op: condition, condition: deafened, if: {in_zone: effect.loud_noise}, text: "В сильном шуме вы оглохли"}
+  - id: item.implant_liquor_gland
+    name: Ликворная железа
+    description: Железа, копящая ликвор в крови. Возвращает ячейку, но каждый раз — доза.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, liquor, spell_slot]
+    category: implant
+    source: liquor
+    rarity: rare
+    price: {fk: 2500}
+    attunement: true
+    slot_locked: true
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    uses: {max: 1, recharge: long_rest}
+    modifiers:
+      - {op: grant_action, name: Выброс железы, action: free, uses: {count: 1, per: long_rest}, do: [{op: resource, stat: spell_slot_1, delta: 1}]}
+    price_of_power:
+      - {op: save, stat: con, dc: 12, vs: alteration, when: use, on_fail: [{op: resource, stat: alteration, delta: 1}]}
+  - id: item.implant_muscle_strands
+    name: Мышечные тяжи
+    description: Пересаженные мышечные тяжи туши. Сила 19, но тяжи скрипят.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, strength]
+    category: implant
+    source: blood
+    rarity: very_rare
+    price: {fk: 8000}
+    attunement: true
+    slot_locked: true
+    srd_ref: {type: item, name: Gauntlets of Ogre Power}
+    install: {time: {unit: hour, value: 8}, by_ref: subclass.diagnost_flesh_surgeon, min_level: 3, save: {stat: con, dc: 12}, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    modifiers:
+      - {op: set, target: str, value: 19, if: {str_lt: 19}}
+      - {op: disadvantage, "on": check, stat: dex, skill: stealth}
+  - id: item.implant_echolith_spur
+    name: Эхолитовая шпора
+    description: Шип поющего камня у основания черепа. Больше эха, но тянет к Голоду и метит владельца для матери. Вне закона.
+    status: proposal
+    doc: items.md#3.3
+    tags: [implant, echolith, black_market]
+    category: implant
+    source: echolith
+    rarity: very_rare
+    legality: outlaw
+    price: {fk: 10000, market: black}
+    attunement: true
+    slot_locked: true
+    install:
+      time: {unit: hour, value: 8}
+      by_ref: subclass.diagnost_flesh_surgeon
+      min_level: 3
+      save: {stat: con, dc: 12}
+      on_fail: [{op: resource, stat: corruption, delta: 1}]
+      extra_saves:
+        - {op: save, stat: con, dc: 15, vs: corruption, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+    modifiers:
+      - {op: add, target: echo_pool_max, value: 1}
+      - {op: run, ref: effect.mother_mark, duration: while_installed, text: "Пока имплант в теле"}
+    triggers:
+      - "on": long_rest
+        if: {spent_echo_on_response_yesterday: false}
+        do:
+          - {op: resource, stat: echo_attunement, delta: -1}

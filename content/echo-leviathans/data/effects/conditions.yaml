@@ -1,0 +1,170 @@
+# Состояния и зоны сеттинга поверх состояний SRD (SRD-состояния — через op: condition, не дублируются).
+# Источник: rules.md#5.1, #5.6, #6.2, #6.3, #6.5, #3.4.
+kind: effect_template
+items:
+  - id: effect.loud_noise
+    name: Сильный шум
+    description: Эффект зоны от колокола, ревуна или похожего источника. Сбивает ритм роя и останавливает рост налёта.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [zone, swarm, noise]
+    applies_to: area
+    duration: {unit: minute, value: 1}
+    stackable: false
+    modifiers:
+      - {op: disadvantage, "on": attack, if: {all: [{creature_tag: brood}, {not: {has_effect: effect.adapt_noise}}]}, text: "Выводки: атаки с помехой («Сбитый ритм»), если у их матери нет адаптации к шуму"}
+      - {op: disadvantage, "on": attack, if: {lineage: [lineage.kept_self, lineage.kept_heart]}, text: "Слабость роя / Кормчих у сохранивших"}
+    note: "Потеря «Связи резонансом» записана условием в effect.brood_resonance_link (in_zone этой записи, кроме адаптации effect.adapt_noise). Налёт в зоне не растёт — см. dev_request роста налёта в hazard.blight."
+    stops_growth_refs: [hazard.blight]
+    sources:
+      - {name: Ревун, radius_ft: 30, duration: {unit: minute, value: 1}, extra: [{op: disadvantage, "on": check, skill: perception, vs: hearing, text: "все с обычным слухом в радиусе"}]}
+      - {name: Колокол Лиги, radius_ft: 120, duration: "пока в него звонят (действие каждый ход)"}
+
+  - id: effect.desire_seed
+    name: Семя желания
+    description: Последствие провала ментального пути заражения. Приложение выдаёт одно желание из таблицы (власть, месть, накопление, покой). Сопротивляться можно — это отыгрыш, а не контроль.
+    status: proposal
+    doc: rules.md#6.5
+    tags: [corruption, mental, swarm]
+    duration: {unit: until_rest, value: 1}
+    stackable: false
+    desire_table: [власть, месть, накопление, покой]
+    modifiers: []
+    triggers:
+      - "on": key_deed
+        if: {side: hunger}
+        do: [{op: resource, stat: corruption, delta: 1, text: "Действие ради желания (ключевой поступок с пометкой echo в пользу Голода): +1 Скверна без спасброска"}]
+    removed_by_refs: [echo.quiet_mind]
+
+  - id: effect.schism
+    name: Раскол
+    description: Исход провала испытания Порога (не на 5 и больше). До следующего продолжительного отдыха герой играет себя, в котором растёт одно желание касты; после отдыха — повторное испытание с той же сложностью.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, threshold]
+    duration: {unit: until_rest, value: 1}
+    stackable: false
+    desire_table: [власть, месть, накопление, покой]
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "op случайного выбора из списка записи (pick: {from: desire_table}) с сохранением в state героя, либо kind таблицы желаний для op run"
+        text: "Одно желание касты ведёт героя; приложение выдаёт его из таблицы (desire_table)."
+    triggers:
+      - "on": long_rest
+        do:
+          - op: custom
+            engine: dev_request
+            need: "у op run — параметры повтора: сложность прошлого броска (dc: previous) и переопределённые исходы (success → lineage.kept_self, fail и fail_by_5 → Поглощён)"
+            text: "Повторное испытание Порога (effect.threshold_trial) с той же сложностью: успех — «Сохранил себя», любой провал — «Поглощён»."
+            draft: {op: run, ref: effect.threshold_trial, dc: previous, outcomes_override: {success: [{op: run, ref: lineage.kept_self}], fail: consumed}}
+    retry_ref: effect.threshold_trial
+
+  - id: effect.injection_withdrawal
+    name: Ломка от инъекций
+    description: Каждая инъекция сверх первой за продолжительный отдых требует спасброска Телосложения со сложностью 10 + 2 за каждую предыдущую инъекцию.
+    status: canon
+    doc: rules.md#5.1
+    tags: [injector, poison]
+    stackable: false
+    modifiers:
+      - op: save
+        stat: con
+        dc: "10 + 2 * (injections_since_rest - 1)"
+        if: {injections_since_rest_gt: 1}
+        on_fail:
+          - {op: condition, condition: poisoned, duration: {unit: round, value: 1}, text: "до конца вашего следующего хода"}
+
+  - id: effect.swarm_captive
+    name: Пленник роя
+    description: Существо, оглушённое роем вместо смерти. Стабилизировано, спасбросков от смерти нет; выводки уносят его к гнезду или налёту с половинной скоростью.
+    status: proposal
+    doc: rules.md#6.5
+    tags: [swarm, captive]
+    stackable: false
+    modifiers:
+      - {op: condition, condition: unconscious}
+      - {op: set, target: stable, value: true, text: "Стабилизирован: по SRD стабильное существо не делает спасбросков от смерти — пленника держат живым"}
+    note: "В гнезде (hazard.swarm_nest) или на налёте (hazard.blight) — +1 Скверна в час без спасброска (триггеры hour_passed в этих опасностях)."
+
+  # --- Полосы настроя эха (−2…+2 — без эффектов) ---
+  - id: effect.attunement_hunger_5
+    name: "Настрой −5: во власти Голода"
+    description: Крайний настрой Голода.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, attunement, hunger]
+    stackable: false
+    modifiers:
+      - {op: add, target: echo_hunger_cost, value: -1, min_total: 1}
+      - {op: add, target: corruption_save_dc, value: 2}
+      - {op: set, target: echo_response_available, value: false, text: "Техники Отклика недоступны"}
+    open_question: "Эффекты полосы −3…−4 при −5 в тексте не повторены; неясно, накопительны ли полосы (как у Скверны). Предлагается: действуют. Сейчас в stat.echo_attunement полосы не пересекаются."
+
+  - id: effect.attunement_hunger_3
+    name: "Настрой −3…−4: тяга Голода"
+    description: Сильный настрой Голода. У Сломленных штраф за противоположную сторону начинается с −4, а не с −3.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, attunement, hunger]
+    stackable: false
+    modifiers:
+      - {op: add, target: echo_hunger_dice, value: 1, text: "Техники Голода с костями урона бросают на одну кость больше"}
+      - {op: add, target: echo_response_cost, value: 1, if: {not: {origin: broken, attunement: -3}}, text: "Техники Отклика стоят +1 (у Сломленных — только с −4)"}
+      - op: custom
+        engine: dev_request
+        need: "обратное чувство: op sense с полем by (кто чувствует носителя: target_tag mother|invited), range в милях"
+        text: "Матери и приглашённые чувствуют вас в радиусе 1 мили."
+        draft: {op: sense, sense: detect, by: {target_tag: [mother, invited]}, range: 5280}
+      - {op: disadvantage, "on": check, stat: wis, vs: threshold_trial, text: "Испытание Порога с помехой (при −3 и ниже)"}
+
+  - id: effect.attunement_response_3
+    name: "Настрой +3…+4: тяга Отклика"
+    description: Сильный настрой Отклика. У Сломленных штраф за противоположную сторону начинается с +4.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, attunement, response]
+    stackable: false
+    modifiers:
+      - {op: add, target: echo_response_dice, value: 1, text: "Техники Отклика с костями бросают на одну кость больше"}
+      - {op: advantage, "on": save, vs: charmed_by_mother_or_invited}
+      - {op: add, target: echo_hunger_cost, value: 1, if: {not: {origin: broken, attunement: 3}}, text: "Техники Голода стоят +1 (у Сломленных — только с +4)"}
+      - {op: advantage, "on": check, stat: wis, vs: threshold_trial, text: "Испытание Порога с преимуществом (при +3 и выше)"}
+    note: "Рой считает героя угрозой и стремится убить, а не заразить — записано в профиле effect.behavior_captor (kill_first: echo_attunement ≥ 3)."
+
+  - id: effect.attunement_response_5
+    name: "Настрой +5: чистый Отклик"
+    description: Крайний настрой Отклика. Для «Сохранившего себя» открывает сюжетный квест возвращения.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo, attunement, response]
+    stackable: false
+    modifiers:
+      - {op: add, target: echo_response_cost, value: -1, min_total: 1}
+      - {op: advantage, "on": save, vs: corruption}
+      - {op: set, target: echo_hunger_available, value: false, text: "Техники Голода недоступны"}
+    stops_growth_refs: [hazard.blight]
+    stops_growth_radius_ft: 10
+    note: "В 10 футах от вас налёт не растёт — см. dev_request роста налёта в hazard.blight."
+
+  - id: effect.disarmed
+    name: Обезоружен
+    description: Существо выронило оружие или его выбили из рук. Оружие лежит у его ног, пока его не подберут (взаимодействие с предметом).
+    status: proposal
+    doc: items.md#2
+    tags: [condition, combat]
+    duration: {unit: permanent, value: 0}
+    stackable: false
+    modifiers:
+      - {op: set, target: wielded_weapon, value: none, text: "Оружие выпало; подобрать — взаимодействие с предметом в свой ход"}
+  - id: effect.lost_direction
+    name: Потерял направление
+    description: В тумане, под водой или в недрах туши существо не понимает, куда идёт.
+    status: proposal
+    doc: locations.md#1
+    tags: [condition, travel]
+    duration: {unit: until_rest, value: 1}
+    stackable: false
+    modifiers:
+      - {op: disadvantage, "on": check, skill: survival, text: "Помеха на проверки Выживания для навигации"}
+      - {op: set, target: known_location_to, value: none, text: "Направление к цели и к выходу неизвестно"}

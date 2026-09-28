@@ -1,0 +1,185 @@
+# Индекс цен (rules.md 4, items.md 1.4, 7.4). Индекс — state мира; приложение пересчитывает, мастер озвучивает.
+# Группы индекса (index_group у предметов): blood, fuel, chitin, liquor, echolith. Техника и обычные товары SRD — без индекса.
+# Правило rules: [{when, groups, factor}]; factor перемножается между правилами, итог не выше ×3 (price_index.cap).
+kind: price_index
+items:
+  - id: price_index.currency
+    name: Валюта и курс
+    description: 1 ФК = 1 золотой SRD, 1 жила = 1 серебряный, 1 капля = 1 медный. Цены SRD и бюджеты переносятся без пересчёта. Алхимик сгущает 50 ФК в зелье лечения.
+    status: canon
+    doc: rules.md#4
+    tags: [currency]
+    rules:
+      - {unit: fk, srd: gp, value: 1}
+      - {unit: vein, srd: sp, value: 0.1}
+      - {unit: drop, srd: cp, value: 0.01}
+      - {craft: potion_of_healing, cost_fk: 50, item_ref: item.blood_serum}
+
+  - id: price_index.war_resonance
+    name: Цены войны (по резонансу)
+    description: Индекс субстанций от силы Резонанса. На 10 — Падение черты; для индекса держится строка 7–9.
+    status: proposal
+    doc: rules.md#4
+    tags: [index, resonance]
+    clock_ref: clock.resonance_power
+    rules:
+      - {when: {resonance: [0, 3]}, groups: all, factor: 1}
+      - {when: {resonance: [4, 6]}, groups: [fuel, liquor], factor: 1.5}
+      - {when: {resonance: [7, 10]}, groups: [blood, fuel, chitin, liquor], factor: 2}
+      - {when: {resonance: [7, 10]}, groups: [anti_resonance], factor: 2, text: "оружие против Резонанса (anti_resonance: true) ×2"}
+
+  - id: price_index.house_supply
+    name: Дом придержал поставки или пал
+    description: В городах Дома, который придержал поставки или пал, субстанции дорожают, пока не сработает перелом.
+    status: proposal
+    doc: rules.md#4
+    tags: [index, faction]
+    rules:
+      - {when: {house_state: [withholding, fallen], location: house_city}, groups: [blood, fuel, chitin, liquor], factor_range: [1.5, 3], factor: 1.5, until: pivot}
+
+  - id: price_index.carcass_depleted
+    name: Туша выработана или проснулась
+    description: Товар выработанной или проснувшейся туши исчезает из местных лавок.
+    status: proposal
+    doc: rules.md#4
+    tags: [index, carcass]
+    clock_ref: clock.carcass_awakening
+    rules:
+      - {when: {carcass_state: [depleted, awakened]}, groups: carcass_local_goods, availability: none}
+
+  - id: price_index.frontier
+    name: Близость к черте и Кольцу Паломников
+    description: У черты и Кольца Паломников ликвор и хитин дешевле, топливо дороже.
+    status: proposal
+    doc: rules.md#4
+    tags: [index, location]
+    rules:
+      - {when: {location_tag: [ashen_line, pilgrim_ring]}, groups: [liquor, chitin], factor: 0.75}
+      - {when: {location_tag: [ashen_line, pilgrim_ring]}, groups: [fuel], factor: 1.5}
+
+  - id: price_index.house_mark
+    name: Метка Дома
+    description: Дом знает, где отряд в своих городах. Цены его лавок ×1,5 для отряда на 7 дней.
+    status: proposal
+    doc: items.md#6.4
+    tags: [index, faction]
+    rules:
+      - {when: {party_has_effect: house_mark, shop_owner: marking_house}, groups: all_goods, factor: 1.5, duration: {unit: day, value: 7}}
+
+  - id: price_index.cap
+    name: Потолок индекса
+    description: Индексы перемножаются, но итог не выше ×3. Синдикатам выгоден высокий индекс, поэтому их квесты тянут резонанс вверх.
+    status: proposal
+    doc: rules.md#4
+    tags: [index]
+    rules:
+      - {combine: multiply, max_factor: 3}
+
+  - id: price_index.echolith
+    name: Индекс эхолита
+    description: Эхолит вне закона и зависит не от войны, а от голода людей. При настоящем Цветении его никто не покупает.
+    status: proposal
+    doc: items.md#7.4
+    tags: [index, echolith]
+    clock_ref: clock.resonance_power
+    rules:
+      - {when: {resonance: [0, 3]}, groups: [echolith], factor: 1}
+      - {when: {resonance: [4, 6]}, groups: [echolith], factor: 1.5}
+      - {when: {resonance: [7, 10]}, groups: [echolith], factor: 2}
+      - {when: {bloom_active: true}, groups: [echolith], availability: none, text: "при Цветении эхолит не покупают"}
+    excluded_from_refs: [price_index.war_resonance, price_index.house_supply, price_index.frontier]
+
+  - id: price_index.source_scope
+    name: На что действует индекс
+    description: Индекс действует на предметы с источником blood, liquor и chitin (включая стимуляторы и топливо). На технику и эхолит — нет (у эхолита свой индекс).
+    status: proposal
+    doc: items.md#1.4
+    tags: [index]
+    rules:
+      - {applies_to_sources: [blood, liquor, chitin]}
+      - {exempt_sources: [tech, relic, bloom]}
+      - {own_index: {echolith: price_index.echolith}}
+
+  - id: price_index.rarity_bands
+    name: Полосы цен по редкости
+    description: Цен магических предметов в SRD 5.1 нет — полосы свои. Нижняя граница — замена предмета сверх бюджета на ФК.
+    status: proposal
+    doc: items.md#1.4
+    tags: [rarity]
+    rules:
+      - {rarity: common, fk: [50, 100], where: "Лавки Гильдии, рынки"}
+      - {rarity: uncommon, fk: [150, 500], where: "Лавки Гильдии, оружейники Кордона, рынок Домов"}
+      - {rarity: rare, fk: [600, 5000], where: "Аукционы Домов, чёрный рынок, заказ у мастера Гильдии"}
+      - {rarity: very_rare, fk: [6000, 40000], where: "Не продаётся открыто: контракт с фракцией или добыча"}
+      - {rarity: legendary, fk: null, where: "Не продаётся: только реликвии и переломы"}
+
+  - id: price_index.chitin_variant
+    name: Хитиновый вариант оружия
+    description: Любое оружие SRD в хитиновом варианте стоит ×10 от базовой цены.
+    status: canon
+    doc: rules.md#5.3
+    tags: [chitin, crafting]
+    rules:
+      - {variant_ref: item.property_chitin_alloy, factor: 10, of: base_weapon_price}
+
+  - id: price_index.crafting
+    name: Изготовление своими руками
+    description: Владелец нужных инструментов за время простоя делает предмет по цене 50% рыночной, 25 ФК работы в день, как в SRD. Сырьё без переработки — только товар.
+    status: proposal
+    doc: items.md#1.2
+    tags: [crafting]
+    service_ref: item.service_crafting
+    rules:
+      - {material_cost_factor: 0.5, progress_fk_per_day: 25}
+
+  # --- Товары-субстанции по группам индекса (items.md 7.4) ---
+  - id: price_index.goods_blood
+    name: Группа «Кровь»
+    description: Кровь, лимфа, железы, спороносная ткань и стимуляторы. Законно, кроме чёрной сыворотки.
+    status: proposal
+    doc: items.md#7.4
+    tags: [goods, blood]
+    index_group: blood
+    rules:
+      - {group: blood}
+    item_refs: [item.trade_blood, item.trade_lymph, item.trade_sanitar_gland, item.trade_spore_tissue, item.blood_serum, item.thick_serum, item.bull_mutagen, item.cats_eye, item.burner_blood, item.lymph_ward, item.gill_tincture, item.giant_serum, item.black_serum, item.antitoxin, item.vigor, item.guild_antidote]
+  - id: price_index.goods_fuel
+    name: Группа «Топливо»
+    description: Костный мозг, чёрное желе и баки для огнемётов, запальников и машин.
+    status: proposal
+    doc: items.md#7.4
+    tags: [goods, fuel]
+    index_group: fuel
+    rules:
+      - {group: fuel}
+    item_refs: [item.trade_marrow_fuel, item.trade_black_jelly, item.jelly_tank, item.bonfire_tank, item.igniter_tank, item.steam_hammer_refill, item.chain_cutter_fuel, item.burning_impregnation]
+  - id: price_index.goods_chitin
+    name: Группа «Хитин»
+    description: Сырой хитин, сплав, нервное волокно, выделанная кожа.
+    status: proposal
+    doc: items.md#7.4
+    tags: [goods, chitin]
+    index_group: chitin
+    rules:
+      - {group: chitin}
+    item_refs: [item.trade_raw_chitin, item.trade_chitin_alloy, item.trade_nerve_fiber, item.trade_hide]
+  - id: price_index.goods_liquor
+    name: Группа «Ликвор»
+    description: Ликвор грязный, очищенный (по лицензии Дома Ликвора) и «капля»; ампулы и покрытия против роя.
+    status: proposal
+    doc: items.md#7.4
+    tags: [goods, liquor]
+    index_group: liquor
+    rules:
+      - {group: liquor}
+    item_refs: [item.liquor_dirty, item.liquor_purified, item.liquor_drop, item.liquor_ampoule, item.liquor_coating, item.liquor_probe, item.ammo_liquor_dart, item.liquor_formula]
+  - id: price_index.goods_echolith
+    name: Группа «Эхолит»
+    description: Крупицы эхолита и железы Шёпота. Вне закона — Кордон конфискует, Церковь покупает тайно.
+    status: proposal
+    doc: items.md#7.4
+    tags: [goods, echolith]
+    index_group: echolith
+    rules:
+      - {group: echolith, index_ref: price_index.echolith}
+    item_refs: [item.trade_echolith_grain, item.trade_whisper_gland, item.ammo_echolith_bullet]

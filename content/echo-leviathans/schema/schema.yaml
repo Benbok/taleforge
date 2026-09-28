@@ -1,0 +1,56 @@
+# JSON Schema (в YAML) для записей пакета. Общая часть + обязательные поля по видам.
+common:
+  type: object
+  required: [id, name, status]
+  properties:
+    id: {type: string, pattern: "^[a-z_]+\\.[a-z0-9_]+$"}
+    name: {type: string, minLength: 1}
+    description: {type: string}
+    status: {enum: [canon, proposal]}
+    doc: {type: string}
+    tags: {type: array, items: {type: string}}
+    srd_ref:
+      type: object
+      required: [type, name]
+      properties:
+        type: {enum: [monster, item, spell, class, subclass, condition, race, feat]}
+        name: {type: string}
+    modifiers: {$ref: "#/definitions/modifiers"}
+    triggers:
+      type: array
+      items:
+        type: object
+        required: [on, do]
+        properties:
+          on: {type: string}
+          do: {$ref: "#/definitions/modifiers"}
+definitions:
+  modifiers:
+    type: array
+    items:
+      type: object
+      required: [op]
+      properties:
+        op: {enum: [advantage, disadvantage, add, multiply, set, resistance, vulnerability, immunity, sense, extra_damage, condition, resource, save, check, run, proficiency, move, remove_condition, choose, grant_action, natural_weapon, clock, spawn, behavior, custom]}
+kinds:
+  stat_definition: {required: [widget_type], properties: {min: {type: number}, max: {type: number}, widget_type: {enum: [bar, number, list, counter, track]}}}
+  clock: {required: [min, max, thresholds]}
+  effect_template: {required: [modifiers]}
+  hazard_template: {required: [modifiers]}
+  origin: {required: [ability_bonuses, features]}
+  lineage: {required: [features]}
+  class: {required: [hit_die, levels]}
+  subclass: {required: [class_ref, features]}
+  echo_technique: {required: [side, cost, min_level]}
+  spell_note: {}
+  item_template: {required: [category, price]}
+  loot_table: {required: [dice, rows]}
+  price_index: {required: [rules]}
+  creature_template: {required: [cr]}
+  encounter_table: {required: [dice, rows]}
+  faction: {required: [goal]}
+  location_template: {required: [belt]}
+  lore_fact: {required: [text, knowledge]}
+  campaign_secret: {required: [text]}
+  dc_scale: {required: [value]}
+  spell_template: {required: [level, school, casting_time, range, duration, components]}

@@ -1,0 +1,558 @@
+# Люди: NPC фракций. Живые дети — только невраждебные NPC без боевого блока (cr: null)
+# Часть пакета «Эхо Левиафанов». Основа — SRD 5.1 (srd_ref); модификаторы — язык из README.
+# behavior.profile: aggressive | cowardly | defender | capturer (Захватчик, rules.md#6.5) | noncombatant; flee_threshold — доля хитов.
+kind: creature_template
+items:
+- id: creature.syndicate_guard
+  name: Стражник Синдиката
+  description: Охранник вокзала, склада или шахты Дома. Медная маска, паровой пистоль или алебарда.
+  doc: canon.md#5.1
+  tags: [human, syndicate]
+  srd_ref: {type: monster, name: Guard}
+  cr: 0.125
+  behavior: {profile: defender, flee_threshold: 0.4}
+  faction_ref: faction.syndicates
+  modifiers: []
+  weapon_option_refs: [item.steam_pistol]
+  abilities: []
+  loot_hint: пара жил, жетон Дома, патроны к пистолю
+  status: proposal
+  weapon_option_note: копьё SRD можно заменить паровым пистолем (1d10 колющий, 30/90, перезарядка)
+- id: creature.syndicate_enforcer
+  name: Наёмник Синдиката
+  description: Громила Дома, которого учили «злиться правильно». Владеет Голодом.
+  doc: canon.md#1.7
+  tags: [human, syndicate, hunger]
+  srd_ref: {type: monster, name: Thug}
+  cr: 0.5
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  faction_ref: faction.syndicates
+  modifiers: []
+  abilities:
+  - {name: Удар голода, kind: passive, text: Раз в сцену при попадании +2d6 психического урона (техника Голода).}
+  loot_hint: кастет из хитинового сплава, 1d6 жил, стимулятор
+  status: proposal
+- id: creature.mine_overseer
+  name: Надсмотрщик шахты
+  description: Взрослый начальник смены в туше. Ведёт учёт детей и ФК, держит при себе стражу.
+  doc: canon.md#2; canon.md#5.1
+  tags: [human, syndicate, mine]
+  srd_ref: {type: monster, name: Bandit Captain}
+  cr: 2
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.syndicates
+  modifiers: []
+  abilities: []
+  loot_hint: журнал смен, ключи от шлюзов, 2d10 ФК, фляга грязного ликвора
+  status: proposal
+- id: creature.house_agent
+  name: Агент Дома
+  description: 'Шпион одного из трёх Домов: следит, покупает, убирает. Люди Дома Ликвора знают о Протоколе Тишины больше, чем говорят.'
+  doc: canon.md#5.1
+  tags: [human, syndicate, spy]
+  srd_ref: {type: monster, name: Spy}
+  cr: 1
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.syndicates
+  modifiers: []
+  abilities: []
+  loot_hint: шифровка, векселя ФК, проба ликвором
+  status: proposal
+- id: creature.syndicate_noble
+  name: Синдикатский вельможа
+  description: Член семьи Дома из верхних кварталов. Больше торгуется, чем дерётся.
+  doc: canon.md#5.1
+  tags: [human, syndicate, social]
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8}
+  faction_ref: faction.syndicates
+  modifiers: []
+  abilities: []
+  loot_hint: перстень Дома, лимфатическая лампа, векселя
+  status: proposal
+- id: creature.cordon_burner
+  name: Выжигатель Кордона
+  description: Солдат Пепельного Кордона с огнемётом на чёрном желе. Рой убивает таких первыми.
+  doc: canon.md#5.6; rules.md#5.6
+  tags: [human, cordon, soldier]
+  srd_ref: {type: monster, name: Guard}
+  cr: 1
+  behavior: {profile: defender, flee_threshold: 0.15}
+  faction_ref: faction.ash_cordon
+  modifiers:
+  - {op: add, target: hp_max, value: 11}
+  abilities:
+  - name: Огнемёт на желе
+    kind: action
+    text: Конус 15 футов, спасбросок Лов сл. 12, 2d6 огнём (половина при успехе). Бак — 3 выстрела.
+    modifiers:
+    - op: save
+      stat: dex
+      dc: 12
+      area: cone_15
+      on_fail:
+      - {op: extra_damage, dice: 2d6, damage_type: fire}
+  loot_hint: огнемёт с полупустым баком, пайка, жетон Кордона
+  status: proposal
+- id: creature.cordon_ringer
+  name: Звонарь Кордона
+  description: 'Наследник колокольных крепостей: ручной ревун и колокольцы на поясе, владеет Откликом.'
+  doc: canon.md#1.7; rules.md#5.6
+  tags: [human, cordon, response]
+  srd_ref: {type: monster, name: Acolyte}
+  cr: 0.5
+  behavior: {profile: defender, flee_threshold: 0.2}
+  faction_ref: faction.ash_cordon
+  modifiers: []
+  abilities:
+  - {name: Ревун, kind: action, text: 1 минуту всё в 30 футах — «сильный шум» для выводков. Затем нужен короткий отдых на подкачку.}
+  - {name: Заживление, kind: bonus, text: 'Техника Отклика раз в сцену: 1d8+2 хитов касанием.'}
+  loot_hint: ревун, колокольцы, проба ликвором
+  status: proposal
+- id: creature.cordon_veteran
+  name: Ветеран черты
+  description: 'Солдат, переживший десятки волн. Старая гвардия: верит только огню и колоколам.'
+  doc: canon.md#5.6
+  tags: [human, cordon, soldier]
+  srd_ref: {type: monster, name: Veteran}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.1}
+  faction_ref: faction.ash_cordon
+  modifiers:
+  - {op: advantage, 'on': save, vs: corruption, note: привычка к черте}
+  abilities: []
+  loot_hint: хитиновый меч (кислотный), ликворная ампула, письмо домой
+  status: proposal
+- id: creature.cordon_officer
+  name: Офицер Кордона
+  description: Командир башни. Молодые офицеры хотят союза с Гильдией и Сломленными, старые — нет.
+  doc: canon.md#5.6
+  tags: [human, cordon, officer]
+  srd_ref: {type: monster, name: Knight}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.1}
+  faction_ref: faction.ash_cordon
+  modifiers: []
+  abilities: []
+  loot_hint: карта участка черты, пропуск на телеграф Кордона, ключ от колокольни
+  status: proposal
+- id: creature.cordon_scout
+  name: Разведчик Кордона
+  description: Ходит за черту, считает гнёзда и узлы.
+  doc: canon.md#5.6
+  tags: [human, cordon]
+  srd_ref: {type: monster, name: Scout}
+  cr: 0.5
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.ash_cordon
+  modifiers: []
+  abilities: []
+  loot_hint: подзорная труба, записи о гнёздах
+  status: proposal
+- id: creature.stalker
+  name: Сталкер глубинных троп
+  description: Проводник по сосудам и тропам к кратеру. Работает за ФК на кого угодно.
+  doc: canon.md#3.2
+  tags: [human, independent]
+  srd_ref: {type: monster, name: Scout}
+  cr: 0.5
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  modifiers:
+  - {op: sense, sense: darkvision, range: 30, note: кошачий глаз}
+  abilities: []
+  loot_hint: карта сосудов туши, стимулятор, верёвка
+  status: proposal
+- id: creature.smuggler
+  name: Контрабандист ликвора
+  description: Возит грязный ликвор мимо застав Домов.
+  doc: canon.md#1.6
+  tags: [human, criminal]
+  srd_ref: {type: monster, name: Bandit}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  modifiers: []
+  abilities: []
+  loot_hint: фляга грязного ликвора, 1d6 жил
+  status: proposal
+- id: creature.smuggler_captain
+  name: Главарь контрабандистов
+  description: Хозяин тайной тропы или лодки у мёртвой бухты.
+  doc: canon.md#7
+  tags: [human, criminal]
+  srd_ref: {type: monster, name: Bandit Captain}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.4}
+  modifiers: []
+  abilities: []
+  loot_hint: ящик ампул ликвора, карта бухт
+  status: proposal
+- id: creature.pit_fighter
+  name: Боец ямы
+  description: Боец бойцовых ям трущоб, черпает Голод.
+  doc: canon.md#1.7
+  tags: [human, slums, hunger]
+  srd_ref: {type: monster, name: Gladiator}
+  cr: 5
+  behavior: {profile: aggressive, flee_threshold: 0.2}
+  modifiers: []
+  abilities:
+  - {name: Волна страха, kind: action, text: 'Раз в сцену: конус 30 футов, спасбросок Мдр сл. 13, провал — испуган на 1 минуту.'}
+  loot_hint: выигрыш в ФК, мутаген быка
+  status: proposal
+- id: creature.slum_berserker
+  name: Кровник трущоб
+  description: Подсевший на стимуляторы громила.
+  doc: canon.md#4.2
+  tags: [human, slums]
+  srd_ref: {type: monster, name: Berserker}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.1}
+  modifiers: []
+  abilities: []
+  loot_hint: инъектор, 1d2 стимулятора
+  status: proposal
+- id: creature.church_acolyte
+  name: Служка Церкви
+  description: 'Низшее духовенство: кормит бедных, прячет беглых детей. Фарфоровая маска.'
+  doc: canon.md#5.3
+  tags: [human, church, lower_clergy]
+  srd_ref: {type: monster, name: Acolyte}
+  cr: 0.25
+  behavior: {profile: cowardly, flee_threshold: 0.6}
+  faction_ref: faction.church_lower_clergy
+  modifiers:
+  - op: set
+    target: spell_source
+    value_ref: spell_note.source_liquor_sleepers_dreams
+    note: заклинания — ликвор причастия (сны Спящих), не боги
+  abilities: []
+  loot_hint: флакон причастия, хлеб, чётки из хитина
+  status: proposal
+- id: creature.church_priest
+  name: Жрец Исполинов
+  description: 'Священник прихода: причастие ликвором, проповеди о падших ангелах.'
+  doc: canon.md#5.3
+  tags: [human, church]
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: defender, flee_threshold: 0.4}
+  faction_ref: faction.church
+  modifiers:
+  - op: set
+    target: spell_source
+    value_ref: spell_note.source_liquor_sleepers_dreams
+    note: Домен причастия; лечение оставляет шрамы (описание)
+  abilities: []
+  loot_hint: флакон очищенного ликвора, 3d6 жил
+  status: proposal
+- id: creature.church_knight
+  name: Рыцарь Исполина
+  description: Воин Церкви с клятвой Исполину.
+  doc: canon.md#5.3; rules.md#7.0
+  tags: [human, church]
+  srd_ref: {type: monster, name: Knight}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.2}
+  faction_ref: faction.church
+  modifiers: []
+  abilities: []
+  loot_hint: панцирь титана (латы), знак прихода
+  status: proposal
+- id: creature.church_ascended
+  name: Возвысившийся
+  description: 'Жрец, прошедший «возвышение»: добровольная мутация, которая на деле — приглашение Резонанса. Сила из голода и Скверны, похожая на благодать, только злее.'
+  doc: canon.md#5.3; rules.md#7.3
+  tags: [human, church, church_top, invited]
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 3
+  stage: 1
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  faction_ref: faction.church_top
+  modifiers:
+  - op: set
+    target: spell_source
+    value_ref: spell_note.source_resonance_hunger
+    note: 'Домен голода: заклинания работают как обычно, но это Голод, не ликвор'
+  - op: custom
+    engine: dev_request
+    text: «Рассеивание магии» на заклинания Домена голода не действует
+    need: иммунитет заклинаний существа к конкретным заклинаниям (Dispel Magic) по источнику spell_source; у immunity есть только damage/condition
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - {name: Ангельский гнев, kind: passive, text: Раз в сцену при попадании +2d6 психического урона (Удар голода).}
+  loot_hint: золочёная маска, амулет из эхолита, 4d10 ФК
+  status: proposal
+- id: creature.church_high_priest
+  name: Высший жрец
+  description: 'Верхушка Церкви: самый большой круг приглашённых на поверхности. Некоторые уже на пути к тому, чтобы стать матерями.'
+  doc: canon.md#5.3; races.md#2.4
+  tags: [human, church, church_top, invited, future_mother, boss]
+  srd_ref: {type: monster, name: Mage}
+  cr: 7
+  stage: 2
+  behavior: {profile: cowardly, flee_threshold: 0.5, uses_minions: true}
+  faction_ref: faction.church_top
+  modifiers:
+  - {op: add, target: ac, value: 2, note: хитин под облачением}
+  - op: set
+    target: spell_list
+    value_ref: subclass.hunger_domain
+    note: список заклинаний Мага заменён списком Домена голода (rules 7.3)
+  - {op: set, target: spell_source, value_ref: spell_note.source_resonance_hunger, note: 'источник — Скверна, не ликвор'}
+  triggers:
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities:
+  - {name: Голос матери, kind: action, text: 'Существо в 30 футах, спасбросок Мдр сл. 15, провал — очко Скверны и «семя желания».'}
+  loot_hint: ключи от закрытого крыла собора Шепчущий, переписка с «ангелами», 10d10 ФК
+  status: proposal
+- id: creature.broken_adult
+  name: Сломленный
+  description: Бывший ребёнок-шахтёр с остановленной мутацией, теперь взрослый. Слышит два голоса — Резонанс и сны экипажей. Врождённая магия. «Шептун» на жаргоне.
+  doc: canon.md#3.4; canon.md#5.4
+  tags: [human, broken]
+  srd_ref: {type: monster, name: Acolyte}
+  cr: 0.5
+  behavior: {profile: cowardly, flee_threshold: 0.6}
+  faction_ref: faction.broken
+  modifiers:
+  - {op: advantage, 'on': save, vs: corruption}
+  - {op: set, target: spellcasting, value: innate, note: 'заклинания Служки — врождённые, без ликвора и без фокусировки'}
+  abilities:
+  - {name: Два голоса, kind: passive, text: Преимущество на раскрытие скрытых; слышит обрывки детства Глубинных.}
+  loot_hint: антидот Гильдии, листовки подполья
+  status: proposal
+- id: creature.broken_zealot
+  name: Сломленный, слушающий зов
+  description: Сломленный, который считает зов Резонанса следующей ступенью человека.
+  doc: canon.md#5.4
+  tags: [human, broken, hunger]
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.4}
+  faction_ref: faction.broken
+  modifiers:
+  - {op: advantage, 'on': save, vs: corruption}
+  abilities: []
+  loot_hint: осколок эхолита, записи о «ступенях»
+  status: proposal
+- id: creature.broken_dreamer
+  name: Сломленный сновидец
+  description: Сломленный, который слушает сны экипажей и мечтает разбудить Спящих.
+  doc: canon.md#5.4
+  tags: [human, broken]
+  srd_ref: {type: monster, name: Mage}
+  cr: 4
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.broken
+  modifiers:
+  - {op: set, target: spell_slot_max_level, value: 3, note: Mage с ячейками до 3-го круга (ПО снижен)}
+  - {op: set, target: spellcasting, value: innate}
+  - {op: set, target: spell_source, value_ref: spell_note.source_liquor_blood, note: 'магия врождённая, от ликвора в крови'}
+  abilities: []
+  loot_hint: рисунки рубок, карта протоков к коконам
+  status: proposal
+- id: creature.guild_diagnost
+  name: Полевой диагност
+  description: Врач, алхимик и инженер Гильдии. Инъектор, антидоты, эхолокатор.
+  doc: canon.md#5.2; rules.md#7.1
+  tags: [human, guild]
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.guild
+  modifiers:
+  - {op: set, target: casting_time, value: bonus, note: заклинания Жреца подаются как препараты из инъектора (бонусное действие)}
+  - {op: set, target: spell_source, value_ref: spell_note.source_liquor_reagents}
+  abilities:
+  - {name: Диагностика, kind: action, text: Раскрывает скрытое существо стадии I–II автоматически.}
+  loot_hint: инъектор, 1d4 антидота, кровяная сыворотка
+  status: proposal
+- id: creature.guild_listener
+  name: Слушатель
+  description: 'Тайное крыло Гильдии: расшифровывают сигналы кораблей с эхолокаторов и подозревают, что в рубках кто-то есть.'
+  doc: canon.md#5.2
+  tags: [human, guild, listeners]
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  behavior: {profile: cowardly, flee_threshold: 0.6}
+  faction_ref: faction.guild_listeners
+  modifiers: []
+  abilities: []
+  loot_hint: журнал расшифровок, паровой эхолокатор, очищенный ликвор
+  status: proposal
+- id: creature.miner_adult
+  name: Взрослый шахтёр
+  description: 'Бывший ребёнок-шахтёр, «выпущенный» в 14 лет: тремор, долги, кожаная маска. Работает на поверхности туши или в грузовых шлюзах.'
+  doc: canon.md#4.2
+  tags: [human, miners]
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.7}
+  modifiers:
+  - {op: disadvantage, 'on': check, stat: dex, tool: any, note: 'Тремор: помеха на проверки Ловкости с инструментами'}
+  abilities: []
+  loot_hint: кирка, 1d4 капли, долговая книжка
+  status: proposal
+- id: creature.underground_saboteur
+  name: Подпольщик
+  description: 'Бывший шахтёр Шахтёрского подполья: прячет детей, саботирует шахты, печатает листовки.'
+  doc: canon.md#5.5
+  tags: [human, miners, underground]
+  srd_ref: {type: monster, name: Bandit}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.miners_underground
+  modifiers: []
+  abilities:
+  - {name: Заряд, kind: action, text: 'Шашка на желе: 2d6 огнём в радиусе 5 футов, спасбросок Лов сл. 12.'}
+  loot_hint: листовки, шашка, карта протоков
+  status: proposal
+- id: creature.silent_one
+  name: Безмолвный
+  description: 'Человек, которого ликвор довёл до Порога тишины: холодный рационалист без эмоций, принявший цели Кормчих — разбудить Спящих и навести тишину.'
+  doc: canon.md#1.6; rules.md#3.5
+  tags: [human, silent, liquor]
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  behavior: {profile: cowardly, flee_threshold: 0.4, note: 'действует расчётом, не страхом'}
+  faction_ref: faction.helmsmen
+  modifiers:
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: cold}
+  - {op: sense, sense: blindsight, range: 10}
+  abilities: []
+  loot_hint: очищенный ликвор, записи о рубках
+  status: proposal
+- id: creature.islander
+  name: Островитянин
+  description: 'Потомок беглецов первых лет после Сгущения: без ликвора и магии, скромный, опасливый к материку.'
+  doc: canon.md#7
+  tags: [human, islanders, social]
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.7}
+  faction_ref: faction.islanders
+  modifiers:
+  - {op: advantage, 'on': save, vs: corruption, note: 'эхо спит, нечем зацепиться'}
+  abilities: []
+  loot_hint: старые книги, сушёная рыба
+  status: proposal
+- id: creature.islander_sailor
+  name: Моряк с островов
+  description: Шкипер редкого парового судна между островами и материком.
+  doc: canon.md#7
+  tags: [human, islanders]
+  srd_ref: {type: monster, name: Veteran}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction_ref: faction.islanders
+  modifiers: []
+  abilities: []
+  loot_hint: морская карта, компас
+  status: proposal
+- id: creature.temple_guard
+  name: Храмовый страж
+  description: 'Стража собора Церкви: досматривает паломников и требует причастия на входе.'
+  doc: canon.md#5.3
+  tags: [human, church]
+  srd_ref: {type: monster, name: Guard}
+  cr: 0.125
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction_ref: faction.church
+  modifiers: []
+  abilities: []
+  loot_hint: знак прихода, флакон причастия
+  status: proposal
+- id: creature.church_cultist
+  name: Фанатик Хоров
+  description: Прихожанин верхушки Церкви, «помогающий» другим уйти в Хоры к Шёпоту. Идёт за возвысившимися.
+  doc: canon.md#5.3
+  tags: [human, church, church_top]
+  srd_ref: {type: monster, name: Cultist}
+  cr: 0.125
+  behavior: {profile: aggressive, flee_threshold: 0.3}
+  faction_ref: faction.church_top
+  modifiers: []
+  abilities: []
+  loot_hint: ритуальный нож, амулет из эхолита
+  status: proposal
+- id: creature.circle_scout
+  name: Дозорный Круга
+  description: Сломленный из дозора Круга у Рёберного леса. Сначала задаёт вопросы, потом решает, пускать ли.
+  doc: canon.md#5.4
+  tags: [human, broken]
+  srd_ref: {type: monster, name: Scout}
+  cr: 0.5
+  behavior: {profile: defender, flee_threshold: 0.5}
+  faction_ref: faction.broken
+  modifiers:
+  - {op: advantage, 'on': save, vs: corruption, note: Сломленные бросают с преимуществом}
+  abilities: []
+  loot_hint: листовки подполья, карта троп леса
+  status: proposal
+- id: creature.crowd_commoner
+  name: Горожанин (толпа)
+  description: Люди на рынке, у прихода или на вокзале. Толпа, в которой прячутся скрытые и гибриды.
+  doc: canon.md#4.2
+  tags: [human, social, crowd]
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.7}
+  modifiers: []
+  abilities: []
+  loot_hint: пара жил, мелочь
+  status: proposal
+- id: creature.child_miner
+  name: Ребёнок-шахтёр
+  description: 'Живой ребёнок, работающий в сосудах и желудочках по Указу о малых руках. Только NPC: никогда не цель боя и не жертва насилия, которое разыгрывают герои.'
+  doc: canon.md#9; canon.md#3.2
+  tags: [human, child, npc_only, noncombatant]
+  cr: null
+  noncombatant: true
+  combat_target: false
+  behavior: {profile: noncombatant, note: в бою не участвует; при опасности движок выводит его из сцены}
+  modifiers: []
+  abilities: []
+  loot_hint: нет (не источник добычи)
+  status: canon
+- id: creature.child_runaway
+  name: Беглый ребёнок
+  description: Ребёнок, сбежавший из шахты или спрятанный подпольем и низшим духовенством. Только NPC, невраждебен, повод для сюжета, а не для боя.
+  doc: canon.md#5.5; canon.md#9
+  tags: [human, child, npc_only, noncombatant]
+  cr: null
+  noncombatant: true
+  combat_target: false
+  behavior: {profile: noncombatant}
+  faction_ref: faction.miners_underground
+  modifiers: []
+  abilities: []
+  loot_hint: нет
+  status: canon
+- id: creature.child_broken
+  name: Ребёнок-Сломленный
+  description: Ребёнок, которому недавно остановили мутацию в клинике Гильдии. Слышит два голоса; все фракции хотят его как проводника. Только NPC.
+  doc: canon.md#3.4; canon.md#9
+  tags: [human, child, broken, npc_only, noncombatant]
+  cr: null
+  noncombatant: true
+  combat_target: false
+  behavior: {profile: noncombatant}
+  faction_ref: faction.broken
+  modifiers: []
+  abilities: []
+  loot_hint: нет
+  status: canon

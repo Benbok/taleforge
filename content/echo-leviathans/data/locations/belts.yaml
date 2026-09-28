@@ -1,0 +1,443 @@
+# Пояса материка, море и острова, малые места-зацепки внутри поясов.
+# Источник: locations.md#1 (главный), canon.md#7. Расстояния — в милях от кромки кратера.
+# location_type: region (пояс), strip (полоса внутри пояса), hook (место-зацепка).
+# Зацепки появляются через create_location только в границах своего пояса (parent_ref).
+kind: location_template
+items:
+# ---------------------------------------------------------------- Старые земли
+- id: location.belt_old_lands
+  name: Старые земли и прибрежье
+  description: 'Самый большой и самый пустой пояс: остатки королевств, поглощённые провинции с мёртвой почвой, порты и рыбацкие деревни у мёртвого моря.'
+  status: proposal
+  canon_parts: [Пояс и его содержание (canon.md#7), Прибрежье — часть Старых земель]
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, belt, old_lands]
+  location_type: region
+  belt: old_lands
+  distance_from_rim_miles: [400, 850]
+  transport:
+    roads: Старые королевские тракты, местами разбитые тушами 352 года назад
+    rail: 'Две ветки Синдикатов: Береговая (Старая Мать → Утопленник) и Лесная (до Рёберного леса)'
+    rail_route_refs: [location.route_old_mother_drowned, location.route_old_mother_rib_forest]
+    telegraph: Только вдоль веток и в портах
+    airships: 'Редко: почтовые курьеры раз в неделю'
+  dangers: [Поглощённые провинции с мёртвой почвой и тихим налётом, Одиночные выводки, Разбойники, Споровые туманы, '«Пустые» скелеты туш, где гнездятся санитары']
+  ruler: 'Остатки королевств: мелкие князья, вольные города, общины. В портах — конторы Синдикатов.'
+  faction_refs: [faction.syndicates]
+  hazard_refs: [hazard.blight, hazard.spore_fog, hazard.parasite_nest]
+  encounter_table_ref: encounter.old_lands
+
+- id: location.hook_grey_field
+  name: Серая пашня
+  description: Деревня на земле, где спит тихий налёт. Урожай хороший, но скот рождается слепым.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, old_lands, village]
+  location_type: hook
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  hazard_refs: [hazard.blight]
+  encounter_table_ref: encounter.old_lands
+
+- id: location.hook_bell_tower_no_ringer
+  name: Колокольня без звонаря
+  description: Старая крепость Лиги в 600 милях от кратера. Колокол звонит сам по ночам, и никто не знает, кто в нём звонит.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, old_lands, fortress, league]
+  location_type: hook
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  distance_from_rim_miles: 600
+  encounter_table_ref: encounter.old_lands
+
+- id: location.hook_salt_hook
+  name: Солёный Крюк
+  description: Порт, откуда раз в сезон уходит пароход «Терпение» на острова.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, old_lands, port, coast]
+  location_type: hook
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  route_refs: [location.route_salt_hook_islands]
+  encounter_table_ref: encounter.sea
+
+- id: location.hook_empty_hunchback
+  name: Пустой Горбун
+  description: Выработанный скелет туши. Там живут собиратели костной крошки, и там пропадают люди.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, old_lands, carcass, empty_skeleton]
+  location_type: hook
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  hazard_refs: [hazard.parasite_nest]
+  encounter_table_ref: encounter.carcass_interior
+
+- id: location.hook_opushka_station
+  name: Станция Опушка
+  description: Конечная станция Лесной ветки. Дальше до Рёберного леса — день пешком.
+  status: proposal
+  doc: locations.md#1.4
+  tags: [hook, old_lands, station]
+  location_type: hook
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  route_refs: [location.route_old_mother_rib_forest]
+  encounter_table_ref: encounter.old_lands
+
+# ---------------------------------------------------------------- Средний пояс
+- id: location.belt_middle
+  name: Средний пояс
+  description: Больше всего людей и туш-городов. Города Синдикатов на спинах туш, железные дороги вдоль хребтов, заводы на желе.
+  status: proposal
+  canon_parts: [Пояс и его содержание (canon.md#7), Правят три Дома Синдикатов]
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, belt, middle_belt]
+  location_type: region
+  belt: middle_belt
+  distance_from_rim_miles: [60, 400]
+  transport:
+    roads: Мощёные тракты между тушами, мосты-позвонки над лимфатическими болотами
+    rail: Густая сеть. Хребтовая магистраль идёт от Старой Матери к Кольцу по спинам туш
+    rail_route_refs: [location.route_old_mother_whisperer]
+    telegraph: Везде, узлы в каждом городе
+    airships: Регулярные рейсы Синдикатов, грузовые баржи с хитином и желе
+  dangers: [Заводской смог, Банды трущоб, Долговое рабство, Ломка, Глашатаи в толпе, Прорывы стоков с кровяными медузами]
+  ruler: Три Дома Синдикатов. Каждый город-туша — концессия одного из Домов.
+  faction_ref: faction.syndicates
+  faction_refs: [faction.house_kostrishchev, faction.house_liquor, faction.lymph_company]
+  hazard_refs: [hazard.lymph_swamp, hazard.corpse_gas, hazard.infected_blood]
+  encounter_table_ref: encounter.middle_belt
+
+- id: location.hook_seam_junction
+  name: Узел Шов
+  description: Сортировочная станция, где сходятся пять линий. Там по ночам пропадают вагоны с ликвором.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, middle_belt, station, rail]
+  location_type: hook
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  encounter_table_ref: encounter.middle_belt
+
+- id: location.hook_jelly_fields
+  name: Желейные поля Кострищевых
+  description: Равнина с чанами топлива. Дым виден за 30 миль.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, middle_belt, industry]
+  location_type: hook
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  faction_ref: faction.house_kostrishchev
+  encounter_table_ref: encounter.middle_belt
+
+- id: location.hook_bridge_carcass
+  name: Мостовая туша
+  description: Корабль, упавший поперёк реки. Все баржи платят за проход под рёбрами.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, middle_belt, carcass, river]
+  location_type: hook
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  encounter_table_ref: encounter.middle_belt
+
+- id: location.hook_sipun_pits
+  name: Бойцовые ямы Сипуна
+  description: Город, где учат «злиться правильно» — техникам Голода.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, middle_belt, city, hunger]
+  location_type: hook
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  encounter_table_ref: encounter.middle_belt
+
+# ---------------------------------------------------------------- Кольцо Паломников
+- id: location.belt_pilgrim_ring
+  name: Кольцо Паломников
+  description: Десятки кораблей, стоящих плотно, мордами к кратеру. Больше всего ликвора и Глубинных; туши ближе всего к пробуждению.
+  status: proposal
+  canon_parts: [Пояс и его содержание (canon.md#7)]
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, belt, pilgrim_ring]
+  location_type: region
+  belt: pilgrim_ring
+  distance_from_rim_miles: [3, 60]
+  overlaps_ref: location.belt_ash_line
+  transport:
+    roads: Паломничий тракт Церкви и шахтёрские тропы по тушам
+    rail: Кончаются на станции Последний перрон, в 50 милях от кромки. Дальше — вагонетки внутри туш
+    telegraph: Держится на ретрансляторах с ликворными лампами. Телеграфисты «тихнут» (Перемена)
+    airships: Курьеры Синдикатов, редко. Над кратером они — цель летающих выводков
+  dangers: [Глубинные, Шёпот, Пробуждение туш, Прорвавшиеся волны, Спасброски против Скверны тяжелее]
+  ruler: Концессии Домов, прежде всего Дома Ликвора. Церковь владеет Шепчущим и трактом.
+  faction_ref: faction.house_liquor
+  faction_refs: [faction.church]
+  hazard_refs: [hazard.whisper_colony, hazard.parasite_nest, hazard.sleeper_cocoon, hazard.corpse_gas]
+  encounter_table_ref: encounter.pilgrim_ring
+  note: 'Сложность спасбросков против Скверны здесь растёт с резонансом — правило в clock.resonance_power (location_belt: pilgrim_ring).'
+
+- id: location.hook_last_platform
+  name: Последний перрон
+  description: Конечная станция железной дороги в 50 милях от кромки. Город вербовщиков, контрабандистов и госпиталей.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, pilgrim_ring, station, city]
+  location_type: hook
+  belt: pilgrim_ring
+  parent_ref: location.belt_pilgrim_ring
+  distance_from_rim_miles: 50
+  route_refs: [location.route_last_platform_rear_rampart]
+  encounter_table_ref: encounter.pilgrim_ring
+
+- id: location.hook_nameless
+  name: Безымянная
+  description: Туша, где рухнула шахта и открылась нетронутая рубка. Дом Ликвора охраняет вход.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, pilgrim_ring, carcass, cabin]
+  location_type: hook
+  belt: pilgrim_ring
+  parent_ref: location.belt_pilgrim_ring
+  faction_ref: faction.house_liquor
+  hazard_refs: [hazard.sleeper_cocoon]
+  encounter_table_ref: encounter.carcass_interior
+
+- id: location.hook_hospital_mercy
+  name: Госпиталь Гильдии «Милосердие»
+  description: Здесь лечат Скверну и тайно изучают коконы.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, pilgrim_ring, hospital, guild]
+  location_type: hook
+  belt: pilgrim_ring
+  parent_ref: location.belt_pilgrim_ring
+  faction_ref: faction.guild
+  encounter_table_ref: encounter.pilgrim_ring
+
+# ---------------------------------------------------------------- Пепельная черта
+- id: location.belt_ash_line
+  name: Пепельная черта
+  description: 'Военная линия Кордона вокруг кратера, около 300 миль в длину. Две полосы: Передний край у кромки и Тыловой вал на руинах Огненного вала.'
+  status: proposal
+  canon_parts: [Руины Огненного вала и колокольных крепостей, башни Кордона (canon.md#7), 'Черта держится Кордоном по уставу Лиги']
+  doc: locations.md#1.2; locations.md#1.3; canon.md#7
+  tags: [region, belt, ash_line, contested]
+  location_type: region
+  belt: ash_line
+  distance_from_rim_miles: [0, 40]
+  length_miles: 300
+  overlaps_ref: location.belt_pilgrim_ring
+  transport:
+    roads: Выжженная земля. Шагоходы ходят по старым рвам вала
+    rail: 'Узкоколейка Кордона от Последнего перрона до Тылового вала: возит баки с желе'
+    rail_route_refs: [location.route_last_platform_rear_rampart]
+    telegraph: Нить Кордона — главная линия фронта. Рой учится её рвать
+    airships: Несколько разведчиков Кордона
+  dangers: [Волны выводков и Отзвучных, Сростки, Колоссы, Налёт, Пленение роем]
+  ruler: Пепельный Кордон, по уставу Лиги.
+  faction_ref: faction.ash_cordon
+  hazard_refs: [hazard.blight, hazard.swarm_nest]
+  encounter_table_ref: encounter.ash_line
+  wave_table_refs: [encounter.ash_line_wave_r0_3, encounter.ash_line_wave_r4_6, encounter.ash_line_wave_r7_9, encounter.ash_line_wave_r10]
+
+- id: location.strip_front_edge
+  name: Передний край
+  description: Выжженная полоса у самой кромки, между головами передних туш и кратером. Сюда первыми приходят волны.
+  status: proposal
+  doc: locations.md#1.2
+  tags: [strip, ash_line, front]
+  location_type: strip
+  belt: ash_line
+  parent_ref: location.belt_ash_line
+  distance_from_rim_miles: [0, 10]
+  hazard_refs: [hazard.blight, hazard.swarm_nest]
+  encounter_table_ref: encounter.ash_line
+
+- id: location.strip_rear_rampart
+  name: Тыловой вал
+  description: Руины Огненного вала около 40 миль от кромки, среди задних кораблей Кольца. Сюда ходит узкоколейка Кордона.
+  status: proposal
+  doc: locations.md#1.2
+  tags: [strip, ash_line, rampart]
+  location_type: strip
+  belt: ash_line
+  parent_ref: location.belt_ash_line
+  distance_from_rim_miles: 40
+  encounter_table_ref: encounter.ash_line
+
+- id: location.hook_unceasing
+  name: Неумолчная
+  description: Колокольная крепость, где звонят без перерыва 350 лет. Звонарей всё меньше.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, ash_line, fortress, bells]
+  location_type: hook
+  belt: ash_line
+  parent_ref: location.belt_ash_line
+  faction_ref: faction.ash_cordon
+  encounter_table_ref: encounter.ash_line
+
+- id: location.hook_tower_17
+  name: Башня 17
+  description: Трижды потеряна и трижды отбита. Говорят, её гарнизон слишком спокоен.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, ash_line, tower]
+  location_type: hook
+  belt: ash_line
+  parent_ref: location.strip_front_edge
+  faction_ref: faction.ash_cordon
+  encounter_table_ref: encounter.ash_line
+
+- id: location.hook_league_archive
+  name: Архив Лиги
+  description: Подземелья Тылового вала с картами налёта первых лет.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, ash_line, archive, league]
+  location_type: hook
+  belt: ash_line
+  parent_ref: location.strip_rear_rampart
+  faction_ref: faction.ash_cordon
+  encounter_table_ref: encounter.ash_line
+
+- id: location.hook_bell_monastery
+  name: Обитель Звона
+  description: Монастырь, где открыли силу колоколов. Сейчас стоит в руинах Тылового вала, там учат звонарей Кордона.
+  status: proposal
+  canon_parts: [В Обители открыли силу колоколов]
+  doc: locations.md#1.3
+  tags: [hook, ash_line, monastery, bells]
+  location_type: hook
+  belt: ash_line
+  parent_ref: location.strip_rear_rampart
+  faction_ref: faction.bell_monastery
+  encounter_table_ref: encounter.ash_line
+
+# ---------------------------------------------------------------- Кратер
+- id: location.belt_crater
+  name: Кратер
+  description: Около 20 миль в поперечнике, глубина около мили. Обнажённый эхолит бывшей Отзвучной горы, матери, плоть налёта.
+  status: proposal
+  canon_parts: [Кратер в центре материка, Правят матери — человеческие и чужие]
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, belt, crater]
+  location_type: region
+  belt: crater
+  diameter_miles: 20
+  depth_miles: 1
+  transport:
+    roads: Нет. Спуск штурмовиков — ход экипажей, прорезанный 312 лет назад
+    telegraph: Нет. Телеграф глохнет, эхолокаторы слышат только гул
+  dangers: [Налёт по всем склонам, Матери, Гнёзда, Эхолит]
+  ruler: 'Матери: человеческие и чужие.'
+  faction_ref: faction.resonance
+  hazard_refs: [hazard.blight, hazard.resonance_proximity, hazard.swarm_nest]
+  encounter_table_ref: encounter.crater
+  corruption_dc_ref: dc.corruption_extreme
+
+- id: location.hook_rim
+  name: Кромка
+  description: Край кратера, откуда видно, как дышит налёт.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, crater]
+  location_type: hook
+  belt: crater
+  parent_ref: location.belt_crater
+  hazard_refs: [hazard.blight]
+  encounter_table_ref: encounter.crater
+
+- id: location.hook_nest_terraces
+  name: Гнездовые террасы
+  description: Уступы, где держат пленных и растят коконы.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, crater, nest]
+  location_type: hook
+  belt: crater
+  parent_ref: location.belt_crater
+  hazard_refs: [hazard.swarm_nest, hazard.resonance_proximity]
+  encounter_table_ref: encounter.crater
+
+- id: location.hook_silent_guard_cocoons
+  name: Пустые коконы Тихих стражей
+  description: Место, где штурмовики оставили снаряжение перед спуском.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, crater, helmsmen]
+  location_type: hook
+  belt: crater
+  parent_ref: location.belt_crater
+  hazard_refs: [hazard.resonance_proximity]
+  encounter_table_ref: encounter.crater
+
+- id: location.hook_echolite_heart
+  name: Сердце эхолита
+  description: Обнажённый минерал на дне кратера, оплетённый плотью матерей.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, crater, echolite, finale]
+  location_type: hook
+  belt: crater
+  parent_ref: location.belt_crater
+  hazard_refs: [hazard.resonance_proximity, hazard.blight]
+  encounter_table_ref: encounter.crater
+
+# ---------------------------------------------------------------- Море и острова
+- id: location.belt_sea
+  name: Море и острова
+  description: Прибрежные воды и открытое море. Разломы на дне в 50–200 милях от берега, острова — в 2–4 неделях пути.
+  status: proposal
+  canon_parts: [Разломы на дне и спящий в них флот, Острова и общины потомков беглецов]
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, belt, sea]
+  location_type: region
+  belt: sea
+  rift_distance_from_shore_miles: [50, 200]
+  transport:
+    sea: Каботажные пароходы вдоль берега. На острова — несколько судов в год
+  dangers: [Шторма, Бортовые организмы спящего флота у разломов, Мёртвые бухты у туш]
+  ruler: Никто. В портах — капитанские управы. На островах — общины потомков беглецов.
+  hazard_refs: []
+  encounter_table_ref: encounter.sea
+
+- id: location.hook_maw_rift
+  name: Пасть
+  description: Разлом, над которым вода тёплая и пахнет медью. Эхолокаторы ловят в нём сигналы.
+  status: proposal
+  doc: locations.md#1.3; locations.md#2.2
+  tags: [hook, sea, rift]
+  location_type: hook
+  belt: sea
+  parent_ref: location.belt_sea
+  encounter_table_ref: encounter.sea
+
+- id: location.hook_reef_spine
+  name: Рифовая спина
+  description: Хребет корабля основного флота, торчащий из воды в отлив.
+  status: proposal
+  doc: locations.md#1.3
+  tags: [hook, sea, fleet]
+  location_type: hook
+  belt: sea
+  parent_ref: location.belt_sea
+  encounter_table_ref: encounter.sea
+
+- id: location.islands
+  name: Острова
+  description: Острова, которых Резонанс не коснулся. Без ликвора и магии, эхо спит. Островитяне принимают немногих.
+  status: canon
+  doc: locations.md#1.3; canon.md#7
+  tags: [region, sea, islands]
+  location_type: region
+  belt: sea
+  parent_ref: location.belt_sea
+  ruler: Общины потомков людей, бежавших с материка в первые годы после Сгущения.
+  faction_ref: faction.islanders
+  route_refs: [location.route_salt_hook_islands]

@@ -1,0 +1,335 @@
+# Диагност — свой класс сеттинга (по образцу Изобретателя), уровни 1–15. Источник: rules.md#7.1.
+# Статус: класс и четыре специализации — решение Arty (open-questions #17, #24). Баланс не проверен игрой (rules.md#9).
+kind: class
+items:
+  - id: class.diagnost
+    name: Диагност
+    description: Учёный Гильдии — полевой врач, алхимик и инженер, который лечит, травит и слушает туши. Его магия — реагенты и формулы на ликворе, то есть заклинания SRD, поданные как препараты.
+    status: canon
+    doc: rules.md#7.1
+    tags: [class, custom, caster, half_caster, liquor_caster]
+    world_role: Учёный Гильдии, полевой врач, алхимик, инженер.
+    hit_die: d8
+    hp_level_1: "8 + con_mod"
+    hp_per_level: "1d8 + con_mod"
+    level_cap: 15
+    max_spell_level: 4
+    spell_source: liquor_reagents
+    saving_throws: [con, int]
+    proficiencies:
+      armor: [light, medium, shield]
+      weapons: [simple, steam_pistol, dart_thrower]
+      tools: [alchemists_supplies, herbalism_kit]
+      skills_choose:
+        count: 2
+        from: [investigation, history, arcana, medicine, nature, perception, sleight_of_hand]
+    skill_names: {investigation: Анализ, arcana: Магия (ликвороведение)}
+    starting_equipment:
+      - {choose: [medium_armor, leather_armor]}
+      - {choose: [dart_thrower, light_crossbow]}
+      - injector
+      - alchemists_supplies
+    spellcasting:
+      ability: int
+      progression: half_round_up
+      prepared: "max(1, int_mod + floor(level / 2))"
+      focus: alchemists_supplies
+      ritual: true
+      save_dc: "8 + pb + int_mod"
+      attack: "pb + int_mod"
+    subclass_level: 3
+    subclass_refs:
+      - subclass.diagnost_field_medic
+      - subclass.diagnost_echolocator
+      - subclass.diagnost_toxicologist
+      - subclass.diagnost_flesh_surgeon
+    # Таблица уровней. formulas/doses — препараты; slots — ячейки 1–5 кругов.
+    levels:
+      - {level: 1,  pb: 2, features: [spellcasting, diagnosis],               formulas: 0,  doses: 0, cantrips: 2, slots: [2, 0, 0, 0, 0]}
+      - {level: 2,  pb: 2, features: [field_preparations],                    formulas: 4,  doses: 2, cantrips: 2, slots: [2, 0, 0, 0, 0]}
+      - {level: 3,  pb: 2, features: [specialization],                        formulas: 4,  doses: 2, cantrips: 2, slots: [3, 0, 0, 0, 0]}
+      - {level: 4,  pb: 2, features: [ability_score_improvement],             formulas: 4,  doses: 2, cantrips: 2, slots: [3, 0, 0, 0, 0]}
+      - {level: 5,  pb: 3, features: [injection_strike, specialization_feature], formulas: 4, doses: 2, cantrips: 2, slots: [4, 2, 0, 0, 0]}
+      - {level: 6,  pb: 3, features: [medic_resilience],                      formulas: 6,  doses: 3, cantrips: 2, slots: [4, 2, 0, 0, 0]}
+      - {level: 7,  pb: 3, features: [weak_spot],                             formulas: 6,  doses: 3, cantrips: 2, slots: [4, 3, 0, 0, 0]}
+      - {level: 8,  pb: 3, features: [ability_score_improvement],             formulas: 6,  doses: 3, cantrips: 2, slots: [4, 3, 0, 0, 0]}
+      - {level: 9,  pb: 4, features: [specialization_feature],                formulas: 6,  doses: 3, cantrips: 2, slots: [4, 3, 2, 0, 0]}
+      - {level: 10, pb: 4, features: [field_reserve],                         formulas: 8,  doses: 4, cantrips: 3, slots: [4, 3, 2, 0, 0]}
+      - {level: 11, pb: 4, features: [second_chance],                         formulas: 8,  doses: 4, cantrips: 3, slots: [4, 3, 3, 0, 0]}
+      - {level: 12, pb: 4, features: [ability_score_improvement],             formulas: 8,  doses: 4, cantrips: 3, slots: [4, 3, 3, 0, 0]}
+      - {level: 13, pb: 5, features: [injection_master],                      formulas: 8,  doses: 4, cantrips: 3, slots: [4, 3, 3, 1, 0]}
+      - {level: 14, pb: 5, features: [purification],                          formulas: 10, doses: 5, cantrips: 4, slots: [4, 3, 3, 1, 0]}
+      - {level: 15, pb: 5, features: [specialization_feature, panacea],       formulas: 12, doses: 6, cantrips: 4, slots: [4, 3, 3, 2, 1]}
+    features:
+      - key: spellcasting
+        level: 1
+        name: Заклинания
+        description: Базовая характеристика — Интеллект. Готовит Инт + половину уровня заклинаний (минимум 1) из списка диагноста. Фокус — инструменты алхимика; ритуалы разрешены.
+        modifiers:
+          - {op: set, target: prepared_spells, value: "max(1, int_mod + floor(level / 2))", text: "Из spell_list; ячейки — по таблице levels.slots"}
+      - key: diagnosis
+        level: 1
+        name: Диагностика
+        description: Бонусным действием осмотрите видимое существо в 30 футах — проверка Интеллекта (Медицина) против 10 + ПО (или 10 + уровень персонажа). Успех раскрывает сопротивления, иммунитеты, уязвимости, состояние хитов и уровень Скверны.
+        action: bonus
+        range: 30
+        uses: {count: 1, per: short_rest, per_target: true}
+        check: {stat: int, skill: medicine, dc: "10 + target_cr_or_level"}
+        modifiers:
+          - op: grant_action
+            name: Диагностика
+            action: bonus
+            range: 30
+            uses: {count: 1, per: short_rest, per_target: true}
+            do:
+              - op: check
+                stat: int
+                skill: medicine
+                dc: "10 + target_cr_or_level"
+                outcomes:
+                  - result: success
+                    do:
+                      - {op: set, target: target.diagnosed_by, value: self, text: "Цель помечена как продиагностированная (для «Слабого места»)"}
+                      - {op: custom, engine: dev_request, need: "op раскрытия сведений о цели игроку (reveal: [resistances, immunities, vulnerabilities, hp_band, corruption])", text: "При успехе показать игроку: resistances, immunities, vulnerabilities, hp_band (цел/ранен/при смерти), corruption цели."}
+      - key: field_preparations
+        level: 2
+        name: Полевые препараты
+        description: Вы знаете формулы по таблице и после продолжительного отдыха готовите дозы (час работы с инструментами алхимика на дозу). Дозы портятся на следующем продолжительном отдыхе.
+        modifiers:
+          - {op: set, target: doses_max, value: "levels.doses", text: "+ПБ у Полевого врача с 5-го уровня (в подклассе)"}
+          - {op: set, target: formulas_known, value: "levels.formulas"}
+          - op: grant_action
+            name: Инъекция препарата
+            action: bonus
+            range: 5
+            uses: {count: doses_max, per: long_rest, resource: doses}
+            do: [{op: run, ref: chosen_preparation, text: "Любой подготовленный препарат из preparations.list; себе или существу в 5 футах"}]
+          - op: grant_action
+            name: Бросок ампулы
+            action: action
+            range: "20/60"
+            uses: {count: doses_max, per: long_rest, resource: doses}
+            attack: {kind: ranged, bonus: "pb + int_mod"}
+            do: [{op: run, ref: chosen_preparation}]
+          - op: grant_action
+            name: Передать дозу
+            action: free
+            if: {target_has_item: item.injector}
+            do: [{op: resource, stat: doses, delta: -1, transfer_to: target}]
+      - key: specialization
+        level: 3
+        name: Специализация
+        description: Выбор одной из четырёх специализаций — Полевой врач, Эхолокатор, Токсиколог, Хирург плоти. Умения на 3, 5, 9 и 15 уровнях.
+        modifiers: []
+      - key: injection_strike
+        level: 5
+        name: Инъекционный удар
+        description: Раз в ход, попав рукопашной атакой или дротикометом, вы сразу вводите цели одну дозу препарата, не тратя бонусное действие.
+        triggers:
+          - "on": hit
+            if: {attack: [melee, dart_thrower], once_per_turn: true}
+            do:
+              - {op: run, ref: chosen_preparation, target: hit_target, cost: {resource: doses, count: 1}, action_cost: none}
+      - key: medic_resilience
+        level: 6
+        name: Стойкость медика
+        description: Преимущество на спасброски против Скверны и против яда.
+        modifiers:
+          - {op: advantage, "on": save, vs: corruption}
+          - {op: advantage, "on": save, vs: poison}
+      - key: weak_spot
+        level: 7
+        name: Слабое место
+        description: Когда продиагностированное вами существо атакует союзник, реакцией дайте атаке +1d4. Число раз — модификатор Инт за продолжительный отдых.
+        action: reaction
+        uses: {count: int_mod, per: long_rest}
+        modifiers:
+          - {op: add, target: attack, value: "1d4", when: ally_attacks_diagnosed_target}
+      - key: field_reserve
+        level: 10
+        name: Полевой запас
+        description: На коротком отдыхе вы восстанавливаете половину потраченных доз (с округлением вниз).
+        triggers:
+          - "on": short_rest
+            do:
+              - {op: resource, stat: doses, delta: "floor(spent_doses / 2)"}
+      - key: second_chance
+        level: 11
+        name: Второй шанс
+        description: Когда существо в 30 футах падает до 0 хитов, реакцией вы стреляете в него сывороткой — оно получает хиты, равные удвоенному вашему уровню.
+        action: reaction
+        range: 30
+        uses: {count: 1, per: long_rest}
+        modifiers:
+          - {op: add, target: hp, value: "2 * level", when: target_dropped_to_0}
+      - key: injection_master
+        level: 13
+        name: Мастер инъекций
+        description: Бонусным действием вводите дозу согласному существу в 60 футах через дротикомет без броска атаки.
+        action: bonus
+        range: 60
+        modifiers:
+          - op: grant_action
+            name: Мастер инъекций
+            action: bonus
+            range: 60
+            requires: {wielding: item.dart_launcher, target: willing}
+            do: [{op: run, ref: chosen_preparation, cost: {resource: doses, count: 1}, attack_roll: false}]
+      - key: purification
+        level: 14
+        name: Очищение
+        description: Раз за продолжительный отдых за 1 час работы и 50 ФК реагентов вы снимаете 1 очко Скверны с существа без потери максимума хитов.
+        uses: {count: 1, per: long_rest}
+        cost: {time_minutes: 60, fk: 50}
+        modifiers:
+          - {op: resource, stat: corruption, delta: -1}
+      - key: panacea
+        level: 15
+        name: Панацея
+        description: Раз за продолжительный отдых действием коснитесь существа — оно восстанавливает все хиты, с него снимаются все состояния и до 2 очков Скверны.
+        action: action
+        uses: {count: 1, per: long_rest}
+        modifiers:
+          - {op: set, target: hp, value: hp_max}
+          - {op: remove_condition, any_of: all, count: all}
+          - {op: resource, stat: corruption, delta: -2}
+    # Препараты: сложность спасброска = 8 + ПБ + Инт. min_level — с какого уровня диагноста доступна формула.
+    preparations:
+      save_dc: "8 + pb + int_mod"
+      list:
+        - key: blood_bandage
+          name: Кровяной бинт
+          min_level: 2
+          description: Восстанавливает 1d8 + Инт хитов (2d8 с 5-го, 3d8 с 11-го).
+          modifiers:
+            - {op: add, target: hp, value: "1d8 + int_mod", scaling: {"5": "2d8 + int_mod", "11": "3d8 + int_mod"}}
+        - key: lymph_booster
+          name: Лимфоусилитель
+          min_level: 2
+          description: Временные хиты, равные уровню + Инт, на 1 час.
+          duration: {unit: hour, value: 1}
+          modifiers:
+            - {op: set, target: temp_hp, value: "level + int_mod"}
+        - key: antiseptic
+          name: Антисептик
+          min_level: 2
+          description: Преимущество на следующий спасбросок против Скверны или яда в течение часа.
+          duration: {unit: hour, value: 1}
+          modifiers:
+            - {op: advantage, "on": save, vs: [corruption, poison], uses: 1}
+        - key: neurostimulant
+          name: Нейростимулятор
+          min_level: 2
+          description: +5 к инициативе и скорость +10 футов на 1 минуту.
+          duration: {unit: minute, value: 1}
+          modifiers:
+            - {op: add, target: initiative, value: 5}
+            - {op: add, target: speed, value: 10}
+        - key: chitin_lacquer
+          name: Хитиновый лак
+          min_level: 2
+          description: Броня цели даёт +1 КД на 1 час.
+          duration: {unit: hour, value: 1}
+          modifiers:
+            - {op: add, target: ac, value: 1, when: wearing_armor}
+        - key: acid_ampoule
+          name: Кислотная ампула
+          min_level: 2
+          description: Дальняя атака, 2d6 кислотой (3d6 с 5-го, 4d6 с 11-го, 5d6 с 15-го).
+          modifiers:
+            - {op: extra_damage, dice: "2d6", damage_type: acid, scaling: {"5": "3d6", "11": "4d6", "15": "5d6"}}
+        - key: smoke_flask
+          name: Дымовая колба
+          min_level: 2
+          description: Сфера радиусом 15 футов сильно заслонена на 1 минуту.
+          duration: {unit: minute, value: 1}
+          modifiers:
+            - {op: set, target: area_obscurity, value: heavy, area: {shape: sphere, radius: 15}}
+        - key: echo_capsule
+          name: Эхо-капсула
+          min_level: 2
+          description: 10 минут вы чувствуете существ в 30 футах сквозь плоть и кость толщиной до 5 футов.
+          duration: {unit: minute, value: 10}
+          modifiers:
+            - {op: custom, engine: dev_request, need: "новый вид чувства в op sense (например creature_sense) с полем penetrates: {material: [flesh, bone], thickness_ft: 5}", text: "Чувство существ в 30 футах сквозь плоть/кость до 5 футов толщиной (не зрение, не blindsight)."}
+        - key: caustic_coating
+          name: Едкая пропитка
+          min_level: 2
+          description: Оружие в руке цели 1 минуту наносит дополнительно 1d4 кислотой.
+          duration: {unit: minute, value: 1}
+          modifiers:
+            - {op: extra_damage, dice: "1d4", damage_type: acid, when: weapon_hit}
+        - key: paralytic
+          name: Паралитик
+          min_level: 5
+          description: Спасбросок Телосложения, при провале скорость цели 0 до конца её следующего хода.
+          modifiers:
+            - op: save
+              stat: con
+              dc: "8 + pb + int_mod"
+              on_fail:
+                - {op: set, target: speed, value: 0, duration: {unit: round, value: 1}}
+        - key: bull_mutagen
+          name: Мутаген быка
+          min_level: 6
+          description: Преимущество на проверки и спасброски Силы на 1 минуту, затем спасбросок Тел (сл. 10), провал — отравлен на 1 час.
+          duration: {unit: minute, value: 1}
+          modifiers:
+            - {op: advantage, "on": check, stat: str}
+            - {op: advantage, "on": save, stat: str}
+          triggers:
+            - "on": effect_end
+              do:
+                - op: save
+                  stat: con
+                  dc: 10
+                  on_fail:
+                    - {op: condition, condition: poisoned, duration: {unit: hour, value: 1}}
+        - key: giant_blood_serum
+          name: Кровь Исполина
+          min_level: 9
+          description: Снимает одно состояние — ослеплён, оглушён, парализован или отравлен.
+          modifiers:
+            - {op: remove_condition, any_of: [blinded, stunned, paralyzed, poisoned], count: 1, text: "«оглушён» в тексте правил — stunned"}
+    # Список заклинаний диагноста — все из SRD 5.1.
+    spell_list:
+      "0":
+        - {name: Брызги кислоты, srd: Acid Splash, spell_ref: spell.acid_splash}
+        - {name: Ядовитые брызги, srd: Poison Spray, spell_ref: spell.poison_spray}
+        - {name: Уход за умирающим, srd: Spare the Dying, spell_ref: spell.spare_the_dying}
+        - {name: Починка, srd: Mending, spell_ref: spell.mending}
+        - {name: Свет, srd: Light, spell_ref: spell.light}
+        - {name: Сопротивление, srd: Resistance, spell_ref: spell.resistance}
+        - {name: Указание, srd: Guidance, spell_ref: spell.guidance}
+      "1":
+        - {name: Лечение ран, srd: Cure Wounds, spell_ref: spell.cure_wounds}
+        - {name: Обнаружение болезней и яда, srd: Detect Poison and Disease, spell_ref: spell.detect_poison_and_disease}
+        - {name: Туманное облако, srd: Fog Cloud, spell_ref: spell.fog_cloud}
+        - {name: Жир, srd: Grease, spell_ref: spell.grease}
+        - {name: Опознание, srd: Identify, spell_ref: spell.identify}
+        - {name: Прыжок, srd: Jump, spell_ref: spell.jump}
+        - {name: Скороход, srd: Longstrider, spell_ref: spell.longstrider}
+        - {name: Очищение пищи и питья, srd: Purify Food and Drink, spell_ref: spell.purify_food_and_drink}
+        - {name: Ложная жизнь, srd: False Life, spell_ref: spell.false_life}
+      "2":
+        - {name: Малое восстановление, srd: Lesser Restoration, spell_ref: spell.lesser_restoration}
+        - {name: Улучшение характеристики, srd: Enhance Ability, spell_ref: spell.enhance_ability}
+        - {name: Кислотная стрела, srd: Acid Arrow, spell_ref: spell.acid_arrow}
+        - {name: Защита от яда, srd: Protection from Poison, spell_ref: spell.protection_from_poison}
+        - {name: Слепота/глухота, srd: Blindness/Deafness, spell_ref: spell.blindness_deafness}
+        - {name: Видение невидимого, srd: See Invisibility, spell_ref: spell.see_invisibility}
+        - {name: Раскалённый металл, srd: Heat Metal, spell_ref: spell.heat_metal}
+      "3":
+        - {name: Оживление, srd: Revivify, spell_ref: spell.revivify}
+        - {name: Ускорение, srd: Haste, spell_ref: spell.haste}
+        - {name: Зловонное облако, srd: Stinking Cloud, spell_ref: spell.stinking_cloud}
+        - {name: Защита от энергии, srd: Protection from Energy, spell_ref: spell.protection_from_energy}
+        - {name: Снятие проклятия, srd: Remove Curse, spell_ref: spell.remove_curse}
+        - {name: Рассеивание магии, srd: Dispel Magic, spell_ref: spell.dispel_magic}
+      "4":
+        - {name: Страж смерти, srd: Death Ward, spell_ref: spell.death_ward}
+        - {name: Свобода перемещения, srd: Freedom of Movement, spell_ref: spell.freedom_of_movement}
+        - {name: Хитиновая кожа, srd: Stoneskin, spell_ref: spell.stoneskin, note: "в мире — «Каменная кожа» как хитиновая кожа"}
+      "5":
+        - {name: Высшее восстановление, srd: Greater Restoration, spell_ref: spell.greater_restoration, note: "одна ячейка 5-го круга на 15-м уровне"}
+        - {name: Облако смерти, srd: Cloudkill, spell_ref: spell.cloudkill, note: "одна ячейка 5-го круга на 15-м уровне"}
