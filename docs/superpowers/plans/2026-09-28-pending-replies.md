@@ -194,6 +194,7 @@ Expected: FAIL — `KeyError: 'state'` / `KeyError: 'pending'`.
 
 ```python
 from sqlalchemy import func, select, update
+
 ...
 from app.db.models import Campaign, GameSession, MasterTurn, Message, now
 ```
@@ -390,7 +391,9 @@ def withdraw(ws, mid):
     ws.send_json({"type": "message.withdraw", "payload": {"message_id": mid}})
     for _ in range(20):
         e = ws.receive_json()
-        if e["type"] in ("message.withdrawn", "message.rejected") and ("text" in e["payload"] or e["type"] == "message.rejected"):
+        if e["type"] in ("message.withdrawn", "message.rejected") and (
+            "text" in e["payload"] or e["type"] == "message.rejected"
+        ):
             return e
     raise AssertionError("нет ответа на отмену")
 
