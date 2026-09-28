@@ -1,0 +1,376 @@
+# Снаряжение, инструменты, приборы против роя, транспорт и услуги (category: service).
+# Источник: rules.md#5.1, #5.6, #5.7, #3.3, #7.1; items.md#3.2, #3.3, #2.4.
+kind: item_template
+items:
+  # --- Снаряжение ---
+  - id: item.injector
+    name: Инъектор
+    description: Латунный шприц-пистолет. Зелье или стимулятор вводится бонусным действием вместо действия. Не больше одной инъекции за ход; каждая сверх первой за продолжительный отдых грозит ломкой.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [gear, injection]
+    category: gear
+    source: tech
+    price: {fk: 50}
+    weight: 1
+    rarity: common
+    effect_ref: effect.injection_withdrawal
+    modifiers:
+      - {op: grant_action, name: Инъекция, action: bonus, range: 5, uses: {count: 1, per: turn}, do: [{op: run, ref: chosen_potion_or_stimulant, text: "Зелье или стимулятор себе или существу в 5 футах"}]}
+      - {op: resource, stat: injections_since_rest, delta: 1, text: "каждая инъекция"}
+      - op: save
+        stat: con
+        dc: "10 + 2 * (injections_since_rest - 1)"
+        if: {injections_since_rest_gt: 1}
+        on_fail: [{op: condition, condition: poisoned, duration: {unit: round, value: 1}, text: "до конца следующего хода"}]
+  - id: item.filter_mask
+    name: Маска-фильтр
+    description: Маска с угольным фильтром. Медь, кожа или фарфор — по сословию владельца.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, breathing]
+    category: gear
+    source: tech
+    price: {fk: 25}
+    weight: 1
+    rarity: common
+    variants: [copper, leather, porcelain]
+    modifiers:
+      - {op: advantage, "on": save, vs: [inhaled_poison, gas, spores]}
+      - {op: immunity, condition: effect.spore_choke}
+  - id: item.lymph_lamp
+    name: Лампа лимфы
+    description: Колба светящейся лимфы. Светит без огня и не поджигает газ в полостях.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, light_source]
+    category: gear
+    source: blood
+    price: {fk: 5}
+    weight: 1
+    rarity: common
+    light: {bright: 20, dim: 20, duration: {unit: hour, value: 8}, flame: false}
+  - id: item.fat_lamp
+    name: Жировая лампа
+    description: Фонарь на вытопленном жире туш. Дёшев, но в газовом кармане туши взрывается.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, light_source, fire]
+    srd_ref: {type: item, name: "Lantern, hooded"}
+    category: gear
+    source: blood
+    price: {fk: 0.05, drop: 5}
+    weight: 2
+    rarity: common
+    light: {bright: 30, dim: 30, flame: true}
+    modifiers:
+      - {op: custom, engine: dev_request, need: "числа взрыва газового кармана (урон, радиус, спасбросок) в hazard.corpse_gas или в шаблоне локации — в каноне их нет; затем trigger enter_area + in_area: hazard.corpse_gas → run", text: "В газовом кармане туши (hazard.corpse_gas) открытый огонь вызывает взрыв — правило места."}
+  - id: item.hand_echolocator
+    name: Ручной эхолокатор
+    description: Щёлкающий прибор Слушателей. Находит полости и существ за стенкой туши, но щелчок слышат все.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, tech, noise]
+    category: gear
+    source: tech
+    price: {fk: 150}
+    weight: 3
+    rarity: uncommon
+    properties: [noisy]
+    property_refs: [item.property_noisy]
+    modifiers:
+      - {op: advantage, "on": check, stat: wis, skill: perception, vs: hidden_cavity_or_creature, range: 60, text: "Действие: найти полость или существо за стенкой туши в 60 футах"}
+      - {op: set, target: noise_radius, value: 60, when: use, text: "Щелчок слышат все в 60 футах"}
+  - id: item.swim_bladder
+    name: Плавательный пузырь
+    description: Пузырь с воздухом. 10 минут дыхания, один раз.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, breathing, consumable]
+    category: gear
+    consumable: true
+    source: blood
+    price: {fk: 30}
+    weight: 1
+    rarity: common
+    modifiers:
+      - {op: grant_action, name: Вдохнуть из пузыря, action: free, uses: {count: 1, consumable: true}, do: [{op: set, target: air_supply, value: sealed, duration: {unit: minute, value: 10}, text: "Воздух под водой, в лимфе или газе"}]}
+  - id: item.surgeon_tools
+    name: Инструменты хирурга
+    description: Набор пил, зажимов и игл. Нужен для вживления имплантов и «Иссечения».
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, tools, implant]
+    category: gear
+    tool: true
+    source: tech
+    price: {fk: 50}
+    weight: 8
+    rarity: common
+    required_by_refs: [subclass.diagnost_flesh_surgeon]
+  - id: item.cordon_token
+    name: Кордонский жетон
+    description: Именной жетон Кордона. Пропуск к огнестрелу и оружию Кордона и к линии телеграфа. Не продаётся, только награда.
+    status: proposal
+    doc: items.md#3.2
+    tags: [gear, cordon, pass]
+    category: gear
+    source: tech
+    price: {fk: null, for_sale: false}
+    weight: 0
+    rarity: uncommon
+    grants: [cordon_pass]
+  - id: item.howler
+    name: Ревун
+    description: Ручной паровой гудок. Минута сильного шума в 30 футах, затем нужен короткий отдых на подкачку.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [gear, noise, anti_swarm]
+    category: gear
+    source: tech
+    price: {fk: 40}
+    weight: 5
+    rarity: common
+    anti_resonance: true
+    uses: {max: 1, recharge: short_rest}
+    effect_ref: effect.loud_noise
+    modifiers:
+      - op: grant_action
+        name: Дать гудок
+        action: action
+        uses: {count: 1, per: short_rest}
+        do:
+          - {op: run, ref: effect.loud_noise, area: {shape: sphere, radius: 30, center: self}, duration: {unit: minute, value: 1}}
+          - {op: disadvantage, "on": check, skill: perception, vs: hearing, area: {shape: sphere, radius: 30, center: self}, if: {normal_hearing: true}, duration: {unit: minute, value: 1}}
+    # Испытание Порога: ревун даёт только то, что стоит в таблице Порога (rules.md#3.4); сам предмет бонусов не даёт [Канон].
+  - id: item.bell_string
+    name: Связка колокольцев
+    description: Нитка колокольцев над проходом. Выдаёт скрытых выводков, что проходят под ней.
+    status: proposal
+    doc: items.md#2.4
+    tags: [gear, noise, anti_swarm, trap]
+    category: gear
+    source: tech
+    price: {fk: 1}
+    weight: 1
+    rarity: common
+    anti_resonance: true
+    triggers:
+      - "on": enter_area
+        if: {creature_stage: [1, 2]}
+        do:
+          - {op: save, stat: con, dc: 12, target: entering_creature, if: {target_stage: [1, 2]}, text: "Проба звоном (effect.brood_mimicry, reveal_methods)", on_fail: [{op: remove_condition, condition: effect.brood_mimicry, text: "вздрагивает — облик раскрыт для всех смотревших"}]}
+  - id: item.league_bell
+    name: Колокол Лиги
+    description: Стационарный колокол Пепельной лиги на башне черты. Пока в него звонят, налёт не растёт. Не продаётся.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [gear, noise, anti_swarm, stationary]
+    category: gear
+    source: tech
+    price: {fk: null, for_sale: false}
+    rarity: very_rare
+    stationary: true
+    anti_resonance: true
+    effect_ref: effect.loud_noise
+    modifiers:
+      - {op: grant_action, name: Звонить, action: action, uses: {count: 1, per: turn}, text: "Пока в него звонят (действие каждый ход); налёт в зоне не растёт — по effect.loud_noise", do: [{op: run, ref: effect.loud_noise, area: {shape: sphere, radius: 120, center: self}, duration: {unit: round, value: 1}}]}
+    # Испытание Порога: только +2 по таблице rules.md#3.4; сам предмет бонусов не даёт [Канон].
+  - id: item.jelly_tank
+    name: Бак желе
+    description: Бак чёрного желе для огнемёта. На 3 выстрела.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [gear, fuel]
+    category: gear
+    source: blood
+    index_group: fuel
+    price: {fk: 10}
+    weight: 10
+    rarity: common
+    refills_refs: [item.jelly_flamethrower]
+  - id: item.bonfire_tank
+    name: Бак «Кострища»
+    description: Большой бак желе для ранцевого огнемёта Кордона. На 5 выстрелов.
+    status: proposal
+    doc: items.md#2.4
+    tags: [gear, fuel, cordon]
+    category: gear
+    source: blood
+    index_group: fuel
+    legality: cordon_only
+    price: {fk: 30}
+    weight: 20
+    rarity: common
+    refills_refs: [item.backpack_bonfire]
+  - id: item.igniter_tank
+    name: Бак запальника
+    description: Малый бак для запальника пики выжигателя. На 3 поджига.
+    status: proposal
+    doc: items.md#2.2
+    tags: [gear, fuel]
+    category: gear
+    source: blood
+    index_group: fuel
+    price: {fk: 2}
+    weight: 1
+    rarity: common
+    refills_refs: [item.burner_pike]
+  - id: item.steam_hammer_refill
+    name: Заправка парового молота
+    description: Вода и костное топливо для котла парового молота. 10 выпусков пара.
+    status: proposal
+    doc: items.md#2.2
+    tags: [gear, fuel]
+    category: gear
+    source: blood
+    index_group: fuel
+    price: {fk: 2}
+    weight: 5
+    rarity: common
+    refills_refs: [item.steam_hammer]
+  - id: item.chain_cutter_fuel
+    name: Топливный мех резака
+    description: Мех костного топлива для цепного резака. На 1 час работы.
+    status: proposal
+    doc: items.md#2.2
+    tags: [gear, fuel]
+    category: gear
+    source: blood
+    index_group: fuel
+    price: {fk: 5}
+    weight: 5
+    rarity: common
+    refills_refs: [item.chain_cutter]
+  - id: item.air_cylinder
+    name: Баллон батискафа
+    description: Сменный баллон воздуха для батискафного доспеха. На 1 час.
+    status: proposal
+    doc: items.md#3.1
+    tags: [gear, breathing]
+    category: gear
+    source: tech
+    price: {fk: 20}
+    weight: 10
+    rarity: common
+    refills_refs: [item.bathysphere_armor]
+
+  # --- Транспорт и услуги (rules.md 5.7) ---
+  - id: item.service_train_third
+    name: Билет на поезд, 3-й класс
+    description: Проезд на один перегон между точками карты. Время — по таблице маршрутов.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, travel]
+    category: service
+    price: {fk: 2, per: stage}
+    service: {kind: travel, mode: train}
+  - id: item.service_train_coupe
+    name: Билет на поезд, купе
+    description: Отдельное купе на перегон.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, travel]
+    category: service
+    price: {fk: 10, per: stage}
+    service: {kind: travel, mode: train}
+  - id: item.service_telegram
+    name: Телеграмма
+    description: Сообщение NPC или фракции, доходит за часы, а не за дни.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, message]
+    category: service
+    price: {fk: 1, per: 10_words}
+    service: {kind: message, delivery: {unit: hour, value: 1}}
+  - id: item.service_telegram_cordon
+    name: Телеграмма по линии Кордона
+    description: Военная линия телеграфа вдоль черты. Только по пропуску.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, message, cordon]
+    category: service
+    legality: cordon_pass
+    requires_ref: item.cordon_token
+    price: {fk: 1, per: 10_words}
+    service: {kind: message}
+  - id: item.service_airship
+    name: Место на дирижабле
+    description: Перелёт быстрее поезда. Над чертой — бросок встречи с летающими выводками.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, travel]
+    category: service
+    price: {fk: 25, per: flight}
+    service: {kind: travel, mode: airship, encounter_check_over: ashen_line}
+  - id: item.service_walker_ride
+    name: Паровой шагоход (сюжетная сцена)
+    description: Шагоход Кордона купить нельзя. Отряд ведёт его только в сюжетной сцене; нужен водитель.
+    status: proposal
+    doc: rules.md#5.7
+    tags: [service, cordon, vehicle]
+    category: service
+    price: {fk: null, for_sale: false}
+    creature_refs: [creature.cordon_walker_flamer, creature.cordon_walker_howler]
+    service: {kind: vehicle, access: cordon_scene_only}
+  - id: item.service_clinic_implant
+    name: Вживление импланта в клинике Гильдии
+    description: Операция в клинике вместо Хирурга плоти. Цена импланта + 100 ФК, 1 день простоя, тот же спасбросок.
+    status: proposal
+    doc: items.md#3.3
+    tags: [service, clinic, implant]
+    category: service
+    price: {fk: 100, plus: implant_price}
+    downtime: {unit: day, value: 1}
+    modifiers:
+      - op: save
+        stat: con
+        dc: 12
+        on_fail: [{op: resource, stat: corruption, delta: 1}]
+  - id: item.service_clinic_implant_removal
+    name: Удаление импланта в клинике Гильдии
+    description: Снимает имплант и освобождает ячейку настройки.
+    status: proposal
+    doc: items.md#3.3
+    tags: [service, clinic, implant]
+    category: service
+    price: {fk: 200}
+    modifiers:
+      - {op: resource, stat: exhaustion, delta: 1}
+      - {op: resource, stat: attunement_slots, delta: 1, text: "освобождается ячейка настройки"}
+  - id: item.service_clinic_corruption
+    name: Лечение Скверны в клинике Гильдии
+    description: 3 дня простоя, −1 очко Скверны; 100 ФК за каждое текущее очко.
+    status: canon
+    doc: rules.md#3.3
+    tags: [service, clinic, corruption]
+    category: service
+    price: {fk_formula: "100 * corruption"}
+    downtime: {unit: day, value: 3}
+    effect_ref: effect.corruption_cure_clinic
+  - id: item.service_clinic_alteration
+    name: Лечение Перемены в клинике Гильдии
+    description: Как лечение Скверны (rules.md 3.3), для шкалы Перемены.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [service, clinic, alteration]
+    category: service
+    price: {fk_formula: "100 * alteration"}
+    downtime: {unit: day, value: 3}
+    effect_ref: effect.alteration_cure_clinic
+  - id: item.service_crafting
+    name: Работа мастерской
+    description: Переработка сырья в предмет у кузни хитина, алхимика или оружейника. Своими руками — 50% рыночной цены, 25 ФК работы в день.
+    status: canon
+    doc: items.md#1.2
+    tags: [service, crafting]
+    category: service
+    price: {fraction_of_market: 0.5, per_day_fk: 25}
+    modifiers:
+      - op: grant_action
+        name: Переработка
+        action: downtime
+        cost: {fraction_of_market: 0.5, per_day_fk: 25}
+        requires: {input_tag: raw_carcass_part, not_tag: relic}
+        text: "Сырая часть туши — товар без механики; предмет появляется только после переработки [Канон]. Реликвии Кормчих не перерабатываются"
+        do: [{op: run, ref: chosen_item_template}]

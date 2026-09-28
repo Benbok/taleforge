@@ -1,0 +1,160 @@
+# Часы мира. Меняет их приложение по событиям; мастер только описывает.
+# Источник: rules.md#6, #4 (индекс цен), #6.3 (эхо и резонанс); living-lore.md#4.2 (Цветение).
+kind: clock
+items:
+  - id: clock.resonance_power
+    name: Сила Резонанса
+    description: Глобальные часы кампании. Растут от эгоизма и жестокости, падают от заботы о других. Задают силу волн на Пепельной черте, цены субстанций и силу сторон эха.
+    status: proposal
+    doc: rules.md#6
+    tags: [world, resonance, echo]
+    scope: campaign
+    min: 0
+    max: 10
+    moves:
+      up:
+        - новые Глубинные
+        - служение Резонансу
+        - провалы героев у кратера
+        - падение башен Кордона
+        - жестокие или алчные поступки героев и крупных фракций
+      down:
+        - освобождённые дети
+        - бескорыстная помощь
+        - разделённые ресурсы
+        - спасённые враги
+        - реформы в пользу слабых
+    session_end:
+      - {source: "сумма пометок echo (−1/0/+1) у действий и квестов за сессию", delta: "sign(sum)"}
+      - {source: "перевес сторон техник эха у отряда за сессию", delta: "hunger > response → +1; response > hunger → −1"}
+    modifiers:
+      - {op: add, target: corruption_save_dc, value: "floor(resonance / 3)", if: {location_belt: pilgrim_ring}, text: "У Кольца Паломников сложность спасбросков против Скверны +1 за каждые 3 пункта"}
+      - op: custom
+        engine: dev_request
+        need: "таймер мира с интервалом (поле every_days у триггера day_end; интервал в rules.md не задан — «раз в несколько дней»); выбор таблицы encounter.ash_line_wave_* по resonance_min/max; запись исхода волны (отбита/прорыв/пленные) событием с clock-дельтой; на 10 цель волн — Средний пояс"
+        text: "Волны на Пепельную черту идут всегда: раз в несколько игровых дней приложение бросает волну по таблице встреч черты для текущего резонанса (wave_table_ref у порогов). Исход волны пишется событием и двигает резонанс; волна может принести адаптацию матери или новый штамм. С 7 — прорывы в Старые земли, на 10 волны идут в Средний пояс."
+    thresholds:
+      - at: 0
+        range: [0, 3]
+        name: Спокойно на черте
+        wave_table_ref: encounter.ash_line_wave_r0_3
+        modifiers:
+          - {op: set, target: price_index.substances, value: 1}
+          - {op: add, target: echo_hunger_corruption_dc, value: 2, text: "Голод: сложность спасброска от Скверны после техники +2"}
+          - {op: add, target: echo_response_dice, value: 1, text: "Отклик: техники с костями бросают на одну кость больше"}
+      - at: 0
+        name: Долгий нуль
+        condition: "резонанс 0 держится несколько сессий подряд"
+        effects:
+          - op: custom
+            engine: dev_request
+            need: "условие «значение часов держится N сессий» (clock_held: {clock_ref, value, sessions}; N в каноне не задано — «несколько»); op открытия сюжета (unlock_story) и включения часов (clock_ref активен)"
+            text: "Открывается сюжет «Преображения» (canon.md#6); часы Цветения (clock.bloom) начинают расти."
+        pivot: true
+      - at: 4
+        range: [4, 6]
+        name: Волны учащаются
+        wave_table_ref: encounter.ash_line_wave_r4_6
+        modifiers:
+          - {op: multiply, target: price_index.fuel, factor: 1.5}
+          - {op: multiply, target: price_index.liquor, factor: 1.5}
+          - op: custom
+            engine: dev_request
+            need: "op размещения опасности в локациях (place_hazard: hazard_ref + location_ref/belt), например налёт за Пепельной чертой"
+            text: "Налёт растёт за Пепельной чертой (сростки в волнах — таблица wave_table_ref)."
+      - at: 7
+        range: [7, 9]
+        name: Прорывы и колоссы
+        wave_table_ref: encounter.ash_line_wave_r7_9
+        modifiers:
+          - {op: multiply, target: price_index.substances, factor: 2}
+          - {op: multiply, target: price_index.anti_resonance_weapons, factor: 2}
+          - {op: add, target: echo_hunger_dice, value: 1, text: "Голод: техники с костями бросают на одну кость больше"}
+          - {op: add, target: echo_response_cost, value: 1, text: "Отклик: техники стоят +1"}
+      - at: 10
+        range: [10, 10]
+        name: Падение черты
+        pivot: true
+        wave_table_ref: encounter.ash_line_wave_r10
+        modifiers:
+          - {op: multiply, target: price_index.substances, factor: 2}
+          - {op: add, target: echo_hunger_dice, value: 1}
+          - {op: add, target: echo_response_cost, value: 1}
+    notes: "Индексы цен перемножаются, но не выше ×3 (rules.md#4)."
+
+  - id: clock.carcass_awakening
+    name: Пробуждение туши
+    description: Часы у каждой туши (state локации-туши). Двигают их остановка добычи, уничтожение шахт, обряды Сломленных. На 5 туша двигается.
+    status: proposal
+    doc: rules.md#6
+    tags: [world, carcass]
+    scope: location
+    min: 0
+    max: 5
+    default: 0
+    moves:
+      up:
+        - остановка добычи
+        - уничтожение шахт
+        - обряды Сломленных
+    modifiers: []
+    handled_by: "Санитары — строки с when: awakening >= 3 в таблицах locations/encounters_carcasses.yaml; исчезновение товара — price_index.carcass_depleted (carcass_state: awakened)."
+    open_question: "Насколько сильнее «приливы» на каждом значении пробуждения — в rules.md не задано (нужны числа от Arty)."
+    thresholds:
+      - at: 1
+        range: [1, 4]
+        name: Туша шевелится
+        modifiers: []
+        note: "Больше санитаров — строки when: awakening >= 3 в таблицах встреч туши; сила приливов — open_question часов."
+      - at: 5
+        range: [5, 5]
+        name: Туша двигается
+        pivot: true
+        modifiers:
+          - {op: set, target: carcass_state, value: awakened, text: "Туша проснулась; её товар исчезает из местных лавок (price_index.carcass_depleted)"}
+          - op: custom
+            engine: dev_request
+            need: "op смены хозяина локации-туши (owner: crew|resonance) и правило выбора (в каноне не задано)"
+            text: "Большой перелом: туша проснулась и выбирает хозяина (экипаж или Резонанс)."
+
+  - id: clock.bloom
+    name: Цветение
+    description: Часы Преображения мира. Растут, пока резонанс низкий, и падают, когда поднимается голод. На 10 Преображение необратимо, на 0 голод возвращается.
+    status: canon
+    doc: living-lore.md#4.2
+    tags: [world, transformation]
+    scope: world
+    min: 0
+    max: 10
+    default: 0
+    active_if: "начато Преображение (порог «Долгий нуль» у clock.resonance_power)"
+    moves:
+      up: ["низкий сила Резонанса (конец сессии)"]
+      down: ["рост резонанса, алчность и жестокость"]
+    modifiers: []
+    open_question: "Скорость движения Цветения от резонанса в тексте не задана: нужна таблица для session_end (например, резонанс 0–1 → +1 за сессию, 4+ → −1) — числа от Arty."
+    thresholds:
+      - at: 0
+        range: [0, 0]
+        name: Голод возвращается
+        pivot: true
+        modifiers:
+          - op: custom
+            engine: dev_request
+            need: "op размещения/замены опасности в локациях (place_hazard: hazard.blight вместо hazard.bloom)"
+            text: "Преображение сорвано: Цветение гаснет, налёт возвращается."
+      - at: 1
+        range: [1, 9]
+        name: Цветение растёт
+        modifiers:
+          - op: custom
+            engine: dev_request
+            need: "op размещения/замены опасности в локациях (place_hazard: hazard.bloom вместо hazard.blight)"
+            text: "Там, где идёт Преображение, появляется опасность hazard.bloom вместо налёта."
+        hazard_ref: hazard.bloom
+      - at: 10
+        range: [10, 10]
+        name: Преображение необратимо
+        pivot: true
+        modifiers:
+          - {op: behavior, profile: noncombatant, if: {target_tag: [mother, echoed]}, text: "Матери становятся садами-хранителями, Отзвучные — мирным народом (canon.md#6)"}

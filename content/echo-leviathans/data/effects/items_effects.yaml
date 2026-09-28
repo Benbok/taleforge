@@ -1,0 +1,123 @@
+# Эффекты предметов (items.md#6.4), которых нет в правилах: горение, кровотечение, кислотный ожог брони,
+# споровое удушье, метка матери, метка Дома, отторжение импланта.
+# «Оглох» — состояние SRD deafened (op: condition), отдельный шаблон не нужен.
+kind: effect_template
+items:
+  - id: effect.burning
+    name: Горение
+    description: Существо горит — 1d6 огнём в начале каждого своего хода, 1 минуту. Потушить действием (Лвк, сл. 10) или погрузиться в воду или лимфу.
+    status: proposal
+    doc: items.md#6.4
+    tags: [fire, item_effect]
+    duration: {unit: minute, value: 1}
+    stackable: false
+    modifiers:
+      - op: grant_action
+        name: Потушить
+        action: action
+        do:
+          - op: check
+            stat: dex
+            dc: 10
+            outcomes:
+              - {result: success, do: [{op: remove_condition, condition: effect.burning}]}
+    triggers:
+      - "on": turn_start
+        do: [{op: extra_damage, dice: "1d6", damage_type: fire}]
+      - "on": enter_area
+        if: {any: [{in_area: water}, {in_area: hazard.lymph_swamp}]}
+        do: [{op: remove_condition, condition: effect.burning}]
+
+  - id: effect.bleeding
+    name: Кровотечение
+    description: 1d4 некротического урона в начале своего хода, пока не снято; до 3 стаков. Снимает любое лечение хитами или проверка Мдр (Медицина), сл. 10, действием.
+    status: proposal
+    doc: items.md#6.4
+    tags: [bleeding, item_effect]
+    duration: {unit: permanent, value: 1}
+    stackable: true
+    max_stacks: 3
+    modifiers:
+      - op: grant_action
+        name: Перевязать
+        action: action
+        range: 5
+        do:
+          - op: check
+            stat: wis
+            skill: medicine
+            dc: 10
+            outcomes:
+              - {result: success, do: [{op: remove_condition, condition: effect.bleeding, count: all}]}
+    triggers:
+      - "on": turn_start
+        do: [{op: extra_damage, dice: "1d4", damage_type: necrotic, per_stack: true}]
+      - "on": resource_changed
+        if: {healed_hp: true}
+        do: [{op: remove_condition, condition: effect.bleeding, count: all}]
+
+  - id: effect.acid_armor_burn
+    name: Кислотный ожог брони
+    description: −1 КД от немагической брони или щита за стак, до 3. Держится до починки — короткий отдых с инструментами.
+    status: proposal
+    doc: items.md#6.4
+    tags: [acid, armor, item_effect]
+    duration: {unit: permanent, value: 1}
+    stackable: true
+    max_stacks: 3
+    modifiers:
+      - {op: add, target: ac, value: -1, per_stack: true, if: {wearing: nonmagical_armor_or_shield}}
+    triggers:
+      - "on": short_rest
+        if: {has_tool: smiths_tools}
+        do: [{op: remove_condition, condition: effect.acid_armor_burn, count: all}]
+
+  - id: effect.spore_choke
+    name: Споровое удушье
+    description: Существо отравлено и не может говорить (нет вербальных компонентов) до конца своего следующего хода. Маска-фильтр даёт иммунитет.
+    status: proposal
+    doc: items.md#6.4
+    tags: [spores, poison, item_effect]
+    duration: {unit: round, value: 1}
+    stackable: false
+    modifiers:
+      - {op: condition, condition: poisoned}
+      - {op: set, target: can_speak, value: false, text: "Нет вербальных компонентов"}
+
+  - id: effect.mother_mark
+    name: Метка матери
+    description: Мать знает, где существо. Таблица встреч рядом с ним — на шаг опаснее. Пока действует источник, иначе 24 часа; снимается, если снять предмет или убить мать.
+    status: proposal
+    doc: items.md#6.4
+    tags: [swarm, mark, item_effect]
+    duration: {unit: hour, value: 24, or: while_source}
+    stackable: false
+    modifiers:
+      - {op: set, target: known_location_to, value: mother}
+      - {op: add, target: encounter_danger_step, value: 1}
+
+  - id: effect.house_mark
+    name: Метка Дома
+    description: Дом знает, где существо в своих городах; цены его лавок для отряда ×1,5. 7 дней, снимается переломом «Дом пал».
+    status: proposal
+    doc: items.md#6.4
+    tags: [house, mark, item_effect]
+    duration: {unit: day, value: 7}
+    stackable: false
+    modifiers:
+      - {op: set, target: known_location_to, value: house}
+      - {op: multiply, target: shop_price_house, factor: 1.5, scope: party}
+
+  - id: effect.implant_rejection
+    name: Отторжение импланта
+    description: Имплант не работает, помеха на спасброски Телосложения до продолжительного отдыха. Получает пациент, который в день операции получил урон от Скверны или Перемены (сверх спасброска правил 7.1). Снимают клиника или «Малое восстановление».
+    status: proposal
+    doc: items.md#6.4
+    tags: [implant, item_effect]
+    duration: {unit: until_rest, value: 1}
+    stackable: false
+    modifiers:
+      - {op: set, target: implant_active, value: false}
+      - {op: disadvantage, "on": save, stat: con}
+    removed_by: [clinic]
+    removed_by_srd: [{type: spell, name: Lesser Restoration}]

@@ -1,0 +1,270 @@
+# Фракции канона: цель, что знают и чего не знают, ресурсы, отношения (attitude −3…+3).
+kind: faction
+items:
+- id: faction.syndicates
+  name: Синдикаты Крови
+  description: Совет трёх Домов, делящих Средний пояс. Для людей — спасители, для тех, кто поймёт, — те, кто сделал войну бесконечной.
+  status: canon
+  doc: canon.md#5.1
+  tags: [faction]
+  goal: 'Сохранить власть и вечный спрос на субстанции: добыча во внутренних тушах не должна прекращаться никогда (Протокол Тишины).'
+  knows:
+  - Туши живы и шевелятся, когда добыча стихает
+  - В рубках спит кто-то ещё
+  - 'Война на черте — рынок: кризисы поднимают цены'
+  doesnt_know:
+  - Страх и боль детей в шахтах кормят Резонанс
+  - Резонанс — не пограничная проблема, а растущий враг
+  - Высшие жрецы Церкви — приглашённые
+  resources: ['Железные дороги, телеграф, дирижабли', Банк ФК, Шахты и Указ о малых руках, Наёмники и стража]
+  relations:
+  - {faction_ref: faction.ash_cordon, attitude: 0, note: 'держат Кордон ровно на грани: чтобы черта не пала и не победила'}
+  - {faction_ref: faction.church, attitude: 1, note: контракты на ликвор причастия}
+  - {faction_ref: faction.guild, attitude: 1, note: покупают всё у прагматиков}
+  - {faction_ref: faction.miners_underground, attitude: -3, note: саботаж шахт}
+  - {faction_ref: faction.broken, attitude: -1, note: хотят как проводников}
+- id: faction.house_kostrishchev
+  name: Дом Кострищевых
+  description: Топливо, костный мозг, железные дороги. Самые богатые и самые грубые.
+  status: canon
+  doc: canon.md#5.1
+  tags: [faction]
+  parent_ref: faction.syndicates
+  goal: 'Держать топливную монополию: огнемёты Кордона, паровозы и заводы горят на их мозге.'
+  knows: [Протокол Тишины (как член Совета), 'Сколько топлива нужно Кордону, чтобы не пасть']
+  doesnt_know: [Что гудки заводов — оружие против эха]
+  resources: [Паровозы и пути вдоль хребтов, Склады чёрного желе, Костры костного мозга]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 2, note: член Совета}
+  - {faction_ref: faction.ash_cordon, attitude: 0, note: главный поставщик топлива}
+  - {faction_ref: faction.lymph_company, attitude: -1, note: соперник в городах}
+- id: faction.house_liquor
+  name: Дом Ликвора
+  description: 'Добыча и перегонка ликвора, контракты с Церковью и Гильдией. Самые осведомлённые: именно они открыли, что туши живы.'
+  status: canon
+  doc: canon.md#5.1
+  tags: [faction]
+  parent_ref: faction.syndicates
+  goal: Удерживать тайну и поток ликвора; контролировать всех, кто лазит в рубки.
+  knows: [Туши живы; в рубках коконы, Протокол Тишины — их работа, Что ликвор меняет людей (Перемена)]
+  doesnt_know: ['Что ликвор — пища Спящих, без которой они умирают', Что для роя ликвор — яд]
+  resources: [Перегонные заводы, Агенты и шпионы, Контракты на причастие]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 2, note: ведущий Дом Совета}
+  - {faction_ref: faction.church, attitude: 1, note: главный клиент}
+  - {faction_ref: faction.guild_listeners, attitude: -2, note: Слушатели слишком близко к правде}
+- id: faction.lymph_company
+  name: Лимфатическая компания
+  description: Кровь, лимфа, лекарства, банк ФК. Самые влиятельные в городах.
+  status: canon
+  doc: canon.md#5.1
+  tags: [faction]
+  parent_ref: faction.syndicates
+  goal: 'Держать города в долгу: деньги, лекарства и выпуск шахтёров.'
+  knows: [Протокол Тишины, Кто кому должен в каждом городе]
+  doesnt_know: [Природа Резонанса]
+  resources: [Банк ФК и векселя, Лимфатические лампы и лекарства, Пенсии выпускников]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 2, note: член Совета}
+  - {faction_ref: faction.house_kostrishchev, attitude: -1, note: соперник}
+  - {faction_ref: faction.guild, attitude: 1, note: покупает вакцины}
+- id: faction.guild
+  name: Гильдия Диагностов
+  description: Учёные, алхимики, инженеры. Картографируют тела, делают вакцины и инъекторы, лечат Скверну.
+  status: canon
+  doc: canon.md#5.2
+  tags: [faction]
+  goal: Знание и лечение; внутри — спор реформаторов и прагматиков.
+  knows: [Карты органов, Как остановить раннюю мутацию (Сломленные), Туши «поют»]
+  doesnt_know: [Что в рубках спят экипажи (кроме Слушателей), Что добыча кормит Резонанс]
+  resources: [Клиники, Эхолокаторы и батискафы, Антидоты и инъекторы]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 1, note: продаёт им}
+  - {faction_ref: faction.ash_cordon, attitude: 1, note: молодые офицеры ищут союза}
+  - {faction_ref: faction.broken, attitude: 1, note: создала их}
+- id: faction.guild_reformers
+  name: Реформаторы Гильдии
+  description: Крыло Гильдии, которое хочет заменить детей взрослыми, «привитыми» кровью титана.
+  status: canon
+  doc: canon.md#5.2
+  tags: [faction]
+  parent_ref: faction.guild
+  goal: Убрать детей из шахт, не останавливая добычу.
+  knows: [Как паразиты отличают своих]
+  doesnt_know: [Что остановка добычи оживит корабли]
+  resources: [Опыты с прививкой, Связи с подпольем]
+  relations:
+  - {faction_ref: faction.guild_pragmatists, attitude: -1, note: спор внутри Гильдии}
+  - {faction_ref: faction.miners_underground, attitude: 1, note: сочувствуют}
+- id: faction.guild_pragmatists
+  name: Прагматики Гильдии
+  description: Крыло, которое продаёт Синдикатам всё, что те купят.
+  status: canon
+  doc: canon.md#5.2
+  tags: [faction]
+  parent_ref: faction.guild
+  goal: Деньги и влияние Гильдии.
+  knows: [Цены и контракты Домов]
+  doesnt_know: [Протокол Тишины]
+  resources: [Патенты, Лаборатории]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 2, note: главный заказчик}
+- id: faction.guild_listeners
+  name: Слушатели
+  description: 'Тайное крыло Гильдии: расшифровывают сигналы кораблей с эхолокаторов. Ближе всех к правде.'
+  status: canon
+  doc: canon.md#5.2
+  tags: [faction]
+  parent_ref: faction.guild
+  goal: Понять, кто говорит внутри туш.
+  knows: [Туши переговариваются эхо-речью, Имя «Кормчие» — их термин]
+  doesnt_know: [Что основной флот спит в разломах и ждёт сигнала]
+  resources: [Архивы расшифровок, Паровые эхолокаторы]
+  relations:
+  - {faction_ref: faction.house_liquor, attitude: -2, note: их преследуют}
+  - {faction_ref: faction.broken, attitude: 1, note: Сломленные слышат то же}
+- id: faction.church
+  name: Церковь Исполинов
+  description: Считает Левиафанов падшими ангелами, пришедшими спасти людей от Улья, а ликвор — причастием. Богов нет.
+  status: canon
+  doc: canon.md#5.3
+  tags: [faction]
+  goal: Причастие и власть над душами; верхушка — бессмертие через «возвышение».
+  knows: [Жрецы слышат голоса (посвящённые)]
+  doesnt_know: ['Что «ангелы» — корабли, а в рубках спят экипажи', Что причастие держит «ангелов» во сне]
+  resources: [Собор Шепчущий, Приходы, Ликвор причастия, Рыцари Исполина]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: 1, note: контракты}
+  - {faction_ref: faction.resonance, attitude: 0, note: 'верхушка служит ему, не зная имени'}
+- id: faction.church_lower_clergy
+  name: Низшее духовенство
+  description: Служки и приходские жрецы, кормящие бедных. Часть владеет Откликом.
+  status: canon
+  doc: canon.md#5.3
+  tags: [faction]
+  parent_ref: faction.church
+  goal: Кормить бедных, прятать беглых детей.
+  knows: [Где прячут беглых]
+  doesnt_know: [Что верхушка приглашена]
+  resources: [Приходы, Хлеб и приюты]
+  relations:
+  - {faction_ref: faction.miners_underground, attitude: 2, note: прячут детей вместе}
+  - {faction_ref: faction.church_top, attitude: -1, note: боятся «возвышенных»}
+- id: faction.church_top
+  name: Верхушка Церкви
+  description: 'Высшие жрецы, прошедшие «возвышение»: самый большой круг приглашённых на поверхности. Их магия — из голода и Скверны.'
+  status: canon
+  doc: canon.md#5.3; races.md#2.4
+  tags: [faction]
+  parent_ref: faction.church
+  goal: Бессмертие и власть; на деле — стать матерями.
+  knows: ['Голоса, которые они слышат, дают силу («ангельский гнев»)']
+  doesnt_know: ['Что это приглашение Резонанса, а не благодать ангелов']
+  resources: [Собор, Паломничества к Кольцу, Домен голода]
+  relations:
+  - {faction_ref: faction.resonance, attitude: 2, note: служат голоду}
+  - {faction_ref: faction.church_lower_clergy, attitude: -1, note: подозревают в ереси}
+  - {faction_ref: faction.ash_cordon, attitude: -1, note: Кордон проверяет на скрытых}
+- id: faction.broken
+  name: Сломленные
+  description: 'Бывшие дети-шахтёры с остановленной мутацией. Слышат два голоса. Три течения: хотят лечения; слушают зов Резонанса; слушают сны экипажей.'
+  status: canon
+  doc: canon.md#5.4
+  tags: [faction]
+  goal: 'Разное: нормальная жизнь, «следующая ступень» или пробуждение Спящих.'
+  knows: [Голоса Резонанса и сны экипажей из первых уст]
+  doesnt_know: [Что их голоса — две разные расы]
+  resources: [Врождённая магия, Рёберный лес — приют]
+  relations:
+  - {faction_ref: faction.guild, attitude: 0, note: 'и благодетель, и тюремщик'}
+  - {faction_ref: faction.miners_underground, attitude: 1, note: свои}
+  - {faction_ref: faction.syndicates, attitude: -2, note: используют их}
+- id: faction.miners_underground
+  name: Шахтёрское подполье
+  description: Бывшие шахтёры, беглые дети, сочувствующие жрецы и реформаторы. Прячут детей, саботируют шахты, печатают листовки.
+  status: canon
+  doc: canon.md#5.5
+  tags: [faction]
+  goal: Остановить детский труд и добычу.
+  knows: [Где шахты хуже всего]
+  doesnt_know: ['Что остановка добычи оживит корабли, и никто не скажет, кого корабль послушает']
+  resources: [Тайные протоки, Типографии, Взрывчатка на желе]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: -3, note: враг}
+  - {faction_ref: faction.church_lower_clergy, attitude: 2, note: союз}
+  - {faction_ref: faction.guild_reformers, attitude: 1, note: союз}
+- id: faction.ash_cordon
+  name: Пепельный Кордон
+  description: 'Последний орден Пепельной лиги. Держит черту огнём и колоколами триста лет. Раскол: старая гвардия против молодых офицеров, готовых к ликвору и союзу с Гильдией.'
+  status: canon
+  doc: canon.md#5.6; open-questions.md#12
+  tags: [faction]
+  goal: Удержать черту.
+  knows: ['Резонанс жив, растёт и держится на матерях', Налёт возвращается, Проба звоном и ликвором находит скрытых]
+  doesnt_know: ['Что туши живы, а в рубках спят экипажи']
+  resources:
+  - Башни на руинах вала
+  - Огнемёты
+  - Звонари и колокола Лиги
+  - Несколько шагоходов и дирижаблей
+  - Телеграф вдоль черты
+  relations:
+  - {faction_ref: faction.syndicates, attitude: -1, note: зависим от их топлива и денег}
+  - {faction_ref: faction.guild, attitude: 1, note: молодые офицеры}
+  - {faction_ref: faction.resonance, attitude: -3, note: враг}
+- id: faction.helmsmen
+  name: Кормчие
+  description: Экипажи Левиафанов, коренная раса глубин. Прагматики, считают страсть шумом. Большинство спит в коконах в рубках.
+  status: canon
+  doc: canon.md#1.2; races.md#1
+  tags: [faction]
+  goal: Поглотить Резонанс и владеть глубинами и поверхностью; навести на поверхности тишину.
+  knows: [Природа эха и сгустков, Как управлять кораблями и бортовыми организмами, Что флот ждёт сигнала]
+  doesnt_know:
+  - Что люди выкачивают их ликвор уже триста лет
+  - Что Тихие стражи стали чужими матерями (спящие не видели)
+  resources: [Скованные корабли, Спящий флот в разломах, Биоминеральное оружие против эха]
+  relations:
+  - {faction_ref: faction.resonance, attitude: -3, note: 'болезнь, которую надо выжечь'}
+  - {faction_ref: faction.syndicates, attitude: -2, note: 'шумная фауна, осушающая корабли'}
+  - {faction_ref: faction.church, attitude: -1, note: не знают о ней}
+- id: faction.resonance
+  name: Резонанс и рой
+  description: Бессознательный сгусток голода из эха помыслов живых, прежде всего людей. Весь «разум» — у матерей. Отзвучные и выводки — его руки.
+  status: canon
+  doc: canon.md#1.3; races.md#2
+  tags: [faction]
+  goal: 'Ничего осознанно: поглощать, захватывать, распространяться. Цель волн — прорыв, пленные и заражение.'
+  knows: ['Матери знают людей изнутри и понимают, что без них и эхолита сгусток рассеется']
+  doesnt_know: ['Сам Резонанс не знает ничего: у него нет самосознания']
+  resources: [Матери, Налёт, 'Выводки, штаммы, колоссы', Приглашённые и скрытые в городах, Эхолит по всему материку]
+  relations:
+  - {faction_ref: faction.ash_cordon, attitude: -3, note: главная преграда}
+  - {faction_ref: faction.church_top, attitude: 2, note: будущие матери}
+  - {faction_ref: faction.helmsmen, attitude: -3, note: лучший материал для матерей}
+- id: faction.islanders
+  name: Островитяне
+  description: Потомки беглецов первых лет после Сгущения. Без ликвора и магии, скромны, почти без алчности. Живое доказательство, что Преображение возможно.
+  status: canon
+  doc: canon.md#7
+  tags: [faction]
+  goal: Жить тихо и не пустить материк к себе.
+  knows: [Старые знания до Сгущения]
+  doesnt_know: [Что происходит на материке сейчас, Что их скромность и есть защита]
+  resources: [Паровые суда, Старые библиотеки]
+  relations:
+  - {faction_ref: faction.syndicates, attitude: -1, note: опасаются}
+  - {faction_ref: faction.resonance, attitude: -2, note: бежали от него}
+- id: faction.bell_monastery
+  name: Обитель Звона и Молчальники
+  description: Монастырь, где во время войны открыли силу колоколов; его наследники — Молчальники. Хранители Отклика.
+  status: proposal
+  doc: canon.md#1.7
+  tags: [faction]
+  goal: Учить Отклику и хранить колокола.
+  knows: [Шум сбивает эхо, Отклик ослабляет Резонанс]
+  doesnt_know: [Что Отклик может изменить сам Резонанс]
+  resources: [Колокола Лиги, Наставники Отклика]
+  relations:
+  - {faction_ref: faction.ash_cordon, attitude: 2, note: звонари — их наследники}
+  - {faction_ref: faction.syndicates, attitude: -1, note: Синдикаты считают Отклик сектантством}

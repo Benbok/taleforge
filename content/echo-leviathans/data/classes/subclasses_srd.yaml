@@ -1,0 +1,138 @@
+# Подклассы SRD 5.1, переименованные для мира. Числа SRD не меняются; меняются имя, описание
+# и, где сказано, тип урона. Источник: rules.md#7.0. Умения подклассов выше 15-го уровня недостижимы
+# (rules.md#1) — они перечислены в unreachable_features.
+# features: [] — все умения берутся из SRD по srd_ref; world_changes — что меняется в подаче.
+kind: subclass
+items:
+  - id: subclass.blood_tide
+    name: Кровавый прилив
+    description: Берсерк на боевых мутагенах. Бешенство — передозировка стимулятора, а не Скверна.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.barbarian
+    srd_ref: {type: subclass, name: Path of the Berserker}
+    features: []
+    world_changes: [«Бешенство» подаётся как передозировка мутагена; истощение по SRD]
+
+  - id: subclass.college_of_echo
+    name: Коллегия эха
+    description: Звонари-хранители знаний, читающие резонанс туш и колоколов.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.bard
+    srd_ref: {type: subclass, name: College of Lore}
+    features: []
+
+  - id: subclass.domain_of_communion
+    name: Домен причастия
+    description: Целители Церкви Исполинов. Их лечение оставляет шрамы — след ликвора на теле.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.cleric
+    srd_ref: {type: subclass, name: Life Domain}
+    features: []
+    world_changes: [Лечение оставляет шрамы (только описание, без механики)]
+    unreachable_features: [Supreme Healing (17)]
+
+  - id: subclass.circle_of_carcass
+    name: Круг туши
+    description: Друиды, которые черпают силу из «земли» — живой плоти туш и её паразитов.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.druid
+    srd_ref: {type: subclass, name: Circle of the Land}
+    features: []
+    world_changes: [Типы местности Круга земли заменяются зонами туши; числа SRD]
+
+  - id: subclass.deep_veteran
+    name: Ветеран глубин
+    description: Наёмник, переживший десятки спусков в туши.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.fighter
+    srd_ref: {type: subclass, name: Champion}
+    features: []
+    unreachable_features: [Survivor (18)]
+
+  - id: subclass.way_of_silence
+    name: Путь тишины
+    description: Молчальники, научившиеся гасить в себе тремор шахт и бить в резонанс чужого тела.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.monk
+    srd_ref: {type: subclass, name: Way of the Open Hand}
+    features: []
+    unreachable_features: [Quivering Palm (17)]
+
+  - id: subclass.oath_to_the_giant
+    name: Клятва Исполину
+    description: Рыцари, поклявшиеся служить Церкви и «спящему богу» туши.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.paladin
+    srd_ref: {type: subclass, name: Oath of Devotion}
+    features: []
+    unreachable_features: [Holy Nimbus (20)]
+
+  - id: subclass.parasite_hunter
+    name: Охотник на паразитов
+    description: Сталкеры, выслеживающие выводки и паразитов в сосудах туш.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.ranger
+    srd_ref: {type: subclass, name: Hunter}
+    features: []
+
+  - id: subclass.smuggler
+    name: Контрабандист
+    description: Воры и перевозчики ликвора, знающие чёрные рынки Синдикатов.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.rogue
+    srd_ref: {type: subclass, name: Thief}
+    features: []
+    unreachable_features: [Thief's Reflexes (17)]
+
+  - id: subclass.giant_blood
+    name: Кровь Исполина
+    description: Чародеи, в чьей крови течёт кровь титана. Урон предка — кислота вместо огня.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.sorcerer
+    srd_ref: {type: subclass, name: Draconic Bloodline}
+    features: []
+    world_changes: [Тип урона предка — кислота (acid), rules.md#7.0]
+    modifiers:
+      - {op: set, target: draconic_ancestry_damage_type, value: acid}
+    unreachable_features: [Draconic Presence (18)]
+
+  - id: subclass.sleeper
+    name: Спящий
+    description: Договор с членом экипажа Кормчих, спящим в коконе в рубке туши. Механика — Исчадие SRD.
+    status: canon
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename, warlock_patron]
+    class_ref: class.warlock
+    srd_ref: {type: subclass, name: The Fiend}
+    features: []
+    world_changes: [Покровитель — спящий Кормчий; «Бросок через ад» подаётся как провал в сон рубки]
+
+  - id: subclass.school_of_discharge
+    name: Школа разряда
+    description: Ликвороведы, вызывающие из формул экипажей разряды и выбросы энергии.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [subclass, srd_rename]
+    class_ref: class.wizard
+    srd_ref: {type: subclass, name: School of Evocation}
+    features: []

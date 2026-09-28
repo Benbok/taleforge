@@ -1,0 +1,127 @@
+# Маршруты между опорными тушами и поясами (location_type: route).
+# Источник: locations.md#1.1 (скорости), #1.3 (ветки), #1.4 (таблица маршрутов). Цена билета — rules.md#5.7.
+# belt у маршрута — пояс отправления. travel: время по видам транспорта; null — транспорта нет.
+kind: location_template
+items:
+- id: location.route_rim_to_coast
+  name: От кромки до берега (мера материка)
+  description: 'Общая мера пути через весь материк: от кромки кратера до моря. Служит для оценки любых дальних переходов.'
+  status: proposal
+  canon_parts: ['Материк размером с Европу; до берега несколько недель пешком или пара дней поездом']
+  doc: locations.md#1.1; canon.md#7
+  tags: [route, scale]
+  location_type: route
+  belt: crater
+  from_ref: location.belt_crater
+  to_ref: location.belt_old_lands
+  distance_miles: [750, 900]
+  speeds:
+    foot_road_miles_per_day: 20
+    foot_offroad_or_carcass_miles_per_day: 12
+    train_mph_avg: 20
+    airship_mph: 45
+  travel:
+    foot: {weeks: [6, 7]}
+    train: {hours: 45}
+    airship: {hours: 20}
+
+- id: location.route_old_mother_whisperer
+  name: Старая Мать → Шепчущий
+  description: 'Хребтовая магистраль по спинам туш, затем Паломничья ветка. Путь паломников и вербовщиков к Кольцу.'
+  status: proposal
+  doc: locations.md#1.4
+  tags: [route, rail, pilgrimage]
+  location_type: route
+  belt: middle_belt
+  from_ref: location.old_mother
+  to_ref: location.whisperer
+  lines: [Хребтовая магистраль, Паломничья ветка]
+  travel:
+    train: {hours: 9}
+    foot: {days: 10}
+    airship: {hours: 4}
+
+- id: location.route_old_mother_drowned
+  name: Старая Мать → Утопленник
+  description: Береговая ветка Синдикатов от столицы до южного берега.
+  status: proposal
+  doc: locations.md#1.4; locations.md#1.3
+  tags: [route, rail, coast]
+  location_type: route
+  belt: middle_belt
+  from_ref: location.old_mother
+  to_ref: location.drowned
+  lines: [Береговая ветка]
+  travel:
+    train: {hours: 30}
+    foot: {weeks: 5}
+    airship: {hours: 14}
+  note: 'В locations.md#1.3 для Береговой ветки сказано «2 суток», в #1.4 — 30 часов. Здесь взято 30 часов (таблица маршрутов).'
+
+- id: location.route_old_mother_rib_forest
+  name: Старая Мать → Рёберный лес
+  description: Лесная ветка до станции Опушка, дальше день пешком по лесу.
+  status: proposal
+  doc: locations.md#1.4
+  tags: [route, rail, foot]
+  location_type: route
+  belt: middle_belt
+  from_ref: location.old_mother
+  to_ref: location.rib_forest
+  via_ref: location.hook_opushka_station
+  lines: [Лесная ветка]
+  travel:
+    train: {hours: 14, then_foot_days: 1}
+    foot: {weeks: 3}
+    airship: {hours: 7}
+
+- id: location.route_whisperer_rear_rampart
+  name: Шепчущий → Тыловой вал
+  description: Узкоколейка Кордона, только по пропуску. Пешком — день по Паломничьему тракту и выжженной земле.
+  status: proposal
+  doc: locations.md#1.4
+  tags: [route, rail, cordon, pass_required]
+  location_type: route
+  belt: pilgrim_ring
+  from_ref: location.whisperer
+  to_ref: location.strip_rear_rampart
+  lines: [Узкоколейка Кордона]
+  requires: пропуск Кордона
+  faction_ref: faction.ash_cordon
+  travel:
+    train: {hours: 3}
+    foot: {days: 1}
+    airship: null
+
+- id: location.route_last_platform_rear_rampart
+  name: Последний перрон → Тыловой вал
+  description: 'Узкоколейка Кордона возит баки с желе от конца железной дороги к руинам вала.'
+  status: proposal
+  doc: locations.md#1.3
+  tags: [route, rail, cordon, pass_required]
+  location_type: route
+  belt: pilgrim_ring
+  from_ref: location.hook_last_platform
+  to_ref: location.strip_rear_rampart
+  lines: [Узкоколейка Кордона]
+  requires: пропуск Кордона
+  faction_ref: faction.ash_cordon
+  distance_miles: 10
+  note: 'В #1.3 узкоколейка начинается у Последнего перрона, в #1.4 — у Шепчущего. Оба в 50–55 милях от кромки; считаем, что Паломничья ветка и узкоколейка сходятся у Шепчущего. Время пути в тексте не задано.'
+
+- id: location.route_salt_hook_islands
+  name: Солёный Крюк → Острова
+  description: 'Пароход «Терпение» уходит раз в сезон. Путь долгий, у разломов неспокойно.'
+  status: proposal
+  doc: locations.md#1.1; locations.md#1.3
+  tags: [route, sea, steamship]
+  location_type: route
+  belt: sea
+  from_ref: location.hook_salt_hook
+  to_ref: location.islands
+  vessel: пароход «Терпение»
+  frequency: раз в сезон
+  travel:
+    ship: {weeks: [2, 4]}
+  hazard_note: Шторма и бортовые организмы спящего флота у разломов (encounter.sea)
+  encounter_table_ref: encounter.sea

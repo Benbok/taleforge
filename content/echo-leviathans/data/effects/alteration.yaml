@@ -1,0 +1,285 @@
+# Перемена — вред ликвора: получение, уровни 1–6, Порог тишины, зависимость и ломка, «Тишина» (ликвор против роя), снижение.
+# Источник: rules.md#3.5, #5.2, #6.2. Шкала 0–6 и зависимость — канон; числа — предложение.
+kind: effect_template
+items:
+  - id: effect.alteration_exposure
+    name: Спасбросок против Перемены
+    description: Спасбросок Телосложения; провал — 1 очко Перемены, провал на 5 и больше — 2. Сложность задаёт источник.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, exposure, liquor]
+    save_stat: con
+    dc_by_source:
+      - {source: "доза очищенного ликвора", dc: 15}
+      - {source: "доза грязного ликвора", dc: 12, also: "спасбросок против Скверны, сл. 15 (effect.corruption_exposure)"}
+      - {source: "причастие Церкви (раз в неделю)", dc: 10}
+      - {source: "«капля» с чёрного рынка (10 ФК, ячейку не восстанавливает)", dc: 10}
+      - {source: "заклинание 5-го круга и выше у заклинателя ликвора (волшебник, жрец, паладин, чародей, диагност)", dc: "10 + spell_level"}
+      - {source: "умения «Ликворного разума», где указано", dc: by_feature}
+      - {source: "долгое пребывание в рубке рядом с коконом Спящего", dc: 13}
+    modifiers:
+      - op: save
+        stat: con
+        dc: source
+        on_fail: [{op: resource, stat: alteration, delta: 1}]
+        on_fail_by_5: [{op: resource, stat: alteration, delta: 2}]
+      - op: custom
+        engine: dev_request
+        need: "событие on: liquor_dose (или тег источника dose в if) — чтобы только доза, а не заклинание 5+ или рубка, обновляла stat.last_liquor_dose_day; ломка снимается сама (duration until_dose)"
+        text: "Любая доза снимает ломку и обновляет stat.last_liquor_dose_day."
+        draft: {"on": liquor_dose, do: [{op: set, target: last_liquor_dose_day, value: day}]}
+    related_refs: [effect.corruption_exposure]
+
+  - id: effect.alteration_1
+    name: "Перемена 1: холодный ум"
+    description: Кожа бледнеет. С первого очка человек зависим от ликвора.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, level]
+    stackable: false
+    modifiers:
+      - {op: advantage, "on": save, vs: frightened}
+      - {op: disadvantage, "on": check, skill: performance}
+  - id: effect.alteration_2
+    name: "Перемена 2: эхо-слух"
+    description: Губы и пальцы трескаются на холоде.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, level]
+    stackable: false
+    modifiers:
+      - {op: sense, sense: blindsight, range: 10}
+      - {op: disadvantage, "on": check, skill: perception, vs: sight}
+  - id: effect.alteration_3
+    name: "Перемена 3: ясность"
+    description: Чувства гаснут, в вас становится нечего усиливать рою.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, level]
+    stackable: false
+    modifiers:
+      - {op: advantage, "on": check, stat: int}
+      - {op: multiply, target: echo_pool, factor: 0.5, rounding: down}
+      - {op: advantage, "on": save, vs: corruption}
+  - id: effect.alteration_4
+    name: "Перемена 4: хрупкость"
+    status: proposal
+    description: Тело холодеет и крошится.
+    doc: rules.md#3.5
+    tags: [alteration, level]
+    stackable: false
+    modifiers:
+      - {op: vulnerability, damage: cold}
+      - {op: disadvantage, "on": save, stat: cha}
+  - id: effect.alteration_5
+    name: "Перемена 5: отчуждение"
+    description: Эхо недоступно, страх и очарование не берут. Союзник видится ресурсом.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, level]
+    stackable: false
+    modifiers:
+      - {op: set, target: echo_pool, value: 0}
+      - {op: set, target: echo_hunger_available, value: false, text: "Техники эха недоступны полностью"}
+      - {op: set, target: echo_response_available, value: false}
+      - {op: immunity, condition: charmed}
+      - {op: immunity, condition: frightened}
+    triggers:
+      - "on": ally_drop_to_0_nearby
+        do:
+          - op: save
+            stat: wis
+            dc: 13
+            on_fail:
+              - op: custom
+                engine: dev_request
+                need: "op принуждения героя (compel: {forbid: help_ally, target: triggering_ally, duration: turn}) — op behavior рассчитан на NPC"
+                text: "В свой ход вы продолжаете задачу, а не помогаете упавшему союзнику."
+  - id: effect.alteration_6
+    name: "Перемена 6: Порог тишины"
+    description: Проверка Харизмы + БМ — удержать себя, чувства и привязанности.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, level, threshold]
+    stackable: false
+    modifiers:
+      - {op: run, ref: effect.silence_threshold_trial}
+    trial_ref: effect.silence_threshold_trial
+
+  - id: effect.silence_threshold_trial
+    name: Порог тишины
+    description: На 6 очках Перемены (или 3 Тяги тишины) — проверка Харизмы + БМ против сложности 15. Облегчить нельзя ничем сверх таблицы.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, threshold, engine_event]
+    cannot_be_eased: true
+    cannot_be_eased_status: canon
+    modifiers:
+      - op: check
+        stat: cha
+        add: pb
+        dc_ref: dc.silence_threshold
+        closed: true  # канон: Порог нельзя облегчить; внешние бонусы (Указание, вдохновение и т.п.) не применяются
+        adv_if: {bonded_ally_nearby: true}
+        outcomes:
+          - result: success
+            name: Успех — выбор героя
+            do:
+              - op: choose
+                when: use
+                options:
+                  - [{op: set, target: alteration, value: 4, text: "Остаться человеком: Перемена падает до 4"}, {op: run, ref: effect.alteration_2, text: "эхо-слух остаётся навсегда"}]
+                  - [{op: run, ref: lineage.kept_heart, text: "Завершить перемену: «Сохранивший сердце»"}]
+          - result: fail
+            name: Безмолвный
+            do:
+              - op: custom
+                engine: dev_request
+                need: "op перевода листа героя в шаблон NPC (convert_to_npc: {faction: pilots}) — герой уходит из отряда"
+                text: "Холодный рационалист без эмоций, принимает цели Кормчих (разбудить Спящих, навести тишину на поверхности); уходит из отряда, лист становится шаблоном NPC."
+      - {op: add, target: check, value: 1d4, per: ally_spending_2_echo_response, text: "Союзник тратит 2 эха на Отклик: +1d4"}
+      - {op: add, target: dc, value: 2, if: {sleeper_cocoon_nearby: true}, text: "Рядом кокон Спящего: +2 к сложности"}
+      - op: custom
+        engine: dev_request
+        need: "поле closed: true у op check — движок игнорирует все внешние бонусы к броску и снижения сложности (умения, препараты, предметы, заклинания), кроме модификаторов самой записи"
+        text: "Никакое умение класса, препарат, предмет или заклинание не даёт бонусов сверх этого списка (канон)."
+        draft: {closed: true}
+
+  # --- Зависимость и ломка ---
+  - id: effect.liquor_dependency
+    name: Зависимость от ликвора
+    description: С первого очка Перемены человек зависим; чем выше ступень, тем чаще нужна доза. Подходит любая доза. Кормчие и «Сохранившие сердце» не зависимы.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, liquor, dependency]
+    stackable: false
+    dose_interval_days_by_stage: {1: 14, 2: 7, 3: 3}
+    modifiers: []
+    triggers:
+      - "on": day_end
+        if: {all: [{stat_gte: {dependency: 1}}, {not: {stat_gte: {dependency: 2}}}, {stat_gte: {days_without_liquor: 15}}]}
+        do: [{op: run, ref: effect.liquor_withdrawal_1}]
+      - "on": day_end
+        if: {all: [{stat_gte: {dependency: 2}}, {not: {stat_gte: {dependency: 3}}}, {stat_gte: {days_without_liquor: 8}}]}
+        do: [{op: run, ref: effect.liquor_withdrawal_2}]
+      - "on": day_end
+        if: {all: [{stat_gte: {dependency: 3}}, {stat_gte: {days_without_liquor: 4}}]}
+        do: [{op: run, ref: effect.liquor_withdrawal_3}]
+    note: "Доза нужна раз в 14/7/3 дня: ломка начинается, когда без дозы прошло больше интервала (15/8/4 дней). Снимается дозой (duration until_dose)."
+    withdrawal_refs: [effect.liquor_withdrawal_1, effect.liquor_withdrawal_2, effect.liquor_withdrawal_3]
+  - id: effect.liquor_withdrawal_1
+    name: "Ломка по ликвору (Перемена 1–2)"
+    description: Доза нужна раз в 14 дней. Без дозы — помеха на проверки Мудрости.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, liquor, withdrawal]
+    stackable: false
+    duration: {unit: until_dose}
+    modifiers:
+      - {op: disadvantage, "on": check, stat: wis}
+  - id: effect.liquor_withdrawal_2
+    name: "Ломка по ликвору (Перемена 3–4)"
+    description: Доза нужна раз в 7 дней. Без дозы — всё от первой ступени, плюс помеха на концентрацию и запрет на старшую ячейку.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, liquor, withdrawal]
+    stackable: false
+    duration: {unit: until_dose}
+    modifiers:
+      - {op: disadvantage, "on": check, stat: wis}
+      - {op: disadvantage, "on": save, vs: concentration}
+      - op: custom
+        engine: dev_request
+        need: "условие «заклинатель ликвора» (класс: wizard, cleric, paladin, sorcerer, diagnost) и target блокировки ячейки самого высокого доступного круга (spell_slot_top_locked)"
+        text: "Заклинатель ликвора не может тратить ячейку самого высокого доступного круга."
+        draft: {op: set, target: spell_slot_top_locked, value: true, if: {liquor_caster: true}}
+  - id: effect.liquor_withdrawal_3
+    name: "Ломка по ликвору (Перемена 5)"
+    description: Доза нужна раз в 3 дня. Без дозы — всё от второй ступени, плюс истощение каждый день.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, liquor, withdrawal]
+    stackable: false
+    duration: {unit: until_dose}
+    modifiers:
+      - {op: disadvantage, "on": check, stat: wis}
+      - {op: disadvantage, "on": save, vs: concentration}
+      - op: custom
+        engine: dev_request
+        need: "условие «заклинатель ликвора» (класс: wizard, cleric, paladin, sorcerer, diagnost) и target блокировки ячейки самого высокого доступного круга (spell_slot_top_locked)"
+        text: "Заклинатель ликвора не может тратить ячейку самого высокого доступного круга."
+        draft: {op: set, target: spell_slot_top_locked, value: true, if: {liquor_caster: true}}
+    triggers:
+      - "on": day_end
+        do: [{op: resource, stat: exhaustion, delta: 1}]
+
+  # --- Ликвор против роя ---
+  - id: effect.liquor_silence
+    name: Тишина (ликвор)
+    description: Ликвор несёт холодную тишину Кормчих, рой сплетён из желания. Попадание ликворной ампулой или оружием с ликворным покрытием по рою.
+    status: proposal
+    doc: rules.md#6.2
+    tags: [liquor, swarm, anti_resonance]
+    applies_to: swarm
+    stackable: false
+    modifiers:
+      - {op: extra_damage, dice: 2d6, damage_type: poison, when: hit_by_liquor, ignores_immunity: true, text: "даже при иммунитете к яду; матери получают половину"}
+      - op: save
+        stat: con
+        dc: 13
+        on_fail:
+          - {op: run, ref: effect.liquor_silenced, text: "до конца следующего хода — без «Связи резонансом» и Раскрытия"}
+    note: "Мать с адаптацией effect.adapt_liquor бросает этот спасбросок с преимуществом (записано в самой адаптации); дополнительный урон остаётся."
+
+  - id: effect.liquor_silenced
+    name: Заглушён ликвором
+    description: Провал спасброска от «Тишины». До конца следующего хода существо теряет «Связь резонансом» и не может использовать Раскрытие (условия not has_effect у effect.brood_resonance_link и effect.brood_reveal).
+    status: proposal
+    doc: rules.md#6.2
+    tags: [liquor, swarm, anti_resonance, marker]
+    applies_to: swarm
+    duration: {unit: round, value: 1}
+    stackable: false
+    modifiers: []
+
+  # --- Снижение Перемены ---
+  - id: effect.alteration_cure_abstinence
+    name: Воздержание и поступок
+    description: 7 дней без ликвора (терпя ломку) и ключевой поступок, полный чувства (любой стороны эха), снимают 1 очко Перемены.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, cure]
+    requires: {days_without_liquor: 7, key_deed_emotional: true}
+    modifiers:
+      - {op: resource, stat: alteration, delta: -1, floor_if: {liquor_caster_still_casting: 1}}
+      - op: custom
+        engine: dev_request
+        need: "условие «заклинатель ликвора, продолжает колдовать» (liquor_caster + заклинания с последней дозы) для нижней границы Перемены 1"
+        text: "Снизить Перемену ниже 1 у заклинателя ликвора, который продолжает колдовать, нельзя."
+        draft: {op: resource, stat: alteration, delta: -1, if: {any: [{stat_gte: {alteration: 2}}, {not: {liquor_caster_casting: true}}]}}
+  - id: effect.alteration_cure_clinic
+    name: Клиника Гильдии (Перемена)
+    description: Как для Скверны — 3 дня простоя, −1 очко Перемены, спасбросок Тел сл. 12 или −1 к максимуму хитов навсегда.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, cure]
+    cost_fk: "100 * alteration"
+    downtime_days: 3
+    repeatable: true
+    base_ref: effect.corruption_cure_clinic
+    modifiers:
+      - {op: resource, stat: alteration, delta: -1}
+      - op: save
+        stat: con
+        dc: 12
+        on_fail: [{op: add, target: hp_max, value: -1, permanent: true}]
+  - id: effect.alteration_cure_greater_restoration
+    name: Высшее восстановление против Перемены
+    description: Снимает 1 очко Перемены; цена по аналогии со Скверной — постоянная потеря максимума хитов.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, cure]
+    srd_ref: {type: spell, name: Greater Restoration}
+    modifiers:
+      - {op: resource, stat: alteration, delta: -1}
+      - {op: add, target: hp_max, value: "-1d4", permanent: true, floor: "level", text: "не ниже 1 за уровень; цена перенесена из 3.3 (для Перемены в 3.5 прямо не указана) — предложение"}

@@ -1,0 +1,608 @@
+# Свои подклассы сеттинга. Источник: rules.md#7.1–7.6. Всё уложено в уровни 1–15 (open-questions #24).
+# Цены подклассов (Скверна, Перемена, настрой эха) записаны структурно в поле price и в triggers.
+# Коды ресурсов: corruption, alteration, hive_call, silence_pull, echo_pool, echo_attunement (data/stats.yaml).
+# Настрой echo_attunement: отрицательные значения — Голод, положительные — Отклик.
+# Спасбросок против Скверны/Перемены — всегда Телосложение (rules.md#3.1, #3.5); провал на 5+ — 2 очка.
+kind: subclass
+items:
+  # ---------- Диагност: специализации (rules.md#7.1) ----------
+  - id: subclass.diagnost_field_medic
+    name: Полевой врач
+    description: Специализация диагноста, который вытаскивает людей с того света прямо на передовой.
+    status: canon
+    doc: rules.md#7.1
+    tags: [subclass, custom, diagnost_specialization]
+    class_ref: class.diagnost
+    features:
+      - key: medic_expertise
+        level: 3
+        name: Руки врача
+        description: Экспертиза в Медицине. Когда вы лечите заклинанием или препаратом, цель получает ещё ПБ хитов.
+        modifiers:
+          - {op: set, target: skill_expertise, skill: medicine, value: true}
+          - {op: add, target: healing_done, value: "pb"}
+      - key: extra_doses
+        level: 5
+        name: Запас медика
+        description: Вы готовите на ПБ доз препаратов в день больше.
+        modifiers:
+          - {op: add, target: diagnost_doses, value: "pb"}
+      - key: free_revivify
+        level: 9
+        name: Оживление без реагентов
+        description: Раз за продолжительный отдых вы творите «Оживление» без материальных компонентов.
+        uses: {count: 1, per: long_rest}
+        spells: [{name: Оживление, srd: Revivify, spell_ref: spell.revivify, no_material: true}]
+        modifiers:
+          - {op: grant_action, name: Оживление без реагентов, action: action, uses: {count: 1, per: long_rest}, spell: {srd_ref: {type: spell, name: Revivify}, spell_ref: spell.revivify, no_material: true, slot: normal}, do: [], text: "Ячейка тратится как обычно"}
+      - key: mass_field_care
+        level: 15
+        name: Полевой госпиталь
+        description: Раз за продолжительный отдых действием все союзники в 30 футах получают 2d8 + Инт хитов и заканчивают одно состояние.
+        action: action
+        range: 30
+        uses: {count: 1, per: long_rest}
+        modifiers:
+          - {op: add, target: hp, value: "2d8 + int_mod", area: allies_30ft}
+          - {op: remove_condition, any_of: any, count: 1, choice: true, area: allies_30ft, text: "Каждый союзник в 30 футах заканчивает одно состояние на выбор"}
+
+  - id: subclass.diagnost_echolocator
+    name: Эхолокатор
+    description: Специализация диагноста, который слушает туши звуком; кандидат в Слушатели.
+    status: canon
+    doc: rules.md#7.1
+    tags: [subclass, custom, diagnost_specialization]
+    class_ref: class.diagnost
+    features:
+      - key: echolocation
+        level: 3
+        name: Эхолокатор и звуковой удар
+        description: Слепое зрение 10 футов. Звуковой удар — действием конус 15 футов, спасбросок Тел, 2d8 звуком и оглушение до конца вашего следующего хода. ПБ раз за продолжительный отдых.
+        action: action
+        uses: {count: pb, per: long_rest}
+        modifiers:
+          - {op: sense, sense: blindsight, range: 10}
+          - op: save
+            stat: con
+            dc: "8 + pb + int_mod"
+            area: {shape: cone, size: 15}
+            on_fail:
+              - {op: extra_damage, dice: "2d8", damage_type: thunder}
+              - {op: condition, condition: stunned, duration: {unit: round, value: 1}}
+            on_success: []  # урона и оглушения нет: в тексте правил половина урона не указана
+      - key: echolocation_5
+        level: 5
+        name: Усиленный удар
+        description: Урон звукового удара 3d8; слепое зрение 30 футов.
+        modifiers:
+          - {op: sense, sense: blindsight, range: 30}
+          - {op: set, target: sonic_strike_dice, value: "3d8"}
+      - key: echolocation_9
+        level: 9
+        name: Резонанс плоти
+        description: Паразиты и Глубинные, проваливший спасбросок от удара, ещё и ошеломлены до конца их следующего хода. Урон 4d8.
+        modifiers:
+          - {op: set, target: sonic_strike_dice, value: "4d8"}
+          - {op: condition, condition: stunned, when: target_tag_in_parasite_or_deep_and_failed_save, note: "ошеломление — в тексте; в SRD ближайшее состояние stunned"}
+      - key: carcass_song
+        level: 15
+        name: Песня туши
+        description: Раз за продолжительный отдых задайте три вопроса спящему Левиафану (как «Общение» из SRD). Урон удара 6d8.
+        uses: {count: 1, per: long_rest}
+        spells: [{name: Песня туши, srd: Commune, spell_ref: spell.commune, note: "ответы даёт спящий Левиафан, не божество"}]
+        modifiers:
+          - {op: set, target: sonic_strike_dice, value: "6d8"}
+
+  - id: subclass.diagnost_toxicologist
+    name: Токсиколог
+    description: Специализация диагноста-отравителя, для которого препарат — прежде всего оружие.
+    status: canon
+    doc: rules.md#7.1
+    tags: [subclass, custom, diagnost_specialization]
+    class_ref: class.diagnost
+    features:
+      - key: poisoner
+        level: 3
+        name: Отравитель
+        description: Владение набором отравителя. Ваш урон ядом игнорирует сопротивление (но не иммунитет).
+        proficiencies: {tools: [poisoners_kit]}
+        modifiers:
+          - {op: proficiency, kind: tool, value: poisoners_kit}
+          - {op: set, target: damage_ignores_resistance, damage_type: poison, value: true, text: "Иммунитет действует"}
+      - key: extra_attack
+        level: 5
+        name: Дополнительная атака
+        description: Вы атакуете дважды, совершая действие Атака.
+        modifiers:
+          - {op: set, target: attacks_per_action, value: 2}
+      - key: potent_toxins
+        level: 9
+        name: Крепкие яды
+        description: К урону вредных препаратов добавляется Инт, их сложность спасброска +1.
+        modifiers:
+          - {op: add, target: damage, value: "int_mod", when: harmful_preparation}
+          - {op: add, target: save_dc, value: 1, when: harmful_preparation}
+      - key: neurotoxin
+        level: 15
+        name: Нейротоксин
+        description: Раз за короткий отдых — при критическом попадании или проваленном спасброске от вашего препарата цель парализована до конца её следующего хода.
+        uses: {count: 1, per: short_rest}
+        triggers:
+          - "on": hit
+            if: {critical: true, source: preparation}
+            do:
+              - {op: condition, condition: paralyzed, duration: {unit: round, value: 1}}
+          - "on": target_failed_save
+            if: {source: preparation}
+            do:
+              - {op: condition, condition: paralyzed, duration: {unit: round, value: 1}}
+
+  - id: subclass.diagnost_flesh_surgeon
+    name: Хирург плоти
+    description: Специализация диагноста, который режет и сшивает — вживляет хитиновые импланты и вырезает дары роя. Порог облегчить не может.
+    status: canon
+    doc: rules.md#7.1
+    tags: [subclass, custom, diagnost_specialization]
+    class_ref: class.diagnost
+    features:
+      - key: implants
+        level: 3
+        name: Импланты
+        description: Владение инструментами хирурга. За 8 часов работы вы вживляете существу хитиновый имплант (занимает ячейку настройки). Каждая операция — спасбросок Тел пациента, сл. 12, провал — +1 Скверна.
+        proficiencies: {tools: [surgeons_tools]}
+        cost: {time_minutes: 480}
+        modifiers:
+          - {op: proficiency, kind: tool, value: surgeons_tools}
+          - {op: run, ref: chosen_implant, target: patient, requires: {item_category: implant}, uses_attunement_slot: true, text: "Вживить item_template категории implant (занимает ячейку настройки пациента)"}
+          - op: save
+            stat: con
+            dc: 12
+            target: patient
+            on_fail:
+              - {op: resource, stat: corruption, delta: 1}
+      - key: deep_cleanse
+        level: 5
+        name: Глубокая чистка
+        description: Раз за продолжительный отдых за 1 час работы снимаете 1 очко Скверны или Перемены без потери максимума хитов.
+        uses: {count: 1, per: long_rest}
+        cost: {time_minutes: 60}
+        modifiers:
+          - {op: resource, stat: [corruption, alteration], choose: 1, delta: -1}
+      - key: excision
+        level: 9
+        name: Иссечение
+        description: За 8 часов операции удаляете один дар роя или имплант; пациент получает 1 уровень истощения, его зависимость от ликвора ослабевает на одну ступень.
+        cost: {time_minutes: 480}
+        modifiers:
+          - op: choose
+            when: use
+            options:
+              - [{op: remove_condition, any_of: [effect.gift_swarm_sense, effect.gift_chitin_skin, effect.gift_echo_sight, effect.gift_voices_of_dead, effect.gift_swarm_whisper, effect.gift_brood_dominion, effect.gift_acid_blood, effect.gift_swarm_claws, effect.gift_mothers_command, effect.gift_hunger_dash], count: 1, target: patient, text: "Один дар роя"}]
+              - [{op: set, target: patient.implant_installed, value: false, item: chosen_implant, text: "Один имплант"}]
+          - {op: resource, stat: dependency, delta: -1, target: patient, text: "Зависимость от ликвора — на ступень ниже (частота доз)"}
+          - {op: condition, condition: exhaustion, value: 1}
+      - key: postponement
+        level: 15
+        name: Отсрочка
+        description: Реакцией, когда существо в 30 футах получает очко Скверны или Перемены, вы заставляете его перебросить спасбросок. ПБ раз за продолжительный отдых. На испытания Порога не действует.
+        action: reaction
+        range: 30
+        uses: {count: pb, per: long_rest}
+        modifiers:
+          - op: grant_action
+            name: Отсрочка
+            action: reaction
+            range: 30
+            uses: {count: pb, per: long_rest}
+            trigger: {"on": resource_changed, stat: [corruption, alteration], delta_gte: 1}
+            if: {not: {any: [{source_ref: effect.threshold_trial}, {source_ref: effect.silence_threshold_trial}]}}
+            text: "Переброс спасброска против Скверны/Перемены: новый результат заменяет прежний. Порог и Порог тишины не затрагиваются (канон: Порог нельзя облегчить)"
+            do:
+              - op: save
+                stat: con
+                dc: source
+                target: triggering_creature
+                on_success: [{op: resource, stat: triggering_stat, delta: "-points_gained"}]
+                on_fail: [{op: resource, stat: triggering_stat, delta: "1 - points_gained"}]
+                on_fail_by_5: [{op: resource, stat: triggering_stat, delta: "2 - points_gained"}]
+
+  # ---------- Чародей: Ликворный разум (rules.md#7.2) ----------
+  - id: subclass.liquor_mind
+    name: Ликворный разум
+    description: Бывший ребёнок-шахтёр или тот, чья мать пила ликвор в беременность. В его нервах течёт мысль Левиафана; заклинания — выброс биотока с запахом озона.
+    status: proposal
+    doc: rules.md#7.2
+    tags: [subclass, custom, sorcerous_origin]
+    class_ref: class.sorcerer
+    bonus_spells:
+      "1": [{name: Приказ, srd: Command, spell_ref: spell.command}, {name: Усыпление, srd: Sleep, spell_ref: spell.sleep}]
+      "3": [{name: Обнаружение мыслей, srd: Detect Thoughts, spell_ref: spell.detect_thoughts}, {name: Удержание личности, srd: Hold Person, spell_ref: spell.hold_person}]
+      "5": [{name: Ужас, srd: Fear, spell_ref: spell.fear}, {name: Замедление, srd: Slow, spell_ref: spell.slow}]
+      "7": [{name: Замешательство, srd: Confusion, spell_ref: spell.confusion}, {name: Воображаемый убийца, srd: Phantasmal Killer, spell_ref: spell.phantasmal_killer}]
+      "9": [{name: Подчинение личности, srd: Dominate Person, spell_ref: spell.dominate_person}, {name: Телекинез, srd: Telekinesis, spell_ref: spell.telekinesis}]
+    features:
+      - key: carcass_whisper
+        level: 1
+        name: Шёпот туш
+        description: Вы телепатически говорите с видимым существом в 30 футах, общий язык не нужен; оно может ответить так же.
+        modifiers:
+          - {op: set, target: telepathy, value: 30}
+      - key: liquor_vessel
+        level: 1
+        name: Ликворный сосуд
+        description: Преимущество на спасброски против Перемены и против Скверны при использовании ликвора.
+        modifiers:
+          - {op: advantage, "on": save, vs: alteration}
+          - {op: advantage, "on": save, vs: corruption, when: liquor_use}
+      - key: bionic_discharge
+        level: 6
+        name: Бионный выброс
+        description: Бонусные заклинания подкласса можно творить за очки чародейства (по кругу), без вербальных и соматических компонентов. Сопротивление психическому урону; на 3 очках Скверны оно и уязвимость гасят друг друга.
+        modifiers:
+          - {op: resistance, damage: psychic}
+          - {op: grant_action, name: Бионный выброс, action: as_spell, spell: {from: bonus_spells, components_removed: [V, S]}, cost: {resource: sorcery_points, count: spell_level}, do: [], text: "Бонусные заклинания подкласса вместо ячейки — за очки чародейства по кругу"}
+          - {op: set, target: psychic_resist_vuln_cancel, value: true, if: {stat_gte: {corruption: 3}}, text: "Уязвимость от Скверны 3 (effect.corruption_3) и это сопротивление гасят друг друга"}
+      - key: unfolding
+        level: 14
+        name: Раскрытие
+        description: Бонусным действием на 1 минуту — хитиновые пластины (+2 КД), лазание со скоростью ходьбы, слепое зрение 30 футов. В конце — спасбросок против Перемены, сл. 13 (можно не бросать за 2 очка чародейства). Раз за продолжительный отдых, повторно — за 5 очков чародейства.
+        action: bonus
+        uses: {count: 1, per: long_rest, extra_cost: {sorcery_points: 5}}
+        duration: {unit: minute, value: 1}
+        modifiers:
+          - {op: add, target: ac, value: 2}
+          - {op: set, target: speed_climb, value: speed}
+          - {op: sense, sense: blindsight, range: 30}
+        triggers:
+          - "on": effect_end
+            do:
+              - op: save
+                stat: con
+                vs: alteration
+                dc: 13
+                skip_cost: {sorcery_points: 2}
+                on_fail:
+                  - {op: resource, stat: alteration, delta: 1}
+      - key: sleeper_echo
+        level: 15
+        name: Эхо Спящего
+        description: "Раз за продолжительный отдых действием существа на ваш выбор в 30 футах делают спасбросок Мдр: провал — 8d10 психического урона и ошеломление до конца вашего следующего хода, успех — половина урона. Затем вы бросаете спасбросок против Перемены, сл. 15."
+        action: action
+        range: 30
+        uses: {count: 1, per: long_rest}
+        modifiers:
+          - op: save
+            stat: wis
+            dc: spell_save_dc
+            on_fail:
+              - {op: extra_damage, dice: "8d10", damage_type: psychic}
+              - {op: condition, condition: stunned, duration: {unit: round, value: 1}}
+            on_success:
+              - {op: extra_damage, dice: "8d10", damage_type: psychic, multiplier: 0.5}
+        triggers:
+          - "on": feature_used
+            do:
+              - op: save
+                stat: con
+                vs: alteration
+                dc: 15
+                on_fail:
+                  - {op: resource, stat: alteration, delta: 1}
+
+  # ---------- Жрец: Домен голода (rules.md#7.3) ----------
+  - id: subclass.hunger_domain
+    name: Домен голода
+    description: Возвысившийся жрец верхушки Церкви. Не молится Исполинам, а пьёт из голода Резонанса и Скверны. Для NPC и для героя, выбравшего этот путь.
+    status: proposal
+    doc: rules.md#7.3
+    tags: [subclass, custom, divine_domain, existence_canon]
+    status_note: "Подкласс нужен — решение Arty (open-questions #18); механика — Предложение."
+    class_ref: class.cleric
+    # Цена подкласса: текст для мастера; механика — в triggers ниже (не дублировать).
+    price:
+      - {resource: corruption, text: "Каждое заклинание 1-го круга и выше — спасбросок против Скверны, сл. 8 + круг."}
+      - {resource: echo_attunement, text: "Каждое использование «Божественного канала» сдвигает настрой эха на 1 к Голоду."}
+    domain_spells:
+      "1": [{name: Порча, srd: Bane, spell_ref: spell.bane}, {name: Нанесение ран, srd: Inflict Wounds, spell_ref: spell.inflict_wounds}]
+      "3": [{name: Слепота/глухота, srd: Blindness/Deafness, spell_ref: spell.blindness_deafness}, {name: Луч слабости, srd: Ray of Enfeeblement, spell_ref: spell.ray_of_enfeeblement}]
+      "5": [{name: Прикосновение вампира, srd: Vampiric Touch, spell_ref: spell.vampiric_touch}, {name: Ужас, srd: Fear, spell_ref: spell.fear}]
+      "7": [{name: Усыхание, srd: Blight, spell_ref: spell.blight}, {name: Замешательство, srd: Confusion, spell_ref: spell.confusion}]
+      "9": [{name: Заражение, srd: Contagion, spell_ref: spell.contagion}, {name: Насекомые, srd: Insect Plague, spell_ref: spell.insect_plague}]
+    triggers:
+      - "on": cast_spell
+        if: {spell_level_gte: 1}
+        do:
+          - op: save
+            stat: con
+            vs: corruption
+            dc: "8 + spell_level"
+            on_fail:
+              - {op: resource, stat: corruption, delta: 1}
+      - "on": channel_divinity_used
+        do:
+          - {op: resource, stat: echo_attunement, delta: -1}
+    features:
+      - key: maw
+        level: 1
+        name: Пасть
+        description: Когда вы наносите некротический урон заклинанием 1-го круга и выше, вы восстанавливаете 2 + круг хитов. Владение тяжёлыми доспехами.
+        proficiencies: {armor: [heavy]}
+        triggers:
+          - "on": deal_damage
+            if: {damage_type: necrotic, spell_level_gte: 1}
+            do:
+              - {op: add, target: hp, value: "2 + spell_level"}
+      - key: harvest
+        level: 2
+        name: "Божественный канал: Жатва"
+        description: Действием существа на ваш выбор в 30 футах делают спасбросок Тел — 2d10 + уровень жреца некротической энергией, при успехе половина. Вы получаете временные хиты, равные половине нанесённого урона.
+        action: action
+        range: 30
+        uses: {pool: channel_divinity}
+        modifiers:
+          - op: save
+            stat: con
+            dc: spell_save_dc
+            on_fail:
+              - {op: extra_damage, dice: "2d10 + level", damage_type: necrotic}
+            on_success:
+              - {op: extra_damage, dice: "2d10 + level", damage_type: necrotic, multiplier: 0.5}
+          - {op: set, target: temp_hp, value: "floor(damage_dealt / 2)"}
+      - key: satiety
+        level: 6
+        name: Сытость
+        description: Раз за продолжительный отдых, когда вы опускаете существо до 0 хитов, вы восстанавливаете одну потраченную ячейку 1-го или 2-го круга.
+        uses: {count: 1, per: long_rest}
+        triggers:
+          - "on": reduce_target_to_0
+            do:
+              - op: choose
+                when: use
+                options:
+                  - [{op: resource, stat: spell_slot_1, delta: 1}]
+                  - [{op: resource, stat: spell_slot_2, delta: 1}]
+      - key: divine_strike
+        level: 8
+        name: Божественный удар
+        description: Раз в ход при попадании оружием +1d8 некротической энергией (2d8 с 14-го уровня).
+        modifiers:
+          - {op: extra_damage, dice: "1d8", damage_type: necrotic, when: weapon_hit_once_per_turn, scaling: {"14": "2d8"}}
+      - key: bottomless_hunger
+        level: 15
+        name: Бездонный голод
+        description: Ваш некротический урон игнорирует сопротивление, а иммунитет считается сопротивлением. Существо, убитое вашей «Жатвой», впадает в кокон Резонанса.
+        modifiers:
+          - {op: set, target: damage_ignores_resistance, damage_type: necrotic, value: true}
+          - {op: set, target: damage_immunity_as_resistance, damage_type: necrotic, value: true}
+        triggers:
+          - "on": reduce_target_to_0
+            if: {source: harvest}
+            do:
+              - {op: set, target: victim.dies, value: false, text: "Цель не умирает"}
+              - {op: run, ref: effect.brood_cocoon, target: victim, text: "Кокон Резонанса: NPC в плену роя, кокон с таймером"}
+
+  # ---------- Колдун: покровитель «Резонанс» (rules.md#7.4) ----------
+  - id: subclass.resonance_patron
+    name: Покровитель «Резонанс»
+    description: Договор с матерью через осколок эхолита. Резонанс не даёт силу даром — он растит в колдуне ещё один голос улья.
+    status: proposal
+    doc: rules.md#7.4
+    tags: [subclass, custom, warlock_patron, existence_canon]
+    status_note: "Подкласс нужен — решение Arty (open-questions #18); механика — Предложение."
+    class_ref: class.warlock
+    grants_resources: [hive_call]
+    # Цена подкласса: текст для мастера; механика — в triggers ниже (не дублировать).
+    price:
+      - {resource: corruption, text: "Колдун начинает договор с 1 очком Скверны."}
+      - {resource: corruption, text: "Каждое заклинание 3-го круга и выше — спасбросок против Скверны, сл. 10."}
+      - {resource: hive_call, text: "У колдуна сразу появляется шкала Зова роя (rules.md#3.4)."}
+    triggers:
+      - "on": subclass_gained
+        do:
+          - {op: resource, stat: corruption, delta: 1}
+          - {op: set, target: hive_call_enabled, value: true}
+      - "on": cast_spell
+        if: {spell_level_gte: 3}
+        do:
+          - op: save
+            stat: con
+            vs: corruption
+            dc: 10
+            on_fail:
+              - {op: resource, stat: corruption, delta: 1}
+    expanded_spells:
+      "1": [{name: Приказ, srd: Command, spell_ref: spell.command}, {name: Порча, srd: Bane, spell_ref: spell.bane}]
+      "2": [{name: Внушение, srd: Suggestion, spell_ref: spell.suggestion}, {name: Удержание личности, srd: Hold Person, spell_ref: spell.hold_person}]
+      "3": [{name: Ужас, srd: Fear, spell_ref: spell.fear}, {name: Гипнотический узор, srd: Hypnotic Pattern, spell_ref: spell.hypnotic_pattern}]
+      "4": [{name: Подчинение зверя, srd: Dominate Beast, spell_ref: spell.dominate_beast}, {name: Замешательство, srd: Confusion, spell_ref: spell.confusion}]
+      "5": [{name: Подчинение личности, srd: Dominate Person, spell_ref: spell.dominate_person}, {name: Заражение, srd: Contagion, spell_ref: spell.contagion}]
+    features:
+      - key: hive_whisper
+        level: 1
+        name: Шёпот улья
+        description: Телепатия на 30 футов с Отзвучными и с существами, у которых есть Скверна.
+        modifiers:
+          - {op: set, target: telepathy, value: 30, when: target_is_echoed_or_has_corruption}
+      - key: infect_not_kill
+        level: 1
+        name: Заразить, а не убить
+        description: Когда вы опускаете существо до 0 хитов заклинанием, вы можете оставить его без сознания, стабильным, с +1 Скверны.
+        triggers:
+          - "on": reduce_target_to_0
+            if: {source: spell, choice: true}
+            do:
+              - {op: condition, condition: unconscious, target: victim}
+              - {op: set, target: victim.stable, value: true}
+              - {op: resource, stat: corruption, delta: 1, target: victim}
+      - key: adaptation
+        level: 6
+        name: Адаптация
+        description: После короткого или продолжительного отдыха выберите тип урона (кроме излучения и силового поля) — сопротивление к нему до следующего отдыха. Пока настрой −3 и ниже, два типа.
+        triggers:
+          - "on": short_rest
+            do:
+              - {op: resistance, damage: chosen, choose: 1, exclude: [radiant, force], count_if: {echo_attunement_lte: -3, count: 2}}
+          - "on": long_rest
+            do:
+              - {op: resistance, damage: chosen, choose: 1, exclude: [radiant, force], count_if: {echo_attunement_lte: -3, count: 2}}
+      - key: hive_mind
+        level: 10
+        name: Разум улья
+        description: Преимущество на спасброски против очарования и испуга. Вас нельзя застать врасплох, пока в 30 футах есть союзник.
+        modifiers:
+          - {op: advantage, "on": save, vs: charmed}
+          - {op: advantage, "on": save, vs: frightened}
+          - {op: immunity, condition: surprised, when: ally_within_30ft}
+      - key: mothers_call
+        level: 14
+        name: Зов матери
+        description: Раз за продолжительный отдых действием — существо в 60 футах делает спасбросок Мдр, провал — очаровано на 1 минуту и сражается за вас (повтор в конце каждого его хода). Затем вы бросаете спасбросок против Скверны, сл. 15.
+        action: action
+        range: 60
+        uses: {count: 1, per: long_rest}
+        modifiers:
+          - op: save
+            stat: wis
+            dc: spell_save_dc
+            repeat: turn_end
+            on_fail:
+              - {op: condition, condition: charmed, duration: {unit: minute, value: 1}}
+              - {op: behavior, profile: ally_of_caster, text: "Очарованная цель сражается на стороне колдуна"}
+        triggers:
+          - "on": feature_used
+            do:
+              - op: save
+                stat: con
+                vs: corruption
+                dc: 15
+                on_fail:
+                  - {op: resource, stat: corruption, delta: 1}
+
+  # ---------- Воин: Страж черты (rules.md#7.5) ----------
+  - id: subclass.line_warden
+    name: Страж черты
+    description: Солдат Пепельного Кордона. Огонь, колокол и триста лет войны без передышки.
+    status: proposal
+    doc: rules.md#7.5
+    tags: [subclass, custom, martial_archetype, existence_canon]
+    status_note: "Подкласс нужен — решение Arty (open-questions #18); механика — Предложение."
+    class_ref: class.fighter
+    features:
+      - key: burning
+        level: 3
+        name: Выжигание и Бдение
+        description: Владение огнемётом и ревуном. Раз в ход при попадании по Отзвучному или выводку +1d6 огнём, игнорируя его сопротивление огню. Вас нельзя застать врасплох на Пепельной черте и в налёте.
+        proficiencies: {weapons: [flamethrower, howler]}
+        modifiers:
+          - {op: extra_damage, dice: "1d6", damage_type: fire, when: hit_echoed_or_brood_once_per_turn, ignore_resistance: true}
+          - {op: immunity, condition: surprised, when: in_ash_line_or_blight}
+      - key: bell
+        level: 7
+        name: Колокол и Водитель шагохода
+        description: Бонусным действием бьёте в колокол или ревун — Отзвучные в 30 футах делают спасбросок Мдр (сл. 8 + ПБ + Тел), провал — испуганы до конца вашего следующего хода; союзники в 30 футах получают преимущество против очарования и испуга на 1 минуту. ПБ раз за продолжительный отдых. Владение шагоходом; в сюжетной сцене — преимущество на проверки вождения.
+        action: bonus
+        range: 30
+        uses: {count: pb, per: long_rest}
+        proficiencies: {vehicles: [walker]}
+        modifiers:
+          - op: save
+            stat: wis
+            dc: "8 + pb + con_mod"
+            target: echoed_in_30ft
+            on_fail:
+              - {op: condition, condition: frightened, duration: {unit: round, value: 1}}
+          - {op: advantage, "on": save, vs: [charmed, frightened], target: allies_in_30ft, duration: {unit: minute, value: 1}}
+          - {op: advantage, "on": check, skill: vehicles_walker, when: story_scene}
+      - key: liquor_blade
+        level: 10
+        name: Ликворный клинок
+        description: Раз за короткий отдых вы покрываете оружие ликвором на 1 минуту без траты покрытия. Преимущество на проверки, раскрывающие мимикрию.
+        uses: {count: 1, per: short_rest}
+        duration: {unit: minute, value: 1}
+        modifiers:
+          - {op: run, ref: item.liquor_coating, consume: false, text: "Свойство ликворного покрытия без расхода предмета"}
+          - {op: advantage, "on": check, vs: mimicry}
+      - key: unshakable
+        level: 13
+        name: Непоколебимый
+        description: Преимущество на спасброски против Скверны от атак и налёта. Шкала Зова роя растёт у вас только от техник Голода (на испытания Порога не действует).
+        modifiers:
+          - {op: advantage, "on": save, vs: corruption, when: source_attack_or_blight}
+          - {op: multiply, target: hive_call_gain, factor: 0, if: {not: {source: echo_hunger_technique}}, text: "Зов роя растёт только от техник Голода; испытание Порога не облегчается"}
+      - key: last_tower
+        level: 15
+        name: Последняя башня
+        description: Раз за продолжительный отдых, когда хиты падают до 0, но вы не убиты, вы встаёте с хитами, равными уровню воина, и выпускаете огонь — сфера 15 футов, 6d6 огнём, спасбросок Лвк (сл. 8 + ПБ + Тел), при успехе половина.
+        uses: {count: 1, per: long_rest}
+        triggers:
+          - "on": drop_to_0
+            if: {killed_outright: false}
+            do:
+              - {op: set, target: hp, value: "fighter_level"}
+              - op: save
+                stat: dex
+                dc: "8 + pb + con_mod"
+                area: {shape: sphere, size: 15, center: self}
+                on_fail:
+                  - {op: extra_damage, dice: "6d6", damage_type: fire}
+                on_success:
+                  - {op: extra_damage, dice: "6d6", damage_type: fire, multiplier: 0.5}
+
+  # ---------- Плут: Жилолаз (rules.md#7.6) ----------
+  - id: subclass.vein_crawler
+    name: Жилолаз
+    description: Бывший ребёнок-шахтёр. Вырос в сосудах туш, пролезал туда, куда взрослый не пролезет, и вышел живым.
+    status: proposal
+    doc: rules.md#7.6
+    tags: [subclass, custom, roguish_archetype, existence_canon]
+    status_note: "Свой подкласс плута — решение Arty (open-questions #31); механика — Предложение."
+    class_ref: class.rogue
+    features:
+      - key: child_of_the_vein
+        level: 3
+        name: Дитя жилы и Чувство пульса
+        description: Скорость лазания равна скорости ходьбы; протискиваетесь в проходы для Крошечного существа без штрафов. Тёмное зрение 60 футов (если есть — +30). Внутри туши преимущество на Восприятие по вибрации, и вы знаете, где ближайшая жила или тайник.
+        modifiers:
+          - {op: set, target: speed_climb, value: speed}
+          - {op: move, mode: squeeze, requires: {size_lte: tiny}, penalty: none, text: "Проходы для Крошечного без помех и штрафа к скорости"}
+          - {op: sense, sense: darkvision, range: 60, if_has: {add: 30}}
+          - {op: advantage, "on": check, skill: perception, when: inside_carcass_by_vibration}
+          - {op: custom, engine: dev_request, need: "op раскрытия знания/направления (reveal: nearest_vein_or_stash) и условие location_tag: carcass", text: "Внутри туши персонаж знает направление к ближайшей жиле или тайнику."}
+      - key: miner_lungs
+        level: 9
+        name: Лёгкие шахтёра и Тайные ходы
+        description: Задержка дыхания 10 минут, преимущество на спасброски против газа и спор. Преимущество на Анализ и Восприятие для поиска скрытых проходов; раз за короткий отдых проходите через узкий проход в пределах движения, не провоцируя атак.
+        uses: {count: 1, per: short_rest, applies_to: secret_passage_move}
+        modifiers:
+          - {op: set, target: hold_breath_minutes, value: 10}
+          - {op: advantage, "on": save, vs: [gas, spores]}
+          - {op: advantage, "on": check, skill: [investigation, perception], when: search_hidden_passage}
+          - {op: grant_action, name: Тайные ходы, action: free, uses: {count: 1, per: short_rest}, do: [{op: move, mode: squeeze, distance: speed, provokes_opportunity: false}]}
+      - key: cut_the_vein
+        level: 13
+        name: Подрезать жилу
+        description: Скрытая атака делает скорость цели 0 до конца её следующего хода. Слепое зрение 10 футов.
+        modifiers:
+          - {op: sense, sense: blindsight, range: 10}
+        triggers:
+          - "on": hit
+            if: {sneak_attack: true}
+            do:
+              - {op: set, target: speed, value: 0, target_of: victim, duration: {unit: round, value: 1}}
+      - key: always_a_way_out
+        level: 15
+        name: Выход есть всегда
+        description: Раз за продолжительный отдых реакцией, когда вас схватили, опутали или по вам попали — телепорт на 30 футов в видимое место, куда ведёт узкий проход, и невидимость до начала вашего хода. Урон от попадания уменьшается вдвое.
+        action: reaction
+        uses: {count: 1, per: long_rest}
+        triggers:
+          - "on": hit_by
+            do:
+              - {op: multiply, target: damage_taken, factor: 0.5}
+              - {op: move, mode: teleport, distance: 30, requires: {visible: true, narrow_passage: true}}
+              - {op: condition, condition: invisible, duration: {unit: round, value: 1}}
+          - "on": grappled_or_restrained
+            do:
+              - {op: move, mode: teleport, distance: 30, requires: {visible: true, narrow_passage: true}}
+              - {op: remove_condition, any_of: [grappled, restrained]}
+              - {op: condition, condition: invisible, duration: {unit: round, value: 1}}

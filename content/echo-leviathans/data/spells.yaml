@@ -1,0 +1,227 @@
+# Как заклинания SRD 5.1 подаются в мире «Эхо Левиафанов». Сами заклинания не копируются — только правила подачи.
+# Источник: canon.md#1.6 (магия), rules.md#1, #3.5, #6.3, #7.0–7.4. Списки своих классов/подклассов —
+# в data/classes/diagnost.yaml (spell_list) и data/classes/subclasses.yaml (bonus/domain/expanded spells).
+kind: spell_note
+items:
+  # ---------- Общие правила ----------
+  - id: spell_note.no_ninth_circle
+    name: 9-й круг людям недоступен
+    description: Заклинания 9-го круга — сила матерей и Кормчих, не людей. Потолок 15 уровня делает недостижимыми и остальные умения 16–20 уровней SRD.
+    status: canon
+    doc: rules.md#1
+    tags: [spell_rule, level_cap]
+    applies_to: all_player_characters
+    modifiers:
+      - {op: set, target: max_spell_level_cap, value: 8, scope: [slots, spells_known, scrolls, items], text: "Герои не получают и не могут творить заклинания 9-го круга, даже через свитки и предметы. У NPC-шаблонов (матери, Кормчие) 9-й круг разрешён — на них запись не действует (applies_to: all_player_characters)"}
+    forbidden_spell_refs: [spell.astral_projection, spell.foresight, spell.gate, spell.imprisonment, spell.mass_heal, spell.meteor_swarm, spell.power_word_kill, spell.prismatic_wall, spell.shapechange, spell.storm_of_vengeance, spell.time_stop, spell.true_polymorph, spell.true_resurrection, spell.weird, spell.wish]
+
+  - id: spell_note.no_magic_before
+    name: Ликвор — единственный источник магии
+    description: До Левиафанов магии у людей не было. Любая магия эпохи — это ликвор, канал связи Кормчих с кораблями; она пахнет медью, озоном и мокрым камнем, а маги стоят на границе Скверны.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_rule, flavor]
+
+  - id: spell_note.echo_is_not_magic
+    name: Эхо — не магия ликвора
+    description: Техники эха (Голод и Отклик) не являются заклинаниями. «Рассеивание магии» и «Антимагическое поле» на них не действуют.
+    status: canon
+    doc: rules.md#6.3
+    tags: [spell_rule, echo]
+    modifiers:
+      - {op: set, target: echo_technique.is_magic, value: false, text: "Заклинания из unaffected_by_spell_refs не взаимодействуют с техниками эха (echo_technique)"}
+    unaffected_by_spell_refs: [spell.dispel_magic, spell.antimagic_field, spell.counterspell, spell.detect_magic]
+
+  - id: spell_note.liquor_high_circle_alteration
+    name: Перемена от сильных заклинаний
+    description: Заклинатели ликвора (волшебник, жрец, паладин, чародей, диагност) после заклинания 5-го круга и выше совершают спасбросок против Перемены со сложностью 10 + круг.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [spell_rule, alteration, liquor_caster]
+    applies_to_class_refs: [class.wizard, class.cleric, class.paladin, class.sorcerer, class.diagnost]
+    triggers:
+      - "on": cast_spell
+        if: {spell_level_gte: 5, caster_tag: liquor_caster}
+        do:
+          - op: save
+            stat: con
+            vs: alteration
+            dc: "10 + spell_level"
+            on_fail:
+              - {op: resource, stat: alteration, delta: 1}
+            on_fail_by_5:
+              - {op: resource, stat: alteration, delta: 2}
+
+  - id: spell_note.liquor_withdrawal_top_slot
+    name: Ломка и ячейки
+    description: При ломке на Перемене 3 и выше заклинатель ликвора не может тратить ячейку самого высокого доступного круга. «Капля» с чёрного рынка снимает ломку, но ячейку не восстанавливает.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [spell_rule, alteration, addiction]
+    modifiers:
+      - op: set
+        target: highest_available_slot_usable
+        value: false
+        if: {all: [{stat_gte: {alteration: 3}}, {any: [{has_effect: effect.liquor_withdrawal_1}, {has_effect: effect.liquor_withdrawal_2}, {has_effect: effect.liquor_withdrawal_3}]}]}
+        text: "При ломке на Перемене 3+ нельзя тратить ячейку наивысшего доступного круга"
+      - {op: disadvantage, "on": save, vs: concentration, when: withdrawal_and_alteration_gte_3}
+
+  - id: spell_note.alteration_floor_for_casters
+    name: Перемена не падает ниже 1 у практикующих
+    description: Снизить Перемену ниже 1 у заклинателя ликвора, который продолжает колдовать, нельзя.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [spell_rule, alteration, liquor_caster]
+    modifiers:
+      - {op: set, target: alteration_min, value: 1, if: {all: [{caster_tag: liquor_caster}, {cast_spell_since_last_cure: true}]}}
+
+  - id: spell_note.greater_restoration_alteration
+    name: «Высшее восстановление» и Перемена
+    description: «Высшее восстановление» снижает Перемену на 1.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [spell_rule, alteration, healing]
+    srd_ref: {type: spell, name: Greater Restoration}
+    spell_refs: [spell.greater_restoration]
+    modifiers:
+      - {op: resource, stat: alteration, delta: -1}
+
+  - id: spell_note.silence_pull_high_circle
+    name: Тяга тишины от сильных заклинаний
+    description: У «Сохранившего сердце» каждое заклинание 5-го круга и выше — спасбросок Харизмы, сл. 12, провал — +1 Тяга тишины. Доза ликвора восстанавливает ему ячейку без спасброска.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [spell_rule, silence_pull, lineage]
+    triggers:
+      - "on": cast_spell
+        if: {spell_level_gte: 5, lineage: kept_heart}
+        do:
+          - op: save
+            stat: cha
+            dc: 12
+            on_fail:
+              - {op: resource, stat: silence_pull, delta: 1}
+
+  - id: spell_note.hunger_domain_corruption
+    name: Домен голода — Скверна за каждое заклинание
+    description: Жрец Домена голода после каждого заклинания 1-го круга и выше совершает спасбросок против Скверны, сл. 8 + круг. Каждое использование «Божественного канала» сдвигает настрой эха на 1 к Голоду.
+    status: proposal
+    doc: rules.md#7.3
+    tags: [spell_rule, corruption, hunger_domain]
+    subclass_ref: subclass.hunger_domain
+    # Механика — triggers в subclass.hunger_domain; здесь не дублируется.
+
+  - id: spell_note.resonance_patron_corruption
+    name: Покровитель «Резонанс» — Скверна за сильные заклинания
+    description: Колдун Резонанса начинает с 1 очком Скверны и совершает спасбросок против Скверны, сл. 10, после каждого заклинания 3-го круга и выше.
+    status: proposal
+    doc: rules.md#7.4
+    tags: [spell_rule, corruption, resonance_patron]
+    subclass_ref: subclass.resonance_patron
+    # Механика — triggers в subclass.resonance_patron; здесь не дублируется.
+
+  - id: spell_note.renamed_spells
+    name: Переименования заклинаний
+    description: Некоторые заклинания SRD в мире называются иначе. Числа не меняются.
+    status: proposal
+    doc: rules.md#7.1
+    tags: [spell_rule, rename]
+    renames:
+      - {srd: Stoneskin, spell_ref: spell.stoneskin, name: Хитиновая кожа}
+      - {srd: Commune, spell_ref: spell.commune, name: Песня туши, note: "только у Эхолокатора, собеседник — спящий Левиафан"}
+
+  # ---------- Источники силы по классам ----------
+  - id: spell_note.source_liquor_formulae
+    name: "Источник: формулы ликвора (волшебник)"
+    description: Волшебник-ликворовед расшифровывает в ликворе «формулы» — застывшие команды и знания экипажей Кормчих. Книга заклинаний — тетрадь расшифровок.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_source, liquor_caster]
+    source_code: liquor_formulae
+    class_refs: [class.wizard]
+
+  - id: spell_note.source_liquor_sleepers_dreams
+    name: "Источник: причастие и сны Спящих (жрец, паладин)"
+    description: Жрецы и рыцари Церкви пьют ликвор на причастии и черпают силу из снов Кормчих, спящих в рубках, веря, что это благодать. Богов нет.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_source, liquor_caster]
+    source_code: liquor_sleepers_dreams
+    class_refs: [class.cleric, class.paladin]
+    modifiers:
+      - op: grant_action
+        name: Причастие
+        action: free
+        uses: {count: 1, per: long_rest, cooldown_days: 7}
+        text: "Причастие раз в неделю: спасбросок против Перемены, сл. 10 (rules.md#3.5)"
+        do:
+          - op: save
+            stat: con
+            vs: alteration
+            dc: 10
+            on_fail: [{op: resource, stat: alteration, delta: 1}]
+            on_fail_by_5: [{op: resource, stat: alteration, delta: 2}]
+
+  - id: spell_note.source_resonance_hunger
+    name: "Источник: голод Резонанса (верхушка Церкви)"
+    description: Верхушка Церкви отдалась голоду Резонанса и берёт силу прямо из Скверны. Это тайная магия, похожая на благодать, только злее.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_source, corruption]
+    source_code: resonance_hunger
+    subclass_refs: [subclass.hunger_domain]
+
+  - id: spell_note.source_liquor_blood
+    name: "Источник: ликвор в крови (чародей)"
+    description: Чародей — человек, в чьей крови ликвор с рождения или с детской шахты. Заклинание — выброс собственного ликвора.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_source, liquor_caster]
+    source_code: liquor_blood
+    class_refs: [class.sorcerer]
+
+  - id: spell_note.source_pact
+    name: "Источник: договор из глубины (колдун)"
+    description: Колдун заключил договор с тем, кто ответил из глубины — со Спящим из рубки или с Резонансом через осколок эхолита.
+    status: canon
+    doc: canon.md#1.6
+    tags: [spell_source]
+    source_code: pact
+    class_refs: [class.warlock]
+    subclass_refs: [subclass.sleeper, subclass.resonance_patron]
+
+  - id: spell_note.source_sound_resonance
+    name: "Источник: звук и резонанс (бард)"
+    description: Звонарь творит магию через звук и резонанс туш и колоколов. Звонари Кордона — наследники колокольных крепостей.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [spell_source]
+    source_code: sound_resonance
+    class_refs: [class.bard]
+
+  - id: spell_note.source_parasite_herding
+    name: "Источник: паразиты (друид)"
+    description: Пастух паразитов черпает силу из живой плоти туш и паразитов; дикий облик — временная мутация тела.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [spell_source]
+    source_code: parasite_herding
+    class_refs: [class.druid]
+
+  - id: spell_note.source_stalker_lore
+    name: "Источник: знание троп (следопыт)"
+    description: Сталкер Глубинных троп пользуется выученным знанием туш и паразитов.
+    status: proposal
+    doc: rules.md#7.0
+    tags: [spell_source]
+    source_code: stalker_lore
+    class_refs: [class.ranger]
+
+  - id: spell_note.source_liquor_reagents
+    name: "Источник: реагенты и препараты (диагност)"
+    description: Диагност творит заклинания SRD как препараты на основе ликвора; фокус — инструменты алхимика.
+    status: canon
+    doc: rules.md#7.1
+    tags: [spell_source, liquor_caster]
+    source_code: liquor_reagents
+    class_refs: [class.diagnost]

@@ -1,0 +1,232 @@
+# Факты о местах (уровни знания canon.md#8: common — все, initiated — знание фракций, hidden — правда).
+# Источник: locations.md. Не дублирует lore.yaml: общие факты о поясах, островах и опорных тушах уже там.
+kind: lore_fact
+items:
+# ---------------------------------------------------------------- Карта
+- id: lore.loc_distances
+  name: Мера пути
+  status: proposal
+  doc: locations.md#1.1
+  tags: [lore, geography, travel]
+  topic: geography
+  location_ref: location.route_rim_to_coast
+  text: 'От кромки кратера до берега 750–900 миль: пешком 6–7 недель, поездом около 45 часов, дирижаблем около 20 часов.'
+  knowledge: common
+- id: lore.loc_rail_lines
+  name: Железные дороги
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, geography, rail]
+  topic: geography
+  text: 'Хребтовая магистраль идёт от Старой Матери к Кольцу по спинам туш; Береговая ветка — к Утопленнику, Лесная — к Рёберному лесу. Все дороги кончаются на Последнем перроне, в 50 милях от кромки.'
+  knowledge: common
+- id: lore.loc_line_two_strips
+  name: Две полосы черты
+  status: proposal
+  doc: locations.md#1.2
+  tags: [lore, geography, ash_line]
+  topic: geography
+  location_ref: location.belt_ash_line
+  text: 'У Пепельной черты две полосы: Передний край у самой кромки, между головами передних туш и кратером, и Тыловой вал на руинах Огненного вала, среди задних кораблей Кольца.'
+  knowledge: common
+- id: lore.loc_cordon_thread
+  name: Нить Кордона
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, ash_line, cordon, telegraph]
+  topic: war
+  location_ref: location.belt_ash_line
+  text: 'Нить Кордона — главная телеграфная линия фронта. Рой учится её рвать.'
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.loc_unceasing_bells
+  name: Неумолчная
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, ash_line, bells]
+  topic: war
+  location_ref: location.hook_unceasing
+  text: В колокольной крепости Неумолчной звонят без перерыва 350 лет. Звонарей всё меньше.
+  knowledge: common
+- id: lore.loc_bell_monastery
+  name: Обитель Звона
+  status: canon
+  doc: locations.md#1.3
+  tags: [lore, ash_line, bells]
+  topic: history
+  location_ref: location.hook_bell_monastery
+  text: 'Силу колоколов открыли в Обители Звона. Сейчас она стоит в руинах Тылового вала, и там учат звонарей Кордона.'
+  knowledge: common
+  faction_ref: faction.bell_monastery
+- id: lore.loc_crater_deaf
+  name: Кратер глух
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, crater, telegraph]
+  topic: geography
+  location_ref: location.belt_crater
+  text: У кратера телеграф глохнет, а эхолокаторы слышат только гул.
+  knowledge: initiated
+  faction_ref: faction.guild
+- id: lore.loc_stormtrooper_descent
+  name: Спуск штурмовиков
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, crater, helmsmen]
+  topic: history
+  location_ref: location.belt_crater
+  text: 'Единственный путь на дно кратера — Спуск штурмовиков, ход, который экипажи прорезали 312 лет назад.'
+  knowledge: hidden
+  faction_ref: faction.helmsmen
+- id: lore.loc_maw_signals
+  name: Сигналы из Пасти
+  status: proposal
+  doc: locations.md#1.3
+  tags: [lore, sea, rift]
+  topic: geography
+  location_ref: location.hook_maw_rift
+  text: Над разломом Пасть вода тёплая и пахнет медью, а эхолокаторы ловят в нём сигналы.
+  knowledge: initiated
+  faction_ref: faction.guild
+- id: lore.loc_frozen_everywhere
+  name: Где застыл флот
+  status: proposal
+  doc: locations.md#1.2
+  tags: [lore, leviathans, history]
+  topic: leviathans
+  text: 'Когда штурмовики пали на дне кратера и стали чужими матерями, резонанс голода прокатился по эхо-речи всего флота. Передние корабли застыли у кромки, отставшие — в Среднем поясе, последние — ещё выходя из моря.'
+  knowledge: hidden
+# ---------------------------------------------------------------- Старая Мать
+- id: lore.loc_old_mother_tide_heart
+  name: Сердце Старой Матери
+  status: proposal
+  doc: locations.md#2.1
+  tags: [lore, old_mother, tide]
+  topic: daily_life
+  location_ref: location.old_mother_heart
+  text: 'В Старой Матери прилив — это удар сердца раз в сутки. Сердечная насосная Лимфатической компании качает кровь на переработку, а шахты в прилив закрывают.'
+  knowledge: common
+- id: lore.loc_old_mother_split
+  name: Город поделён
+  status: proposal
+  doc: locations.md#2.1
+  tags: [lore, old_mother, syndicates]
+  topic: politics
+  location_ref: location.old_mother
+  text: 'Старая Мать поделена между Домами: Лимфатическая компания держит магистрат, банк и Сердце; Кострищевы — Утробу, железную дорогу и Хвост; Дом Ликвора — Череп и всё, что ниже биржи.'
+  knowledge: common
+- id: lore.loc_old_mother_quiet_floor
+  name: Тихий этаж
+  status: proposal
+  doc: locations.md#2.1
+  tags: [lore, old_mother, protocol]
+  topic: politics
+  location_ref: location.old_mother_skull
+  text: 'Под биржей есть Тихий этаж Дома Ликвора. Он закрыт по Протоколу.'
+  knowledge: initiated
+  faction_ref: faction.house_liquor
+# ---------------------------------------------------------------- Утопленник
+- id: lore.loc_drowned_tide
+  name: Прилив Утопленника
+  status: proposal
+  doc: locations.md#2.2
+  tags: [lore, drowned, tide]
+  topic: daily_life
+  location_ref: location.drowned
+  text: В прилив море заливает брюхо Утопленника до середины, и половина складов Рёберной гавани уходит под воду.
+  knowledge: common
+- id: lore.loc_drowned_wet_liquor
+  name: Мокрый ликвор
+  status: proposal
+  doc: locations.md#2.2
+  tags: [lore, drowned, liquor]
+  topic: economy
+  location_ref: location.drowned_flooded_womb
+  text: 'Под черепом Утопленника — единственная действующая шахта ликвора. Остальное ещё не выработано: за «мокрым» ликвором спускаются в затопленные отсеки на батискафах.'
+  knowledge: common
+- id: lore.loc_drowned_tail_closed
+  name: Закрытый хвост
+  status: proposal
+  doc: locations.md#2.2
+  tags: [lore, drowned]
+  topic: geography
+  location_ref: location.drowned_abyss_tail
+  text: Хвост Утопленника уходит под воду к Пасти. Он закрыт для всех, и батискафы, спустившиеся туда, возвращаются не все.
+  knowledge: common
+# ---------------------------------------------------------------- Шепчущий
+- id: lore.loc_whisperer_ring_name
+  name: Откуда имя Кольца
+  status: proposal
+  doc: locations.md#2.3
+  tags: [lore, whisperer, pilgrimage]
+  topic: church
+  location_ref: location.whisperer
+  text: 'К Собору Вознесения в черепе Шепчущего ведёт Паломничий тракт, и по нему всё Кольцо назвали Кольцом Паломников.'
+  knowledge: common
+- id: lore.loc_whisperer_hum
+  name: Поющий череп
+  status: proposal
+  doc: locations.md#2.3
+  tags: [lore, whisperer]
+  topic: church
+  location_ref: location.whisperer_vault
+  text: В тишине череп Шепчущего гудит, как поющий камень.
+  knowledge: common
+- id: lore.loc_whisperer_choir_voices
+  name: Хор с голосами мёртвых
+  status: proposal
+  doc: locations.md#2.3
+  tags: [lore, whisperer, choir]
+  topic: church
+  location_ref: location.whisperer_choirs
+  text: Хор Шепчущего поёт день и ночь, и паломники слышат в пении голоса мёртвых.
+  knowledge: common
+- id: lore.loc_whisperer_relics
+  name: Мощи ангелов
+  status: proposal
+  doc: locations.md#2.3
+  tags: [lore, whisperer, relics]
+  topic: church
+  location_ref: location.whisperer_reliquary
+  text: 'В Ковчеге Шепчущего за стеклом хранятся «мощи ангелов». Видеть их могут только высшие жрецы.'
+  knowledge: common
+- id: lore.loc_whisperer_choir_masks
+  name: Хор глушит мозг
+  status: proposal
+  doc: locations.md#2.3
+  tags: [lore, whisperer, choir, listeners]
+  topic: guild
+  location_ref: location.whisperer_choirs
+  text: 'Слушатели Гильдии знают: пение хора Шепчущего глушит шёпот мозга корабля, и сквозь пение прорываются обрывки.'
+  knowledge: initiated
+  faction_ref: faction.guild_listeners
+# ---------------------------------------------------------------- Рёберный лес
+- id: lore.loc_rib_forest_mined_out
+  name: Выработанный лес
+  status: proposal
+  doc: locations.md#2.4
+  tags: [lore, rib_forest]
+  topic: geography
+  location_ref: location.rib_forest
+  text: 'Рёберный лес выработан больше ста лет назад: мясо, кровь и ликвор выбраны. Между рёбрами высотой до 600 футов поднялась грибница.'
+  knowledge: common
+- id: lore.loc_rib_forest_circle
+  name: Круг
+  status: proposal
+  canon_parts: [Три течения Сломленных (canon.md#5.4)]
+  doc: locations.md#2.4; canon.md#5.4
+  tags: [lore, rib_forest, broken]
+  topic: factions
+  location_ref: location.rib_forest
+  text: 'Рёберным лесом никто не правит. Решает Круг — совет Сломленных трёх течений: тех, кто хочет лечения; тех, кто слушает зов Резонанса; тех, кто слушает сны экипажей.'
+  knowledge: common
+  faction_ref: faction.broken
+- id: lore.loc_rib_forest_pelvic_lake
+  name: Тазовая чаша
+  status: proposal
+  doc: locations.md#2.4
+  tags: [lore, rib_forest]
+  topic: daily_life
+  location_ref: location.rib_forest_pelvic_bowl
+  text: В Тазовой чаше озеро старой лимфы светится по ночам. Рыбу из него есть нельзя.
+  knowledge: common

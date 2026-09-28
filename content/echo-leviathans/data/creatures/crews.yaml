@@ -1,0 +1,473 @@
+# Кормчие и бортовые организмы кораблей
+# Часть пакета «Эхо Левиафанов». Основа — SRD 5.1 (srd_ref); модификаторы — язык из README.
+# behavior.profile: aggressive | cowardly | defender | capturer (Захватчик, rules.md#6.5) | noncombatant; flee_threshold — доля хитов.
+kind: creature_template
+items:
+- id: creature.helmsman_sounding
+  name: Звучащий
+  description: Кормчий-навигатор и связист, знаток языка эха. Самый вероятный собеседник людей. Поёт заклинания щелчками и аккордами.
+  doc: races.md#1.4; races.md#1.7
+  tags: [helmsman, crew]
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  behavior: {profile: cowardly, label: Звучащий, flee_threshold: 0.5, note: 'избегает шума, отступает к кораблю'}
+  modifiers:
+  - {op: set, target: size, value: small}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: set, target: vision, value: blindsight_only, note: 'Эхо-зрение: за пределами слепого зрения 60 футов слепы'}
+  - op: custom
+    engine: dev_request
+    text: В абсолютной тишине почти слепы
+    need: канон не даёт числа для «почти слепы» и не задаёт зону «абсолютной тишины» (нужен эффект/hazard тишины и величина штрафа)
+  - {op: advantage, 'on': save, vs: charmed, note: Тишина разума}
+  - {op: advantage, 'on': save, vs: corruption, note: Тишина разума}
+  - op: custom
+    engine: dev_request
+    text: 'Тишина разума: иммунитет к «приглашению» — Резонанс не может пригласить их на расстоянии'
+    need: immunity к эффекту пакета по ссылке (effect_ref), а не только к состоянию SRD; эффекта «приглашение» в пакете нет
+  - {op: condition, condition: blinded, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  gm_note: 'Заклинания — эхом, а не словами: вербальный компонент — песня (щелчки и аккорды); язык людей не нужен'
+  triggers:
+  - 'on': scene_end
+    if: {outside_ship_hours_gte: 8}
+    do:
+    - {op: condition, condition: exhaustion, note: 'Холод поверхности: 1 степень за каждые 8 часов вне корабля'}
+  abilities: []
+  loot_hint: кристалл ликворного «архива», биоминеральные резонаторы
+  status: proposal
+- id: creature.helmsman_gardener
+  name: Садовник
+  description: Кормчий, выращивающий корабли, паразитов и органы. Вместо лечения — власть над бортовыми организмами. Мог бы отозвать нитевиков у Резонанса.
+  doc: races.md#1.4; races.md#1.7
+  tags: [helmsman, crew]
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  modifiers:
+  - {op: set, target: size, value: small}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: set, target: vision, value: blindsight_only, note: 'Эхо-зрение: за пределами слепого зрения 60 футов слепы'}
+  - op: custom
+    engine: dev_request
+    text: В абсолютной тишине почти слепы
+    need: канон не даёт числа для «почти слепы» и не задаёт зону «абсолютной тишины» (нужен эффект/hazard тишины и величина штрафа)
+  - {op: advantage, 'on': save, vs: charmed, note: Тишина разума}
+  - {op: advantage, 'on': save, vs: corruption, note: Тишина разума}
+  - op: custom
+    engine: dev_request
+    text: 'Тишина разума: иммунитет к «приглашению» — Резонанс не может пригласить их на расстоянии'
+    need: immunity к эффекту пакета по ссылке (effect_ref), а не только к состоянию SRD; эффекта «приглашение» в пакете нет
+  - {op: condition, condition: blinded, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - op: custom
+    engine: dev_request
+    text: 'Лечащие заклинания Жреца заменены управлением бортовыми организмами: те же ячейки, цели — паразиты туши'
+    need: 'замена заклинаний SRD-шаблона на действие с оплатой ячейками заклинаний (grant_action не умеет cost: spell_slot) и цель target_tag: ship_organism'
+  triggers:
+  - 'on': scene_end
+    if: {outside_ship_hours_gte: 8}
+    do:
+    - {op: condition, condition: exhaustion, note: 'Холод поверхности: 1 степень за каждые 8 часов вне корабля'}
+  abilities:
+  - name: Отзыв организмов
+    kind: action
+    text: Бортовой организм в 60 футах (не перехваченный матерью) перестаёт быть враждебным. Перехваченного нитевика — спасбросок Мдр сл. 13 от матери.
+  loot_hint: семенные капсулы бортовых организмов, инструменты из живого хитина
+  status: proposal
+- id: creature.helmsman_silent_guard
+  name: Тихий страж
+  description: Кормчий-штурмовик и охотник на сгустки эха. Большая часть ушла в кратер и стала чужими матерями; немногие спят в рубках.
+  doc: races.md#1.4; races.md#1.7
+  tags: [helmsman, crew]
+  srd_ref: {type: monster, name: Veteran}
+  cr: 3
+  behavior: {profile: defender, label: Страж, flee_threshold: 0.2, guards: cockpit}
+  modifiers:
+  - {op: set, target: size, value: small}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: set, target: vision, value: blindsight_only, note: 'Эхо-зрение: за пределами слепого зрения 60 футов слепы'}
+  - op: custom
+    engine: dev_request
+    text: В абсолютной тишине почти слепы
+    need: канон не даёт числа для «почти слепы» и не задаёт зону «абсолютной тишины» (нужен эффект/hazard тишины и величина штрафа)
+  - {op: advantage, 'on': save, vs: charmed, note: Тишина разума}
+  - {op: advantage, 'on': save, vs: corruption, note: Тишина разума}
+  - op: custom
+    engine: dev_request
+    text: 'Тишина разума: иммунитет к «приглашению» — Резонанс не может пригласить их на расстоянии'
+    need: immunity к эффекту пакета по ссылке (effect_ref), а не только к состоянию SRD; эффекта «приглашение» в пакете нет
+  - {op: condition, condition: blinded, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: resistance, damage: psychic}
+  triggers:
+  - 'on': scene_end
+    if: {outside_ship_hours_gte: 8}
+    do:
+    - {op: condition, condition: exhaustion, note: 'Холод поверхности: 1 степень за каждые 8 часов вне корабля'}
+  abilities:
+  - name: Биоминеральный клинок
+    kind: action
+    text: 'Заменяет длинный меч Ветерана: тот же урон + 1d6 урона силовым полем против Отзвучных и выводков.'
+  loot_hint: биоминеральный клинок (артефакт, продавать опасно)
+  status: proposal
+- id: creature.helmsman_pilot_awakened
+  name: Проснувшийся пилот
+  description: Кормчий-пилот, вышедший из кокона. Слаб, мёрзнет, не выносит шума, но помнит, как вести корабль, и знает о Резонансе больше всех людей вместе взятых. Сюжетное событие, не рядовой враг.
+  doc: races.md#1.6
+  tags: [helmsman, crew, story]
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.9, note: 'не сражается, прячется в рубке'}
+  modifiers:
+  - {op: set, target: size, value: small}
+  - {op: sense, sense: blindsight, range: 60}
+  - {op: set, target: vision, value: blindsight_only, note: 'Эхо-зрение: за пределами слепого зрения 60 футов слепы'}
+  - op: custom
+    engine: dev_request
+    text: В абсолютной тишине почти слепы
+    need: канон не даёт числа для «почти слепы» и не задаёт зону «абсолютной тишины» (нужен эффект/hazard тишины и величина штрафа)
+  - {op: advantage, 'on': save, vs: charmed, note: Тишина разума}
+  - {op: advantage, 'on': save, vs: corruption, note: Тишина разума}
+  - op: custom
+    engine: dev_request
+    text: 'Тишина разума: иммунитет к «приглашению» — Резонанс не может пригласить их на расстоянии'
+    need: immunity к эффекту пакета по ссылке (effect_ref), а не только к состоянию SRD; эффекта «приглашение» в пакете нет
+  - {op: condition, condition: blinded, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Хрупкий слух}
+  - {op: condition, condition: exhaustion, note: Выходит из кокона с 2 степенями истощения}
+  triggers:
+  - 'on': scene_end
+    if: {outside_ship_hours_gte: 8}
+    do:
+    - {op: condition, condition: exhaustion, note: 'Холод поверхности: 1 степень за каждые 8 часов вне корабля'}
+  abilities:
+  - {name: Связь с кораблём, kind: passive, text: 'Подключённый через порты к ликвору, делает тушу управляемой (перелом кампании).'}
+  loot_hint: нет; сам по себе — главный сюжетный ресурс
+  status: proposal
+- id: creature.sleeper_cocoon
+  name: Кокон Спящего
+  description: Нарост, похожий на кресло, в желудочке-рубке. Внутри в анабиозе спит Кормчий, живущий за счёт ликвора. Часть коконов пуста.
+  status: canon
+  doc: canon.md#1.2; races.md#1.6
+  tags: [helmsman, cocoon, object]
+  cr: 0
+  behavior: {profile: defender, flee_threshold: 0.0, mobile: false}
+  modifiers:
+  - {op: set, target: ac, value: 15}
+  - {op: set, target: hp_max, value: 40}
+  - {op: run, ref: hazard.sleeper_cocoon, note: долгое пребывание рядом — спасбросок против Перемены сл. 13 (rules 3.5)}
+  abilities:
+  - {name: Сны, kind: passive, text: 'Через Шёпот сны Спящего просачиваются в шахтёров, Сломленных и колдунов «Спящего».'}
+  loot_hint: нет; вскрытие — поступок с пометкой echo и событие для state туши
+- id: creature.organism_sanitar
+  name: Санитар
+  description: Клещ размером с собаку, иммунная охрана корабля. Держит ткани живыми и нападает на всё чужое.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Giant Centipede}
+  cr: 0.25
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_sanitar_large
+  name: Большой санитар
+  description: Старый санитар главных сосудов, плетёт сети из фибрина.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Giant Spider}
+  cr: 1
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_threadworm_swarm
+  name: Рой нитевиков
+  description: Ремонтники нервов, вживаются в любую нервную ткань. Главные переносчики Скверны.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Swarm of Insects}
+  cr: 0.5
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - {op: resistance, damage: poison}
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_blood_jelly
+  name: Кровяная медуза
+  description: 'Чистильщик сосудов: переваривает всё, что попало в поток.'
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Ochre Jelly}
+  cr: 2
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_blood_jelly_small
+  name: Малая кровяная медуза
+  description: Молодой чистильщик капилляров.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Gray Ooze}
+  cr: 0.5
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_acid_larva
+  name: Кислотная личинка
+  description: Пищеварительный организм озёр-желудков. Разъедает батискафы.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Black Pudding}
+  cr: 4
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_acid_larva_young
+  name: Молодая кислотная личинка
+  description: Молодь личинки в боковых желудках.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Gray Ooze}
+  cr: 0.5
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 10
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_whisper
+  name: Шёпот
+  description: Колония-передатчик в желудочках мозга. Транслирует сны экипажа, чувства корабля и шёпот Резонанса вперемешку.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Gibbering Mouther}
+  cr: 2
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - {op: set, target: 'trait:gibbering', value: false, note: «Бормотание» SRD заменено долгим контактом с Шёпотом}
+  - {op: run, ref: hazard.whisper_colony, note: долгий контакт — спасбросок против Скверны сл. 17}
+  - {op: set, target: 'damage_type:bites', value: psychic, note: урон Шёпота — психический}
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 17
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_valve_guard
+  name: Страж клапана
+  description: 'Запорный организм: охраняет естественные отверстия и клапаны туши.'
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Grick}
+  cr: 2
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_valve_guard_great
+  name: Великий страж клапана
+  description: Страж главного клапана у желудочков. Щупальца парализуют.
+  status: canon
+  doc: canon.md#3.1; rules.md#3.1
+  tags: [ship_organism, parasite]
+  srd_ref: {type: monster, name: Chuul}
+  cr: 4
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: carcass_tissue}
+  modifiers:
+  - op: resistance
+    damage: poison
+    note: 'паразиты устойчивы к яду (rules 5.3): против них нужен кислотный вариант хитинового оружия'
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+  abilities: []
+  loot_hint: 'железы и секрет бортового организма (сырьё для Гильдии: антидоты, кислоты)'
+- id: creature.organism_threadworm_captured
+  name: Перехваченный нитевик
+  description: Рой нитевиков, которых Резонанс забрал через чужих матерей. Через них он говорит прямо внутри человека.
+  status: canon
+  doc: canon.md#3.2
+  tags: [ship_organism, parasite, brood]
+  srd_ref: {type: monster, name: Swarm of Insects}
+  cr: 1
+  stage: 3
+  behavior:
+    profile: capturer
+    label: Захватчик
+    target_priority: [loner, wounded, broken_origin, high_corruption, hunger_attunement]
+    kill_first: [flamethrower_bearer, ringer, attunement_response_3_plus]
+    nonlethal: true
+    carry_captives: true
+    retreat_when: captives_taken
+    flee_threshold: 0.0
+  modifiers:
+  - {op: sense, sense: blindsight, range: 30}
+  - {op: immunity, condition: blinded}
+  - {op: immunity, condition: charmed}
+  - {op: immunity, condition: frightened}
+  - {op: vulnerability, damage: fire}
+  - {op: disadvantage, 'on': attack, if: {in_area: effect.loud_noise}, note: Сбитый ритм}
+  - {op: resistance, damage: poison}
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      - {op: run, ref: effect.desire_seed, note: «Семя желания» до продолжительного отдыха}
+  - 'on': hit_by
+    if: {source_tag: liquor}
+    do:
+    - op: run
+      ref: effect.liquor_silence
+      note: '«Ликвор — яд»: +2d6 яда даже при иммунитете к яду; спасбросок Тел сл. 13, провал — «Тишина» до конца следующего хода (нет «Связи резонансом» и «Раскрытия»)'
+  abilities: []
+  loot_hint: нет
+- id: creature.fleet_warden
+  name: Разломный страж
+  description: Бортовой организм спящего флота, охраняющий разломы на дне моря. Батискафы, которые не вернулись, встретили его.
+  status: proposal
+  doc: canon.md#7
+  tags: [ship_organism, sea, fleet]
+  srd_ref: {type: monster, name: Giant Shark}
+  cr: 5
+  behavior: {profile: defender, flee_threshold: 0.0, guards: rift, targets_vehicles: true}
+  modifiers:
+  - {op: sense, sense: blindsight, range: 120}
+  - {op: resistance, damage: cold}
+  gm_note: Хитиновая обшивка вместо шкуры; атакует батискафы как существа
+  abilities: []
+  loot_hint: хитин глубоководной выделки (редкое сырьё)
+- id: creature.organism_orca_sanitar
+  name: Косатка-санитар
+  description: 'Бортовой организм спящего флота размером с косатку: чистит воду у разломов и нападает на всё чужое у борта туши. Приходит из разлома, когда туша просыпается.'
+  status: proposal
+  doc: canon.md#3.1; canon.md#7
+  tags: [ship_organism, sea, fleet]
+  srd_ref: {type: monster, name: Killer Whale}
+  cr: 3
+  behavior: {profile: defender, label: Бортовой организм, flee_threshold: 0.0, guards: rift, targets_vehicles: true}
+  modifiers:
+  - {op: resistance, damage: poison, note: паразиты устойчивы к яду (rules 5.3)}
+  triggers:
+  - 'on': hit
+    do:
+    - op: save
+      stat: con
+      dc: 13
+      on_fail:
+      - {op: resource, stat: corruption, delta: 1}
+      note: укус паразита — спасбросок против Скверны (dc.corruption_medium)
+  abilities: []
+  loot_hint: железы и секрет бортового организма, китовый ус из хитина

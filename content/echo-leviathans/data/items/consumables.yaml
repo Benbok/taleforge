@@ -1,0 +1,818 @@
+# Расходники: стимуляторы (инъекции), ликвор, антидот, эликсиры и мази, боеприпасы, средства против роя,
+# товары-субстанции (category: trade_good, поле index_group — строка индекса цен, см. prices.yaml).
+# Источник: rules.md#3.3, #3.5, #5.1, #5.2, #5.6; items.md#2.3, #4, #7.4.
+# injection: true — вводится инъектором (бонусное действие) и считается для ломки (effect.injection_withdrawal).
+kind: item_template
+items:
+  # --- Стимуляторы: зелья SRD с новым описанием (rules.md 5.1) ---
+  - id: item.blood_serum
+    name: Кровяная сыворотка
+    description: Сгущённая кровь туши с алхимией Гильдии. Стягивает раны за секунды.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [stimulant, healing]
+    srd_ref: {type: item, name: Potion of Healing}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 50}
+    weight: 0.5
+    rarity: common
+  - id: item.thick_serum
+    name: Густая сыворотка
+    description: Сыворотка тройной выпарки. Тёмная, почти чёрная.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [stimulant, healing]
+    srd_ref: {type: item, name: Potion of Greater Healing}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 150}
+    weight: 0.5
+    rarity: uncommon
+  - id: item.bull_mutagen
+    name: Мутаген быка
+    description: Мышечный стимулятор из желёз туши. Руки на час наливаются силой.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [stimulant, strength]
+    srd_ref: {type: item, name: Potion of Hill Giant Strength}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 400}
+    weight: 0.5
+    rarity: uncommon
+  - id: item.cats_eye
+    name: Кошачий глаз
+    description: Стимулятор жилолазов. Пальцы липнут к плоти, зрачки расширяются во всю радужку.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [stimulant, climbing, darkvision]
+    srd_ref: {type: item, name: Potion of Climbing}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 180}
+    weight: 0.5
+    rarity: common
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: sense, sense: darkvision, range: 60}
+  - id: item.nerve_fire
+    name: Нервный огонь
+    description: Стимулятор, после которого мир замедляется. Не продаётся.
+    status: proposal
+    doc: rules.md#5.1
+    tags: [stimulant, speed]
+    srd_ref: {type: item, name: Potion of Speed}
+    category: consumable
+    source: blood
+    injection: true
+    price: {fk: null, for_sale: false}
+    weight: 0.5
+    rarity: very_rare
+
+  # --- Стимуляторы (items.md 4.1) ---
+  - id: item.burner_blood
+    name: Кровь выжигателя
+    description: Стимулятор Кордона перед вылазкой в налёт.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, cordon]
+    srd_ref: {type: item, name: Potion of Heroism}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 180}
+    weight: 0.5
+    rarity: rare
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: add, target: temp_hp, value: 10}
+      - {op: run, ref: spell.bless, target: self, concentration: false, duration: {unit: hour, value: 1}, text: "Эффект «Благословения» (SRD Bless) без концентрации"}
+  - id: item.lymph_ward
+    name: Лимфа-заслон
+    description: Ампула лимфы, закалённой против одного вида урона. Вид указан на ампуле.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, resistance]
+    srd_ref: {type: item, name: Potion of Resistance}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 300}
+    weight: 0.5
+    rarity: uncommon
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: resistance, damage: chosen_on_ampoule}
+  - id: item.gill_tincture
+    name: Жабрий настой
+    description: Настой на жабрах морских паразитов. Час дыхания под водой и в лимфе.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, breathing]
+    srd_ref: {type: item, name: Potion of Water Breathing}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 180}
+    weight: 0.5
+    rarity: uncommon
+  - id: item.giant_serum
+    name: Сыворотка Исполина
+    description: Сыворотка из крови Исполина, самой старой туши. 8d4 + 8 хитов.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, healing]
+    srd_ref: {type: item, name: Potion of Superior Healing}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 450}
+    weight: 0.5
+    rarity: rare
+  - id: item.titan_mutagen
+    name: Мутаген титана
+    description: Мутаген из желёз титана. Час силы великана. Не продаётся.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, strength]
+    srd_ref: {type: item, name: Potion of Frost Giant Strength}
+    category: consumable
+    source: blood
+    injection: true
+    price: {fk: null, for_sale: false}
+    weight: 0.5
+    rarity: very_rare
+  - id: item.black_serum
+    name: Чёрная сыворотка
+    description: Подделка под кровяную сыворотку с чёрного рынка. На деле яд.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, poison, black_market]
+    srd_ref: {type: item, name: Potion of Poison}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    legality: outlaw
+    disguised_as_ref: item.blood_serum
+    price: {fk: 100}
+    weight: 0.5
+    rarity: uncommon
+  - id: item.antitoxin
+    name: Противоядие
+    description: Сыворотка на железе санитара. Час преимущества против яда.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, poison]
+    srd_ref: {type: item, name: Antitoxin}
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 50}
+    weight: 0.5
+    rarity: common
+  - id: item.vigor
+    name: Бодрость
+    description: Стимулятор шахтёров перед второй сменой. Усталость уходит в долг.
+    status: proposal
+    doc: items.md#4.1
+    tags: [stimulant, exhaustion]
+    category: consumable
+    source: blood
+    index_group: blood
+    injection: true
+    price: {fk: 40}
+    weight: 0.5
+    rarity: common
+    modifiers:
+      - {op: resource, stat: exhaustion, delta: -1}
+    triggers:
+      - "on": long_rest
+        once: true
+        do: [{op: multiply, target: exhaustion_recovery, factor: 0, text: "На следующем продолжительном отдыхе истощение не снимается"}]
+
+  # --- Ликвор (rules.md 5.2, 3.5) ---
+  - id: item.liquor_purified
+    name: Очищенный ликвор
+    description: Ампула прозрачного ликвора с лицензией Дома Ликвора. Возвращает ячейку до 3-го круга ценой Перемены.
+    status: proposal
+    doc: rules.md#5.2
+    tags: [liquor, spell_slot]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    legality: license
+    price: {fk: 400, range: [300, 500]}
+    weight: 0.5
+    rarity: rare
+    modifiers:
+      - op: choose
+        when: use
+        if: {caster_tag: liquor_caster}
+        text: "Заклинатель ликвора: одна потраченная ячейка до 3-го круга"
+        options:
+          - [{op: resource, stat: spell_slot_1, delta: 1}]
+          - [{op: resource, stat: spell_slot_2, delta: 1}]
+          - [{op: resource, stat: spell_slot_3, delta: 1}]
+      - {op: set, target: temp_hp, value: "1d4 + level", if: {not: {caster_tag: liquor_caster}}, text: "Не-заклинатель"}
+      - op: save
+        stat: con
+        dc: 15
+        vs: alteration
+        on_fail: [{op: resource, stat: alteration, delta: 1}]
+      - {op: remove_condition, any_of: [effect.liquor_withdrawal_1, effect.liquor_withdrawal_2, effect.liquor_withdrawal_3]}
+      - {op: set, target: last_liquor_dose_day, value: today}
+  - id: item.liquor_dirty
+    name: Грязный ликвор
+    description: Мутный ликвор с паразитами. Восстанавливает ячейку 1-го или 2-го круга (1d2).
+    status: proposal
+    doc: rules.md#5.2
+    tags: [liquor, spell_slot]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    price: {fk: 50}
+    weight: 0.5
+    rarity: common
+    modifiers:
+      - {op: resource, stat: spell_slot, slot_level: "1d2", delta: 1, if: {caster_tag: liquor_caster}, text: "Заклинатель ликвора: ячейка круга 1d2"}
+      - {op: set, target: temp_hp, value: "1d4 + level", if: {not: {caster_tag: liquor_caster}}, text: "Не-заклинатель"}
+      - op: save
+        stat: con
+        dc: 15
+        vs: corruption
+        on_fail: [{op: resource, stat: corruption, delta: 1}]
+      - op: save
+        stat: con
+        dc: 12
+        vs: alteration
+        on_fail: [{op: resource, stat: alteration, delta: 1}]
+  - id: item.liquor_drop
+    name: «Капля» ликвора
+    description: Доза с чёрного рынка. Снимает ломку, но ячейку не восстанавливает.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [liquor, black_market]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    legality: outlaw
+    price: {fk: 10}
+    weight: 0.1
+    rarity: common
+    modifiers:
+      - op: save
+        stat: con
+        dc: 10
+        vs: alteration
+        on_fail: [{op: resource, stat: alteration, delta: 1}]
+      - {op: remove_condition, any_of: [effect.liquor_withdrawal_1, effect.liquor_withdrawal_2, effect.liquor_withdrawal_3], text: "Ячейку не восстанавливает"}
+      - {op: set, target: last_liquor_dose_day, value: today}
+  - id: item.guild_antidote
+    name: Антидот Гильдии
+    description: Доза на продолжительный отдых. Снимает 1 очко Скверны, только если сейчас 1 или 2.
+    status: canon
+    doc: rules.md#3.3
+    tags: [corruption, cure]
+    category: consumable
+    source: blood
+    index_group: blood
+    price: {fk: 25}
+    weight: 0.5
+    rarity: common
+    effect_ref: effect.corruption_cure_antidote
+
+  # --- Эликсиры и мази (items.md 4.2), не инъекции ---
+  - id: item.smelling_salts
+    name: Нюхательная соль
+    description: Едкая соль в флаконе. Действием снять «испуган» с себя или существа в 5 футах.
+    status: proposal
+    doc: items.md#4.2
+    tags: [elixir, fear]
+    category: consumable
+    source: blood
+    price: {fk: 10}
+    weight: 0.1
+    rarity: common
+    modifiers:
+      - {op: grant_action, name: Дать понюхать, action: action, range: 5, uses: {count: 1, consumable: true}, do: [{op: remove_condition, condition: frightened}]}
+  - id: item.ringing_salt
+    name: Звонкая соль
+    description: Соль из колокольных мастерских, её рассасывают под языком.
+    status: proposal
+    doc: items.md#4.2
+    tags: [elixir, mental]
+    category: consumable
+    source: blood
+    price: {fk: 30}
+    weight: 0.1
+    rarity: common
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: advantage, "on": save, stat: wis, vs: mental_infection, uses: 1, text: "Следующий спасбросок Мдр против ментального заражения (rules.md 6.5)"}
+  - id: item.fat_salve
+    name: Жировая мазь
+    description: Мазь из жира туш. Час не даёт холоду брать тело, изменённое ликвором.
+    status: proposal
+    doc: items.md#4.2
+    tags: [elixir, alteration]
+    category: consumable
+    source: blood
+    price: {fk: 25}
+    weight: 0.5
+    rarity: common
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: resistance, damage: cold, if: {has_effect: effect.alteration_4}, text: "Гасит уязвимость к холоду от Перемены 4 на 1 час (сопротивление + уязвимость = обычный урон). Очки Перемены не снимает"}
+  - id: item.masking_fat
+    name: Маскирующий жир
+    description: Вонючий жир, в котором путается слепое зрение выводков.
+    status: proposal
+    doc: items.md#4.2
+    tags: [elixir, stealth]
+    category: consumable
+    source: blood
+    price: {fk: 20}
+    weight: 0.5
+    rarity: common
+    duration: {unit: hour, value: 1}
+    modifiers:
+      - {op: advantage, "on": check, stat: dex, skill: stealth, vs: brood}
+  - id: item.burning_paste
+    name: Выжигательная паста
+    description: Паста, которую мажут на пол. Любой огонь превращает её в минуту пламени.
+    status: proposal
+    doc: items.md#4.2
+    tags: [elixir, fire, anti_swarm]
+    category: consumable
+    source: blood
+    price: {fk: 10}
+    weight: 1
+    rarity: common
+    modifiers:
+      - op: grant_action
+        name: Нанести пасту
+        action: action
+        uses: {count: 1, consumable: true}
+        area: {shape: square, size: 5}
+        do:
+          - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: burned, area: {shape: square, size: 5}, duration: {unit: minute, value: 1}, starts_on: fire_damage_in_area, text: "Поджигается любым огнём и горит 1 минуту, как выжженный участок налёта"}
+
+  # --- Средства против роя (rules.md 5.6, items.md 2.4) ---
+  - id: item.liquor_ampoule
+    name: Ликворная ампула
+    description: Стеклянная ампула ликвора для броска в рой. Бросающий Переменой не рискует.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [anti_swarm, liquor, thrown]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    anti_resonance: true
+    damage: {dice: "1", type: piercing}
+    range: {normal: 20, long: 60}
+    price: {fk: 25}
+    weight: 0.5
+    rarity: common
+    effect_ref: effect.brood_liquor_poison
+    triggers:
+      - "on": hit
+        if: {target_tag: swarm}
+        do:
+          - {op: run, ref: effect.liquor_silence, text: "Внутри эффекта: +2d6 ядом даже при иммунитете (матери — половина) и спасбросок Тел сл. 13"}
+  - id: item.liquor_coating
+    name: Ликворное покрытие
+    description: Ликвор для смазки клинка. Минуту оружие ядовито для роя.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [anti_swarm, liquor, coating]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    anti_resonance: true
+    price: {fk: 30}
+    weight: 0.5
+    rarity: common
+    duration: {unit: minute, value: 1}
+    effect_ref: effect.brood_liquor_poison
+    modifiers:
+      - {op: grant_action, name: Смазать оружие, action: action, uses: {count: 1, consumable: true}, do: [{op: set, target: weapon.coating, value: item.liquor_coating, duration: {unit: minute, value: 1}}]}
+    triggers:
+      - "on": hit
+        if: {target_tag: swarm}
+        do: [{op: run, ref: effect.liquor_silence, text: "«Ликвор — яд»: +2d6 ядом даже при иммунитете и спасбросок Тел сл. 13"}]
+  - id: item.burning_impregnation
+    name: Выжигательная пропитка
+    description: Горючая пропитка для оружия. Удар выжигает налёт.
+    status: proposal
+    doc: items.md#2.4
+    tags: [anti_swarm, fire, coating]
+    category: consumable
+    source: blood
+    index_group: fuel
+    anti_resonance: true
+    price: {fk: 15}
+    weight: 0.5
+    rarity: common
+    duration: {unit: minute, value: 1}
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: fire}
+      - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: burned, when: hit, area: {shape: square, size: 5, center: impact}, text: "Удар выжигает налёт"}
+  - id: item.liquor_probe
+    name: Проба ликвором
+    description: Капля ликвора на кожу. Человек ничего не чувствует, а скрытый выводок шипит и дымится.
+    status: proposal
+    doc: rules.md#5.6
+    tags: [anti_swarm, liquor, detection]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    anti_resonance: true
+    price: {fk: 10}
+    weight: 0
+    rarity: common
+    effect_ref: effect.brood_reveal
+    modifiers:
+      - {op: remove_condition, condition: effect.brood_mimicry, if: {target_stage: [1, 2]}, text: "Скрытый стадии I–II раскрыт без проверки"}
+
+  # --- Боеприпасы обычные (items.md 2.3) ---
+  - id: item.ammo_steam_bullets
+    name: Пули с пар-капсулой (10)
+    description: Пули для пистоля, ружья, револьвера и винтовки.
+    status: proposal
+    doc: items.md#2.3
+    tags: [ammo]
+    category: ammo
+    source: tech
+    quantity: 10
+    price: {fk: 1}
+    weight: 1
+    rarity: common
+  - id: item.ammo_buckshot
+    name: Картечь (10)
+    description: Заряды картечи для картечницы.
+    status: proposal
+    doc: items.md#2.3
+    tags: [ammo]
+    category: ammo
+    source: tech
+    quantity: 10
+    price: {fk: 2}
+    weight: 2
+    rarity: common
+  - id: item.ammo_nails
+    name: Гвозди (20)
+    description: Гвозди для гвоздомёта.
+    status: proposal
+    doc: items.md#2.3
+    tags: [ammo, mine]
+    category: ammo
+    source: tech
+    quantity: 20
+    price: {fk: 1}
+    weight: 1
+    rarity: common
+  - id: item.ammo_flares
+    name: Сигнальная ракета
+    description: Ракета для ракетницы.
+    status: proposal
+    doc: items.md#2.3
+    tags: [ammo, light_source]
+    category: ammo
+    source: tech
+    quantity: 1
+    price: {fk: 1}
+    weight: 0.5
+    rarity: common
+  - id: item.ammo_darts
+    name: Дротики (10)
+    description: Пустые дротики для дротикомета; заряжаются препаратами. Цена по аналогии с иглами SRD.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [ammo]
+    srd_ref: {type: item, name: Blowgun needles}
+    category: ammo
+    source: tech
+    quantity: 10
+    price: {fk: 1}
+    weight: 0.5
+    rarity: common
+  - id: item.ammo_harpoons
+    name: Гарпуны (5)
+    description: Гарпуны с тросом для гарпуна-пневматика. Цена — предложение, в тексте не задана.
+    status: proposal
+    doc: rules.md#5.5
+    tags: [ammo]
+    category: ammo
+    source: tech
+    quantity: 5
+    price: {fk: 2}
+    weight: 5
+    rarity: common
+
+  # --- Боеприпасы с эффектами (items.md 4.3), цена за штуку ---
+  - id: item.ammo_incendiary
+    name: Зажигательная пуля
+    description: Пуля с горючим сердечником для пистоля, ружья, револьвера. Поджигает налёт.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, fire]
+    category: ammo
+    source: tech
+    quantity: 1
+    price: {fk: 5}
+    weight: 0.1
+    rarity: common
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: fire}
+      - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: burning, when: hit, area: impact_point, text: "Поджигает налёт (дальше — по правилу hazard.blight)"}
+  - id: item.ammo_acid
+    name: Кислотная пуля
+    description: Пуля с ампулой кислоты.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, acid]
+    category: ammo
+    source: tech
+    quantity: 1
+    price: {fk: 5}
+    weight: 0.1
+    rarity: common
+    modifiers:
+      - {op: extra_damage, dice: 1d4, damage_type: acid}
+  - id: item.ammo_whistling
+    name: Свистящая пуля
+    description: Пуля с прорезями. Воет в полёте и выдаёт скрытых выводков.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, noise, anti_swarm]
+    category: ammo
+    source: tech
+    quantity: 1
+    properties: [noisy]
+    property_refs: [item.property_noisy]
+    price: {fk: 3}
+    weight: 0.1
+    rarity: common
+    triggers:
+      - "on": hit
+        if: {target_stage: [1, 2]}
+        do:
+          - {op: save, stat: con, dc: 12, target: hit_target, if: {target_stage: [1, 2]}, text: "Проба звоном (effect.brood_mimicry, reveal_methods)", on_fail: [{op: remove_condition, condition: effect.brood_mimicry, text: "вздрагивает — облик раскрыт для всех смотревших"}]}
+  - id: item.ammo_liquor_dart
+    name: Ликворный дротик
+    description: Дротик с ликвором для дротикомета. Стрелок Переменой не рискует.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, liquor, anti_swarm]
+    category: ammo
+    source: liquor
+    index_group: liquor
+    quantity: 1
+    price: {fk: 30}
+    weight: 0.1
+    rarity: common
+    anti_resonance: true
+    effect_ref: effect.brood_liquor_poison
+  - id: item.ammo_sleep_dart
+    name: Сонный дротик
+    description: Дротик со снотворным для дротикомета.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, poison]
+    category: ammo
+    source: blood
+    quantity: 1
+    price: {fk: 50}
+    weight: 0.1
+    rarity: uncommon
+    triggers:
+      - "on": hit
+        do:
+          - op: save
+            stat: con
+            dc: 13
+            on_fail: [{op: condition, condition: poisoned, duration: {unit: minute, value: 1}}]
+            on_fail_by_5: [{op: condition, condition: unconscious, duration: {unit: minute, value: 1}, text: "или до получения урона"}]
+  - id: item.ammo_barbed_harpoon
+    name: Зазубренный гарпун
+    description: Гарпун с зазубринами. Держит крепче и рвёт того, кто вырвался.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo]
+    category: ammo
+    source: tech
+    quantity: 1
+    price: {fk: 5}
+    weight: 1
+    rarity: common
+    modifiers:
+      - {op: set, target: escape_dc, value: 15}
+      - {op: extra_damage, dice: 1d4, damage_type: piercing, when: target_escapes_grapple, text: "Кто вырвался — получает 1d4 колющего"}
+  - id: item.ammo_echolith_bullet
+    name: Эхолитовая пуля
+    description: Пуля с крупицей поющего камня. Бьёт по разуму и тянет стрелка к Голоду. Вне закона.
+    status: proposal
+    doc: items.md#4.3
+    tags: [ammo, echolith, black_market]
+    category: ammo
+    source: echolith
+    index_group: echolith
+    legality: outlaw
+    quantity: 1
+    price: {fk: 50}
+    weight: 0.1
+    rarity: uncommon
+    modifiers:
+      - {op: extra_damage, dice: 1d6, damage_type: psychic}
+    triggers:
+      - "on": shot
+        do:
+          - op: save
+            stat: con
+            dc: 10
+            vs: corruption
+            on_fail: [{op: resource, stat: corruption, delta: 1}]
+      - "on": kill
+        do:
+          - {op: resource, stat: echo_attunement, delta: -1}
+
+  # --- Товары-субстанции (items.md 7.4): сырьё без механики, цена при индексе ×1 ---
+  - id: item.trade_blood
+    name: Кровь очищенная
+    description: Флакон очищенной крови туши. Это и есть монета ФК.
+    status: canon
+    doc: items.md#7.4
+    tags: [trade_good, currency]
+    category: trade_good
+    source: blood
+    index_group: blood
+    unit: флакон
+    price: {fk: 1}
+    rarity: common
+  - id: item.trade_lymph
+    name: Лимфа
+    description: Колба лимфы туши.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good]
+    category: trade_good
+    source: blood
+    index_group: blood
+    unit: колба
+    price: {fk: 2}
+    rarity: common
+  - id: item.trade_marrow_fuel
+    name: Костный мозг (топливо)
+    description: Бак топлива из костного мозга, 10 фунтов.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, fuel]
+    category: trade_good
+    source: blood
+    index_group: fuel
+    unit: бак 10 фунтов
+    price: {fk: 10}
+    weight: 10
+    rarity: common
+  - id: item.trade_black_jelly
+    name: Чёрное желе
+    description: Горючее желе для огнемётов, на один бак.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, fuel]
+    category: trade_good
+    source: blood
+    index_group: fuel
+    unit: бак огнемёта
+    price: {fk: 10}
+    rarity: common
+  - id: item.trade_raw_chitin
+    name: Хитин сырой
+    description: Сырой хитин туши. Урона ядом не даёт, пока не переработан.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, chitin]
+    category: trade_good
+    source: chitin
+    index_group: chitin
+    unit: фунт
+    price: {fk: 2}
+    weight: 1
+    rarity: common
+  - id: item.trade_chitin_alloy
+    name: Хитиновый сплав
+    description: Слиток переработанного хитина, 5 фунтов.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, chitin]
+    category: trade_good
+    source: chitin
+    index_group: chitin
+    unit: слиток 5 фунтов
+    price: {fk: 25}
+    weight: 5
+    rarity: common
+  - id: item.trade_nerve_fiber
+    name: Нервное волокно
+    description: Моток нервного волокна туши, 50 футов. Прочнее каната.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, chitin]
+    category: trade_good
+    source: chitin
+    index_group: chitin
+    unit: моток 50 футов
+    price: {fk: 15}
+    rarity: common
+  - id: item.trade_sanitar_gland
+    name: Железа санитара
+    description: Железа, из которой варят противоядия.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good]
+    category: trade_good
+    source: blood
+    index_group: blood
+    unit: штука
+    price: {fk: 30}
+    rarity: common
+  - id: item.trade_spore_tissue
+    name: Спороносная ткань
+    description: Ткань туши со спорами, сырьё алхимиков.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good]
+    category: trade_good
+    source: blood
+    index_group: blood
+    unit: фунт
+    price: {fk: 5}
+    weight: 1
+    rarity: common
+  - id: item.trade_hide
+    name: Кожа туши выделанная
+    description: Выделанная кожа туши, квадратный ярд.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, chitin]
+    category: trade_good
+    source: chitin
+    index_group: chitin
+    unit: кв. ярд
+    price: {fk: 5}
+    rarity: common
+  - id: item.trade_echolith_grain
+    name: Крупица эхолита
+    description: Осколок поющего камня. Вне закона — Кордон конфискует, Церковь покупает тайно.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, echolith, black_market]
+    category: trade_good
+    source: echolith
+    index_group: echolith
+    legality: outlaw
+    unit: крупица
+    price: {fk: 50}
+    rarity: uncommon
+  - id: item.trade_whisper_gland
+    name: Железа Шёпота
+    description: Сырьё для шлемов Шёпота и масок. Вне закона.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, echolith, black_market]
+    category: trade_good
+    source: echolith
+    index_group: echolith
+    legality: outlaw
+    unit: штука
+    price: {fk: 200}
+    rarity: rare
+  - id: item.trade_bloom_fruit
+    name: Плоды Цветения
+    description: Горсть плодов Цветения. Работают как «Добрая ягода». Не продаются, появляются только после Преображения.
+    status: proposal
+    doc: items.md#7.4
+    tags: [trade_good, bloom]
+    category: trade_good
+    source: bloom
+    unit: горсть
+    price: {fk: null, for_sale: false}
+    rarity: uncommon
+    requires_clock: {clock_ref: clock.bloom, min: 1}
+    srd_ref: {type: spell, name: Goodberry}
+    spell_ref: spell.goodberry

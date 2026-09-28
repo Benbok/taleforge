@@ -1,0 +1,377 @@
+# Характеристики, производные величины, ресурсы и шкалы героя.
+# Источник: design/setting/echo-leviathans-rules.md (разделы 1, 3, 4, 5.1, 6.3, 8).
+kind: stat_definition
+items:
+  # --- Характеристики SRD ---
+  - id: stat.str
+    name: Сила
+    description: Характеристика SRD. Модификатор — str_mod.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Сил
+  - id: stat.dex
+    name: Ловкость
+    description: Характеристика SRD. Модификатор — dex_mod.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Лов
+  - id: stat.con
+    name: Телосложение
+    description: Характеристика SRD. Против Скверны и Перемены бросают Телосложение.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Тел
+  - id: stat.int
+    name: Интеллект
+    description: Характеристика SRD. Базовая для заклинаний и препаратов Диагноста.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Инт
+  - id: stat.wis
+    name: Мудрость
+    description: Характеристика SRD. Испытание Порога — проверка Мудрости + БМ; сложность техник Отклика — 8 + БМ + Мдр.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Мдр
+  - id: stat.cha
+    name: Харизма
+    description: Характеристика SRD. Порог тишины — проверка Харизмы + БМ; сложность техник Голода — 8 + БМ + Хар.
+    status: canon
+    doc: rules.md#1
+    tags: [ability, srd]
+    widget_type: number
+    min: 1
+    max: 30
+    default: 10
+    abbr: Хар
+
+  # --- Производные и базовые величины ---
+  - id: stat.level
+    name: Уровень
+    description: Уровень персонажа. Потолок 15 для всех героев и кампаний, исключений нет; умения 16–20 уровней не используются.
+    status: canon
+    doc: rules.md#1
+    tags: [core]
+    widget_type: number
+    min: 1
+    max: 15
+    default: 1
+  - id: stat.proficiency_bonus
+    name: Бонус мастерства
+    description: "По SRD от уровня: +2 (1–4), +3 (5–8), +4 (9–12), +5 (13–15)."
+    status: canon
+    doc: rules.md#1
+    tags: [core, derived]
+    widget_type: number
+    min: 2
+    max: 5
+    formula: "2 + floor((level - 1) / 4)"
+  - id: stat.hp
+    name: Хиты
+    description: Текущие хиты. Не выше максимума хитов.
+    status: canon
+    doc: rules.md#1
+    tags: [core]
+    widget_type: bar
+    min: 0
+    max_ref: stat.hp_max
+  - id: stat.hp_max
+    name: Максимум хитов
+    description: По SRD от класса и Телосложения. Скверна 4 уменьшает его вдвое; некоторые лечения Скверны снижают его навсегда.
+    status: canon
+    doc: rules.md#3.2
+    tags: [core]
+    widget_type: number
+    min: 1
+  - id: stat.temp_hp
+    name: Временные хиты
+    description: По SRD. Их дают «Жадный глоток», ликвор для не-заклинателя, «Лимфоусилитель».
+    status: canon
+    doc: rules.md#6.3
+    tags: [core]
+    widget_type: number
+    min: 0
+    default: 0
+  - id: stat.ac
+    name: Класс доспеха
+    description: По SRD. «Тело роя» задаёт природную броню 13 + Лов.
+    status: canon
+    doc: rules.md#1
+    tags: [core]
+    widget_type: number
+    min: 0
+    default: 10
+  - id: stat.speed
+    name: Скорость
+    description: Скорость ходьбы в футах. У всех происхождений 30 футов; Скверна 2 даёт −10.
+    status: canon
+    doc: rules.md#2
+    tags: [core]
+    widget_type: number
+    min: 0
+    default: 30
+    unit: ft
+  - id: stat.speed_climb
+    name: Скорость лазания
+    description: Скорость лазания в футах (по SRD — половина ходьбы без особого умения).
+    status: canon
+    doc: rules.md#7.6
+    tags: [core]
+    widget_type: number
+    min: 0
+    default: 0
+    unit: ft
+  - id: stat.exhaustion
+    name: Истощение
+    description: Степени истощения по SRD (0–6). Скверна его не заменяет, а дополняет. Ломка на Перемене 5 даёт 1 степень за каждый день без дозы.
+    status: canon
+    doc: rules.md#3
+    tags: [core, srd, resource]
+    widget_type: track
+    min: 0
+    max: 6
+    default: 0
+    srd_ref: {type: condition, name: Exhaustion}
+  - id: stat.attunement_slots
+    name: Ячейки настройки
+    description: Настройка на магические предметы по SRD (0–3). Хитиновые импланты Хирурга плоти занимают ячейку настройки. Не путать с настроем эха (stat.echo_attunement).
+    status: canon
+    doc: rules.md#7.1
+    tags: [core, srd, resource, items]
+    widget_type: counter
+    min: 0
+    max: 3
+    default: 0
+
+  # --- Скверна и рой ---
+  - id: stat.corruption
+    name: Скверна
+    description: Шкала 0–6, дополняет Истощение. Эффекты накопительные (effect.corruption_1…6). На 6 — испытание Порога. У «Сохранившего себя» обнуляется и больше не растёт.
+    status: canon
+    doc: rules.md#3
+    tags: [resource, corruption]
+    widget_type: track
+    min: 0
+    max: 6
+    default: 0
+    effects_by_value:
+      1: effect.corruption_1
+      2: effect.corruption_2
+      3: effect.corruption_3
+      4: effect.corruption_4
+      5: effect.corruption_5
+      6: effect.corruption_6
+    cumulative: true
+  - id: stat.swarm_gifts
+    name: Принятые дары роя
+    description: Список принятых даров (id effect.gift_*). Дары постоянны; каждый даёт +1 к сложности испытания Порога.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [corruption, gifts]
+    widget_type: list
+    item_kind: effect_template
+  - id: stat.hive_call
+    name: Зов роя
+    description: Шкала 0–3 у «Сохранившего себя» (не у исхода «Разрыв») и у колдуна покровителя «Резонанс». На 3 — снова испытание Порога.
+    status: proposal
+    doc: rules.md#3.4
+    tags: [resource, corruption, lineage]
+    widget_type: track
+    min: 0
+    max: 3
+    default: 0
+    trial_ref: effect.threshold_trial
+    triggers:
+      - "on": resource_changed
+        if: {stat_gte: {hive_call: 3}}
+        do: [{op: run, ref: effect.threshold_trial}]
+
+  # --- Перемена и ликвор ---
+  - id: stat.alteration
+    name: Перемена
+    description: Шкала 0–6 — вред ликвора, тянет к холодной тишине Кормчих. Эффекты накопительные (effect.alteration_1…6). На 6 — Порог тишины.
+    status: canon
+    doc: rules.md#3.5
+    tags: [resource, alteration, liquor]
+    widget_type: track
+    min: 0
+    max: 6
+    default: 0
+    effects_by_value:
+      1: effect.alteration_1
+      2: effect.alteration_2
+      3: effect.alteration_3
+      4: effect.alteration_4
+      5: effect.alteration_5
+      6: effect.alteration_6
+    cumulative: true
+  - id: stat.silence_pull
+    name: Тяга тишины
+    description: Шкала 0–3 у «Сохранившего сердце». На 3 — снова Порог тишины, провал делает героя Безмолвным.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [resource, alteration, lineage]
+    widget_type: track
+    min: 0
+    max: 3
+    default: 0
+    trial_ref: effect.silence_threshold_trial
+    triggers:
+      - "on": resource_changed
+        if: {stat_gte: {silence_pull: 3}}
+        do: [{op: run, ref: effect.silence_threshold_trial}]
+  - id: stat.dependency
+    name: Зависимость от ликвора
+    description: Ступень зависимости 0–3. По умолчанию выводится из Перемены (0 → 0; 1–2 → 1; 3–4 → 2; 5 → 3); «Иссечение» Хирурга плоти снижает её на ступень. Ступень задаёт, как часто нужна доза.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [resource, alteration, liquor]
+    widget_type: track
+    min: 0
+    max: 3
+    default: 0
+    derived_from: "alteration: 0→0, 1-2→1, 3-4→2, 5→3"
+    dose_interval_days: {1: 14, 2: 7, 3: 3}
+    effects_by_value:
+      1: effect.liquor_withdrawal_1
+      2: effect.liquor_withdrawal_2
+      3: effect.liquor_withdrawal_3
+  - id: stat.last_liquor_dose_day
+    name: День последней дозы ликвора
+    description: Игровой день последней дозы любого ликвора (очищенный, грязный, причастие, «капля»). От него считается ломка.
+    status: proposal
+    doc: rules.md#8
+    tags: [alteration, liquor, timer]
+    widget_type: number
+    min: 0
+  - id: stat.days_without_liquor
+    name: Дней без ликвора
+    description: Сколько игровых дней прошло с последней дозы ликвора. По ней считается ломка (effect.liquor_dependency) и воздержание (effect.alteration_cure_abstinence).
+    status: proposal
+    doc: rules.md#3.5
+    tags: [alteration, liquor, timer, derived]
+    widget_type: number
+    min: 0
+    formula: "day - last_liquor_dose_day"
+  - id: stat.injections_since_rest
+    name: Инъекции с отдыха
+    description: Счётчик инъекций с последнего продолжительного отдыха. Каждая сверх первой — спасбросок Тел, сл. 10 + 2 за каждую предыдущую. Не больше одной инъекции за ход.
+    status: canon
+    doc: rules.md#5.1
+    tags: [resource, injector]
+    widget_type: counter
+    min: 0
+    default: 0
+    reset_on: long_rest
+    per_turn_limit: 1
+
+  # --- Эхо ---
+  - id: stat.echo_pool
+    name: Запас эха
+    description: Ресурс техник Голода и Отклика, есть у всех героев. Максимум = БМ − 1, +1 на 15-м уровне (1…5). Полностью восстанавливается на продолжительном отдыхе. Перемена 3 уменьшает вдвое, Перемена 5 — эхо недоступно.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [resource, echo]
+    widget_type: bar
+    min: 0
+    max_formula: "proficiency_bonus - 1 + (level >= 15 ? 1 : 0)"
+    reset_on: long_rest
+    modifiers:
+      - op: custom
+        engine: dev_request
+        need: "поле uses у триггера ({count: 1, per: short_rest}) — лимит срабатывания триггера"
+        text: "Голод: +1 эхо, когда вы опускаете враждебное существо до 0 хитов (раз за короткий отдых)."
+        draft: {"on": reduce_target_to_0, if: {target_tag: hostile}, uses: {count: 1, per: short_rest}, do: [{op: resource, stat: echo_pool, delta: 1}]}
+      - op: custom
+        engine: dev_request
+        need: "события heal_from_0 (вы вернули хиты существу с 0 хитов) и condition_removed (вы сняли состояние с союзника); поле uses у триггера"
+        text: "Отклик: +1 эхо, когда вы возвращаете хиты существу с 0 хитов или снимаете с союзника состояние (раз за короткий отдых)."
+        draft: {"on": [heal_from_0, condition_removed], uses: {count: 1, per: short_rest}, do: [{op: resource, stat: echo_pool, delta: 1}]}
+  - id: stat.echo_attunement
+    name: Настрой эха
+    description: Личная шкала от −5 (Голод) до +5 (Отклик), в начале 0. Каждая техника и каждый ключевой поступок с пометкой echo сдвигают его на 1. Сам к нулю не возвращается.
+    status: proposal
+    doc: rules.md#6.3
+    tags: [echo]
+    widget_type: track
+    min: -5
+    max: 5
+    default: 0
+    effects_by_range:
+      - {range: [-5, -5], effect_ref: effect.attunement_hunger_5}
+      - {range: [-4, -3], effect_ref: effect.attunement_hunger_3}
+      - {range: [3, 4], effect_ref: effect.attunement_response_3}
+      - {range: [5, 5], effect_ref: effect.attunement_response_5}
+  - id: stat.echo_techniques_known
+    name: Известные техники эха
+    description: Список техник (id echo.*). 2 на 1-м уровне и ещё по одной на 5, 9, 13 и 15-м, любой стороны, доступные по уровню.
+    status: canon
+    doc: rules.md#6.3
+    tags: [echo]
+    widget_type: list
+    item_kind: echo_technique
+    count_by_level: {1: 2, 5: 3, 9: 4, 13: 5, 15: 6}
+
+  # --- Деньги ---
+  - id: stat.money_fk
+    name: ФК
+    description: Основная валюта (флаконы крови). 1 ФК = 1 золотой SRD.
+    status: canon
+    doc: rules.md#4
+    tags: [currency]
+    widget_type: number
+    min: 0
+    default: 0
+    srd_equivalent: gp
+  - id: stat.money_vein
+    name: Жилы
+    description: 1 жила = 1 серебряный SRD (1/10 ФК).
+    status: canon
+    doc: rules.md#4
+    tags: [currency]
+    widget_type: number
+    min: 0
+    default: 0
+    srd_equivalent: sp
+  - id: stat.money_drop
+    name: Капли
+    description: 1 капля = 1 медный SRD (1/100 ФК).
+    status: canon
+    doc: rules.md#4
+    tags: [currency]
+    widget_type: number
+    min: 0
+    default: 0
+    srd_equivalent: cp
+  - id: stat.debt
+    name: Долг
+    description: Долги героя (кредит Дома Синдикатского, долг перед Церковью за Кровь Исполина). Список записей кредитор/сумма.
+    status: proposal
+    doc: rules.md#2
+    tags: [currency]
+    widget_type: list

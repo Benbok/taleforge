@@ -1,0 +1,631 @@
+# Четыре опорные туши (location_type: hulk) и их районы (location_type: district, parent_ref на тушу).
+# Источник: locations.md#2. Часы пробуждения — clock.carcass_awakening (state туши, 0–5).
+# awakening.signs — что мастер описывает на каждом значении; приложение двигает часы.
+# pivots — как место меняется после переломов (living-lore.md#7, pivot_templates).
+# becomes: swarm_nest — локация меняет шаблон на «гнездо роя» (hazard.swarm_nest).
+kind: location_template
+items:
+# ================================================================ Старая Мать
+- id: location.old_mother
+  name: Старая Мать
+  description: 'Столица Синдикатов на спине самого большого корабля материка: 7 миль от морды до хвоста, спина на 1200 футов над равниной. Верхний город на позвоночнике, трущобы в рёбрах, биржа ФК в черепе.'
+  status: proposal
+  canon_parts: [Старая Мать — столица Синдикатов (canon.md#7), Правит Совет трёх Домов]
+  doc: locations.md#2.1; canon.md#7
+  tags: [hulk, anchor, city, capital]
+  location_type: hulk
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  distance_from_rim_miles: 220
+  direction: запад
+  size: {length_miles: 7, height_ft: 1200}
+  population: 400000
+  ruler: 'Совет трёх Домов. Лимфатическая компания — магистрат, банк и Сердце; Кострищевы — Утроба, железная дорога и Хвост; Дом Ликвора — Череп и всё ниже биржи. Церковь — три храма и больница для бедных, Гильдия — клиники и школа эхолокаторщиков, подполье — в слободах.'
+  faction_ref: faction.syndicates
+  faction_refs: [faction.house_kostrishchev, faction.house_liquor, faction.lymph_company, faction.church, faction.guild, faction.miners_underground]
+  district_refs: [location.old_mother_spine, location.old_mother_skull, location.old_mother_rib_slums, location.old_mother_womb, location.old_mother_heart, location.old_mother_tail]
+  adjacency:
+  - [location.old_mother_spine, location.old_mother_skull]
+  - [location.old_mother_spine, location.old_mother_rib_slums]
+  - [location.old_mother_spine, location.old_mother_tail]
+  - [location.old_mother_rib_slums, location.old_mother_womb]
+  - [location.old_mother_womb, location.old_mother_heart]
+  - [location.old_mother_womb, location.old_mother_tail]
+  - [location.old_mother_skull, location.old_mother_heart]
+  hazard_refs: [hazard.corpse_gas, hazard.infected_blood, hazard.parasite_nest, hazard.titan_meat]
+  encounter_table_ref: encounter.old_mother
+  encounter_check: {every_hours: 4, on_d6: [1], deep_zones: {district_refs: [location.old_mother_womb], every_hours: 4, on_d6: [1, 2]}}
+  npc_refs: [creature.npc_agrafena_kostrishcheva, creature.npc_miron_lad, creature.npc_efrosinya_velk, creature.npc_ulita_krivaya, creature.npc_pavel_rovny, creature.npc_eldest]
+  secret_refs: [secret.old_mother_brood_ship]
+  lore_refs: [lore.loc_old_mother_tide_heart, lore.loc_old_mother_quiet_floor]
+  hooks:
+  - name: Норма
+    text: 'В жиле обвал, артель Улиты заперта. Синдикат не станет копать, пока не посчитает убытки. Герои спасают детей или берут контракт Кострищевых на «зачистку жилы» от санитаров.'
+    location_ref: location.old_mother_womb
+    npc_refs: [creature.npc_ulita_krivaya, creature.child_miner]
+  - name: Фальшивый флакон
+    text: Героям платят флаконами, которые оказываются лимфой. След ведёт в хранилище Лимфатической компании.
+    npc_refs: [creature.npc_efrosinya_velk]
+    secret_ref: secret.npc_efrosinya_diluted_reserves
+  - name: Шум под биржей
+    text: Во время прилива из Тихого этажа слышен стук изнутри. Мирон Лад нанимает героев вынести «оборудование», и это кокон.
+    location_ref: location.old_mother_skull
+    npc_refs: [creature.npc_miron_lad]
+  awakening:
+    clock_ref: clock.carcass_awakening
+    start: 1
+    signs:
+    - {at: 0, text: 'Туша молчит. Прилив едва заметен.'}
+    - {at: 1, text: 'Прилив раз в сутки, шахты закрывают на час. В слободах качаются короба.'}
+    - {at: 2, text: 'Прилив дважды в сутки. Санитаров в жилах вдвое больше. На бирже падают бокалы.'}
+    - {at: 3, text: 'Стук из Тихого этажа. Сердце бьётся слышно на весь город. Санитары-стражи выходят к жилым кварталам.'}
+    - {at: 4, text: 'Опоры под брюхом скребут землю. Рвутся рельсы Хребтовой магистрали. Паника, бегство из Утробы.'}
+    - {at: 5, text: 'Перелом: Старая Мать поднимается. Город на спине рушится.', pivot: true}
+  pivots:
+  - name: Протокол Тишины раскрыт
+    secret_ref: secret.protocol_silence
+    changes: 'Бунты в слободах. Совет Домов раскалывается. Подполье выходит на улицы.'
+    encounter_changes: ['+ строка «толпа» (Commoner ×10, srd)', 'Патрули удваиваются (строка 1–2: count ×2)']
+  - name: Дом пал (любой)
+    changes: 'Район павшего Дома переходит к другим Домам или подполью. NPC Дома — в бегах или в тюрьме.'
+  - name: Туша проснулась, экипаж
+    changes: 'Город сползает со спины. Хребет — руины, Утроба закрыта. Кормчие требуют «тишины»: гудки запрещены.'
+    ruler_faction_ref: faction.helmsmen
+  - name: Туша проснулась, Резонанс
+    changes: 'Старшая становится матерью. Утроба — гнездо, город — фронт.'
+    becomes: swarm_nest
+    hazard_refs_add: [hazard.swarm_nest, hazard.blight]
+    ruler_faction_ref: faction.resonance
+  - name: Падение черты (резонанс 10)
+    changes: 'Старая Мать — последний большой бастион. Беженцы с Кольца, военное положение.'
+  - name: Преображение
+    changes: 'Сердце перестаёт биться для насосной. В Утробе прорастает Цветение. Биржа пустеет.'
+    hazard_refs_add: [hazard.bloom]
+
+- id: location.old_mother_spine
+  name: Хребет
+  description: 'Остистые отростки позвоночника: особняки Домов, Позвоночный проспект, Хребтовая магистраль по спине. Медные маски, лимфатические фонари.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, upper_city]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Остистые отростки позвоночника
+  faction_ref: faction.syndicates
+
+- id: location.old_mother_skull
+  name: Череп
+  description: 'Свод черепа: биржа ФК, Совет Домов, банк Лимфатической компании. Под биржей — Тихий этаж Дома Ликвора, закрытый по Протоколу.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, exchange]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Свод черепа
+  faction_ref: faction.house_liquor
+  faction_refs: [faction.lymph_company]
+  hazard_refs: [hazard.sleeper_cocoon]
+  npc_refs: [creature.npc_miron_lad, creature.npc_efrosinya_velk, creature.npc_pavel_rovny]
+
+- id: location.old_mother_rib_slums
+  name: Рёберные слободы
+  description: 'Промежутки между рёбрами: трущобы-короба на тросах, рынок крысиного мяса, ночлежки выпускников-шахтёров.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, slums]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Промежутки между рёбрами
+  faction_ref: faction.miners_underground
+
+- id: location.old_mother_womb
+  name: Утроба
+  description: 'Брюшная полость: заводы на желе, костры Кострищевых, где жгут костный мозг. Входы в шахты-жилы.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, industry, mine]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Брюшная полость
+  faction_ref: faction.house_kostrishchev
+  hazard_refs: [hazard.corpse_gas, hazard.parasite_nest, hazard.infected_blood]
+  npc_refs: [creature.npc_ulita_krivaya, creature.child_miner]
+  encounter_check: {every_hours: 4, on_d6: [1, 2]}
+
+- id: location.old_mother_heart
+  name: Сердечная насосная
+  description: 'Станция Лимфатической компании в сердце туши: качает кровь на переработку. Сердце бьётся раз в сутки — это и есть «прилив».'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, heart]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Сердце
+  faction_ref: faction.lymph_company
+  hazard_refs: [hazard.infected_blood]
+  npc_refs: [creature.npc_eldest]
+
+- id: location.old_mother_tail
+  name: Хвостовой узел
+  description: 'Хвост: вокзал, депо, склады, мачта дирижаблей на самом кончике.'
+  status: proposal
+  doc: locations.md#2.1
+  tags: [district, old_mother, station, airship]
+  location_type: district
+  belt: middle_belt
+  parent_ref: location.old_mother
+  anatomy: Хвост
+  faction_ref: faction.house_kostrishchev
+  route_refs: [location.route_old_mother_whisperer, location.route_old_mother_drowned, location.route_old_mother_rib_forest]
+
+# ================================================================ Утопленник
+- id: location.drowned
+  name: Утопленник
+  description: 'Корабль длиной 4 мили, выходивший из моря, когда флот застыл. Голова на берегу южного побережья, хвост уходит под воду к разлому Пасть. Порт контрабандистов и батискафщиков.'
+  status: proposal
+  canon_parts: [Утопленник наполовину в море (canon.md#7)]
+  doc: locations.md#2.2; canon.md#7
+  tags: [hulk, anchor, port, coast]
+  location_type: hulk
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  distance_from_rim_miles: 800
+  direction: юг, берег
+  size: {length_miles: 4, above_water_miles: 2}
+  population: 30000
+  ruler: 'Официально — концессия Дома Ликвора (голова и шахта). На деле порт держит Капитанская управа — совет капитанов и контрабандистов. Гильдия держит станцию батискафов. Кордона нет. Местный князь берёт пошлину и не вмешивается.'
+  faction_ref: faction.house_liquor
+  faction_refs: [faction.guild, faction.guild_listeners, faction.islanders]
+  near_ref: location.hook_maw_rift
+  district_refs: [location.drowned_lighthouse, location.drowned_throat, location.drowned_rib_harbor, location.drowned_flooded_womb, location.drowned_surf_vertebrae, location.drowned_abyss_tail]
+  adjacency:
+  - [location.drowned_lighthouse, location.drowned_throat]
+  - [location.drowned_throat, location.drowned_rib_harbor]
+  - [location.drowned_rib_harbor, location.drowned_flooded_womb]
+  - [location.drowned_rib_harbor, location.drowned_surf_vertebrae]
+  - [location.drowned_flooded_womb, location.drowned_abyss_tail]
+  - [location.drowned_surf_vertebrae, location.drowned_abyss_tail]
+  hazard_refs: [hazard.parasite_nest, hazard.infected_blood, hazard.corpse_gas]
+  encounter_table_ref: encounter.drowned
+  encounter_check: {every_hours: 6, on_d6: [1], deep_zones: {district_refs: [location.drowned_flooded_womb, location.drowned_abyss_tail], every_hours: 1, on_d6: [1, 2]}}
+  npc_refs: [creature.npc_varvara_mel, creature.npc_taras_gorky, creature.npc_yan_kroha, creature.npc_ida_islands, creature.npc_salt_mother]
+  secret_refs: [secret.drowned_relay]
+  lore_refs: [lore.loc_drowned_tide, lore.loc_drowned_wet_liquor]
+  hooks:
+  - name: Мокрый ликвор
+    text: Тарас нанимает героев сопроводить батискаф в Затопленную утробу. Там стражи клапанов, и они ведут себя слишком организованно.
+    location_ref: location.drowned_flooded_womb
+    npc_refs: [creature.npc_taras_gorky]
+  - name: Пароход «Терпение»
+    text: Варвара ищет охрану для рейса на острова. На борту беглецы, в трюме — чей-то кокон.
+    npc_refs: [creature.npc_varvara_mel]
+    route_ref: location.route_salt_hook_islands
+  - name: Валик Яна
+    text: Ян пропал, валик у героев. Его хотят Дом Ликвора, Гильдия и Кордон.
+    npc_refs: [creature.npc_yan_kroha]
+    secret_ref: secret.npc_yan_answer
+  awakening:
+    clock_ref: clock.carcass_awakening
+    start: 2
+    start_reason: затопленная половина не выработана
+    signs:
+    - {at: 0, text: 'Туша молчит.'}
+    - {at: 1, text: 'Прилив сильнее морского. Рыба уходит из бухты.'}
+    - {at: 2, text: 'Вода в утробе тёплая. Эхолокаторы ловят обрывки сигналов из хвоста.'}
+    - {at: 3, text: 'Косатки и крабы-санитары выходят к причалам. Хвост шевелится под водой, волны без ветра.'}
+    - {at: 4, text: 'Резонатор гудит так, что лопаются стёкла маяка. На Рифовой спине в море открываются глаза.'}
+    - {at: 5, text: 'Перелом: Утопленник вытаскивает себя на берег или уходит в море. Сигнал уходит к флоту.', pivot: true}
+  pivots:
+  - name: Хвост взорван
+    changes: 'Порт затоплен наполовину. Дом Ликвора уходит.'
+    roll: 'Сигнал: бросок по сценарию — услышал флот или нет.'
+    secret_ref: secret.npc_taras_charges
+  - name: Солёная мать убита
+    changes: 'Стражи клапанов бегут в море. Затопленная утроба открыта, мокрый ликвор дешевеет.'
+    encounter_changes: ['Строки 5 и «резонанс ≥4» (стражи клапанов) убираются']
+  - name: Туша проснулась, экипаж
+    changes: 'Флот поднимается из разломов (большой перелом кампании). Побережье под властью Кормчих.'
+    secret_ref: secret.fleet_signal
+    ruler_faction_ref: faction.helmsmen
+  - name: Туша проснулась, Резонанс
+    changes: 'Солёная мать — хозяйка корабля. Берег становится новым фронтом, налёт идёт из моря.'
+    becomes: swarm_nest
+    hazard_refs_add: [hazard.swarm_nest, hazard.blight]
+    ruler_faction_ref: faction.resonance
+  - name: Путь к островам открыт
+    changes: 'Острова — новая локация. Ида ведёт переговоры.'
+    unlocks_ref: location.islands
+  - name: Преображение
+    changes: 'Бухта светлеет. Рыба возвращается. Острова открывают порты.'
+    hazard_refs_add: [hazard.bloom]
+
+- id: location.drowned_lighthouse
+  name: Маяк в Глазнице
+  description: 'Голова на берегу: маяк в пустой глазнице, таможня, контора Дома Ликвора. Под черепом — единственная действующая шахта ликвора.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, mine, customs]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Голова на берегу
+  faction_ref: faction.house_liquor
+  npc_refs: [creature.npc_taras_gorky]
+
+- id: location.drowned_throat
+  name: Горло
+  description: 'Глотка: рыбный рынок, ворота в город, ночлежки.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, market]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Глотка
+  npc_refs: [creature.npc_ida_islands]
+
+- id: location.drowned_rib_harbor
+  name: Рёберная гавань
+  description: 'Причалы между рёбрами над водой, склады, пароходы. Половина складов в прилив под водой.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, harbor]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Рёбра над водой
+  npc_refs: [creature.npc_varvara_mel]
+
+- id: location.drowned_flooded_womb
+  name: Затопленная утроба
+  description: 'Брюхо под водой: док батискафов, затопленные отсеки, стражи клапанов. Сюда спускаются за «мокрым» ликвором.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, underwater, bathyscaphe]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Брюхо под водой
+  faction_ref: faction.guild
+  hazard_refs: [hazard.parasite_nest, hazard.infected_blood]
+  npc_refs: [creature.npc_salt_mother, creature.npc_yan_kroha]
+  encounter_check: {every_hours: 1, on_d6: [1, 2]}
+
+- id: location.drowned_surf_vertebrae
+  name: Прибойные позвонки
+  description: 'Хвостовые позвонки у кромки воды: пещеры контрабандистов, перевалка грузов на острова.'
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, smugglers]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Хвостовые позвонки у кромки воды
+
+- id: location.drowned_abyss_tail
+  name: Хвост в бездне
+  description: Хвост уходит под воду к разлому. Закрыт для всех. Батискафы, спустившиеся туда, возвращаются не все.
+  status: proposal
+  doc: locations.md#2.2
+  tags: [district, drowned, underwater, closed, resonator]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.drowned
+  anatomy: Хвост под водой
+  near_ref: location.hook_maw_rift
+  encounter_check: {every_hours: 1, on_d6: [1, 2]}
+
+# ================================================================ Шепчущий
+- id: location.whisperer
+  name: Шепчущий
+  description: 'Корабль длиной 3 мили на внешнем краю Кольца Паломников. Череп длиной 1300 футов стал Собором Вознесения; в тишине он гудит, как поющий камень.'
+  status: proposal
+  canon_parts: [Шепчущий — собор Церкви в черепе (canon.md#7)]
+  doc: locations.md#2.3; canon.md#7
+  tags: [hulk, anchor, cathedral, pilgrimage]
+  location_type: hulk
+  belt: pilgrim_ring
+  parent_ref: location.belt_pilgrim_ring
+  distance_from_rim_miles: 55
+  direction: северо-запад
+  size: {length_miles: 3, skull_length_ft: 1300}
+  population: 20000
+  population_feast: 40000
+  ruler: 'Церковь Исполинов: Первосвященник и капитул высших жрецов. Шахты ликвора церковные, работники — «послушники», в том числе дети. Дом Ликвора покупает излишки. Гильдия допущена только в госпиталь.'
+  faction_ref: faction.church
+  faction_refs: [faction.church_top, faction.church_lower_clergy, faction.house_liquor, faction.guild]
+  district_refs: [location.whisperer_porch, location.whisperer_vault, location.whisperer_choirs, location.whisperer_reliquary, location.whisperer_ascension, location.whisperer_neck_cells]
+  adjacency:
+  - [location.whisperer_porch, location.whisperer_vault]
+  - [location.whisperer_porch, location.whisperer_neck_cells]
+  - [location.whisperer_vault, location.whisperer_choirs]
+  - [location.whisperer_vault, location.whisperer_reliquary]
+  - [location.whisperer_reliquary, location.whisperer_ascension]
+  - [location.whisperer_neck_cells, location.whisperer_ascension]
+  hazard_refs: [hazard.whisper_colony, hazard.sleeper_cocoon]
+  encounter_table_ref: encounter.whisperer
+  encounter_check: {every_hours: 4, on_d6: [1], deep_zones: {district_refs: [location.whisperer_choirs, location.whisperer_reliquary], every_hours: 1, on_d6: [1, 2]}}
+  npc_refs: [creature.npc_ioakim, creature.npc_malasha, creature.npc_demyan_skala, creature.npc_filipp_cantor, creature.npc_anna_pilgrim]
+  secret_refs: [secret.whisperer_relics_are_cocoons]
+  lore_refs: [lore.loc_whisperer_ring_name, lore.loc_whisperer_choir_voices]
+  hooks:
+  - name: Дышащая мощь
+    text: Демьян просит героев тайно вскрыть витрину. Внутри — кокон, и в нём кто-то живой.
+    location_ref: location.whisperer_reliquary
+    npc_refs: [creature.npc_demyan_skala]
+  - name: Список Малаши
+    text: 'Семеро детей ушли в Хоры за месяц. Герои спускаются в слуховые каналы и находят следы Глубинных, которые кого-то зовут. Дети — NPC: их выводят и прячут, в бою они не участвуют.'
+    location_ref: location.whisperer_choirs
+    npc_refs: [creature.npc_malasha, creature.child_runaway]
+  - name: Великое возвышение
+    text: Иоаким объявляет праздник и зовёт паломников со всего Кольца. Кантор Филипп знает, что в этот день хор должен замолчать.
+    npc_refs: [creature.npc_ioakim, creature.npc_filipp_cantor]
+  awakening:
+    clock_ref: clock.carcass_awakening
+    start: 2
+    start_reason: мозг «шумит»
+    signs:
+    - {at: 0, text: 'Череп молчит, хор поёт в пустоту.'}
+    - {at: 1, text: 'Череп гудит в тишине.'}
+    - {at: 2, text: 'Паломники видят одинаковые сны о холоде и тишине. Причастие действует слабее.'}
+    - {at: 3, text: 'Стекло Ковчега запотевает изнутри. Хор сбивается, в пении слышен чужой ритм.'}
+    - {at: 4, text: 'Глазницы черепа светятся. Шейные позвонки скрипят, кельи трескаются.'}
+    - {at: 5, text: 'Перелом: Шепчущий поднимает голову. Собор рушится или оказывается на высоте 2000 футов.', pivot: true}
+  pivots:
+  - name: Иоаким раскрыт или убит
+    changes: 'Капитул раскалывается. Низшее духовенство и Малаша берут Собор. Возвышение запрещено.'
+    ruler_faction_ref: faction.church_lower_clergy
+  - name: Иоаким стал матерью
+    changes: 'Собор — гнездо. Паломники становятся ходоками.'
+    becomes: swarm_nest
+    hazard_refs_add: [hazard.swarm_nest]
+    ruler_faction_ref: faction.resonance
+  - name: Спящие разбужены
+    changes: 'Кормчие в Соборе. Церковь делится: одни падают на колени перед «ангелами», другие видят чужаков.'
+    faction_refs_add: [faction.helmsmen]
+  - name: Туша проснулась, Резонанс
+    changes: 'Корабль уходит к кратеру и становится самой большой матерью у кромки.'
+    ruler_faction_ref: faction.resonance
+  - name: Падение черты
+    changes: 'Шепчущий — первый город на пути волн. Паломничий тракт — дорога беженцев.'
+  - name: Преображение
+    changes: 'Хор поёт тише, и в тишине слышен Отклик. Паперть зарастает Цветением.'
+    hazard_refs_add: [hazard.bloom]
+
+- id: location.whisperer_porch
+  name: Паперть
+  description: 'Нижняя челюсть: лестница в тысячу ступеней, нищие, торговцы мощами, приём паломников.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, pilgrims]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Нижняя челюсть
+  npc_refs: [creature.npc_anna_pilgrim]
+
+- id: location.whisperer_vault
+  name: Свод
+  description: 'Купол черепа: собор. Причастие ликвором раз в неделю. Фарфоровые маски жрецов.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, cathedral]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Купол черепа
+  faction_ref: faction.church_top
+  npc_refs: [creature.npc_ioakim]
+
+- id: location.whisperer_choirs
+  name: Хоры
+  description: 'Слуховые каналы: колонии Шёпота. Хор поёт день и ночь, и паломники слышат в пении голоса мёртвых.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, choir, whisper]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Слуховые каналы
+  hazard_refs: [hazard.whisper_colony]
+  npc_refs: [creature.npc_filipp_cantor]
+  encounter_check: {every_hours: 1, on_d6: [1, 2]}
+
+- id: location.whisperer_reliquary
+  name: Ковчег мощей
+  description: 'Желудочки мозга: сокровищница, «мощи ангелов» за стеклом. Вход только высшим жрецам.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, reliquary, restricted]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Желудочки мозга
+  faction_ref: faction.church_top
+  hazard_refs: [hazard.sleeper_cocoon]
+  npc_refs: [creature.npc_demyan_skala]
+  encounter_check: {every_hours: 1, on_d6: [1, 2]}
+
+- id: location.whisperer_ascension
+  name: Возвышальня
+  description: 'Мозжечок: кельи, где верхушка проходит «возвышение».'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, ascension, restricted]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Мозжечок
+  faction_ref: faction.church_top
+  npc_refs: [creature.npc_ioakim]
+
+- id: location.whisperer_neck_cells
+  name: Шейные кельи
+  description: 'Шейные позвонки: монастыри низшего духовенства, странноприимный дом, тайный приют беглых детей.'
+  status: proposal
+  doc: locations.md#2.3
+  tags: [district, whisperer, monastery, shelter]
+  location_type: district
+  belt: pilgrim_ring
+  parent_ref: location.whisperer
+  anatomy: Шейные позвонки
+  faction_ref: faction.church_lower_clergy
+  npc_refs: [creature.npc_malasha, creature.child_runaway]
+
+# ================================================================ Рёберный лес
+- id: location.rib_forest
+  name: Рёберный лес
+  description: 'Скелет корабля длиной 5 миль, выработанный больше ста лет назад. Рёбра до 600 футов стоят как стволы, между ними поднялась грибница: белые шляпки с дом, светящиеся нити, споровые туманы.'
+  status: proposal
+  canon_parts: [Рёберный лес — приют Сломленных (canon.md#7), Круг из трёх течений Сломленных (canon.md#5.4)]
+  doc: locations.md#2.4; canon.md#7
+  tags: [hulk, anchor, skeleton, refuge]
+  location_type: hulk
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  distance_from_rim_miles: 470
+  direction: юго-запад
+  size: {length_miles: 5, rib_height_ft: 600}
+  population: 3000
+  ruler: 'Никто. Решает Круг — совет Сломленных трёх течений: те, кто хочет лечения; кто слушает зов Резонанса; кто слушает сны экипажей. Шахтёрское подполье держит здесь базу. Синдикаты посылают охотников за беглыми, Гильдия — вербовщиков.'
+  faction_ref: faction.broken
+  faction_refs: [faction.miners_underground, faction.house_kostrishchev, faction.guild]
+  district_refs: [location.rib_forest_thicket, location.rib_forest_spine_path, location.rib_forest_pelvic_bowl, location.rib_forest_skull_chapel, location.rib_forest_marrow_canal, location.rib_forest_spore_lowlands]
+  adjacency:
+  - [location.rib_forest_spine_path, location.rib_forest_thicket]
+  - [location.rib_forest_spine_path, location.rib_forest_skull_chapel]
+  - [location.rib_forest_spine_path, location.rib_forest_pelvic_bowl]
+  - [location.rib_forest_spine_path, location.rib_forest_marrow_canal]
+  - [location.rib_forest_thicket, location.rib_forest_spore_lowlands]
+  - [location.rib_forest_pelvic_bowl, location.rib_forest_spore_lowlands]
+  hazard_refs: [hazard.spore_fog, hazard.sleeper_cocoon, hazard.parasite_nest]
+  encounter_table_ref: encounter.rib_forest
+  encounter_check: {every_hours: 6, on_d6: [1], deep_zones: {district_refs: [location.rib_forest_spore_lowlands, location.rib_forest_marrow_canal], every_hours: 2, on_d6: [1, 2]}}
+  npc_refs: [creature.npc_olkha, creature.npc_savva, creature.npc_lisa, creature.npc_praskovya, creature.npc_prokhor]
+  secret_refs: [secret.rib_forest_self_repair]
+  lore_refs: [lore.loc_rib_forest_circle, lore.loc_rib_forest_pelvic_lake]
+  hooks:
+  - name: Облава
+    text: 'Прохор с отрядом стоит у Позвоночной тропы и требует выдать беглых. Круг спорит, Савва предлагает спрятать детей «внизу».'
+    location_ref: location.rib_forest_spine_path
+    npc_refs: [creature.npc_prokhor, creature.npc_savva, creature.child_runaway]
+  - name: Обряд слушания
+    text: Лиса зовёт героев на обряд. Каждый обряд двигает часы пробуждения, и Ольха просит его сорвать.
+    location_ref: location.rib_forest_skull_chapel
+    npc_refs: [creature.npc_lisa, creature.npc_olkha]
+    do:
+    - {op: clock, clock_ref: clock.carcass_awakening, delta: 1, note: каждый проведённый обряд}
+  - name: Листовка
+    text: Прасковье нужен курьер в Старую Мать с копией Протокола.
+    npc_refs: [creature.npc_praskovya]
+    route_ref: location.route_old_mother_rib_forest
+  awakening:
+    clock_ref: clock.carcass_awakening
+    start: 1
+    signs:
+    - {at: 0, text: 'Просто кости и грибы.'}
+    - {at: 1, text: 'Грибница светится в такт, раз в сутки. Звери обходят лес.'}
+    - {at: 2, text: 'Между рёбрами натягиваются новые волокна. Позвоночная тропа меняет форму за ночь.'}
+    - {at: 3, text: 'Санитары ремонта уносят всё чужое из канала. На костях нарастает хитин.'}
+    - {at: 4, text: 'Рёбра сходятся, дома в дуплах трещат. Лес начинает «дышать».'}
+    - {at: 5, text: 'Перелом: скелет встаёт. Лес поднимается на ноги, жители падают с рёбер.', pivot: true}
+  pivots:
+  - name: Облава удалась
+    changes: 'Круг рассеян, подполье уходит. Лес пустеет, в нём остаются только Савва и зов.'
+  - name: Савва победил
+    changes: 'Лес — тайное гнездо. Сломленные уходят в канал.'
+    becomes: swarm_nest
+    hazard_refs_add: [hazard.swarm_nest]
+    ruler_faction_ref: faction.resonance
+  - name: Пилот разбужен
+    changes: 'Кормчий в лесу. Лиса становится Безмолвной. Лес — первая союзная или враждебная база экипажа.'
+    faction_refs_add: [faction.helmsmen]
+  - name: Протокол раскрыт отсюда
+    secret_ref: secret.protocol_silence
+    changes: 'Лес становится символом подполья. Синдикаты шлют войска.'
+  - name: Преображение
+    changes: 'Грибница становится Цветением первой. Лес — сад, куда приходят лечиться от Скверны.'
+    hazard_refs_add: [hazard.bloom]
+
+- id: location.rib_forest_thicket
+  name: Рёберная чаща
+  description: 'Рёбра: жильё в дуплах рёбер, грибные огороды, дозорные на верхушках.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, dwelling]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Рёбра
+  faction_ref: faction.broken
+  npc_refs: [creature.npc_olkha]
+
+- id: location.rib_forest_spine_path
+  name: Позвоночная тропа
+  description: 'Позвоночник: единственная дорога через лес, мосты между позвонками.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, road]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Позвоночник
+
+- id: location.rib_forest_pelvic_bowl
+  name: Тазовая чаша
+  description: 'Таз: озеро старой лимфы, светящееся ночью. Рыбу из него есть нельзя.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, lake]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Таз
+  hazard_refs: [hazard.lymph_swamp]
+
+- id: location.rib_forest_skull_chapel
+  name: Череп-Молельня
+  description: 'Череп: здесь Сломленные, слушающие сны, собираются на «обряды слушания».'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, ritual]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Череп
+  npc_refs: [creature.npc_lisa]
+
+- id: location.rib_forest_marrow_canal
+  name: Костномозговой канал
+  description: 'Полость позвоночника под землёй: узкий ход, куда пролезает только худой взрослый. Там что-то растёт.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, underground, restricted]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Полость позвоночника
+  hazard_refs: [hazard.sleeper_cocoon, hazard.parasite_nest]
+  encounter_check: {every_hours: 2, on_d6: [1, 2]}
+  modifiers:
+  - {op: move, mode: squeeze, requires: {size_lte: medium}, note: 'Узкий ход: пролезает только худой взрослый (и ребёнок)'}
+
+- id: location.rib_forest_spore_lowlands
+  name: Споровые низины
+  description: 'Брюшная впадина: туманы, ядовитые грибы, тайная типография подполья.'
+  status: proposal
+  doc: locations.md#2.4
+  tags: [district, rib_forest, spores, underground_base]
+  location_type: district
+  belt: old_lands
+  parent_ref: location.rib_forest
+  anatomy: Брюшная впадина
+  faction_ref: faction.miners_underground
+  hazard_refs: [hazard.spore_fog]
+  npc_refs: [creature.npc_praskovya]
+  encounter_check: {every_hours: 2, on_d6: [1, 2]}

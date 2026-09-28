@@ -1,0 +1,137 @@
+# Вторая раса поверх человеческого происхождения (lineage_overlay), получаемая только через Порог с сохранением личности.
+# Канон: трансформация с сохранением личности даёт преимущества обеих рас (open-questions #10). Числа — предложение.
+kind: lineage
+items:
+  - id: lineage.kept_self
+    name: Сохранивший себя
+    description: Перерождённый Отзвучный, удержавший сознание на испытании Порога. Сохраняет класс, уровень, характеристики, все черты человеческого происхождения и эхо.
+    status: canon
+    doc: rules.md#3.4
+    tags: [lineage, swarm, threshold]
+    overlay: true
+    keeps: [class, level, abilities, origin_features, echo, swarm_gifts]
+    gained_via_ref: effect.threshold_trial
+    variants:
+      - {id: rupture, name: Разрыв, note: "связь с матерью оборвана, шкалы Зова роя нет"}
+      - {id: kept_self, name: Сохранил себя, note: "есть шкала Зова роя (stat.hive_call)"}
+    features:
+      - name: Тело роя
+        status: proposal
+        text: "Природная броня: КД 13 + Лов, если нет доспехов. Все принятые дары остаются."
+        modifiers:
+          - {op: set, target: ac_base, value: "13 + dex_mod", if: {no_armor: true}}
+      - name: Эхо-зрение
+        status: proposal
+        modifiers:
+          - {op: sense, sense: blindsight, range: 30}
+      - name: Шёпот
+        status: proposal
+        modifiers:
+          - op: custom
+            engine: dev_request
+            need: "значение sense: telepathy (в enum sense только darkvision|blindsight|tremorsense)"
+            text: "Телепатия 30 футов."
+            draft: {op: sense, sense: telepathy, range: 30}
+      - name: Без Скверны
+        status: proposal
+        text: "Шкала Скверны обнуляется и больше не растёт; её место занимает Зов роя."
+        modifiers:
+          - {op: set, target: corruption, value: 0}
+          - {op: immunity, condition: effect.corruption_exposure, text: "Скверна больше не растёт (заражение телесным путём)"}
+          - {op: immunity, condition: effect.corruption_exposure_mental, text: "Скверна больше не растёт (ментальный путь)"}
+      - name: Слабости роя
+        status: proposal
+        modifiers:
+          - {op: vulnerability, damage: fire}
+          - {op: disadvantage, "on": attack, if: {in_zone: effect.loud_noise}}
+      - name: Чужой среди своих
+        status: proposal
+        text: "Кордон и Церковь охотятся на таких. Выводки и Отзвучные принимают вас за своего, пока вы не нападёте (параметр treats_as_own профиля effect.behavior_captor)."
+        modifiers:
+          - {op: add, target: check_dc, vs: social, value: 5, if: {crowded_place: true, unmasked: true}, text: "В людном месте без маски или маскировки — сложность всех социальных проверок +5"}
+      - name: Эхо роя
+        status: proposal
+        modifiers:
+          - {op: add, target: echo_hunger_cost, value: -1, min_total: 1}
+          - op: custom
+            engine: dev_request
+            need: "op открытия сюжета/квеста (unlock_story: <id>) и запись квеста в пакете; триггер resource_changed с if stat_gte {echo_attunement: 5} уже выразим"
+            text: "При настрое +5 открывается сюжетный квест возвращения («вспомнить себя до конца»)."
+            draft: {"on": resource_changed, if: {stat_gte: {echo_attunement: 5}}, do: [{op: unlock_story, story: kept_self_return}]}
+      - name: Зов роя
+        status: proposal
+        text: "Шкала 0–3 (кроме варианта «Разрыв»). На 3 — снова испытание Порога."
+        stat_ref: stat.hive_call
+        modifiers: []
+        note: "На 3 Зова — effect.threshold_trial: триггер resource_changed у stat.hive_call (общий для всех носителей шкалы)."
+        triggers:
+          - "on": long_rest
+            if: {any: [{mother_within_miles: 1}, {on_hazard: hazard.blight}]}
+            do: [{op: save, stat: wis, dc: 12, on_fail: [{op: resource, stat: hive_call, delta: 1}]}]
+          - "on": echo_technique_used
+            if: {side: hunger}
+            do: [{op: resource, stat: hive_call, delta: 1}]
+          - "on": long_rest
+            if: {all: [{not_near: hazard.blight}, {echo_attunement_gte: 3}]}
+            do: [{op: resource, stat: hive_call, delta: -1}]
+
+  - id: lineage.kept_heart
+    name: Сохранивший сердце
+    description: Человек, которого ликвор перестроил почти в Кормчего, но который сохранил чувства и привязанности. Зеркало «Сохранившего себя». Сохраняет класс, уровень, характеристики, черты происхождения и эхо.
+    status: canon
+    doc: rules.md#3.5
+    tags: [lineage, pilot, alteration, threshold]
+    overlay: true
+    keeps: [class, level, abilities, origin_features, echo]
+    size: medium
+    gained_via_ref: effect.silence_threshold_trial
+    features:
+      - name: Тело Кормчего
+        status: proposal
+        text: "Кожа бледная и полупрозрачная, жилы биоминерала вдоль позвоночника, размер Средний."
+        modifiers: []
+      - name: Эхо-зрение
+        status: proposal
+        modifiers:
+          - {op: sense, sense: blindsight, range: 30, if: {not: {in_zone: effect.loud_noise}}, text: "в зоне сильного шума слепое зрение не работает (Слабости Кормчих)"}
+          - {op: disadvantage, "on": check, skill: perception, vs: sight_only}
+      - name: Тишина разума
+        status: proposal
+        text: "Дары роя принимать нельзя."
+        modifiers:
+          - {op: advantage, "on": save, vs: charmed}
+          - {op: advantage, "on": save, vs: corruption}
+          - {op: set, target: swarm_gifts_allowed, value: false, text: "Дары роя принимать нельзя (stat.swarm_gifts)"}
+      - name: Ликвор свой
+        status: proposal
+        text: "Перемена обнуляется и больше не растёт, зависимости нет. Доза ликвора восстанавливает ячейку без спасброска (спасбросок против Перемены снят иммунитетом к effect.alteration_exposure)."
+        modifiers:
+          - {op: set, target: alteration, value: 0}
+          - {op: immunity, condition: effect.alteration_exposure, text: "Перемена больше не растёт"}
+          - {op: set, target: dependency, value: 0}
+      - name: Порт
+        status: proposal
+        modifiers:
+          - {op: proficiency, kind: language, value: ship_liquor, text: "Порт: подключение к ликвору корабля — разговор с кораблём и Спящими в рубках (ключ к экипажам)"}
+      - name: Слабости Кормчих
+        status: proposal
+        modifiers:
+          - {op: vulnerability, damage: cold}
+          - {op: disadvantage, "on": attack, if: {in_zone: effect.loud_noise}}
+      - name: Чужой среди своих
+        status: proposal
+        modifiers:
+          - op: custom
+            engine: dev_request
+            need: "op отношения фракции к носителю (attitude: {faction_ref, value}) — чисел в rules.md#3.5 нет, только настрой"
+            text: "Церковь видит «ангела», Синдикаты — собственность, Кордон не доверяет; проснувшиеся Кормчие считают полезным зверем."
+      - name: Тяга тишины
+        status: proposal
+        text: "Шкала 0–3. На 3 — снова Порог тишины, провал делает героя Безмолвным."
+        stat_ref: stat.silence_pull
+        modifiers: []
+        note: "На 3 Тяги — effect.silence_threshold_trial: триггер resource_changed у stat.silence_pull."
+        triggers:
+          # Рост Тяги считается в hazard.sleeper_cocoon (отдых у кокона) и spell_note.silence_pull_high_circle (заклинания 5+), здесь не дублируется.
+          - "on": key_deed_emotional
+            do: [{op: resource, stat: silence_pull, delta: -1}]

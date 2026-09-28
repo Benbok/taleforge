@@ -1,0 +1,779 @@
+# Факты канона с уровнями знания (canon.md#8): common — все, initiated — знание фракций, hidden — правда.
+kind: lore_fact
+items:
+- id: lore.three_forces
+  name: Три силы
+  status: canon
+  doc: canon.md#1.0
+  tags: [lore, cosmology]
+  topic: cosmology
+  text: 'Мир стоит на треугольнике: экипажи Левиафанов, Резонанс и люди.'
+  knowledge: hidden
+- id: lore.leviathans_myth
+  name: Левиафаны — ангелы
+  status: canon
+  doc: canon.md#8
+  tags: [lore, leviathans]
+  topic: leviathans
+  text: 'Все знают: Левиафаны — мёртвые боги или ангелы, пришедшие спасти людей от Улья.'
+  knowledge: common
+- id: lore.leviathans_ships
+  name: Левиафаны — корабли
+  status: canon
+  doc: canon.md#1.1
+  tags: [lore, leviathans]
+  topic: leviathans
+  text: Левиафаны — живые транспортные корабли, выращенные разумной расой глубин.
+  knowledge: hidden
+- id: lore.leviathans_body
+  name: Тело туши
+  status: canon
+  doc: canon.md#1.1
+  tags: [lore, leviathans]
+  topic: leviathans
+  text: Туша — хитин с жилами железа и меди, кости крепче стали, нервы проводят ток.
+  knowledge: common
+- id: lore.leviathans_sing
+  name: Туши поют
+  status: canon
+  doc: canon.md#8
+  tags: [lore, leviathans]
+  topic: leviathans
+  text: 'Эхолокаторы Гильдии ловят звуки из туш: туши «поют» сквозь камень.'
+  knowledge: initiated
+  faction_ref: faction.guild
+- id: lore.leviathans_count
+  name: Сколько туш
+  status: canon
+  doc: canon.md#1.1
+  tags: [lore, leviathans]
+  topic: leviathans
+  text: На материке несколько сотен туш.
+  knowledge: common
+- id: lore.tide
+  name: Прилив
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: 'Раз в сутки туши чуть сокращаются, и шахты закрывают: это зовут приливом.'
+  knowledge: common
+- id: lore.cockpits_children
+  name: Малые протоки
+  status: canon
+  doc: canon.md#1.1
+  tags: [lore, mines]
+  topic: mines
+  text: В самые ценные полости туш пролезают только дети.
+  knowledge: common
+- id: lore.cocoons_rumor
+  name: Коконы в рубках
+  status: canon
+  doc: canon.md#1.1
+  tags: [lore, mines]
+  topic: mines
+  text: Шахтёры находят в рубках ниши и наросты, похожие на кресла; взрослые считают это детскими страшилками.
+  knowledge: common
+- id: lore.liquor_magic
+  name: Ликвор — магия
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Магия людей течёт из ликвора, жидкости из «мозга» туш.
+  knowledge: common
+- id: lore.no_magic_before
+  name: Без чудес
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: 'До Левиафанов магии у людей не было: войну с налётом прошли огнём, сталью и колоколами.'
+  knowledge: common
+- id: lore.liquor_smell
+  name: Запах магии
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: 'Любая магия пахнет ликвором: медь, озон, мокрый камень.'
+  knowledge: common
+- id: lore.liquor_temporary
+  name: Ликвор уходит
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Сила от ликвора слабеет без новых доз, и тело требует ещё.
+  knowledge: common
+- id: lore.liquor_changes
+  name: Ликвор меняет тело
+  status: proposal
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Старые маги бледнеют, тускнеют глазами и обостряются слухом.
+  knowledge: initiated
+- id: lore.silent_ones
+  name: Безмолвные
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Тех, кого ликвор лишил чувств, зовут Безмолвными.
+  knowledge: initiated
+- id: lore.wizards
+  name: Ликвороведы
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Волшебники расшифровывают в ликворе застывшие формулы.
+  knowledge: common
+- id: lore.priests_communion
+  name: Причастие
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Жрецы пьют ликвор на причастии и черпают из него силу.
+  knowledge: common
+  faction_ref: faction.church
+- id: lore.priests_voices
+  name: Голоса жрецов
+  status: canon
+  doc: canon.md#8
+  tags: [lore, church]
+  topic: church
+  text: Высшие жрецы слышат голоса.
+  knowledge: initiated
+  faction_ref: faction.church
+- id: lore.no_gods
+  name: Богов нет
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: 'Богов нет: сила жрецов — ликвор и сны спящих экипажей.'
+  knowledge: hidden
+- id: lore.warlocks
+  name: Колдуны
+  status: canon
+  doc: canon.md#1.6
+  tags: [lore, magic]
+  topic: magic
+  text: Колдуны заключили договор с тем, кто ответил из глубины.
+  knowledge: common
+- id: lore.echo_everyone
+  name: Эхо в каждом
+  status: canon
+  doc: canon.md#1.7
+  tags: [lore, echo]
+  topic: echo
+  text: Эхо рождается в каждом, кто сильно хочет и чувствует; сильная воля может его направить.
+  knowledge: common
+- id: lore.echo_hunger
+  name: Голод
+  status: proposal
+  doc: canon.md#1.7
+  tags: [lore, echo]
+  topic: echo
+  text: 'Голод — эхо гнева и жадности: даётся легко и разрушает.'
+  knowledge: common
+- id: lore.echo_response
+  name: Отклик
+  status: proposal
+  doc: canon.md#1.7
+  tags: [lore, echo]
+  topic: echo
+  text: 'Отклик — эхо заботы: лечит и защищает, но требует дисциплины.'
+  knowledge: common
+- id: lore.response_sect
+  name: Отклик — сектантство
+  status: canon
+  doc: canon.md#1.7
+  tags: [lore, echo]
+  topic: echo
+  text: Синдикаты считают Отклик сектантством.
+  knowledge: common
+  faction_ref: faction.syndicates
+- id: lore.hunger_feeds
+  name: Голод кормит
+  status: canon
+  doc: canon.md#1.7
+  tags: [lore, echo]
+  topic: echo
+  text: Кто черпает Голод, тот кормит Резонанс и становится для него слышнее.
+  knowledge: hidden
+- id: lore.echolite_singing
+  name: Поющий камень
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, echolite]
+  topic: echolite
+  text: Эхолит — старый «поющий камень» Отзвучной горы; в тишине он едва слышно гудит.
+  knowledge: common
+- id: lore.echolite_everywhere
+  name: Эхолит в городах
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, echolite]
+  topic: echolite
+  text: 'Эхолит веками развозили по материку: амулеты, храмовые плиты, камни фундаментов.'
+  knowledge: common
+- id: lore.echolite_conducts
+  name: Проводник голода
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, echolite]
+  topic: echolite
+  text: Каждый осколок эхолита проводит голод Резонанса; в таких домах чаще убивают из-за наследства.
+  knowledge: hidden
+- id: lore.condensation
+  name: Сгущение
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: 'Год 0 — Сгущение: Отзвучная гора обрушилась внутрь себя, небо потемнело на годы.'
+  knowledge: common
+- id: lore.year_now
+  name: Нынешний год
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Сейчас около 352 года после Сгущения.
+  knowledge: common
+- id: lore.blight_war
+  name: Война налёта
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, history]
+  topic: history
+  text: Почти сорок лет люди воевали с налётом одни и проигрывали.
+  knowledge: common
+- id: lore.fire_wall
+  name: Огненный вал
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, history]
+  topic: history
+  text: Пепельная лига держала вокруг кратера Огненный вал — рвы с горящим маслом и колокольные крепости.
+  knowledge: common
+- id: lore.wall_fell
+  name: Падение вала
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, history]
+  topic: history
+  text: В 38 году у вала кончилось топливо, и налёт прорвал его.
+  knowledge: common
+- id: lore.fleet_came
+  name: Приход флота
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: В 38–40 годах Левиафаны вышли из-под моря и разломов и пошли к кратеру, давя города.
+  knowledge: common
+- id: lore.edge_battle
+  name: Битва у кромки
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: В 40 году туши застыли у кратера, а налёт откатился; люди решили, что пришедшие боги погибли, спасая их.
+  knowledge: common
+- id: lore.dark_years
+  name: Тёмные годы
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: С 40 по 80 год выжившие селились у туш, потому что те тёплые.
+  knowledge: common
+- id: lore.blood_discovery
+  name: Открытие крови
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 80 года открыли, что очищенная кровь туши заживляет раны.
+  knowledge: common
+- id: lore.first_bonfire
+  name: Первый костёр
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 100 года костный мозг туши впервые горел неделями.
+  knowledge: common
+- id: lore.syndicates_rise
+  name: Синдикаты
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 140 года семьи, захватившие самые богатые туши, стали Синдикатами Крови.
+  knowledge: common
+  faction_ref: faction.syndicates
+- id: lore.guild_founded
+  name: Гильдия
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 160 года основана Гильдия Диагностов.
+  knowledge: common
+  faction_ref: faction.guild
+- id: lore.church_founded
+  name: Церковь
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 190 года Церковь провозгласила туши падшими ангелами, а ликвор — причастием.
+  knowledge: common
+  faction_ref: faction.church
+- id: lore.small_hands
+  name: Указ о малых руках
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 220 года Синдикаты узаконили детский труд в сосудах и желудочках.
+  knowledge: common
+  faction_ref: faction.syndicates
+- id: lore.first_deepkin
+  name: Первые Глубинные
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 260 года на тропах к кратеру появились сбежавшие дети-шахтёры, сросшиеся с хитином.
+  knowledge: initiated
+- id: lore.broken_origin
+  name: Сломленные
+  status: canon
+  doc: canon.md#2
+  tags: [lore, history]
+  topic: history
+  text: Около 300 года Гильдия научилась останавливать раннюю мутацию; так появились Сломленные.
+  knowledge: common
+  faction_ref: faction.broken
+- id: lore.war_eternal
+  name: Вечная война
+  status: canon
+  doc: canon.md#8
+  tags: [lore, war]
+  topic: war
+  text: Где-то у кратера идёт вечная война, и её держит Кордон.
+  knowledge: common
+  faction_ref: faction.ash_cordon
+- id: lore.war_never_stopped
+  name: Ни дня мира
+  status: canon
+  doc: canon.md#0
+  tags: [lore, war]
+  topic: war
+  text: Война с Резонансом не прекращалась ни на день с момента Сгущения.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.waves
+  name: Волны
+  status: canon
+  doc: canon.md#1.5
+  tags: [lore, war]
+  topic: war
+  text: Из кратера на Пепельную черту раз за разом идут волны выводков, и каждая приносит новые мутации.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.waves_capture
+  name: Цель волны
+  status: canon
+  doc: canon.md#1.5
+  tags: [lore, war]
+  topic: war
+  text: Цель волны — не перебить защитников, а прорваться, захватить пленных и заразить.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.blight_returns
+  name: Налёт возвращается
+  status: canon
+  doc: canon.md#8
+  tags: [lore, war]
+  topic: war
+  text: 'Кордон знает: налёт возвращается.'
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.fused_new
+  name: Сростки
+  status: canon
+  doc: canon.md#2
+  tags: [lore, war]
+  topic: war
+  text: В последние годы в волнах приходят сростки из нескольких тел невиданных размеров.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.cordon_poor
+  name: Кордону не хватает
+  status: canon
+  doc: canon.md#5.6
+  tags: [lore, war]
+  topic: war
+  text: Кордону не хватает топлива и людей, а топливо для огнемётов продают Синдикаты.
+  knowledge: common
+  faction_ref: faction.ash_cordon
+- id: lore.fire_works
+  name: Огонь
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, blight]
+  topic: blight
+  text: Налёт горит; выжженная земля остаётся мёртвой годами.
+  knowledge: common
+- id: lore.bells_work
+  name: Шум
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, blight]
+  topic: blight
+  text: Колокольный звон сбивает строй выводков и приводит в себя тех, кто начал слышать зов.
+  knowledge: initiated
+  faction_ref: faction.bell_monastery
+- id: lore.horns_weapon
+  name: Гудки — оружие
+  status: canon
+  doc: canon.md#8
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: Гудки заводов — наследие колокольных крепостей, оружие против резонанса.
+  knowledge: initiated
+- id: lore.noise_custom
+  name: Обычай шума
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: На похоронах в старых городах бьют в котлы, «чтобы горе не услышали».
+  knowledge: common
+- id: lore.bell_over_door
+  name: Колокольцы над дверью
+  status: proposal
+  doc: races.md#2.7
+  tags: [lore, brood]
+  topic: brood
+  text: Колокольцы над дверью и котлы на похоронах — старая проверка на скрытых.
+  knowledge: hidden
+- id: lore.invited_history
+  name: Приглашённые
+  status: canon
+  doc: canon.md#2.1
+  tags: [lore, history]
+  topic: history
+  text: 'Во время войны люди сами уходили за вал и возвращались, служа голоду: отсюда недоверие к «слишком спокойным».'
+  knowledge: common
+- id: lore.brood_blind
+  name: Выводки без глаз
+  status: canon
+  doc: canon.md#3.3
+  tags: [lore, brood]
+  topic: brood
+  text: У выводков нет глаз, они горят и теряют строй от сильного шума.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.brood_capture
+  name: Рой не убивает
+  status: canon
+  doc: rules.md#6.5
+  tags: [lore, brood]
+  topic: brood
+  text: 'Рой редко убивает: оглушает и уносит в гнёзда. От роя чаще пропадают, чем умирают.'
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.liquor_probe
+  name: Проба ликвором
+  status: canon
+  doc: races.md#2.5
+  tags: [lore, brood]
+  topic: brood
+  text: Капля ликвора на коже скрытого шипит и дымится.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.mothers
+  name: Матери
+  status: canon
+  doc: canon.md#5.6
+  tags: [lore, resonance]
+  topic: resonance
+  text: Резонанс держится на матерях — вместилищах его голода.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.resonance_alive
+  name: Резонанс жив
+  status: canon
+  doc: canon.md#5.6
+  tags: [lore, resonance]
+  topic: resonance
+  text: Резонанс жив, шевелится и растёт.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.resonance_nature
+  name: Эхо помыслов
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, resonance]
+  topic: resonance
+  text: Резонанс — эхо помыслов живых существ, прежде всего людей, накопленное в эхолите.
+  knowledge: hidden
+- id: lore.resonance_no_self
+  name: Голод без голодного
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, resonance]
+  topic: resonance
+  text: 'У Резонанса нет самосознания: это голод поглощать, захватывать и распространяться.'
+  knowledge: hidden
+- id: lore.resonance_desire
+  name: Заражение желанием
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, resonance]
+  topic: resonance
+  text: Разумных Резонанс заражает, усиливая их собственные дурные желания; человек сам соглашается.
+  knowledge: hidden
+- id: lore.resonance_mirror
+  name: Зеркало людей
+  status: canon
+  doc: canon.md#1.3
+  tags: [lore, resonance]
+  topic: resonance
+  text: Резонанс слабеет, когда люди заботятся друг о друге, и крепнет от алчности.
+  knowledge: hidden
+- id: lore.threadworms
+  name: Нитевики
+  status: canon
+  doc: canon.md#3.1
+  tags: [lore, parasites]
+  topic: parasites
+  text: Нитевики вживаются в нервную ткань и разносят Скверну.
+  knowledge: common
+- id: lore.parasites_ship
+  name: Паразиты — биотехника
+  status: canon
+  doc: canon.md#3.1
+  tags: [lore, parasites]
+  topic: parasites
+  text: 'Паразиты туш — обслуживающие организмы кораблей: ремонтники, санитары, чистильщики.'
+  knowledge: hidden
+- id: lore.whisper_colonies
+  name: Шёпот
+  status: canon
+  doc: canon.md#3.1
+  tags: [lore, parasites]
+  topic: parasites
+  text: В желудочках туш живут колонии Шёпота, от которых шахтёры слышат голоса.
+  knowledge: common
+- id: lore.deepkin_children
+  name: Глубинные — дети
+  status: canon
+  doc: canon.md#3.2
+  tags: [lore, brood]
+  topic: brood
+  text: Глубинные — бывшие дети-шахтёры, ушедшие вглубь туш.
+  knowledge: initiated
+  faction_ref: faction.broken
+- id: lore.broken_two_voices
+  name: Два голоса
+  status: canon
+  doc: canon.md#3.4
+  tags: [lore, broken]
+  topic: broken
+  text: Сломленные слышат два голоса одновременно.
+  knowledge: initiated
+  faction_ref: faction.broken
+- id: lore.coin
+  name: Флакон крови
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: Деньги — Флакон крови (ФК), мелочь — жилы (серебро) и капли (медь).
+  knowledge: common
+- id: lore.masks
+  name: Маски
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: 'По маске видно сословие: медь у Синдикатов, кожа у шахтёров, фарфор у жрецов.'
+  knowledge: common
+- id: lore.titan_meat
+  name: Мясо титана
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: Мясо титана есть запрещено из-за Скверны, поэтому его едят в трущобах.
+  knowledge: common
+- id: lore.release
+  name: Выпуск
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, mines]
+  topic: mines
+  text: Ребёнка-шахтёра «выпускают», когда он больше не пролезает в сосуды; в 14 лет — тремор и долги.
+  knowledge: common
+- id: lore.burial
+  name: Смерть
+  status: canon
+  doc: canon.md#4.2
+  tags: [lore, daily_life]
+  topic: daily_life
+  text: Тела отдают тушам (Церковь) или сжигают на желе; похороны в земле — признак бедности.
+  knowledge: common
+- id: lore.tech_raw
+  name: Всё перерабатывают
+  status: canon
+  doc: canon.md#4.3
+  tags: [lore, technology]
+  topic: technology
+  text: 'Сырьё туш никогда не используют сырым: кровь перегоняют в топливо, хитин плавят в сплавы.'
+  knowledge: common
+- id: lore.walkers_cordon
+  name: Шагоходы
+  status: canon
+  doc: canon.md#4.3
+  tags: [lore, technology]
+  topic: technology
+  text: Паровые шагоходы есть только у Кордона, на фронте; их мало, и чинят их годами.
+  knowledge: common
+  faction_ref: faction.ash_cordon
+- id: lore.telegraph_quiet
+  name: Телеграфисты тихнут
+  status: canon
+  doc: canon.md#4.3
+  tags: [lore, technology]
+  topic: technology
+  text: Телеграфисты дальних линий со временем «тихнут» от ликворных ламп.
+  knowledge: initiated
+- id: lore.continent
+  name: Материк
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: Материк размером с Европу, кратер в центре; до берега несколько недель пешком или пара дней поездом.
+  knowledge: common
+- id: lore.belts
+  name: Пояса
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: 'Карта идёт кольцами: Старые земли, Средний пояс, Кольцо Паломников, Пепельная черта, Кратер.'
+  knowledge: common
+- id: lore.pilgrim_ring
+  name: Кольцо Паломников
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: В Кольце Паломников больше всего ликвора и больше всего Глубинных.
+  knowledge: common
+- id: lore.rifts
+  name: Разломы
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: Батискафы спускаются к разломам на дне моря редко и возвращаются не все.
+  knowledge: common
+- id: lore.islands
+  name: Острова
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: За морем лежат острова, о которых на материке знают по слухам.
+  knowledge: common
+  faction_ref: faction.islanders
+- id: lore.islands_untouched
+  name: Нетронутые острова
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: На островах нет ликвора и магии, и Резонанс до них не дотягивается.
+  knowledge: initiated
+  faction_ref: faction.islanders
+- id: lore.anchor_carcasses
+  name: Опорные туши
+  status: canon
+  doc: canon.md#7
+  tags: [lore, geography]
+  topic: geography
+  text: Старая Мать — столица Синдикатов, Утопленник наполовину в море, Шепчущий — собор в черепе, Рёберный лес — приют Сломленных.
+  knowledge: common
+- id: lore.helmsmen_small
+  name: Кормчие малы
+  status: canon
+  doc: races.md#1.2
+  tags: [lore, helmsmen]
+  topic: helmsmen
+  text: Кормчие ростом 1–1,3 метра, безглазы и видят эхом; поэтому рубки доступны только детям.
+  knowledge: hidden
+  faction_ref: faction.helmsmen
+- id: lore.helmsmen_silence
+  name: Тишина Кормчих
+  status: canon
+  doc: races.md#1.5
+  tags: [lore, helmsmen]
+  topic: helmsmen
+  text: Кормчие считают страсть шумом и собирались навести тишину на поверхности.
+  knowledge: hidden
+  faction_ref: faction.helmsmen
+- id: lore.helmsmen_noise
+  name: Шум против Кормчих
+  status: proposal
+  doc: races.md#1.7
+  tags: [lore, helmsmen]
+  topic: helmsmen
+  text: Громкий шум ослепляет Кормчих так же, как сбивает рой.
+  knowledge: hidden
+  faction_ref: faction.helmsmen
+- id: lore.liquor_poison_swarm
+  name: Ликвор — яд роя
+  status: canon
+  doc: races.md#2.5
+  tags: [lore, brood]
+  topic: brood
+  text: 'Для роя ликвор — яд: он несёт холодную тишину Кормчих.'
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.echoed_name
+  name: Отзвучные
+  status: canon
+  doc: races.md#2.1
+  tags: [lore, brood]
+  topic: brood
+  text: Изменённых Резонансом в народе зовут голодными или роевыми.
+  knowledge: common
+- id: lore.echoed_voices
+  name: Голоса мёртвых
+  status: proposal
+  doc: races.md#2.5
+  tags: [lore, brood]
+  topic: brood
+  text: Отзвучные умеют звать голосами мёртвых.
+  knowledge: initiated
+  faction_ref: faction.ash_cordon
+- id: lore.ending_equal
+  name: Нет истинного финала
+  status: canon
+  doc: canon.md#6
+  tags: [lore, meta]
+  topic: meta
+  text: Все пути мира равноправны; Преображение — самый трудный, но не награда.
+  knowledge: hidden

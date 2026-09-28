@@ -1,0 +1,324 @@
+# Артефакты и реликвии (items.md 5). Не продаются: их выдаёт сценарий, перелом или таблица добычи 11–15.
+# Один экземпляр на кампанию (unique: true), не больше 3 реликвий за кампанию. Сложности фиксированы.
+# attunement_check — спасбросок при настройке ({vs: corruption|alteration, dc}); price_of_power — цена силы;
+# pivot_hint — связь с переломом (living-lore.md, 7). Ни одна реликвия не даёт бонусов к испытаниям Порога [Канон].
+kind: item_template
+items:
+  - id: item.relic_hunger_compass
+    name: Компас голода
+    description: Эхолит в медной оправе компаса. Стрелка указывает не на север, а на ближайшую мать.
+    status: proposal
+    doc: items.md#5.1
+    tags: [relic, echolith, unique]
+    category: relic
+    source: echolith
+    rarity: rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_check: {vs: corruption, stat: con, dc: 13}
+    history: Осколок поющего камня из фундамента старого дома, где веками убивали из-за наследства. Кто-то из Кордона оправил его в корпус компаса.
+    modifiers:
+      - {op: custom, engine: dev_request, need: "op раскрытия направления игроку (reveal: direction_to, filter: nearest mother, range_miles: 50)", text: "Стрелка указывает на ближайшую мать в 50 милях."}
+      - {op: grant_action, name: Голоса эхолита, action: action, uses: {count: 1, per: long_rest}, spell: {srd_ref: {type: spell, name: Speak with Dead}, spell_ref: spell.speak_with_dead, requires_body: false, requires: place_of_death}, do: [], text: "Голоса идут из эхолита, тело не нужно, достаточно места смерти"}
+    uses: {max: 1, recharge: long_rest}
+    price_of_power:
+      - {op: save, stat: con, dc: 10, vs: corruption, when: use, on_fail: [{op: resource, stat: corruption, delta: 1}]}
+      - {op: resource, stat: echo_attunement, delta: -1, when: use}
+      - {op: run, ref: effect.mother_mark, duration: while_attuned, source: mother_pointed_by_compass, text: "Мать, к которой ведёт стрелка, чувствует компас"}
+    pivot_hint:
+      kind: lethal
+      text: Ведёт к матери, чья смерть — «смертельный» перелом (living-lore.md 2.1). Если эхолит на дне кратера расколот (Третий путь), компас гаснет навсегда.
+
+  - id: item.relic_last_fortress_tongue
+    name: Язык Последней крепости
+    description: Колокольный язык Пепельной лиги, 40 фунтов. Нужна рама или колокол — в любой башне черты она есть.
+    status: proposal
+    doc: items.md#5.2
+    tags: [relic, tech, noise, unique]
+    category: relic
+    source: tech
+    rarity: very_rare
+    unique: true
+    weight: 40
+    price: {fk: null, for_sale: false}
+    attunement: false
+    history: Последняя колокольная крепость вала звонила три дня после прорыва, звонари умерли у верёвок. Язык вынесли выжигатели; с тех пор его прячут друг от друга Кордон, Церковь и коллекционеры Домов.
+    uses: {max: 1, recharge: long_rest}
+    effect_ref: effect.loud_noise
+    modifiers:
+      - {op: grant_action, name: Ударить в язык, action: action, uses: {count: 1, per: long_rest}, do: [{op: run, ref: effect.loud_noise, area: {shape: sphere, radius: 300, center: self}, duration: {unit: minute, value: 1}, text: "Налёт в сфере не растёт — по эффекту"}]}
+      - op: save
+        stat: wis
+        dc: 15
+        targets: [brood, echoed]
+        on_fail: [{op: condition, condition: frightened, duration: {unit: minute, value: 1}}]
+    # Испытание Порога: это обычный колокол — +2 по таблице rules.md#3.4, не больше. Сам предмет бонусов к Порогу не даёт [Канон].
+    price_of_power:
+      - {op: resource, stat: carcass_awakening, delta: 1, scope: nearest_carcass_within_5_miles, when: use, clock_ref: clock.carcass_awakening}
+      - {op: condition, condition: blinded, if: {target_tag: helmsman}, area: {shape: sphere, radius: 300, center: self}, duration: {unit: minute, value: 1}, when: use, text: "Кормчие в сфере ослеплены (races.md 1.7)"}
+    pivot_hint:
+      kind: decisive
+      text: Один из колоколов для Третьего пути — все колокола черты звонят разом (canon.md 6). Собрать языки крепостей — фронт кампании.
+
+  - id: item.relic_quiet_chime
+    name: Тихий звон
+    description: Ручной колокольчик настоятеля Обители Звона, который вывел из осады сорок человек и ни разу не поднял оружие.
+    status: proposal
+    doc: items.md#5.3
+    tags: [relic, tech, noise, response, unique]
+    category: relic
+    source: tech
+    rarity: rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_requires: {stat: echo_attunement, min: 2}
+    uses: {max: 1, recharge: short_rest}
+    modifiers:
+      - {op: resource, stat: echo_pool, delta: 1, when: bonus_action_ring, if: {dealt_damage_this_turn: false}, cap: echo_pool_max}
+      - {op: set, target: hazard_state, hazard_ref: hazard.blight, value: suppressed, area: {shape: sphere, radius: 10, center: self}, if: {holding: item.relic_quiet_chime}, text: "Налёт в 10 футах не растёт, пока колокольчик в руке"}
+    price_of_power:
+      - {op: set, target: item_state, value: broken_permanently, if: {attunement_lte: 0}, text: "Настройка — только при настрое +2 и выше (attunement_requires). Настрой 0 и ниже — колокольчик трескается навсегда и становится обычным"}
+    pivot_hint:
+      kind: front
+      text: Ключ к возрождению Обители Звона. Вернуть его в руины Обители — открыть фронт «Возрождение Лиги».
+
+  - id: item.relic_sounding_port
+    name: Порт-обруч Звучащего
+    description: Обруч из биоминерала с иглами к позвоночнику, снятый с пустого кокона в рубке Шепчущего.
+    status: proposal
+    doc: items.md#5.4
+    tags: [relic, helmsman, unique]
+    category: relic
+    source: relic
+    rarity: very_rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_by: [liquor_caster, lineage.kept_heart]
+    attunement_by_refs: [lineage.kept_heart]
+    attunement_check: {vs: alteration, stat: con, dc: 15}
+    modifiers:
+      - op: grant_action
+        name: Подключиться к туше
+        action: action
+        if: {in_area: carcass}
+        text: "Одна просьба к туше, в которой стоите"
+        do:
+          - op: choose
+            when: use
+            options:
+              - [{op: set, target: location.valve, value: toggle, text: "Открыть или закрыть клапан"}]
+              - [{op: set, target: location.passage_shortcut, value: true, text: "Сократить проход"}]
+              - [{op: set, target: location.tide_delayed, value: true, text: "Задержать «прилив»"}]
+      - {op: grant_action, name: Послание Кормчему, action: action, uses: {count: 1, per: long_rest}, spell: {srd_ref: {type: spell, name: Sending}, spell_ref: spell.sending, target_filter: helmsman_any_on_mainland, range: unlimited}, do: [], text: "Любому Кормчему на материке, проснувшемуся или спящему"}
+    price_of_power:
+      - {op: save, stat: con, dc: 15, vs: alteration, when: connect, on_fail: [{op: resource, stat: alteration, delta: 1}]}
+      - {op: resource, stat: carcass_awakening, delta: 1, scope: this_carcass, when: connect, clock_ref: clock.carcass_awakening}
+      - {op: custom, engine: dev_request, need: "op записи события в журнал кампании (log_event: {kind, subject})", text: "Хор Спящих запоминает голос владельца (событие в журнале)."}
+    pivot_hint:
+      kind: decisive
+      text: В главной рубке обруч может подать сигнал флоту (canon.md 1.1) — решающий перелом «Разбудить экипажи». Одно послание Спящему — шаг к перелому «Проснувшийся Кормчий».
+
+  - id: item.relic_silent_guard_blade
+    name: Клинок тихого стража
+    description: Короткий меч +2 из биоминерала. Выращен, чтобы поедать эхо, и всё ещё голоден.
+    status: proposal
+    doc: items.md#5.5
+    tags: [relic, weapon, anti_swarm, unique]
+    category: relic
+    source: relic
+    rarity: very_rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_check: {vs: alteration, stat: con, dc: 13}
+    srd_ref: {type: item, name: "Weapon, +2"}
+    weapon_type: martial_melee
+    damage: {dice: 1d6, type: piercing}
+    properties: [light, finesse]
+    weight: 2
+    related_creature_ref: creature.helmsman_silent_guard
+    modifiers:
+      - {op: add, target: attack, value: 2}
+      - {op: add, target: damage, value: 2}
+      - {op: extra_damage, dice: 2d6, damage_type: force, when: {target_tag: [echoed, brood, mother]}}
+    triggers:
+      - "on": hit
+        if: {target_tag: brood}
+        do:
+          - {op: remove_condition, condition: effect.brood_resonance_link, duration: {unit: round, value: 1}, text: "До конца следующего хода цели"}
+    price_of_power:
+      - {op: disadvantage, "on": save, stat: wis, if: {no_swarm_kill_days: 7}, text: "Если 7 дней клинок не убил существо роя — помеха на спасброски Мдр до следующего такого убийства"}
+      - {op: run, ref: effect.mother_mark, duration: while_attuned, range_miles: 10, source: former_owner_mother, text: "Бывший хозяин, теперь мать, чувствует клинок в 10 милях"}
+    pivot_hint:
+      kind: lethal
+      text: Убийство матери-стража этим клинком — «смертельный» перелом с особым текстом — её рой сразу теряет все адаптации (rules.md 6.4) и впервые за триста лет отступает от черты на неделю.
+
+  - id: item.relic_archive_crystal
+    name: Архив-кристалл
+    description: Кристаллизованный ликвор из органа-архива. В нём застыли маршруты, приказы и память пилотов.
+    status: proposal
+    doc: items.md#5.6
+    tags: [relic, liquor, lore, unique]
+    category: relic
+    source: relic
+    rarity: rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: false
+    charges: {max: 3, recharge: never, on_empty: destroyed}
+    modifiers:
+      - {op: custom, engine: dev_request, need: "op reveal_knowledge (следующая ступень «лестницы тайн», living-lore.md 4); оформить как grant_action action с cost: {charges: 1}", text: "Действием коснуться лбом и потратить заряд: узнать один скрытый факт следующей ступени «лестницы тайн» (living-lore.md 4) через reveal_knowledge. Факт выбирает приложение."}
+    price_of_power:
+      - {op: save, stat: con, dc: 15, vs: alteration, when: use, on_fail: [{op: resource, stat: alteration, delta: 1}]}
+    pivot_hint:
+      kind: minor
+      text: Третий факт из кристалла — «Левиафаны — корабли, в рубках спят экипажи». Передать кристалл Слушателям — Гильдия раскалывается (малый перелом).
+
+  - id: item.relic_protocol_seal
+    name: Печать Протокола
+    description: Медная печатка Совета Домов с ликворными чернилами. Пропала у курьера, которого нашли в озере желудка без рук.
+    status: proposal
+    doc: items.md#5.7
+    tags: [relic, liquor, syndicate, unique]
+    category: relic
+    source: liquor
+    rarity: uncommon
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: false
+    modifiers:
+      - {op: advantage, "on": check, skill: [persuasion, deception], vs: syndicate_officials}
+      - {op: set, target: access, value: [telegraph, house_warehouses], when: document_sealed, text: "Документ с печатью — пропуск на телеграф и склады Домов"}
+    price_of_power:
+      - {op: custom, engine: dev_request, need: "op записи события фракции и изменения state фракции (log_event + faction_state: wanted) со счётчиком использований", text: "Каждое использование пишет событие Дому Ликвора. После третьего — отряд в розыске Дома (state фракции)."}
+    pivot_hint:
+      kind: decisive
+      text: Печать вместе с приказом по Протоколу — доказательство. Их огласка — решающий перелом «Протокол Тишины раскрыт».
+
+  - id: item.relic_undying_igniter
+    name: Неугасимый запальник
+    description: Огнемёт Дома Кострищевых с сердечником из мозга ещё живой внутренней туши. Дом не признаёт ни одного из трёх.
+    status: proposal
+    doc: items.md#5.8
+    tags: [relic, blood, fire, weapon, unique]
+    category: relic
+    source: blood
+    rarity: very_rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    weapon_type: martial_ranged
+    damage: {dice: 3d6, type: fire}
+    area: {shape: cone, size: 15}
+    modifiers:
+      - op: save
+        stat: dex
+        dc: 14
+        on_fail: [{op: extra_damage, dice: 3d6, damage_type: fire, scaling: {"11": "4d6"}}]
+        on_success: [{op: extra_damage, dice: 3d6, damage_type: fire, multiplier: 0.5, scaling: {"11": "4d6"}}]
+      - {op: set, target: area, value: {shape: cone, size: 30}, if: {stat_gte: {level: 11}}, text: "С 11-го уровня владельца — конус 30 футов"}
+    ammo: none  # без бака
+    price_of_power:
+      - {op: resource, stat: carcass_awakening, delta: 1, scope: donor_carcass, when: fired_today, clock_ref: clock.carcass_awakening}
+    pivot_hint:
+      kind: clock_threshold
+      text: На Пробуждении 5 туша-донор сдвигается с места (пороговый перелом). Уничтожить сердечник — туша засыпает, но Кордон теряет лучшее оружие черты.
+
+  - id: item.relic_lymph_ark
+    name: Ковчег Лимфатической компании
+    description: Переносная капсула на ремнях, 60 фунтов. Банк ФК держит ковчеги для должников, которые слишком дорого стоят, чтобы умереть.
+    status: proposal
+    doc: items.md#5.9
+    tags: [relic, liquor, syndicate, unique]
+    category: relic
+    source: liquor
+    rarity: very_rare
+    unique: true
+    weight: 60
+    price: {fk: null, for_sale: false}
+    attunement: false
+    uses: {max: 1, recharge: never, per: campaign}
+    modifiers:
+      - {op: run, ref: spell.gentle_repose, target: contained_body, duration: while_inside, text: "Тело в ковчеге не разлагается (Gentle Repose)"}
+      - {op: grant_action, name: Оживить из ковчега, action: action, uses: {count: 1, consumable: true}, requires: {days_since_death_lte: 10}, spell: {srd_ref: {type: spell, name: Raise Dead}, spell_ref: spell.raise_dead, no_components: true}, do: [], text: "Раз за кампанию (uses: recharge never)"}
+    price_of_power:
+      - {op: resource, stat: alteration, delta: 2, target: revived, no_save: true}
+      - {op: resource, stat: debt, delta: 5000, creditor: lymph_company, target: revived}
+      - {op: set, target: known_location_to, value: lymph_company, text: "Маячок: Компания знает, где ковчег"}
+    pivot_hint:
+      kind: faction
+      text: Если Лимфатическая компания пала, маячок молчит и долг списан. Если нет — коллекторы Компании становятся фронтом отряда.
+
+  - id: item.relic_herald_mask
+    name: Маска Глашатая
+    description: Хитиновая маска с живым Шёпотом внутри, сброшенная Глашатаем на смене стадии.
+    status: proposal
+    doc: items.md#5.10
+    tags: [relic, echolith, disguise, unique]
+    category: relic
+    source: echolith
+    rarity: rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_check: {vs: corruption, stat: con, dc: 15}
+    attunement_removal: [excision, remove_curse]
+    related_creature_ref: creature.herald_whisperer
+    modifiers:
+      - {op: grant_action, name: Облик Глашатая, action: action, spell: {srd_ref: {type: spell, name: Disguise Self}, spell_ref: spell.disguise_self, copies_voice: true}, do: [], text: "Без ограничения по числу, копирует голос"}
+      - {op: behavior, profile: treat_as_kin, applies_to_tags: [echoed, brood], until: wearer_attacks, text: "Отзвучные и выводки принимают носителя за своего, пока он не нападёт"}
+    price_of_power:
+      - {op: run, ref: effect.brood_mother_link, target: wearer, when: worn, text: "Мать, вырастившая маску, видит и слышит всё, что носитель; каждое надевание — событие «разведка»"}
+    # Настройку не снять отдыхом — только «Иссечение» или «Снятие проклятия» (attunement_removal).
+    attunement_removal_refs: [subclass.diagnost_flesh_surgeon, spell.remove_curse]
+    pivot_hint:
+      kind: front
+      text: Маска проводит в гнездо к матери. Но если отряд строил в маске планы, мать знает их, и следующая волна бьёт туда, где отряд слаб.
+
+  - id: item.relic_crown_of_ascension
+    name: Венец возвышения
+    description: Фарфоровая маска-венец с хитиновыми шипами, регалия верхушки Церкви. Трое последних носителей ушли в подвал собора и не вышли.
+    status: proposal
+    doc: items.md#5.11
+    tags: [relic, echolith, church, unique]
+    category: relic
+    source: echolith
+    rarity: very_rare
+    unique: true
+    price: {fk: null, for_sale: false}
+    attunement: true
+    attunement_by: [cleric]
+    attunement_by_refs: [class.cleric]
+    modifiers:
+      - {op: add, target: save_dc, value: 1, scope: spells}
+      - {op: add, target: spell_attack, value: 1}
+      - op: grant_action
+        name: Жатва венца
+        action: free
+        uses: {count: 1, per: long_rest}
+        trigger: {"on": reduce_target_to_0}
+        do:
+          - op: choose
+            when: use
+            options:
+              - [{op: resource, stat: spell_slot_1, delta: 1}]
+              - [{op: resource, stat: spell_slot_2, delta: 1}]
+              - [{op: resource, stat: spell_slot_3, delta: 1}]
+    uses: {max: 1, recharge: long_rest}
+    price_of_power:
+      - {op: resource, stat: corruption, delta: 1, when: attune, no_save: true, text: "можно принять дар"}
+      - op: save
+        stat: con
+        dc: 13
+        vs: corruption
+        when: long_rest
+        on_fail:
+          - {op: resource, stat: corruption, delta: 1}
+          - {op: run, ref: effect.desire_seed, desire: власть}
+      - {op: resource, stat: echo_attunement, delta: -1, when: use}
+    pivot_hint:
+      kind: minor
+      text: Венец нужен верхушке Церкви, чтобы вырастить новую мать. Уничтожить его в огне — сорвать её рождение (малый перелом). Отдать — фронт «Новая мать» продвигается на веху.

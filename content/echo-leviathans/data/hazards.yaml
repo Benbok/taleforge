@@ -1,0 +1,177 @@
+# Опасности местности и среды.
+# Источник: rules.md#3.1, #3.5, #6.1, #6.5; canon.md#7 (пейзаж).
+kind: hazard_template
+items:
+  - id: hazard.blight
+    name: Налёт
+    description: Живой покров Резонанса. Труднопроходимая местность, заражает стоящих и поглощает лежащих без сознания. Выжигается огнём, не растёт в сильном шуме.
+    status: proposal
+    doc: rules.md#6.1
+    tags: [terrain, resonance, corruption]
+    terrain: difficult
+    modifiers:
+      - {op: set, target: terrain, value: difficult, text: "Труднопроходимая местность"}
+      - op: custom
+        engine: dev_request
+        need: "событие урона по участку опасности с условиями damage_type и damage_gte (on: area_damaged, if: {damage_type: fire, damage_gte: 10}); op удаления опасности с участка (clear_hazard: {size_ft: 5, regrow: scene_end})"
+        text: "Огненный урон 10 и больше уничтожает налёт на участке 5×5 футов; выжженный участок не зарастает до конца сцены."
+      - op: custom
+        engine: dev_request
+        need: "модель роста опасности (поле growth у hazard_template: скорость/событие) и её подавления (stops_growth_refs у эффектов-зон и радиус)"
+        text: "Налёт растёт; не растёт в зоне effect.loud_noise, в 10 футах от героя с настроем +5 (effect.attunement_response_5), в зоне «Светлого отзвука» (echo.bright_echo) и в сфере Колокола Лиги. Подавители помечены полем stops_growth_refs."
+    triggers:
+      - "on": turn_end
+        if: {on_hazard: true, once_per_scene_per_creature: true}
+        do:
+          - {op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+      - "on": turn_start
+        if: {on_hazard: true, unconscious: true}
+        do:
+          - {op: extra_damage, dice: 1d6, damage_type: acid, text: "налёт начинает поглощение"}
+      - "on": hour_passed
+        if: {all: [{on_hazard: true}, {has_effect: effect.swarm_captive}, {not: {in_area: hazard.swarm_nest}}]}
+        do: [{op: resource, stat: corruption, delta: 1, text: "Пленник роя на налёте: +1 Скверна в час без спасброска (rules.md#6.5)"}]
+    exposure_ref: effect.corruption_exposure
+    suppressed_by_refs: [effect.loud_noise]
+
+  - id: hazard.bloom
+    name: Цветение
+    description: Противоположность налёта; появляется только в мире, где началось Преображение. Исцеляет отдыхающих, плоды — как «Добрая ягода», выводки голода на нём слабеют.
+    status: proposal
+    doc: rules.md#6.1
+    tags: [terrain, transformation]
+    requires_clock_ref: clock.bloom
+    modifiers:
+      - {op: disadvantage, "on": attack, if: {creature_tag: brood}, text: "Выводки голода на Цветении атакуют с помехой"}
+      - op: custom
+        engine: dev_request
+        need: "op применения эффекта SRD-заклинания по srd_ref (cast: {srd_ref: Goodberry}) — плоды как «Добрая ягода»"
+        text: "Плоды Цветения работают как «Добрая ягода» (SRD Goodberry)."
+        draft: {op: cast, srd_ref: {type: spell, name: Goodberry}, slot: none}
+    triggers:
+      - "on": long_rest
+        if: {on_hazard: true}
+        do:
+          - {op: choose, when: use, options: [[{op: resource, stat: corruption, delta: -1}], [{op: resource, stat: alteration, delta: -1}]], text: "Снять 1 очко Скверны или Перемены (на выбор)"}
+          - {op: resource, stat: exhaustion, delta: -1}
+
+  - id: hazard.corpse_gas
+    name: Трупный газ
+    description: Газ гнилостных полостей туш. Контакт — спасбросок против Скверны, сл. 10. Тушевики привычны к газу.
+    status: canon
+    doc: rules.md#3.1
+    tags: [gas, carcass, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+    triggers:
+      - "on": enter_area
+        do: [{op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}]
+    exposure_ref: effect.corruption_exposure
+    open_question: "Частота спасброска (раз за сцену/при входе) и ядовитая составляющая в rules.md не заданы; маски защищают (canon.md#5) — защита записана у самих масок/имплантов."
+
+  - id: hazard.infected_blood
+    name: Брызги заражённой крови
+    description: Кровь туш и роя. Контакт — спасбросок против Скверны, сл. 10.
+    status: canon
+    doc: rules.md#3.1
+    tags: [carcass, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+    exposure_ref: effect.corruption_exposure
+
+  - id: hazard.titan_meat
+    name: Мясо титана
+    description: Плоть туши как еда. Съевший делает спасбросок против Скверны, сл. 10.
+    status: canon
+    doc: rules.md#3.1
+    tags: [carcass, food, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+    exposure_ref: effect.corruption_exposure
+
+  - id: hazard.parasite_nest
+    name: Гнездо паразитов
+    description: Скопление нитевиков и санитаров в туше. Укус паразита — спасбросок против Скверны, сл. 13.
+    status: proposal
+    doc: rules.md#3.1
+    tags: [carcass, parasite, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 13, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+    exposure_ref: effect.corruption_exposure
+    open_question: "Сложность 13 — из таблицы 3.1 (укус паразита); форма «опасности местности» — предложение, частота укусов не задана."
+
+  - id: hazard.whisper_colony
+    name: Колония Шёпота
+    description: Колонии в желудочках мозга туши транслируют сны экипажа и шёпот Резонанса. Долгий контакт — спасбросок против Скверны, сл. 17.
+    status: canon
+    doc: rules.md#3.1
+    tags: [carcass, mental, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 17, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+    exposure_ref: effect.corruption_exposure
+    alt_exposure_ref: effect.corruption_exposure_mental
+    open_question: "«Долгий контакт» не определён числом (предложение: раз в час). По 6.5 шёпот — ментальный путь (Мудрость + семя желания), по 3.1 — Телосложение: противоречие."
+
+  - id: hazard.resonance_proximity
+    name: Близость Резонанса
+    description: Кратер, обнажённый эхолит, окрестности матерей. Спасбросок против Скверны, сл. 17.
+    status: canon
+    doc: rules.md#3.1
+    tags: [crater, resonance, corruption]
+    modifiers:
+      - {op: save, stat: con, dc: 17, on_fail: [{op: resource, stat: corruption, delta: 1}], on_fail_by_5: [{op: resource, stat: corruption, delta: 2}]}
+      - {op: add, target: corruption_save_dc, value: "floor(resonance / 3)", if: {location_belt: pilgrim_ring}}
+    exposure_ref: effect.corruption_exposure
+    open_question: "Частота спасброска не задана (предложение: раз за продолжительный отдых или раз в день в зоне)."
+
+  - id: hazard.sleeper_cocoon
+    name: Кокон Спящего
+    description: Рубка туши рядом с коконом спящего экипажа. Долгое пребывание — спасбросок против Перемены, сл. 13; +2 к сложности Порога тишины; «Сохранивший сердце» отдыхает здесь с риском Тяги.
+    status: proposal
+    doc: rules.md#3.5
+    tags: [carcass, alteration, sleeper]
+    modifiers:
+      - {op: save, stat: con, dc: 13, on_fail: [{op: resource, stat: alteration, delta: 1}], on_fail_by_5: [{op: resource, stat: alteration, delta: 2}]}
+      - {op: add, target: silence_threshold_dc, value: 2}
+    triggers:
+      - "on": long_rest
+        if: {lineage: kept_heart}
+        do: [{op: save, stat: cha, dc: 12, on_fail: [{op: resource, stat: silence_pull, delta: 1}]}]
+    exposure_ref: effect.alteration_exposure
+
+  - id: hazard.swarm_nest
+    name: Гнездо роя
+    description: Гнездо или налёт, где рой держит пленников. Пленник получает очко Скверны каждый час без спасброска; выводки даже лечат его. На 6 — Порог со сложностью +2 (мать рядом).
+    status: proposal
+    doc: rules.md#6.5
+    tags: [swarm, captive, corruption]
+    modifiers: []
+    note: "Выводки поддерживают пленника живым (лечат при слабости) — параметр heals_captives профиля effect.behavior_captor."
+    triggers:
+      - "on": hour_passed
+        if: {has_effect: effect.swarm_captive}
+        do: [{op: resource, stat: corruption, delta: 1}]
+    captive_ref: effect.swarm_captive
+
+  - id: hazard.spore_fog
+    name: Споровый туман
+    description: Пейзаж Среднего пояса и туш. От спор носят маски. Числа в rules.md не заданы.
+    status: proposal
+    doc: canon.md#7
+    tags: [gas, spores, terrain]
+    modifiers:
+      - {op: set, target: obscurement, value: light, text: "Местность слабо заслонена (предложение)"}
+      - {op: save, stat: con, dc: 10, on_fail: [{op: resource, stat: corruption, delta: 1}], text: "Предложение по аналогии с 3.1 (сл. 10) — раз за сцену без маски; ждёт решения Arty."}
+    exposure_ref: effect.corruption_exposure
+    note: "Жилолаз 9+: преимущество на спасброски против газа и спор — записано в подклассе (classes/subclasses.yaml)."
+
+  - id: hazard.lymph_swamp
+    name: Лимфатическое болото
+    description: Пейзаж туш и окраин (canon.md#7). Механики в правилах нет.
+    status: proposal
+    doc: canon.md#7
+    tags: [terrain]
+    terrain: difficult
+    modifiers:
+      - {op: set, target: terrain, value: difficult, text: "Труднопроходимая местность (предложение)"}
+    open_question: "Прочие эффекты лимфатического болота в rules.md не заданы."

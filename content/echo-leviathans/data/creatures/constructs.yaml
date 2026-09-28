@@ -1,0 +1,104 @@
+# Машины: паровые шагоходы Кордона
+# Часть пакета «Эхо Левиафанов». Основа — SRD 5.1 (srd_ref); модификаторы — язык из README.
+# behavior.profile: aggressive | cowardly | defender | capturer (Захватчик, rules.md#6.5) | noncombatant; flee_threshold — доля хитов.
+kind: creature_template
+items:
+- id: creature.cordon_walker_flamer
+  name: Паровой шагоход (огнемётный)
+  status: proposal
+  description: Стальной каркас в два-три роста, котёл на мозге, броня из хитинового сплава, огнемёт на корпусе. Ходит по выжженной земле, где рельсы не проложить. Шагоходов мало, каждый на счету.
+  doc: canon.md#4.3; rules.md#5.7
+  tags: [construct, cordon, vehicle]
+  srd_ref: {type: monster, name: Stone Golem}
+  cr: 10
+  faction_ref: faction.ash_cordon
+  behavior: {profile: defender, flee_threshold: 0.3, note: отходит к башне для ремонта}
+  modifiers:
+  - {op: condition, condition: incapacitated, if: {not: {stat_gte: {driver: 1}}}, note: без водителя в котле шагоход бездействует}
+  - {op: immunity, damage: poison}
+  - {op: immunity, damage: psychic}
+  - {op: set, target: speed, value: 0, if: {not: {stat_gte: {fuel: 1}}}, note: 'котёл на костном мозге: без топлива скорость 0'}
+  - {op: set, target: ac, value: 17}
+  - {op: set, target: hp_max, value: 178}
+  - {op: set, target: 'action:slow', value: false}
+  - {op: set, target: 'trait:magic_resistance', value: false, note: 'это машина, а не магия'}
+  triggers:
+  - 'on': day_end
+    if: {marched_today: true}
+    do:
+    - {op: resource, stat: fuel, delta: -1}
+    note: 1 заправка = 1 день хода
+  abilities:
+  - name: Огнемёт
+    kind: action
+    text: Конус 30 футов (9 м), спасбросок Лов сл. 15, 6d6 огнём, половина при успехе.
+    modifiers:
+    - op: save
+      stat: dex
+      dc: 15
+      area: cone_30
+      on_fail:
+      - {op: extra_damage, dice: 6d6, damage_type: fire}
+  - {name: Удар, kind: action, text: Как «Кулак» Каменного голема.}
+  loot_hint: 'не добыча: трофей Кордона; обломки — сталь и хитиновый сплав'
+  purchasable: false
+  player_control: story_scene_only
+- id: creature.cordon_walker_howler
+  name: Паровой шагоход (ревун)
+  status: proposal
+  description: 'Шагоход с паровым ревуном на корпусе: держит «сильный шум» вокруг себя и ломает строй выводков.'
+  doc: canon.md#4.3; rules.md#5.7
+  tags: [construct, cordon, vehicle]
+  srd_ref: {type: monster, name: Stone Golem}
+  cr: 10
+  faction_ref: faction.ash_cordon
+  behavior: {profile: defender, flee_threshold: 0.3}
+  modifiers:
+  - {op: condition, condition: incapacitated, if: {not: {stat_gte: {driver: 1}}}, note: без водителя в котле шагоход бездействует}
+  - {op: immunity, damage: poison}
+  - {op: immunity, damage: psychic}
+  - {op: set, target: speed, value: 0, if: {not: {stat_gte: {fuel: 1}}}, note: 'котёл на костном мозге: без топлива скорость 0'}
+  - {op: set, target: ac, value: 17}
+  - {op: set, target: hp_max, value: 178}
+  triggers:
+  - 'on': day_end
+    if: {marched_today: true}
+    do:
+    - {op: resource, stat: fuel, delta: -1}
+    note: 1 заправка = 1 день хода
+  abilities:
+  - name: Ревун корпуса
+    kind: action
+    text: 1 минуту сфера 60 футов — «сильный шум»; налёт в ней не растёт. Кормчие в зоне ослеплены.
+  - {name: Удар, kind: action, text: Как «Кулак» Каменного голема.}
+  loot_hint: не добыча
+  purchasable: false
+  player_control: story_scene_only
+- id: creature.walker_wreck
+  name: Брошенный шагоход
+  status: proposal
+  description: Шагоход, павший в волне и оставшийся за чертой. Внутри может сидеть скрытый рой или мёртвый водитель; котёл иногда ещё тёплый.
+  doc: canon.md#4.3
+  tags: [construct, wreck, object]
+  srd_ref: {type: monster, name: Stone Golem}
+  cr: 0
+  behavior: {profile: defender, flee_threshold: 0.0, mobile: false}
+  modifiers:
+  - {op: set, target: speed, value: 0}
+  - {op: set, target: hp_max, value: 60}
+  - op: check
+    stat: int
+    tool: artisan_tools
+    dc: 15
+    outcomes:
+    - result: success
+      do:
+      - {op: resource, stat: repair_progress, delta: 1}
+    note: 'починка — сюжетная сцена: 3 успешные проверки Инт (инструменты ремесленника) и заправка'
+  triggers:
+  - 'on': resource_changed
+    if: {all: [{stat_gte: {repair_progress: 3}}, {stat_gte: {fuel: 1}}]}
+    do:
+    - {op: set, target: repaired, value: true}
+  abilities: []
+  loot_hint: детали котла, огнемётный бак, журнал водителя
