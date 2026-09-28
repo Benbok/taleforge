@@ -79,7 +79,7 @@ h3 {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-raised px-3 py-2 text-ink transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-raised px-3 py-2 text-ink transition hover:border-accent active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
   .btn-primary {
     @apply border-accent bg-accent text-on-accent hover:brightness-110;
@@ -90,4 +90,19 @@ h3 {
   .card {
     @apply rounded-lg border border-line bg-surface;
   }
+}
+
+/* Появление уведомлений и новых сообщений: коротко, отключается «уменьшить движение». */
+@keyframes tf-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tf-pop {
+  animation: tf-pop 180ms ease-out;
 }

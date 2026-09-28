@@ -6,6 +6,8 @@ import { api } from "../lib/api";
 import type { CampaignCard, InvitePreview } from "../lib/types";
 import { useAsync } from "../lib/useAsync";
 import { useSession } from "../stores/session";
+import { toast } from "../stores/toasts";
+import { Spinner } from "../components/ActionButton";
 
 /** Вход по ссылке: обложка кампании и публичная вводная, имя и пароль — и сразу в лобби. */
 export default function InvitePage() {
@@ -20,6 +22,7 @@ export default function InvitePage() {
 
   async function accept() {
     const c = await run(() => api<Pick<CampaignCard, "id">>(`/api/invites/${token}/accept`, { method: "POST" }));
+    if (c) toast.ok("Вы за столом. Соберите героя, чтобы вступить в игру.");
     if (c) navigate(`/c/${c.id}`, { replace: true });
   }
 
@@ -45,10 +48,11 @@ export default function InvitePage() {
         {p?.valid &&
           (user ? (
             <div className="flex flex-col gap-2">
-              <button className="btn btn-primary" disabled={busy} onClick={accept}>
+              <button className="btn btn-primary" disabled={busy} aria-busy={busy} onClick={accept}>
+                {busy && <Spinner />}
                 Сесть за стол как {user.name}
               </button>
-              {error && <p className="text-bad">{error}</p>}
+              {error && <p className="text-bad" role="alert">Не получилось: {error}</p>}
             </div>
           ) : (
             <AuthForm

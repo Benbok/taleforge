@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./lib/api";
 import type { Theme } from "./lib/types";
-import CampaignPage from "./pages/CampaignPage";
+import Toasts from "./components/Toasts";
+import GamePage from "./pages/GamePage";
 import Home from "./pages/Home";
 import InvitePage from "./pages/InvitePage";
 import Welcome from "./pages/Welcome";
@@ -26,10 +27,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={user ? <Home /> : <Welcome />} />
           <Route path="/invite/:token" element={<InvitePage />} />
-          <Route path="/c/:id" element={user ? <CampaignPage /> : <Navigate to="/" replace />} />
+          <Route path="/c/:id" element={user ? <GamePage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      <Toasts />
     </QueryClientProvider>
   );
 }

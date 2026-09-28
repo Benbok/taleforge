@@ -44,6 +44,7 @@ class ToolContext:
     outbox: list[dict[str, Any]] = field(default_factory=list)  # сообщения чата от инструментов (шёпот мастера)
     closed: set[str] = field(default_factory=set)  # персонажи, чьи действия закрыты вызовом или отказом
     signals: set[str] = field(default_factory=set)  # что сделать после фиксации хода (например, "replan")
+    carded: set[str] = field(default_factory=set)  # события, у которых уже есть карточка броска в чате
     call_key: str | None = None
     _first_event: Event | None = None
 

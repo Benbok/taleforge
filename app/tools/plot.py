@@ -190,7 +190,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
             kind="location",
             name=sketch["name"],
             template_id=rec.id if rec else None,
-            description=a.details,
+            description=sketch.get("mood") or "",  # карточка для игроков; детали и секрет остаются в каркасе
             state={"dc": rec.data["dc"], "plot_id": sketch["id"]}
             if rec and rec.data.get("dc") is not None
             else {"plot_id": sketch["id"]},
@@ -217,7 +217,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
             kind="creature",
             name=sketch["name"],
             template_id=rec.id,
-            description=f"{sketch.get('look', '')} {a.details}".strip(),
+            description=sketch.get("look") or "",  # карточка для игроков; что он знает — в каркасе
             state={"hp": hp, "hp_max": hp, "attitude": a.attitude, "plot_id": sketch["id"]},
             location_id=ctx.world.scene.location_id if a.here else home,
             zone="near",

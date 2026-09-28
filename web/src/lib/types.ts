@@ -66,7 +66,83 @@ export interface ChatMessage {
   author: string | null;
   content: string;
   whisper: boolean;
+  data?: RollCard | null;
   created_at: string | null;
+}
+
+export interface RollCard {
+  tool: string;
+  title: string;
+  who?: string | null;
+  target?: string | null;
+  reason?: string | null;
+  roll?: { d20?: number[]; natural?: number; modifier?: number; mode?: string | null; total?: number } | null;
+  against?: { label: string; value: number } | null;
+  outcome: "success" | "fail" | "hit" | "miss" | "crit" | "info";
+  damage?: { amount: number; type: string; dice: { expr: string; total: number }[] };
+  dice?: { expr: string; total: number }[];
+  order?: { id: string; name: string | null; initiative: number }[];
+  track?: { successes: number; failures: number };
+  notes?: string[];
+}
+
+export interface Turn {
+  round: number;
+  actor_id: string;
+  name: string;
+  seat_id: string | null;
+  deadline: number | null;
+  submitted: boolean;
+}
+
+export interface SceneEntity {
+  id: string;
+  name: string;
+  kind: string;
+  zone: string;
+  condition?: string;
+  attitude?: string;
+}
+
+export interface Scene {
+  mode: "free" | "combat";
+  round: number;
+  location: { id: string; name: string } | null;
+  entities: SceneEntity[];
+  turn: Turn | null;
+}
+
+export interface HeroPublic {
+  id: string;
+  name: string;
+  seat_id: string | null;
+  status: string;
+  level: number;
+  hp: number | null;
+  hp_max: number | null;
+  dead: boolean;
+  public_bio?: string;
+}
+
+export type EntityType = "creature" | "npc" | "item" | "location" | "lore" | "hero";
+
+export interface EntityCard {
+  id: string;
+  type?: EntityType;
+  name?: string;
+  level?: number | null;
+  level_name?: string;
+  description?: string | null;
+  locked?: string[];
+  kind_name?: string;
+  lore?: string;
+  habits?: string;
+  condition?: string | null;
+  attacks?: string[];
+  vulnerable?: string[];
+  stats?: Record<string, unknown>;
+  hero?: HeroPublic;
+  error?: string;
 }
 
 export interface SeatState {
@@ -84,7 +160,11 @@ export interface Snapshot {
   session: { id: string; started_at: string } | null;
   me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean };
   seats: SeatState[];
-  turn: Record<string, unknown> | null;
+  turn: Turn | null;
+  heroes: HeroPublic[];
+  scene: Scene;
+  actions: string[];
+  blocked: Record<string, string>;
   messages: ChatMessage[];
   replay: boolean;
 }

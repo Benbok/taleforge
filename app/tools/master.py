@@ -669,7 +669,12 @@ class SpawnArgs(BaseModel):
     count: int = Field(1, ge=1, le=12)
     zone: Zone = "near"
     attitude: Literal["hostile", "neutral", "friendly"] = "hostile"
-    description: str = Field("", max_length=1000, description="внешность и характер (для NPC — мотивы)")
+    description: str = Field(
+        "",
+        max_length=1000,
+        description="внешность и манера, как их видят герои: это текст карточки для игроков. Мотивы и тайны сюда "
+        "не пиши",
+    )
 
 
 @tool(
@@ -763,7 +768,9 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
 
 class CreateLocationArgs(BaseModel):
     name: str = Field(max_length=128)
-    description: str = Field("", max_length=2000)
+    description: str = Field(
+        "", max_length=2000, description="как место выглядит для героев: это текст карточки для игроков, без тайн"
+    )
     template_id: str | None = Field(None, description="шаблон локации пакета, если есть подходящий")
     make_current: bool = Field(False, description="сразу сделать текущей локацией сцены")
 

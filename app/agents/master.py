@@ -1075,7 +1075,7 @@ async def _player_messages(s, c: Campaign, from_seq: int, upto_seq: int | None) 
 async def _history(s, c: Campaign, before_seq: int) -> list[Message]:
     rows = await s.scalars(
         select(Message)
-        .where(Message.campaign_id == c.id, Message.seq < before_seq, Message.kind != "ooc")
+        .where(Message.campaign_id == c.id, Message.seq < before_seq, Message.kind.notin_(("ooc", "roll")))
         .order_by(Message.seq.desc())
         .limit(HISTORY)
     )
