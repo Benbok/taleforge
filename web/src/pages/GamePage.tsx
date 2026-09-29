@@ -14,6 +14,7 @@ import FallenScene from "../game/FallenScene";
 import { myHero } from "../game/hero";
 import HeroHud from "../game/HeroHud";
 import HeroWindow from "../game/HeroWindow";
+import MapWindow, { MapButton } from "../game/MapWindow";
 import MasterPanel from "../master/MasterPanel";
 import { PartyPanel, ScenePanel } from "../game/Panels";
 import PauseOverlay from "../game/PauseOverlay";
@@ -141,9 +142,11 @@ export default function GamePage() {
         </span>
 
         <div className="ml-auto flex items-center gap-2 md:hidden">
+          <MapButton />
           <SoundControl />
         </div>
         <div className="ml-auto hidden items-center gap-2 md:flex">
+          <MapButton />
           <SoundControl />
           <SessionControls campaignId={id} />
           {manage && (
@@ -234,6 +237,7 @@ export default function GamePage() {
       <EntityPopover />
       <ExplainPopover />
       <HeroWindow />
+      <MapWindow />
       <FallenScene builderHref={`/c/${id}/hero`} />
     </div>
   );

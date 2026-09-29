@@ -174,7 +174,7 @@ export interface HeroPublic {
   bonds?: { question: string; answer: string }[];
 }
 
-export type EntityType = "creature" | "npc" | "item" | "location" | "lore" | "hero";
+export type EntityType = "creature" | "npc" | "item" | "location" | "landmark" | "lore" | "hero";
 
 export interface EntityCard {
   id: string;

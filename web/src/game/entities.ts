@@ -7,6 +7,7 @@ export const TYPE_COLOR: Record<EntityType, string> = {
   npc: "var(--tf-entity-npc)",
   item: "var(--tf-entity-item)",
   location: "var(--tf-entity-location)",
+  landmark: "var(--tf-entity-location)",
   lore: "var(--tf-entity-lore)",
   hero: "var(--tf-accent)",
 };
@@ -16,6 +17,7 @@ export const TYPE_ICON: Record<EntityType, string> = {
   npc: "☺",
   item: "◆",
   location: "⌖",
+  landmark: "▲",
   lore: "❖",
   hero: "★",
 };
@@ -25,6 +27,7 @@ export const TYPE_NAME: Record<EntityType, string> = {
   npc: "Персонаж",
   item: "Предмет",
   location: "Место",
+  landmark: "Примета",
   lore: "Знание",
   hero: "Герой",
 };
@@ -52,6 +55,8 @@ export function cardActions(type: EntityType | undefined, name: string): { label
         { label: "Идти туда", text: `Иду: ${name}` },
         { label: "Осмотреть", text: `Осматриваю: ${name}` },
       ];
+    case "landmark":
+      return [{ label: "Осмотреть", text: `Осматриваю: ${name}` }];
     default:
       return [];
   }

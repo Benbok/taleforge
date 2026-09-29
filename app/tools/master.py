@@ -26,6 +26,8 @@ from app.tools.registry import ToolContext, ToolError, dice_json, tool
 
 engine = Dnd5eEngine()
 Zone = Literal["melee", "near", "far"]
+Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
 
@@ -732,6 +734,7 @@ class SpawnArgs(BaseModel):
     name: str = Field(max_length=128, description="имя экземпляра, например «Гоблин-лучник»")
     count: int = Field(1, ge=1, le=12)
     zone: Zone = "near"
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
     attitude: Literal["hostile", "neutral", "friendly"] = "hostile"
     description: str = Field(
         "",
@@ -769,7 +772,7 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
             name=name,
             template_id=rec.id,
             description=a.description,
-            state={"hp": hp, "hp_max": hp, "attitude": a.attitude},
+            state={"hp": hp, "hp_max": hp, "attitude": a.attitude, **({"bearing": a.bearing} if a.bearing else {})},
             location_id=ctx.world.scene.location_id,
             zone=a.zone,
         )
@@ -792,12 +795,14 @@ class UpdateEntityArgs(BaseModel):
     mood: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500, description="нарративная пометка: мотив, что пообещал")
     zone: Zone | None = Field(None, description="сблизился или отошёл: вплотную, близко, далеко")
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
     fled: bool | None = Field(None, description="существо ушло со сцены")
 
 
 @tool(
     "update_entity",
-    "Меняет нарративные поля сущности: отношение, настроение, зону, пометки. Хиты и статы так не меняются.",
+    "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки. Хиты и статы так "
+    "не меняются.",
     UpdateEntityArgs,
     ids={"entity_id": "entities"},
     closes=False,
@@ -813,7 +818,7 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     ]
     st = dict(en.state or {})
     changes = {}
-    for k in ("attitude", "mood", "note"):
+    for k in ("attitude", "mood", "note", "bearing"):
         v = getattr(a, k)
         if v is not None:
             st[k] = v
@@ -837,20 +842,92 @@ class CreateLocationArgs(BaseModel):
     )
     template_id: str | None = Field(None, description="шаблон локации пакета, если есть подходящий")
     make_current: bool = Field(False, description="сразу сделать текущей локацией сцены")
+    parent_id: str | None = Field(None, description="внутри какого места находится: район туши, дом на улице, комната")
+    link_to: list[str] = Field(
+        default_factory=list, max_length=6, description="соседние места, куда отсюда можно пройти (появятся на карте)"
+    )
+    via: str | None = Field(None, max_length=40, description="чем связаны с соседями: лестница, переулок, тоннель")
+    bearing: Bearing | None = Field(None, description="в какой стороне от текущего места; n — север (вверх)")
+    secret: bool = Field(False, description="тайное место: на карте только после того, как герои его нашли")
+
+
+def _link(a: Entity, b_id: str, label: str | None = None, bearing: str | None = None) -> bool:
+    """Путь между местами хранится у места ``a`` в ``state.links``. Повтор не добавляет второй путь."""
+    st = dict(a.state or {})
+    links = list(st.get("links") or [])
+    if any(x.get("to") == b_id for x in links):
+        return False
+    links.append({"to": b_id, **({"label": label} if label else {}), **({"bearing": bearing} if bearing else {})})
+    st["links"] = links
+    a.state = st
+    return True
+
+
+def _linked(ctx: ToolContext, a: Entity, b: Entity) -> bool:
+    """Места уже связаны на карте: путь в любую сторону или одно внутри другого."""
+    return (
+        a.location_id == b.id
+        or b.location_id == a.id
+        or any(x.get("to") == b.id for x in (a.state or {}).get("links") or [])
+        or any(x.get("to") == a.id for x in (b.state or {}).get("links") or [])
+    )
+
+
+def _connect(ctx: ToolContext, a: Entity, b: Entity, inverse: list) -> None:
+    """Герои прошли из ``a`` в ``b``: путь отмечается на карте, если места ещё не связаны."""
+    if a.id != b.id and not _linked(ctx, a, b):
+        inverse.append({"table": "entities", "id": a.id, "field": "state", "before": copy.deepcopy(a.state)})
+        _link(a, b.id)
+
+
+def _visit(ctx: ToolContext, loc: Entity, heroes: list[Character], inverse: list) -> None:
+    st = dict(loc.state or {})
+    seen = list(st.get("visited_by") or [])
+    new = [h.id for h in heroes if h.id not in seen]
+    if not new:
+        return
+    inverse.append({"table": "entities", "id": loc.id, "field": "state", "before": copy.deepcopy(loc.state)})
+    st["visited_by"] = seen + new
+    loc.state = st
+
+
+def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
+    """Сцена переходит в новое место вместе с героями, которые стояли в старом: место отмечается посещённым,
+    а старое и новое связываются на карте, если ещё не связаны."""
+    old_id = ctx.world.scene.location_id
+    old = ctx.world.entities.get(old_id or "")
+    party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
+    going = [c for c in party if (c.location_id or old_id) == old_id]
+    if old is not None and old.id != loc.id:
+        _visit(ctx, old, going, inverse)
+        _connect(ctx, old, loc, inverse)
+    for c in going:
+        if c.location_id is not None and c.location_id != loc.id:
+            inverse.append({"table": "characters", "id": c.id, "field": "location_id", "before": c.location_id})
+            c.location_id = loc.id
+    inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": old_id})
+    ctx.world.scene.location_id = loc.id
+    _visit(ctx, loc, going, inverse)
 
 
 @tool(
     "create_location",
-    "Регистрирует локацию в реестре мира (по шаблону пакета, если он есть).",
+    "Регистрирует локацию в реестре мира (по шаблону пакета, если он есть). Место сразу попадает на карту героев: "
+    "укажи, внутри чего оно и с какими местами соседствует.",
     CreateLocationArgs,
+    ids={"parent_id": "locations", "link_to": "locations"},
     closes=False,
 )
 async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
-    state = {}
+    state: dict = {}
     if a.template_id:
         rec = ctx.world.catalog.get(a.template_id, "location_template")
         if rec.data.get("dc") is not None:
             state["dc"] = rec.data["dc"]
+    if a.bearing:
+        state["bearing"] = a.bearing
+    if a.secret:
+        state["secret"] = True
     en = Entity(
         campaign_id=ctx.campaign.id,
         kind="location",
@@ -858,20 +935,92 @@ async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
         template_id=a.template_id,
         description=a.description,
         state=state,
+        location_id=a.parent_id,
     )
     ctx.session.add(en)
     await ctx.session.flush()
     ctx.world.entities[en.id] = en
     inverse = [{"table": "entities", "op": "delete", "id": en.id}]
+    for other in dict.fromkeys(a.link_to):
+        if other != en.id:
+            _link(en, other, a.via)
     if a.make_current:
-        inverse.append(
-            {"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": ctx.world.scene.location_id}
-        )
-        ctx.world.scene.location_id = en.id
+        relocate_scene(ctx, en, inverse)
     await ctx.record(
-        "create_location", target_id=en.id, payload={"name": a.name, "current": a.make_current}, inverse=inverse
+        "create_location",
+        target_id=en.id,
+        payload={"name": a.name, "current": a.make_current, "parent": a.parent_id, "links": a.link_to},
+        inverse=inverse,
     )
     return {"location_id": en.id, "name": a.name, "current": a.make_current}
+
+
+class LinkArgs(BaseModel):
+    from_id: str
+    to_id: str
+    via: str | None = Field(None, max_length=40, description="чем связаны: лестница, переулок, тоннель, люк")
+    bearing: Bearing | None = Field(None, description="в какой стороне от from_id; n — север (вверх)")
+
+
+@tool(
+    "link_locations",
+    "Отмечает на карте путь между двумя местами реестра: герои нашли проход, лестницу, тоннель.",
+    LinkArgs,
+    ids={"from_id": "locations", "to_id": "locations"},
+    closes=False,
+)
+async def link_locations(ctx: ToolContext, a: LinkArgs) -> dict:
+    if a.from_id == a.to_id:
+        raise ToolError("место не связывают само с собой")
+    src, dst = ctx.world.entities[a.from_id], ctx.world.entities[a.to_id]
+    before = copy.deepcopy(src.state)
+    if not _link(src, dst.id, a.via, a.bearing):
+        return {"linked": False, "note": "путь уже отмечен"}
+    await ctx.record(
+        "link_locations",
+        target_id=src.id,
+        payload={"from": src.name, "to": dst.name, "via": a.via},
+        inverse=[{"table": "entities", "id": src.id, "field": "state", "before": before}],
+    )
+    return {"linked": True, "from": src.name, "to": dst.name}
+
+
+class LandmarkArgs(BaseModel):
+    name: str = Field(max_length=128, description="что видно: «Фонтан с костяной чашей», «Запертая дверь»")
+    description: str = Field("", max_length=1000, description="как это выглядит для героев, без тайн")
+    zone: Zone = "near"
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
+
+
+@tool(
+    "add_landmark",
+    "Отмечает на схеме места заметную примету: дверь, статую, лавку, провал. Механики у приметы нет: для существ — "
+    "spawn_entity, для отдельного места, куда можно войти, — create_location.",
+    LandmarkArgs,
+    closes=False,
+)
+async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
+    if ctx.world.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=a.name,
+        description=a.description,
+        state={"landmark": True, **({"bearing": a.bearing} if a.bearing else {})},
+        location_id=ctx.world.scene.location_id,
+        zone=a.zone,
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    ctx.world.entities[en.id] = en
+    await ctx.record(
+        "add_landmark",
+        target_id=en.id,
+        payload={"name": a.name, "zone": a.zone},
+        inverse=[{"table": "entities", "op": "delete", "id": en.id}],
+    )
+    return {"landmark_id": en.id, "name": a.name}
 
 
 class MoveArgs(BaseModel):
@@ -881,7 +1030,8 @@ class MoveArgs(BaseModel):
 
 @tool(
     "move",
-    "Перемещает героев в локацию реестра. Если уходят все герои — локация становится текущей сценой.",
+    "Перемещает героев в локацию реестра. Если уходят все герои — локация становится текущей сценой. Путь сам "
+    "отмечается на карте.",
     MoveArgs,
     ids={"character_ids": "characters", "location_id": "locations"},
 )
@@ -889,11 +1039,19 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     loc = ctx.world.entities.get(a.location_id)
     if loc is None or loc.kind != "location":
         raise ToolError(f"нет локации {a.location_id}; сначала create_location")
-    inverse = []
+    inverse: list = []
+    scene_loc = ctx.world.scene.location_id
+    moved = []
     for cid in a.character_ids:
         ch = _character(ctx, cid)
+        was = ctx.world.entities.get(ch.location_id or scene_loc or "")
+        if was is not None and was.id != loc.id:
+            _visit(ctx, was, [ch], inverse)
+            _connect(ctx, was, loc, inverse)
         inverse.append({"table": "characters", "id": ch.id, "field": "location_id", "before": ch.location_id})
         ch.location_id = loc.id
+        moved.append(ch)
+    _visit(ctx, loc, moved, inverse)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if all(c.location_id == loc.id for c in party):
         inverse.append(

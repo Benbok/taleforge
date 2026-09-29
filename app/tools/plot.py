@@ -198,15 +198,9 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         ctx.session.add(en)
         await ctx.session.flush()
         if a.here:
-            inverse.append(
-                {
-                    "table": "scenes",
-                    "id": ctx.campaign.id,
-                    "field": "location_id",
-                    "before": ctx.world.scene.location_id,
-                }
-            )
-            ctx.world.scene.location_id = en.id
+            from app.tools.master import relocate_scene
+
+            relocate_scene(ctx, en, inverse)
     else:
         rec = ctx.world.catalog.get(sketch["template_id"], "creature_template")
         creature_stats(rec.data)  # без блока статов существо в мир не выходит

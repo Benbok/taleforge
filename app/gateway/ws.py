@@ -5,10 +5,11 @@
 Офлайн и голосование (этап 8, app/gateway/presence.py): обрыв связи во время сессии — «переподключается», через
 60 секунд «офлайн» и ``vote.started``; ``vote.cast`` — голос. Игрок, которому отдали героя ушедшего, действует за
 него, передавая ``as_seat`` (место героя) в ``message.send``, ``message.withdraw``, ``turn.pass``,
-``reaction.choose``, ``actions.get``, ``entity.inspect`` и ``stat.explain``.
+``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get`` и ``stat.explain``.
 ``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
+``map.get`` — схема места и карта открытых мест для героя зрителя (``map.state``, app/core/map.py).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
 игрок, чей ход; ``turn.pass`` — пропустить ход (мастер так закрывает ход героя), ``reaction.choose`` — ответ на
 кнопку реакции.
@@ -311,6 +312,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _inspect(maker, user, conn, payload)
                 continue
 
+            if kind == "map.get":
+                await _map(maker, user, conn, payload)
+                continue
+
             if kind == "stat.explain":
                 await _explain(maker, user, conn, payload)
                 continue
@@ -570,6 +575,19 @@ async def _quick_intent(app, campaign_id: str, seat_id: str, quick: dict):
     if parsed.intent is None and parsed.reject is None:
         return intents.ParseResult(reject="быстрое действие не прошло проверку")
     return parsed
+
+
+async def _map(maker, user: User, conn: Connection, payload: dict) -> None:
+    from app.core.map import party_map
+
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            out = await party_map(session, viewer)
+        except NotFound as e:
+            await conn.send(_error("not_found", str(e), conn.campaign_id))
+            return
+    await conn.send(envelope("map.state", conn.campaign_id, out))
 
 
 async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:

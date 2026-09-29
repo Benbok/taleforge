@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.map import BEARING_NAMES
 from app.core.plot import _index, has_plan
 from app.core.rolls import ABILITY_RU, SKILL_RU
 from app.core.world import World
@@ -25,6 +26,8 @@ GROUPS: dict[str, list[str]] = {
         "spawn_entity",
         "update_entity",
         "create_location",
+        "link_locations",
+        "add_landmark",
         "move",
         "apply_hazard",
     ],
@@ -88,7 +91,7 @@ def _name(world: World, rid: str) -> str:
 
 def _labels(world: World) -> dict[str, str]:
     """Подписи ко всем id, которые могут попасть в списки: имена героев, сущностей, предметов, записей каталога."""
-    out: dict[str, str] = {**ABILITY_RU, **SKILL_RU, **ZONES, **ATTITUDES, **LEVELS}
+    out: dict[str, str] = {**ABILITY_RU, **SKILL_RU, **ZONES, **ATTITUDES, **LEVELS, **BEARING_NAMES}
     for ch in world.characters.values():
         out[ch.id] = ch.name
     for e in world.entities.values():
