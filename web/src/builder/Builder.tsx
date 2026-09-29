@@ -38,6 +38,37 @@ const TITLES: Record<BuilderMode, { save: string; saved: string }> = {
   library: { save: "Сохранить в библиотеку", saved: "Герой сохранён в библиотеке" },
 };
 
+const STEP_GUIDE: Record<string, { subtitle: string; hint: string }> = {
+  name: {
+    subtitle: "Имя или позывной",
+    hint: "Придумайте имя персонажа, под которым его будут знать союзники и враги.",
+  },
+  class: {
+    subtitle: "Боевое призвание",
+    hint: "Класс определяет вашу боевую роль, кость хитов, владение оружием и спасброски.",
+  },
+  origin: {
+    subtitle: "Наследие и корни",
+    hint: "В мире Левиафанов все герои — люди шести происхождений. Это даёт бонусы характеристик и уникальные черты.",
+  },
+  abilities: {
+    subtitle: "Сила, ловкость и разум",
+    hint: "Распределите ключевые показатели характеристик персонажа. Учитывайте ключевые параметры выбранного класса.",
+  },
+  skills: {
+    subtitle: "Мастерство и тренировка",
+    hint: "Выберите навыки, в которых персонаж обучен — они добавляют бонус мастерства к соответствующим проверкам.",
+  },
+  gear: {
+    subtitle: "Оружие и снаряжение",
+    hint: "Сформируйте начальный боекомплект и вооружение из доступных опций вашего класса.",
+  },
+  story: {
+    subtitle: "Внешность и личная тайна",
+    hint: "Опишите внешность для сопартийцев и потаённую тайну персонажа, о которой будет знать только ведущий игры.",
+  },
+};
+
 /** Конструктор героя: слева выбор по шагам, справа живой лист, который считает сервер по правилам кампании. */
 export default function Builder({
   mode,
@@ -108,32 +139,157 @@ export default function Builder({
   const skillNeed = cls?.skills_choose?.count ?? 0;
   const skillFrom = cls?.skills_choose?.from?.length ? cls.skills_choose.from : SKILLS.map(([id]) => id);
 
+  const [activeStep, setActiveStep] = useState<string>("name");
+  const [wizardMode, setWizardMode] = useState<boolean>(true);
+
+  const currentIdx = Math.max(0, st.findIndex((s) => s.id === activeStep));
+  const prevStep = currentIdx > 0 ? st[currentIdx - 1] : null;
+  const nextStep = currentIdx < st.length - 1 ? st[currentIdx + 1] : null;
+
+  const goToStep = (id: string) => {
+    setActiveStep(id);
+    if (!wizardMode) {
+      document.getElementById(`step-${id}`)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const goNext = () => {
+    if (nextStep) goToStep(nextStep.id);
+  };
+
+  const goPrev = () => {
+    if (prevStep) goToStep(prevStep.id);
+  };
+
+  const renderFooter = (stepIdx: number) => {
+    const isFirst = stepIdx === 0;
+    const isLast = stepIdx === st.length - 1;
+    const prev = isFirst ? null : st[stepIdx - 1];
+    const next = isLast ? null : st[stepIdx + 1];
+
+    return (
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-line/50">
+        <div className="flex items-center gap-2">
+          {prev ? (
+            <button
+              type="button"
+              onClick={goPrev}
+              className="btn border-line bg-raised/50 px-3.5 py-1.5 font-mono text-xs text-muted hover:text-ink hover:border-line cursor-pointer"
+            >
+              ← Назад ({prev.label})
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <ActionButton
+            run={save}
+            done={TITLES[mode].saved}
+            primary={false}
+            className="font-mono text-xs tracking-wider"
+          >
+            {TITLES[mode].save.toUpperCase()}
+          </ActionButton>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {next ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="btn btn-primary px-4 py-1.5 font-mono text-xs tracking-wider cursor-pointer"
+            >
+              Далее: {next.label} →
+            </button>
+          ) : mode === "campaign" ? (
+            <ActionButton
+              run={submit}
+              primary
+              done="Герой отправлен мастеру на проверку"
+              className="font-mono text-xs tracking-wider"
+            >
+              ОТПРАВИТЬ МАСТЕРУ НА ПРОВЕРКУ →
+            </ActionButton>
+          ) : (
+            <ActionButton
+              run={save}
+              done={TITLES[mode].saved}
+              primary
+              className="font-mono text-xs tracking-wider"
+            >
+              {TITLES[mode].save.toUpperCase()}
+            </ActionButton>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="grid gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:pb-0">
       <div className="flex min-w-0 flex-col gap-6">
-        {/* Step Navigation Pills */}
-        <nav
-          aria-label="Шаги создания героя"
-          className="flex flex-wrap gap-2 rounded-[12px] border border-line bg-surface p-3"
-        >
-          {st.map((s) => (
-            <a
-              key={s.id}
-              href={`#step-${s.id}`}
-              className={`rounded-full border px-3 py-1 font-mono text-[11px] no-underline transition ${
-                s.done
-                  ? "border-patina/50 bg-patina/10 text-patina-hi font-semibold"
-                  : "border-line bg-raised text-muted hover:border-accent hover:text-ink"
-              }`}
+        {/* Step Navigation Bar */}
+        <div className="flex flex-col gap-3 rounded-[12px] border border-line bg-surface p-3.5 shadow-sm">
+          <div className="flex items-center justify-between gap-2 border-b border-line/50 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+                {wizardMode ? `Шаг ${currentIdx + 1} из ${st.length}` : "Все разделы"}
+              </span>
+              <span className="text-muted text-xs">·</span>
+              <span className="font-heading text-sm font-bold text-ink">
+                {wizardMode ? st[currentIdx]?.label : "Конструктор героя"}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setWizardMode((v) => !v)}
+              className="btn px-2.5 py-1 text-[11px] font-mono text-muted hover:text-ink border-line cursor-pointer"
+              title={wizardMode ? "Переключиться на просмотр всех шагов сразу" : "Переключиться на пошаговый мастер"}
             >
-              {s.done ? "✓ " : ""}
-              {s.label}
-            </a>
-          ))}
-        </nav>
+              {wizardMode ? "Показать всё разом" : "Пошаговый режим"}
+            </button>
+          </div>
+
+          <nav
+            aria-label="Шаги создания героя"
+            className="grid grid-cols-4 sm:grid-cols-7 gap-1.5"
+          >
+            {st.map((s, idx) => {
+              const isActive = s.id === activeStep && wizardMode;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => goToStep(s.id)}
+                  className={`flex items-center justify-center gap-1.5 rounded-[8px] py-1.5 px-2 text-xs font-mono transition cursor-pointer border ${
+                    isActive
+                      ? "border-accent bg-accent/15 text-accent font-bold shadow-sm"
+                      : s.done
+                      ? "border-patina/40 bg-patina/10 text-patina-hi hover:border-patina/70"
+                      : "border-line bg-raised/40 text-muted hover:border-line hover:text-ink"
+                  }`}
+                >
+                  <span className="text-[10px] opacity-80">{s.done ? "✓" : idx + 1}.</span>
+                  <span className="truncate">{s.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
         {/* Step 1: Name */}
-        <Step id="name" title="Имя героя">
+        <Step
+          id="name"
+          title="Имя героя"
+          subtitle={STEP_GUIDE.name.subtitle}
+          hint={STEP_GUIDE.name.hint}
+          active={activeStep === "name"}
+          wizardMode={wizardMode}
+          footer={renderFooter(0)}
+        >
           <input
             className="field w-full font-heading text-lg"
             value={draft.name}
@@ -144,7 +300,15 @@ export default function Builder({
         </Step>
 
         {/* Step 2: Class */}
-        <Step id="class" title="Класс">
+        <Step
+          id="class"
+          title="Класс"
+          subtitle={STEP_GUIDE.class.subtitle}
+          hint={STEP_GUIDE.class.hint}
+          active={activeStep === "class"}
+          wizardMode={wizardMode}
+          footer={renderFooter(1)}
+        >
           <ClassChoices
             items={opts.classes}
             value={draft.class_id}
@@ -156,7 +320,15 @@ export default function Builder({
         </Step>
 
         {/* Step 3: Origin */}
-        <Step id="origin" title="Происхождение (раса)">
+        <Step
+          id="origin"
+          title="Происхождение (раса)"
+          subtitle={STEP_GUIDE.origin.subtitle}
+          hint={STEP_GUIDE.origin.hint}
+          active={activeStep === "origin"}
+          wizardMode={wizardMode}
+          footer={renderFooter(2)}
+        >
           <OriginChoices
             items={opts.origins}
             value={draft.origin_id}
@@ -165,7 +337,15 @@ export default function Builder({
         </Step>
 
         {/* Step 4: Ability Scores */}
-        <Step id="abilities" title="Характеристики">
+        <Step
+          id="abilities"
+          title="Характеристики"
+          subtitle={STEP_GUIDE.abilities.subtitle}
+          hint={STEP_GUIDE.abilities.hint}
+          active={activeStep === "abilities"}
+          wizardMode={wizardMode}
+          footer={renderFooter(3)}
+        >
           {methods.length > 1 && (
             <div className="mb-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Способ распределения">
               {methods.map((m: Method) => (
@@ -276,7 +456,15 @@ export default function Builder({
         </Step>
 
         {/* Step 5: Skills */}
-        <Step id="skills" title={cls ? `Навыки (${draft.skills.length} из ${skillNeed})` : "Навыки"}>
+        <Step
+          id="skills"
+          title={cls ? `Навыки (${draft.skills.length} из ${skillNeed})` : "Навыки"}
+          subtitle={STEP_GUIDE.skills.subtitle}
+          hint={STEP_GUIDE.skills.hint}
+          active={activeStep === "skills"}
+          wizardMode={wizardMode}
+          footer={renderFooter(4)}
+        >
           {!cls ? (
             <p className="text-sm text-muted">Сначала выберите класс: он определяет список доступных навыков.</p>
           ) : (
@@ -308,7 +496,15 @@ export default function Builder({
         </Step>
 
         {/* Step 6: Gear */}
-        <Step id="gear" title="Стартовое снаряжение">
+        <Step
+          id="gear"
+          title="Стартовое снаряжение"
+          subtitle={STEP_GUIDE.gear.subtitle}
+          hint={STEP_GUIDE.gear.hint}
+          active={activeStep === "gear"}
+          wizardMode={wizardMode}
+          footer={renderFooter(5)}
+        >
           {!cls ? (
             <p className="text-sm text-muted">Стартовые наборы снаряжения зависят от выбранного класса.</p>
           ) : (
@@ -332,7 +528,7 @@ export default function Builder({
                             onChange={() =>
                               set({
                                 equipment_choices: draft.equipment_choices.map((x) =>
-                                  x.choice === i ? { ...x, option: j, items: weaponSlots(bundle, [], opts) } : x,
+                                    x.choice === i ? { ...x, option: j, items: weaponSlots(bundle, [], opts) } : x,
                                 ),
                               })
                             }
@@ -393,7 +589,15 @@ export default function Builder({
         </Step>
 
         {/* Step 7: Story / Bio */}
-        <Step id="story" title="История и тайна персонажа">
+        <Step
+          id="story"
+          title="История и тайна персонажа"
+          subtitle={STEP_GUIDE.story.subtitle}
+          hint={STEP_GUIDE.story.hint}
+          active={activeStep === "story"}
+          wizardMode={wizardMode}
+          footer={renderFooter(6)}
+        >
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-semibold text-ink">Публичное описание (видно всем за столом)</span>
             <textarea
@@ -415,30 +619,60 @@ export default function Builder({
               onChange={(e) => set({ private_backstory: e.target.value })}
             />
           </label>
+
+          {preview.data && (
+            <div
+              className={`mt-4 rounded-[10px] border p-3.5 font-mono text-xs ${
+                preview.data.errors.length
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                  : "border-patina/50 bg-patina/10 text-patina-hi font-semibold"
+              }`}
+            >
+              {preview.data.errors.length ? (
+                <div>
+                  <div className="font-bold uppercase tracking-wider mb-1.5 text-amber-300">
+                    Осталось заполнить для готовности:
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-muted-hi">
+                    {preview.data.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-base text-patina-hi">✓</span>
+                  <span>Персонаж полностью укомплектован и готов к игре!</span>
+                </div>
+              )}
+            </div>
+          )}
         </Step>
 
-        {/* Bottom Actions */}
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <ActionButton
-            run={save}
-            done={TITLES[mode].saved}
-            primary={mode !== "campaign"}
-            className="font-mono text-xs tracking-wider"
-          >
-            {TITLES[mode].save.toUpperCase()}
-          </ActionButton>
-
-          {mode === "campaign" && (
+        {/* Bottom Actions (только в режиме "Показать всё разом") */}
+        {!wizardMode && (
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <ActionButton
-              run={submit}
-              primary
-              done="Герой отправлен мастеру на проверку"
+              run={save}
+              done={TITLES[mode].saved}
+              primary={mode !== "campaign"}
               className="font-mono text-xs tracking-wider"
             >
-              ОТПРАВИТЬ МАСТЕРУ НА ПРОВЕРКУ →
+              {TITLES[mode].save.toUpperCase()}
             </ActionButton>
-          )}
-        </div>
+
+            {mode === "campaign" && (
+              <ActionButton
+                run={submit}
+                primary
+                done="Герой отправлен мастеру на проверку"
+                className="font-mono text-xs tracking-wider"
+              >
+                ОТПРАВИТЬ МАСТЕРУ НА ПРОВЕРКУ →
+              </ActionButton>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right sticky live sheet */}
@@ -473,11 +707,42 @@ export default function Builder({
   );
 }
 
-function Step({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Step({
+  id,
+  title,
+  subtitle,
+  hint,
+  active,
+  wizardMode,
+  children,
+  footer,
+}: {
+  id: string;
+  title: string;
+  subtitle?: string;
+  hint?: string;
+  active: boolean;
+  wizardMode: boolean;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  if (wizardMode && !active) return null;
+
   return (
     <section id={`step-${id}`} className="card scroll-mt-24 p-5 sm:p-6 border border-line bg-surface">
-      <h2 className="mb-4 font-heading text-xl font-bold text-ink border-b border-line pb-2.5">{title}</h2>
+      <div className="mb-4 border-b border-line pb-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-heading text-xl font-bold text-ink">{title}</h2>
+          {subtitle && (
+            <span className="font-serif italic text-xs text-muted/90 tracking-wide">
+              {subtitle}
+            </span>
+          )}
+        </div>
+        {hint && <p className="mt-1 text-xs text-muted/80 leading-relaxed">{hint}</p>}
+      </div>
       {children}
+      {wizardMode && footer}
     </section>
   );
 }
