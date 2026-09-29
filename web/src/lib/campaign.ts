@@ -38,6 +38,7 @@ export interface Room {
     spend_limit_usd?: number | null;
     excluded_themes?: string[];
     audio_enabled?: boolean;
+    leveling?: "xp" | "milestone";
     poster?: Poster | null;
     [k: string]: unknown;
   };
@@ -122,6 +123,15 @@ export const DIFFICULTY_RU: Record<string, string> = {
   deadly: "Смертельная",
 };
 
+export const LEVELING_RU: Record<string, string> = {
+  xp: "По опыту",
+  milestone: "По вехам сюжета",
+};
+export const LEVELING_HINT: Record<string, string> = {
+  xp: "Опыт за побеждённых врагов, задачи и квесты делится поровну между героями; уровень растёт сам по таблице SRD.",
+  milestone: "Опыт не копится: мастер поднимает уровень всему отряду на вехах сюжета.",
+};
+
 /** Выбор персоны в одном поле: своя из профиля, встроенная или никакой. */
 export type PersonaPick = "" | `my:${string}` | `pre:${string}`;
 
@@ -138,6 +148,8 @@ export interface CampaignDraft {
   name: string;
   pack_id: string;
   difficulty: string;
+  /** Рост уровней: по опыту SRD или по вехам сюжета. */
+  leveling: "xp" | "milestone";
   players: number | null;
   /** "owner" — ведёт сам, иначе id профиля модели ("" — модель по умолчанию). */
   master: string;
@@ -155,6 +167,7 @@ export const EMPTY_DRAFT: CampaignDraft = {
   name: "",
   pack_id: "",
   difficulty: "normal",
+  leveling: "xp",
   players: null,
   master: "",
   persona: "pre:storyteller",
@@ -224,6 +237,7 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
     name: d.name.trim(),
     pack_id: d.pack_id || null,
     difficulty: d.difficulty,
+    leveling: d.leveling,
     ...(d.players ? { players: d.players } : {}),
     master,
     public_intro: d.public_intro,

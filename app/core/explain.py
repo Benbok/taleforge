@@ -22,7 +22,16 @@ from app.rules.dnd5e.tables import ABILITIES, SKILLS
 engine = Dnd5eEngine()
 HISTORY = 8
 # инструменты, которые меняют хиты героя
-HP_TOOLS = ("resolve_attack", "apply_hazard", "death_save", "use_item", "rest", "apply_effect", "grant_level")
+HP_TOOLS = (
+    "resolve_attack",
+    "apply_hazard",
+    "death_save",
+    "use_item",
+    "rest",
+    "apply_effect",
+    "grant_level",
+    "level_up",
+)
 
 
 class ExplainError(Exception):

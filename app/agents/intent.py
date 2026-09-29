@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
-from app.core.world import PLAYABLE, ZONE_NAMES, World
+from app.core.world import PLAYABLE, ZONE_NAMES, World, is_scene_item
 from app.db.models import Character
 
 # Закрытый список глаголов ядра правил; всё, что не подошло, — custom и решается мастером
@@ -25,7 +25,10 @@ VERBS = (
     "move",  # переместиться: сблизиться, отойти, уйти в другую локацию
     "inspect",  # осмотреть, изучить
     "search",  # искать, обыскать
-    "interact",  # открыть, взломать, поднять, толкнуть предмет обстановки
+    "interact",  # открыть, взломать, толкнуть предмет обстановки
+    "pick_up",  # подобрать предмет, который лежит в сцене, и забрать себе
+    "drop",  # бросить или оставить свой предмет
+    "give",  # передать свой предмет другому герою
     "persuade",  # убедить
     "deceive",  # обмануть
     "intimidate",  # запугать
@@ -129,7 +132,8 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
             continue
         targets.append(en.id)
         extra = " мёртв" if st.get("dead") else ""
-        lines.append(f"{en.id}  {en.name} ({en.kind}, {ZONE_NAMES.get(en.zone, en.zone)}{extra})")
+        kind = "предмет, можно подобрать" if is_scene_item(en) else en.kind
+        lines.append(f"{en.id}  {en.name} ({kind}, {ZONE_NAMES.get(en.zone, en.zone)}{extra})")
     items = world.inventory.get(ch.id, [])
     inv = [f"{it.id}  {world.item_name(it)}{' [надет]' if it.equipped else ''}" for it in items]
     mode = "бой: за ход одно действие и перемещение" if world.scene.mode == "combat" else "свободный режим"
@@ -194,6 +198,9 @@ VERB_RU = {
     "inspect": "осмотр",
     "search": "поиск",
     "interact": "взаимодействие",
+    "pick_up": "подобрать",
+    "drop": "бросить",
+    "give": "передать",
     "persuade": "убеждение",
     "deceive": "обман",
     "intimidate": "запугивание",

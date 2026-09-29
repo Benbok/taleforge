@@ -120,6 +120,9 @@ export interface SceneEntity {
   zone: string;
   condition?: string;
   attitude?: string;
+  /** Предмет, лежащий в сцене: его можно подобрать. */
+  item?: boolean;
+  qty?: number;
 }
 
 /** Участник полосы инициативы. Числа существ сервер не присылает. */
@@ -237,6 +240,8 @@ export interface HeroSheet extends HeroPublic {
     effects: { id: string; template: string; name: string; stacks: number }[];
   };
   inventory: { id: string; item: string; name: string; qty: number; equipped: boolean }[];
+  /** Опыт: сколько есть, порог текущего уровня и следующего (null — выше расти некуда). */
+  progress?: { xp: number; level_xp: number; next_xp: number | null };
 }
 
 export interface Explained {

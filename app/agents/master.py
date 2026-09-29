@@ -55,6 +55,7 @@ from app.db.models import (
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import plot as plot_tools
+from app.tools import progress as progress_tools
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -696,6 +697,7 @@ class MasterService:
             pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
+            leveling=progress_tools.leveling(c),
             audio=audio.prompt_block(c, ctx.world.scene),
         )
 
