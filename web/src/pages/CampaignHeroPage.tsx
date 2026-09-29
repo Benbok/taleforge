@@ -13,6 +13,7 @@ interface Room {
   name: string;
   my_seat_id: string | null;
   my_role: string | null;
+  pack_id: string | null;
 }
 
 /** Герой в кампании: выбрать готового, взять из профиля или собрать; дальше — проверка мастером. */
@@ -138,7 +139,8 @@ export default function CampaignHeroPage() {
         </section>
       </div>
     );
-  } else if (building || (hero && (hero.sheet as Record<string, unknown> | null)?.class_id)) {
+  } else if (building || hero) {
+    // черновик уже есть (в том числе копия героя из другого мира без класса) — только доработка в конструкторе
     body = (
       <div className="flex flex-col gap-5">
         {hero?.review_comment && (
@@ -168,6 +170,7 @@ export default function CampaignHeroPage() {
         id={id}
         premades={(list.data ?? []).filter((c) => c.status === "premade" && !c.errors?.length)}
         library={library.data ?? []}
+        packId={room.data?.pack_id ?? null}
         onNew={() => setBuilding(true)}
         onDone={refresh}
         openBuilder={() => setBuilding(true)}
@@ -225,6 +228,7 @@ function Choose({
   id,
   premades,
   library,
+  packId,
   onNew,
   onDone,
   openBuilder,
@@ -232,6 +236,7 @@ function Choose({
   id: string;
   premades: CampaignHero[];
   library: LibraryHero[];
+  packId: string | null;
   onNew: () => void;
   onDone: () => Promise<unknown>;
   openBuilder: () => void;
@@ -301,7 +306,13 @@ function Choose({
             <Pick
               key={h.id}
               name={h.name}
-              sub={[h.origin_name, h.class_name, h.errors.length ? "черновик" : "готов"]}
+              sub={[
+                h.origin_name,
+                h.class_name,
+                h.errors.length ? "черновик" : "готов",
+                // собран для другого мира: чего нет в этом мире, игрок выберет заново в конструкторе
+                (h.pack_id ?? null) !== packId ? `из мира «${h.world_name}», часть выбора придётся заменить` : null,
+              ]}
               bio={h.public_bio}
             >
               <ActionButton

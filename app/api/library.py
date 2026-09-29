@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
+from pydantic import Field
 
 from app.api.characters import CharacterIn, PreviewIn
 from app.api.deps import SessionDep, UserDep
@@ -12,41 +13,63 @@ from app.core import library as svc
 router = APIRouter(prefix="/api/me", tags=["profile"])
 
 
+class LibraryHeroIn(CharacterIn):
+    pack_id: str | None = Field(None, max_length=64)  # мир героя; пустая строка — базовые правила
+
+
+class LibraryPreviewIn(PreviewIn):
+    pack_id: str | None = Field(None, max_length=64)
+
+
+@router.get("/worlds")
+async def list_worlds(user: UserDep, session: SessionDep) -> list[dict]:
+    """Миры, для которых можно собрать героя профиля: базовые правила и загруженные пакеты миров."""
+    return await svc.worlds(session)
+
+
 @router.get("/character-options")
-async def character_options(user: UserDep, session: SessionDep) -> dict:
-    """Варианты конструктора по базовым правилам SRD (без правил конкретной кампании)."""
-    return await chars.options_for_rules(svc.LIBRARY_RULES, await svc.base_catalog(session))
+async def character_options(user: UserDep, session: SessionDep, pack: str | None = None) -> dict:
+    """Варианты конструктора для мира героя: без pack — базовые правила SRD, иначе классы и происхождения мира."""
+    w = await svc.world(session, pack)
+    return await chars.options_for_rules(w.rules, w.cat)
 
 
 @router.post("/character-preview")
-async def character_preview(body: PreviewIn, user: UserDep, session: SessionDep) -> dict:
-    """Живой лист героя профиля по базовым правилам: ничего не сохраняет."""
-    return chars.preview(body.model_dump(exclude_none=True), await svc.base_catalog(session), svc.LIBRARY_RULES)
+async def character_preview(body: LibraryPreviewIn, user: UserDep, session: SessionDep) -> dict:
+    """Живой лист героя профиля по правилам его мира: ничего не сохраняет."""
+    w = await svc.world(session, body.pack_id)
+    return chars.preview(body.model_dump(exclude_none=True), w.cat, w.rules)
 
 
 @router.get("/characters")
 async def list_heroes(user: UserDep, session: SessionDep) -> list[dict]:
-    cat = await svc.base_catalog(session)
-    return [svc.view(lc, cat) for lc in await svc.list_mine(session, user)]
+    ws = svc.Worlds(session)
+    return [svc.view(lc, await ws.of(lc)) for lc in await svc.list_mine(session, user)]
 
 
 @router.post("/characters", status_code=201)
-async def create_hero(body: CharacterIn, user: UserDep, session: SessionDep) -> dict:
-    lc = await svc.create(session, user, body.model_dump(exclude_none=True))
+async def create_hero(body: LibraryHeroIn, user: UserDep, session: SessionDep) -> dict:
+    data = body.model_dump(exclude_none=True)
+    await svc.world(session, data.get("pack_id"))  # мир должен быть загружен
+    lc = await svc.create(session, user, data)
     await session.commit()
-    return svc.view(lc, await svc.base_catalog(session))
+    return svc.view(lc, await svc.Worlds(session).of(lc))
 
 
 @router.get("/characters/{library_id}")
 async def get_hero(library_id: str, user: UserDep, session: SessionDep) -> dict:
-    return await svc.detail(session, await svc.get_mine(session, user, library_id), await svc.base_catalog(session))
+    lc = await svc.get_mine(session, user, library_id)
+    return await svc.detail(session, lc, await svc.Worlds(session).of(lc))
 
 
 @router.put("/characters/{library_id}")
-async def update_hero(library_id: str, body: CharacterIn, user: UserDep, session: SessionDep) -> dict:
-    lc = await svc.update(session, await svc.get_mine(session, user, library_id), body.model_dump(exclude_none=True))
+async def update_hero(library_id: str, body: LibraryHeroIn, user: UserDep, session: SessionDep) -> dict:
+    data = body.model_dump(exclude_none=True)
+    if data.get("pack_id"):
+        await svc.world(session, data["pack_id"])
+    lc = await svc.update(session, await svc.get_mine(session, user, library_id), data)
     await session.commit()
-    return svc.view(lc, await svc.base_catalog(session))
+    return svc.view(lc, await svc.Worlds(session).of(lc))
 
 
 @router.delete("/characters/{library_id}", status_code=204)

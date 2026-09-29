@@ -294,6 +294,12 @@ export default function HeroWindow() {
             <p className="text-muted">
               {[sheet.origin_name, sheet.class_name, `${sheet.level} уровень`].filter(Boolean).join(" · ")}
             </p>
+            {sheet.lineage && (
+              <p className="text-sm" title={sheet.lineage.features.join(", ")}>
+                {sheet.lineage.name}
+                {sheet.lineage.caste ? `, каста ${sheet.lineage.caste}` : ""}
+              </p>
+            )}
           </div>
           <button className="text-2xl leading-none text-muted hover:text-ink" onClick={hide} aria-label="Закрыть">
             ×

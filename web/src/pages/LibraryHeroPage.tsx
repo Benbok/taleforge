@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Builder from "../builder/Builder";
 import { api } from "../lib/api";
-import { HERO_STATUS_RU, type BuilderOptions, type LibraryHero } from "../lib/builder";
+import { HERO_STATUS_RU, type BuilderOptions, type LibraryHero, type World } from "../lib/builder";
 
-/** Герой профиля: собирается по базовым правилам и потом копируется в любую кампанию. */
+/** Герой профиля: собирается для мира (или по базовым правилам) и потом копируется в любую кампанию. */
 export default function LibraryHeroPage() {
   const param = useParams().hid;
   const hid = param === "new" ? undefined : param;
@@ -14,13 +14,21 @@ export default function LibraryHeroPage() {
   const navigate = useNavigate();
   // только что созданный герой: конструктор уже открыт с его данными, перезагружать его незачем
   const created = useRef(false);
-  const opts = useQuery({ queryKey: ["options", "library"], queryFn: () => api<BuilderOptions>("/api/me/character-options") });
   const hero = useQuery({
     queryKey: ["library", hid],
     queryFn: () => api<LibraryHero>(`/api/me/characters/${hid}`),
     enabled: !!hid,
   });
-  const problem = opts.error ?? hero.error;
+  const worlds = useQuery({ queryKey: ["worlds"], queryFn: () => api<World[]>("/api/me/worlds") });
+  // выбранный мир; пока игрок не менял его, берём мир сохранённого героя
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const packId = picked !== undefined ? picked : (hero.data?.pack_id ?? null);
+  const opts = useQuery({
+    queryKey: ["options", "library", packId],
+    queryFn: () => api<BuilderOptions>(`/api/me/character-options${packId ? `?pack=${encodeURIComponent(packId)}` : ""}`),
+    enabled: !hid || hero.isSuccess,
+  });
+  const problem = opts.error ?? hero.error ?? worlds.error;
 
   return (
     <>
@@ -50,7 +58,7 @@ export default function LibraryHeroPage() {
                 {hid ? hero.data?.name || "Герой профиля" : "Новый герой библиотеки"}
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-muted">
-                Универсальный профиль по базовым правилам SRD. Вы сможете экспортировать копию героя в любую подходящую кампанию.
+                Героя можно собрать для мира или по базовым правилам SRD и взять копией в любую кампанию.
               </p>
             </div>
 
@@ -62,21 +70,36 @@ export default function LibraryHeroPage() {
           </div>
         </div>
 
+        {worlds.data && worlds.data.length > 1 && (
+          <label className="card flex flex-wrap items-center gap-3 p-4">
+            <span>Мир героя</span>
+            <select className="field max-w-xs" aria-label="Мир героя" value={packId ?? ""} onChange={(e) => setPicked(e.target.value || null)}>
+              {worlds.data.map((w) => (
+                <option key={w.id ?? ""} value={w.id ?? ""}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-muted">Конструктор предложит расы и классы этого мира.</span>
+          </label>
+        )}
+
         {problem ? (
           <div className="card border-bad/40 bg-bad/5 p-5 text-sm text-bad">
             Не удалось загрузить данные героя: {(problem as Error).message}
           </div>
-        ) : opts.isLoading || (hid && hero.isLoading && !created.current) ? (
+        ) : !opts.data || (hid && hero.isLoading && !created.current) ? (
           <div className="card p-8 text-center text-muted font-mono text-sm">
             Извлечение архивного листа персонажа…
           </div>
         ) : (
           <>
             <Builder
-              key="library"
+              key={`library-${packId ?? "base"}`}
               mode="library"
-              opts={opts.data!}
-              hero={hid ? hero.data ?? null : null}
+              packId={packId}
+              opts={opts.data}
+              hero={hid ? (hero.data ?? null) : null}
               onSaved={(h) => {
                 void qc.invalidateQueries({ queryKey: ["library"] });
                 if (!hid) {

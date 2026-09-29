@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import CatalogView
 from app.core import bonds
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
-from app.core.world import character_actor, get_scene
+from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
 from app.rules.dnd5e.character import (
@@ -128,8 +128,23 @@ def errors_for(ch: Character, cat: CatalogView, rules: dict) -> list[str]:
     cls = cat.find(sheet.get("class_id") or "", "class")
     origin = cat.find(sheet.get("origin_id") or "", "origin")
     errs = validate_character(sheet, cls.data if cls else None, origin.data if origin else None, rules, _items(cat))
+    errs = foreign_errors(sheet, errs)
     if not ch.name.strip():
         errs.append("нужно имя")
+    return errs
+
+
+FOREIGN = {"class": ("класс", "класс не выбран"), "origin": ("происхождение", "происхождение не выбрано")}
+
+
+def foreign_errors(sheet: dict, errs: list[str]) -> list[str]:
+    """Герой пришёл из профиля, собранный для другого мира: вместо общей ошибки называем, что именно не подходит."""
+    for key, name in (sheet.get("foreign") or {}).items():
+        if key not in FOREIGN or sheet.get(f"{key}_id"):
+            continue
+        what, generic = FOREIGN[key]
+        errs = [e for e in errs if not e.startswith(generic)]
+        errs.insert(0, f"{what} «{name}» не из мира этой кампании: выберите {what} этого мира")
     return errs
 
 
@@ -170,6 +185,9 @@ def _apply(ch: Character, data: dict[str, Any]) -> None:
     for k in SHEET_FIELDS:
         if k in data and data[k] is not None:
             sheet[k] = data[k]
+    if sheet.get("foreign"):
+        # замена выбрана: пометка о герое из другого мира больше не нужна
+        sheet["foreign"] = {k: v for k, v in sheet["foreign"].items() if not sheet.get(f"{k}_id")}
     ch.sheet = sheet
     for k in ("public_bio", "private_backstory"):
         if data.get(k) is not None:
@@ -493,6 +511,14 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
             }
         except Exception:  # noqa: BLE001 — незаконченный черновик: производных ещё нет
             pass
+    lin, caste, feats = lineage_features(ch.sheet or {}, cat)
+    if lin is not None:
+        out["lineage"] = {
+            "id": lin.id,
+            "name": lin.name,
+            "caste": (caste or {}).get("name"),
+            "features": [f.get("name") for f in feats if f.get("name")],
+        }
     out["inventory"] = [
         {
             "id": it.id,

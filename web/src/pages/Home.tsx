@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import CampaignCardView from "../components/CampaignCardView";
 import Header from "../components/Header";
+import LeviathanEchoArt from "../components/LeviathanEchoArt";
 import Avatar, { hue, initials } from "../components/Avatar";
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
@@ -371,50 +372,12 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
     : "вы ведёте этот стол";
 
   return (
-    <section className="relative overflow-hidden border-b border-line bg-[#111215] px-4 py-12 md:px-12 lg:px-20 min-h-[440px] flex items-center">
-      {/* Атмосферная фоновая векторная графика: туша левиафана, волны эха, дирижабль */}
-      <svg
-        width="760"
-        height="440"
-        viewBox="0 0 760 480"
-        fill="none"
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 select-none opacity-85 overflow-hidden"
-      >
-        <g stroke="#5fae9f" strokeOpacity="0.22" strokeWidth="1">
-          <circle cx="560" cy="270" r="70" />
-          <circle cx="560" cy="270" r="130" strokeDasharray="3 6" />
-          <circle cx="560" cy="270" r="200" />
-          <circle cx="560" cy="270" r="280" strokeDasharray="3 6" />
-          <circle cx="560" cy="270" r="370" />
-        </g>
-        <g stroke="var(--tf-accent)" strokeOpacity="0.55" strokeWidth="1.4" strokeLinecap="round">
-          <path d="M110 330 C 230 250, 400 222, 560 240 C 630 248, 690 280, 715 318" />
-          <path d="M130 348 C 250 330, 410 330, 550 320 C 630 314, 680 328, 708 332" />
-          <path d="M200 292 Q 188 320 204 344" />
-          <path d="M240 276 Q 226 310 244 342" />
-          <path d="M282 264 Q 266 302 286 339" />
-          <path d="M324 255 Q 306 296 328 337" />
-          <path d="M366 248 Q 348 292 370 335" />
-          <path d="M408 244 Q 390 290 412 333" />
-          <path d="M450 241 Q 432 288 454 330" />
-          <path d="M492 240 Q 476 286 496 327" />
-          <path d="M534 240 Q 520 284 538 324" />
-          <ellipse cx="660" cy="300" rx="44" ry="26" />
-          <circle cx="672" cy="294" r="6" />
-          <path d="M110 330 L 60 356 L 96 344 L 70 384 L 118 346" />
-        </g>
-        <g stroke="#ece6dc" strokeOpacity="0.35" strokeWidth="1.2">
-          <ellipse cx="300" cy="118" rx="58" ry="16" />
-          <path d="M280 134 L 284 146 L 318 146 L 322 134" />
-          <path d="M300 146 L 360 250" strokeDasharray="2 4" />
-          <path d="M430 240 L 430 150 M 416 240 L 430 150 L 444 240 M 420 200 L 440 200 M 424 175 L 436 175" />
-        </g>
-        <g stroke="#ece6dc" strokeOpacity="0.12" strokeWidth="1">
-          <path d="M0 380 L 760 380" />
-          <path d="M0 400 L 760 400" strokeDasharray="1 5" />
-        </g>
-      </svg>
+    <section className="relative overflow-hidden border-b border-line bg-[#0d0f12] px-4 py-12 md:px-12 lg:px-20 min-h-[460px] flex items-center">
+      {/* Архивная навигационная векторная графика: Левиафан, Кормчие, Монолит и глифы */}
+      <LeviathanEchoArt />
+
+      {/* Мягкая подсветка/градиент под текстом слева для идеальной читаемости */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r from-[#0d0f12] via-[#0d0f12]/85 to-transparent z-0" />
 
       <div className="relative z-10 flex max-w-2xl flex-col gap-4">
         <div className="font-mono text-xs tracking-[0.18em] text-patina-hi">

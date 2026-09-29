@@ -40,6 +40,7 @@ GROUPS: dict[str, list[str]] = {
         "remove_effect",
         "rest",
         "grant_level",
+        "cross_threshold",
         "reveal_knowledge",
         "learn_fact",
         "review_character",
@@ -51,6 +52,7 @@ GROUPS: dict[str, list[str]] = {
 # поля, которые реестр не перечисляет (слишком длинные списки для модели), а форме список нужен
 EXTRA_FIELDS: dict[tuple[str, str], str] = {
     ("apply_effect", "effect_template_id"): "templates:effect_template",
+    ("cross_threshold", "lineage_id"): "templates:lineage",
     ("give_item", "item_template_id"): "templates:item_template",
     ("create_location", "template_id"): "templates:location_template",
     ("remove_effect", "effect_id"): "effects",

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView
 from app.core import rolls
-from app.core.world import character_actor
+from app.core.world import character_actor, lineage_features, natural_ac
 from app.db.models import ActiveEffect, Character, Event, InventoryItem
 from app.rules.dnd5e.character import choice_slices, hit_die, origin_bonuses
 from app.rules.dnd5e.engine import Dnd5eEngine
@@ -71,7 +71,10 @@ def explain(ch: Character, cat: CatalogView, inventory: list[InventoryItem], eff
         armor = next((x for it, x, _ in items if it.equipped and x.get("category") == "armor"
                       and x.get("armor_type") != "shield"), None)  # fmt: skip
         armor_name = next((n for it, x, n in items if x is armor), None)
-        if armor is None:
+        natural = natural_ac(lineage_features(sheet, cat)[2], 0)
+        if armor is None and natural is not None and natural > 10:
+            parts += [_part("Природная броня второй расы", natural, signed=False), ability_part("dex")]
+        elif armor is None:
             parts += [_part("Без доспеха", 10, signed=False), ability_part("dex")]
         else:
             parts.append(_part(armor_name or "Доспех", int(armor["ac_base"]), signed=False))
