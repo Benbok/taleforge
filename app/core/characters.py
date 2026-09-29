@@ -63,12 +63,28 @@ def _items(cat: CatalogView) -> dict[str, dict]:
     return {e.id: {"id": e.id, **e.data} for e in cat.by_kind("item_template")}
 
 
+def _card_texts(d: dict) -> dict:
+    """Тексты карточки конструктора из пакета: строка под именем, метка, коротко и главные особенности."""
+    return {
+        "epithet": d.get("epithet") or "",
+        "badge": d.get("badge") or "",
+        "summary": d.get("summary") or "",
+        "highlights": [h for h in d.get("highlights") or [] if isinstance(h, str) and h],
+    }
+
+
 async def options(session: AsyncSession, campaign: Campaign, cat: CatalogView) -> dict:
     return await options_for_rules(await creation_rules(session, campaign), cat)
 
 
 async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
     items = _items(cat)
+    # Подклассы по классу: только те, что видны кампании (proposal — лишь в тестовых).
+    subclasses: dict[str, list[dict]] = {}
+    for e in cat.by_kind("subclass"):
+        ref = e.data.get("class_ref")
+        if ref:
+            subclasses.setdefault(ref, []).append({"name": e.name, "description": e.data.get("description", "")})
     classes = []
     for e in cat.by_kind("class"):
         d = e.data
@@ -91,10 +107,13 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
                 "id": e.id,
                 "name": e.name,
                 "description": d.get("description", ""),
+                **_card_texts(d),
                 "hit_die": hit_die(d),
                 "saving_throws": d.get("saving_throws", []),
                 "skills_choose": class_skills_choose(d),
                 "proficiencies": d.get("proficiencies", {}),
+                "spellcasting_ability": (d.get("spellcasting") or {}).get("ability"),
+                "subclasses": subclasses.get(e.id, []),
                 "equipment_fixed": [
                     {**x, "name": items.get(x.get("item"), {}).get("name", x.get("item"))}
                     for x in ((se.get("fixed") or []) if isinstance(se, dict) else [])
@@ -107,11 +126,20 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
             "id": e.id,
             "name": e.name,
             "description": e.data.get("description", ""),
+            **_card_texts(e.data),
             "ability_bonuses": origin_bonuses(e.data)[0],
             "ability_groups": origin_bonuses(e.data)[1],
             "ability_choose": e.data.get("ability_choose"),  # прежний клиент, до этапа 7.6
             "speed": e.data.get("speed"),
             "features": [f.get("name") for f in e.data.get("features") or [] if isinstance(f, dict)],
+            "traits": [
+                {"name": f.get("name"), "description": f.get("description", "")}
+                for f in e.data.get("features") or []
+                if isinstance(f, dict) and f.get("name")
+            ],
+            "size": e.data.get("size"),
+            "darkvision": e.data.get("darkvision"),
+            "proficiencies": e.data.get("proficiencies") or {},
         }
         for e in cat.by_kind("origin")
     ]
