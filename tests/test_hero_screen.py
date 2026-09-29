@@ -71,12 +71,13 @@ def test_quick_action_skips_parser_but_not_validation(game_client, admin_g, llm,
         }})  # fmt: skip
         m = next_of(ws, "message.new")
         assert m["payload"]["kind"] == "action"
-
+    # пока реплика ждёт мастера, вторая не принимается (ожидающая реплика): дожидаемся ответа
+    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
+    with connect(game_client, p1, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {
             "kind": "action", "text": "Взлетаю", "client_id": "q2", "quick": {"actions": [{"verb": "fly"}]},
         }})  # fmt: skip
         bad = next_of(ws, "message.rejected")["payload"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
     assert bad == {"reason": "быстрое действие не прошло проверку", "client_id": "q2"}
     assert llm.parser_requests == []  # модель намерение не разбирала
     (action,) = rows(settings, Message, Message.kind == "action")

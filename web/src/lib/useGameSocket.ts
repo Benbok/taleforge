@@ -6,7 +6,7 @@ import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
-const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot"]);
+const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (e.type === "error") {
@@ -15,6 +15,10 @@ export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   }
   if (e.type === "knowledge.revealed") toast.info(`Вы узнали больше о: ${(e.payload as { name?: string }).name ?? "…"}`);
   if (REFRESH_ACTIONS.has(e.type) && e.type !== "state.snapshot") sock.send("actions.get");
+  if (e.type === "message.new") {
+    const m = e.payload as { seat_id?: string | null; state?: string | null };
+    if (m.state === "pending" && m.seat_id && m.seat_id === useGame.getState().snapshot?.me.seat_id) sock.send("actions.get");
+  }
 }
 
 /** Одно соединение на вкладку и кампанию: открывается при входе на экран кампании, закрывается при уходе. */

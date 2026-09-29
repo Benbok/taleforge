@@ -3,6 +3,7 @@
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
 ``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
 (``vote.cast``) пока отвечают ``error: not_implemented``.
+``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
@@ -49,6 +50,7 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
     owner = await session.get(User, c.owner_id)
     names[c.owner_id] = owner.name
     msgs = await chat.history(session, viewer, last_seq, history_limit)
+    states = await chat.message_states(session, c, msgs)
     game = await chat.active_session(session, c.id)
     online = hub.online_users(c.id) | {viewer.user.id}
     return envelope(
@@ -79,8 +81,9 @@ async def _snapshot(session: AsyncSession, viewer: Viewer, last_seq: int | None,
             "heroes": await _heroes(session, c.id),
             "scene": await _scene(session, c),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
-            "messages": [chat.message_payload(m, names) for m in msgs],
+            "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
             "replay": last_seq is not None,
+            "collect_window_sec": int((c.settings or {}).get("collect_window_sec", 60)),
         },
         seq=c.last_seq,
     )
@@ -208,6 +211,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "message.send":
                 await _send(app, user, conn, payload)
+                continue
+
+            if kind == "message.withdraw":
+                await _withdraw(app, user, conn, payload)
                 continue
 
             if kind == "turn.pass":
@@ -348,15 +355,38 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
                 m.intent = parsed.intent
             await session.commit()
             names = await _names(session, viewer.campaign)
+            state = (await chat.message_states(session, viewer.campaign, [m])).get(m.id)
         except (Conflict, AccessDenied, NotFound) as e:
             await session.rollback()
             await reject(str(e))
             return
-    await publish_message(bus, m, names)
+    await publish_message(bus, m, names, state)
     if parsed is not None and parsed.notice:
         await conn.send(envelope("message.notice", conn.campaign_id, {"text": parsed.notice, "message_id": m.id}))
     if m.kind in MASTER_TRIGGER_KINDS:
         app.state.master.notify(conn.campaign_id)
+
+
+async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
+    """Игрок отменяет ожидающую реплику: она исчезает у всех, автору текст возвращается в поле ввода."""
+    maker, bus = app.state.sessionmaker, app.state.bus
+    async with maker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id)
+            m = await chat.withdraw_message(session, viewer, str(payload.get("message_id") or ""))
+            gone = {"id": m.id, "seq": m.seq}
+            text, visible_to = m.content, m.visible_to
+            if m.kind == "action":
+                await combat.unsubmit(session, viewer)
+            await session.commit()
+            actions = await available(session, viewer)
+        except (Conflict, NotFound) as e:
+            await session.rollback()
+            await conn.send(envelope("message.rejected", conn.campaign_id, {"reason": str(e)}))
+            return
+    await bus.publish(conn.campaign_id, envelope("message.withdrawn", conn.campaign_id, gone), visible_to)
+    await conn.send(envelope("message.withdrawn", conn.campaign_id, {**gone, "text": text}))
+    await conn.send(envelope("state.actions", conn.campaign_id, actions))
 
 
 _tasks: set[asyncio.Task] = set()

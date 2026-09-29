@@ -8,23 +8,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
 from app.core.linker import link_text
-from app.db.models import Campaign, GameSession, Message, now
+from app.db.models import Campaign, GameSession, MasterTurn, Message, now
 
 PLAYER_KINDS = ("action", "speech", "whisper", "ooc")
 MASTER_KINDS = ("narration", "ooc")
 OOC_PREFIX = "//"
+PENDING_KINDS = ("action", "speech", "whisper")  # реплики, на которые отвечает ИИ-мастер
+PENDING_REASON = "Ваша реплика ждёт мастера. Отмените её, чтобы написать другую, или пишите вне игры через //."
+TURN_STATES = {"running": "processing", "done": "answered", "failed": "failed"}
 
 
 def visible(msg: Message, seat_id: str | None) -> bool:
     return msg.visible_to is None or (seat_id is not None and seat_id in msg.visible_to)
 
 
-def message_payload(msg: Message, names: dict[str, str] | None = None) -> dict[str, Any]:
+def message_payload(msg: Message, names: dict[str, str] | None = None, state: str | None = None) -> dict[str, Any]:
     return {
         "id": msg.id,
         "seq": msg.seq,
@@ -35,6 +38,7 @@ def message_payload(msg: Message, names: dict[str, str] | None = None) -> dict[s
         "whisper": msg.visible_to is not None,
         "data": msg.data,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,
+        "state": state,
     }
 
 
@@ -157,3 +161,80 @@ async def stop_session(session: AsyncSession, viewer: Viewer, reason: str) -> tu
     await session.flush()
     text = "Сессия на паузе." if reason == "paused" else "Кампания завершена."
     return game, await system_message(session, c, text, game)
+
+
+async def claimed_upto(session: AsyncSession, campaign_id: str) -> int:
+    """До какого seq реплики игроков уже взяты ходами мастера."""
+    q = select(func.max(MasterTurn.upto_seq)).where(MasterTurn.campaign_id == campaign_id)
+    return await session.scalar(q) or 0
+
+
+async def _ai_live(session: AsyncSession, campaign: Campaign) -> bool:
+    return master_seat(campaign).occupant_type == "agent" and await active_session(session, campaign.id) is not None
+
+
+async def pending_message(session: AsyncSession, campaign: Campaign, seat_id: str | None) -> Message | None:
+    """Реплика места, которую ещё не взял ни один ход ИИ-мастера. Только при ИИ-мастере и идущей сессии."""
+    if seat_id is None or not await _ai_live(session, campaign):
+        return None
+    q = (
+        select(Message)
+        .where(
+            Message.campaign_id == campaign.id,
+            Message.seat_id == seat_id,
+            Message.kind.in_(PENDING_KINDS),
+            Message.seq > await claimed_upto(session, campaign.id),
+        )
+        .order_by(Message.seq)
+    )
+    return (await session.scalars(q)).first()
+
+
+async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[Message]) -> dict[str, str]:
+    """Статус реплик игроков при ИИ-мастере. Ход реплики — первый ход с наименьшим upto_seq >= seq: ходы идут
+    по очереди, а ход боя (advance) повторяет upto_seq предыдущего и реплик не берёт."""
+    if master_seat(campaign).occupant_type != "agent":
+        return {}
+    players = {s.id for s in campaign.seats if s.role == "player"}
+    mine = [m for m in msgs if m.kind in PENDING_KINDS and m.seat_id in players]
+    if not mine:
+        return {}
+    q = (
+        select(MasterTurn.upto_seq, MasterTurn.status)
+        .where(MasterTurn.campaign_id == campaign.id, MasterTurn.upto_seq >= min(m.seq for m in mine))
+        .order_by(MasterTurn.upto_seq, MasterTurn.started_at)
+    )
+    turns: list[tuple[int, str]] = []
+    for upto, status in (await session.execute(q)).all():
+        if not turns or turns[-1][0] != upto:
+            turns.append((upto, status))
+    live = await active_session(session, campaign.id) is not None
+    out: dict[str, str] = {}
+    for m in mine:
+        t = next((t for t in turns if t[0] >= m.seq), None)
+        if t is None:
+            if live:
+                out[m.id] = "pending"
+        else:
+            out[m.id] = TURN_STATES.get(t[1], "answered")
+    return out
+
+
+async def withdraw_message(session: AsyncSession, viewer: Viewer, message_id: str) -> Message:
+    """Игрок отменяет свою реплику, пока её не взял ход ИИ-мастера. Реплика удаляется."""
+    m = await session.get(Message, message_id)
+    seat = viewer.seat
+    if (
+        m is None
+        or m.campaign_id != viewer.campaign.id
+        or seat is None
+        or m.seat_id != seat.id
+        or m.kind not in PENDING_KINDS
+        or not await _ai_live(session, viewer.campaign)
+    ):
+        raise Conflict("Эту реплику отменить нельзя.")
+    if m.seq <= await claimed_upto(session, viewer.campaign.id):
+        raise Conflict("Мастер уже отвечает на эту реплику.")
+    await session.delete(m)
+    await session.flush()
+    return m

@@ -10,6 +10,7 @@ import type {
   Explained,
   HeroSheet,
   HeroPublic,
+  PendingReply,
   Scene,
   SeatState,
   Snapshot,
@@ -37,13 +38,15 @@ interface GameState {
   socket: GameSocket | null;
   connection: Connection;
   connectionDetail: string | null;
-  snapshot: Omit<Snapshot, "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn"> | null;
+  snapshot: Omit<Snapshot, "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending"> | null;
   seats: SeatState[];
   heroes: Record<string, HeroPublic>;
   scene: Scene | null;
   turn: Turn | null;
   actions: string[];
   blocked: Record<string, string>;
+  myPending: PendingReply | null;
+  restored: string | null;
   messages: ChatMessage[];
   pending: Pending[];
   rejected: { text: string; reason: string } | null;
@@ -60,6 +63,7 @@ interface GameState {
   setConnection(c: Connection, detail?: string): void;
   addPending(p: Pending): void;
   clearRejected(): void;
+  clearRestored(): void;
   setTypes(t: Record<string, EntityType>): void;
   apply(e: Envelope): void;
   reset(): void;
@@ -85,6 +89,8 @@ const initial = {
   turn: null,
   actions: [],
   blocked: {},
+  myPending: null,
+  restored: null,
   messages: [],
   pending: [],
   rejected: null,
@@ -116,6 +122,10 @@ export const useGame = create<GameState>((set, get) => ({
     set({ rejected: null });
   },
 
+  clearRestored() {
+    set({ restored: null });
+  },
+
   setSheet(sheet) {
     set({ sheet, explained: {} });
   },
@@ -128,7 +138,7 @@ export const useGame = create<GameState>((set, get) => ({
     const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, actions, blocked, turn, ...rest } = p as unknown as Snapshot;
+        const { messages, seats, heroes, scene, actions, blocked, turn, pending, ...rest } = p as unknown as Snapshot;
         set((s) => ({
           snapshot: rest,
           seats,
@@ -137,6 +147,7 @@ export const useGame = create<GameState>((set, get) => ({
           turn: turn ?? null,
           actions: actions ?? [],
           blocked: blocked ?? {},
+          myPending: pending ?? null,
           messages: rest.replay ? mergeMessages(s.messages, messages) : mergeMessages([], messages),
         }));
         return;
@@ -185,8 +196,27 @@ export const useGame = create<GameState>((set, get) => ({
         set({ scene: p as unknown as Scene, turn: ((p as unknown as Scene).turn as Turn) ?? null });
         return;
       case "state.actions":
-        set({ actions: (p.actions as string[]) ?? [], blocked: (p.blocked as Record<string, string>) ?? {} });
+        set({
+          actions: (p.actions as string[]) ?? [],
+          blocked: (p.blocked as Record<string, string>) ?? {},
+          myPending: (p.pending as PendingReply | null) ?? null,
+        });
         return;
+      case "message.state": {
+        const ids = new Set((p.ids as string[]) ?? []);
+        const state = p.state as ChatMessage["state"];
+        set((s) => ({ messages: s.messages.map((m) => (ids.has(m.id) ? { ...m, state } : m)) }));
+        return;
+      }
+      case "message.withdrawn": {
+        const id = String(p.id);
+        set((s) => ({
+          messages: s.messages.filter((m) => m.id !== id),
+          myPending: s.myPending?.id === id ? null : s.myPending,
+          restored: typeof p.text === "string" ? p.text : s.restored,
+        }));
+        return;
+      }
       case "character.sheet": {
         const h = p.character as HeroSheet;
         // лист пришёл после изменения: прежние разборы чисел могли устареть

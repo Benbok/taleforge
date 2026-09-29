@@ -154,7 +154,8 @@ def test_actions_follow_state(game_client, admin_g, settings):
         with connect(game_client, head, cid) as (ws, snap):
             ws.send_json({"type": "actions.get", "payload": {}})
             again = next_of(ws, "state.actions")["payload"]
-        assert again == {"actions": snap["payload"]["actions"], "blocked": snap["payload"]["blocked"]}
+        p = snap["payload"]
+        assert again == {"actions": p["actions"], "blocked": p["blocked"], "pending": p.get("pending")}
         return again
 
     owner, player = state(admin_g), state(p1)

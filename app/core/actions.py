@@ -13,13 +13,14 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import Viewer
-from app.core.chat import active_session
+from app.core.chat import PENDING_REASON, active_session, pending_message
 from app.core.world import get_scene
 from app.db.models import Character
 
 # session.start — начать сессию (на паузе — продолжить); session.pause; campaign.end — завершить кампанию;
 # chat.ooc — писать вне игры; chat.play — действие и речь героя; chat.whisper — шёпот мастеру;
-# chat.narrate — повествование живого мастера; turn.pass — пропустить ход; invite.create — пригласить.
+# chat.narrate — повествование живого мастера; turn.pass — пропустить ход; invite.create — пригласить;
+# chat.withdraw — отменить ожидающую реплику.
 
 
 async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
@@ -27,6 +28,7 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     live = await active_session(session, c.id) is not None
     actions: list[str] = []
     blocked: dict[str, str] = {}
+    pending: dict[str, str] | None = None
 
     if viewer.can_control_session and c.status != "ended":
         actions += ["session.pause"] if live else ["session.start"]
@@ -38,7 +40,7 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         actions.append("chat.ooc")
     seat = viewer.seat
     if seat is None or c.status == "ended":
-        return {"actions": actions, "blocked": blocked}
+        return {"actions": actions, "blocked": blocked, "pending": pending}
 
     if not live:
         reason = "Сессия не идёт: пока можно писать только вне игры (//)."
@@ -46,7 +48,7 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             blocked["chat.play"] = reason
         elif seat.occupant_type == "human":
             blocked["chat.narrate"] = reason
-        return {"actions": actions, "blocked": blocked}
+        return {"actions": actions, "blocked": blocked, "pending": pending}
 
     sc = await get_scene(session, c.id)
     in_combat = sc.mode == "combat" and bool(sc.turn_order)
@@ -60,12 +62,20 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             actions.append("chat.narrate")
             if in_combat:
                 actions.append("turn.pass")
-        return {"actions": actions, "blocked": blocked}
+        return {"actions": actions, "blocked": blocked, "pending": pending}
+
+    # одна ожидающая реплика — только вне боя: в бою ход ограничивает флаг submitted (combat.gate_message)
+    msg = None if in_combat else await pending_message(session, c, seat.id)
+    if msg is not None:
+        pending = {"id": msg.id, "created_at": msg.created_at.isoformat() if msg.created_at else None}
+        blocked["chat.play"] = blocked["chat.whisper"] = PENDING_REASON
+        actions.append("chat.withdraw")
+        return {"actions": actions, "blocked": blocked, "pending": pending}
 
     actions.append("chat.whisper")
     if not in_combat:
         actions.append("chat.play")
-        return {"actions": actions, "blocked": blocked}
+        return {"actions": actions, "blocked": blocked, "pending": pending}
     ch = await session.get(Character, current) if current else None
     if ch is not None and ch.seat_id == seat.id:
         if (sc.state or {}).get("submitted"):
@@ -76,4 +86,4 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     else:
         who = ch.name if ch is not None else "существ"
         blocked["chat.play"] = f"Идёт бой, сейчас ход: {who}. Пока можно писать вне игры (//) или шёпотом мастеру."
-    return {"actions": actions, "blocked": blocked}
+    return {"actions": actions, "blocked": blocked, "pending": pending}
