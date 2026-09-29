@@ -1,0 +1,133 @@
+# Великие объекты атласа, которых ещё нет среди мест поясов и туш. Источник: atlas.md#3.
+# Уже есть в данных: Сердце эхолита (hook_echolite_heart), Пасть (hook_maw_rift), Рифовая спина,
+# Башня 17, Неумолчная, Архив Лиги, Безымянная, Тихий этаж (лор Старой Матери).
+# ending_paths — к каким финалам канона объект даёт опору (canon.md#6): order, stop_mining, crews, hunger,
+# third_path, transformation. Объект не толкает к финалу, он делает путь выполнимым в мире.
+kind: location_template
+items:
+- id: location.landmark_fire_wall
+  name: Огненный вал
+  description: 'Кольцо руин великой стены Пепельной лиги вокруг Кольца Паломников: рвы, где горело масло, и колокольные крепости через каждые несколько миль. На руинах стоят 64 башни черты.'
+  status: proposal
+  canon_parts: [Руины Огненного вала и колокольных крепостей (canon.md#2.1)]
+  doc: atlas.md#3; canon.md#2.1
+  tags: [landmark, atlas, league, ruins, ash_line]
+  keywords: вал руины лига крепости рвы склады подземелья выжигатели история
+  location_type: landmark
+  belt: ash_line
+  parent_ref: location.belt_ash_line
+  distance_from_rim_miles: [35, 45]
+  hazard_refs: [hazard.blight]
+  lore_refs: [lore.fire_wall, lore.wall_fell, lore.atlas_towers]
+  ending_paths: [third_path]
+  hooks:
+  - {name: Склад Лиги, text: 'Под обвалившейся крепостью нашли целый склад масла и колоколов, запечатанный в 38 году.'}
+  - {name: Тихий налёт, text: 'В старом рву под пеплом что-то шевелится во время прилива.'}
+
+- id: location.landmark_stormtrooper_descent
+  name: Спуск штурмовиков
+  description: 'Ход в склоне кратера, прорезанный «богами» в 40 году. Единственная дорога вниз. Рядом — брошенное снаряжение и пустые коконы.'
+  status: proposal
+  canon_parts: [Спуск штурмовиков (locations.md#1.3)]
+  doc: atlas.md#3; locations.md#1.3
+  tags: [landmark, atlas, crater, crews]
+  keywords: кратер спуск боги штурмовики коконы снаряжение матери немые
+  location_type: landmark
+  belt: crater
+  parent_ref: location.belt_crater
+  distance_from_rim_miles: 0
+  adjacent_refs: [location.hook_silent_guard_cocoons, location.hook_echolite_heart]
+  lore_refs: [lore.loc_stormtrooper_descent, lore.atlas_mothers_names]
+  secret_refs: [secret.alien_mothers]
+  ending_paths: [third_path, crews]
+
+- id: location.landmark_cordon_thread
+  name: Нить Кордона
+  description: 'Телеграфная линия вдоль всех 64 башен черты, медный провод на столбах и ретрансляторы на ликворных лампах. Главная нить фронта: по ней Оплот видит всю черту. Рой учится её рвать.'
+  status: proposal
+  canon_parts: [Нить Кордона — главная линия фронта (locations.md#1.3)]
+  doc: atlas.md#3.2; locations.md#1.3
+  tags: [landmark, atlas, cordon, telegraph, ash_line]
+  keywords: телеграф провод связь фронт башни пролёт ретранслятор телеграфисты звон
+  location_type: landmark
+  belt: ash_line
+  parent_ref: location.belt_ash_line
+  lore_refs: [lore.loc_cordon_thread, lore.atlas_cordon_thread_spans, lore.atlas_common_ring]
+  ending_paths: [third_path]
+  hooks:
+  - {name: Обрыв на пролёте, text: 'Между двумя башнями снова оборван провод, и обрыв аккуратный, как ножом.'}
+
+- id: location.landmark_spine_mainline
+  name: Хребтовая магистраль
+  description: 'Главная железная дорога мира: от Старой Матери через Узел Шов к Последнему перрону по спинам туш. Кострищевы тянут её дальше, к Переднему краю.'
+  status: proposal
+  doc: atlas.md#1.3
+  tags: [landmark, atlas, rail, syndicate, middle_belt]
+  keywords: поезд железная дорога рельсы магистраль стройка вагоны паровоз
+  location_type: landmark
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  distance_from_rim_miles: [50, 220]
+  faction_ref: faction.house_kostrishchev
+  adjacent_refs: [location.old_mother, location.hook_seam_junction, location.hook_last_platform]
+  lore_refs: [lore.loc_rail_lines, lore.atlas_railways, lore.atlas_now_mainline]
+  ending_paths: [order]
+
+- id: location.landmark_treasury
+  name: Казна ФК
+  description: 'Хранилище флаконов крови в бывшем лимфатическом узле Светлицы. От её резервов зависит курс ФК во всём мире.'
+  status: proposal
+  doc: atlas.md#2.2
+  tags: [landmark, atlas, bank, syndicate, heist]
+  keywords: банк казна флаконы деньги хранилище ограбление пересчёт векселя
+  location_type: landmark
+  belt: middle_belt
+  parent_ref: location.city_svetlitsa
+  faction_ref: faction.lymph_company
+  npc_refs: [creature.npc_gordey_velk, creature.npc_efrosinya_velk]
+  lore_refs: [lore.atlas_treasury, lore.atlas_now_treasury]
+  secret_refs: [secret.npc_efrosinya_diluted_reserves]
+  ending_paths: [order, transformation]
+
+- id: location.landmark_veche_bell
+  name: Вечевой колокол и Устав Лиги
+  description: 'Колокол последнего королевства Лиги в Кремле Вышеграда и подлинник Устава Пепельной лиги рядом с ним.'
+  status: proposal
+  doc: atlas.md#3
+  tags: [landmark, atlas, league, old_lands, politics]
+  keywords: колокол вече устав лига хартия князь созыв
+  location_type: landmark
+  belt: old_lands
+  parent_ref: location.city_vyshegrad
+  npc_refs: [creature.npc_vseslav]
+  lore_refs: [lore.atlas_league_charter]
+  secret_refs: [secret.npc_vseslav_league_right]
+  ending_paths: [third_path]
+
+- id: location.landmark_grey_rift
+  name: Сизый разлом
+  description: 'Разлом в 150 милях от западного берега. Над ним туман в любую погоду, и там пропадают рыбаки.'
+  status: proposal
+  canon_parts: [Разломы на дне моря, откуда вышли Кормчие (canon.md#7)]
+  doc: atlas.md#1.5
+  tags: [landmark, atlas, sea, rift, fleet]
+  keywords: разлом море туман рыбаки флот батискаф
+  location_type: landmark
+  belt: sea
+  parent_ref: location.belt_sea
+  lore_refs: [lore.rifts, lore.atlas_rifts]
+  ending_paths: [crews]
+
+- id: location.landmark_deaf_rift
+  name: Глухой разлом
+  description: 'Разлом в 200 милях к северу. Эхолокаторы над ним глохнут. Батискаф «Верный» не вернулся отсюда в 344 году.'
+  status: proposal
+  canon_parts: [Разломы на дне моря, откуда вышли Кормчие (canon.md#7)]
+  doc: atlas.md#1.5
+  tags: [landmark, atlas, sea, rift, fleet]
+  keywords: разлом море батискаф тишина флот верный
+  location_type: landmark
+  belt: sea
+  parent_ref: location.belt_sea
+  lore_refs: [lore.rifts, lore.atlas_rifts]
+  ending_paths: [crews]

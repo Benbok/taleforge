@@ -5,6 +5,7 @@ kind: creature_template
 items:
 - id: creature.syndicate_guard
   name: Стражник Синдиката
+  creature_type: humanoid
   description: Охранник вокзала, склада или шахты Дома. Медная маска, паровой пистоль или алебарда.
   doc: canon.md#5.1
   tags: [human, syndicate]
@@ -20,6 +21,7 @@ items:
   weapon_option_note: копьё SRD можно заменить паровым пистолем (1d10 колющий, 30/90, перезарядка)
 - id: creature.syndicate_enforcer
   name: Наёмник Синдиката
+  creature_type: humanoid
   description: Громила Дома, которого учили «злиться правильно». Владеет Голодом.
   doc: canon.md#1.7
   tags: [human, syndicate, hunger]
@@ -34,6 +36,7 @@ items:
   status: proposal
 - id: creature.mine_overseer
   name: Надсмотрщик шахты
+  creature_type: humanoid
   description: Взрослый начальник смены в туше. Ведёт учёт детей и ФК, держит при себе стражу.
   doc: canon.md#2; canon.md#5.1
   tags: [human, syndicate, mine]
@@ -47,6 +50,7 @@ items:
   status: proposal
 - id: creature.house_agent
   name: Агент Дома
+  creature_type: humanoid
   description: 'Шпион одного из трёх Домов: следит, покупает, убирает. Люди Дома Ликвора знают о Протоколе Тишины больше, чем говорят.'
   doc: canon.md#5.1
   tags: [human, syndicate, spy]
@@ -60,6 +64,7 @@ items:
   status: proposal
 - id: creature.syndicate_noble
   name: Синдикатский вельможа
+  creature_type: humanoid
   description: Член семьи Дома из верхних кварталов. Больше торгуется, чем дерётся.
   doc: canon.md#5.1
   tags: [human, syndicate, social]
@@ -73,6 +78,7 @@ items:
   status: proposal
 - id: creature.cordon_burner
   name: Выжигатель Кордона
+  creature_type: humanoid
   description: Солдат Пепельного Кордона с огнемётом на чёрном желе. Рой убивает таких первыми.
   doc: canon.md#5.6; rules.md#5.6
   tags: [human, cordon, soldier]
@@ -97,6 +103,7 @@ items:
   status: proposal
 - id: creature.cordon_ringer
   name: Звонарь Кордона
+  creature_type: humanoid
   description: 'Наследник колокольных крепостей: ручной ревун и колокольцы на поясе, владеет Откликом.'
   doc: canon.md#1.7; rules.md#5.6
   tags: [human, cordon, response]
@@ -112,6 +119,7 @@ items:
   status: proposal
 - id: creature.cordon_veteran
   name: Ветеран черты
+  creature_type: humanoid
   description: 'Солдат, переживший десятки волн. Старая гвардия: верит только огню и колоколам.'
   doc: canon.md#5.6
   tags: [human, cordon, soldier]
@@ -126,6 +134,7 @@ items:
   status: proposal
 - id: creature.cordon_officer
   name: Офицер Кордона
+  creature_type: humanoid
   description: Командир башни. Молодые офицеры хотят союза с Гильдией и Сломленными, старые — нет.
   doc: canon.md#5.6
   tags: [human, cordon, officer]
@@ -139,6 +148,7 @@ items:
   status: proposal
 - id: creature.cordon_scout
   name: Разведчик Кордона
+  creature_type: humanoid
   description: Ходит за черту, считает гнёзда и узлы.
   doc: canon.md#5.6
   tags: [human, cordon]
@@ -152,6 +162,7 @@ items:
   status: proposal
 - id: creature.stalker
   name: Сталкер глубинных троп
+  creature_type: humanoid
   description: Проводник по сосудам и тропам к кратеру. Работает за ФК на кого угодно.
   doc: canon.md#3.2
   tags: [human, independent]
@@ -165,6 +176,7 @@ items:
   status: proposal
 - id: creature.smuggler
   name: Контрабандист ликвора
+  creature_type: humanoid
   description: Возит грязный ликвор мимо застав Домов.
   doc: canon.md#1.6
   tags: [human, criminal]
@@ -177,6 +189,7 @@ items:
   status: proposal
 - id: creature.smuggler_captain
   name: Главарь контрабандистов
+  creature_type: humanoid
   description: Хозяин тайной тропы или лодки у мёртвой бухты.
   doc: canon.md#7
   tags: [human, criminal]
@@ -189,6 +202,7 @@ items:
   status: proposal
 - id: creature.pit_fighter
   name: Боец ямы
+  creature_type: humanoid
   description: Боец бойцовых ям трущоб, черпает Голод.
   doc: canon.md#1.7
   tags: [human, slums, hunger]
@@ -202,6 +216,7 @@ items:
   status: proposal
 - id: creature.slum_berserker
   name: Кровник трущоб
+  creature_type: humanoid
   description: Подсевший на стимуляторы громила.
   doc: canon.md#4.2
   tags: [human, slums]
@@ -214,6 +229,7 @@ items:
   status: proposal
 - id: creature.church_acolyte
   name: Служка Церкви
+  creature_type: humanoid
   description: 'Низшее духовенство: кормит бедных, прячет беглых детей. Фарфоровая маска.'
   doc: canon.md#5.3
   tags: [human, church, lower_clergy]
@@ -231,6 +247,7 @@ items:
   status: proposal
 - id: creature.church_priest
   name: Жрец Исполинов
+  creature_type: humanoid
   description: 'Священник прихода: причастие ликвором, проповеди о падших ангелах.'
   doc: canon.md#5.3
   tags: [human, church]
@@ -248,6 +265,7 @@ items:
   status: proposal
 - id: creature.church_knight
   name: Рыцарь Исполина
+  creature_type: humanoid
   description: Воин Церкви с клятвой Исполину.
   doc: canon.md#5.3; rules.md#7.0
   tags: [human, church]
@@ -261,6 +279,7 @@ items:
   status: proposal
 - id: creature.church_ascended
   name: Возвысившийся
+  creature_type: humanoid
   description: 'Жрец, прошедший «возвышение»: добровольная мутация, которая на деле — приглашение Резонанса. Сила из голода и Скверны, похожая на благодать, только злее.'
   doc: canon.md#5.3; rules.md#7.3
   tags: [human, church, church_top, invited]
@@ -291,6 +310,7 @@ items:
   status: proposal
 - id: creature.church_high_priest
   name: Высший жрец
+  creature_type: humanoid
   description: 'Верхушка Церкви: самый большой круг приглашённых на поверхности. Некоторые уже на пути к тому, чтобы стать матерями.'
   doc: canon.md#5.3; races.md#2.4
   tags: [human, church, church_top, invited, future_mother, boss]
@@ -319,6 +339,7 @@ items:
   status: proposal
 - id: creature.broken_adult
   name: Сломленный
+  creature_type: humanoid
   description: Бывший ребёнок-шахтёр с остановленной мутацией, теперь взрослый. Слышит два голоса — Резонанс и сны экипажей. Врождённая магия. «Шептун» на жаргоне.
   doc: canon.md#3.4; canon.md#5.4
   tags: [human, broken]
@@ -335,6 +356,7 @@ items:
   status: proposal
 - id: creature.broken_zealot
   name: Сломленный, слушающий зов
+  creature_type: humanoid
   description: Сломленный, который считает зов Резонанса следующей ступенью человека.
   doc: canon.md#5.4
   tags: [human, broken, hunger]
@@ -349,6 +371,7 @@ items:
   status: proposal
 - id: creature.broken_dreamer
   name: Сломленный сновидец
+  creature_type: humanoid
   description: Сломленный, который слушает сны экипажей и мечтает разбудить Спящих.
   doc: canon.md#5.4
   tags: [human, broken]
@@ -365,6 +388,7 @@ items:
   status: proposal
 - id: creature.guild_diagnost
   name: Полевой диагност
+  creature_type: humanoid
   description: Врач, алхимик и инженер Гильдии. Инъектор, антидоты, эхолокатор.
   doc: canon.md#5.2; rules.md#7.1
   tags: [human, guild]
@@ -381,6 +405,7 @@ items:
   status: proposal
 - id: creature.guild_listener
   name: Слушатель
+  creature_type: humanoid
   description: 'Тайное крыло Гильдии: расшифровывают сигналы кораблей с эхолокаторов и подозревают, что в рубках кто-то есть.'
   doc: canon.md#5.2
   tags: [human, guild, listeners]
@@ -394,6 +419,7 @@ items:
   status: proposal
 - id: creature.miner_adult
   name: Взрослый шахтёр
+  creature_type: humanoid
   description: 'Бывший ребёнок-шахтёр, «выпущенный» в 14 лет: тремор, долги, кожаная маска. Работает на поверхности туши или в грузовых шлюзах.'
   doc: canon.md#4.2
   tags: [human, miners]
@@ -407,6 +433,7 @@ items:
   status: proposal
 - id: creature.underground_saboteur
   name: Подпольщик
+  creature_type: humanoid
   description: 'Бывший шахтёр Шахтёрского подполья: прячет детей, саботирует шахты, печатает листовки.'
   doc: canon.md#5.5
   tags: [human, miners, underground]
@@ -421,6 +448,7 @@ items:
   status: proposal
 - id: creature.silent_one
   name: Безмолвный
+  creature_type: humanoid
   description: 'Человек, которого ликвор довёл до Порога тишины: холодный рационалист без эмоций, принявший цели Кормчих — разбудить Спящих и навести тишину.'
   doc: canon.md#1.6; rules.md#3.5
   tags: [human, silent, liquor]
@@ -438,6 +466,7 @@ items:
   status: proposal
 - id: creature.islander
   name: Островитянин
+  creature_type: humanoid
   description: 'Потомок беглецов первых лет после Сгущения: без ликвора и магии, скромный, опасливый к материку.'
   doc: canon.md#7
   tags: [human, islanders, social]
@@ -452,6 +481,7 @@ items:
   status: proposal
 - id: creature.islander_sailor
   name: Моряк с островов
+  creature_type: humanoid
   description: Шкипер редкого парового судна между островами и материком.
   doc: canon.md#7
   tags: [human, islanders]
@@ -465,6 +495,7 @@ items:
   status: proposal
 - id: creature.temple_guard
   name: Храмовый страж
+  creature_type: humanoid
   description: 'Стража собора Церкви: досматривает паломников и требует причастия на входе.'
   doc: canon.md#5.3
   tags: [human, church]
@@ -478,6 +509,7 @@ items:
   status: proposal
 - id: creature.church_cultist
   name: Фанатик Хоров
+  creature_type: humanoid
   description: Прихожанин верхушки Церкви, «помогающий» другим уйти в Хоры к Шёпоту. Идёт за возвысившимися.
   doc: canon.md#5.3
   tags: [human, church, church_top]
@@ -491,6 +523,7 @@ items:
   status: proposal
 - id: creature.circle_scout
   name: Дозорный Круга
+  creature_type: humanoid
   description: Сломленный из дозора Круга у Рёберного леса. Сначала задаёт вопросы, потом решает, пускать ли.
   doc: canon.md#5.4
   tags: [human, broken]
@@ -505,6 +538,7 @@ items:
   status: proposal
 - id: creature.crowd_commoner
   name: Горожанин (толпа)
+  creature_type: humanoid
   description: Люди на рынке, у прихода или на вокзале. Толпа, в которой прячутся скрытые и гибриды.
   doc: canon.md#4.2
   tags: [human, social, crowd]

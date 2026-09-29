@@ -26,6 +26,8 @@ ATTEMPTS = 3
 MAX_TOKENS = 12000
 LORE_K = 25
 OUT_TOKENS = {"oneshot": 3500, "short": 6000, "long": 9000}
+FIGURES = 60  # ключевые лица мира (тег unique) в задании архитектору
+PLACES = 30  # ключевые места мира (тег atlas)
 
 
 def now_iso() -> str:
@@ -49,6 +51,15 @@ async def started(s, cid: str) -> bool:
     return bool(n)
 
 
+def tags(e) -> list[str]:
+    return [str(t) for t in e.data.get("tags") or []]
+
+
+def unique(e) -> bool:
+    """Именное лицо мира пакета (глава фракции, хозяин города), а не шаблон."""
+    return "unique" in tags(e)
+
+
 def length_of(c: Campaign) -> str:
     return (c.brief or {}).get("length") or "short"
 
@@ -70,7 +81,13 @@ async def build_input(s, c: Campaign, note: str = "", structure_id: str | None =
         lore_text += "\nФракции:\n" + "\n".join(
             f"- {e.id}: {e.name} — {e.data.get('goal', '')}" for e in factions if e.id not in {x.id for x in lore}
         )
-    npcs = [e for e in catalog.by_kind("creature_template") if e.data.get("creature_type") == "humanoid"]
+    creatures = catalog.by_kind("creature_template")
+    npcs = [e for e in creatures if e.data.get("creature_type") == "humanoid" and not unique(e)]
+    figures = []
+    for e in [e for e in creatures if unique(e)][:FIGURES]:
+        secret = catalog.find(str(e.data.get("secret_ref") or ""), "campaign_secret")
+        figures.append(plot.figure_line(e, secret.data.get("text", "") if secret else ""))
+    places = [plot.place_line(e) for e in catalog.by_kind("location_template") if "atlas" in tags(e)][:PLACES]
     secret = await s.get(CampaignSecret, c.id)
     previous = secret.plot if secret and secret.plot and secret.plot.get("title") else None
     party = sum(1 for x in c.seats if x.role == "player")
@@ -87,6 +104,8 @@ async def build_input(s, c: Campaign, note: str = "", structure_id: str | None =
         npcs=npcs,
         note=note,
         previous=previous,
+        figures=figures,
+        places=places,
     )
     return text, structure.id if structure else None
 
