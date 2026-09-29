@@ -59,7 +59,7 @@ export function actionOf(c: CampaignCard): CardAction {
   if (c.my_role === "player" && c.hero?.status === "submitted")
     return { label: "Персонаж на проверке", href: builder, primary: false };
   if (c.session_live) return { label: "Продолжить", href: room, primary: true };
-  if (c.is_owner && !c.my_role) return { label: "Управлять", href: room, primary: false };
+  if (c.is_owner && !c.my_role) return { label: "Управлять", href: `${room}/manage`, primary: false };
   return { label: "Открыть", href: room, primary: false };
 }
 

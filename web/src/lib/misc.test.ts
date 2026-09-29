@@ -46,6 +46,7 @@ describe("карточки кампаний", () => {
     expect(actionOf(card({ hero: { id: "h", name: "Б", status: "submitted", level: 1 } })).label).toBe("Персонаж на проверке");
     expect(actionOf(card({ session_live: true }))).toEqual({ label: "Продолжить", href: "/c/c1", primary: true });
     expect(actionOf(card({ my_role: null, is_owner: true, hero: null })).label).toBe("Управлять");
+    expect(actionOf(card({ my_role: null, is_owner: true, hero: null })).href).toBe("/c/c1/manage");
     expect(statusOf(card({ status: "lobby", waiting_players: 2 }))).toBe("waiting");
     expect(statusOf(card({ status: "paused" }))).toBe("paused");
   });

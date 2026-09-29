@@ -92,6 +92,7 @@ export default function GamePage() {
   const heroCta = card && actionOf(card).href.endsWith("/hero") && actionOf(card).primary ? actionOf(card) : null;
   const status = card ? STATUS_TEXT[statusOf(card)] : null;
   const live = !!snapshot?.session;
+  const manage = !!card?.is_owner || snapshot?.me.role === "master";
 
   const side = (
     <>
@@ -109,8 +110,13 @@ export default function GamePage() {
         >
           {live ? "Идёт сессия" : snapshot?.campaign.status === "ended" ? "Завершена" : snapshot?.campaign.status === "paused" ? "Пауза" : status}
         </span>
-        <div className="ml-auto hidden md:block">
+        <div className="ml-auto hidden items-center gap-2 md:flex">
           <SessionControls campaignId={id} />
+          {manage && (
+            <Link className="btn" to={`/c/${id}/manage`}>
+              Кабинет
+            </Link>
+          )}
         </div>
       </Header>
       <ConnectionBanner />
@@ -132,14 +138,19 @@ export default function GamePage() {
           <ReactionPanel />
           <HeroHud />
           <Composer />
-          <PauseOverlay controls={<SessionControls campaignId={id} />} />
+          <PauseOverlay campaignId={id} controls={<SessionControls campaignId={id} />} />
         </main>
         <aside
           className={`min-h-0 flex-col gap-4 overflow-y-auto p-4 md:flex md:p-0 ${tab === "chat" ? "hidden" : "flex"}`}
         >
           <div className={`flex flex-col gap-4 lg:hidden ${tab === "scene" ? "hidden md:flex" : ""}`}>
-            <div className="md:hidden">
+            <div className="flex flex-wrap items-center gap-2 md:hidden">
               <SessionControls campaignId={id} />
+              {manage && (
+                <Link className="btn" to={`/c/${id}/manage`}>
+                  Кабинет
+                </Link>
+              )}
             </div>
             <PartyPanel />
           </div>
