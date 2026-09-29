@@ -945,18 +945,23 @@ class MasterService:
                 self.players.combat_turn(cid, seat.id)
 
     def _watch_strong(self, ctx: ToolContext) -> None:
-        """Сильное событие — гибель героя или конец боя: летопись характера пишется сразу, не ждёт конца сессии."""
+        """Сильное событие — гибель героя, конец боя или момент, отмеченный мастером (``mark_moment``):
+        летопись характера пишется сразу, не ждёт конца сессии."""
         cid = ctx.campaign.id
         heroes = ctx.world.characters.values()
         dead = frozenset(ch.id for ch in heroes if ch.status == "dead" or (ch.resources or {}).get("dead"))
         mode = ctx.world.scene.mode
         before = self._seen.get(cid)
         self._seen[cid] = (dead, mode)
-        if before is None:
-            return
-        reasons = [f"пал герой {ctx.world.characters[i].name}" for i in dead - before[0]]
-        if before[1] == "combat" and mode != "combat":
-            reasons.append("бой закончился")
+        reasons = []
+        if before is not None:
+            reasons += [f"пал герой {ctx.world.characters[i].name}" for i in dead - before[0]]
+            if before[1] == "combat" and mode != "combat":
+                reasons.append("бой закончился")
+        for ev in ctx.events:
+            if ev.tool == "mark_moment":
+                p = ev.payload or {}
+                reasons.append(f"{p.get('label') or 'сильный момент'}: {p.get('text') or ''}".rstrip(": "))
         if reasons:
             self._spawn(self._safe(character.chronicle(self, cid, "; ".join(reasons)), "летопись"))
 
