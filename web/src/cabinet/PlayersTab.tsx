@@ -6,7 +6,7 @@ import Builder from "../builder/Builder";
 import { ABILITIES, ABILITY_ABBR } from "../game/hero";
 import { api } from "../lib/api";
 import type { BuilderOptions, CampaignHero } from "../lib/builder";
-import type { Room } from "../lib/campaign";
+import type { ModelProfile, Room, Seat } from "../lib/campaign";
 import { toast } from "../stores/toasts";
 
 interface Invite {
@@ -39,6 +39,7 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
     enabled: room.is_owner,
   });
   const refreshChars = () => qc.invalidateQueries({ queryKey: ["characters", id] });
+  const [building, setBuilding] = useState<string | null>(null); // место ИИ-игрока, чьего героя собирает владелец
 
   const players = room.seats.filter((s) => s.role === "player").sort((a, b) => a.position - b.position);
   const heroOf = (seatId: string) =>
@@ -69,6 +70,7 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
             </ActionButton>
           )}
         </div>
+        {room.is_owner && players.some((s) => s.occupant_type !== "human") && <RolesHint campaignId={id} />}
 
         <div className="divide-y divide-line/60">
           {players.map((s) => {
@@ -76,7 +78,8 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
             const isMe = s.id === room.my_seat_id;
             const isEmpty = s.occupant_type === "empty";
             return (
-              <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+              <div key={s.id} className="py-3 first:pt-1 last:pb-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Avatar name={h?.name ?? s.user_name} role={s.role} occupant={s.occupant_type} presence={null} />
                   <div>
@@ -116,6 +119,41 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
                   >
                     Освободить место
                   </ActionButton>
+                )}
+                {room.is_owner && s.occupant_type === "empty" && <SeatAi campaignId={id} seat={s} onRoom={onRoom} />}
+                {room.is_owner && s.occupant_type === "agent" && (
+                  <span className="flex gap-1.5 self-start sm:self-center">
+                    {(!h || h.status === "draft") && (
+                      <button className="btn px-2.5 py-1 font-mono text-xs" onClick={() => setBuilding(building === s.id ? null : s.id)}>
+                        {building === s.id ? "Свернуть" : h ? "Продолжить героя" : "Собрать героя"}
+                      </button>
+                    )}
+                    <ActionButton
+                      danger
+                      className="px-2.5 py-1 font-mono text-xs"
+                      confirm="Убрать ИИ-игрока? Его герой останется за местом: его получит тот, кто сядет."
+                      run={async () => {
+                        setBuilding(null);
+                        onRoom(await api<Room>(`/api/campaigns/${id}/seats/${s.id}/occupant`, { method: "DELETE" }));
+                      }}
+                      done="ИИ-игрок ушёл, место свободно"
+                    >
+                      Убрать
+                    </ActionButton>
+                  </span>
+                )}
+                </div>
+                {building === s.id && (
+                  <AiHero
+                    campaignId={id}
+                    seatId={s.id}
+                    hero={h ?? null}
+                    onDone={async () => {
+                      setBuilding(null);
+                      await refreshChars();
+                    }}
+                    onSaved={() => void refreshChars()}
+                  />
                 )}
               </div>
             );
@@ -217,6 +255,119 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
 
       {/* Premade heroes */}
       {room.is_owner && <Premades campaignId={id} premades={premades} onChange={refreshChars} />}
+    </div>
+  );
+}
+
+/** ИИ-игрок на свободное место: модель — профиль из админки или профиль по умолчанию. */
+function SeatAi({ campaignId, seat, onRoom }: { campaignId: string; seat: Seat; onRoom: (r: Room) => void }) {
+  const [profile, setProfile] = useState("");
+  const models = useQuery({
+    queryKey: ["models"],
+    queryFn: () => api<ModelProfile[]>("/api/admin/models"),
+    retry: false,
+  });
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {!!models.data?.length && (
+        <select className="field py-0.5 text-xs" value={profile} onChange={(e) => setProfile(e.target.value)} aria-label="Модель ИИ-игрока">
+          <option value="">Модель по умолчанию</option>
+          {models.data.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      )}
+      <ActionButton
+        className="px-2 py-0.5 text-xs"
+        run={async () =>
+          onRoom(
+            await api<Room>(`/api/campaigns/${campaignId}/seats/${seat.id}/agent`, { body: { model_profile_id: profile || null } }),
+          )
+        }
+        done="ИИ-игрок сел за стол. Соберите ему героя"
+      >
+        Посадить ИИ-игрока
+      </ActionButton>
+    </span>
+  );
+}
+
+interface PartyRoles {
+  have: { role: string; label: string; heroes: string[] }[];
+  missing: { role: string; label: string; classes: { id: string; name: string }[] }[];
+  heroes: number;
+  recommended: number;
+}
+
+/** Подсказка перед тем, как сажать ИИ-игрока: каких ролей отряду не хватает и какие классы их закроют. */
+function RolesHint({ campaignId }: { campaignId: string }) {
+  const roles = useQuery({
+    queryKey: ["party-roles", campaignId],
+    queryFn: () => api<PartyRoles>(`/api/campaigns/${campaignId}/party-roles`),
+    refetchInterval: 10000,
+  });
+  const r = roles.data;
+  if (roles.isError) return <p className="text-sm text-bad">Подсказка по ролям не загрузилась: {(roles.error as Error).message}</p>;
+  if (!r) return null;
+  return (
+    <div className="mb-2 rounded-md border border-line p-3 text-sm">
+      <p className="text-muted">
+        Героев в отряде: {r.heroes} из {r.recommended} рекомендованных.
+        {r.have.length > 0 && ` Уже есть: ${r.have.map((h) => h.label).join(", ")}.`}
+      </p>
+      {r.missing.length > 0 ? (
+        <ul className="mt-1 flex flex-col gap-0.5">
+          {r.missing.map((m) => (
+            <li key={m.role}>
+              Не хватает: <span className="font-semibold">{m.label}</span>
+              {m.classes.length > 0 && <span className="text-muted"> — {m.classes.map((c) => c.name).join(", ")}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1">Все роли в отряде закрыты.</p>
+      )}
+    </div>
+  );
+}
+
+/** Героя ИИ-игрока собирает владелец: тот же конструктор, та же проверка правил и мастера. */
+function AiHero({
+  campaignId,
+  seatId,
+  hero,
+  onSaved,
+  onDone,
+}: {
+  campaignId: string;
+  seatId: string;
+  hero: Reviewable | null;
+  onSaved: () => void;
+  onDone: () => Promise<unknown>;
+}) {
+  const opts = useQuery({
+    queryKey: ["options", campaignId, seatId],
+    queryFn: () => api<BuilderOptions>(`/api/campaigns/${campaignId}/character-options?as_seat=${seatId}`),
+  });
+  return (
+    <div className="mt-3">
+      {opts.isError && <p className="text-bad">Не удалось загрузить варианты: {(opts.error as Error).message}</p>}
+      {opts.data && (
+        <Builder
+          mode="campaign"
+          campaignId={campaignId}
+          asSeat={seatId}
+          opts={opts.data}
+          hero={hero}
+          onSaved={onSaved}
+          onSubmitted={(status) => {
+            toast.ok(status === "approved" ? "Герой ИИ-игрока в игре" : "Герой ИИ-игрока ушёл на проверку");
+            void onDone();
+          }}
+        />
+      )}
     </div>
   );
 }

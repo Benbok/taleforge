@@ -45,11 +45,13 @@ export default function Builder({
   onSaved,
   onSubmitted,
   packId,
+  asSeat,
 }: {
   mode: BuilderMode;
   campaignId?: string;
   /** Мир героя профиля: null — базовые правила. Кампания берёт мир из своих настроек. */
   packId?: string | null;
+  asSeat?: string;
   opts: BuilderOptions;
   hero: SavedHero | null;
   onSaved: (h: SavedHero) => void;
@@ -66,7 +68,7 @@ export default function Builder({
     ((hero?.sheet as Record<string, unknown> | undefined)?.ability_rolls as number[] | undefined) ?? null,
   );
   const [saved, setSaved] = useState<SavedHero | null>(hero);
-  const urls = builderUrls(mode, campaignId, saved?.id);
+  const urls = builderUrls(mode, campaignId, saved?.id, asSeat);
   const cls = opts.classes.find((c) => c.id === draft.class_id);
   const origin = opts.origins.find((o) => o.id === draft.origin_id);
   const extra = useMemo(() => (mode === "library" ? { pack_id: packId ?? "" } : {}), [mode, packId]);
@@ -85,7 +87,7 @@ export default function Builder({
 
   async function roll() {
     const obj = saved ?? (await save());
-    const r = await api<{ rolls: number[] }>(builderUrls(mode, campaignId, obj.id).roll!, { method: "POST" });
+    const r = await api<{ rolls: number[] }>(builderUrls(mode, campaignId, obj.id, asSeat).roll!, { method: "POST" });
     setRolls(r.rolls);
     setDraft((d) => ({ ...d, abilities: Object.fromEntries(ABILITIES.map((a) => [a, null])) }));
   }
@@ -93,10 +95,9 @@ export default function Builder({
   async function submit() {
     const obj = await save();
     if (obj.errors?.length) throw new Error(`Не хватает: ${obj.errors.join("; ")}`);
-    const r = await api<{ status: string; errors: string[] }>(
-      `/api/campaigns/${campaignId}/characters/${obj.id}/submit`,
-      { method: "POST" },
-    );
+    const r = await api<{ status: string; errors: string[] }>(builderUrls(mode, campaignId, obj.id, asSeat).submit!, {
+      method: "POST",
+    });
     if (r.errors.length) throw new Error(r.errors.join("; "));
     onSubmitted?.(r.status);
   }

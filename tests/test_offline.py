@@ -78,7 +78,7 @@ def test_vote_hands_hero_to_other_player_and_back(game_client, admin_g, settings
         vote = next_of(w2, "vote.started")["payload"]
         gimli = seat_of(snap, "Гимли")
         assert vote["seat_id"] == arag and vote["hero"] == "Бран" and vote["voters"] == [gimli]
-        assert [o["id"] for o in vote["options"]] == [f"seat:{gimli}", "pause"]
+        assert [o["id"] for o in vote["options"]] == [f"seat:{gimli}", "ai_player", "pause"]
 
         w2.send_json({"type": "vote.cast", "payload": {"vote_id": "нет такого", "option": "pause"}})
         assert next_of(w2, "error")["payload"]["code"] == "vote_rejected"

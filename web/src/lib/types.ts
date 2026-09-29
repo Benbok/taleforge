@@ -75,7 +75,7 @@ export interface ChatMessage {
   author: string | null;
   content: string;
   whisper: boolean;
-  data?: RollCard | null;
+  data?: (RollCard & { ai?: boolean }) | null; // у реплики ИИ-игрока — { ai: true }
   created_at: string | null;
   state?: ReplyState | null;
 }

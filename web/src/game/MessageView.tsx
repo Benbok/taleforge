@@ -74,11 +74,15 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   }
   const name = heroName(m, who);
   const mine = m.seat_id != null && m.seat_id === who.mySeat;
+  const ai = !!m.data?.ai; // говорит ИИ-игрок или ИИ за ушедшего игрока
   return (
     <div className={`tf-pop flex max-w-[70ch] gap-2 ${mine ? "ml-auto flex-row-reverse" : ""}`}>
-      <Avatar name={name} role="player" occupant="human" presence={null} size={28} />
+      <Avatar name={name} role="player" occupant={ai ? "agent" : "human"} presence={null} size={28} />
       <div className={`rounded-lg px-3 py-2 ${mine ? "bg-raised" : "border border-line bg-surface"}`}>
-        <p className="text-xs text-muted">{name}</p>
+        <p className="text-xs text-muted">
+          {name}
+          {ai && <span title="Реплику написал ИИ"> · ИИ</span>}
+        </p>
         {m.kind === "speech" ? <p>«{m.content.replace(/^["«]|["»]$/g, "")}»</p> : <p className="italic">{m.content}</p>}
         <ReplyStatus m={m} mine={mine} />
       </div>
