@@ -68,6 +68,16 @@ def tool_spec() -> dict[str, Any]:
     }
 
 
+def public_summary(content: dict | None) -> dict:
+    """Итог сессии для игроков: пересказ, события и задания. Сводка собрана без шёпотов."""
+    c = content or {}
+    return {
+        "recap": c.get("recap") or "",
+        "events": list(c.get("events") or [])[-8:],
+        "quests": list(c.get("quests") or []),
+    }
+
+
 async def latest(s, campaign_id: str) -> Summary | None:
     q = select(Summary).where(Summary.campaign_id == campaign_id).order_by(Summary.version.desc()).limit(1)
     return (await s.scalars(q)).first()

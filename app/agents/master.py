@@ -102,7 +102,8 @@ class MasterService:
         self._locks: dict[str, asyncio.Lock] = {}
         self._background: set[asyncio.Task] = set()
         self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
-        self._reactions: dict[str, tuple[str, asyncio.Future]] = {}  # prompt_id → (место, ответ)
+        # prompt_id → (кампания, место, ответ, кнопка): открытую кнопку снимок отдаёт и после переподключения
+        self._reactions: dict[str, tuple[str, str, asyncio.Future, dict]] = {}
         self._summarizing: set[str] = set()
         self._intro_locks: dict[str, asyncio.Lock] = {}
 
@@ -729,7 +730,11 @@ class MasterService:
                     )
                     s.add(row)
                 await s.commit()
-                return row.id if row else None
+                row_id = row.id if row else None
+            if row_id and kind == "session":
+                # итог сессии всем за столом: сводка строится только из публичных сообщений
+                await self.bus.publish(cid, envelope("session.summary", cid, memory.public_summary(content)), None)
+            return row_id
         except Exception:  # noqa: BLE001 — сводка не должна ронять ход
             log.exception("сводка кампании %s не удалась", cid)
             return None
@@ -939,7 +944,7 @@ class MasterService:
         wait = float((ctx.campaign.settings or {}).get("reaction_sec") or combat.REACTION_SEC)
         prompt_id = "rx_" + uuid.uuid4().hex[:12]
         fut: asyncio.Future = asyncio.get_running_loop().create_future()
-        self._reactions[prompt_id] = (ch.seat_id, fut)
+        self._reactions[prompt_id] = (cid, ch.seat_id, fut, None)
         hero = ctx.world.actor(ch.id)
         payload = {
             "prompt_id": prompt_id,
@@ -948,6 +953,7 @@ class MasterService:
             "options": combat.reaction_options(hero, creature),
             "expires_at": time.time() + wait,
         }
+        self._reactions[prompt_id] = (cid, ch.seat_id, fut, payload)
         await self.bus.publish(cid, envelope("reaction.prompt", cid, payload), [ch.seat_id])
         try:
             choice = await asyncio.wait_for(fut, timeout=wait)
@@ -962,10 +968,17 @@ class MasterService:
 
     def resolve_reaction(self, prompt_id: str, seat_id: str | None, option: str) -> bool:
         entry = self._reactions.get(prompt_id)
-        if entry is None or entry[0] != seat_id or entry[1].done():
+        if entry is None or entry[1] != seat_id or entry[2].done():
             return False
-        entry[1].set_result(option)
+        entry[2].set_result(option)
         return True
+
+    def pending_reaction(self, cid: str, seat_id: str | None) -> dict | None:
+        """Открытая кнопка реакции этого места, если есть."""
+        for c, seat, fut, payload in self._reactions.values():
+            if c == cid and seat == seat_id and payload is not None and not fut.done():
+                return payload
+        return None
 
     # --- проверка персонажа ИИ-мастером (раздел 5.1) ---
 

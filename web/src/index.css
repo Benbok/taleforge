@@ -106,3 +106,29 @@ h3 {
 .tf-pop {
   animation: tf-pop 180ms ease-out;
 }
+
+/* Последние 15 секунд хода: кольцо мигает. */
+@keyframes tf-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.tf-blink {
+  animation: tf-blink 1s steps(2, start) infinite;
+}
+
+/* Полоса времени реакции: сжимается за отведённые секунды. */
+@keyframes tf-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-blink {
+    animation: none;
+  }
+}

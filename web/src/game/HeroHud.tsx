@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../stores/game";
+import DeathSaves from "./DeathSaves";
 import { useExplain } from "./hero";
 import { useHeroWindow } from "./HeroWindow";
 
@@ -67,18 +68,7 @@ export default function HeroHud() {
         <span className="text-xs text-muted">КД</span>
         <span className="font-semibold tabular-nums">{sheet.derived?.ac ?? "—"}</span>
       </button>
-      {dying && (
-        <span className="flex items-center gap-1 text-xs" title="Спасброски от смерти: три успеха — стабилизация, три провала — смерть">
-          <span className="text-bad">При смерти:</span>
-          {[0, 1, 2].map((i) => (
-            <span key={`s${i}`} className={`h-2.5 w-2.5 rounded-full border border-ok ${i < succ ? "bg-ok" : ""}`} />
-          ))}
-          <span className="mx-0.5 text-muted">/</span>
-          {[0, 1, 2].map((i) => (
-            <span key={`f${i}`} className={`h-2.5 w-2.5 rounded-full border border-bad ${i < fail ? "bg-bad" : ""}`} />
-          ))}
-        </span>
-      )}
+      {dying && <DeathSaves saves={[succ, fail]} />}
       {sheet.resources.dead && <span className="text-bad">Герой пал</span>}
       {effects.length > 0 && (
         <span className="flex flex-wrap gap-1">

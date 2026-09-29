@@ -11,8 +11,10 @@ import type {
   HeroSheet,
   HeroPublic,
   PendingReply,
+  ReactionPrompt,
   Scene,
   SeatState,
+  SessionSummary,
   Snapshot,
   Turn,
 } from "../lib/types";
@@ -38,7 +40,10 @@ interface GameState {
   socket: GameSocket | null;
   connection: Connection;
   connectionDetail: string | null;
-  snapshot: Omit<Snapshot, "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending"> | null;
+  snapshot: Omit<
+    Snapshot,
+    "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending" | "reaction" | "summary"
+  > | null;
   seats: SeatState[];
   heroes: Record<string, HeroPublic>;
   scene: Scene | null;
@@ -58,6 +63,9 @@ interface GameState {
   /** Полный лист своего героя и его разборы «почему такое число» по ключу величины. */
   sheet: HeroSheet | null;
   explained: Record<string, Explained>;
+  /** Открытая кнопка реакции этого игрока и итог последней сессии (показывается на паузе). */
+  reaction: ReactionPrompt | null;
+  summary: SessionSummary | null;
   setSheet(s: HeroSheet | null): void;
   setSocket(s: GameSocket | null): void;
   setConnection(c: Connection, detail?: string): void;
@@ -101,6 +109,8 @@ const initial = {
   types: {},
   sheet: null,
   explained: {},
+  reaction: null,
+  summary: null,
 };
 
 export const useGame = create<GameState>((set, get) => ({
@@ -138,8 +148,11 @@ export const useGame = create<GameState>((set, get) => ({
     const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, actions, blocked, turn, pending, ...rest } = p as unknown as Snapshot;
+        const { messages, seats, heroes, scene, actions, blocked, turn, pending, reaction, summary, ...rest } =
+          p as unknown as Snapshot;
         set((s) => ({
+          reaction: reaction ?? null,
+          summary: summary ?? null,
           snapshot: rest,
           seats,
           heroes: Object.fromEntries((heroes ?? []).map((h) => [h.id, h])),
@@ -194,6 +207,18 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       case "scene.updated":
         set({ scene: p as unknown as Scene, turn: ((p as unknown as Scene).turn as Turn) ?? null });
+        return;
+      case "reaction.prompt":
+        set({ reaction: p as unknown as ReactionPrompt });
+        return;
+      case "error":
+        if (p.code === "reaction_closed") set({ reaction: null });
+        return;
+      case "reaction.closed":
+        set((s) => (s.reaction?.prompt_id === p.prompt_id ? { reaction: null } : {}));
+        return;
+      case "session.summary":
+        set({ summary: p as unknown as SessionSummary });
         return;
       case "state.actions":
         set({

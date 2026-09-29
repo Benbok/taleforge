@@ -114,12 +114,39 @@ export interface SceneEntity {
   attitude?: string;
 }
 
+/** Участник полосы инициативы. Числа существ сервер не присылает. */
+export interface OrderEntry {
+  id: string;
+  name: string;
+  initiative: number | null;
+  side: "hero" | "enemy" | "ally";
+  seat_id?: string | null;
+  out: string | null;
+}
+
 export interface Scene {
   mode: "free" | "combat";
   round: number;
   location: { id: string; name: string } | null;
   entities: SceneEntity[];
+  order?: OrderEntry[];
   turn: Turn | null;
+}
+
+/** Кнопка реакции (атака по возможности): висит, пока не выбрано или не вышло время. */
+export interface ReactionPrompt {
+  prompt_id: string;
+  character_id: string;
+  trigger: string;
+  options: { id: string; label: string }[];
+  expires_at: number;
+}
+
+/** Итог сессии: сводка строится только из публичных сообщений. */
+export interface SessionSummary {
+  recap: string;
+  events: string[];
+  quests: string[];
 }
 
 export interface HeroPublic {
@@ -131,6 +158,8 @@ export interface HeroPublic {
   hp: number | null;
   hp_max: number | null;
   dead: boolean;
+  /** Спасброски от смерти [успехи, провалы], пока герой без сознания; бросаются открыто. */
+  death_saves?: [number, number] | null;
   public_bio?: string;
   class_name?: string | null;
   origin_name?: string | null;
@@ -227,6 +256,8 @@ export interface Snapshot {
   me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean };
   seats: SeatState[];
   turn: Turn | null;
+  reaction?: ReactionPrompt | null;
+  summary?: SessionSummary | null;
   heroes: HeroPublic[];
   scene: Scene;
   actions: string[];
