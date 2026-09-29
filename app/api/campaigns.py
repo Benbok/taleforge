@@ -290,6 +290,20 @@ async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session:
     return {"setting": s.setting, "plot": s.plot}
 
 
+@router.get("/campaigns/{campaign_id}/master-panel")
+async def get_master_panel(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    """Формы инструментов для живого мастера: схемы, допустимые значения и подписи к id. Только место мастера."""
+    from app.content.catalog import campaign_catalog
+    from app.core.master_panel import panel
+    from app.core.world import load_world
+
+    v = await _viewer(session, user, campaign_id)
+    if not v.is_master:
+        raise NotFound("нет доступа")
+    world = await load_world(session, v.campaign, await campaign_catalog(session, v.campaign))
+    return panel(world)
+
+
 # --- Журнал мастера ---
 
 

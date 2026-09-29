@@ -117,4 +117,19 @@ async def build(s: AsyncSession, campaign_id: str, settings: Settings, limit: in
                 "llm": llm_by_turn.get(t.id, []),
             }
         )
-    return {"secrets_visible": show, "turns": out, "service_llm": [_llm(c) for c in service]}
+    # живой мастер ходит вне ходов ИИ: его вызовы — события журнала без хода
+    live = (
+        await s.scalars(
+            select(Event)
+            .where(Event.campaign_id == campaign_id, Event.turn_id.is_(None))
+            .order_by(Event.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    manual = []
+    for e in live:
+        row = {"tool": e.tool, "at": e.created_at, "secret": e.hidden or e.tool in SECRET_TOOLS}
+        if show or not row["secret"]:
+            row["result"] = _scalars((e.payload or {}).get("result"))
+        manual.append(row)
+    return {"secrets_visible": show, "turns": out, "service_llm": [_llm(c) for c in service], "live": manual}

@@ -4,11 +4,13 @@ import { GameSocket, socketUrl } from "./socket";
 import type { Envelope } from "./types";
 import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
+import { resolveToolResult } from "../master/tools";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
 const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
+  if (resolveToolResult(e)) return;
   if (e.type === "error") {
     const p = e.payload as { code?: string; message?: string };
     if (p.code !== "unauthorized") toast.error(p.message ?? "сервер отклонил действие");

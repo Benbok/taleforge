@@ -25,7 +25,7 @@ interface PlanOptions {
 }
 
 type Item = Record<string, unknown>;
-interface Plot {
+export interface Plot {
   title?: string;
   conflict?: string;
   stakes?: string;
@@ -148,9 +148,9 @@ const NODE_MARK: Record<string, string> = { done: "пройден", skipped: "о
 const s = (x: unknown) => (x == null ? "" : String(x));
 
 /** Каркас целиком. Его видит только место мастера: сервер не отдаёт его владельцу-игроку. */
-function PlotDetails({ plot }: { plot: Plot }) {
+export function PlotDetails({ plot, open = false }: { plot: Plot; open?: boolean }) {
   return (
-    <details className="card p-4">
+    <details className="card p-4" open={open}>
       <summary className="cursor-pointer font-semibold">Каркас целиком · видит только мастер</summary>
       <div className="mt-3 flex flex-col gap-4 text-sm">
         <p>
