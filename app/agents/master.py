@@ -65,6 +65,11 @@ PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
 PLAYER_KINDS = ("action", "speech", "whisper")
+CATCH_UP_SYSTEM = (
+    "Игрок текстовой ролевой игры ненадолго выпал из сети. Тебе дают сообщения, которые он пропустил. "
+    "Перескажи ему по-русски в 2–4 предложениях, что произошло и на чём остановились, обращаясь на «вы». "
+    "Без чисел хитов и урона, ничего не выдумывай: только то, что есть в сообщениях."
+)
 ROLL_TOOLS = ("roll_check", "resolve_attack", "death_save", "apply_hazard", "set_scene_mode", "rest", "use_item")
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 DECISION_TOOLS = [n for n in REGISTRY if n != "review_character"]
@@ -106,6 +111,7 @@ class MasterService:
         self._reactions: dict[str, tuple[str, str, asyncio.Future, dict]] = {}
         self._summarizing: set[str] = set()
         self._intro_locks: dict[str, asyncio.Lock] = {}
+        self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
 
     # --- очередь ---
 
@@ -254,6 +260,8 @@ class MasterService:
                 )
                 if ch.seat_id
             }
+            if self.presence is not None:
+                players -= self.presence.away(cid)  # ушедшего игрока не ждём
             wrote = {m.seat_id for m in new}
             if players and players <= wrote:
                 return 0
@@ -741,6 +749,73 @@ class MasterService:
         finally:
             self._summarizing.discard(cid)
 
+    # --- сводка пропущенного (раздел 11) ---
+
+    async def catch_up(self, cid: str, seat_id: str, from_seq: int) -> str | None:
+        """Игрок вернулся после офлайна: короткая сводка того, что он пропустил, только ему. Пишет дешёвая модель
+        ИИ-мастера; у живого мастера модели нет — тогда без модели: сколько пропущено и последняя сцена."""
+        from app.core.chat import visible
+
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            if c is None:
+                return None
+            q = select(Message).where(Message.campaign_id == cid, Message.seq > from_seq).order_by(Message.seq)
+            rows = [m for m in (await s.scalars(q.limit(200))).all() if visible(m, seat_id) and m.kind != "ooc"]
+            if not rows:
+                return None
+            seat = master_seat(c)
+            cfg = await s.get(AgentConfig, seat.agent_config_id) if seat.agent_config_id else None
+            chars = (await s.scalars(select(Character).where(Character.campaign_id == cid))).all()
+            char_by_seat = {ch.seat_id: ch for ch in chars if ch.seat_id}
+            names = await _names(s, c)
+            lines = [_who(m, char_by_seat, names) + ": " + MARKUP.sub(r"\2", m.content) for m in rows]
+            last = next((m.content for m in reversed(rows) if m.kind == "narration"), None)
+            master_seat_id, missed = seat.id, len(rows)
+            api_base = (cfg.settings or {}).get("api_base") if cfg is not None else None
+            model = parser_model_for(cfg.provider, cfg.model) if cfg is not None else None
+            await s.rollback()
+        text = None
+        if model is not None:
+            call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="catchup", model=model)
+            try:
+                reply = await self.llm.complete(
+                    [{"role": "system", "content": CATCH_UP_SYSTEM}, {"role": "user", "content": "\n".join(lines)}],
+                    model=model,
+                    max_tokens=600,
+                    temperature=0.2,
+                    api_base=api_base,
+                )
+                call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+                call.cost, call.latency_ms = reply.cost, reply.latency_ms
+                text = MARKUP.sub(r"\2", reply.text or "").strip()[:1200] or None
+                if text is None:
+                    call.error = "пустая сводка"
+            except LLMError as e:
+                call.error = str(e)[:2000]
+            async with self.maker() as s:
+                s.add(call)
+                await s.commit()
+        if text is None:
+            text = f"Пропущено сообщений: {missed}."
+            if last is not None:
+                scene = MARKUP.sub(r"\2", last).strip()
+                text += " Последнее от мастера: «" + (scene[:400] + "…" if len(scene) > 400 else scene) + "»"
+        async with self.maker() as s:
+            msg = Message(
+                campaign_id=cid,
+                session_id=(g.id if (g := await active_session(s, cid)) else None),
+                seq=await next_seq(s, cid),
+                kind="system",
+                visible_to=[seat_id],
+                content="Пока вас не было. " + text,
+                data={"catch_up": True},
+            )
+            s.add(msg)
+            await s.commit()
+        await publish_message(self.bus, msg)
+        return msg.id
+
     # --- парсер намерений (раздел 6) ---
 
     async def parse_intent(self, cid: str, seat_id: str | None, text: str) -> intents.ParseResult:
@@ -823,6 +898,8 @@ class MasterService:
         if turn and turn.get("deadline"):
             marker = combat.turn_marker(ctx.world.scene)
             self._timers[cid] = asyncio.create_task(self._timeout_after(cid, marker, float(turn["deadline"])))
+        if self.presence is not None:
+            await self.presence.turn_changed(cid, turn)
 
     async def _timeout_after(self, cid: str, marker: str | None, deadline: float) -> None:
         try:
@@ -853,7 +930,8 @@ class MasterService:
         """Сдвигает очередь боя без заявки героя и проводит ходы существ до следующего героя.
 
         ``timeout`` — вышло время (герой выжидает); ``pass`` — игрок сам пропустил ход (только место героя, чей ход);
-        ``master`` — живой мастер закрыл ход героя; ``sync`` — очередь только что собрана: первыми могут быть существа.
+        ``master`` — живой мастер закрыл ход героя; ``sync`` — очередь только что собрана: первыми могут быть существа;
+        ``away`` — игрок героя, чей ход, ушёл из сети (раздел 11).
         Возвращает id хода мастера или None, если сдвигать нечего."""
         lock = self._locks.setdefault(cid, asyncio.Lock())
         async with lock:
@@ -866,7 +944,7 @@ class MasterService:
                         return None
                     if marker is not None and combat.turn_marker(sc) != marker:
                         return None
-                    if reason == "timeout" and (sc.state or {}).get("submitted"):
+                    if reason in ("timeout", "away") and (sc.state or {}).get("submitted"):
                         return None  # герой успел заявить действие: ход ведёт мастер
                     game = await active_session(s, cid)
                     seat = master_seat(c)
@@ -884,14 +962,25 @@ class MasterService:
                     if reason == "pass" and (hero is None or hero.seat_id is None or hero.seat_id != seat_id):
                         await s.rollback()
                         return None
+                    away = self.presence.away(cid) if self.presence is not None else set()
+                    if reason == "away" and (hero is None or hero.seat_id not in away):
+                        await s.rollback()
+                        return None  # игрок успел вернуться, или героя уже ведёт другой
                     notes: list[str] = []
                     if hero is not None and reason != "sync":
-                        what = {"timeout": "выжидает", "pass": "пропускает ход", "master": "завершает ход"}[reason]
+                        what = {
+                            "timeout": "выжидает",
+                            "pass": "пропускает ход",
+                            "master": "завершает ход",
+                            "away": "пропускает ход: игрок вне сети",
+                        }[reason]
                         await ctx.record("turn_end", actor_id=hero.id, payload={"reason": reason, "action": what})
                         if reason == "timeout":
                             notes.append(f"время хода {hero.name} вышло: {hero.name} выжидает")
                         elif reason == "pass":
                             notes.append(f"{hero.name} пропускает ход")
+                        elif reason == "away":
+                            notes.append(f"{hero.name} пропускает ход: игрок вне сети")
                         await combat.finish_turn(ctx, notes)
                     await self._status(cid, "rolling")
                     notes += await combat.run_until_hero(ctx, f"{turn.id}:combat", self._ask_reaction)

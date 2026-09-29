@@ -194,10 +194,13 @@ class Seat(Base):
     user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     agent_config_id: Mapped[str | None] = mapped_column(ForeignKey("agent_configs.id", ondelete="SET NULL"))
     delegated_from: Mapped[str | None] = mapped_column(String(32))  # кто владел местом до замещения (раздел 11)
+    # живой игрок, который ведёт героя этого места, пока его игрок офлайн (голосование, раздел 11)
+    stand_in_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     campaign: Mapped[Campaign] = relationship(back_populates="seats")
-    user: Mapped[User | None] = relationship(lazy="selectin")
+    user: Mapped[User | None] = relationship(lazy="selectin", foreign_keys=[user_id])
+    stand_in: Mapped[User | None] = relationship(lazy="selectin", foreign_keys=[stand_in_user_id])
 
 
 class Invite(Base):

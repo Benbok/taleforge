@@ -106,15 +106,27 @@ def master_seat(campaign: Campaign) -> Seat:
     return next(s for s in campaign.seats if s.role == "master")
 
 
-async def get_viewer(session: AsyncSession, user: User, campaign_id: str) -> Viewer:
-    """Доступ к кампании есть у владельца и у тех, кто занимает в ней место. Остальным — «не найдено»."""
+async def get_viewer(session: AsyncSession, user: User, campaign_id: str, as_seat: str | None = None) -> Viewer:
+    """Доступ к кампании есть у владельца и у тех, кто занимает в ней место. Остальным — «не найдено».
+
+    ``as_seat`` — место, чьего героя этот игрок ведёт по итогам голосования, пока его игрок офлайн (раздел 11)."""
     campaign = await session.get(Campaign, campaign_id)
     if campaign is None:
         raise NotFound("кампания не найдена")
     viewer = Viewer(user, campaign, seat_for(campaign, user.id))
     if not viewer.is_owner and viewer.seat is None:
         raise NotFound("кампания не найдена")
+    if as_seat:
+        seat = next((s for s in campaign.seats if s.id == as_seat), None)
+        if seat is None or seat.role != "player" or seat.stand_in_user_id != user.id:
+            raise NotFound("вы не ведёте этого героя: его игрок вернулся или голосование решило иначе")
+        return Viewer(user, campaign, seat)
     return viewer
+
+
+def stand_in_seats(campaign: Campaign, user_id: str) -> list[str]:
+    """Места, чьих героев этот игрок сейчас ведёт за отсутствующих."""
+    return [s.id for s in campaign.seats if s.stand_in_user_id == user_id]
 
 
 async def list_campaigns(session: AsyncSession, user: User) -> list[Campaign]:

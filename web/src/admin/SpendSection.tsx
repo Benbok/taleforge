@@ -33,6 +33,7 @@ const PURPOSE: Record<string, string> = {
   bonds: "вопросы о связях",
   hook: "связь героя с сюжетом",
   check: "проверка моделей",
+  catchup: "сводка пропущенного",
 };
 const usd = (x: number) => `$${x < 1 ? x.toFixed(4) : x.toFixed(2)}`;
 const num = new Intl.NumberFormat("ru-RU");

@@ -17,6 +17,7 @@ import type {
   SessionSummary,
   Snapshot,
   Turn,
+  Vote,
 } from "../lib/types";
 
 export const HISTORY_CAP = 500;
@@ -42,7 +43,7 @@ interface GameState {
   connectionDetail: string | null;
   snapshot: Omit<
     Snapshot,
-    "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending" | "reaction" | "summary"
+    "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending" | "reaction" | "summary" | "votes"
   > | null;
   seats: SeatState[];
   heroes: Record<string, HeroPublic>;
@@ -66,6 +67,13 @@ interface GameState {
   /** Открытая кнопка реакции этого игрока и итог последней сессии (показывается на паузе). */
   reaction: ReactionPrompt | null;
   summary: SessionSummary | null;
+  /** Открытые голосования: кто-то ушёл из сети во время сессии (раздел 11). */
+  votes: Vote[];
+  /** За какое место сейчас пишет этот игрок: null — за своего героя, иначе — за героя ушедшего по голосованию. */
+  playAs: string | null;
+  /** Что можно сейчас герою ушедшего, которого ведёт этот игрок, по месту. */
+  standIn: Record<string, { actions: string[]; blocked: Record<string, string>; pending: PendingReply | null }>;
+  setPlayAs(seat: string | null): void;
   setSheet(s: HeroSheet | null): void;
   setSocket(s: GameSocket | null): void;
   setConnection(c: Connection, detail?: string): void;
@@ -111,7 +119,15 @@ const initial = {
   explained: {},
   reaction: null,
   summary: null,
+  votes: [],
+  playAs: null,
+  standIn: {},
 };
+
+/** Места, чьих героев этот игрок ведёт за ушедших. */
+export function standInFor(s: Pick<GameState, "snapshot">): string[] {
+  return s.snapshot?.me?.stand_in_for ?? [];
+}
 
 export const useGame = create<GameState>((set, get) => ({
   ...initial,
@@ -136,6 +152,10 @@ export const useGame = create<GameState>((set, get) => ({
     set({ restored: null });
   },
 
+  setPlayAs(playAs) {
+    set({ playAs });
+  },
+
   setSheet(sheet) {
     set({ sheet, explained: {} });
   },
@@ -148,9 +168,12 @@ export const useGame = create<GameState>((set, get) => ({
     const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, actions, blocked, turn, pending, reaction, summary, ...rest } =
+        const { messages, seats, heroes, scene, actions, blocked, turn, pending, reaction, summary, votes, ...rest } =
           p as unknown as Snapshot;
         set((s) => ({
+          votes: votes ?? [],
+          playAs: s.playAs && rest.me?.stand_in_for?.includes(s.playAs) ? s.playAs : null,
+          standIn: {},
           reaction: reaction ?? null,
           summary: summary ?? null,
           snapshot: rest,
@@ -168,10 +191,12 @@ export const useGame = create<GameState>((set, get) => ({
       case "message.new": {
         const m = p as unknown as ChatMessage;
         const mine = get().snapshot?.me?.seat_id;
+        const also = standInFor(get());
         set((s) => {
           // своя реплика пришла от сервера — снимаем самую раннюю пометку «отправляется»
+          const own = (mine && m.seat_id === mine) || (!!m.seat_id && also.includes(m.seat_id));
           const pending =
-            mine && m.seat_id === mine && ["action", "speech", "whisper", "ooc", "narration"].includes(m.kind)
+            own && ["action", "speech", "whisper", "ooc", "narration"].includes(m.kind)
               ? s.pending.slice(1)
               : s.pending;
           return { messages: mergeMessages(s.messages, [m]), pending };
@@ -193,8 +218,33 @@ export const useGame = create<GameState>((set, get) => ({
         set({ notice: String(p.text ?? "") });
         return;
       case "presence.changed": {
-        const x = p as { seat_id: string | null; status: "online" | "offline" };
+        const x = p as { seat_id: string | null; status: SeatState["presence"] };
         set((s) => ({ seats: s.seats.map((seat) => (seat.id === x.seat_id ? { ...seat, presence: x.status } : seat)) }));
+        return;
+      }
+      case "vote.started":
+      case "vote.updated": {
+        const v = p as unknown as Vote;
+        set((s) => ({ votes: [...s.votes.filter((x) => x.vote_id !== v.vote_id), v] }));
+        return;
+      }
+      case "vote.ended":
+        set((s) => ({ votes: s.votes.filter((x) => x.vote_id !== p.vote_id) }));
+        return;
+      case "stand_in.changed": {
+        const x = p as { seat_id: string; stand_in: SeatState["stand_in"] };
+        set((s) => {
+          if (!s.snapshot) return {};
+          const me = s.snapshot.me;
+          const was = me.stand_in_for ?? [];
+          const mine = !!x.stand_in && x.stand_in.user_id === me.user_id;
+          const standing = mine ? [...new Set([...was, x.seat_id])] : was.filter((id) => id !== x.seat_id);
+          return {
+            seats: s.seats.map((seat) => (seat.id === x.seat_id ? { ...seat, stand_in: x.stand_in ?? null } : seat)),
+            snapshot: { ...s.snapshot, me: { ...me, stand_in_for: standing } },
+            playAs: standing.includes(s.playAs ?? "") ? s.playAs : null,
+          };
+        });
         return;
       }
       case "master.status": {
@@ -221,6 +271,20 @@ export const useGame = create<GameState>((set, get) => ({
         set({ summary: p as unknown as SessionSummary });
         return;
       case "state.actions":
+        if (p.as_seat) {
+          const seat = String(p.as_seat);
+          set((s) => ({
+            standIn: {
+              ...s.standIn,
+              [seat]: {
+                actions: (p.actions as string[]) ?? [],
+                blocked: (p.blocked as Record<string, string>) ?? {},
+                pending: (p.pending as PendingReply | null) ?? null,
+              },
+            },
+          }));
+          return;
+        }
         set({
           actions: (p.actions as string[]) ?? [],
           blocked: (p.blocked as Record<string, string>) ?? {},

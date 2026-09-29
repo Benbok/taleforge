@@ -1,6 +1,8 @@
+import type { Presence } from "../lib/types";
+
 // Портрет до этапа картинок — инициалы в цвете героя (умолчание по открытому вопросу документа дизайна).
 
-const PRESENCE: Record<string, string> = { online: "в сети", offline: "не в сети" };
+const PRESENCE: Record<string, string> = { online: "в сети", reconnecting: "переподключается", offline: "не в сети" };
 
 export function initials(name: string | null | undefined): string {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -24,7 +26,7 @@ export default function Avatar({
   name: string | null | undefined;
   role: "master" | "player";
   occupant: "human" | "agent" | "empty";
-  presence: "online" | "offline" | null;
+  presence: Presence;
   size?: number;
 }) {
   const title = [
@@ -53,7 +55,7 @@ export default function Avatar({
       {presence && (
         <span
           className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
-            presence === "online" ? "bg-ok" : "bg-line"
+            presence === "online" ? "bg-ok" : presence === "reconnecting" ? "animate-pulse bg-warn" : "bg-line"
           }`}
         />
       )}

@@ -441,6 +441,7 @@ async def control_session(
         await publish_message(bus, recap)
     await bus.publish(campaign_id, envelope(event, campaign_id, {"status": v.campaign.status}), None)
     if action in ("pause", "end"):
+        await request.app.state.presence.session_stopped(campaign_id)  # замещения и голосования заканчиваются
         # сводка сессии, затем у ИИ-мастера с каркасом зацепка на следующий раз или, при завершении, эпилог
         request.app.state.master.schedule_session_close(campaign_id, game_id, ended=action == "end")
     else:

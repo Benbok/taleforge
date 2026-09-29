@@ -52,6 +52,43 @@ describe("хранилище игры", () => {
     g().apply(env("что-то.новое", {})); // неизвестные события игнорируются
   });
 
+  it("голосование, замена ушедшего и игра за его героя", () => {
+    const g = useGame.getState;
+    const me = { user_id: "u2", seat_id: "s2", role: "player", is_owner: false, stand_in_for: [] };
+    const seats = [
+      { id: "s1", role: "player", position: 1, occupant_type: "human", user_name: "Арагорн", presence: "online" },
+      { id: "s2", role: "player", position: 2, occupant_type: "human", user_name: "Гимли", presence: "online" },
+    ];
+    g().apply(env("state.snapshot", { messages: [], seats, replay: false, me, actions: [], blocked: {}, votes: [] }, 0));
+    g().apply(env("presence.changed", { seat_id: "s1", status: "reconnecting" }));
+    expect(g().seats[0].presence).toBe("reconnecting");
+
+    const vote = { vote_id: "v1", seat_id: "s1", subject: "player", who: "Арагорн", hero: "Бран", voters: ["s2"], voted: [] };
+    g().apply(env("vote.started", { ...vote, tally: { "seat:s2": 0, pause: 0 } }));
+    g().apply(env("vote.updated", { ...vote, voted: ["s2"], tally: { "seat:s2": 1, pause: 0 } }));
+    expect(g().votes).toHaveLength(1);
+    expect(g().votes[0].voted).toEqual(["s2"]);
+    g().apply(env("vote.ended", { ...vote, outcome: "seat:s2" }));
+    expect(g().votes).toEqual([]);
+
+    g().apply(env("stand_in.changed", { seat_id: "s1", stand_in: { user_id: "u2", name: "Гимли" } }));
+    expect(g().snapshot?.me.stand_in_for).toEqual(["s1"]);
+    expect(g().seats[0].stand_in?.name).toBe("Гимли");
+    g().setPlayAs("s1");
+    g().apply(env("state.actions", { as_seat: "s1", actions: ["chat.play"], blocked: {}, pending: null }));
+    expect(g().standIn.s1.actions).toEqual(["chat.play"]);
+    expect(g().actions).toEqual([]); // свои действия не тронуты
+
+    // реплика за героя ушедшего снимает пометку «отправляется»
+    g().addPending({ clientId: "a", text: "Бран идёт", whisper: false, at: 1 });
+    g().apply(env("message.new", { ...msg(5), kind: "action", seat_id: "s1" }, 5));
+    expect(g().pending).toEqual([]);
+
+    g().apply(env("stand_in.changed", { seat_id: "s1", stand_in: null }));
+    expect(g().snapshot?.me.stand_in_for).toEqual([]);
+    expect(g().playAs).toBeNull();
+  });
+
   it("снимает «отправляется» своей реплики, а отказ возвращает текст с причиной", () => {
     const g = useGame.getState;
     const me = { user_id: "u1", seat_id: "s1", role: "player", is_owner: false };

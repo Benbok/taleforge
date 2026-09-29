@@ -246,15 +246,41 @@ export interface SeatState {
   position: number;
   occupant_type: "human" | "agent" | "empty";
   user_name: string | null;
-  presence: "online" | "offline" | null;
+  /** «Переподключается» — первые 60 секунд после обрыва во время сессии, потом «офлайн» и голосование. */
+  presence: Presence;
+  /** Кто ведёт место, пока его хозяин вне сети: другой игрок или ИИ-мастер. */
+  stand_in?: StandIn | null;
+}
+
+export type Presence = "online" | "reconnecting" | "offline" | null;
+
+export interface StandIn {
+  user_id?: string;
+  name: string;
+  ai?: boolean;
+}
+
+/** Голосование, когда игрок или живой мастер ушёл из сети (ТЗ, раздел 11). */
+export interface Vote {
+  vote_id: string;
+  seat_id: string;
+  subject: "player" | "master";
+  who: string;
+  hero: string | null;
+  options: { id: string; label: string }[];
+  voters: string[];
+  voted: string[];
+  tally: Record<string, number>;
+  deadline: number;
 }
 
 export interface Snapshot {
   protocol: number;
   campaign: { id: string; name: string; status: CampaignStatus; public_intro: string };
   session: { id: string; started_at: string } | null;
-  me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean };
+  me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean; stand_in_for?: string[] };
   seats: SeatState[];
+  votes?: Vote[];
   turn: Turn | null;
   reaction?: ReactionPrompt | null;
   summary?: SessionSummary | null;

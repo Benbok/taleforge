@@ -1,8 +1,11 @@
 """WebSocket-шлюз (ТЗ, раздел 12).
 
 Порядок: подключение → ``auth`` с JWT → ``campaign.join`` с последним полученным ``seq`` →
-``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``. События следующих этапов
-(``vote.cast``) пока отвечают ``error: not_implemented``.
+``state.snapshot`` и досылка пропущенного → ``message.send`` / ``ping``.
+Офлайн и голосование (этап 8, app/gateway/presence.py): обрыв связи во время сессии — «переподключается», через
+60 секунд «офлайн» и ``vote.started``; ``vote.cast`` — голос. Игрок, которому отдали героя ушедшего, действует за
+него, передавая ``as_seat`` (место героя) в ``message.send``, ``message.withdraw``, ``turn.pass``,
+``reaction.choose``, ``actions.get``, ``entity.inspect`` и ``stat.explain``.
 ``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
@@ -22,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import chat, combat
 from app.core.actions import available
-from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer
+from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer, stand_in_seats
 from app.core.security import read_token
 from app.db.models import Campaign, Character, Entity, User
 from app.gateway.events import PROTOCOL_VERSION, envelope, publish_message
@@ -31,7 +34,6 @@ from app.gateway.hub import Connection
 log = logging.getLogger(__name__)
 router = APIRouter()
 
-LATER_STAGES = {"vote.cast"}
 MASTER_TRIGGER_KINDS = ("action", "speech", "whisper")
 
 
@@ -44,7 +46,7 @@ async def _names(session: AsyncSession, campaign: Campaign) -> dict[str, str]:
 
 
 async def _snapshot(
-    session: AsyncSession, viewer: Viewer, last_seq: int | None, hub, history_limit: int, master=None
+    session: AsyncSession, viewer: Viewer, last_seq: int | None, history_limit: int, master=None, presence=None
 ) -> dict:
     from app.agents import memory
 
@@ -56,7 +58,6 @@ async def _snapshot(
     msgs = await chat.history(session, viewer, last_seq, history_limit)
     states = await chat.message_states(session, c, msgs)
     game = await chat.active_session(session, c.id)
-    online = hub.online_users(c.id) | {viewer.user.id}
     seat_id = viewer.seat.id if viewer.seat else None
     last = None if game else await memory.latest(session, c.id)
     return envelope(
@@ -71,6 +72,7 @@ async def _snapshot(
                 "seat_id": viewer.seat.id if viewer.seat else None,
                 "role": viewer.seat.role if viewer.seat else None,
                 "is_owner": viewer.is_owner,
+                "stand_in_for": stand_in_seats(c, viewer.user.id),  # чьих героев я веду за ушедших
             },
             "seats": [
                 {
@@ -79,10 +81,12 @@ async def _snapshot(
                     "position": s.position,
                     "occupant_type": s.occupant_type,
                     "user_name": s.user.name if s.user else None,
-                    "presence": "online" if s.user_id in online else ("offline" if s.user_id else None),
+                    "presence": "online" if s.id == seat_id else presence.status(c.id, s) if presence else None,
+                    "stand_in": _stand_in(s),
                 }
                 for s in c.seats
             ],
+            "votes": presence.votes(c.id) if presence else [],
             "turn": await _turn(session, c.id),
             # открытая кнопка реакции переживает переподключение; между сессиями — итог прошлой
             "reaction": master.pending_reaction(c.id, seat_id) if master is not None and seat_id else None,
@@ -96,6 +100,15 @@ async def _snapshot(
         },
         seq=c.last_seq,
     )
+
+
+def _stand_in(s) -> dict | None:
+    """Кто ведёт место, пока его хозяин вне сети: другой игрок или ИИ-мастер."""
+    if s.stand_in is not None:
+        return {"user_id": s.stand_in.id, "name": s.stand_in.name}
+    if s.role == "master" and s.occupant_type == "agent" and s.delegated_from:
+        return {"ai": True, "name": "ИИ-мастер"}
+    return None
 
 
 async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
@@ -164,7 +177,8 @@ async def _turn(session: AsyncSession, campaign_id: str) -> dict | None:
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     app = ws.app
-    settings, maker, hub, bus = app.state.settings, app.state.sessionmaker, app.state.hub, app.state.bus
+    settings, maker, hub = app.state.settings, app.state.sessionmaker, app.state.hub
+    presence = app.state.presence
     await ws.accept()
 
     # 1. Вход
@@ -201,27 +215,30 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             if kind == "campaign.join":
                 campaign_id = payload.get("campaign_id") or msg.get("campaign_id")
                 last_seq = payload.get("last_seq")
+                if conn is not None:
+                    hub.remove(conn)
+                    if conn.campaign_id != str(campaign_id):
+                        presence.leave(conn)  # перешёл в другую кампанию; повторный вход в ту же — не уход
+                    conn = None
+                await presence.before_join(user.id, str(campaign_id))  # живой мастер забирает место у ИИ-мастера
                 async with maker() as session:
                     try:
                         viewer = await get_viewer(session, user, str(campaign_id))
                     except NotFound as e:
                         await ws.send_json(_error("not_found", str(e), campaign_id))
                         continue
-                    if conn is not None:
-                        hub.remove(conn)
-                        await _presence(bus, hub, conn, "offline")
                     conn = Connection(ws, user.id, viewer.campaign.id, viewer.seat.id if viewer.seat else None)
                     snap = await _snapshot(
                         session,
                         viewer,
                         int(last_seq) if last_seq is not None else None,
-                        hub,
                         settings.history_on_join,
                         app.state.master,
+                        presence,
                     )
                     hub.add(conn)
                 await conn.send(snap)
-                await _presence(bus, hub, conn, "online")
+                await presence.joined(conn)
                 continue
 
             if conn is None:
@@ -238,12 +255,14 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "turn.pass":
                 # в фоне: ходы существ могут ждать кнопку реакции от этого же сокета
-                _background(_turn_pass(app, user, conn))
+                _background(_turn_pass(app, user, conn, payload))
                 continue
 
             if kind == "reaction.choose":
+                as_seat = payload.get("as_seat")
+                seat_id = as_seat if as_seat and as_seat in conn.stand_in else conn.seat_id
                 ok = app.state.master.resolve_reaction(
-                    str(payload.get("prompt_id")), conn.seat_id, str(payload.get("option", "skip"))
+                    str(payload.get("prompt_id")), seat_id, str(payload.get("option", "skip"))
                 )
                 if not ok:
                     await conn.send(_error("reaction_closed", "время реакции вышло", conn.campaign_id))
@@ -255,8 +274,22 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "actions.get":
                 async with maker() as session:
-                    viewer = await get_viewer(session, user, conn.campaign_id)
-                    await conn.send(envelope("state.actions", conn.campaign_id, await available(session, viewer)))
+                    as_seat = payload.get("as_seat")
+                    try:
+                        viewer = await get_viewer(session, user, conn.campaign_id, as_seat)
+                    except NotFound as e:
+                        await conn.send(_error("not_found", str(e), conn.campaign_id))
+                        continue
+                    out = await available(session, viewer)
+                if as_seat:
+                    out["as_seat"] = as_seat  # что можно герою ушедшего, которого ведёт этот игрок
+                await conn.send(envelope("state.actions", conn.campaign_id, out))
+                continue
+
+            if kind == "vote.cast":
+                reason = await presence.cast(conn, str(payload.get("vote_id") or ""), str(payload.get("option") or ""))
+                if reason:
+                    await conn.send(_error("vote_rejected", reason, conn.campaign_id))
                 continue
 
             if kind == "entity.inspect":
@@ -267,10 +300,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _explain(maker, user, conn, payload)
                 continue
 
-            if kind in LATER_STAGES:
-                await conn.send(_error("not_implemented", f"{kind} появится на следующих этапах", conn.campaign_id))
-                continue
-
             await conn.send(_error("unknown_type", f"неизвестное событие {kind!r}", conn.campaign_id))
     except WebSocketDisconnect:
         pass
@@ -279,7 +308,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     finally:
         if conn is not None:
             hub.remove(conn)
-            await _presence(bus, hub, conn, "offline")
+            presence.leave(conn)
 
 
 async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None:
@@ -325,6 +354,7 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
     settings, maker, bus = app.state.settings, app.state.sessionmaker, app.state.bus
     # Нативный чат: клиент по умолчанию шлёт kind=auto, тип реплики определяет сервер. Игрок выбирает только шёпот.
     kind, text = str(payload.get("kind") or "auto"), str(payload.get("text", ""))
+    as_seat = payload.get("as_seat") or None  # герой ушедшего игрока, которого ведёт этот игрок
 
     async def reject(reason: str) -> None:
         await conn.send(
@@ -337,7 +367,7 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
     if kind in ("auto", "action") and text.strip():
         async with maker() as session:
             try:
-                viewer = await get_viewer(session, user, conn.campaign_id)
+                viewer = await get_viewer(session, user, conn.campaign_id, as_seat)
             except NotFound as e:
                 await reject(str(e))
                 return
@@ -364,8 +394,9 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
 
     async with maker() as session:
         try:
-            viewer = await get_viewer(session, user, conn.campaign_id)
-            conn.seat_id = viewer.seat.id if viewer.seat else None
+            viewer = await get_viewer(session, user, conn.campaign_id, as_seat)
+            if not as_seat:
+                conn.seat_id = viewer.seat.id if viewer.seat else None
             reason = await combat.gate_message(session, viewer, kind)
             if reason:
                 raise Conflict(reason)
@@ -391,7 +422,7 @@ async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
     maker, bus = app.state.sessionmaker, app.state.bus
     async with maker() as session:
         try:
-            viewer = await get_viewer(session, user, conn.campaign_id)
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
             m = await chat.withdraw_message(session, viewer, str(payload.get("message_id") or ""))
             gone = {"id": m.id, "seq": m.seq}
             text, visible_to = m.content, m.visible_to
@@ -405,6 +436,8 @@ async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
             return
     await bus.publish(conn.campaign_id, envelope("message.withdrawn", conn.campaign_id, gone), visible_to)
     await conn.send(envelope("message.withdrawn", conn.campaign_id, {**gone, "text": text}))
+    if payload.get("as_seat"):
+        actions["as_seat"] = payload["as_seat"]
     await conn.send(envelope("state.actions", conn.campaign_id, actions))
 
 
@@ -423,11 +456,11 @@ def _background(coro) -> None:
     task.add_done_callback(done)
 
 
-async def _turn_pass(app, user: User, conn: Connection) -> None:
+async def _turn_pass(app, user: User, conn: Connection, payload: dict) -> None:
     """Игрок пропускает свой ход; место мастера так закрывает ход текущего героя."""
     async with app.state.sessionmaker() as session:
         try:
-            viewer = await get_viewer(session, user, conn.campaign_id)
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
         except NotFound as e:
             await conn.send(_error("not_found", str(e), conn.campaign_id))
             return
@@ -437,22 +470,6 @@ async def _turn_pass(app, user: User, conn: Connection) -> None:
     done = await app.state.master.advance(conn.campaign_id, reason, seat_id=seat_id)
     if done is None:
         await conn.send(_error("not_your_turn", "сейчас не ваш ход", conn.campaign_id))
-
-
-async def _presence(bus, hub, conn: Connection, status: str) -> None:
-    """Онлайн и офлайн. Статус «переподключается» и голосование — этап «Офлайн и голосования»."""
-    if conn.seat_id is None:
-        return
-    if status == "offline" and conn.user_id in hub.online_users(conn.campaign_id):
-        return  # ещё открыт другой сокет того же игрока
-    try:
-        await bus.publish(
-            conn.campaign_id,
-            envelope("presence.changed", conn.campaign_id, {"seat_id": conn.seat_id, "status": status}),
-            None,
-        )
-    except Exception:  # noqa: BLE001
-        log.debug("presence не отправлен", exc_info=True)
 
 
 async def _explain(maker, user: User, conn: Connection, payload: dict) -> None:
@@ -465,7 +482,7 @@ async def _explain(maker, user: User, conn: Connection, payload: dict) -> None:
     base = {"stat": stat, "character_id": character_id}
     async with maker() as session:
         try:
-            viewer = await get_viewer(session, user, conn.campaign_id)
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
             ch = await session.get(Character, character_id)
             if ch is None or ch.campaign_id != viewer.campaign.id:
                 raise ExplainError("нет такого героя")
@@ -511,7 +528,7 @@ async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:
     entity_id = str(payload.get("entity_id") or "")
     async with maker() as session:
         try:
-            viewer = await get_viewer(session, user, conn.campaign_id)
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
             card = await entity_card(session, viewer, entity_id)
         except (InspectError, NotFound) as e:
             await conn.send(envelope("entity.card", conn.campaign_id, {"id": entity_id, "error": str(e)}))

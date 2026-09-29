@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useGame } from "../stores/game";
+import { standInFor, useGame } from "../stores/game";
 import { useDraft } from "./draft";
 
 let counter = 0;
@@ -30,9 +30,18 @@ function useNow(active: boolean): number {
 /** Поле ввода — нативный чат: игрок пишет как есть, тип реплики определяет сервер. Отдельно только шёпот
  *  мастеру. Что можно сейчас, решает сервер (actions/blocked): закрытое не прячется молча — над полем причина. */
 export default function Composer() {
-  const { socket, connection, actions, blocked, turn, rejected, notice, snapshot, myPending, restored, clearRestored, addPending, clearRejected } = useGame();
+  const game = useGame();
+  const { socket, connection, turn, rejected, notice, snapshot, restored, clearRestored, addPending, clearRejected } = game;
   const { text, whisper, setText, setWhisper } = useDraft();
   const [sendError, setSendError] = useState<string | null>(null);
+  // за чьего героя пишем: свой или героя ушедшего игрока, которого передали голосованием
+  const standing = standInFor(game);
+  const playAs = game.playAs && standing.includes(game.playAs) ? game.playAs : null;
+  const alt = playAs ? game.standIn[playAs] : null;
+  const actions = playAs ? (alt?.actions ?? game.actions.filter((a) => a === "chat.ooc")) : game.actions;
+  const blocked = playAs ? (alt?.blocked ?? {}) : game.blocked;
+  const myPending = playAs ? (alt?.pending ?? null) : game.myPending;
+  const asSeat = playAs ? { as_seat: playAs } : {};
 
   const can = (a: string) => actions.includes(a);
   const isMaster = snapshot?.me.role === "master";
@@ -41,7 +50,16 @@ export default function Composer() {
   const reason = blocked[mainAction] ?? null;
   const canWhisper = can("chat.whisper");
   const canOoc = can("chat.ooc");
-  const myTurn = !!turn && !!snapshot?.me.seat_id && turn.seat_id === snapshot.me.seat_id;
+  const actingSeat = playAs ?? snapshot?.me.seat_id ?? null;
+  const myTurn = !!turn && !!actingSeat && turn.seat_id === actingSeat;
+  const turnSeat = turn?.seat_id ?? null;
+
+  // в бою ходит герой ушедшего, которого ведёт этот игрок: поле само переключается на него
+  useEffect(() => {
+    if (turnSeat && standing.includes(turnSeat)) useGame.getState().setPlayAs(turnSeat);
+    else if (turnSeat && turnSeat === snapshot?.me.seat_id) useGame.getState().setPlayAs(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnSeat, standing.join()]);
   const now = useNow(!!turn?.deadline);
   const left = myTurn ? secondsLeft(turn?.deadline, now) : null;
   const nowWait = useNow(!!myPending);
@@ -65,7 +83,8 @@ export default function Composer() {
 
   if (!mainOpen && !canOoc && !canWhisper) {
     return (
-      <div className="border-t border-line bg-surface px-4 py-3 text-center text-muted">
+      <div className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-3 text-center text-muted">
+        {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
         {reason ?? "Вы смотрите кампанию: писать в чат могут только участники."}
       </div>
     );
@@ -95,7 +114,7 @@ export default function Composer() {
       return;
     }
     const id = clientId();
-    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id });
+    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id, ...asSeat });
     if (!ok) {
       setSendError("Нет связи с сервером: текст сохранён, отправьте после переподключения.");
       return;
@@ -114,11 +133,14 @@ export default function Composer() {
     : mainOpen
       ? isMaster
         ? "Повествование…"
-        : "Что делает ваш герой?"
+        : playAs
+          ? `Что делает ${Object.values(game.heroes).find((h) => h.seat_id === playAs)?.name ?? "герой"}?`
+          : "Что делает ваш герой?"
       : "Только вне игры: начните с //";
 
   return (
     <form onSubmit={send} className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-3">
+      {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
       {myTurn && (
         <p className="tf-pop flex items-center gap-2 font-semibold text-accent" role="status">
           Ваш ход{turn?.round ? `, раунд ${turn.round}` : ""}
@@ -181,7 +203,7 @@ export default function Composer() {
             type="button"
             className="btn px-2 py-1 text-xs"
             onClick={() => {
-              if (socket?.send("turn.pass")) useGame.setState({ notice: "Пропускаем ход…" });
+              if (socket?.send("turn.pass", asSeat)) useGame.setState({ notice: "Пропускаем ход…" });
               else setSendError("Нет связи с сервером: пропустить ход не вышло.");
             }}
           >
@@ -193,5 +215,40 @@ export default function Composer() {
         </span>
       </div>
     </form>
+  );
+}
+
+/** Переключатель «играю за»: свой герой или герой ушедшего игрока, которого передали голосованием. */
+function PlayAs({ seats, value }: { seats: string[]; value: string | null }) {
+  const { heroes, snapshot, seats: all, socket } = useGame();
+  const heroOf = (seat: string | null | undefined) => Object.values(heroes).find((h) => h.seat_id === seat);
+  const own = heroOf(snapshot?.me.seat_id);
+  const pick = (seat: string | null) => {
+    useGame.getState().setPlayAs(seat);
+    if (seat) socket?.send("actions.get", { as_seat: seat });
+  };
+  const options: [string | null, string][] = [
+    ...(own ? ([[null, own.name]] as [null, string][]) : []),
+    ...seats.map((id): [string, string] => {
+      const who = all.find((x) => x.id === id)?.user_name;
+      return [id, `${heroOf(id)?.name ?? "герой"}${who ? ` (игрок: ${who})` : ""}`];
+    }),
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm" role="radiogroup" aria-label="За кого пишете">
+      <span className="text-muted">Пишете за:</span>
+      {options.map(([id, label]) => (
+        <button
+          key={id ?? "own"}
+          type="button"
+          role="radio"
+          aria-checked={value === id}
+          className={`btn px-2 py-1 text-xs ${value === id ? "btn-primary" : ""}`}
+          onClick={() => pick(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

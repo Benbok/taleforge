@@ -22,7 +22,10 @@ export default function ReactionPanel() {
 
   function choose(option: string) {
     if (chosen || !reaction) return;
-    if (!socket?.send("reaction.choose", { prompt_id: reaction.prompt_id, option })) {
+    // кнопка может прийти и герою ушедшего игрока, которого ведёт этот игрок
+    const seat = Object.values(useGame.getState().heroes).find((h) => h.id === reaction.character_id)?.seat_id;
+    const asSeat = seat && seat !== useGame.getState().snapshot?.me.seat_id ? { as_seat: seat } : {};
+    if (!socket?.send("reaction.choose", { prompt_id: reaction.prompt_id, option, ...asSeat })) {
       toast.error("Нет связи с сервером: реакция не отправлена.");
       return;
     }
