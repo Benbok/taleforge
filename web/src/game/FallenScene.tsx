@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useGame } from "../stores/game";
 
 const SEEN = "tf-fallen-seen";
@@ -47,9 +48,9 @@ export default function FallenScene({ builderHref }: { builderHref: string | nul
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           {builderHref && (
-            <a className="btn btn-primary" href={builderHref} onClick={close}>
+            <Link className="btn btn-primary" to={builderHref} onClick={close}>
               Новый герой
-            </a>
+            </Link>
           )}
           <button className="btn" onClick={close}>
             Остаться и смотреть

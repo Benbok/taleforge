@@ -15,7 +15,7 @@ from app.content.catalog import CatalogView
 from app.core import rolls
 from app.core.world import character_actor
 from app.db.models import ActiveEffect, Character, Event, InventoryItem
-from app.rules.dnd5e.character import hit_die
+from app.rules.dnd5e.character import choice_slices, hit_die, origin_bonuses
 from app.rules.dnd5e.engine import Dnd5eEngine
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
 
@@ -112,12 +112,12 @@ def explain(ch: Character, cat: CatalogView, inventory: list[InventoryItem], eff
     elif kind == "ability" and key in ABILITIES:
         label, value = rolls.ABILITY_RU[key], actor.abilities[key]
         parts.append(_part("Распределено при создании", int((sheet.get("abilities") or {}).get(key, 10)), signed=False))
-        bonus = int((origin.get("ability_bonuses") or {}).get(key, 0))
-        if bonus:
-            parts.append(_part(origin_name or "Происхождение", bonus))
-        choose = origin.get("ability_choose")
-        if choose and key in (sheet.get("ability_choice") or []):
-            parts.append(_part(f"{origin_name or 'Происхождение'}: на выбор", int(choose.get("bonus", 1))))
+        fixed, groups = origin_bonuses(origin)
+        if fixed.get(key):
+            parts.append(_part(origin_name or "Происхождение", fixed[key]))
+        picked = sum((g["bonus"] for g, p in zip(groups, choice_slices(sheet, groups), strict=True) if key in p), 0)
+        if picked:
+            parts.append(_part(f"{origin_name or 'Происхождение'}: на выбор", picked))
         if value < sum(int(p["value"]) for p in parts):
             note = "Выше 20 характеристика не поднимается."
         note = (note + " " if note else "") + f"Модификатор {_signed(mods[key])}: (значение − 10) / 2 вниз."

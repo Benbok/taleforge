@@ -20,7 +20,10 @@ from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Even
 from app.rules.dice import Dice
 from app.rules.dnd5e.character import (
     ABILITY_METHODS,
+    class_skills_choose,
     creation_options,
+    hit_die,
+    origin_bonuses,
     roll_ability_scores,
     starting_items,
     validate_character,
@@ -88,11 +91,14 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
                 "id": e.id,
                 "name": e.name,
                 "description": d.get("description", ""),
-                "hit_die": d.get("hit_die"),
+                "hit_die": hit_die(d),
                 "saving_throws": d.get("saving_throws", []),
-                "skills_choose": d.get("skills_choose", {}),
+                "skills_choose": class_skills_choose(d),
                 "proficiencies": d.get("proficiencies", {}),
-                "equipment_fixed": (se.get("fixed") or []) if isinstance(se, dict) else [],
+                "equipment_fixed": [
+                    {**x, "name": items.get(x.get("item"), {}).get("name", x.get("item"))}
+                    for x in ((se.get("fixed") or []) if isinstance(se, dict) else [])
+                ],
                 "equipment_choices": choices,
             }
         )
@@ -101,8 +107,9 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
             "id": e.id,
             "name": e.name,
             "description": e.data.get("description", ""),
-            "ability_bonuses": e.data.get("ability_bonuses", {}),
-            "ability_choose": e.data.get("ability_choose"),
+            "ability_bonuses": origin_bonuses(e.data)[0],
+            "ability_groups": origin_bonuses(e.data)[1],
+            "ability_choose": e.data.get("ability_choose"),  # прежний клиент, до этапа 7.6
             "speed": e.data.get("speed"),
             "features": [f.get("name") for f in e.data.get("features") or [] if isinstance(f, dict)],
         }
@@ -225,25 +232,74 @@ async def submit(session: AsyncSession, viewer: Viewer, ch: Character, cat: Cata
     return []
 
 
+def starting_rows(ch: Character, cls: dict, cat: CatalogView) -> list[InventoryItem]:
+    """Стартовое снаряжение класса строками инвентаря: первый доспех и первый щит надеты."""
+    items, _ = starting_items(cls, (ch.sheet or {}).get("equipment_choices") or [], _items(cat))
+    rows = []
+    armor_done = shield_done = False
+    for it in items:
+        rec = cat.find(it["item"])
+        row = InventoryItem(character_id=ch.id, item_template_id=it["item"], qty=it["qty"], equipped=False)
+        if rec is not None and rec.data.get("category") == "armor":
+            if rec.data.get("armor_type") == "shield" and not shield_done:
+                row.equipped = shield_done = True
+            elif rec.data.get("armor_type") != "shield" and not armor_done:
+                row.equipped = armor_done = True
+        rows.append(row)
+    return rows
+
+
+def _name(cat: CatalogView, template_id: str) -> str:
+    rec = cat.find(template_id)
+    return rec.name if rec else template_id
+
+
+def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, Any]:
+    """Живой лист конструктора: что получится из выбранного, со стартовым снаряжением, ничего не сохраняя.
+    Ошибки правил — те же, что при отправке мастеру."""
+    ch = Character(id="preview", name="", sheet={"level": int(rules.get("start_level") or 1)}, resources={})
+    _apply(ch, data)
+    if data.get("ability_rolls"):
+        ch.sheet = {**ch.sheet, "ability_rolls": list(data["ability_rolls"])}
+    out: dict[str, Any] = {"errors": errors_for(ch, cat, rules), "derived": None, "inventory": []}
+    cls = cat.find(ch.sheet.get("class_id") or "", "class")
+    if cls is None or not ch.sheet.get("origin_id"):
+        return out
+    try:
+        rows = starting_rows(ch, cls.data, cat)
+    except Exception:  # noqa: BLE001 — выбор снаряжения ещё не закончен
+        rows = []
+    try:
+        a = character_actor(ch, cat, rows, [])
+    except Exception:  # noqa: BLE001 — характеристики ещё не разложены
+        return out
+    origin = cat.find(ch.sheet.get("origin_id") or "", "origin")
+    out["derived"] = {
+        "abilities": a.abilities,
+        "mods": a.mods,
+        "ac": a.ac,
+        "hp_max": a.hp.maximum,
+        "saves": a.saves,
+        "skills": a.skills,
+        "pb": a.pb,
+        "speed": int((origin.data if origin else {}).get("speed") or 30),
+        "attacks": a.attacks,
+    }
+    out["inventory"] = [
+        {"item": r.item_template_id, "name": _name(cat, r.item_template_id), "qty": r.qty, "equipped": r.equipped}
+        for r in rows
+    ]
+    return out
+
+
 async def approve_character(session: AsyncSession, campaign: Campaign, ch: Character, cat: CatalogView) -> None:
     """Одобрение: стартовое снаряжение класса (если его ещё нет), полные хиты и кости хитов, место в сцене."""
     sheet = ch.sheet or {}
     cls = cat.find(sheet.get("class_id") or "", "class")
     have = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
     if not have and cls is not None:
-        items, _ = starting_items(cls.data, sheet.get("equipment_choices") or [], _items(cat))
-        rows = []
-        armor_done = shield_done = False  # надеть первый доспех и первый щит
-        for it in items:
-            rec = cat.find(it["item"])
-            row = InventoryItem(character_id=ch.id, item_template_id=it["item"], qty=it["qty"])
-            if rec is not None and rec.data.get("category") == "armor":
-                if rec.data.get("armor_type") == "shield" and not shield_done:
-                    row.equipped = shield_done = True
-                elif rec.data.get("armor_type") != "shield" and not armor_done:
-                    row.equipped = armor_done = True
-            session.add(row)
-            rows.append(row)
+        rows = starting_rows(ch, cls.data, cat)
+        session.add_all(rows)
         await session.flush()
         have = rows
     ch.status = "approved"

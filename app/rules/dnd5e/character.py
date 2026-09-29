@@ -44,17 +44,81 @@ def hit_die(class_data: dict) -> int:
     return int(str(hd).lstrip("d")) if hd is not None else 8
 
 
+def origin_bonuses(origin: dict | None) -> tuple[dict[str, int], list[dict]]:
+    """Прибавки происхождения: постоянные и группы на выбор игрока.
+
+    Понимает оба формата: SRD — ``ability_bonuses: {str: 2}`` и ``ability_choose: {count, bonus, exclude}``;
+    пакеты мира — список ``{ability, value}`` и ``{choose, from, value, distinct_from_fixed}``.
+    Группа: ``{count, bonus, from: [характеристики], distinct_from_prior}``. Выбор игрока в листе —
+    плоский список ``ability_choice``, по порядку групп."""
+    fixed: dict[str, int] = {}
+    groups: list[dict] = []
+    raw = (origin or {}).get("ability_bonuses") or {}
+    if isinstance(raw, dict):
+        for a, b in raw.items():
+            if a in ABILITIES:
+                fixed[a] = fixed.get(a, 0) + int(b)
+    else:
+        for x in raw:
+            if not isinstance(x, dict):
+                continue
+            if x.get("ability") in ABILITIES:
+                fixed[x["ability"]] = fixed.get(x["ability"], 0) + int(x.get("value", 1))
+            elif "choose" in x:
+                pool = x.get("from")
+                groups.append(
+                    {
+                        "count": int(x["choose"]),
+                        "bonus": int(x.get("value", 1)),
+                        "from": [a for a in pool if a in ABILITIES] if isinstance(pool, list) else list(ABILITIES),
+                        "distinct_from_prior": bool(x.get("distinct_from_fixed")),
+                    }
+                )
+    ch = (origin or {}).get("ability_choose")
+    if ch:
+        exclude = ch.get("exclude") or []
+        groups.append(
+            {
+                "count": int(ch.get("count", 0)),
+                "bonus": int(ch.get("bonus", 1)),
+                "from": [a for a in ABILITIES if a not in exclude],
+                "distinct_from_prior": False,
+            }
+        )
+    for g in groups:
+        if g["distinct_from_prior"]:
+            g["from"] = [a for a in g["from"] if a not in fixed]
+    return fixed, groups
+
+
+def choice_slices(sheet: dict, groups: list[dict]) -> list[list[str]]:
+    picked = list(sheet.get("ability_choice") or [])
+    out, i = [], 0
+    for g in groups:
+        out.append(picked[i : i + g["count"]])
+        i += g["count"]
+    return out
+
+
+def class_skills_choose(class_data: dict | None) -> dict:
+    """Навыки класса на выбор: ``{count, from: [навыки]}``. В пакетах мира они лежат в ``proficiencies``,
+    а ``from: any`` значит любой навык."""
+    d = class_data or {}
+    sc = d.get("skills_choose") or (d.get("proficiencies") or {}).get("skills_choose") or {}
+    pool = sc.get("from")
+    skills = [x for x in pool if x in SKILLS] if isinstance(pool, list) else list(SKILLS)
+    return {"count": int(sc.get("count", 0)), "from": skills}
+
+
 def final_abilities(sheet: dict, origin: dict | None) -> dict[str, int]:
     base = {a: int((sheet.get("abilities") or {}).get(a, 10)) for a in ABILITIES}
-    if origin:
-        for a, b in (origin.get("ability_bonuses") or {}).items():
+    fixed, groups = origin_bonuses(origin)
+    for a, b in fixed.items():
+        base[a] += b
+    for g, picks in zip(groups, choice_slices(sheet, groups), strict=True):
+        for a in picks:
             if a in base:
-                base[a] += int(b)
-        choose = origin.get("ability_choose")
-        if choose:
-            for a in sheet.get("ability_choice") or []:
-                if a in base:
-                    base[a] += int(choose.get("bonus", 1))
+                base[a] += g["bonus"]
     return {a: min(20, v) for a, v in base.items()}
 
 
@@ -146,18 +210,27 @@ def validate_character(
         elif Counter(values) != Counter(rolled):
             errors.append("характеристики должны совпадать с выпавшими значениями")
 
-    if origin and origin.get("ability_choose"):
-        ch = origin["ability_choose"]
-        picked = sheet.get("ability_choice") or []
-        if len(picked) != int(ch.get("count", 0)) or len(set(picked)) != len(picked):
-            errors.append(f"происхождение: выберите {ch.get('count')} разные характеристики")
-        elif any(a not in ABILITIES or a in (ch.get("exclude") or []) for a in picked):
-            errors.append("происхождение: недопустимая характеристика для прибавки")
+    if origin:
+        _, groups = origin_bonuses(origin)
+        need = sum(g["count"] for g in groups)
+        if len(sheet.get("ability_choice") or []) != need:
+            if need:
+                errors.append(f"происхождение: выберите характеристики для прибавки ({need})")
+        else:
+            prior: list[str] = []
+            for g, picks in zip(groups, choice_slices(sheet, groups), strict=True):
+                if len(set(picks)) != len(picks):
+                    errors.append("происхождение: в одной прибавке характеристики не повторяются")
+                    break
+                if any(a not in g["from"] or (g["distinct_from_prior"] and a in prior) for a in picks):
+                    errors.append("происхождение: недопустимая характеристика для прибавки")
+                    break
+                prior += picks
 
     if class_data:
-        sc = class_data.get("skills_choose") or {}
+        sc = class_skills_choose(class_data)
         chosen = sheet.get("skills") or []
-        pool = sc.get("from") or list(SKILLS)
+        pool = sc["from"]
         if len(chosen) != int(sc.get("count", 0)) or len(set(chosen)) != len(chosen):
             errors.append(f"навыки класса: выберите {sc.get('count', 0)} разных")
         elif any(s not in pool for s in chosen):

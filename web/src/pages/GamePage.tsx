@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import ConnectionBanner from "../components/ConnectionBanner";
 import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
@@ -89,7 +89,7 @@ export default function GamePage() {
 
   const cards = useQuery({ queryKey: ["my-campaigns"], queryFn: () => api<CampaignCard[]>("/api/me/campaigns") });
   const card = cards.data?.find((c) => c.id === id);
-  const heroCta = card && actionOf(card).href.startsWith("/legacy") ? actionOf(card) : null;
+  const heroCta = card && actionOf(card).href.endsWith("/hero") && actionOf(card).primary ? actionOf(card) : null;
   const status = card ? STATUS_TEXT[statusOf(card)] : null;
   const live = !!snapshot?.session;
 
@@ -117,9 +117,9 @@ export default function GamePage() {
       {heroCta && (
         <div className="flex flex-wrap items-center justify-center gap-3 border-b border-line bg-raised px-4 py-2">
           <span>{heroCta.label === "Новый герой" ? "Ваш герой пал." : "У вас ещё нет готового героя."}</span>
-          <a className="btn btn-primary px-3 py-1" href={heroCta.href}>
+          <Link className="btn btn-primary px-3 py-1" to={heroCta.href}>
             {heroCta.label}
-          </a>
+          </Link>
         </div>
       )}
       <div className="mx-auto grid min-h-0 w-full max-w-[96rem] flex-1 md:grid-cols-[1fr_18rem] md:gap-4 md:px-4 md:py-4 lg:grid-cols-[16rem_1fr_18rem]">
@@ -161,7 +161,7 @@ export default function GamePage() {
       <EntityPopover />
       <ExplainPopover />
       <HeroWindow />
-      <FallenScene builderHref={`/legacy?campaign=${id}`} />
+      <FallenScene builderHref={`/c/${id}/hero`} />
     </div>
   );
 }

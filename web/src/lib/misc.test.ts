@@ -42,7 +42,7 @@ describe("карточки кампаний", () => {
 
   it("выбирает действие и статус по ситуации", () => {
     expect(actionOf(card({ hero: null })).label).toBe("Собрать героя");
-    expect(actionOf(card({ hero: null })).href).toBe("/legacy?campaign=c1");
+    expect(actionOf(card({ hero: null })).href).toBe("/c/c1/hero");
     expect(actionOf(card({ hero: { id: "h", name: "Б", status: "submitted", level: 1 } })).label).toBe("Персонаж на проверке");
     expect(actionOf(card({ session_live: true }))).toEqual({ label: "Продолжить", href: "/c/c1", primary: true });
     expect(actionOf(card({ my_role: null, is_owner: true, hero: null })).label).toBe("Управлять");
