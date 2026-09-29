@@ -106,3 +106,63 @@ def test_map_shows_surroundings_exits_and_hides_secrets(client, admin, settings)
     # второй игрок без героя видит карту отряда
     m2 = _map(client, p2, cid)
     assert m2["here"]["id"] == ids["stash"] and ids["square"] in {p["id"] for p in m2["places"]}
+
+
+def test_positions_distance_cover_and_areas(client, admin, settings):
+    import_base(settings)
+    c, (p1,), hero = party(client, admin)
+    cid, hid = c["id"], hero["id"]
+
+    async def fight(ctx):
+        sq = (await _ok(ctx, "create_location", {"name": "Площадь", "make_current": True}))["location_id"]
+        spawn = {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near", "bearing": "n"}
+        gob = (await _ok(ctx, "spawn_entity", spawn))["spawned"][0]["id"]
+        w = ctx.world
+        assert w.distance_ft(w.actor(hid), w.actor(gob)) == 30  # герой в строю: до гоблина его зона
+        # герой вышел на восток близко: до гоблина на севере — диагональ
+        r = await _ok(ctx, "reposition", {"actor_id": hid, "zone": "near", "bearing": "e"})
+        assert r["moved_ft"] == 30
+        assert ctx.world.distance_ft(ctx.world.actor(hid), ctx.world.actor(gob)) == 40
+        # гоблин залез на возвышение и спрятался за парапет: расстояние растёт, КД +2
+        await _ok(ctx, "update_entity", {"entity_id": gob, "elevation": "high", "cover": "half"})
+        assert ctx.world.distance_ft(ctx.world.actor(hid), ctx.world.actor(gob)) == 45
+        await _ok(ctx, "set_scene_mode", {"mode": "combat"})
+        far = await execute(ctx, "reposition", {"actor_id": hid, "zone": "far", "bearing": "w"})
+        assert not far["ok"] and "рывком" in far["error"]
+        await _ok(ctx, "update_entity", {"entity_id": gob, "cover": "total"})
+        shot = await execute(ctx, "resolve_attack", {"attacker_id": hid, "target_id": gob, "attack": "item.longsword"})
+        assert not shot["ok"] and "полным укрытием" in shot["error"]
+        await _ok(ctx, "update_entity", {"entity_id": gob, "cover": "half", "zone": "melee", "elevation": "ground"})
+        await _ok(ctx, "reposition", {"actor_id": hid, "zone": "center"})
+        hit = await _ok(ctx, "resolve_attack", {"attacker_id": hid, "target_id": gob, "attack": "item.longsword"})
+        assert hit["target_ac"] == 17 and "укрытие" in hit["cover"]
+        # облако яда вокруг отряда: герой внутри сразу, гоблин — когда войдёт
+        bad = await execute(ctx, "place_area", {"name": "Обрыв", "hazard_template_id": "hazard.falling"})
+        assert not bad["ok"] and "параметры" in bad["error"]
+        area = await _ok(
+            ctx,
+            "place_area",
+            {"name": "Ядовитое облако", "zone": "melee", "radius_ft": 10, "effect_template_id": "condition.poisoned",
+             "duration_rounds": 3},
+        )  # fmt: skip
+        assert area["inside"] == ["Бран", "Гоблин"] and area["hits"][0]["effect"]
+        return sq, gob, area["area_id"]
+
+    sq, gob, area_id = _play(settings, cid, fight)
+
+    m = _map(client, p1, cid)
+    assert [a["id"] for a in m["areas"]] == [area_id] and m["areas"][0]["radius_ft"] == 10
+    assert area_id not in {x["id"] for x in m["around"]}
+    me = m["party"][0]
+    assert me["mine"] and me["zone"] is None
+    assert next(x for x in m["around"] if x["id"] == gob)["cover"] == "half"
+
+    async def leave(ctx):
+        docks = (await _ok(ctx, "create_location", {"name": "Доки"}))["location_id"]
+        await _ok(ctx, "reposition", {"actor_id": hid, "zone": "near", "bearing": "s"})
+        assert "positions" in ctx.world.scene.state
+        await _ok(ctx, "set_scene_mode", {"mode": "free"})
+        await _ok(ctx, "move", {"character_ids": [hid], "location_id": docks})
+        return "positions" in (ctx.world.scene.state or {})
+
+    assert _play(settings, cid, leave) is False  # в новом месте герой снова в строю

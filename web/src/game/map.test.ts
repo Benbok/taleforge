@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
-import { layoutPlaces, mapEvent, placeAround, useMapWindow, type MapState } from "./map";
+import { areaPx, layoutPlaces, mapEvent, placeAround, placeParty, useMapWindow, type MapHero, type MapState } from "./map";
 
 const empty: MapState = { here: null, around: [], exits: [], places: [], links: [], bearings: {} as MapState["bearings"] };
 
@@ -43,5 +43,17 @@ describe("карта", () => {
     mapEvent("map.state", { ...empty, here: { id: "x", name: "Площадь", description: null } });
     expect(useMapWindow.getState().data?.here?.name).toBe("Площадь");
     expect(useMapWindow.getState().loading).toBe(false);
+  });
+
+  it("герои в строю стоят кучкой у центра, вышедшие — на своих кольцах; область не больше схемы", () => {
+    const hero = (id: string, zone: MapHero["zone"] = null, bearing: MapHero["bearing"] = null): MapHero => ({
+      id, name: id, mine: false, zone, bearing, elevation: "ground", cover: "none", down: false,
+    });
+    const [a, b, c] = placeParty([hero("a"), hero("b"), hero("c", "near", "e")]);
+    expect(Math.hypot(a.x - 200, a.y - 200)).toBeCloseTo(22);
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(30);
+    expect(c.x).toBeCloseTo(305);
+    expect(areaPx(10)).toBe(35);
+    expect(areaPx(120)).toBe(90);
   });
 });

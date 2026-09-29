@@ -1,7 +1,23 @@
 import { useEffect, type MouseEvent } from "react";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
-import { EDGE, layoutPlaces, placeAround, RING, useMapWindow, type MapExit, type MapState, type MapThing } from "./map";
+import {
+  areaPx,
+  COVER_NAME,
+  EDGE,
+  ELEVATION_NAME,
+  layoutPlaces,
+  placeAround,
+  placeParty,
+  RING,
+  useMapWindow,
+  type Cover,
+  type Elevation,
+  type MapArea,
+  type MapExit,
+  type MapState,
+  type MapThing,
+} from "./map";
 
 const ZONES: [keyof typeof RING, string][] = [
   ["melee", "вплотную"],
@@ -9,8 +25,28 @@ const ZONES: [keyof typeof RING, string][] = [
   ["far", "далеко"],
 ];
 
+const RING_NAME: Record<keyof typeof RING, string> = { melee: "вплотную", near: "близко", far: "далеко" };
+
 function short(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+/** Значки у маркера: высота (▲ возвышение, ▼ низ) и укрытие (◧). */
+function Badges({ x, y, elevation, cover }: { x: number; y: number; elevation?: Elevation; cover?: Cover }) {
+  const marks = [elevation === "high" ? "▲" : elevation === "low" ? "▼" : "", cover && cover !== "none" ? (cover === "total" ? "■" : "◧") : ""]
+    .filter(Boolean)
+    .join("");
+  if (!marks) return null;
+  return (
+    <text x={x + 11} y={y - 6} fontSize={9} fill="var(--color-warn, #d9a441)">
+      {marks}
+    </text>
+  );
+}
+
+function posNote(elevation?: Elevation, cover?: Cover): string | null {
+  const parts = [elevation && elevation !== "ground" ? ELEVATION_NAME[elevation] : null, cover && cover !== "none" ? COVER_NAME[cover] : null];
+  return parts.filter(Boolean).join(", ") || null;
 }
 
 /** Открыть карточку по маркеру: для SVG якорь — сам маркер, у него есть рамка на экране. */
@@ -23,6 +59,9 @@ function Around({ m }: { m: MapState }) {
   const open = useOpen();
   const things = placeAround<MapThing>(m.around, (t) => RING[t.zone] ?? RING.near);
   const exits = placeAround<MapExit>(m.exits, () => EDGE);
+  const heroes = placeParty(m.party ?? []);
+  const areas = placeAround<MapArea>(m.areas ?? [], (a) => RING[a.zone] ?? RING.near);
+  const combat = m.mode === "combat";
 
   return (
     <div className="flex flex-col gap-3">
@@ -39,10 +78,44 @@ function Around({ m }: { m: MapState }) {
         <text x={200} y={4} textAnchor="middle" fontSize={10} fill="var(--color-muted, #888)">
           С
         </text>
-        <circle cx={200} cy={200} r={11} fill="var(--tf-accent)" />
-        <text x={200} y={224} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
-          отряд
-        </text>
+        {areas.map(({ item: a, x, y }) => (
+          <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}`}>
+            <circle cx={x} cy={y} r={areaPx(a.radius_ft)} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
+            <text x={x} y={y - areaPx(a.radius_ft) + 12} textAnchor="middle" fontSize={9} fill="var(--tf-ember, #c0563a)">
+              {short(a.name, 20)} · {a.radius_ft} фт
+            </text>
+          </g>
+        ))}
+
+        {heroes.length === 0 ? (
+          <>
+            <circle cx={200} cy={200} r={11} fill="var(--tf-accent)" />
+            <text x={200} y={224} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
+              отряд
+            </text>
+          </>
+        ) : (
+          heroes.map(({ item: h, x, y }) => (
+            <g key={h.id} className="cursor-pointer" onClick={open(h.id, h.name)} role="button" aria-label={h.name}>
+              <circle
+                cx={x}
+                cy={y}
+                r={h.mine ? 10 : 8}
+                fill="var(--tf-accent)"
+                fillOpacity={h.down ? 0.35 : 1}
+                stroke={h.mine ? "var(--color-ink, #ddd)" : "none"}
+                strokeWidth={1.5}
+              />
+              <text x={x} y={y + 4} textAnchor="middle" fontSize={9} fill="var(--color-bg, #111)">
+                ★
+              </text>
+              <text x={x} y={y + 21} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
+                {short(h.name, 14)}
+              </text>
+              <Badges x={x} y={y} elevation={h.elevation} cover={h.cover} />
+            </g>
+          ))
+        )}
 
         {exits.map(({ item: x, x: px, y: py }) => (
           <g key={x.id} className="cursor-pointer" onClick={open(x.id, x.name)} role="button" aria-label={`Выход: ${x.name}`}>
@@ -66,9 +139,15 @@ function Around({ m }: { m: MapState }) {
             <text x={x} y={y + 21} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
               {short(t.name, 16)}
             </text>
+            <Badges x={x} y={y} elevation={t.elevation} cover={t.cover} />
           </g>
         ))}
       </svg>
+      {combat && (
+        <p className="text-center font-mono text-[11px] text-muted">
+          Бой: ▲ на возвышении, ▼ внизу, ◧ за укрытием (+2 или +5 к КД), ■ полное укрытие. Кольца не в масштабе.
+        </p>
+      )}
 
       {m.around.length === 0 && m.exits.length === 0 && (
         <p className="text-center font-mono text-xs text-muted">Мастер ещё не отметил, что здесь есть.</p>
@@ -86,13 +165,46 @@ function Around({ m }: { m: MapState }) {
                   <button className="underline decoration-dotted underline-offset-4" style={{ color: TYPE_COLOR[t.type] }} onClick={open(t.id, t.name)}>
                     {TYPE_ICON[t.type]} {t.name}
                   </button>
-                  {t.bearing && <span className="text-muted"> ({m.bearings[t.bearing]})</span>}
+                  {(t.bearing || posNote(t.elevation, t.cover)) && (
+                    <span className="text-muted"> ({[t.bearing ? m.bearings[t.bearing] : null, posNote(t.elevation, t.cover)].filter(Boolean).join(", ")})</span>
+                  )}
                   {t.condition && t.condition !== "невредим" && <span className="text-muted"> · {t.condition}</span>}
                 </span>
               ))}
             </li>
           );
         })}
+        {(m.party ?? []).some((h) => h.zone || posNote(h.elevation, h.cover)) && (
+          <li>
+            <span className="font-mono text-xs uppercase text-muted">отряд: </span>
+            {(m.party ?? []).map((h, i) => (
+              <span key={h.id}>
+                {i > 0 && ", "}
+                <button className="underline decoration-dotted underline-offset-4" style={{ color: "var(--tf-accent)" }} onClick={open(h.id, h.name)}>
+                  ★ {h.name}
+                </button>
+                <span className="text-muted">
+                  {" "}
+                  ({[h.zone ? `${RING_NAME[h.zone]}${h.bearing ? `, ${m.bearings[h.bearing]}` : ""}` : "в строю", posNote(h.elevation, h.cover)].filter(Boolean).join(", ")})
+                </span>
+              </span>
+            ))}
+          </li>
+        )}
+        {(m.areas ?? []).length > 0 && (
+          <li>
+            <span className="font-mono text-xs uppercase text-muted">области: </span>
+            {(m.areas ?? []).map((a, i) => (
+              <span key={a.id}>
+                {i > 0 && ", "}
+                <button className="underline decoration-dotted underline-offset-4" style={{ color: "var(--tf-ember)" }} onClick={open(a.id, a.name)}>
+                  {a.name}
+                </button>
+                <span className="text-muted"> (радиус {a.radius_ft} фт)</span>
+              </span>
+            ))}
+          </li>
+        )}
         {m.exits.length > 0 && (
           <li>
             <span className="font-mono text-xs uppercase text-muted">куда можно пройти: </span>

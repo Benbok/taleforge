@@ -8,6 +8,9 @@ import { useGame } from "../stores/game";
 export type Zone = "melee" | "near" | "far";
 export type Bearing = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
+export type Elevation = "low" | "ground" | "high";
+export type Cover = "none" | "half" | "three_quarters" | "total";
+
 export interface MapThing {
   id: string;
   name: string;
@@ -15,8 +18,39 @@ export interface MapThing {
   zone: Zone;
   zone_name: string;
   bearing: Bearing | null;
+  elevation?: Elevation;
+  cover?: Cover;
   condition?: string | null;
 }
+
+/** Герой в этом месте. zone = null — в строю отряда, в центре схемы. */
+export interface MapHero {
+  id: string;
+  name: string;
+  mine: boolean;
+  zone: Zone | null;
+  bearing: Bearing | null;
+  elevation: Elevation;
+  cover: Cover;
+  down: boolean;
+}
+
+/** Область на площадь: облако, огонь, туман. */
+export interface MapArea {
+  id: string;
+  name: string;
+  zone: Zone;
+  bearing: Bearing | null;
+  radius_ft: number;
+}
+
+export const ELEVATION_NAME: Record<Elevation, string> = { low: "внизу", ground: "на земле", high: "на возвышении" };
+export const COVER_NAME: Record<Cover, string> = {
+  none: "без укрытия",
+  half: "половинное укрытие",
+  three_quarters: "укрытие на три четверти",
+  total: "полное укрытие",
+};
 
 export interface MapExit {
   id: string;
@@ -36,6 +70,9 @@ export interface MapPlace {
 export interface MapState {
   here: { id: string; name: string; description: string | null } | null;
   around: MapThing[];
+  party?: MapHero[];
+  areas?: MapArea[];
+  mode?: "free" | "combat";
   exits: MapExit[];
   places: MapPlace[];
   links: { a: string; b: string; label: string | null }[];
@@ -132,6 +169,28 @@ export function placeAround<T extends { id: string; bearing: Bearing | null }>(
     const a = a0 + (n === 0 ? 0 : (n % 2 === 1 ? 1 : -1) * Math.ceil(n / 2) * step);
     return { item, x: cx + r * Math.sin(a), y: cy - r * Math.cos(a) };
   });
+}
+
+/** Радиус области на схеме: кольца не в масштабе, поэтому берём масштаб кольца «близко» и ограничиваем. */
+export function areaPx(ft: number): number {
+  return Math.min(90, Math.max(14, ft * 3.5));
+}
+
+/** Герои в строю отряда стоят кучкой вокруг центра, чтобы подписи не слипались. */
+export function placeParty(heroes: MapHero[], cx = 200, cy = 200): Placed<MapHero>[] {
+  const inRank = heroes.filter((h) => !h.zone);
+  const out: Placed<MapHero>[] = inRank.map((item, i) => {
+    if (inRank.length === 1) return { item, x: cx, y: cy };
+    const a = (i / inRank.length) * 2 * Math.PI;
+    return { item, x: cx + 22 * Math.sin(a), y: cy - 22 * Math.cos(a) };
+  });
+  const out2 = placeAround(
+    heroes.filter((h) => h.zone),
+    (h) => RING[h.zone as Zone],
+    cx,
+    cy,
+  );
+  return [...out, ...out2];
 }
 
 // --- раскладка «Места» ---

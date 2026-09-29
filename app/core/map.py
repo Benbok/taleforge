@@ -139,11 +139,26 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     here = places.get(here_id or "")
     around: list[dict] = []
     exits: list[dict] = []
+    party: list[dict] = []
+    areas: list[dict] = []
     if here is not None:
         for e in ents:
             if e.kind == "location" or e.location_id != here.id:
                 continue
             st = e.state or {}
+            area = st.get("area")
+            if area:
+                if area.get("expires_at") is None or scene.game_time < int(area["expires_at"]):
+                    areas.append(
+                        {
+                            "id": e.id,
+                            "name": e.name,
+                            "zone": e.zone,
+                            "bearing": st.get("bearing"),
+                            "radius_ft": int(area.get("radius_ft", 10)),
+                        }
+                    )
+                continue
             item = {
                 "id": e.id,
                 "name": e.name,
@@ -151,10 +166,31 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 "zone": e.zone,
                 "zone_name": ZONE_NAMES.get(e.zone, e.zone),
                 "bearing": st.get("bearing"),
+                "elevation": st.get("elevation") or "ground",
+                "cover": st.get("cover") or "none",
             }
             if e.kind == "creature":
                 item["condition"] = _condition(st)
             around.append(item)
+        # герои в этом месте: у кого нет позиции, тот в строю отряда, в центре схемы
+        positions = (scene.state or {}).get("positions") or {}
+        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
+        for ch in (await session.scalars(q)).all():
+            if place_of(ch, scene.location_id) != here.id:
+                continue
+            pos = positions.get(ch.id) or {}
+            party.append(
+                {
+                    "id": ch.id,
+                    "name": ch.name,
+                    "mine": hero is not None and ch.id == hero.id,
+                    "zone": pos.get("zone"),
+                    "bearing": pos.get("bearing"),
+                    "elevation": pos.get("elevation") or "ground",
+                    "cover": pos.get("cover") or "none",
+                    "down": (ch.resources or {}).get("hp") == 0,
+                }
+            )
         for p in out_places:
             pid = p["id"]
             if pid == here.id:
@@ -181,6 +217,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     return {
         "here": {"id": here.id, "name": here.name, "description": here.description or None} if here else None,
         "around": around,
+        "party": party,
+        "areas": areas,
+        "mode": scene.mode,
         "exits": exits,
         "places": out_places,
         "links": links,
