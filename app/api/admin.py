@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
 from app.api.auth import user_out
 from app.api.deps import SessionDep, UserDep
 from app.api.schemas import PackOut, UserCreateIn, UserOut
+from app.content.upload import UploadError, upload
+from app.core import spend
 from app.core.campaigns import DEFAULT_PARTY, AccessDenied, Conflict, is_admin
 from app.core.security import hash_password
 from app.db.models import ContentPack, User
@@ -50,3 +52,22 @@ async def list_packs(user: UserDep, session: SessionDep) -> list[PackOut]:
         )
         for p in rows
     ]
+
+
+@router.post("/admin/packs")
+async def upload_pack(request: Request, user: UserDep, session: SessionDep, dry_run: bool = False) -> dict:
+    """Пакет сеттинга zip-архивом в теле запроса. dry_run — только проверка, без записи в БД."""
+    if not is_admin(user):
+        raise AccessDenied("только Admin")
+    try:
+        return await upload(session, await request.body(), dry_run=dry_run)
+    except UploadError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@router.get("/admin/spend")
+async def get_spend(user: UserDep, session: SessionDep, days: int = 30) -> dict:
+    """Расходы на модели за период. Admin — свои кампании, Super Admin — все."""
+    if not is_admin(user):
+        raise AccessDenied("только Admin")
+    return await spend.report(session, user, max(1, min(days, 365)))

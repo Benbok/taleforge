@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import LibraryHeroPage from "./pages/LibraryHeroPage";
 import ManagePage from "./pages/ManagePage";
 import NewCampaignPage from "./pages/NewCampaignPage";
+import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
 import InvitePage from "./pages/InvitePage";
 import Welcome from "./pages/Welcome";
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/c/:id" element={user ? <GamePage /> : <Navigate to="/" replace />} />
           <Route path="/new" element={user ? <NewCampaignPage /> : <Navigate to="/" replace />} />
           <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/" replace />} />
+          <Route path="/admin" element={user ? <AdminPage /> : <Navigate to="/" replace />} />
           <Route path="/c/:id/manage" element={user ? <ManagePage /> : <Navigate to="/" replace />} />
           <Route path="/c/:id/hero" element={user ? <CampaignHeroPage /> : <Navigate to="/" replace />} />
           <Route path="/heroes/:hid" element={user ? <LibraryHeroPage /> : <Navigate to="/" replace />} />

@@ -65,13 +65,12 @@ def test_campaign_cards(game_client, admin_g):
     assert card["status"] == "paused" and not card["session_live"] and card["last_session_at"]
 
 
-def test_spa_and_legacy_routes(game_client):
-    # без сборки нового клиента прежний отдаётся и на /, и на /legacy
-    assert "<html" in game_client.get("/").text.lower()
-    assert game_client.get("/legacy").status_code == 200
-    for name in ("profile", "heroes", "masterlog", "preparation"):  # все скрипты прежнего клиента
-        assert game_client.get(f"/static/{name}.js").status_code == 200, name
-    assert game_client.get("/c/c_1").status_code == 200
+def test_spa_routes(game_client):
+    # без сборки клиента (CI) — страница с подсказкой собрать его, со сборкой — сам клиент; адреса одни и те же
+    for path in ("/", "/c/c_1", "/admin"):
+        r = game_client.get(path)
+        assert r.status_code in (200, 503) and "<html" in r.text.lower(), path
+    assert "/static/" not in game_client.get("/").text  # прежнего клиента больше нет
     assert game_client.get("/api/nope").status_code == 404
     assert game_client.get("/assets/..%2Fmain.py").status_code == 404
     assert game_client.get("/assets/nope.js").status_code == 404
