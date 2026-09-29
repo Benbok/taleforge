@@ -8,19 +8,9 @@ interface OriginArtMeta {
   badgeClass: string;
 }
 
+// Происхождения мира — только шесть людей. Вторая раса (Сохранивший себя / сердце) приходит в игре через Порог
+// и в конструкторе не выбирается; её портреты — для карточки героя после Порога.
 const ORIGIN_ART_MAP: Record<string, OriginArtMeta> = {
-  "origin.helmsman": {
-    img: "/assets/races/helmsman.png",
-    sub: "The Helmsman",
-    badge: "Глубины",
-    badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
-  },
-  "origin.kept_self": {
-    img: "/assets/races/kept_self.png",
-    sub: "Kept Self",
-    badge: "Порог · Рой",
-    badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-  },
   "lineage.kept_self": {
     img: "/assets/races/kept_self.png",
     sub: "Kept Self",
@@ -42,13 +32,13 @@ const ORIGIN_ART_MAP: Record<string, OriginArtMeta> = {
   "origin.slomlenny": {
     img: "/assets/races/the_broken.png",
     sub: "The Broken",
-    badge: "Нитевик",
+    badge: "Бывший шахтёр",
     badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
   },
   "origin.krovnik": {
     img: "/assets/races/blood_bound.png",
     sub: "Blood-Bound",
-    badge: "Кровь ФК",
+    badge: "Кровь титанов",
     badgeClass: "bg-rose-600/15 text-rose-300 border-rose-600/30",
   },
   "origin.okrainets": {

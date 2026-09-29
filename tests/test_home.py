@@ -74,3 +74,6 @@ def test_spa_routes(game_client):
     assert game_client.get("/api/nope").status_code == 404
     assert game_client.get("/assets/..%2Fmain.py").status_code == 404
     assert game_client.get("/assets/nope.js").status_code == 404
+    # вложенные папки ассетов (портреты происхождений), но не выход за их пределы
+    assert game_client.get("/assets/races/nope.png").status_code == 404
+    assert game_client.get("/assets/races/..%2F..%2F..%2Fapp%2Fmain.py").status_code == 404
