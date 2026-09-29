@@ -60,7 +60,8 @@ def test_copy_into_other_world_names_what_to_replace(client, admin, worlds):
     copy = ok(client.post(f"/api/campaigns/{c['id']}/characters/from-library/{elf['id']}", headers=h), 201)
     # класс в мире есть и переносится, эльфа — нет
     assert copy["sheet"]["class_id"] == "class.fighter" and "origin_id" not in copy["sheet"]
-    assert copy["errors"][0] == "происхождение «Высший эльф» не из мира этой кампании: выберите происхождение этого мира"
+    want = "происхождение «Высший эльф» не из мира этой кампании: выберите происхождение этого мира"
+    assert copy["errors"][0] == want
     assert not any(e.startswith("происхождение не выбрано") for e in copy["errors"])
     fixed = ok(
         client.put(
