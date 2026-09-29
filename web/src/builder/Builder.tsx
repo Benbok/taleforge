@@ -27,6 +27,7 @@ import {
 } from "../lib/builder";
 import { ABILITIES, ABILITY_RU, SKILLS } from "../game/hero";
 import LiveSheet from "./LiveSheet";
+import OriginChoices from "./OriginChoices";
 
 const SKILL_RU = Object.fromEntries(SKILLS.map(([id, ru]) => [id, ru]));
 
@@ -159,16 +160,9 @@ export default function Builder({
 
         {/* Step 3: Origin */}
         <Step id="origin" title="Происхождение (раса)">
-          <Choices
+          <OriginChoices
             items={opts.origins}
             value={draft.origin_id}
-            meta={(o) => [
-              [
-                ...Object.entries(o.ability_bonuses).map(([a, b]) => `${ABILITY_RU[a] ?? a} +${b}`),
-                ...o.ability_groups.map((g) => `+${g.bonus} на выбор${g.count > 1 ? ` ×${g.count}` : ""}`),
-              ].join(", ") || null,
-              o.speed ? `скорость ${o.speed} фт.` : null,
-            ]}
             onPick={(id) => set({ origin_id: id, ability_picks: [] })}
           />
         </Step>
