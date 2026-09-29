@@ -28,11 +28,11 @@ import jinja2
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.agents import character, memory, rhythm
 from app.agents import intent as intents
-from app.agents import memory, rhythm
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
-from app.core import bonds, combat, plot
+from app.core import bonds, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
@@ -120,6 +120,7 @@ class MasterService:
         self._intro_locks: dict[str, asyncio.Lock] = {}
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
         self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
+        self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
 
     # --- очередь ---
 
@@ -165,6 +166,9 @@ class MasterService:
         async def run() -> None:
             # сначала сводка сессии: эпилог и зацепка опираются на неё, а запись по очереди не спорит за базу
             await self._safe(self.summarize(campaign_id, "session", session_id=session_id), "сводка сессии")
+            await self._safe(
+                character.chronicle(self, campaign_id, "сессия закончилась", session_id=session_id), "летопись"
+            )
             if ended:
                 await self._safe(rhythm.epilogue(self, campaign_id), "эпилог")
             else:
@@ -662,11 +666,24 @@ class MasterService:
         ]
         if ties:
             secrets = (secrets + "\n" if secrets else "") + "Связи героев (ответы игроков):\n" + "\n".join(ties)
+        # характеры героев (анкета и летопись) мастер видит, как видит лист: чтобы NPC и сцены цепляли героев
+        chars = []
+        for ch in ctx.world.characters.values():
+            if ch.status not in ("approved", "active"):
+                continue
+            if text := persona.render(ch.persona, await persona.notes_of(s, c.id, ch.id)):
+                chars.append(f"{ch.name} ({ch.id}):\n{text}")
+        if chars:
+            secrets = (secrets + "\n" if secrets else "") + "Характеры героев:\n" + "\n".join(chars)
+        style = cfg.persona or ""
+        own = persona.render((cfg.settings or {}).get("character"), await persona.notes_of(s, c.id, None), master=True)
+        if own:
+            style = (style + "\n\n" if style else "") + "Твой характер как мастера:\n" + own
         dc = ", ".join(f"{e.id} = {e.data['value']} ({e.name})" for e in ctx.world.catalog.dc_scale())
         return render(
             "master_system.j2",
             campaign_name=c.name,
-            style=cfg.persona,
+            style=style or None,
             brief=brief_text(c.brief),
             excluded_themes=", ".join((c.settings or {}).get("excluded_themes") or []),
             public_intro=c.public_intro,
@@ -921,10 +938,27 @@ class MasterService:
             self._timers[cid] = asyncio.create_task(self._timeout_after(cid, marker, float(turn["deadline"])))
         if self.presence is not None:
             await self.presence.turn_changed(cid, turn)
+        self._watch_strong(ctx)
         if turn and not turn.get("submitted") and self.players is not None:
             seat = next((x for x in ctx.campaign.seats if x.id == turn.get("seat_id")), None)
             if seat is not None and seat.role == "player" and seat.occupant_type == "agent":
                 self.players.combat_turn(cid, seat.id)
+
+    def _watch_strong(self, ctx: ToolContext) -> None:
+        """Сильное событие — гибель героя или конец боя: летопись характера пишется сразу, не ждёт конца сессии."""
+        cid = ctx.campaign.id
+        heroes = ctx.world.characters.values()
+        dead = frozenset(ch.id for ch in heroes if ch.status == "dead" or (ch.resources or {}).get("dead"))
+        mode = ctx.world.scene.mode
+        before = self._seen.get(cid)
+        self._seen[cid] = (dead, mode)
+        if before is None:
+            return
+        reasons = [f"пал герой {ctx.world.characters[i].name}" for i in dead - before[0]]
+        if before[1] == "combat" and mode != "combat":
+            reasons.append("бой закончился")
+        if reasons:
+            self._spawn(self._safe(character.chronicle(self, cid, "; ".join(reasons)), "летопись"))
 
     async def _timeout_after(self, cid: str, marker: str | None, deadline: float) -> None:
         try:

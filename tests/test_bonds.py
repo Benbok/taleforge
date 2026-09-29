@@ -132,7 +132,7 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
         "Гимли" in llm.requests[6]["messages"][1]["content"]
         and "Бран (" not in llm.requests[6]["messages"][1]["content"]
     )
-    purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse")]
+    purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle")]
     assert purposes[:7] == ["bonds", "hook", "hook", "session_hook", "intro", "session_goal", "intro"]
     # ответы о связях видит мастер в ходе
     assert "Связи героев (ответы игроков)" in llm.requests[7]["messages"][0]["content"]

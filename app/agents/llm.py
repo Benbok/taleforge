@@ -192,6 +192,7 @@ class ScriptedLLM:
 AUTO_REPLIES = {
     "submit_intent": {"kind": "action", "actions": [{"verb": "custom"}], "confidence": 1.0},
     "submit_summary": {"events": ["(сводка тестовой модели)"], "recap": "Герои продолжают путь."},
+    "write_chronicle": {"notes": []},
 }
 
 

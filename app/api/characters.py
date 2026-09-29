@@ -397,3 +397,145 @@ async def answer_bonds(
     if cfg is not None and b.get("answers"):
         request.app.state.master.schedule_hook(campaign_id, ch.id)  # мастер тайно вплетает ответы в каркас
     return {"bonds": b, "can_answer": True}
+
+
+# --- характер (этап 9б) ---
+
+
+class PersonaIn(BaseModel):
+    text: str = Field("", max_length=4000)
+    fields: dict[str, str] = Field(default_factory=dict)
+    core: list[str] | None = None
+
+
+class PersonaDraftIn(BaseModel):
+    """Анкета для «Помочь» и «Проверить»: можно несохранённую; без неё берётся сохранённая."""
+
+    persona: PersonaIn | None = None
+
+
+class NoteIn(BaseModel):
+    text: str | None = Field(None, min_length=1, max_length=500)
+    cause: str | None = Field(None, max_length=300)
+    reverted: bool | None = None
+
+
+async def _persona_target(session, v: Viewer, character_id: str) -> tuple[Character, bool]:
+    """Анкету видят игрок героя, мастер и владелец; правит игрок героя (владелец — за ИИ-игрока через as_seat)."""
+    ch = await svc.get_character(session, v, character_id)
+    mine = v.seat is not None and ch.seat_id == v.seat.id and ch.owner_user_id == v.user.id
+    if not (mine or v.is_master or v.can_review or v.is_owner):
+        raise AccessDenied("характер героя видят его игрок и мастер")
+    if ch.status in ("retired", "premade"):
+        raise Conflict("у этого героя нет анкеты характера")
+    return ch, mine
+
+
+async def _persona_out(session, campaign_id: str, ch: Character, mine: bool) -> dict:
+    from app.core import persona
+
+    notes = await persona.notes_of(session, campaign_id, ch.id)
+    return {
+        "persona": persona.normalize(ch.persona),
+        "schema": persona.schema(),
+        "notes": [persona.note_out(n) for n in notes],
+        "can_edit": mine,
+    }
+
+
+@router.get("/characters/{character_id}/persona")
+async def get_persona(
+    campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
+):
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch, mine = await _persona_target(session, v, character_id)
+    return await _persona_out(session, campaign_id, ch, mine)
+
+
+@router.put("/characters/{character_id}/persona")
+async def put_persona(
+    campaign_id: str, character_id: str, body: PersonaIn, user: UserDep, session: SessionDep, as_seat: str | None = None
+):
+    from app.core import persona
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch, mine = await _persona_target(session, v, character_id)
+    if not mine:
+        raise AccessDenied("характер правит игрок героя")
+    ch.persona = persona.normalize(body.model_dump())
+    await session.commit()
+    return await _persona_out(session, campaign_id, ch, mine)
+
+
+async def _draft(session, v: Viewer, character_id: str, body: PersonaDraftIn) -> dict:
+    ch, mine = await _persona_target(session, v, character_id)
+    if not mine:
+        raise AccessDenied("помощник и проверка — у игрока героя")
+    sheet = body.persona.model_dump() if body.persona else dict(ch.persona or {})
+    await session.rollback()  # модель думает долго: базу не держим
+    return sheet
+
+
+@router.post("/characters/{character_id}/persona/help")
+async def help_persona(
+    campaign_id: str,
+    character_id: str,
+    body: PersonaDraftIn,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+) -> dict:
+    """«Помочь»: модель дописывает пустые поля; заполненное не трогает. Результат не сохраняется сам."""
+    from app.agents import character
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    sheet = await _draft(session, v, character_id, body)
+    return {
+        "persona": await character.help_fill(request.app.state.master, campaign_id, sheet, character_id=character_id)
+    }
+
+
+@router.post("/characters/{character_id}/persona/test")
+async def test_persona(
+    campaign_id: str,
+    character_id: str,
+    body: PersonaDraftIn,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+) -> dict:
+    """«Проверить»: три пробные сцены — спор в отряде, соблазн, опасность."""
+    from app.agents import character
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    sheet = await _draft(session, v, character_id, body)
+    scenes = await character.try_scenes(request.app.state.master, campaign_id, sheet, character_id=character_id)
+    return {"scenes": scenes}
+
+
+@router.patch("/characters/{character_id}/persona/notes/{note_id}")
+async def patch_note(
+    campaign_id: str,
+    character_id: str,
+    note_id: str,
+    body: NoteIn,
+    user: UserDep,
+    session: SessionDep,
+    as_seat: str | None = None,
+) -> dict:
+    """Поправить запись летописи или откатить её (и вернуть)."""
+    from app.core import persona
+    from app.db.models import PersonaNote
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch, mine = await _persona_target(session, v, character_id)
+    if not mine:
+        raise AccessDenied("летопись правит игрок героя")
+    n = await session.get(PersonaNote, note_id)
+    if n is None or n.character_id != ch.id:
+        raise Conflict("запись летописи не найдена")
+    persona.edit_note(n, body.text, body.cause, body.reverted)
+    await session.commit()
+    return await _persona_out(session, campaign_id, ch, mine)

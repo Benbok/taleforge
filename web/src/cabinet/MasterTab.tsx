@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
+import PersonaEditor from "../components/PersonaEditor";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
 import PersonaPicker from "./PersonaPicker";
@@ -190,6 +191,16 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
             ОБНОВИТЬ СТИЛЬ МАСТЕРА
           </ActionButton>
         </div>
+      </section>
+
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-heading text-xl font-bold text-ink">Характер мастера</h2>
+          <p className="mt-0.5 text-xs text-muted">
+            Поверх тона выше: свободный текст и подсказки. Мастер меняется по ходу игры — это видно в летописи.
+          </p>
+        </div>
+        <PersonaEditor base={`/api/campaigns/${campaignId}/master-character`} master />
       </section>
     </div>
   );

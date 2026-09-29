@@ -23,7 +23,7 @@ from sqlalchemy import select
 
 from app.agents import memory
 from app.agents.llm import LLMError, model_for
-from app.core import chat, combat
+from app.core import chat, combat, persona
 from app.core.campaigns import Viewer
 from app.core.world import get_scene
 from app.db.models import AgentConfig, Campaign, Character, Entity, InventoryItem, LlmCall, Message, Seat, User
@@ -169,7 +169,9 @@ class PlayerAgents:
             place = next((e.name for e in ents if e.id == sc.location_id), None)
             careful = cautious(seat)
             user_text = _render(ch, sheet, last, rows, chars, place, here, combat_turn)
-            system = SYSTEM + ("\n\n" + CAUTIOUS if careful else "")
+            character = persona.render(ch.persona, await persona.notes_of(s, cid, ch.id))
+            system = SYSTEM + ("\n\nХарактер твоего героя:\n" + character if character else "")
+            system += "\n\n" + CAUTIOUS if careful else ""
             model = model_for(cfg.provider, cfg.model)
             api_base = (cfg.settings or {}).get("api_base")
         return system, user_text, model, api_base, careful
