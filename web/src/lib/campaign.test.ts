@@ -27,7 +27,9 @@ describe("создание кампании", () => {
       excluded_themes: ["пытки", "пауки"],
       owner_plays: true,
       creation_rules: { review: "master" },
+      leveling: "xp",
     });
+    expect(createBody({ ...EMPTY_DRAFT, name: "Туман", leveling: "milestone" }).leveling).toBe("milestone");
     expect(body).not.toHaveProperty("players");
   });
 

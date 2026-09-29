@@ -14,13 +14,14 @@ from app.content.catalog import campaign_catalog
 from app.core import audio, combat, rolls
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
-from app.core.world import ZONE_NAMES, World, load_world
+from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
 from app.db.models import Campaign, Entity, Message
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import audio as _audio_tools  # noqa: F401 — звук сцены
 from app.tools import master as _tools  # noqa: F401 — регистрирует инструменты в реестре
 from app.tools import plot as _plot_tools  # noqa: F401 — инструменты ведения по каркасу
+from app.tools import progress as _progress_tools  # noqa: F401 — опыт и уровни
 from app.tools.registry import ToolContext
 
 
@@ -96,6 +97,9 @@ def public_entity(e: Entity) -> dict[str, Any]:
         elif hp is not None and mx:
             item["condition"] = "невредим" if hp >= mx else "ранен" if hp > mx / 2 else "тяжело ранен"
         item["attitude"] = st.get("attitude", "hostile")
+    elif is_scene_item(e):
+        item["item"] = True
+        item["qty"] = int(st.get("qty") or 1)
     return item
 
 

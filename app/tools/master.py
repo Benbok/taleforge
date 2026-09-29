@@ -15,7 +15,16 @@ from sqlalchemy import select
 
 from app.core import audio, combat
 from app.core.campaigns import master_seat
-from app.core.world import PLAYABLE, ZONE_FT, ZONE_NAMES, Actor, WorldError, format_time, lineage_features
+from app.core.world import (
+    PLAYABLE,
+    ZONE_FT,
+    ZONE_NAMES,
+    Actor,
+    WorldError,
+    format_time,
+    is_scene_item,
+    lineage_features,
+)
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem, Knowledge, KnownFact
 from app.rules.base import RollMode
 from app.rules.dnd5e import modifiers as mod
@@ -30,6 +39,10 @@ Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
 BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
+# Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
+# Такого шаблона нет в каталоге намеренно: листу героя он ничего не прибавляет.
+FOUND_ITEM = "item.found"
+IMPROVISED_WEAPON = "item.improvised_weapon"  # SRD 5.1: импровизированное оружие, 1d4
 
 
 # --- помощники ---
@@ -524,6 +537,8 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}: рука нащупывает пустоту")
+    if it.item_template_id == FOUND_ITEM:
+        raise ToolError(f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
@@ -561,36 +576,140 @@ class GiveItemArgs(BaseModel):
 
 @tool(
     "give_item",
-    "Выдаёт предмет из шаблона в инвентарь персонажа. Несуществующий шаблон — ошибка.",
+    "Выдаёт предмет из шаблона прямо в инвентарь персонажа: награда, покупка. Добычу, которая лежит в сцене, клади "
+    "через place_item, а подбирает её герой (pick_up_item). Несуществующий шаблон — ошибка.",
     GiveItemArgs,
     ids={"character_id": "characters"},
 )
 async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
-    items = ctx.world.inventory.setdefault(ch.id, [])
-    same = next(
-        (i for i in items if i.item_template_id == rec.id and i.display_name == a.display_name and not i.equipped),
-        None,
-    )
-    if same is not None:
-        before = same.qty
-        same.qty += a.qty
-        inverse = [{"table": "inventory", "id": same.id, "field": "qty", "before": before}]
-        inv_id = same.id
-    else:
-        row = InventoryItem(character_id=ch.id, item_template_id=rec.id, display_name=a.display_name, qty=a.qty)
-        ctx.session.add(row)
-        await ctx.session.flush()
-        items.append(row)
-        inverse = [{"table": "inventory", "op": "delete", "id": row.id}]
-        inv_id = row.id
-    ctx.world.invalidate(ch.id)
+    inv_id, inverse = await _add_to_inventory(ctx, ch, rec.id, a.display_name, a.qty)
     result = {"character": ch.name, "item": a.display_name or rec.name, "qty": a.qty, "inventory_id": inv_id}
     await ctx.record(
         "give_item", target_id=ch.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
     )
     return result
+
+
+class KeepFoundArgs(BaseModel):
+    character_id: str
+    name: str = Field(min_length=1, max_length=128, description="как вещь называется в мире: «арматура», «шляпа»")
+    kind: Literal["object", "improvised_weapon", "template"] = Field(
+        description="object — обычная вещь без механики (камень, шляпа, ключ); improvised_weapon — годится как "
+        "оружие (арматура, ножка стула): импровизированное оружие SRD 1d4; template — есть подходящий шаблон пакета "
+        "(украденный кинжал, найденное зелье), укажи item_template_id"
+    )
+    item_template_id: str | None = Field(None, description="только для kind=template")
+    qty: int = Field(1, ge=1, le=100)
+    from_id: str | None = Field(None, description="у кого или откуда взято: NPC, существо, объект сцены")
+    how: Literal["found", "pried", "stolen", "looted", "given"] = Field(
+        description="found — нашёл, pried — выломал или вытащил, stolen — украл, looted — снял с побеждённого, "
+        "given — отдали"
+    )
+    reason: str = Field(min_length=1, max_length=300, description="что произошло, одной фразой")
+
+
+HOW_RU = {"found": "находит", "pried": "добывает", "stolen": "крадёт", "looted": "забирает", "given": "получает"}
+
+
+@tool(
+    "keep_found_item",
+    "Герой оставляет себе вещь, добытую в мире по ходу игры: нашёл камень, выломал арматуру из стены, украл шляпу "
+    "у прохожего. Если добыть вещь было непросто (вытащить, украсть), сначала roll_check, и вызывай это только при "
+    "успехе. Вещь попадает в инвентарь героя и остаётся там.",
+    KeepFoundArgs,
+    ids={"character_id": "characters", "from_id": "subjects"},
+)
+async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    _can_handle(ctx, ch)
+    if a.kind == "template":
+        if not a.item_template_id:
+            raise ToolError("для kind=template укажите item_template_id (найдите его через lookup_template)")
+        template = ctx.world.catalog.get(a.item_template_id, "item_template").id
+    elif a.item_template_id:
+        raise ToolError("item_template_id — только для kind=template")
+    elif a.kind == "improvised_weapon":
+        template = ctx.world.catalog.get(IMPROVISED_WEAPON, "item_template").id
+    else:
+        template = FOUND_ITEM
+    inv_id, inverse = await _add_to_inventory(ctx, ch, template, a.name, a.qty)
+    src = ctx.world.entities.get(a.from_id or "") or ctx.world.characters.get(a.from_id or "")
+    result = {"character": ch.name, "item": a.name, "qty": a.qty, "inventory_id": inv_id, "how": a.how}
+    if src is not None:
+        result["from"] = src.name
+    await ctx.record(
+        "keep_found_item",
+        actor_id=ch.id,
+        target_id=a.from_id if src is not None else None,
+        payload={**result, "reason": a.reason, "template": template},
+        inverse=inverse,
+    )
+    many = f" ×{a.qty}" if a.qty > 1 else ""
+    ctx.outbox.append({"kind": "system", "content": f"{ch.name} {HOW_RU[a.how]} «{a.name}»{many}: вещь в инвентаре."})
+    return result
+
+
+async def _add_to_inventory(
+    ctx: ToolContext, ch: Character, template_id: str, display_name: str | None, qty: int
+) -> tuple[str, list[dict]]:
+    """Кладёт предметы в инвентарь: такой же неснаряжённый предмет складывается в стопку. Строка инвентаря живёт в
+    БД, поэтому подобранное остаётся у героя между ходами и сессиями. Возвращает id строки и обратную дельту."""
+    items = ctx.world.inventory.setdefault(ch.id, [])
+    same = next(
+        (i for i in items if i.item_template_id == template_id and i.display_name == display_name and not i.equipped),
+        None,
+    )
+    if same is not None:
+        inverse = [{"table": "inventory", "id": same.id, "field": "qty", "before": same.qty}]
+        same.qty += qty
+        ctx.world.invalidate(ch.id)
+        return same.id, inverse
+    row = InventoryItem(character_id=ch.id, item_template_id=template_id, display_name=display_name, qty=qty)
+    ctx.session.add(row)
+    await ctx.session.flush()
+    items.append(row)
+    ctx.world.invalidate(ch.id)
+    return row.id, [{"table": "inventory", "op": "delete", "id": row.id}]
+
+
+async def _remove_from_inventory(ctx: ToolContext, ch: Character, it: InventoryItem, qty: int) -> list[dict]:
+    if qty > it.qty:
+        raise ToolError(f"у {ch.name} только {it.qty} шт. «{ctx.world.item_name(it)}»")
+    inverse = [
+        {
+            "table": "inventory",
+            "id": it.id,
+            "field": "qty",
+            "before": it.qty,
+            "row": {
+                "character_id": ch.id,
+                "item_template_id": it.item_template_id,
+                "display_name": it.display_name,
+                "equipped": it.equipped,
+            },
+        }
+    ]
+    it.qty -= qty
+    if it.qty == 0:
+        await ctx.session.delete(it)
+        ctx.world.inventory[ch.id].remove(it)
+    ctx.world.invalidate(ch.id)
+    return inverse
+
+
+def _own_item(ctx: ToolContext, ch: Character, inventory_id: str) -> InventoryItem:
+    it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == inventory_id), None)
+    if it is None:
+        raise ToolError(f"у {ch.name} нет предмета {inventory_id}")
+    return it
+
+
+def _can_handle(ctx: ToolContext, ch: Character) -> None:
+    act = ctx.world.actor(ch.id)
+    if act.hp.current == 0:
+        raise ToolError(f"{ch.name} без сознания: брать и отдавать вещи не может")
 
 
 class TakeItemArgs(BaseModel):
@@ -608,31 +727,9 @@ class TakeItemArgs(BaseModel):
 )
 async def take_item(ctx: ToolContext, a: TakeItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
-    it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
-    if it is None:
-        raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}")
-    if a.qty > it.qty:
-        raise ToolError(f"у {ch.name} только {it.qty} шт.")
+    it = _own_item(ctx, ch, a.inventory_id)
     name = ctx.world.item_name(it)
-    inverse = [
-        {
-            "table": "inventory",
-            "id": it.id,
-            "field": "qty",
-            "before": it.qty,
-            "row": {
-                "character_id": ch.id,
-                "item_template_id": it.item_template_id,
-                "display_name": it.display_name,
-                "equipped": it.equipped,
-            },
-        }
-    ]
-    it.qty -= a.qty
-    if it.qty == 0:
-        await ctx.session.delete(it)
-        ctx.world.inventory[ch.id].remove(it)
-    ctx.world.invalidate(ch.id)
+    inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
     result = {"character": ch.name, "item": name, "qty": a.qty}
     await ctx.record("take_item", target_id=ch.id, payload={**result, "reason": a.reason}, inverse=inverse)
     return result
@@ -655,6 +752,8 @@ async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}")
+    if it.item_template_id == FOUND_ITEM:
+        raise ToolError(f"«{ctx.world.item_name(it)}» нельзя надеть или взять как оружие: это обычная вещь")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     inverse = [{"table": "inventory", "id": it.id, "field": "equipped", "before": it.equipped}]
     if a.equipped and rec.data.get("category") == "armor":
@@ -670,6 +769,179 @@ async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
     act = ctx.world.actor(ch.id)
     result = {"character": ch.name, "item": ctx.world.item_name(it), "equipped": a.equipped, "ac": act.ac}
     await ctx.record("equip_item", target_id=ch.id, payload=result, inverse=inverse)
+    return result
+
+
+# --- предметы в сцене: добыча, которую герои подбирают сами ---
+
+
+class PlaceItemArgs(BaseModel):
+    item_template_id: str
+    qty: int = Field(1, ge=1, le=100)
+    display_name: str | None = Field(None, max_length=128, description="имя предмета в мире; свойства — из шаблона")
+    zone: Zone = "near"
+    description: str = Field(
+        "", max_length=500, description="где и как лежит, как его видят герои: текст карточки для игроков"
+    )
+    reason: str = Field(description="откуда предмет: выпал у врага, лежит в сундуке, тайник")
+
+
+@tool(
+    "place_item",
+    "Кладёт предмет из шаблона в текущую сцену: добыча у павшего врага, содержимое сундука, находка на полу. Герой "
+    "подбирает его сам через pick_up_item, и тогда предмет остаётся в его инвентаре.",
+    PlaceItemArgs,
+    ids={"item_template_id": "templates:item_template"},
+    closes=False,
+)
+async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
+    rec = ctx.world.catalog.get(a.item_template_id, "item_template")
+    en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description)
+    result = {"entity_id": en.id, "item": en.name, "qty": a.qty}
+    await ctx.record(
+        "place_item", target_id=en.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
+    )
+    return result
+
+
+async def _put_in_scene(
+    ctx: ToolContext, template_id: str, display_name: str | None, qty: int, zone: str, description: str = ""
+) -> tuple[Entity, list[dict]]:
+    """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит рядом, складывается в стопку."""
+    rec = ctx.world.catalog.find(template_id)
+    name = display_name or (rec.name if rec else template_id)
+    for en in ctx.world.in_scene_entities():
+        st = en.state or {}
+        same = en.template_id == template_id and st.get("display_name") == display_name and en.zone == zone
+        if is_scene_item(en) and same:
+            en.state = {**st, "qty": int(st.get("qty") or 1) + qty}
+            return en, [{"table": "entities", "id": en.id, "field": "state", "before": st}]
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=name,
+        template_id=template_id,
+        description=description or ((rec.data.get("description") or "") if rec else ""),
+        state={"item": True, "qty": qty, "display_name": display_name},
+        location_id=ctx.world.scene.location_id,
+        zone=zone,
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    ctx.world.entities[en.id] = en
+    return en, [{"table": "entities", "op": "delete", "id": en.id}]
+
+
+class PickUpArgs(BaseModel):
+    character_id: str
+    entity_id: str = Field(description="предмет, который лежит в сцене")
+    qty: int | None = Field(None, ge=1, le=100, description="сколько взять; по умолчанию всё")
+
+
+@tool(
+    "pick_up_item",
+    "Герой подбирает предмет, лежащий в сцене: предмет переходит в его инвентарь и остаётся там. Бросок не нужен, "
+    "если предмет никто не охраняет.",
+    PickUpArgs,
+    ids={"character_id": "characters", "entity_id": "scene_items"},
+)
+async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    _can_handle(ctx, ch)
+    en = ctx.world.entities.get(a.entity_id)
+    if en is None or en not in ctx.world.in_scene_entities():
+        raise ToolError(f"предмета {a.entity_id} нет в этой сцене")
+    if not is_scene_item(en):
+        raise ToolError(f"{en.name} — не предмет: его нельзя положить в инвентарь")
+    st = dict(en.state or {})
+    have = int(st.get("qty") or 1)
+    qty = a.qty or have
+    if qty > have:
+        raise ToolError(f"здесь лежит только {have} шт. «{en.name}»")
+    if en.template_id != FOUND_ITEM:
+        ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
+    inverse = [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
+    inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
+    inverse += inv
+    result = {"character": ch.name, "item": en.name, "qty": qty, "inventory_id": inv_id, "left": have - qty}
+    await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
+    many = f" ×{qty}" if qty > 1 else ""
+    ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
+    if qty == have:
+        await ctx.session.delete(en)
+        ctx.world.entities.pop(en.id, None)
+    else:
+        en.state = {**st, "qty": have - qty}
+    return result
+
+
+def _entity_row(en: Entity) -> dict:
+    return {
+        "id": en.id,
+        "kind": en.kind,
+        "name": en.name,
+        "template_id": en.template_id,
+        "description": en.description,
+        "state": copy.deepcopy(en.state),
+        "location_id": en.location_id,
+        "zone": en.zone,
+    }
+
+
+class DropArgs(BaseModel):
+    character_id: str
+    inventory_id: str
+    qty: int = Field(1, ge=1, le=100)
+
+
+@tool(
+    "drop_item",
+    "Герой бросает или оставляет предмет из инвентаря в сцене: он ляжет рядом, и его можно будет подобрать снова.",
+    DropArgs,
+    ids={"character_id": "characters", "inventory_id": "inventory"},
+)
+async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    it = _own_item(ctx, ch, a.inventory_id)
+    template, display = it.item_template_id, it.display_name
+    name = ctx.world.item_name(it)
+    inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee")
+    inverse += inv
+    result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
+    await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
+    return result
+
+
+class PassItemArgs(BaseModel):
+    character_id: str = Field(description="кто отдаёт")
+    to_character_id: str = Field(description="кому из героев отряда")
+    inventory_id: str
+    qty: int = Field(1, ge=1, le=100)
+
+
+@tool(
+    "pass_item",
+    "Герой передаёт предмет из своего инвентаря другому герою отряда.",
+    PassItemArgs,
+    ids={"character_id": "characters", "to_character_id": "characters", "inventory_id": "inventory"},
+)
+async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    to = _character(ctx, a.to_character_id)
+    if ch.id == to.id:
+        raise ToolError("отдать предмет самому себе нельзя")
+    _can_handle(ctx, ch)
+    it = _own_item(ctx, ch, a.inventory_id)
+    template, display = it.item_template_id, it.display_name
+    name = ctx.world.item_name(it)
+    inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+    inv_id, inv = await _add_to_inventory(ctx, to, template, display, a.qty)
+    result = {"from": ch.name, "to": to.name, "item": name, "qty": a.qty, "inventory_id": inv_id}
+    await ctx.record("pass_item", actor_id=ch.id, target_id=to.id, payload=result, inverse=inverse + inv)
+    ctx.outbox.append(
+        {"kind": "system", "content": f"{ch.name} передаёт {to.name} «{name}»{f' ×{a.qty}' if a.qty > 1 else ''}."}
+    )
     return result
 
 
@@ -1322,75 +1594,6 @@ async def rest(ctx: ToolContext, a: RestArgs) -> dict:
         "rest", payload={"kind": a.kind, "results": results, "expired": expired}, dice=dice, inverse=inverse
     )
     return {"kind": a.kind, "results": results, "time": format_time(ctx.world.scene.game_time), "expired": expired}
-
-
-class GrantLevelArgs(BaseModel):
-    character_ids: list[str] = Field(min_length=1)
-    reason: str = Field(description="сюжетная веха")
-
-
-@tool(
-    "grant_level",
-    "Повышение уровня на сюжетной вехе. Потолок — уровень пакета. Хиты растут по SRD.",
-    GrantLevelArgs,
-    ids={"character_ids": "characters"},
-    closes=False,
-)
-async def grant_level(ctx: ToolContext, a: GrantLevelArgs) -> dict:
-    cap = MAX_LEVEL_DEFAULT
-    for pid, ver in ctx.campaign.content_chain or []:
-        from app.db.models import ContentPack
-
-        p = await ctx.session.get(ContentPack, (pid, ver))
-        if p and p.manifest.get("level_cap"):
-            cap = min(cap, int(p.manifest["level_cap"]))
-    out = []
-    for cid in a.character_ids:
-        ch = _character(ctx, cid)
-        act = ctx.world.actor(ch.id)
-        level = int((ch.sheet or {}).get("level", 1))
-        if level >= cap:
-            raise ToolError(f"{ch.name} уже на потолке уровня ({cap})")
-        inverse = [
-            {"table": "characters", "id": ch.id, "field": "sheet", "before": copy.deepcopy(ch.sheet)},
-            snapshot(act),
-        ]
-        old_max = act.hp.maximum
-        ch.sheet = {**ch.sheet, "level": level + 1}
-        ctx.world.invalidate(ch.id)
-        new = ctx.world.actor(ch.id)
-        # максимум хитов в карточке пересчитывается, текущие растут на прибавку
-        res = dict(ch.resources or {})
-        gain = new_max = 0
-        from app.rules.dnd5e.character import derive  # noqa: F401 — пересчёт уже сделан в actor
-
-        new_max = engine.hit_points_max(
-            int(
-                str(
-                    (ctx.world.catalog.find(ch.sheet.get("class_id", ""), "class").data or {}).get("hit_die", "d8")
-                ).lstrip("d")
-            ),
-            new.mods["con"],
-            level + 1,
-        )
-        gain = new_max - old_max
-        res.update(
-            {
-                "hp_max": new_max,
-                "hp": int(res.get("hp", old_max)) + gain,
-                "hit_dice": int(res.get("hit_dice", level)) + 1,
-            }
-        )
-        ch.resources = res
-        ctx.world.invalidate(ch.id)
-        await ctx.record(
-            "grant_level",
-            target_id=ch.id,
-            payload={"level": level + 1, "reason": a.reason, "hp_max": new_max},
-            inverse=inverse,
-        )
-        out.append({"character": ch.name, "level": level + 1, "hp_max": new_max})
-    return {"levels": out}
 
 
 # --- общение и контракт намерения ---

@@ -8,6 +8,8 @@ import { api } from "../lib/api";
 import {
   cleanBrief,
   DIFFICULTY_RU,
+  LEVELING_HINT,
+  LEVELING_RU,
   splitThemes,
   type Brief,
   type CampaignOptions,
@@ -23,6 +25,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
     name: room.name,
     public_intro: room.public_intro,
     difficulty: room.difficulty,
+    leveling: st.leveling ?? "xp",
     turn_timeout_sec: st.turn_timeout_sec ?? 300,
     collect_window_sec: st.collect_window_sec ?? 60,
     spend_limit_usd: st.spend_limit_usd == null ? "" : String(st.spend_limit_usd),
@@ -44,6 +47,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           name: f.name.trim(),
           public_intro: f.public_intro,
           difficulty: f.difficulty,
+          leveling: f.leveling,
           turn_timeout_sec: f.turn_timeout_sec,
           collect_window_sec: f.collect_window_sec,
           spend_limit_usd: limit,
@@ -87,6 +91,15 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             value={f.difficulty}
             options={Object.entries(DIFFICULTY_RU)}
             onChange={(difficulty) => set({ difficulty })}
+          />
+        </Field>
+
+        <Field label="Рост уровней" hint={LEVELING_HINT[f.leveling]}>
+          <Segmented
+            label="Рост уровней"
+            value={f.leveling}
+            options={Object.entries(LEVELING_RU)}
+            onChange={(v) => set({ leveling: v as "xp" | "milestone" })}
           />
         </Field>
 

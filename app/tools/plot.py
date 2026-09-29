@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app.core import plot
 from app.core.world import creature_stats
 from app.db.models import CampaignSecret, Entity
+from app.tools import progress
 from app.tools.registry import ToolContext, ToolError, tool
 
 PLOT_TOOLS = ("get_plot", "advance_plot", "plot_reveal", "end_act", "develop", "threat_tick")
@@ -95,9 +96,14 @@ async def advance_plot(ctx: ToolContext, a: AdvanceArgs) -> dict:
             out["hint"] = f"все узлы акта закрыты. Когда выполнено условие перехода ({act.get('exit')}), вызови end_act"
         return out
 
-    return await _change(
+    out = await _change(
         ctx, "advance_plot", fn, payload={"node_id": a.node_id, "result": a.result, "outcome": a.outcome}
     )
+    if a.result == "done":  # задача сюжета выполнена: опыт отряду (в кампании с опытом)
+        xp = await progress.goal_reached(ctx, "task", "medium", "задача сюжета выполнена")
+        if xp:
+            out["xp"] = xp
+    return out
 
 
 class RevealPlotArgs(BaseModel):
@@ -126,8 +132,8 @@ class EndActArgs(BaseModel):
 
 @tool(
     "end_act",
-    "Закрывает текущий акт, когда выполнено его условие перехода, и открывает следующий. Веху уровня выдай "
-    "отдельно через grant_level.",
+    "Закрывает текущий акт, когда выполнено его условие перехода, и открывает следующий. В кампании с опытом отряд "
+    "получает опыт за квест сам; в кампании по вехам уровень выдай отдельно через grant_level.",
     EndActArgs,
     closes=False,
 )
@@ -135,7 +141,7 @@ async def end_act(ctx: ToolContext, a: EndActArgs) -> dict:
     def fn(p: dict) -> dict:
         done, nxt = plot.end_act(p, a.outcome)
         out: dict[str, Any] = {"closed": done["title"]}
-        if done.get("milestone_level"):
+        if done.get("milestone_level") and progress.leveling(ctx.campaign) == "milestone":
             out["milestone"] = f"веха акта: подними героев до уровня {done['milestone_level']} через grant_level"
         if nxt is None:
             out["next"] = "актов больше нет: веди к финалу"
@@ -145,7 +151,11 @@ async def end_act(ctx: ToolContext, a: EndActArgs) -> dict:
         return out
 
     act = plot.active_act((await _secret(ctx)).plot)
-    return await _change(ctx, "end_act", fn, payload={"act_id": act["id"] if act else None, "outcome": a.outcome})
+    out = await _change(ctx, "end_act", fn, payload={"act_id": act["id"] if act else None, "outcome": a.outcome})
+    xp = await progress.goal_reached(ctx, "quest", "hard", "квест сюжета завершён")
+    if xp:
+        out["xp"] = xp
+    return out
 
 
 class DevelopArgs(BaseModel):

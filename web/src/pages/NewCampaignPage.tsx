@@ -11,6 +11,8 @@ import { api } from "../lib/api";
 import {
   createBody,
   DIFFICULTY_RU,
+  LEVELING_HINT,
+  LEVELING_RU,
   EMPTY_DRAFT,
   loadDraft,
   saveDraft,
@@ -242,6 +244,15 @@ export default function NewCampaignPage() {
                 value={draft.difficulty}
                 options={Object.entries(DIFFICULTY_RU)}
                 onChange={(v) => set({ difficulty: v, players: null })}
+              />
+            </Field>
+
+            <Field label="Рост уровней" hint={LEVELING_HINT[draft.leveling]}>
+              <Segmented
+                label="Рост уровней"
+                value={draft.leveling}
+                options={Object.entries(LEVELING_RU)}
+                onChange={(v) => set({ leveling: v as CampaignDraft["leveling"] })}
               />
             </Field>
 
@@ -502,6 +513,7 @@ function Summary({
     ["Название стола", draft.name || "—"],
     ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
     ["Сложность", DIFFICULTY_RU[draft.difficulty] ?? draft.difficulty],
+    ["Рост уровней", LEVELING_RU[draft.leveling] ?? draft.leveling],
     ["Ведущий", master + (persona && draft.master !== "owner" ? ` (${persona})` : "")],
     ["Длительность", b.length ? opts.brief.length[b.length] : "На усмотрение архитектора"],
     ["Атмосфера", b.emotions?.length ? b.emotions.map((e) => opts.brief.emotions[e]).join(", ") : "Стандартная"],

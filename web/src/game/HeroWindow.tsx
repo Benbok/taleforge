@@ -179,6 +179,31 @@ function Gear({ h }: { h: HeroSheet }) {
   );
 }
 
+/** Опыт до следующего уровня полоской: сколько набрано от порога текущего уровня. */
+function Xp({ h }: { h: HeroSheet }) {
+  const p = h.progress;
+  if (!p) return null;
+  if (p.next_xp == null) return <p className="text-xs text-muted">Опыт {p.xp} · высший уровень</p>;
+  const pct = Math.max(0, Math.min(100, ((p.xp - p.level_xp) / (p.next_xp - p.level_xp)) * 100));
+  return (
+    <div className="mt-1 flex items-center gap-2 text-xs text-muted" title="Опыт делится поровну между героями отряда">
+      <div
+        className="h-1.5 w-32 overflow-hidden rounded bg-line"
+        role="progressbar"
+        aria-label="Опыт до следующего уровня"
+        aria-valuemin={p.level_xp}
+        aria-valuemax={p.next_xp}
+        aria-valuenow={p.xp}
+      >
+        <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
+      </div>
+      <span>
+        Опыт {p.xp} / {p.next_xp}
+      </span>
+    </div>
+  );
+}
+
 function State({ h }: { h: HeroSheet }) {
   const r = h.resources;
   const [s, f] = r.death_saves ?? [0, 0];
@@ -326,6 +351,7 @@ export default function HeroWindow() {
             <p className="text-muted">
               {[sheet.origin_name, sheet.class_name, `${sheet.level} уровень`].filter(Boolean).join(" · ")}
             </p>
+            <Xp h={sheet} />
             {sheet.lineage && (
               <p className="text-sm" title={sheet.lineage.features.join(", ")}>
                 {sheet.lineage.name}
