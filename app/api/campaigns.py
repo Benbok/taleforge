@@ -25,9 +25,10 @@ from app.api.schemas import (
 )
 from app.content.catalog import CatalogError, resolve_chain
 from app.content.importer import latest_version
+from app.core import audio, chat, master_log
 from app.core import campaigns as svc
-from app.core import chat, master_log
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
+from app.core.world import get_scene
 from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, ModelProfile, User
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
@@ -159,7 +160,9 @@ async def get_campaign(campaign_id: str, user: UserDep, session: SessionDep) -> 
 
 
 @router.patch("/campaigns/{campaign_id}")
-async def patch_campaign(campaign_id: str, body: CampaignPatchIn, user: UserDep, session: SessionDep) -> CampaignOut:
+async def patch_campaign(
+    campaign_id: str, body: CampaignPatchIn, user: UserDep, session: SessionDep, request: Request
+) -> CampaignOut:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:
         raise AccessDenied("менять кампанию может только владелец")
@@ -171,13 +174,18 @@ async def patch_campaign(campaign_id: str, body: CampaignPatchIn, user: UserDep,
     if body.difficulty is not None:
         c.difficulty = body.difficulty
     settings = dict(c.settings)
-    for key in ("turn_timeout_sec", "spend_limit_usd", "collect_window_sec", "excluded_themes"):
+    for key in ("turn_timeout_sec", "spend_limit_usd", "collect_window_sec", "excluded_themes", "audio_enabled"):
         if key in body.model_fields_set:
             settings[key] = getattr(body, key)
+    sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     c.settings = settings
     if body.brief is not None:
         c.brief = body.brief.model_dump(exclude_defaults=True)
     await session.commit()
+    if sound:  # звук включили или выключили посреди игры: у игроков он заиграет или смолкнет сразу
+        sc = await get_scene(session, c.id)
+        env = envelope("audio.state", c.id, {**audio.public_state(c, sc), "cues": []})
+        await request.app.state.bus.publish(c.id, env, None)
     return await campaign_out(session, c, user)
 
 

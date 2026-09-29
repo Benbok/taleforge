@@ -284,6 +284,29 @@ export interface Vote {
   deadline: number;
 }
 
+/** Дорожка, которая звучит в слое (design/audio-mixer.md). */
+export interface AudioTrack {
+  id: string;
+  title: string;
+  layer: string;
+  url: string;
+  bpm: number | null;
+  bars: number | null;
+  gain_db: number;
+  level?: number; // громкость слоя от мастера, 0..1
+  since?: number; // с какого момента по часам сервера звучит петля
+}
+
+export type LoopLayer = "music" | "rhythm" | "ambience";
+
+export interface AudioState {
+  enabled: boolean;
+  v: number;
+  now: number; // часы сервера в момент отправки
+  layers: Record<LoopLayer, AudioTrack | null>;
+  cues?: AudioTrack[]; // эффекты: звучат один раз с этим событием
+}
+
 export interface Snapshot {
   protocol: number;
   campaign: { id: string; name: string; status: CampaignStatus; public_intro: string };
@@ -296,6 +319,7 @@ export interface Snapshot {
   summary?: SessionSummary | null;
   heroes: HeroPublic[];
   scene: Scene;
+  audio?: AudioState;
   actions: string[];
   blocked: Record<string, string>;
   pending: PendingReply | null;

@@ -26,6 +26,7 @@ class Settings:
     superadmin_password: str | None = None
     content_dir: Path = ROOT / "content"
     media_dir: Path = ROOT / "media"  # голосовые реплики игроков
+    audio_dir: Path = ROOT / "audio"  # библиотека звука: треки и tracks.yaml (design/audio-mixer.md)
     ws_auth_timeout_sec: float = 10.0
     message_max_len: int = 4000
     history_on_join: int = 50
@@ -54,6 +55,7 @@ class Settings:
             superadmin_password=_env("SUPERADMIN_PASSWORD"),
             content_dir=Path(_env("CONTENT_DIR", str(ROOT / "content"))),
             media_dir=Path(_env("MEDIA_DIR", str(ROOT / "media"))),
+            audio_dir=Path(_env("AUDIO_DIR", str(ROOT / "audio"))),
             open_signup=(_env("OPEN_SIGNUP", "1") or "1").lower() not in ("0", "false", "no"),
             master_log_secrets=(_env("MASTER_LOG_SECRETS", "1") or "1").lower() not in ("0", "false", "no"),
             stt_api_base=_env("STT_API_BASE"),

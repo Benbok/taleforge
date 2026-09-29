@@ -94,6 +94,7 @@ async def _snapshot(
             "summary": memory.public_summary(last.content) if last is not None else None,
             "heroes": await _heroes(session, c.id),
             "scene": await _scene(session, c),
+            "audio": await _audio(session, c),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
             "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
             "replay": last_seq is not None,
@@ -153,6 +154,14 @@ async def _scene(session: AsyncSession, c: Campaign) -> dict:
         "order": combat.public_order(sc.turn_order, chars, {e.id: e for e in ents}),
         "turn": await _turn(session, c.id),
     }
+
+
+async def _audio(session: AsyncSession, c: Campaign) -> dict:
+    """Что звучит сейчас: вошедший позже слышит то же, что остальные."""
+    from app.core import audio
+    from app.core.world import get_scene
+
+    return audio.public_state(c, await get_scene(session, c.id))
 
 
 async def _turn(session: AsyncSession, campaign_id: str) -> dict | None:

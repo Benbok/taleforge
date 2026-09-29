@@ -46,6 +46,7 @@ class ToolContext:
     closed: set[str] = field(default_factory=set)  # персонажи, чьи действия закрыты вызовом или отказом
     signals: set[str] = field(default_factory=set)  # что сделать после фиксации хода (например, "replan")
     carded: set[str] = field(default_factory=set)  # события, у которых уже есть карточка броска в чате
+    audio: list[dict[str, Any]] = field(default_factory=list)  # эффекты звука, прозвучат с публикацией хода
     call_key: str | None = None
     _first_event: Event | None = None
 
@@ -120,6 +121,12 @@ def _enum_values(world: World, key: str) -> list[str]:
         from app.core.plot import valid_ids
 
         return valid_ids(world.plot, key.split(":", 1)[1])
+    if key.startswith("audio:"):
+        from app.core import audio
+
+        layer = key.split(":", 1)[1]
+        ids = audio.choices(world.campaign, layer)
+        return [*ids, "off"] if layer in audio.LOOPS else ids
     if key == "seats":
         return [s.id for s in world.campaign.seats if s.role == "player" and s.occupant_type != "empty"]
     return world.valid_ids().get(key, [])

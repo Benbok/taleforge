@@ -133,6 +133,36 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
         </Field>
       </section>
 
+      {/* Sound */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Звук">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-heading text-xl font-bold text-ink">Звуковое сопровождение</h2>
+          <p className="text-xs text-muted">
+            ИИ-мастер сам включает мелодию, ритм и атмосферу из библиотеки «Звук» по ходу сцен. Дорожки загружает
+            Admin. Выключено — мастер не тратит на звук ни одного токена.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${st.audio_enabled ? "text-patina-hi" : "text-muted"}`}>
+            {st.audio_enabled ? "● включено" : "○ выключено"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={st.audio_enabled ? "Звук выключен: у игроков он смолкнет сразу" : "Звук включён: мастер начнёт вести его со следующего хода"}
+            run={async () =>
+              onRoom(
+                await api<Room>(`/api/campaigns/${room.id}`, {
+                  method: "PATCH",
+                  body: { audio_enabled: !st.audio_enabled },
+                }),
+              )
+            }
+          >
+            {st.audio_enabled ? "Выключить звук" : "Включить звук"}
+          </ActionButton>
+        </div>
+      </section>
+
       {/* Brief Form */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
         <div className="border-b border-line pb-3">

@@ -11,13 +11,14 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
-from app.core import combat, rolls
+from app.core import audio, combat, rolls
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
 from app.core.world import ZONE_NAMES, World, load_world
 from app.db.models import Campaign, Entity, Message
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
+from app.tools import audio as _audio_tools  # noqa: F401 — звук сцены
 from app.tools import master as _tools  # noqa: F401 — регистрирует инструменты в реестре
 from app.tools import plot as _plot_tools  # noqa: F401 — инструменты ведения по каркасу
 from app.tools.registry import ToolContext
@@ -43,6 +44,7 @@ async def open_context(
 async def flush_outbox(session: AsyncSession, ctx: ToolContext) -> list[Message]:
     """Карточки открытых бросков хода и сообщения, которые инструменты отложили до конца хода (шёпот), получают
     номера и пишутся в чат. Вызывается до повествования, поэтому числа в чате появляются раньше слов."""
+    audio.finalize(ctx)  # короткие фразы на гибель героя и раскрытую тайну — до фиксации хода
     out = []
     heroes = set(ctx.world.characters)
     for ev in ctx.events:
@@ -135,3 +137,9 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
     await bus.publish(cid, envelope("scene.updated", cid, scene_public(w)), None)
     for m in messages:
         await publish_message(bus, m, names)
+    if "audio" in ctx.signals:
+        # после сообщений: эффект звучит, когда игроки уже видят текст хода
+        payload = {**audio.public_state(ctx.campaign, w.scene), "cues": list(ctx.audio)}
+        await bus.publish(cid, envelope("audio.state", cid, payload), None)
+        ctx.audio.clear()
+        ctx.signals.discard("audio")

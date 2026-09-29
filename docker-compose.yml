@@ -28,11 +28,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://taleforge:${POSTGRES_PASSWORD:-taleforge}@db/taleforge
       REDIS_URL: redis://redis:6379/0
       MEDIA_DIR: /srv/media
+      AUDIO_DIR: /srv/audio
     ports:
       - "8000:8000"
     volumes:
       - ./content:/srv/content:ro
       - media:/srv/media  # голосовые реплики игроков
+      - ./audio:/srv/audio  # библиотека звука: на запись, админка кладёт треки прямо в папку проекта
     depends_on:
       db:
         condition: service_healthy

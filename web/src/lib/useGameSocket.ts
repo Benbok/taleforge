@@ -1,17 +1,27 @@
 import { useEffect } from "react";
 import { getToken } from "./api";
 import { GameSocket, socketUrl } from "./socket";
-import type { Envelope } from "./types";
+import type { AudioState, Envelope, Snapshot } from "./types";
 import { standInFor, useGame } from "../stores/game";
 import { voteQuestion } from "../game/VotePanel";
 import { toast } from "../stores/toasts";
 import { resolveToolResult } from "../master/tools";
+import { sound } from "../game/sound";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
 const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
+  if (e.type === "state.snapshot") {
+    const a = (e.payload as unknown as Snapshot).audio;
+    if (a) void sound.apply(a);
+  }
+  if (e.type === "audio.state") {
+    const a = e.payload as unknown as AudioState;
+    void sound.apply(a);
+    if (a.cues?.length) void sound.cue(a.cues); // эффект — сразу, не дожидаясь загрузки новых петель
+  }
   if (e.type === "error") {
     const p = e.payload as { code?: string; message?: string };
     if (p.code !== "unauthorized") toast.error(p.message ?? "сервер отклонил действие");
@@ -53,8 +63,10 @@ export function useGameSocket(campaignId: string): void {
       onStatus: (s, detail) => useGame.getState().setConnection(s, detail),
     });
     useGame.getState().setSocket(sock);
+    sound.onError = (text) => toast.error(text);
     sock.start();
     return () => {
+      sound.stop();
       sock.stop();
       useGame.getState().setSocket(null);
     };

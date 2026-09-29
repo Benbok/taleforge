@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
+import AudioSection from "../admin/AudioSection";
 import PacksSection from "../admin/PacksSection";
 import SpendSection from "../admin/SpendSection";
 import VoiceSection from "../admin/VoiceSection";
@@ -7,7 +8,7 @@ import ModelsSection from "../profile/ModelsSection";
 import UsersSection from "../profile/UsersSection";
 import { useSession } from "../stores/session";
 
-type Tab = "packs" | "models" | "voice" | "spend" | "users";
+type Tab = "packs" | "models" | "voice" | "audio" | "spend" | "users";
 
 interface TabItem {
   id: Tab;
@@ -84,6 +85,27 @@ export default function AdminPage() {
           <rect x="9" y="2" width="6" height="12" rx="3" />
           <path d="M5 10a7 7 0 0 0 14 0" />
           <path d="M12 17v5" />
+        </svg>
+      ),
+    },
+    {
+      id: "audio",
+      label: "Звук",
+      icon: (active) => (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={active ? "var(--tf-accent)" : "currentColor"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
         </svg>
       ),
     },
@@ -237,6 +259,7 @@ export default function AdminPage() {
               {tab === "packs" && <PacksSection />}
               {tab === "models" && <ModelsSection superAdmin={superAdmin} />}
               {tab === "voice" && <VoiceSection />}
+              {tab === "audio" && <AudioSection />}
               {tab === "spend" && <SpendSection />}
               {tab === "users" && superAdmin && <UsersSection me={user} />}
             </div>
