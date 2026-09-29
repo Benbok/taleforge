@@ -270,6 +270,8 @@ class Character(Base):
     public_bio: Mapped[str] = mapped_column(Text, default="")
     private_backstory: Mapped[str] = mapped_column(Text, default="")
     personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    # анкета характера (этап 9б): свободный текст, поля-подсказки и ядро — поля, которые летопись не трогает
+    persona: Mapped[dict[str, Any]] = mapped_column(default=dict)
     review_comment: Mapped[str | None] = mapped_column(Text)
     location_id: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -391,6 +393,24 @@ class MasterTurn(Base):
     narration_message_id: Mapped[str | None] = mapped_column(String(32))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PersonaNote(Base):
+    """Летопись характера (этап 9б): как герой или ИИ-мастер изменился и почему. ``character_id`` пуст — запись
+    о мастере кампании. Откаченная запись хранится, но в подсказку модели не идёт."""
+
+    __tablename__ = "persona_notes"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("pn"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    character_id: Mapped[str | None] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    text: Mapped[str] = mapped_column(Text)  # что изменилось
+    cause: Mapped[str] = mapped_column(Text, default="")  # почему
+    source: Mapped[str] = mapped_column(String(16))  # session | event | owner
+    edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    reverted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class Summary(Base):
