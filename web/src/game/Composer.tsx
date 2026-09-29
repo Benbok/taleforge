@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { api } from "../lib/api";
 import { standInFor, useGame } from "../stores/game";
 import { useDraft } from "./draft";
+import { clock, MAX_RECORD_SEC, uploadVoice, useRecorder } from "./voice";
 
 let counter = 0;
 const clientId = () => `c${Date.now().toString(36)}${(counter++).toString(36)}`;
@@ -64,6 +67,13 @@ export default function Composer() {
   const left = myTurn ? secondsLeft(turn?.deadline, now) : null;
   const nowWait = useNow(!!myPending);
   const wait = myPending ? waitLeft(myPending.created_at, snapshot?.collect_window_sec ?? 0, nowWait) : null;
+  const voiceOn = useQuery({
+    queryKey: ["voice"],
+    queryFn: () => api<{ enabled: boolean }>("/api/voice"),
+    staleTime: 5 * 60_000,
+  }).data?.enabled;
+  const [uploading, setUploading] = useState(false);
+  const rec = useRecorder((blob, seconds) => void sendVoice(blob, seconds));
 
   // отменённая реплика возвращается в поле, чтобы её поправить
   useEffect(() => {
@@ -124,9 +134,37 @@ export default function Composer() {
     setText("");
   }
 
+  /** Голосовая уходит в чат сразу: сервер расшифрует её, и под плеером появится текст. */
+  async function sendVoice(blob: Blob, seconds: number) {
+    const st = useGame.getState();
+    const campaignId = st.snapshot?.campaign.id;
+    const w = useDraft.getState().whisper;
+    if (!campaignId || st.connection !== "open" || !st.socket) {
+      setSendError("Нет связи с сервером: голосовое не отправлено, запишите его после переподключения.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const voice = await uploadVoice(campaignId, blob);
+      const id = clientId();
+      const payload = { kind: w ? "whisper" : "auto", voice, duration: Math.round(seconds * 10) / 10, client_id: id, ...asSeat };
+      if (!st.socket.send("message.send", payload)) throw new Error("нет связи с сервером");
+      addPending({ clientId: id, text: "", whisper: w, at: Date.now(), voice: true });
+      setSendError(null);
+    } catch (e) {
+      setSendError(`Голосовое не отправлено: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) send(e as unknown as FormEvent);
   }
+
+  const voiceAllowed = whisper ? canWhisper : mainOpen;
+  const voiceReason = voiceAllowed ? null : (reason ?? "Сейчас голосовое отправить нельзя.");
+  const recording = rec.state === "recording";
 
   const placeholder = whisper
     ? "Шёпот мастеру…"
@@ -189,10 +227,52 @@ export default function Composer() {
           onKeyDown={onKey}
           aria-label="Сообщение"
         />
-        <button type="submit" className="btn btn-primary h-[2.75rem]" disabled={!trimmed} title="Отправить (Enter)">
-          Отправить
-        </button>
+        {voiceOn && recording && (
+          <button type="button" className="btn h-[2.75rem] px-3" onClick={rec.cancel} title="Не отправлять запись">
+            Отмена
+          </button>
+        )}
+        {voiceOn && (
+          <button
+            type="button"
+            className={`btn h-[2.75rem] px-3 ${recording ? "border-bad text-bad" : ""}`}
+            disabled={rec.state === "starting" || uploading || (!recording && !voiceAllowed)}
+            onClick={() => (recording ? rec.stop() : rec.start())}
+            aria-pressed={recording}
+            aria-label={recording ? "Остановить и отправить голосовое" : "Записать голосовое"}
+            title={recording ? "Остановить и отправить" : (voiceReason ?? "Записать голосовое")}
+          >
+            {recording ? (
+              <span className="flex items-center gap-1.5 font-mono text-sm">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-bad" />■ {clock(rec.seconds)}
+              </span>
+            ) : uploading || rec.state === "starting" ? (
+              "…"
+            ) : (
+              <MicIcon />
+            )}
+          </button>
+        )}
+        {!recording && (
+          <button type="submit" className="btn btn-primary h-[2.75rem]" disabled={!trimmed} title="Отправить (Enter)">
+            Отправить
+          </button>
+        )}
       </div>
+      {recording && (
+        <p className="text-xs text-muted" role="status">
+          Идёт запись{whisper ? " шёпота мастеру" : ""}: говорите, затем нажмите ■ — голосовое уйдёт в чат, текст
+          появится под ним. Не дольше {clock(MAX_RECORD_SEC)}.
+        </p>
+      )}
+      {rec.error && (
+        <p role="alert" className="flex items-start justify-between gap-2 text-xs text-warn">
+          <span>{rec.error}</span>
+          <button type="button" className="underline" onClick={() => rec.setError(null)}>
+            скрыть
+          </button>
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         {canWhisper && (
           <button
@@ -267,5 +347,15 @@ function PlayAs({ seats, value }: { seats: string[]; value: string | null }) {
         </button>
       ))}
     </div>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <path d="M12 17v5" />
+    </svg>
   );
 }

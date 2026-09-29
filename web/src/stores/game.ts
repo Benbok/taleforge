@@ -27,6 +27,7 @@ export interface Pending {
   text: string;
   whisper: boolean;
   at: number;
+  voice?: boolean; // голосовая: текст появится, когда сервер её расшифрует
 }
 
 /** Плашка в ленте, которую видит только этот игрок: «Вы узнали больше о…». */
@@ -209,7 +210,11 @@ export const useGame = create<GameState>((set, get) => ({
           const gone = s.pending.find((x) => x.clientId === clientId) ?? s.pending[0];
           return {
             pending: s.pending.filter((x) => x !== gone),
-            rejected: { text: gone?.text ?? "", reason: String(p.reason ?? "реплика не принята") },
+            // у голосовой сервер возвращает расшифровку: её можно поправить и отправить текстом
+            rejected: {
+              text: typeof p.text === "string" ? p.text : (gone?.text ?? ""),
+              reason: String(p.reason ?? "реплика не принята"),
+            },
           };
         });
         return;
