@@ -174,7 +174,9 @@ export default function Composer() {
       <div className="flex items-end gap-2">
         <textarea
           id="tf-composer"
-          className={`field min-h-[2.75rem] flex-1 resize-none ${whisper ? "border-lore italic" : ""}`}
+          className={`field min-h-[2.75rem] flex-1 resize-none transition-colors ${
+            whisper ? "border-accent/70 bg-accent/[0.04] italic text-accent placeholder:text-accent/50" : ""
+          }`}
           rows={Math.min(6, Math.max(1, text.split("\n").length))}
           value={text}
           placeholder={placeholder}
@@ -193,10 +195,25 @@ export default function Composer() {
       </div>
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         {canWhisper && (
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={whisper} onChange={(e) => setWhisper(e.target.checked)} />
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={whisper}
+            onClick={() => setWhisper(!whisper)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer select-none ${
+              whisper
+                ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
+                : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
+            }`}
+            title="Шёпот видит только мастер"
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full transition-all ${
+                whisper ? "bg-accent shadow-[0_0_6px_var(--tf-accent)]" : "bg-muted/40"
+              }`}
+            />
             Шёпот мастеру
-          </label>
+          </button>
         )}
         {can("turn.pass") && (
           <button
