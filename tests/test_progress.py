@@ -257,3 +257,75 @@ def test_leveling_setting_and_sheet_progress(client, admin, settings):
 @pytest.mark.parametrize("verb", ["pick_up", "drop", "give"])
 def test_parser_knows_item_verbs(verb):
     assert verb in VERBS
+
+
+def test_keep_anything_found_in_the_world(client, admin, settings):
+    cid, hero, _, _ = two_heroes(client, admin, settings)
+
+    async def fn(ctx):
+        sp = await call(
+            ctx,
+            "spawn_entity",
+            {"creature_template_id": "creature.commoner", "name": "Прохожий", "attitude": "neutral"},
+        )
+        npc = sp["result"]["spawned"][0]["id"]
+        rebar = await call(
+            ctx,
+            "keep_found_item",
+            {
+                "character_id": hero,
+                "name": "Арматура",
+                "kind": "improvised_weapon",
+                "how": "pried",
+                "reason": "вытащил из развалившейся стены",
+            },
+        )
+        hat = await call(
+            ctx,
+            "keep_found_item",
+            {
+                "character_id": hero,
+                "name": "Шляпа прохожего",
+                "kind": "object",
+                "from_id": npc,
+                "how": "stolen",
+                "reason": "стянул незаметно",
+            },
+        )
+        dagger = await call(
+            ctx,
+            "keep_found_item",
+            {
+                "character_id": hero,
+                "name": "Кинжал",
+                "kind": "template",
+                "item_template_id": "item.dagger",
+                "how": "stolen",
+                "reason": "срезал с пояса",
+            },
+        )
+        no_tpl = await call(
+            ctx,
+            "keep_found_item",
+            {"character_id": hero, "name": "Меч", "kind": "template", "how": "found", "reason": "x"},
+        )
+        use = await call(ctx, "use_item", {"character_id": hero, "inventory_id": hat["result"]["inventory_id"]})
+        drop = await call(ctx, "drop_item", {"character_id": hero, "inventory_id": hat["result"]["inventory_id"]})
+        back = await call(ctx, "pick_up_item", {"character_id": hero, "entity_id": drop["result"]["entity_id"]})
+        attacks = [x["name"] for x in ctx.world.actor(hero).attacks]
+        return rebar, hat, dagger, no_tpl, use, back, attacks
+
+    rebar, hat, dagger, no_tpl, use, back, attacks = play(settings, cid, [], fn)
+    assert rebar["ok"] and hat["ok"] and dagger["ok"], (rebar, hat, dagger)
+    assert hat["result"]["from"] == "Прохожий"
+    assert not no_tpl["ok"] and "item_template_id" in no_tpl["error"]
+    assert not use["ok"] and "без механики" in use["error"]
+    assert back["ok"], back
+    assert "Арматура" in attacks  # импровизированное оружие сразу годится для атаки
+
+    async def names(s):
+        rows = (await s.scalars(select(InventoryItem).where(InventoryItem.character_id == hero))).all()
+        return {r.display_name for r in rows}
+
+    assert {"Арматура", "Шляпа прохожего", "Кинжал"} <= run(settings, names)
+    assert any("Бран крадёт «Шляпа прохожего»" in x for x in system_lines(settings))

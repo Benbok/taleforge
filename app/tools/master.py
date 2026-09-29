@@ -37,6 +37,10 @@ engine = Dnd5eEngine()
 Zone = Literal["melee", "near", "far"]
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
+# Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
+# Такого шаблона нет в каталоге намеренно: листу героя он ничего не прибавляет.
+FOUND_ITEM = "item.found"
+IMPROVISED_WEAPON = "item.improvised_weapon"  # SRD 5.1: импровизированное оружие, 1d4
 
 
 # --- помощники ---
@@ -531,6 +535,8 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}: рука нащупывает пустоту")
+    if it.item_template_id == FOUND_ITEM:
+        raise ToolError(f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
@@ -581,6 +587,65 @@ async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
     await ctx.record(
         "give_item", target_id=ch.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
     )
+    return result
+
+
+class KeepFoundArgs(BaseModel):
+    character_id: str
+    name: str = Field(min_length=1, max_length=128, description="как вещь называется в мире: «арматура», «шляпа»")
+    kind: Literal["object", "improvised_weapon", "template"] = Field(
+        description="object — обычная вещь без механики (камень, шляпа, ключ); improvised_weapon — годится как "
+        "оружие (арматура, ножка стула): импровизированное оружие SRD 1d4; template — есть подходящий шаблон пакета "
+        "(украденный кинжал, найденное зелье), укажи item_template_id"
+    )
+    item_template_id: str | None = Field(None, description="только для kind=template")
+    qty: int = Field(1, ge=1, le=100)
+    from_id: str | None = Field(None, description="у кого или откуда взято: NPC, существо, объект сцены")
+    how: Literal["found", "pried", "stolen", "looted", "given"] = Field(
+        description="found — нашёл, pried — выломал или вытащил, stolen — украл, looted — снял с побеждённого, "
+        "given — отдали"
+    )
+    reason: str = Field(min_length=1, max_length=300, description="что произошло, одной фразой")
+
+
+HOW_RU = {"found": "находит", "pried": "добывает", "stolen": "крадёт", "looted": "забирает", "given": "получает"}
+
+
+@tool(
+    "keep_found_item",
+    "Герой оставляет себе вещь, добытую в мире по ходу игры: нашёл камень, выломал арматуру из стены, украл шляпу "
+    "у прохожего. Если добыть вещь было непросто (вытащить, украсть), сначала roll_check, и вызывай это только при "
+    "успехе. Вещь попадает в инвентарь героя и остаётся там.",
+    KeepFoundArgs,
+    ids={"character_id": "characters", "from_id": "subjects"},
+)
+async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    _can_handle(ctx, ch)
+    if a.kind == "template":
+        if not a.item_template_id:
+            raise ToolError("для kind=template укажите item_template_id (найдите его через lookup_template)")
+        template = ctx.world.catalog.get(a.item_template_id, "item_template").id
+    elif a.item_template_id:
+        raise ToolError("item_template_id — только для kind=template")
+    elif a.kind == "improvised_weapon":
+        template = ctx.world.catalog.get(IMPROVISED_WEAPON, "item_template").id
+    else:
+        template = FOUND_ITEM
+    inv_id, inverse = await _add_to_inventory(ctx, ch, template, a.name, a.qty)
+    src = ctx.world.entities.get(a.from_id or "") or ctx.world.characters.get(a.from_id or "")
+    result = {"character": ch.name, "item": a.name, "qty": a.qty, "inventory_id": inv_id, "how": a.how}
+    if src is not None:
+        result["from"] = src.name
+    await ctx.record(
+        "keep_found_item",
+        actor_id=ch.id,
+        target_id=a.from_id if src is not None else None,
+        payload={**result, "reason": a.reason, "template": template},
+        inverse=inverse,
+    )
+    many = f" ×{a.qty}" if a.qty > 1 else ""
+    ctx.outbox.append({"kind": "system", "content": f"{ch.name} {HOW_RU[a.how]} «{a.name}»{many}: вещь в инвентаре."})
     return result
 
 
@@ -685,6 +750,8 @@ async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}")
+    if it.item_template_id == FOUND_ITEM:
+        raise ToolError(f"«{ctx.world.item_name(it)}» нельзя надеть или взять как оружие: это обычная вещь")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     inverse = [{"table": "inventory", "id": it.id, "field": "equipped", "before": it.equipped}]
     if a.equipped and rec.data.get("category") == "armor":
@@ -789,7 +856,8 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     qty = a.qty or have
     if qty > have:
         raise ToolError(f"здесь лежит только {have} шт. «{en.name}»")
-    ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
+    if en.template_id != FOUND_ITEM:
+        ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
     inverse = [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
     inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
     inverse += inv

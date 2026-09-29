@@ -37,6 +37,7 @@ GROUPS: dict[str, list[str]] = {
         "give_item",
         "take_item",
         "pick_up_item",
+        "keep_found_item",
         "drop_item",
         "pass_item",
         "equip_item",
