@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import Header from "../components/Header";
 import Builder from "../builder/Builder";
+import PersonaEditor from "../components/PersonaEditor";
 import { api } from "../lib/api";
 import { HERO_STATUS_RU, type BuilderOptions, type CampaignHero, type LibraryHero } from "../lib/builder";
 
@@ -122,6 +123,20 @@ export default function CampaignHeroPage() {
           </button>
         </div>
       </section>
+    );
+    body = (
+      <div className="flex flex-col gap-5">
+        {body}
+        <section className="card flex flex-col gap-4 p-5 sm:p-6 border border-line bg-surface">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-heading text-xl font-bold text-ink">Характер героя</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Необязательно, но мастер это видит и подстраивает сцены. Пишите своими словами, поля — подсказки.
+            </p>
+          </div>
+          <PersonaEditor base={`/api/campaigns/${id}/characters/${hero.id}/persona`} />
+        </section>
+      </div>
     );
   } else if (building || (hero && (hero.sheet as Record<string, unknown> | null)?.class_id)) {
     body = (

@@ -3,6 +3,7 @@ import { useState } from "react";
 import ActionButton from "../components/ActionButton";
 import Avatar from "../components/Avatar";
 import Builder from "../builder/Builder";
+import PersonaEditor from "../components/PersonaEditor";
 import { ABILITIES, ABILITY_ABBR } from "../game/hero";
 import { api } from "../lib/api";
 import type { BuilderOptions, CampaignHero } from "../lib/builder";
@@ -40,6 +41,7 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
   });
   const refreshChars = () => qc.invalidateQueries({ queryKey: ["characters", id] });
   const [building, setBuilding] = useState<string | null>(null); // место ИИ-игрока, чьего героя собирает владелец
+  const [character, setCharacter] = useState<string | null>(null); // место ИИ-игрока, чей характер открыт
 
   const players = room.seats.filter((s) => s.role === "player").sort((a, b) => a.position - b.position);
   const heroOf = (seatId: string) =>
@@ -128,6 +130,14 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
                         {building === s.id ? "Свернуть" : h ? "Продолжить героя" : "Собрать героя"}
                       </button>
                     )}
+                    {h && h.status !== "draft" && (
+                      <button
+                        className="btn px-2.5 py-1 font-mono text-xs"
+                        onClick={() => setCharacter(character === s.id ? null : s.id)}
+                      >
+                        {character === s.id ? "Свернуть" : "Характер"}
+                      </button>
+                    )}
                     <ActionButton
                       danger
                       className="px-2.5 py-1 font-mono text-xs"
@@ -143,6 +153,11 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
                   </span>
                 )}
                 </div>
+                {character === s.id && h && (
+                  <div className="mt-3 rounded-md border border-line p-3">
+                    <PersonaEditor base={`/api/campaigns/${id}/characters/${h.id}/persona`} query={`?as_seat=${s.id}`} />
+                  </div>
+                )}
                 {building === s.id && (
                   <AiHero
                     campaignId={id}
