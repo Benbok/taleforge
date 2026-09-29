@@ -61,6 +61,7 @@ export const TOOL_RU: Record<string, string> = {
   advance_time: "Сдвинуть время",
   rest: "Отдых",
   grant_level: "Новый уровень",
+  cross_threshold: "Порог: вторая раса",
   whisper: "Шёпот игроку",
   cancel_action: "Отказать в действии",
   auto_success: "Успех без броска",

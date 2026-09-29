@@ -259,9 +259,18 @@ export interface CampaignHero extends SavedHero {
 export interface LibraryHero extends SavedHero {
   class_name: string | null;
   origin_name: string | null;
+  /** Мир, для которого собран герой: null — базовые правила D&D 5e. */
+  pack_id: string | null;
+  world_name: string | null;
   level: number;
   errors: string[];
   copies?: { campaign_id: string; campaign_name: string; character_id: string; status: string; level: number }[];
+}
+
+/** Мир для героя профиля: id null — базовые правила. */
+export interface World {
+  id: string | null;
+  name: string;
 }
 
 export type BuilderMode = "campaign" | "premade" | "library";

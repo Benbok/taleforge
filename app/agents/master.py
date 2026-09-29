@@ -93,6 +93,13 @@ def render(name: str, **kw: Any) -> str:
     return _env.get_template(name).render(**kw).strip()
 
 
+def _world_choices(cat) -> str:
+    """Классы и происхождения мира кампании — рамка, по которой ИИ-мастер сверяет историю героя."""
+    origins = ", ".join(e.name for e in cat.by_kind("origin")) or "—"
+    classes = ", ".join(e.name for e in cat.by_kind("class")) or "—"
+    return f"Происхождения мира: {origins}. Классы мира: {classes}."
+
+
 class MasterService:
     """Очередь ходов ИИ-мастера по кампаниям. Один ход кампании за раз; реплики, пришедшие во время хода,
     уходят в следующий пакет."""
@@ -1142,6 +1149,7 @@ class MasterService:
             if ch is None or ch.status != "submitted":
                 return False, None
             sheet = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), [])
+            world = _world_choices(ctx.world.catalog)
             system = await self._system_prompt(s, c, cfg, ctx)
             tools = tool_specs(ctx.world, ["review_character"])
             s.expunge(cfg)  # нужен и после закрытия сессии: провайдер, модель, настройки
@@ -1152,6 +1160,12 @@ class MasterService:
                 "content": (
                     "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
                     "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
+                    "Соответствие миру проверяй по его фактам: класс и происхождение взяты из списков мира, но "
+                    "история, внешность и характер не должны вводить то, чего в мире нет (чужие расы, народы, "
+                    "боги, магия или земли, противоречащие лору). Возвращай только за явное противоречие и "
+                    "в комментарии назови его и предложи, как поправить в духе мира; стиль и мелочи не повод.\n"
+                    + world
+                    + "\n"
                     "Можешь тайно связать историю героя с сюжетом через secret_link, а если есть каркас — "
                     "привязать эту связь к узлу, NPC, злодею или месту каркаса через hook_ref.\n\n"
                     + json.dumps(sheet, ensure_ascii=False, default=str)
