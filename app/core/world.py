@@ -342,6 +342,10 @@ class World:
             # о ком можно узнать факт: герои, места и все сущности мира
             "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
+            # предметы, лежащие в сцене: их можно подобрать
+            "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)],
+            # все существа мира, включая ушедших со сцены: за побеждённых без убийства дают опыт
+            "creatures": [e.id for e in self.entities.values() if e.kind == "creature"],
         }
 
     def scene_table(self) -> str:
@@ -377,12 +381,23 @@ class World:
                     f"{a.id}  {a.name} [{en.template_id}]  {a.status()}  КД {a.ac}  "
                     f"{ZONE_NAMES.get(en.zone, en.zone)}  отношение: {att}{_effects_note(a)}"
                 )
+            elif is_scene_item(en):
+                qty = int((en.state or {}).get("qty") or 1)
+                lines.append(
+                    f"{en.id}  {en.name} (предмет [{en.template_id}]{f' ×{qty}' if qty > 1 else ''}, можно подобрать)  "
+                    f"{ZONE_NAMES.get(en.zone, en.zone)}"
+                )
             else:
                 lines.append(f"{en.id}  {en.name} ({en.kind})  {ZONE_NAMES.get(en.zone, en.zone)}")
         others = [e for e in self.entities.values() if e.kind == "location" and e.id != self.scene.location_id]
         if others:
             lines.append("Известные локации: " + ", ".join(f"{e.id} {e.name}" for e in others))
         return "\n".join(lines)
+
+
+def is_scene_item(e: Entity) -> bool:
+    """Предмет, лежащий в сцене (объект с шаблоном предмета): его можно подобрать в инвентарь."""
+    return e.kind == "object" and bool((e.state or {}).get("item"))
 
 
 def _effects_note(a: Actor) -> str:

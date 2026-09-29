@@ -102,6 +102,9 @@ class Tool:
 
 
 REGISTRY: dict[str, Tool] = {}
+# Правила, которые срабатывают сами после каждого изменяющего вызова (опыт за убитых врагов). Хук может дописать
+# в результат вызова, что случилось; ошибка хука откатывает вызов целиком, как ошибка самого инструмента.
+AFTER_CALL: list[Callable[[ToolContext, dict[str, Any]], Awaitable[None]]] = []
 
 
 def tool(name: str, description: str, args: type[BaseModel], *, mutating: bool = True, ids=None, closes=True):
@@ -214,10 +217,15 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     ctx.call_key = key
     ctx._first_event = None
     nested = await ctx.session.begin_nested()
+    outbox = len(ctx.outbox)
     try:
         result = await t.handler(ctx, args)
+        if t.mutating:
+            for hook in AFTER_CALL:
+                await hook(ctx, result)
     except (ToolError, WorldError, RulesError, DiceError, CatalogError) as e:
         await nested.rollback()
+        del ctx.outbox[outbox:]  # строки в чат от отменённого вызова не уходят
         # Откат точки сохранения сбрасывает изменённые объекты: перечитываем мир, чтобы следующий вызов видел БД
         await ctx.session.refresh(ctx.campaign)
         ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog)

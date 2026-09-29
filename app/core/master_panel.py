@@ -14,6 +14,7 @@ from app.core.rolls import ABILITY_RU, SKILL_RU
 from app.core.world import World
 from app.tools import master as _master_tools  # noqa: F401  (регистрирует инструменты)
 from app.tools import plot as _plot_tools  # noqa: F401
+from app.tools import progress as _progress_tools  # noqa: F401
 from app.tools.registry import REGISTRY, _enum_values
 
 # вкладки панели; инструмент без группы попадает в «Инструменты»
@@ -27,6 +28,7 @@ GROUPS: dict[str, list[str]] = {
         "create_location",
         "move",
         "apply_hazard",
+        "place_item",
     ],
     "checks": ["roll_check", "resolve_attack", "death_save", "auto_success", "cancel_action"],
     "players": [
@@ -34,11 +36,16 @@ GROUPS: dict[str, list[str]] = {
         "whisper",
         "give_item",
         "take_item",
+        "pick_up_item",
+        "keep_found_item",
+        "drop_item",
+        "pass_item",
         "equip_item",
         "use_item",
         "apply_effect",
         "remove_effect",
         "rest",
+        "award_xp",
         "grant_level",
         "cross_threshold",
         "reveal_knowledge",
@@ -54,6 +61,7 @@ EXTRA_FIELDS: dict[tuple[str, str], str] = {
     ("apply_effect", "effect_template_id"): "templates:effect_template",
     ("cross_threshold", "lineage_id"): "templates:lineage",
     ("give_item", "item_template_id"): "templates:item_template",
+    ("place_item", "item_template_id"): "templates:item_template",
     ("create_location", "template_id"): "templates:location_template",
     ("remove_effect", "effect_id"): "effects",
     ("roll_check", "stat"): "stats",

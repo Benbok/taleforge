@@ -240,6 +240,9 @@ class CampaignCreateIn(BaseModel):
     excluded_themes: list[str] = Field(default_factory=list, max_length=20)
     brief: BriefIn = BriefIn()
     creation_rules: CreationRulesIn = CreationRulesIn()
+    leveling: Literal["xp", "milestone"] = Field(
+        default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
+    )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
 
@@ -253,6 +256,7 @@ class CampaignPatchIn(BaseModel):
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
     audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
+    leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     brief: BriefIn | None = None
 
 

@@ -18,6 +18,7 @@ from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
+from app.rules.dnd5e.advancement import progress_view
 from app.rules.dnd5e.character import (
     ABILITY_METHODS,
     class_skills_choose,
@@ -519,6 +520,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
             "caste": (caste or {}).get("name"),
             "features": [f.get("name") for f in feats if f.get("name")],
         }
+    out["progress"] = progress_view(ch.sheet)
     out["inventory"] = [
         {
             "id": it.id,

@@ -139,6 +139,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
+            "leveling": body.leveling,
         },
         owner_plays=body.owner_plays,
         brief=body.brief.model_dump(exclude_defaults=True),
@@ -174,8 +175,15 @@ async def patch_campaign(
     if body.difficulty is not None:
         c.difficulty = body.difficulty
     settings = dict(c.settings)
-    for key in ("turn_timeout_sec", "spend_limit_usd", "collect_window_sec", "excluded_themes", "audio_enabled"):
-        if key in body.model_fields_set:
+    for key in (
+        "turn_timeout_sec",
+        "spend_limit_usd",
+        "collect_window_sec",
+        "excluded_themes",
+        "audio_enabled",
+        "leveling",
+    ):
+        if key in body.model_fields_set and (key != "leveling" or body.leveling is not None):
             settings[key] = getattr(body, key)
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     c.settings = settings
