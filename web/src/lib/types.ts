@@ -224,6 +224,8 @@ export interface HeroSheet extends HeroPublic {
     hit_dice?: number;
     death_saves?: [number, number];
     dead?: boolean;
+    /** Вдохновение SRD: награда мастера, тратится на преимущество в одном броске. */
+    inspiration?: boolean;
   };
   private_backstory?: string | null;
   /** Анкета характера {text, fields, core}; у старых героев — плоский словарь «поле: текст». */

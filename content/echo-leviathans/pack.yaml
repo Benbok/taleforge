@@ -1,6 +1,6 @@
 id: echo-leviathans
 name: "Эхо Левиафанов"
-version: 0.2.0
+version: 0.2.2
 ruleset: dnd5e
 ruleset_base: srd-5.1
 license: "Setting: © Arty. Rules base: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0"

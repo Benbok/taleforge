@@ -257,6 +257,8 @@ class CampaignPatchIn(BaseModel):
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
     audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
+    # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
+    random_events: Literal["auto", "manual"] | None = None
     brief: BriefIn | None = None
 
 

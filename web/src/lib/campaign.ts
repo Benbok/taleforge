@@ -39,6 +39,7 @@ export interface Room {
     excluded_themes?: string[];
     audio_enabled?: boolean;
     leveling?: "xp" | "milestone";
+    random_events?: "auto" | "manual";
     poster?: Poster | null;
     [k: string]: unknown;
   };

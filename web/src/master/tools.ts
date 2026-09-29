@@ -78,6 +78,12 @@ export const TOOL_RU: Record<string, string> = {
   end_act: "Закрыть акт",
   develop: "Развернуть набросок",
   threat_tick: "Шаг угрозы",
+  roll_fortune: "Случайность",
+  record_deed: "Поступок героев",
+  expose_deed: "Тайное всплыло",
+  resolve_response: "Ответ мира случился",
+  get_standing: "Отношение к отряду",
+  grant_inspiration: "Вдохновение",
 };
 
 export const FIELD_RU: Record<string, string> = {
@@ -140,6 +146,13 @@ export const FIELD_RU: Record<string, string> = {
   details: "Детали",
   here: "Отряд уже здесь",
   antagonist_id: "Антагонист",
+  inspiration: "Потратить вдохновение",
+  effect: "Помогли или навредили",
+  weight: "Вес поступка",
+  secret: "Никто не видел",
+  deed_id: "Тайный поступок",
+  response_id: "Ответ",
+  table_id: "Таблица",
 };
 
 // подписи для значений перечислений, которых нет в подписях сервера
@@ -181,6 +194,15 @@ export const VALUE_RU: Record<string, string> = {
   lore_fact: "факты мира",
   class: "классы",
   origin: "происхождения",
+  help: "помогли",
+  harm: "навредили",
+  minor: "мелочь",
+  major: "серьёзно",
+  critical: "судьбоносно",
+  encounter: "встреча",
+  event: "событие",
+  find: "находка",
+  any: "пусть решит кубик",
 };
 
 export type Values = Record<string, string | string[] | boolean>;

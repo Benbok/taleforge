@@ -16,6 +16,12 @@ import {
   type Room,
 } from "../lib/campaign";
 
+const RANDOM_RU = { auto: "Мир живёт сам", manual: "Только по воле мастера" };
+const RANDOM_HINT = {
+  auto: "Пока идёт игровое время, сервер сам бросает встречи, события и находки по таблицам места. Исход бывает и плохим.",
+  manual: "Случайности бывают, только когда мастер сам решает бросить.",
+};
+
 /** Настройки кампании (только владелец): название, вводная, темп игры, анкета, удаление. */
 export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: Room) => void }) {
   const navigate = useNavigate();
@@ -26,6 +32,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
     public_intro: room.public_intro,
     difficulty: room.difficulty,
     leveling: st.leveling ?? "xp",
+    random_events: st.random_events ?? "auto",
     turn_timeout_sec: st.turn_timeout_sec ?? 300,
     collect_window_sec: st.collect_window_sec ?? 60,
     spend_limit_usd: st.spend_limit_usd == null ? "" : String(st.spend_limit_usd),
@@ -48,6 +55,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           public_intro: f.public_intro,
           difficulty: f.difficulty,
           leveling: f.leveling,
+          random_events: f.random_events,
           turn_timeout_sec: f.turn_timeout_sec,
           collect_window_sec: f.collect_window_sec,
           spend_limit_usd: limit,
@@ -100,6 +108,15 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             value={f.leveling}
             options={Object.entries(LEVELING_RU)}
             onChange={(v) => set({ leveling: v as "xp" | "milestone" })}
+          />
+        </Field>
+
+        <Field label="Случайности в пути" hint={RANDOM_HINT[f.random_events]}>
+          <Segmented
+            label="Случайности в пути"
+            value={f.random_events}
+            options={Object.entries(RANDOM_RU)}
+            onChange={(v) => set({ random_events: v as "auto" | "manual" })}
           />
         </Field>
 

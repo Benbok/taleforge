@@ -54,8 +54,10 @@ from app.db.models import (
 )
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
+from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
 from app.tools import progress as progress_tools
+from app.tools import standing as standing_tools
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -492,12 +494,14 @@ class MasterService:
 
         await self._status(cid, "remembering")
         memory_note = await self._memory_block(s, c, ctx, new)
+        # мир не ждёт: созревшие ответы на поступки героев и случайности, выпавшие, пока шло игровое время
+        world_note = await standing_tools.run_standing(ctx) + await fortune_tools.run_watch(ctx)
         msgs: list[dict] = [
             {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": (
-                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n"
+                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -596,6 +600,7 @@ class MasterService:
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
             "plot_clock": plot_notes,
+            "world": world_note,
         }
         await s.commit()
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
@@ -698,6 +703,7 @@ class MasterService:
             dc_scale=dc,
             max_calls=MAX_CALLS,
             leveling=progress_tools.leveling(c),
+            random_events=fortune_tools.random_events(c),
             audio=audio.prompt_block(c, ctx.world.scene),
         )
 

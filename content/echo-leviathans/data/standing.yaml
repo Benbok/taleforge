@@ -1,0 +1,196 @@
+# Чем фракции благодарят и мстят отряду (последствия поступков, инструмент record_deed).
+# Отношение к отряду — ступени −3…+3, как attitude между фракциями; сдвигает его сервер по поступкам героев.
+# Когда отношение уходит на новую ступень, фракция готовит ответ: строки gratitude или revenge с tier не выше
+# текущей ступени. Механика — только ссылками: creature_refs → spawn_entity (бюджет встречи), item_refs → give_item,
+# effect_refs → apply_effect. Дочерняя фракция без своей таблицы берёт таблицу родителя (parent_ref).
+kind: standing_table
+items:
+- id: standing.syndicates
+  name: Синдикаты Крови
+  status: proposal
+  doc: canon.md#5.1
+  tags: [standing]
+  faction_ref: faction.syndicates
+  gratitude:
+  - {tier: 1, text: 'Пропуска без лишних вопросов, стража смотрит сквозь пальцы'}
+  - {tier: 2, text: 'Контракт и аванс: работа на Дом, билет на поезд за счёт Синдиката', item_refs: [item.service_train_coupe]}
+  - {tier: 3, text: 'Покровитель в Совете: вексель, охрана, доступ к Старой Матери', creature_refs: [creature.syndicate_enforcer]}
+  revenge:
+  - {tier: 1, text: 'Цены выше, двери закрыты, «пропуск недействителен»'}
+  - {tier: 2, text: 'Метка Дома: знают, где герои, в их городах всё втридорога', effect_refs: [effect.house_mark]}
+  - {tier: 2, text: 'Донос: розыск по линии стражи', creature_refs: [creature.syndicate_guard]}
+  - {tier: 3, text: 'Наёмники и агент Дома по следу, награда за головы', creature_refs: [creature.syndicate_enforcer, creature.house_agent]}
+- id: standing.house_kostrishchev
+  name: Дом Кострищевых
+  status: proposal
+  doc: canon.md#5.1
+  tags: [standing]
+  faction_ref: faction.house_kostrishchev
+  gratitude:
+  - {tier: 1, text: 'Проезд на паровозе Дома, место у костров мозга'}
+  - {tier: 2, text: 'Топливо и баки для огнемёта в подарок', item_refs: [item.bonfire_tank]}
+  - {tier: 3, text: 'Личная просьба Аграфены: место в бронепоезде и её слово'}
+  revenge:
+  - {tier: 1, text: 'Поезда «не останавливаются», топливо не продают'}
+  - {tier: 2, text: 'Громилы у складов желе объясняют, кому здесь не рады', creature_refs: [creature.slum_thug]}
+  - {tier: 3, text: 'Наёмники Дома встречают отряд на путях', creature_refs: [creature.syndicate_enforcer]}
+- id: standing.house_liquor
+  name: Дом Ликвора
+  status: proposal
+  doc: canon.md#5.1
+  tags: [standing]
+  faction_ref: faction.house_liquor
+  gratitude:
+  - {tier: 1, text: 'Шепнут, где в этот раз не будет облавы'}
+  - {tier: 2, text: 'Доза чистого ликвора — «из уважения»', item_refs: [item.liquor_purified]}
+  - {tier: 3, text: 'Приглашение в круг посвящённых: одна тайна Дома (reveal_knowledge, learn_fact)'}
+  revenge:
+  - {tier: 1, text: 'Агенты начинают следить и записывать'}
+  - {tier: 2, text: 'Отравленный ликвор в лавке или трактире', item_refs: [item.liquor_dirty]}
+  - {tier: 3, text: 'Агент Дома убирает тех, кто слишком много знает', creature_refs: [creature.house_agent]}
+- id: standing.lymph_company
+  name: Лимфатическая компания
+  status: proposal
+  doc: canon.md#5.1
+  tags: [standing]
+  faction_ref: faction.lymph_company
+  gratitude:
+  - {tier: 1, text: 'Кредит в банке ФК без поручителя'}
+  - {tier: 2, text: 'Лекарства со склада компании', item_refs: [item.blood_serum, item.antitoxin]}
+  - {tier: 3, text: 'Долг героев прощён, а должник героев вдруг вспоминает о долге'}
+  revenge:
+  - {tier: 1, text: 'Векселя героев не принимают, лекарства «закончились»'}
+  - {tier: 2, text: 'Коллекторы требуют старые долги — свои или чужие', creature_refs: [creature.slum_thug]}
+  - {tier: 3, text: 'Весь город вдруг должен компании — и героев выдают за списание долга', creature_refs: [creature.syndicate_guard]}
+- id: standing.guild
+  name: Гильдия Диагностов
+  status: proposal
+  doc: canon.md#5.2
+  tags: [standing]
+  faction_ref: faction.guild
+  gratitude:
+  - {tier: 1, text: 'Осмотр в клинике без очереди, совет диагноста'}
+  - {tier: 2, text: 'Антидоты и инъектор из запасов Гильдии', item_refs: [item.guild_antidote, item.injector]}
+  - {tier: 3, text: 'Бесплатное лечение Скверны и доступ к картам органов', item_refs: [item.service_clinic_corruption]}
+  revenge:
+  - {tier: 1, text: 'Клиники отказывают, диагносты «заняты»'}
+  - {tier: 2, text: 'Героев вносят в список опасных носителей: проверки на каждом посту'}
+  - {tier: 3, text: 'Полевые диагносты с охраной приходят «изъять образец»', creature_refs: [creature.guild_diagnost]}
+- id: standing.church
+  name: Церковь Исполинов
+  status: proposal
+  doc: canon.md#5.3
+  tags: [standing]
+  faction_ref: faction.church
+  gratitude:
+  - {tier: 1, text: 'Благословение и кров в приходе'}
+  - {tier: 2, text: 'Заступничество жреца перед властями, причастие в дорогу', item_refs: [item.liquor_ampoule]}
+  - {tier: 3, text: 'Рыцарь Исполина сопровождает отряд', creature_refs: [creature.church_knight]}
+  revenge:
+  - {tier: 1, text: 'С амвона называют их нечестивцами: толпа косится'}
+  - {tier: 2, text: 'Отлучение: приходы закрыты, фанатики мешают на улицах', creature_refs: [creature.church_cultist]}
+  - {tier: 3, text: 'Рыцари Исполина идут карать еретиков', creature_refs: [creature.church_knight]}
+- id: standing.church_lower_clergy
+  name: Низшее духовенство
+  status: proposal
+  doc: canon.md#5.3
+  tags: [standing]
+  faction_ref: faction.church_lower_clergy
+  gratitude:
+  - {tier: 1, text: 'Хлеб, ночлег и слухи из приюта'}
+  - {tier: 2, text: 'Спрячут героев от облавы, как прячут беглых детей'}
+  - {tier: 3, text: 'Служка, владеющий Откликом, пойдёт с ними', creature_refs: [creature.church_acolyte]}
+  revenge:
+  - {tier: 1, text: 'Приюты закрываются перед ними, дети разбегаются'}
+  - {tier: 2, text: 'Слово дойдёт до подполья: там перестанут доверять'}
+- id: standing.church_top
+  name: Верхушка Церкви
+  status: proposal
+  doc: canon.md#5.3
+  tags: [standing]
+  faction_ref: faction.church_top
+  gratitude:
+  - {tier: 1, text: 'Приглашение на «возвышенную» службу'}
+  - {tier: 2, text: 'Дар «ангельской» силы — на самом деле голод Резонанса'}
+  revenge:
+  - {tier: 1, text: 'Фанатики Хоров следят за отрядом', creature_refs: [creature.church_cultist]}
+  - {tier: 2, text: 'Возвысившийся приходит «исцелить» героев', creature_refs: [creature.church_ascended]}
+  - {tier: 3, text: 'Высший жрец объявляет охоту: фанатики и возвысившиеся', creature_refs: [creature.church_ascended, creature.church_cultist]}
+- id: standing.broken
+  name: Сломленные
+  status: proposal
+  doc: canon.md#5.4
+  tags: [standing]
+  faction_ref: faction.broken
+  gratitude:
+  - {tier: 1, text: 'Дозорные Круга проводят через Рёберный лес'}
+  - {tier: 2, text: 'Сломленный пересказывает, что слышит во снах (learn_fact)'}
+  - {tier: 3, text: 'Сломленный идёт с отрядом', creature_refs: [creature.broken_adult]}
+  revenge:
+  - {tier: 1, text: 'Дозорные уводят отряд по ложной тропе'}
+  - {tier: 2, text: 'Слушающие зов наводят на отряд рой', creature_refs: [creature.broken_zealot]}
+- id: standing.miners_underground
+  name: Шахтёрское подполье
+  status: proposal
+  doc: canon.md#5.5
+  tags: [standing]
+  faction_ref: faction.miners_underground
+  gratitude:
+  - {tier: 1, text: 'Листовка с картой тайных протоков'}
+  - {tier: 2, text: 'Проводник подполья через шахты, укрытие от стражи', creature_refs: [creature.underground_saboteur]}
+  - {tier: 3, text: 'Взрывчатка на желе и люди для большого дела'}
+  revenge:
+  - {tier: 1, text: 'Героям перестают что-либо говорить в шахтёрских кварталах'}
+  - {tier: 2, text: 'Саботаж: их поезд, их лифт, их верёвка', creature_refs: [creature.underground_saboteur]}
+- id: standing.ash_cordon
+  name: Пепельный Кордон
+  status: proposal
+  doc: canon.md#5.6
+  tags: [standing]
+  faction_ref: faction.ash_cordon
+  gratitude:
+  - {tier: 1, text: 'Кордонский жетон: проход через посты у черты', item_refs: [item.cordon_token]}
+  - {tier: 2, text: 'Телеграмма по линии Кордона и место на дирижабле', item_refs: [item.service_telegram_cordon]}
+  - {tier: 3, text: 'Ветеран черты идёт с отрядом', creature_refs: [creature.cordon_veteran]}
+  revenge:
+  - {tier: 1, text: 'Пробы звоном на каждом посту, долгие допросы'}
+  - {tier: 2, text: 'Отряд объявлен «возможно скрытыми»: звонари и выжигатели проверяют силой', creature_refs: [creature.cordon_ringer, creature.cordon_burner]}
+  - {tier: 3, text: 'Приказ выжечь: офицер с выжигателями', creature_refs: [creature.cordon_officer, creature.cordon_burner]}
+- id: standing.islanders
+  name: Островитяне
+  status: proposal
+  doc: canon.md#7
+  tags: [standing]
+  faction_ref: faction.islanders
+  gratitude:
+  - {tier: 1, text: 'Место на паровом судне'}
+  - {tier: 2, text: 'Доступ к старым библиотекам (reveal_knowledge)'}
+  - {tier: 3, text: 'Моряк с островов пойдёт с ними', creature_refs: [creature.islander_sailor]}
+  revenge:
+  - {tier: 1, text: 'Суда уходят без них'}
+  - {tier: 2, text: 'Отряду закрыт путь на острова навсегда'}
+- id: standing.bell_monastery
+  name: Обитель Звона
+  status: proposal
+  doc: canon.md#1.7
+  tags: [standing]
+  faction_ref: faction.bell_monastery
+  gratitude:
+  - {tier: 1, text: 'Связка колокольцев и совет наставника', item_refs: [item.bell_string]}
+  - {tier: 2, text: 'Наставник учит основам Отклика'}
+  - {tier: 3, text: 'Колокол Лиги отдан отряду на время', item_refs: [item.league_bell]}
+  revenge:
+  - {tier: 1, text: 'Молчальники отворачиваются: ни слова, ни помощи'}
+  - {tier: 2, text: 'Кордон узнаёт от звонарей, что отряд «звучит неправильно»'}
+- id: standing.helmsmen
+  name: Кормчие
+  status: proposal
+  doc: canon.md#1.2
+  tags: [standing]
+  faction_ref: faction.helmsmen
+  gratitude:
+  - {tier: 1, text: 'Бортовые организмы пропускают отряд'}
+  - {tier: 2, text: 'Садовник показывает путь в глубь корабля', creature_refs: [creature.helmsman_gardener]}
+  revenge:
+  - {tier: 1, text: 'Санитары корабля начинают охоту за «шумной фауной»', creature_refs: [creature.organism_sanitar]}
+  - {tier: 2, text: 'Тихий страж выходит из кокона', creature_refs: [creature.helmsman_silent_guard]}

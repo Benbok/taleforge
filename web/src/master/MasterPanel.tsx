@@ -93,6 +93,8 @@ export default function MasterPanel({ campaignId }: { campaignId: string }) {
         <>
           <Secrets campaignId={campaignId} hasPlot={data.has_plot} version={panel.dataUpdatedAt} />
           {data.has_plot && <ToolButtons tools={group(["plot"]).filter((t) => t.name !== "get_plot")} onPick={(t) => pick(t)} active={open?.tool} />}
+          <p className="text-xs text-muted">Последствия поступков: как к отряду относятся NPC, фракции и места, и кто хочет отблагодарить или отомстить.</p>
+          <ToolButtons tools={group(["standing"])} onPick={(t) => pick(t)} active={open?.tool} />
           {form}
         </>
       )}

@@ -11,10 +11,14 @@ from typing import Any
 
 from app.core.plot import _index, has_plan
 from app.core.rolls import ABILITY_RU, SKILL_RU
+from app.core.standing import book as standing_book
+from app.core.standing import ripen
 from app.core.world import World
+from app.tools import fortune as _fortune_tools  # noqa: F401
 from app.tools import master as _master_tools  # noqa: F401  (регистрирует инструменты)
 from app.tools import plot as _plot_tools  # noqa: F401
 from app.tools import progress as _progress_tools  # noqa: F401
+from app.tools import standing as _standing_tools  # noqa: F401
 from app.tools.registry import REGISTRY, _enum_values
 
 # вкладки панели; инструмент без группы попадает в «Инструменты»
@@ -29,6 +33,7 @@ GROUPS: dict[str, list[str]] = {
         "move",
         "apply_hazard",
         "place_item",
+        "roll_fortune",
     ],
     "checks": ["roll_check", "resolve_attack", "death_save", "auto_success", "cancel_action"],
     "players": [
@@ -46,6 +51,7 @@ GROUPS: dict[str, list[str]] = {
         "remove_effect",
         "rest",
         "award_xp",
+        "grant_inspiration",
         "grant_level",
         "cross_threshold",
         "reveal_knowledge",
@@ -53,6 +59,7 @@ GROUPS: dict[str, list[str]] = {
         "review_character",
     ],
     "plot": ["get_plot", "advance_plot", "plot_reveal", "end_act", "develop", "threat_tick"],
+    "standing": ["get_standing", "record_deed", "expose_deed", "resolve_response"],
     "templates": ["lookup_template"],
 }
 
@@ -68,6 +75,10 @@ EXTRA_FIELDS: dict[tuple[str, str], str] = {
     ("update_entity", "zone"): "zones",
     ("update_entity", "attitude"): "attitudes",
     ("reveal_knowledge", "level"): "levels",
+    ("record_deed", "subject_id"): "standing_subjects",
+    ("expose_deed", "deed_id"): "secret_deeds",
+    ("resolve_response", "response_id"): "responses",
+    ("roll_fortune", "table_id"): "fortune_tables",
 }
 
 ZONES = {"melee": "вплотную", "near": "близко", "far": "далеко"}
@@ -86,6 +97,17 @@ def _values(world: World, key: str) -> list[str]:
         return list(ATTITUDES)
     if key == "levels":
         return list(LEVELS)
+    if key == "standing_subjects":  # фракции мира, NPC и места реестра
+        ents = [e.id for e in world.entities.values() if e.kind in ("creature", "location")]
+        return [r.id for r in world.catalog.by_kind("faction")] + ents
+    if key in ("secret_deeds", "responses"):
+        b = standing_book(world.scene.state)
+        ripen(b, int(world.scene.game_time))
+        if key == "secret_deeds":
+            return [d["id"] for d in b["hidden"]]
+        return [r["id"] for r in b["responses"] if r["status"] == "ready"]
+    if key == "fortune_tables":
+        return [r.id for k in ("encounter_table", "event_table", "loot_table") for r in world.catalog.by_kind(k)]
     return _enum_values(world, key)
 
 
@@ -109,7 +131,22 @@ def _labels(world: World) -> dict[str, str]:
     for e in world.effects:
         target = out.get(e.target_id, e.target_id)
         out[e.id] = f"{_name(world, e.effect_template_id)} ({target})"
-    for kind in ("effect_template", "item_template", "location_template", "creature_template", "hazard_template"):
+    b = standing_book(world.scene.state)
+    for d in b["hidden"]:
+        out[d["id"]] = f"{d['name']}: {d['text']}"[:120]
+    for r in b["responses"]:
+        out[r["id"]] = f"{r['name']}: {'благодарность' if r['mood'] == 'gratitude' else 'месть'}"
+    for kind in (
+        "effect_template",
+        "item_template",
+        "location_template",
+        "creature_template",
+        "hazard_template",
+        "faction",
+        "encounter_table",
+        "event_table",
+        "loot_table",
+    ):
         for rec in world.catalog.by_kind(kind):
             out[rec.id] = rec.name
     for rec in world.catalog.dc_scale():
