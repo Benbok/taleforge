@@ -1016,42 +1016,51 @@ class MasterService:
             return status
 
     async def _review(self, cid: str, character_id: str, calls: list) -> tuple[bool, str | None]:
+        """ИИ-проверка героя. Сессия БД не держится во время обращения к модели: в SQLite открытая транзакция
+        не даёт другим писать, и игроки получали «database is locked», пока модель думала."""
+        from app.core.characters import full_view
+
         async with self.maker() as s:
             c = await s.get(Campaign, cid)
             seat = master_seat(c)
             if seat.occupant_type != "agent":
                 return False, None
+            seat_id = seat.id
             cfg = await s.get(AgentConfig, seat.agent_config_id)
-            ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+            ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat_id)
             ch = ctx.world.characters.get(character_id)
             if ch is None or ch.status != "submitted":
                 return False, None
-            from app.core.characters import full_view
-
             sheet = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), [])
             system = await self._system_prompt(s, c, cfg, ctx)
-            msgs = [
-                {"role": "system", "content": system},
-                {
-                    "role": "user",
-                    "content": (
-                        "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
-                        "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
-                        "Можешь тайно связать историю героя с сюжетом через secret_link, а если есть каркас — "
-                        "привязать эту связь к узлу, NPC, злодею или месту каркаса через hook_ref.\n\n"
-                        + json.dumps(sheet, ensure_ascii=False, default=str)
-                    ),
-                },
-            ]
-            status = None
-            for _ in range(3):
-                reply = await self._ask(
-                    calls, cfg, cid, seat.id, None, "review", msgs, tool_specs(ctx.world, ["review_character"])
-                )
-                msgs.append(reply.message or {"role": "assistant", "content": reply.text})
-                if not reply.tool_calls:
-                    msgs.append({"role": "user", "content": "Вызови review_character."})
-                    continue
+            tools = tool_specs(ctx.world, ["review_character"])
+            s.expunge(cfg)  # нужен и после закрытия сессии: провайдер, модель, настройки
+        msgs = [
+            {"role": "system", "content": system},
+            {
+                "role": "user",
+                "content": (
+                    "Игрок прислал персонажа на проверку. Правила сервер уже проверил. Оцени историю и "
+                    "соответствие сеттингу и вызови review_character: одобри или верни с комментарием. "
+                    "Можешь тайно связать историю героя с сюжетом через secret_link, а если есть каркас — "
+                    "привязать эту связь к узлу, NPC, злодею или месту каркаса через hook_ref.\n\n"
+                    + json.dumps(sheet, ensure_ascii=False, default=str)
+                ),
+            },
+        ]
+        for _ in range(3):
+            reply = await self._ask(calls, cfg, cid, seat_id, None, "review", msgs, tools)
+            msgs.append(reply.message or {"role": "assistant", "content": reply.text})
+            if not reply.tool_calls:
+                msgs.append({"role": "user", "content": "Вызови review_character."})
+                continue
+            async with self.maker() as s:
+                c = await s.get(Campaign, cid)
+                ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat_id)
+                ch = ctx.world.characters.get(character_id)
+                if ch is None or ch.status != "submitted":
+                    return False, None  # пока модель думала, героя проверил человек или игрок его отозвал
+                status = None
                 for call in reply.tool_calls:
                     args = {**call.arguments, "character_id": ch.id}
                     r = (
@@ -1068,21 +1077,22 @@ class MasterService:
                     )
                     if r.get("ok"):
                         status = r["result"]["status"]
-                if status:
-                    break
-            await s.commit()
-            if status and ch.seat_id:
-                full = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), ctx.world.effects)
-                await self.bus.publish(
-                    cid,
-                    envelope(
-                        "character.reviewed",
+                await s.commit()
+                if not status:
+                    continue
+                if ch.seat_id:
+                    full = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), ctx.world.effects)
+                    await self.bus.publish(
                         cid,
-                        {"character": full, "status": status, "comment": ch.review_comment},
-                    ),
-                    [ch.seat_id],
-                )
-            return True, status
+                        envelope(
+                            "character.reviewed",
+                            cid,
+                            {"character": full, "status": status, "comment": ch.review_comment},
+                        ),
+                        [ch.seat_id],
+                    )
+                return True, status
+        return True, None
 
 
 async def _new_player_messages(s, c: Campaign) -> list[Message]:

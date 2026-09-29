@@ -840,7 +840,34 @@ class ItemMap:
 
     def entry(self, eq_index: str, qty: int) -> dict:
         iid = self.item_id(eq_index)
-        return {"item": iid, "qty": qty} if iid else {"other": self.name(eq_index), "qty": qty}
+        return {"item": iid, "qty": qty} if iid else {"other": ru_other(self.name(eq_index)), "qty": qty}
+
+
+# Вещи без шаблона в пакете (наборы, фокусировки, инструменты): в листе героя они показываются как есть,
+# поэтому имя сразу по-русски.
+OTHER_RU = {
+    "Arrow": "Стрела",
+    "Burglar's Pack": "Набор взломщика",
+    "Component pouch": "Мешочек с компонентами",
+    "Crossbow bolt": "Арбалетный болт",
+    "Diplomat's Pack": "Набор дипломата",
+    "Dungeoneer's Pack": "Набор исследователя подземелий",
+    "Entertainer's Pack": "Набор артиста",
+    "Explorer's Pack": "Набор путешественника",
+    "Lute": "Лютня",
+    "Priest's Pack": "Набор священника",
+    "Scholar's Pack": "Набор учёного",
+    "Spellbook": "Книга заклинаний",
+    "Thieves' Tools": "Воровские инструменты",
+    "any other musical instrument": "любой другой музыкальный инструмент",
+    "arcane focus": "магическая фокусировка",
+    "druidic focus": "друидическая фокусировка",
+    "holy symbol": "священный символ",
+}
+
+
+def ru_other(name: str | None) -> str | None:
+    return OTHER_RU.get(name, name) if name else name
 
 
 def bundle(opt: dict, im: ItemMap, where: str) -> list[dict]:
@@ -858,9 +885,9 @@ def bundle(opt: dict, im: ItemMap, where: str) -> list[dict]:
             cat = src["equipment_category"]["index"]
             if cat in ANY_CATEGORY:
                 return [{"any": ANY_CATEGORY[cat], "qty": n}]
-            return [{"other": ch.get("desc") or src["equipment_category"]["name"], "qty": n}]
+            return [{"other": ru_other(ch.get("desc") or src["equipment_category"]["name"]), "qty": n}]
         skip("equipment_nested_choice", f"{where}: {ch.get('desc')}")
-        return [{"other": ch.get("desc", "?"), "qty": n}]
+        return [{"other": ru_other(ch.get("desc", "?")), "qty": n}]
     skip("equipment_option", f"{where}: {t}")
     return []
 
@@ -882,7 +909,8 @@ def starting_equipment(c: dict, im: ItemMap) -> dict:
         elif src.get("option_set_type") == "equipment_category":
             cat = src["equipment_category"]["index"]
             n = int(opt.get("choose", 1))
-            alt = {"any": ANY_CATEGORY[cat], "qty": n} if cat in ANY_CATEGORY else {"other": opt.get("desc"), "qty": n}
+            other = {"other": ru_other(opt.get("desc")), "qty": n}
+            alt = {"any": ANY_CATEGORY[cat], "qty": n} if cat in ANY_CATEGORY else other
             choices.append([[alt]])
         else:
             skip("equipment_option_set", f"{where}: {opt.get('desc')}")
@@ -974,7 +1002,7 @@ CLASSES_HEADER = """\
 # получено «Увеличение характеристик»), class_specific — числа класса из таблицы (ярость, скрытая атака, ци...).
 # starting_equipment: fixed — всегда; choices — список выборов, каждый выбор — список альтернатив, каждая
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
-# martial_melee, qty} | {other: <английское имя вещи вне пакета>, qty}; other — прочее снаряжение.
+# martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
 """
 

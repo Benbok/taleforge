@@ -24,11 +24,17 @@ items:
         count: 2
         from: [investigation, history, arcana, medicine, nature, perception, sleight_of_hand]
     skill_names: {investigation: Анализ, arcana: Магия (ликвороведение)}
+    # формат базового пакета: fixed — всегда, choices — выбор из альтернатив, other — вещи без шаблона
     starting_equipment:
-      - {choose: [medium_armor, leather_armor]}
-      - {choose: [dart_thrower, light_crossbow]}
-      - injector
-      - alchemists_supplies
+      fixed:
+      - {item: item.injector, qty: 1}
+      choices:
+      - - - {item: item.scale_mail, qty: 1}
+        - - {item: item.pleural_armor, qty: 1}
+      - - - {item: item.dart_launcher, qty: 1}
+          - {item: item.ammo_darts, qty: 1}
+        - - {item: item.light_crossbow, qty: 1}
+      other: [Инструменты алхимика]
     spellcasting:
       ability: int
       progression: half_round_up
