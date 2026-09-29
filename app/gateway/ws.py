@@ -236,8 +236,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         app.state.master,
                         presence,
                     )
+                    # снимок уходит первым: события, опубликованные после добавления в hub, ждут замка отправки
+                    await conn.send_lock.acquire()
                     hub.add(conn)
-                await conn.send(snap)
+                try:
+                    await ws.send_json(snap)
+                finally:
+                    conn.send_lock.release()
                 await presence.joined(conn)
                 continue
 
