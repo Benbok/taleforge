@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 
-from app.api.characters import CharacterIn
+from app.api.characters import CharacterIn, PreviewIn
 from app.api.deps import SessionDep, UserDep
 from app.core import characters as chars
 from app.core import library as svc
@@ -16,6 +16,12 @@ router = APIRouter(prefix="/api/me", tags=["profile"])
 async def character_options(user: UserDep, session: SessionDep) -> dict:
     """Варианты конструктора по базовым правилам SRD (без правил конкретной кампании)."""
     return await chars.options_for_rules(svc.LIBRARY_RULES, await svc.base_catalog(session))
+
+
+@router.post("/character-preview")
+async def character_preview(body: PreviewIn, user: UserDep, session: SessionDep) -> dict:
+    """Живой лист героя профиля по базовым правилам: ничего не сохраняет."""
+    return chars.preview(body.model_dump(exclude_none=True), await svc.base_catalog(session), svc.LIBRARY_RULES)
 
 
 @router.get("/characters")

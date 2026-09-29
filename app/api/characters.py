@@ -37,6 +37,10 @@ class CharacterIn(BaseModel):
     personality: dict[str, str] | None = None
 
 
+class PreviewIn(CharacterIn):
+    ability_rolls: list[int] | None = Field(None, max_length=6)  # выпавшие 4d6 черновика: только для живого листа
+
+
 class ReviewIn(BaseModel):
     approve: bool
     comment: str = Field("", max_length=2000)
@@ -73,6 +77,14 @@ async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:
 async def character_options(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
     v = await get_viewer(session, user, campaign_id)
     return await svc.options(session, v.campaign, await campaign_catalog(session, v.campaign))
+
+
+@router.post("/character-preview")
+async def character_preview(campaign_id: str, body: PreviewIn, user: UserDep, session: SessionDep) -> dict:
+    """Живой лист конструктора по правилам кампании: ничего не сохраняет."""
+    v = await get_viewer(session, user, campaign_id)
+    cat = await campaign_catalog(session, v.campaign)
+    return svc.preview(body.model_dump(exclude_none=True), cat, await svc.creation_rules(session, v.campaign))
 
 
 @router.get("/characters")

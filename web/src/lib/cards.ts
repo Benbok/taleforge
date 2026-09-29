@@ -48,16 +48,16 @@ export interface CardAction {
   primary: boolean;
 }
 
-/** Главное действие по ситуации. Сборка героя пока живёт в прежнем клиенте. */
+/** Главное действие по ситуации. */
 export function actionOf(c: CampaignCard): CardAction {
   const room = `/c/${c.id}`;
   if (c.status === "ended") return { label: "Открыть", href: room, primary: false };
-  const builder = `/legacy?campaign=${c.id}`;
+  const builder = `/c/${c.id}/hero`;
   if (c.my_role === "player" && (!c.hero || c.hero.status === "draft" || c.hero.status === "rejected"))
     return { label: "Собрать героя", href: builder, primary: true };
   if (c.my_role === "player" && c.hero?.status === "dead") return { label: "Новый герой", href: builder, primary: true };
   if (c.my_role === "player" && c.hero?.status === "submitted")
-    return { label: "Персонаж на проверке", href: room, primary: false };
+    return { label: "Персонаж на проверке", href: builder, primary: false };
   if (c.session_live) return { label: "Продолжить", href: room, primary: true };
   if (c.is_owner && !c.my_role) return { label: "Управлять", href: room, primary: false };
   return { label: "Открыть", href: room, primary: false };
