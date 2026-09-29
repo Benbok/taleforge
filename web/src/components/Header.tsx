@@ -23,6 +23,11 @@ export default function Header({ children }: { children?: ReactNode }) {
       <ThemeToggle />
       {user && (
         <>
+          {user.platform_role !== "player" && (
+            <Link className="hidden text-muted no-underline hover:text-ink sm:inline" to="/admin">
+              Админка
+            </Link>
+          )}
           <Link className="max-w-28 truncate text-muted no-underline hover:text-ink" to="/profile" title="Профиль и настройки">
             {user.name}
           </Link>

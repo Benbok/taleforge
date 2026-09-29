@@ -3,11 +3,9 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { api } from "../lib/api";
 import AccountSection, { type Profile } from "../profile/AccountSection";
-import ModelsSection from "../profile/ModelsSection";
 import PersonasSection from "../profile/PersonasSection";
-import UsersSection from "../profile/UsersSection";
 
-/** Профиль: аккаунт у всех; персоны мастера и модели ИИ — у админов; пользователи — у Super Admin.
+/** Профиль: аккаунт у всех, персоны мастера — у админов. Модели, пакеты, расходы и пользователи — в админке.
  *  Герои профиля живут на главной, в разделе «Мои герои». */
 export default function ProfilePage() {
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/api/me/profile") });
@@ -29,9 +27,12 @@ export default function ProfilePage() {
             <p className="text-sm text-muted">
               Героев профиля можно собрать и поправить на <Link to="/">главной</Link>, в разделе «Мои герои».
             </p>
+            {p.can_manage_models && (
+              <p className="text-sm text-muted">
+                Пакеты сеттинга, модели ИИ, расходы{p.can_manage_users ? " и пользователи" : ""} — в <Link to="/admin">админке</Link>.
+              </p>
+            )}
             {p.can_manage_models && <PersonasSection />}
-            {p.can_manage_models && <ModelsSection superAdmin={p.user.platform_role === "super_admin"} />}
-            {p.can_manage_users && <UsersSection me={p.user} />}
           </>
         )}
       </main>

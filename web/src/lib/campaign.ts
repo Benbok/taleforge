@@ -108,6 +108,8 @@ export interface Pack {
   id: string;
   version: string;
   name: string;
+  counts?: Record<string, number>;
+  imported_at?: string;
 }
 
 export const PROVIDER_RU: Record<string, string> = { claude: "Claude", gemini: "Gemini", local: "LM Studio" };

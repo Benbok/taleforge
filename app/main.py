@@ -6,9 +6,9 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
@@ -25,8 +25,11 @@ from app.gateway.hub import Hub, MemoryBus, RedisBus
 from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
-STATIC = Path(__file__).parent / "web" / "static"
-DIST = Path(__file__).parent / "web" / "dist"  # сборка нового клиента (web/, npm run build)
+DIST = Path(__file__).parent / "web" / "dist"  # сборка клиента (web/, npm run build)
+NOT_BUILT = (
+    '<!doctype html><html lang="ru"><meta charset="utf-8"><title>Taleforge</title>'
+    "<p>Клиент не собран: выполните <code>npm ci &amp;&amp; npm run build</code> в папке web/.</p></html>"
+)
 
 
 async def bootstrap_superadmin(maker, settings: Settings) -> None:
@@ -97,18 +100,6 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     async def health() -> dict:
         return {"status": "ok"}
 
-    # Прежний клиент на чистом JS живёт по адресу /legacy, пока новый (web/, React) не повторит всё, что он умеет.
-    # Без сборки нового клиента (разработка сервера, тесты) прежний отдаётся и на /.
-    @app.get("/legacy", include_in_schema=False)
-    async def legacy() -> FileResponse:
-        return FileResponse(STATIC / "index.html")
-
-    @app.get("/static/{name}.js", include_in_schema=False)
-    async def script(name: str) -> FileResponse:
-        if name not in ("profile", "heroes", "masterlog", "preparation"):
-            raise HTTPException(404)
-        return FileResponse(STATIC / f"{name}.js", media_type="text/javascript")
-
     @app.get("/assets/{name}", include_in_schema=False)
     async def asset(name: str) -> FileResponse:
         path = DIST / "assets" / name
@@ -118,12 +109,13 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
 
     # Все остальные адреса — страницы одностраничного клиента, маршруты разбирает он сам.
     @app.get("/{path:path}", include_in_schema=False)
-    async def spa(path: str) -> FileResponse:
-        if path.startswith(("api/", "assets/", "static/")) or path == "ws":
+    async def spa(path: str) -> Response:
+        if path.startswith(("api/", "assets/")) or path == "ws":
             raise HTTPException(404)
         index = DIST / "index.html"
         if not index.is_file():
-            return FileResponse(STATIC / "index.html")
+            # разработка сервера и тесты: клиент не собран
+            return HTMLResponse(NOT_BUILT, status_code=503)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
     return app
