@@ -214,3 +214,4 @@ items:
         uses: {count: 1, per: campaign}
         modifiers:
           - {op: custom, engine: dev_request, need: "uses.per: campaign; op раскрытия lore_fact (reveal_knowledge с фильтром тега islands и уровня «слухи»); появление NPC-знакомого в порту (условие location_tag: port)", text: "Раз за кампанию: выдать один lore_fact про острова с уровнем знания «слухи». В порту всегда есть знакомый капитан (NPC)."}
+

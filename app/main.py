@@ -107,12 +107,13 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     async def health() -> dict:
         return {"status": "ok"}
 
-    @app.get("/assets/{name}", include_in_schema=False)
-    async def asset(name: str) -> FileResponse:
-        path = DIST / "assets" / name
-        if "/" in name or not path.is_file():
+    @app.get("/assets/{path:path}", include_in_schema=False)
+    async def asset(path: str) -> FileResponse:
+        file_path = (DIST / "assets" / path).resolve()
+        assets_dir = (DIST / "assets").resolve()
+        if not file_path.is_relative_to(assets_dir) or not file_path.is_file():
             raise HTTPException(404)
-        return FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        return FileResponse(file_path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
     # Все остальные адреса — страницы одностраничного клиента, маршруты разбирает он сам.
     @app.get("/{path:path}", include_in_schema=False)
