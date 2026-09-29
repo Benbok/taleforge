@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
+import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field, Segmented } from "../components/Form";
 import Header from "../components/Header";
 import BriefForm from "../cabinet/BriefForm";
@@ -61,77 +62,181 @@ export default function NewCampaignPage() {
     await qc.invalidateQueries({ queryKey: ["my-campaigns"] });
     if (draft.plan_now && !owner) {
       // сюжет готовится в фоне; не вышло запустить — кампания всё равно создана, запустить можно из кабинета
-      await api(`/api/campaigns/${c.id}/plan`, { body: {} }).catch((e: Error) => toast.error(`Сюжет не запущен: ${e.message}`));
+      await api(`/api/campaigns/${c.id}/plan`, { body: {} }).catch((e: Error) =>
+        toast.error(`Сюжет не запущен: ${e.message}`),
+      );
     }
     navigate(`/c/${c.id}/manage`);
   }
 
-  if (!admin)
+  if (!admin) {
     return (
       <Shell>
-        <p className="card p-5">Создавать кампании могут администраторы. Попросите у владельца кампании ссылку-приглашение.</p>
+        <div className="card border-bad/40 bg-bad/5 p-6 text-center">
+          <h2 className="font-heading text-xl font-bold text-bad">Требуются права администратора</h2>
+          <p className="mt-2 text-sm text-muted">
+            Создавать новые кампании на платформе могут только администраторы.
+            Попросите у ведущего или владельца стола ссылку-приглашение.
+          </p>
+          <div className="mt-4">
+            <Link to="/" className="btn btn-outline-copper font-mono text-xs">
+              Вернуться к моим играм
+            </Link>
+          </div>
+        </div>
       </Shell>
     );
+  }
+
   const loadError = opts.error ?? models.error ?? packs.error;
-  if (loadError)
+  if (loadError) {
     return (
       <Shell>
-        <p className="text-bad">Не удалось загрузить варианты: {(loadError as Error).message}</p>
+        <div className="card border-bad/40 bg-bad/5 p-5 text-sm text-bad">
+          Не удалось загрузить параметры кампаний: {(loadError as Error).message}
+        </div>
       </Shell>
     );
-  if (!opts.data || !models.data)
+  }
+
+  if (!opts.data || !models.data) {
     return (
       <Shell>
-        <p className="text-muted">Загружаем…</p>
+        <div className="card p-8 text-center text-muted font-mono text-sm">
+          Инициализация конструктора кампании…
+        </div>
       </Shell>
     );
+  }
 
   const defModel = models.data.find((m) => m.is_default);
+
+  // Options for World Pack select
+  const packOptions: SelectOption[] = [
+    {
+      value: "",
+      label: "Без пакета: базовые правила SRD 5.1",
+      sublabel: "Классическое фэнтези, стандартные классы, расы и чудовища",
+      badge: "SRD",
+      badgeTone: "muted",
+    },
+    ...(packs.data ?? []).map((p) => ({
+      value: p.id,
+      label: p.name,
+      sublabel: `Версия ${p.version} · уникальный лор, классы и бестиарий`,
+      badge: `v${p.version}`,
+      badgeTone: "accent" as const,
+    })),
+  ];
+
+  // Options for Master model select
+  const masterOptions: SelectOption[] = [
+    {
+      value: "",
+      label: defModel ? `ИИ-мастер: ${defModel.name}` : "ИИ-мастер (по умолчанию)",
+      sublabel: defModel?.resolved_model || "Системная рекомендуемая нейросеть",
+      badge: "AI DEFAULT",
+      badgeTone: "accent",
+    },
+    ...models.data
+      .filter((m) => !m.is_default)
+      .map((m) => ({
+        value: m.id,
+        label: `ИИ-мастер: ${m.name}`,
+        sublabel: `${m.provider.toUpperCase()} · ${m.resolved_model || m.model}`,
+        badge: "AI",
+        badgeTone: "patina" as const,
+      })),
+    {
+      value: "owner",
+      label: "Я веду сам (живой мастер)",
+      sublabel: "Вы лично описываете сцены и бросаете вызовы игрокам за столом",
+      badge: "HUMAN",
+      badgeTone: "muted",
+    },
+  ];
+
   return (
     <Shell>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav aria-label="Шаги" className="flex flex-wrap gap-1.5">
-          {WIZARD_STEPS.map((s, i) => (
-            <button
-              key={s}
-              aria-current={i === draft.step ? "step" : undefined}
-              className={`rounded-full border px-3 py-1 text-sm ${i === draft.step ? "border-accent text-ink" : "border-line text-muted"}`}
-              onClick={() => go(i)}
-            >
-              {i + 1}. {s}
-            </button>
-          ))}
+      {/* Wizard Steps Navigation Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
+        <nav aria-label="Шаги создания кампании" className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {WIZARD_STEPS.map((s, i) => {
+            const isCurrent = i === draft.step;
+            const isPassed = i < draft.step;
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-current={isCurrent ? "step" : undefined}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-xs transition ${
+                  isCurrent
+                    ? "border-accent bg-accent/15 text-accent font-semibold shadow-sm"
+                    : isPassed
+                      ? "border-patina/40 bg-patina/5 text-patina-hi hover:border-patina"
+                      : "border-line bg-raised text-muted hover:border-line hover:text-ink"
+                }`}
+                onClick={() => go(i)}
+              >
+                <span>{isPassed ? "✓" : `${i + 1}.`}</span>
+                <span>{s}</span>
+              </button>
+            );
+          })}
         </nav>
-        <span className="flex items-center gap-2 text-xs text-muted">
-          {resumed ? "Черновик восстановлен" : "Черновик сохраняется сам"}
+
+        <div className="flex items-center gap-3 font-mono text-xs self-start sm:self-center">
+          <span className="text-patina-hi flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-patina animate-pulse" />
+            <span>{resumed ? "Черновик восстановлен" : "Автосохранение"}</span>
+          </span>
           <button
-            className="underline"
+            type="button"
+            className="text-muted hover:text-bad transition underline text-[11px]"
             onClick={() => {
-              if (window.confirm("Стереть черновик и начать заново?")) setDraft(EMPTY_DRAFT);
+              if (window.confirm("Стереть сохранённый черновик и начать заново?")) setDraft(EMPTY_DRAFT);
             }}
           >
-            начать заново
+            сбросить
           </button>
-        </span>
+        </div>
       </div>
 
-      <section className="card flex flex-col gap-4 p-5">
+      {/* Main Step Body Card */}
+      <section className="card flex flex-col gap-5 p-5 sm:p-6 border border-line bg-surface shadow-xl">
         {draft.step === 0 && (
           <>
-            <Field label="Название">
-              <input className="field" maxLength={128} value={draft.name} autoFocus onChange={(e) => set({ name: e.target.value })} />
+            <div>
+              <h2 className="font-heading text-xl font-bold text-ink">Параметры экспедиции</h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Название кампании, сеттинг мира и рекомендуемый размер партии
+              </p>
+            </div>
+
+            <Field label="Название кампании">
+              <input
+                className="field font-heading text-lg"
+                maxLength={128}
+                placeholder="например: Тени над Затонувшим Архипелагом"
+                value={draft.name}
+                autoFocus
+                onChange={(e) => set({ name: e.target.value })}
+              />
             </Field>
-            <Field label="Мир" hint="Пакет мира задаёт лор, классы, происхождения и чудовищ. Без пакета — базовые правила SRD.">
-              <select className="field" value={draft.pack_id} onChange={(e) => set({ pack_id: e.target.value, players: null })}>
-                <option value="">Без пакета: базовые правила</option>
-                {(packs.data ?? []).map((p) => (
-                  <option key={`${p.id}@${p.version}`} value={p.id}>
-                    {p.name} {p.version}
-                  </option>
-                ))}
-              </select>
+
+            <Field
+              label="Мир и сеттинг"
+              hint="Пакет мира определяет лор, классы, чудовищ и оформление. При выборе базовых правил действует SRD 5.1."
+            >
+              <CustomSelect
+                value={draft.pack_id}
+                options={packOptions}
+                onChange={(val) => set({ pack_id: val, players: null })}
+                ariaLabel="Мир кампании"
+              />
             </Field>
-            <Field label="Сложность">
+
+            <Field label="Уровень сложности вызовов">
               <Segmented
                 label="Сложность"
                 value={draft.difficulty}
@@ -139,12 +244,17 @@ export default function NewCampaignPage() {
                 onChange={(v) => set({ difficulty: v, players: null })}
               />
             </Field>
+
             <Field
-              label="Игроков"
-              hint={size.data ? `Для этой сложности рекомендуется ${size.data.recommended}, можно от ${size.data.min} до ${size.data.max}.` : undefined}
+              label="Количество игроков за столом"
+              hint={
+                size.data
+                  ? `Для выбранной сложности рекомендуется ${size.data.recommended} игроков (допустимо от ${size.data.min} до ${size.data.max}).`
+                  : undefined
+              }
             >
               <input
-                className="field w-24"
+                className="field w-28 font-mono text-sm"
                 type="number"
                 min={1}
                 max={6}
@@ -157,40 +267,61 @@ export default function NewCampaignPage() {
 
         {draft.step === 1 && (
           <>
+            <div>
+              <h2 className="font-heading text-xl font-bold text-ink">Ведущий и роль мастера</h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Выберите, кто будет вести кампанию — искусственный интеллект или живой мастер
+              </p>
+            </div>
+
             <Field
-              label="Кто ведёт игру"
-              hint={models.data.length ? undefined : "Моделей ИИ ещё нет: будет Claude по умолчанию. Свои модели настраиваются в профиле."}
+              label="Кто ведёт приключение"
+              hint={models.data.length ? undefined : "Модели ещё не добавлены в админке: будет использована системная Claude."}
             >
-              <select className="field" value={draft.master} onChange={(e) => set({ master: e.target.value })}>
-                <option value="">ИИ-мастер: {defModel ? `${defModel.name} (по умолчанию)` : "модель по умолчанию"}</option>
-                {models.data
-                  .filter((m) => !m.is_default)
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      ИИ-мастер: {m.name}
-                    </option>
-                  ))}
-                <option value="owner">Я веду сам</option>
-              </select>
+              <CustomSelect
+                value={draft.master}
+                options={masterOptions}
+                onChange={(val) => set({ master: val })}
+                ariaLabel="Ведущий игры"
+              />
             </Field>
+
             {!owner && (
               <>
-                <Field label="Характер мастера" hint="Тон, юмор и манера подачи. Механику и сложность не меняет. Свои персоны — в профиле.">
-                  <PersonaPicker value={draft.persona} onChange={(persona) => set({ persona })} opts={opts.data} mine={personas.data ?? []} />
+                <Field
+                  label="Характер и стиль повествования мастера"
+                  hint="Определяет тон нарратива, юмор и манеру описания сцен. Игровые правила остаются каноничными."
+                >
+                  <PersonaPicker
+                    value={draft.persona}
+                    onChange={(persona) => set({ persona })}
+                    opts={opts.data}
+                    mine={personas.data ?? []}
+                  />
                 </Field>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={draft.owner_plays} onChange={(e) => set({ owner_plays: e.target.checked })} />
-                  Я тоже играю: сразу занять место игрока
+
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer py-1">
+                  <input
+                    type="checkbox"
+                    className="accent-[var(--tf-accent)] h-4 w-4 rounded"
+                    checked={draft.owner_plays}
+                    onChange={(e) => set({ owner_plays: e.target.checked })}
+                  />
+                  <span className="font-medium text-ink">Я тоже играю: сразу занять свободное место игрока за столом</span>
                 </label>
               </>
             )}
-            <Field label="Проверка героев" hint="Мастер читает историю героя и может тайно связать её с сюжетом. Автоматически — сразу в игру, если лист собран по правилам.">
+
+            <Field
+              label="Режим проверки персонажей"
+              hint="Мастером — ведущий изучает биографию и связывает её с сюжетом. Автоматически — лист сразу допускается в игру при корректности правил."
+            >
               <Segmented
                 label="Проверка героев"
                 value={draft.review}
                 options={[
-                  ["master", "Мастером"],
-                  ["auto", "Автоматически"],
+                  ["master", "Проверка мастером"],
+                  ["auto", "Автоматический допуск"],
                 ]}
                 onChange={(review) => set({ review })}
               />
@@ -200,46 +331,104 @@ export default function NewCampaignPage() {
 
         {draft.step === 2 && (
           <>
+            <div>
+              <h2 className="font-heading text-xl font-bold text-ink">Анкета приключения</h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Ожидания игроков по длительности, балансу боёв и исследований. Всё необязательно — незаполненное архитектор сбалансирует сам.
+              </p>
+            </div>
+
             <BriefForm brief={draft.brief} opts={opts.data.brief} onChange={(brief) => set({ brief })} />
-            <Field label="Запретные темы" hint="Через запятую. Мастер их не коснётся.">
-              <input className="field" value={draft.excluded} onChange={(e) => set({ excluded: e.target.value })} />
+
+            <Field label="Запретные темы и триггеры" hint="Укажите через запятую: мастер и генератор сюжета гарантированно обойдут их стороной.">
+              <input
+                className="field text-sm"
+                placeholder="например: пауки, пытки, гибель детей"
+                value={draft.excluded}
+                onChange={(e) => set({ excluded: e.target.value })}
+              />
             </Field>
           </>
         )}
 
         {draft.step === 3 && (
           <>
-            <Field label="Публичная вводная" hint={owner ? "Её увидят игроки по приглашению." : "Можно оставить пустой: её напишет архитектор сюжета."}>
-              <textarea className="field min-h-28" maxLength={10000} value={draft.public_intro} onChange={(e) => set({ public_intro: e.target.value })} />
+            <div>
+              <h2 className="font-heading text-xl font-bold text-ink">Сюжетная вводная и запуск</h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Финальная проверка параметров перед созданием кампании
+              </p>
+            </div>
+
+            <Field
+              label="Публичное вступление (афиша стола)"
+              hint={owner ? "Её увидят приглашённые игроки." : "Можно оставить пустым: вводную подготовит ИИ-архитектор сюжета."}
+            >
+              <textarea
+                className="field min-h-24 text-sm"
+                maxLength={10000}
+                placeholder="В туманной гавани у маяка собираются смельчаки, откликнувшиеся на зов гильдии..."
+                value={draft.public_intro}
+                onChange={(e) => set({ public_intro: e.target.value })}
+              />
             </Field>
+
             {!owner && (
-              <label className="flex items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-1" checked={draft.plan_now} onChange={(e) => set({ plan_now: e.target.checked })} />
-                <span>
-                  Сразу подготовить сюжет: завязку, злодеев, акты, места и тайны.
-                  <span className="block text-xs text-muted">Идёт в фоне несколько минут. Другой вариант можно заказать в кабинете, пока игра не началась.</span>
-                </span>
+              <label className="flex items-start gap-2.5 rounded-[10px] border border-accent/40 bg-accent/10 p-3.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="accent-[var(--tf-accent)] mt-1 h-4 w-4 rounded"
+                  checked={draft.plan_now}
+                  onChange={(e) => set({ plan_now: e.target.checked })}
+                />
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium text-ink">Сразу сгенерировать сюжетную арку приключения</span>
+                  <span className="text-xs text-muted leading-relaxed">
+                    Архитектор создаст завязку, антагонистов с их планом угрозы, узлы актов и тайны. Запуск занимает пару минут в фоне.
+                  </span>
+                </div>
               </label>
             )}
-            <Summary draft={draft} models={models.data} opts={opts.data} packs={packs.data ?? []} />
+
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink mb-2">Формуляр создаваемой кампании:</h3>
+              <Summary draft={draft} models={models.data} opts={opts.data} packs={packs.data ?? []} />
+            </div>
           </>
         )}
       </section>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <button className="btn" disabled={draft.step === 0} onClick={() => go(draft.step - 1)}>
-          ← Назад
+      {/* Navigation Footer Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <button
+          type="button"
+          className="btn font-mono text-xs"
+          disabled={draft.step === 0}
+          onClick={() => go(draft.step - 1)}
+        >
+          ← НАЗАД
         </button>
+
         {draft.step < WIZARD_STEPS.length - 1 ? (
-          <span className="flex flex-col items-end gap-1">
-            <button className="btn btn-primary" disabled={problems.length > 0} onClick={() => go(draft.step + 1)}>
-              Далее →
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              className="btn btn-primary font-mono text-xs tracking-wider"
+              disabled={problems.length > 0}
+              onClick={() => go(draft.step + 1)}
+            >
+              ДАЛЕЕ →
             </button>
-            {problems.length > 0 && <span className="text-xs text-warn">{problems.join("; ")}</span>}
-          </span>
+            {problems.length > 0 && <span className="font-mono text-xs text-warn">{problems.join("; ")}</span>}
+          </div>
         ) : (
-          <ActionButton primary run={create} done="Кампания создана">
-            Создать кампанию
+          <ActionButton
+            primary
+            className="font-mono text-xs tracking-wider"
+            run={create}
+            done="Кампания успешно создана"
+          >
+            СОЗДАТЬ КАМПАНИЮ И ОТКРЫТЬ КАБИНЕТ →
           </ActionButton>
         )}
       </div>
@@ -251,37 +440,79 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header>
-        <Link className="btn px-3 py-1" to="/" aria-label="К кампаниям">
-          ←<span className="hidden sm:inline"> Кампании</span>
+        <Link
+          className="btn btn-outline-copper h-9 px-3.5 text-xs font-mono tracking-wider flex items-center gap-1.5"
+          to="/"
+          aria-label="К списку столов"
+        >
+          <span>←</span>
+          <span className="hidden sm:inline">К СТОЛАМ</span>
         </Link>
       </Header>
-      <main className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6">
-        <h1 className="text-2xl font-semibold">Новая кампания</h1>
+
+      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
+        {/* Terminal Header */}
+        <div className="relative overflow-hidden rounded-[14px] border border-line bg-surface p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-36 w-36 rounded-full bg-accent/5 blur-2xl" />
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-accent uppercase">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+                <span>Судовая верфь · Подготовка экспедиции</span>
+              </div>
+              <h1 className="mt-1 font-heading text-2xl sm:text-3xl font-bold tracking-wide text-ink">
+                Новая кампания
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm text-muted">
+                Конфигурация игрового стола: мир, модель ведущего, правила проверки и сюжетная канва.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {children}
       </main>
     </>
   );
 }
 
-function Summary({ draft, models, opts, packs }: { draft: CampaignDraft; models: ModelProfile[]; opts: CampaignOptions; packs: Pack[] }) {
+function Summary({
+  draft,
+  models,
+  opts,
+  packs,
+}: {
+  draft: CampaignDraft;
+  models: ModelProfile[];
+  opts: CampaignOptions;
+  packs: Pack[];
+}) {
   const master =
-    draft.master === "owner" ? "вы сами" : `ИИ, ${models.find((m) => m.id === draft.master)?.name ?? models.find((m) => m.is_default)?.name ?? "модель по умолчанию"}`;
-  const persona = draft.persona.startsWith("pre:") ? opts.presets.find((p) => p.id === draft.persona.slice(4))?.name : draft.persona ? "своя" : null;
+    draft.master === "owner"
+      ? "Владелец кампании (живой мастер)"
+      : `ИИ: ${models.find((m) => m.id === draft.master)?.name ?? models.find((m) => m.is_default)?.name ?? "модель по умолчанию"}`;
+  const persona = draft.persona.startsWith("pre:")
+    ? opts.presets.find((p) => p.id === draft.persona.slice(4))?.name
+    : draft.persona
+      ? "Своя персона"
+      : null;
   const b = draft.brief;
   const rows: [string, string][] = [
-    ["Название", draft.name || "—"],
-    ["Мир", packs.find((p) => p.id === draft.pack_id)?.name ?? "базовые правила"],
-    ["Сложность", DIFFICULTY_RU[draft.difficulty]],
-    ["Мастер", master + (persona && draft.master !== "owner" ? ` · ${persona}` : "")],
-    ["Длительность", b.length ? opts.brief.length[b.length] : "решит мастер"],
-    ["Эмоции", b.emotions?.length ? b.emotions.map((e) => opts.brief.emotions[e]).join(", ") : "решит мастер"],
+    ["Название стола", draft.name || "—"],
+    ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
+    ["Сложность", DIFFICULTY_RU[draft.difficulty] ?? draft.difficulty],
+    ["Ведущий", master + (persona && draft.master !== "owner" ? ` (${persona})` : "")],
+    ["Длительность", b.length ? opts.brief.length[b.length] : "На усмотрение архитектора"],
+    ["Атмосфера", b.emotions?.length ? b.emotions.map((e) => opts.brief.emotions[e]).join(", ") : "Стандартная"],
   ];
+
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border border-line p-3 text-sm">
+    <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-[10px] border border-line bg-raised/50 p-4 text-xs sm:text-sm font-mono">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
-          <dt className="text-muted">{k}</dt>
-          <dd>{v}</dd>
+          <dt className="text-muted">{k}:</dt>
+          <dd className="font-semibold text-accent">{v}</dd>
         </div>
       ))}
     </dl>

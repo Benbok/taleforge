@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useGame } from "../stores/game";
 import { Spinner } from "../components/ActionButton";
 import { useDraft } from "./draft";
@@ -7,6 +7,7 @@ import { useInspector } from "./inspector";
 import { attack } from "./quick";
 import { signed } from "./hero";
 import { toast } from "../stores/toasts";
+import { computePopoverPosition } from "./popoverPosition";
 
 const STAT_NAMES: Record<string, string> = { ac: "КБ", hp: "Хиты", hp_max: "из", speed: "Скорость" };
 
@@ -17,57 +18,75 @@ export default function EntityPopover() {
   const card = useGame((s) => (id ? s.cards[id] : undefined));
   const insert = useDraft((s) => s.insert);
   const ref = useRef<HTMLDivElement>(null);
+  const [, setWinSize] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
     if (!id) return;
+    const onResize = () => setWinSize({ w: window.innerWidth, h: window.innerHeight });
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && close();
+    const onDown = (e: MouseEvent | TouchEvent) => ref.current && !ref.current.contains(e.target as Node) && close();
+    window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
+    window.addEventListener("touchstart", onDown);
     return () => {
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("touchstart", onDown);
     };
   }, [id, close]);
 
   if (!id) return null;
-  const phone = window.innerWidth < 768;
-  const style =
-    anchor && !phone
-      ? {
-          left: Math.min(Math.max(8, anchor.left), window.innerWidth - 336),
-          top: anchor.bottom + 8 + 320 > window.innerHeight ? Math.max(8, anchor.top - 328) : anchor.bottom + 8,
-        }
-      : undefined;
+  const phone = typeof window !== "undefined" && window.innerWidth < 768;
+  const pos = anchor && !phone ? computePopoverPosition(anchor, { cardWidth: 340 }) : null;
+  const style = pos
+    ? {
+        left: pos.left,
+        top: pos.top,
+        bottom: pos.bottom,
+        maxHeight: `${pos.maxHeight}px`,
+      }
+    : undefined;
   const name = card?.name ?? label;
   const type = card?.type;
+
   return (
     <div
       ref={ref}
       role="dialog"
       aria-label={`Карточка: ${name}`}
-      className={`tf-pop fixed z-40 max-h-[70dvh] overflow-y-auto border border-line bg-raised p-4 shadow-xl ${
-        style ? "w-80 rounded-lg" : "inset-x-0 bottom-0 rounded-t-xl"
+      className={`tf-pop fixed z-50 flex flex-col border border-line bg-surface shadow-2xl backdrop-blur-md ${
+        phone ? "inset-x-0 bottom-0 max-h-[82dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]" : "w-[22rem] rounded-xl"
       }`}
       style={style}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs uppercase tracking-wide" style={{ color: type ? TYPE_COLOR[type] : undefined }}>
+      <div className="flex items-start justify-between gap-3 border-b border-line/60 bg-raised/80 px-4 py-3 shrink-0 rounded-t-xl">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-mono uppercase tracking-wider font-semibold" style={{ color: type ? TYPE_COLOR[type] : undefined }}>
             {type ? `${TYPE_ICON[type]} ${TYPE_NAME[type]}` : "Карточка"}
             {card?.level_name ? ` · ${card.level_name}` : ""}
           </p>
-          <h3 className="text-lg font-semibold">{name}</h3>
+          <h3 className="mt-0.5 text-base font-semibold leading-snug text-ink truncate">{name}</h3>
         </div>
-        <button className="text-muted hover:text-ink" onClick={close} aria-label="Закрыть">
-          ×
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink shrink-0 -mr-1 -mt-1 cursor-pointer"
+          onClick={close}
+          aria-label="Закрыть"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
-      {!card && (
-        <p className="flex items-center gap-2 text-muted">
-          <Spinner /> Вспоминаем, что вы знаете…
-        </p>
-      )}
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-sm">
+        {!card && (
+          <p className="flex items-center gap-2 text-muted">
+            <Spinner /> Вспоминаем, что вы знаете…
+          </p>
+        )}
       {card?.error && <p className="text-bad">{card.error}</p>}
       {card?.hero && (
         <div className="flex flex-col gap-2">
@@ -127,6 +146,7 @@ export default function EntityPopover() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

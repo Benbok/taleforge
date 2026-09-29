@@ -79,16 +79,44 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-line px-4 py-1.5 text-xs text-muted">
-        <label className="flex cursor-pointer items-center gap-1.5">
-          <input type="checkbox" checked={onlyStory} onChange={(e) => setOnlyStory(e.target.checked)} />
+      <div className="flex flex-wrap items-center gap-2 border-b border-line/60 bg-surface/50 px-4 py-2 text-xs">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={onlyStory}
+          onClick={() => setOnlyStory(!onlyStory)}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
+            onlyStory
+              ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
+              : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full transition-all ${
+              onlyStory ? "bg-accent shadow-[0_0_6px_var(--tf-accent)]" : "bg-muted/40"
+            }`}
+          />
           Только повествование
-        </label>
+        </button>
         {!onlyStory && (
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={hideOoc} onChange={(e) => setHideOoc(e.target.checked)} />
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={hideOoc}
+            onClick={() => setHideOoc(!hideOoc)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
+              hideOoc
+                ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
+                : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full transition-all ${
+                hideOoc ? "bg-accent shadow-[0_0_6px_var(--tf-accent)]" : "bg-muted/40"
+              }`}
+            />
             Скрыть «вне игры»
-          </label>
+          </button>
         )}
       </div>
       <div ref={box} onScroll={onScroll} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4" aria-live="polite">

@@ -51,124 +51,199 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="card flex flex-col gap-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">Места за столом</h2>
+    <div className="flex flex-col gap-6">
+      {/* Seats at the table */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+          <div>
+            <h2 className="font-heading text-xl font-bold text-ink">Состав отряда за столом</h2>
+            <p className="text-xs text-muted">Участники, закреплённые места и привязанные герои</p>
+          </div>
           {room.is_owner && !room.my_seat_id && (
             <ActionButton
+              className="font-mono text-xs"
               run={async () => onRoom(await api<Room>(`/api/campaigns/${id}/seats/take`, { method: "POST" }))}
               done="Вы заняли место игрока"
             >
-              Занять место игрока
+              ЗАНЯТЬ МЕСТО ИГРОКА
             </ActionButton>
           )}
         </div>
-        <ul className="flex flex-col gap-2">
+
+        <div className="divide-y divide-line/60">
           {players.map((s) => {
             const h = heroOf(s.id);
+            const isMe = s.id === room.my_seat_id;
+            const isEmpty = s.occupant_type === "empty";
             return (
-              <li key={s.id} className="flex flex-wrap items-center gap-3">
-                <Avatar name={h?.name ?? s.user_name} role={s.role} occupant={s.occupant_type} presence={null} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">
-                    {s.occupant_type === "empty" ? "Свободное место" : s.occupant_type === "agent" ? "ИИ-игрок" : s.user_name}
-                    {s.id === room.my_seat_id && <span className="text-muted"> (вы)</span>}
-                  </span>
-                  {s.occupant_type !== "empty" && (
-                    <span className="block text-xs text-muted">{h ? `${h.name} · ${heroState(h.status)}` : "героя ещё нет"}</span>
-                  )}
-                </span>
-                {room.is_owner && s.occupant_type === "human" && s.id !== room.my_seat_id && (
+              <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+                <div className="flex items-center gap-3">
+                  <Avatar name={h?.name ?? s.user_name} role={s.role} occupant={s.occupant_type} presence={null} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-ink">
+                        {isEmpty ? "Свободное место" : s.occupant_type === "agent" ? "ИИ-игрок" : s.user_name}
+                      </span>
+                      {isMe && (
+                        <span className="rounded bg-raised px-1.5 py-0.2 font-mono text-[10px] text-accent font-semibold border border-line">
+                          ВЫ
+                        </span>
+                      )}
+                    </div>
+                    {!isEmpty && (
+                      <div className="font-mono text-xs text-muted mt-0.5">
+                        {h ? (
+                          <span>
+                            <span className="text-accent font-medium">{h.name}</span> · {heroState(h.status)}
+                          </span>
+                        ) : (
+                          <span className="text-faint">персонаж ещё не выбран</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {room.is_owner && s.occupant_type === "human" && !isMe && (
                   <ActionButton
                     danger
-                    className="px-2 py-0.5 text-xs"
+                    className="px-2.5 py-1 text-xs font-mono self-start sm:self-center"
                     confirm={`Освободить место игрока ${s.user_name}? Его герой останется в кампании.`}
-                    run={async () => onRoom(await api<Room>(`/api/campaigns/${id}/seats/${s.id}/occupant`, { method: "DELETE" }))}
+                    run={async () =>
+                      onRoom(await api<Room>(`/api/campaigns/${id}/seats/${s.id}/occupant`, { method: "DELETE" }))
+                    }
                     done="Место освобождено"
                   >
-                    Освободить
+                    Освободить место
                   </ActionButton>
                 )}
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       </section>
 
+      {/* Invites Management */}
       {room.is_owner && (
-        <section className="card flex flex-col gap-3 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">Приглашения</h2>
+        <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+            <div>
+              <h2 className="font-heading text-xl font-bold text-ink">Ссылки-приглашения</h2>
+              <p className="text-xs text-muted">Отправьте ссылку игрокам, чтобы они могли присоединиться к этому столу</p>
+            </div>
             <ActionButton
               primary
+              className="font-mono text-xs tracking-wider"
               run={async () => {
                 const inv = await api<Invite>(`/api/campaigns/${id}/invites`, { body: {} });
                 await qc.invalidateQueries({ queryKey: ["invites", id] });
                 await copy(inv.url);
               }}
             >
-              Новая ссылка
+              + СОЗДАТЬ ССЫЛКУ
             </ActionButton>
           </div>
-          {invites.isError && <p className="text-bad">Не удалось загрузить приглашения: {(invites.error as Error).message}</p>}
-          {invites.isSuccess && live.length === 0 && <p className="text-sm text-muted">Действующих ссылок нет. Новая действует 3 дня.</p>}
-          <ul className="flex flex-col gap-2">
+
+          {invites.isError && (
+            <div className="card border-bad/40 bg-bad/5 p-4 text-xs text-bad">
+              Не удалось загрузить приглашения: {(invites.error as Error).message}
+            </div>
+          )}
+
+          {invites.isSuccess && live.length === 0 && (
+            <p className="text-xs sm:text-sm text-muted">
+              Активных ссылок нет. Каждая созданная ссылка действует 3 дня.
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2.5">
             {live.map((i) => (
-              <li key={i.token} className="flex flex-wrap items-center gap-2">
-                <input className="field min-w-0 basis-full text-xs sm:basis-0 sm:flex-1" readOnly value={i.url} onFocus={(e) => e.currentTarget.select()} aria-label="Ссылка-приглашение" />
-                <span className="text-xs text-muted">
-                  {i.expires_at ? `до ${DATE.format(new Date(i.expires_at))}` : "бессрочно"}
-                  {i.uses ? ` · вошли ${i.uses}` : ""}
-                </span>
-                <button className="btn px-2 py-0.5 text-xs" onClick={() => void copy(i.url)}>
-                  Копировать
-                </button>
-                <ActionButton
-                  className="px-2 py-0.5 text-xs"
-                  run={async () => {
-                    await api(`/api/campaigns/${id}/invites/${i.token}`, { method: "DELETE" });
-                    await qc.invalidateQueries({ queryKey: ["invites", id] });
-                  }}
-                  done="Ссылка отозвана"
-                >
-                  Отозвать
-                </ActionButton>
-              </li>
+              <div
+                key={i.token}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-[8px] border border-line bg-raised/50 p-2.5"
+              >
+                <input
+                  className="field min-w-0 font-mono text-xs py-1 px-2.5 flex-1 select-all"
+                  readOnly
+                  value={i.url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  aria-label="Ссылка-приглашение"
+                />
+                <div className="flex items-center justify-between sm:justify-end gap-2 font-mono text-xs">
+                  <span className="text-faint text-[11px]">
+                    {i.expires_at ? `до ${DATE.format(new Date(i.expires_at))}` : "бессрочно"}
+                    {i.uses ? ` · перешли ${i.uses}` : ""}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      className="btn px-2.5 py-1 text-xs font-mono"
+                      onClick={() => void copy(i.url)}
+                    >
+                      Копировать
+                    </button>
+                    <ActionButton
+                      className="px-2 py-1 text-xs font-mono text-bad hover:border-bad"
+                      run={async () => {
+                        await api(`/api/campaigns/${id}/invites/${i.token}`, { method: "DELETE" });
+                        await qc.invalidateQueries({ queryKey: ["invites", id] });
+                      }}
+                      done="Ссылка отозвана"
+                    >
+                      Отозвать
+                    </ActionButton>
+                  </div>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
+      {/* Waiting for review heroes */}
       {waiting.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg text-muted">Ждут проверки</h2>
-          {waiting.map((c) => (
-            <ReviewCard key={c.id} campaignId={id} hero={c} onDone={refreshChars} />
-          ))}
+          <div>
+            <h2 className="font-heading text-xl font-bold text-ink">Герои на проверке</h2>
+            <p className="text-xs text-muted">Листы персонажей, ожидающие решения мастера стола</p>
+          </div>
+          <div className="grid gap-4">
+            {waiting.map((c) => (
+              <ReviewCard key={c.id} campaignId={id} hero={c} onDone={refreshChars} />
+            ))}
+          </div>
         </section>
       )}
 
+      {/* Premade heroes */}
       {room.is_owner && <Premades campaignId={id} premades={premades} onChange={refreshChars} />}
     </div>
   );
 }
 
 function heroState(status: string): string {
-  return { draft: "собирает героя", submitted: "на проверке", approved: "готов", active: "готов" }[status] ?? status;
+  return { draft: "собирает героя", submitted: "на проверке", approved: "готов к игре", active: "в игре" }[status] ?? status;
 }
 
 async function copy(url: string) {
   try {
     await navigator.clipboard.writeText(url);
-    toast.ok("Ссылка скопирована");
+    toast.ok("Ссылка скопирована в буфер обмена");
   } catch {
     toast.info(`Ссылка: ${url}`);
   }
 }
 
 /** Герой на проверке: лист, история и тайная предыстория (её видит только проверяющий). */
-function ReviewCard({ campaignId, hero, onDone }: { campaignId: string; hero: Reviewable; onDone: () => Promise<unknown> }) {
+function ReviewCard({
+  campaignId,
+  hero,
+  onDone,
+}: {
+  campaignId: string;
+  hero: Reviewable;
+  onDone: () => Promise<unknown>;
+}) {
   const [comment, setComment] = useState("");
   const full = useQuery({
     queryKey: ["character", campaignId, hero.id],
@@ -176,54 +251,107 @@ function ReviewCard({ campaignId, hero, onDone }: { campaignId: string; hero: Re
   });
   const h = full.data ?? hero;
   const review = (approve: boolean) => async () => {
-    if (!approve && !comment.trim()) throw new Error("Напишите игроку, что поправить");
-    await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review`, { body: { approve, comment: comment.trim() } });
+    if (!approve && !comment.trim()) throw new Error("Укажите игроку, что именно нужно доработать");
+    await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review`, {
+      body: { approve, comment: comment.trim() },
+    });
     setComment("");
     await onDone();
   };
+
   return (
-    <article className="card flex flex-col gap-3 p-4">
-      <div>
-        <p className="font-semibold">{h.name}</p>
-        <p className="text-xs text-muted">
-          {[h.origin_name, h.class_name, h.derived?.hp_max ? `хиты ${h.derived.hp_max}` : null, h.derived?.ac ? `КД ${h.derived.ac}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-        {h.derived?.abilities && (
-          <p className="text-xs">{ABILITIES.map((a) => `${ABILITY_ABBR[a]} ${h.derived!.abilities![a]}`).join(" · ")}</p>
-        )}
+    <article className="card p-5 sm:p-6 border-2 border-accent/40 bg-surface shadow-xl flex flex-col gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-3">
+        <div>
+          <span className="font-heading text-xl font-bold text-ink">{h.name}</span>
+          <span className="font-mono text-xs text-accent ml-2">
+            {[
+              h.origin_name,
+              h.class_name,
+              h.derived?.hp_max ? `хиты ${h.derived.hp_max}` : null,
+              h.derived?.ac ? `КД ${h.derived.ac}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </div>
       </div>
-      {h.public_bio && <p className="text-sm">{h.public_bio}</p>}
+
+      {h.derived?.abilities && (
+        <div className="flex flex-wrap gap-2 text-xs font-mono">
+          {ABILITIES.map((a) => (
+            <span key={a} className="rounded-[6px] border border-line bg-raised px-2 py-0.5 text-ink-2">
+              <span className="text-muted mr-1">{ABILITY_ABBR[a]}</span>
+              <span className="font-semibold">{h.derived!.abilities![a]}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {h.public_bio && (
+        <div className="rounded-[8px] bg-raised/40 p-3 text-xs sm:text-sm text-ink-2 leading-relaxed">
+          <span className="font-mono text-[10px] text-muted uppercase tracking-wider block mb-1">
+            Публичное описание:
+          </span>
+          {h.public_bio}
+        </div>
+      )}
+
       {h.private_backstory && (
-        <p className="rounded-md border border-line p-2 text-sm">
-          <span className="text-xs text-muted">Тайна героя: </span>
+        <div className="rounded-[8px] border border-accent/30 bg-accent/5 p-3 text-xs sm:text-sm text-ink-2 leading-relaxed">
+          <span className="font-mono text-[10px] text-accent uppercase tracking-wider block mb-1">
+            Тайная предыстория героя (секрет для мастера):
+          </span>
           {h.private_backstory}
+        </div>
+      )}
+
+      {h.reviewer === "ai" && !h.review_error && (
+        <p className="font-mono text-xs text-muted">
+          Герой находится в очереди на проверку ИИ-мастером. Вы также можете одобрить его вручную.
         </p>
       )}
-      {h.reviewer === "ai" && !h.review_error && <p className="text-sm text-muted">Сейчас героя проверяет ИИ-мастер. Можно решить и самому.</p>}
-      {h.review_error && <p className="text-sm text-bad">ИИ-мастер не смог проверить: {h.review_error.replace(/ \(.*$/s, "")}</p>}
+
+      {h.review_error && (
+        <div className="rounded-[8px] border border-bad/40 bg-bad/10 p-2.5 font-mono text-xs text-bad">
+          ИИ-мастер не смог провести проверку: {h.review_error.replace(/ \(.*$/s, "")}
+        </div>
+      )}
+
       <textarea
-        className="field min-h-14 text-sm"
-        placeholder="Комментарий игроку: что понравилось или что поправить"
+        className="field min-h-16 text-sm"
+        placeholder="Комментарий мастерского состава игроку: одобрение, замечания или сюжетная зацепка..."
         maxLength={2000}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
       />
-      <div className="flex flex-wrap gap-2">
-        <ActionButton primary run={review(true)} done={`${h.name} в игре`}>
-          Одобрить
+
+      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+        <ActionButton
+          primary
+          className="font-mono text-xs"
+          run={review(true)}
+          done={`${h.name} допущен в кампанию`}
+        >
+          ✓ ОДОБРИТЬ В ИГРУ
         </ActionButton>
-        <ActionButton run={review(false)} done="Герой вернулся игроку">
-          Вернуть на доработку
+
+        <ActionButton
+          className="font-mono text-xs"
+          run={review(false)}
+          done="Герой возвращён игроку на доработку"
+        >
+          ВЕРНУТЬ НА ДОРАБОТКУ
         </ActionButton>
+
         {h.reviewer === "ai" && (
           <ActionButton
+            className="font-mono text-xs ml-auto"
             run={async () => {
               await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review/retry-ai`, { method: "POST" });
               await onDone();
             }}
-            done="ИИ-мастер проверит ещё раз"
+            done="Проверка ИИ перезапущена"
           >
             Повторить проверку ИИ
           </ActionButton>
@@ -234,43 +362,71 @@ function ReviewCard({ campaignId, hero, onDone }: { campaignId: string; hero: Re
 }
 
 /** Готовые герои: владелец собирает их заранее, игрок может взять любого вместо своего. */
-function Premades({ campaignId, premades, onChange }: { campaignId: string; premades: Reviewable[]; onChange: () => Promise<unknown> }) {
+function Premades({
+  campaignId,
+  premades,
+  onChange,
+}: {
+  campaignId: string;
+  premades: Reviewable[];
+  onChange: () => Promise<unknown>;
+}) {
   const [editing, setEditing] = useState<Reviewable | "new" | null>(null);
   const opts = useQuery({
     queryKey: ["options", campaignId],
     queryFn: () => api<BuilderOptions>(`/api/campaigns/${campaignId}/character-options`),
     enabled: !!editing,
   });
+
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg text-muted">Готовые герои для игроков</h2>
+        <div>
+          <h2 className="font-heading text-xl font-bold text-ink">Готовые заготовки для игроков</h2>
+          <p className="text-xs text-muted">
+            Игроки смогут выбрать эти архетипы сразу вместо создания героя с нуля
+          </p>
+        </div>
         {!editing && (
-          <button className="btn" onClick={() => setEditing("new")}>
-            Заготовить героя
+          <button
+            type="button"
+            className="btn btn-outline-copper font-mono text-xs"
+            onClick={() => setEditing("new")}
+          >
+            + ЗАГОТОВИТЬ ГЕРОЯ
           </button>
         )}
       </div>
+
       {!editing && premades.length === 0 && (
-        <p className="text-sm text-muted">Заготовки пригодятся тем, кто хочет сразу играть: игрок выбирает героя и садится за стол.</p>
+        <div className="card p-5 text-center text-xs text-muted border border-dashed">
+          Заготовок пока нет. Вы можете собрать типовых персонажей под сюжет, чтобы новые игроки садились за стол мгновенно.
+        </div>
       )}
-      {!editing && (
+
+      {!editing && premades.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
           {premades.map((p) => (
-            <div key={p.id} className="card flex items-start justify-between gap-3 p-4">
-              <span className="min-w-0">
-                <span className="block truncate font-semibold">{p.name || "Без имени"}</span>
-                <span className="block text-xs text-muted">
-                  {[p.origin_name, p.class_name, p.errors?.length ? "не закончен, игрокам не виден" : null].filter(Boolean).join(" · ")}
+            <div key={p.id} className="card flex items-start justify-between gap-3 p-4 hover:border-accent/60 transition">
+              <div className="min-w-0">
+                <span className="block truncate font-heading text-base font-bold text-ink">
+                  {p.name || "Без имени"}
                 </span>
-              </span>
-              <span className="flex shrink-0 gap-1.5">
-                <button className="btn px-2 py-0.5 text-xs" onClick={() => setEditing(p)}>
+                <span className="block font-mono text-xs text-accent mt-0.5">
+                  {[p.origin_name, p.class_name, p.errors?.length ? "не закончен" : null].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  className="btn px-2.5 py-1 text-xs font-mono"
+                  onClick={() => setEditing(p)}
+                >
                   Изменить
                 </button>
                 <ActionButton
                   danger
-                  className="px-2 py-0.5 text-xs"
+                  className="px-2 py-1 text-xs font-mono"
                   confirm={`Удалить заготовку «${p.name || "без имени"}»?`}
                   run={async () => {
                     await api(`/api/campaigns/${campaignId}/premades/${p.id}`, { method: "DELETE" });
@@ -280,28 +436,44 @@ function Premades({ campaignId, premades, onChange }: { campaignId: string; prem
                 >
                   Удалить
                 </ActionButton>
-              </span>
+              </div>
             </div>
           ))}
         </div>
       )}
+
       {editing && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <p>{editing === "new" ? "Новая заготовка" : `Заготовка «${editing.name}»`}</p>
+        <div className="flex flex-col gap-4 card p-5 border-2 border-accent/40 bg-surface">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <h3 className="font-heading text-xl font-bold text-ink">
+              {editing === "new" ? "Новая заготовка персонажа" : `Редактирование: ${editing.name}`}
+            </h3>
             <button
-              className="btn"
+              type="button"
+              className="btn font-mono text-xs"
               onClick={() => {
                 setEditing(null);
                 void onChange();
               }}
             >
-              Готово
+              Завершить редактирование
             </button>
           </div>
-          {opts.isError && <p className="text-bad">Не удалось загрузить варианты: {(opts.error as Error).message}</p>}
+
+          {opts.isError && (
+            <div className="card border-bad/40 bg-bad/5 p-4 text-xs text-bad">
+              Не удалось загрузить параметры: {(opts.error as Error).message}
+            </div>
+          )}
+
           {opts.data && (
-            <Builder mode="premade" campaignId={campaignId} opts={opts.data} hero={editing === "new" ? null : editing} onSaved={() => void onChange()} />
+            <Builder
+              mode="premade"
+              campaignId={campaignId}
+              opts={opts.data}
+              hero={editing === "new" ? null : editing}
+              onSaved={() => void onChange()}
+            />
           )}
         </div>
       )}
