@@ -106,8 +106,8 @@ def _stand_in(s) -> dict | None:
     """Кто ведёт место, пока его хозяин вне сети: другой игрок или ИИ-мастер."""
     if s.stand_in is not None:
         return {"user_id": s.stand_in.id, "name": s.stand_in.name}
-    if s.role == "master" and s.occupant_type == "agent" and s.delegated_from:
-        return {"ai": True, "name": "ИИ-мастер"}
+    if s.occupant_type == "agent" and s.delegated_from:
+        return {"ai": True, "name": "ИИ-мастер" if s.role == "master" else "ИИ"}
     return None
 
 
@@ -220,7 +220,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if conn.campaign_id != str(campaign_id):
                         presence.leave(conn)  # перешёл в другую кампанию; повторный вход в ту же — не уход
                     conn = None
-                await presence.before_join(user.id, str(campaign_id))  # живой мастер забирает место у ИИ-мастера
+                await presence.before_join(user.id, str(campaign_id))  # вернувшийся забирает место у ИИ
                 async with maker() as session:
                     try:
                         viewer = await get_viewer(session, user, str(campaign_id))
@@ -415,6 +415,8 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
         await conn.send(envelope("message.notice", conn.campaign_id, {"text": parsed.notice, "message_id": m.id}))
     if m.kind in MASTER_TRIGGER_KINDS:
         app.state.master.notify(conn.campaign_id)
+    elif m.kind == "narration":
+        app.state.master.wake_players(conn.campaign_id)  # живой мастер описал сцену: ИИ-игроки откликаются
 
 
 async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:

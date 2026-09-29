@@ -101,6 +101,12 @@ describe("конструктор героя", () => {
     expect(builderUrls("library", undefined, undefined).save).toBe("/api/me/characters");
     expect(builderUrls("campaign", "c1", "h1").roll).toBe("/api/campaigns/c1/characters/h1/roll-abilities");
     expect(builderUrls("premade", "c1", "p1")).toMatchObject({ save: "/api/campaigns/c1/premades/p1", roll: null });
+    // героя ИИ-игрока владелец собирает за его место
+    expect(builderUrls("campaign", "c1", "h1", "s2")).toMatchObject({
+      options: "/api/campaigns/c1/character-options?as_seat=s2",
+      save: "/api/campaigns/c1/characters/h1?as_seat=s2",
+      submit: "/api/campaigns/c1/characters/h1/submit?as_seat=s2",
+    });
   });
 
   it("прибавки происхождения по группам: Кровник", () => {

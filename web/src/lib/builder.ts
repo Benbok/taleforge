@@ -267,8 +267,10 @@ export interface LibraryHero extends SavedHero {
 export type BuilderMode = "campaign" | "premade" | "library";
 
 /** Куда сохранять героя: у каждого режима свои адреса. */
-export function builderUrls(mode: BuilderMode, campaignId: string | undefined, id: string | undefined) {
+/** asSeat — место ИИ-игрока: владелец собирает героя за него (этап 9). */
+export function builderUrls(mode: BuilderMode, campaignId: string | undefined, id: string | undefined, asSeat?: string) {
   const base = `/api/campaigns/${campaignId}`;
+  const q = asSeat ? `?as_seat=${encodeURIComponent(asSeat)}` : "";
   if (mode === "library")
     return {
       options: "/api/me/character-options",
@@ -278,10 +280,11 @@ export function builderUrls(mode: BuilderMode, campaignId: string | undefined, i
     };
   const coll = mode === "premade" ? "premades" : "characters";
   return {
-    options: `${base}/character-options`,
-    preview: `${base}/character-preview`,
-    save: id ? `${base}/${coll}/${id}` : `${base}/${coll}`,
-    roll: id && mode === "campaign" ? `${base}/characters/${id}/roll-abilities` : null,
+    options: `${base}/character-options${q}`,
+    preview: `${base}/character-preview${q}`,
+    save: (id ? `${base}/${coll}/${id}` : `${base}/${coll}`) + q,
+    roll: id && mode === "campaign" ? `${base}/characters/${id}/roll-abilities${q}` : null,
+    submit: id ? `${base}/characters/${id}/submit${q}` : null,
   };
 }
 
