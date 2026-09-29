@@ -3,22 +3,33 @@
 /* Токены темы. Значения приходят с сервера (тема пакета поверх базовой) и ставятся в :root — см. lib/theme.ts.
    Здесь — запасные значения базовой тёмной темы, чтобы первый кадр не мигал. */
 :root {
-  --tf-bg: #14161a;
-  --tf-surface: #1c1f25;
-  --tf-raised: #252932;
-  --tf-border: #343a45;
-  --tf-text: #e8e4dc;
-  --tf-muted: #a19c93;
-  --tf-accent: #c9954d;
-  --tf-accent-text: #14161a;
+  --tf-bg: #0f1012;
+  --tf-surface: #17181c;
+  --tf-surface-2: #1b1c20;
+  --tf-raised: #121316;
+  --tf-border: #2a2b31;
+  --tf-border-soft: #24252a;
+  --tf-text: #ece6dc;
+  --tf-text-2: #cfc8bb;
+  --tf-muted: #a8a296;
+  --tf-faint: #8a857c;
+  --tf-accent: #c98a4b;
+  --tf-accent-hi: #d59a5c;
+  --tf-accent-text: #1a120a;
+  --tf-patina: #5fae9f;
+  --tf-patina-hi: #7fc2b4;
+  --tf-ember: #c4553f;
+  --tf-ember-hi: #e0876f;
+  --tf-ember-bg: #16120f;
   --tf-entity-creature: #e06c5f;
   --tf-entity-npc: #6ea8e0;
   --tf-entity-item: #d9b44a;
   --tf-entity-location: #6fbf86;
   --tf-entity-lore: #9a9fa8;
-  --tf-font-narration: Georgia, serif;
-  --tf-font-ui: system-ui, sans-serif;
-  --tf-font-heading: Georgia, serif;
+  --tf-font-narration: 'Cormorant Garamond', Georgia, serif;
+  --tf-font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --tf-font-heading: 'Cormorant Garamond', Georgia, serif;
+  --tf-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
@@ -29,12 +40,24 @@
 @theme inline {
   --color-bg: var(--tf-bg);
   --color-surface: var(--tf-surface);
+  --color-surface-2: var(--tf-surface-2);
   --color-raised: var(--tf-raised);
   --color-line: var(--tf-border);
+  --color-line-soft: var(--tf-border-soft);
   --color-ink: var(--tf-text);
+  --color-ink-2: var(--tf-text-2);
   --color-muted: var(--tf-muted);
+  --color-faint: var(--tf-faint);
   --color-accent: var(--tf-accent);
+  --color-accent-hi: var(--tf-accent-hi);
   --color-on-accent: var(--tf-accent-text);
+  --color-copper: var(--tf-accent);
+  --color-copper-hi: var(--tf-accent-hi);
+  --color-patina: var(--tf-patina);
+  --color-patina-hi: var(--tf-patina-hi);
+  --color-ember: var(--tf-ember);
+  --color-ember-hi: var(--tf-ember-hi);
+  --color-ember-bg: var(--tf-ember-bg);
   --color-creature: var(--tf-entity-creature);
   --color-npc: var(--tf-entity-npc);
   --color-item: var(--tf-entity-item);
@@ -46,6 +69,7 @@
   --font-narration: var(--tf-font-narration);
   --font-ui: var(--tf-font-ui);
   --font-heading: var(--tf-font-heading);
+  --font-mono: var(--tf-font-mono);
 }
 
 html,
@@ -77,18 +101,123 @@ h3 {
   }
 }
 
+/* Скроллбар в стилистике TaleForge: тонкий, медный, полупрозрачный, без системных стрелок */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 138, 75, 0.25) transparent;
+}
+*:hover {
+  scrollbar-color: rgba(201, 138, 75, 0.45) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 138, 75, 0.22);
+  border-radius: 9999px;
+  transition: background 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 138, 75, 0.5);
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--tf-accent);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Стилизованные чекбоксы под медную тему TaleForge */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 4px;
+  border: 1.5px solid var(--tf-border);
+  background-color: var(--tf-surface-2);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: all 0.15s ease-in-out;
+  vertical-align: middle;
+  flex-shrink: 0;
+  position: relative;
+}
+input[type="checkbox"]:hover {
+  border-color: var(--tf-accent);
+  background-color: var(--tf-raised);
+}
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--tf-accent);
+  outline-offset: 2px;
+}
+input[type="checkbox"]:checked {
+  background-color: var(--tf-accent);
+  border-color: var(--tf-accent);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 0.35rem;
+  height: 0.6rem;
+  border: solid var(--tf-accent-text, #1a120a);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+  display: block;
+}
+input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-line bg-raised px-3 py-2 text-ink transition hover:border-accent active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-line bg-raised px-4 py-2 text-ink font-medium transition hover:border-accent active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
   .btn-primary {
-    @apply border-accent bg-accent text-on-accent hover:brightness-110;
+    @apply border-accent bg-accent text-on-accent hover:brightness-110 font-semibold;
+  }
+  .btn-outline-copper {
+    @apply border border-accent bg-transparent text-ink hover:bg-accent/10;
   }
   .field {
-    @apply w-full rounded-md border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none;
+    @apply w-full rounded-[10px] border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  select.field {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23c98a4b' stroke-width='2.2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1rem 1rem;
+    padding-right: 2.5rem;
+    cursor: pointer;
+  }
+  select.field:hover {
+    border-color: var(--tf-accent);
+  }
+  select.field option {
+    background-color: var(--tf-surface);
+    color: var(--tf-text);
+    padding: 8px 12px;
+  }
+  select.field option:checked {
+    background-color: var(--tf-surface-2);
+    color: var(--tf-accent);
   }
   .card {
-    @apply rounded-lg border border-line bg-surface;
+    @apply rounded-[14px] border border-line bg-surface;
   }
 }
 
