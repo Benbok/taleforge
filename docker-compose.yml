@@ -56,7 +56,7 @@ services:
     profiles: ["voice"]
     environment:
       PRELOAD_MODELS: '["${STT_MODEL:-deepdml/faster-whisper-large-v3-turbo-ct2}"]'
-      STT_MODEL_TTL: "-1"  # модель всё время в памяти: первая реплика не ждёт загрузки
+      WHISPER__TTL: "-1"  # модель всё время в памяти: первая реплика не ждёт загрузки
       WHISPER__COMPUTE_TYPE: int8_float16
       ENABLE_UI: "false"
     volumes:

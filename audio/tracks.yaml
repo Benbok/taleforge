@@ -1,3 +1,171 @@
 # Карточки треков: слой, настроения, места, темп, миры. Правит админка «Звук» или вы вручную.
-# Описание полей и список треков для подготовки — audio/README.md.
-[]
+# Описание полей и список треков — docs/audio-mixer.md и docs/audio-tracklist.md.
+
+- id: mel_battle
+  file: aggressive_strings_riff.mp3
+  layer: music
+  title: "Агрессивный рифф (Бой)"
+  hint: "напряжённый бой, схватка, кульминация сцены"
+  moods: [battle, tension]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: mel_crystalline
+  file: crystalline_glass_intro.mp3
+  layer: music
+  title: "Кристальный отзвук"
+  hint: "тайна, резонанс кристаллов, древний артефакт или чуждое присутствие"
+  moods: [mystery, wonder]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: mel_lullaby
+  file: music_box_lullaby.mp3
+  layer: music
+  title: "Колыбельная шкатулки"
+  hint: "обманчивый покой, детская шкатулка, тревожная меланхолия"
+  moods: [calm, sorrow, dread]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: mel_gothic
+  file: solemn_gothic_interlude.mp3
+  layer: music
+  title: "Торжественный готический интерлюд"
+  hint: "мрачное величие, руины собора, скорбь или падение святыни"
+  moods: [dread, sorrow, mystery]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: rhy_pounding
+  file: pure_rhythmic_pounding.mp3
+  layer: rhythm
+  title: "Тяжёлый ритмичный пульс"
+  hint: "погоня, таймер опасности, непрекращающееся давление"
+  moods: [tension, chase, battle]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: rhy_iron_clatter
+  file: rhythmic_iron_clatter.mp3
+  layer: rhythm
+  title: "Скрежет и лязг железа"
+  hint: "шагоход, механизмы заводов Кордона, индустриальный бой"
+  moods: [tension, battle]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: rhy_war_drums
+  file: rolling_war_drums.mp3
+  layer: rhythm
+  title: "Барабаны войны"
+  hint: "сражение, атака, боевой раж"
+  moods: [battle]
+  places: []
+  bpm: 100
+  packs: []
+
+- id: amb_subterranean
+  file: subterranean_ambient_melody.mp3
+  layer: ambience
+  title: "Подземные глубины"
+  hint: "нутро туши, трюм левиафана, затопленные катакомбы"
+  moods: [mystery, dread]
+  places: [dungeon, carcass]
+  packs: []
+
+- id: sfx_carapace
+  file: heavy_organic_carapace.mp3
+  layer: sfx
+  title: "Хруст панциря"
+  hint: "тяжёлый хруст или смещение органического хитина"
+  moods: [dread, horror]
+  places: []
+  packs: []
+
+- id: sfx_harpoon
+  file: pneumatic_harpoon_launch.mp3
+  layer: sfx
+  title: "Выстрел пневмогарпуна"
+  hint: "выстрел корабельного гарпуна или натяжение троса"
+  moods: [battle, tension]
+  places: []
+  packs: []
+
+- id: sfx_bell_1
+  file: single_heavy_church_bell_1.mp3
+  layer: sfx
+  title: "Тяжёлый колокол (удар 1)"
+  hint: "одиночный низкий удар соборного колокола"
+  moods: [dread, sorrow]
+  places: []
+  packs: []
+
+- id: sfx_bell_2
+  file: single_heavy_church_bell_2.mp3
+  layer: sfx
+  title: "Тяжёлый колокол (удар 2)"
+  hint: "одиночный низкий удар соборного колокола"
+  moods: [dread, sorrow]
+  places: []
+  packs: []
+
+- id: sfx_bell_3
+  file: single_heavy_church_bell_3.mp3
+  layer: sfx
+  title: "Тяжёлый колокол (удар 3)"
+  hint: "одиночный низкий удар соборного колокола"
+  moods: [dread, sorrow]
+  places: []
+  packs: []
+
+- id: sfx_bell_4
+  file: single_heavy_church_bell_4.mp3
+  layer: sfx
+  title: "Тяжёлый колокол (удар 4)"
+  hint: "одиночный низкий удар соборного колокола"
+  moods: [dread, sorrow]
+  places: []
+  packs: []
+
+- id: sfx_roar_1
+  file: terrifying_alien_mutation_1.mp3
+  layer: sfx
+  title: "Крик твари Роя (вар. 1)"
+  hint: "пронзительный визг или рёв мутанта Резонанса"
+  moods: [horror, dread]
+  places: []
+  packs: []
+
+- id: sfx_roar_2
+  file: terrifying_alien_mutation_2.mp3
+  layer: sfx
+  title: "Крик твари Роя (вар. 2)"
+  hint: "пронзительный визг или рёв мутанта Резонанса"
+  moods: [horror, dread]
+  places: []
+  packs: []
+
+- id: sfx_roar_3
+  file: terrifying_alien_mutation_3.mp3
+  layer: sfx
+  title: "Крик твари Роя (вар. 3)"
+  hint: "пронзительный визг или рёв мутанта Резонанса"
+  moods: [horror, dread]
+  places: []
+  packs: []
+
+- id: sfx_roar_4
+  file: terrifying_alien_mutation_4.mp3
+  layer: sfx
+  title: "Крик твари Роя (вар. 4)"
+  hint: "пронзительный визг или рёв мутанта Резонанса"
+  moods: [horror, dread]
+  places: []
+  packs: []
