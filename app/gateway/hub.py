@@ -26,6 +26,8 @@ class Connection:
     user_id: str
     campaign_id: str
     seat_id: str | None
+    # места героев, которых этот игрок ведёт за отсутствующих (раздел 11): их события он тоже получает
+    stand_in: set[str] = field(default_factory=set)
     send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     async def send(self, envelope: dict[str, Any]) -> None:
@@ -52,9 +54,12 @@ class Hub:
     def online_users(self, campaign_id: str) -> set[str]:
         return {c.user_id for c in self._by_campaign.get(campaign_id, ())}
 
+    def connections(self, campaign_id: str, user_id: str | None = None) -> list[Connection]:
+        return [c for c in self._by_campaign.get(campaign_id, ()) if user_id is None or c.user_id == user_id]
+
     async def deliver(self, campaign_id: str, envelope: dict[str, Any], visible_to: list[str] | None) -> None:
         for conn in list(self._by_campaign.get(campaign_id, ())):
-            if visible_to is not None and conn.seat_id not in visible_to:
+            if visible_to is not None and conn.seat_id not in visible_to and not conn.stand_in.intersection(visible_to):
                 continue
             try:
                 await conn.send(envelope)

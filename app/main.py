@@ -22,6 +22,7 @@ from app.db.models import User
 from app.db.session import make_engine, make_sessionmaker
 from app.gateway import ws
 from app.gateway.hub import Hub, MemoryBus, RedisBus
+from app.gateway.presence import Presence
 from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
@@ -66,9 +67,12 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.dice_factory = dice_factory
         app.state.master = MasterService(app.state.sessionmaker, app.state.bus, llm or LiteLLMClient(), dice_factory)
         await app.state.master.resume_timers()
+        app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
+        app.state.master.presence = app.state.presence
         try:
             yield
         finally:
+            await app.state.presence.stop()
             await app.state.master.stop()
             await app.state.bus.stop()
             await engine.dispose()

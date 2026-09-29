@@ -16,7 +16,7 @@ from app.content.catalog import campaign_catalog
 from app.core import bonds
 from app.core import characters as svc
 from app.core import library as lib
-from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat
+from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
 from app.db.models import ActiveEffect, Character, InventoryItem
 from app.gateway.events import envelope
 
@@ -61,13 +61,19 @@ async def _view(session, viewer: Viewer, ch: Character) -> dict:
 
 async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:
     mine = viewer.seat is not None and ch.seat_id == viewer.seat.id
+    # героя ушедшего игрока ведёт другой по итогам голосования: ему нужен лист, но не личная предыстория
+    stand_in = ch.seat_id is not None and ch.seat_id in stand_in_seats(viewer.campaign, viewer.user.id)
     # заготовку без игрока показываем целиком: игрок выбирает, кем играть
-    if not (mine or viewer.can_review or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)):
+    full = mine or viewer.can_review or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)
+    if not (full or stand_in):
         return svc.public_view(ch)
     cat = await campaign_catalog(session, viewer.campaign)
     inv = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
     eff = (await session.scalars(select(ActiveEffect).where(ActiveEffect.target_id == ch.id))).all()
     out = svc.full_view(ch, cat, list(inv), list(eff))
+    if not full:
+        out.pop("private_backstory", None)
+        out["stand_in"] = True
     if (ch.status == "draft" and mine) or ch.status == "premade":
         out["errors"] = svc.errors_for(ch, cat, await svc.creation_rules(session, viewer.campaign))
     return out

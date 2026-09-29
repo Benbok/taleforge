@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import Avatar from "../components/Avatar";
-import type { EntityType, HeroPublic, SceneEntity } from "../lib/types";
+import type { EntityType, HeroPublic, SceneEntity, SeatState } from "../lib/types";
 import { useGame } from "../stores/game";
 import DeathSaves from "./DeathSaves";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
@@ -48,7 +48,9 @@ export function PartyPanel() {
           const title =
             s.role === "master"
               ? s.occupant_type === "agent"
-                ? "ИИ-мастер"
+                ? s.stand_in?.ai
+                  ? `ИИ-мастер вместо ${s.user_name ?? "мастера"}`
+                  : "ИИ-мастер"
                 : `Мастер: ${s.user_name ?? "—"}`
               : (h?.name ?? (s.occupant_type === "empty" ? "Свободное место" : "Герой не готов"));
           return (
@@ -79,6 +81,7 @@ export function PartyPanel() {
                     {acting ? " · ходит" : ""}
                   </span>
                 )}
+                <Away seat={s} />
                 {h && !h.dead && <Hp h={h} />}
                 {h && !h.dead && h.hp === 0 && h.death_saves && <DeathSaves saves={h.death_saves} label="Без сознания:" />}
               </span>
@@ -88,6 +91,20 @@ export function PartyPanel() {
       </ul>
     </section>
   );
+}
+
+/** Ушёл во время сессии: «переподключается», «вне сети», и кто ведёт героя вместо него. */
+function Away({ seat }: { seat: SeatState }) {
+  const me = useGame((s) => s.snapshot?.me.user_id);
+  if (seat.stand_in && !seat.stand_in.ai)
+    return (
+      <span className="block text-xs text-warn">
+        {seat.user_name} вне сети · {seat.stand_in.user_id === me ? "героя ведёте вы" : `ведёт ${seat.stand_in.name}`}
+      </span>
+    );
+  if (seat.occupant_type !== "human") return null;
+  if (seat.presence === "reconnecting") return <span className="block text-xs text-warn">Переподключается…</span>;
+  return null;
 }
 
 /** Сцена: где отряд и кто рядом. Только то, что видно всем; подробности — по клику, в карточке знаний. */

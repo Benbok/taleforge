@@ -143,7 +143,7 @@ async def start_session(session: AsyncSession, viewer: Viewer) -> tuple[GameSess
 
 
 async def stop_session(session: AsyncSession, viewer: Viewer, reason: str) -> tuple[GameSession, Message]:
-    """Пауза или завершение кампании. Голосование игроков за паузу — этап «Офлайн и голосования»."""
+    """Пауза или завершение кампании владельцем или мастером. Пауза по голосованию — app/gateway/presence.py."""
     if reason not in ("paused", "ended"):
         raise Conflict("причина: paused или ended")
     if not viewer.can_control_session:
@@ -156,11 +156,30 @@ async def stop_session(session: AsyncSession, viewer: Viewer, reason: str) -> tu
             await session.flush()
             return None, await system_message(session, c, "Кампания завершена.", None)
         raise Conflict("сессия не запущена")
+    text = "Сессия на паузе." if reason == "paused" else "Кампания завершена."
+    return game, await close_session(session, c, game, reason, text)
+
+
+async def close_session(session: AsyncSession, c: Campaign, game: GameSession, reason: str, text: str) -> Message:
+    """Закрыть идущую сессию: пауза или конец. Замещения на время офлайна (раздел 11) заканчиваются вместе с ней."""
     game.ended_at, game.end_reason = now(), reason
     c.status = reason
+    release_stand_ins(c)
     await session.flush()
-    text = "Сессия на паузе." if reason == "paused" else "Кампания завершена."
-    return game, await system_message(session, c, text, game)
+    return await system_message(session, c, text, game)
+
+
+def release_stand_ins(c: Campaign) -> list[str]:
+    """Вернуть места хозяевам: герой — своему игроку, место мастера — живому мастеру. Возвращает id мест."""
+    back = []
+    for s in c.seats:
+        if s.stand_in_user_id is not None:
+            s.stand_in_user_id = None
+            back.append(s.id)
+        if s.role == "master" and s.occupant_type == "agent" and s.delegated_from and s.delegated_from == s.user_id:
+            s.occupant_type, s.delegated_from = "human", None
+            back.append(s.id)
+    return back
 
 
 async def claimed_upto(session: AsyncSession, campaign_id: str) -> int:

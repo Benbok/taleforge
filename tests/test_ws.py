@@ -108,7 +108,7 @@ def test_rules_for_message_kinds(client, admin):
         w1.send_json({"type": "message.send", "payload": {"kind": "action", "text": "x" * 5000}})
         assert "длиннее" in next_of(w1, "message.rejected")["payload"]["reason"]
         w1.send_json({"type": "vote.cast", "payload": {}})
-        assert next_of(w1, "error")["payload"]["code"] == "not_implemented"
+        assert next_of(w1, "error")["payload"]["code"] == "vote_rejected"
         w1.send_json({"type": "ping"})
         assert next_of(w1, "pong")["type"] == "pong"
 

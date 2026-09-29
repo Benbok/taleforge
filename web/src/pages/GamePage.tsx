@@ -18,6 +18,7 @@ import MasterPanel from "../master/MasterPanel";
 import { PartyPanel, ScenePanel } from "../game/Panels";
 import PauseOverlay from "../game/PauseOverlay";
 import ReactionPanel from "../game/ReactionPanel";
+import VotePanel from "../game/VotePanel";
 import SessionControls from "../game/SessionControls";
 import { api } from "../lib/api";
 import { actionOf, STATUS_TEXT, statusOf } from "../lib/cards";
@@ -142,6 +143,7 @@ export default function GamePage() {
         <main className={`relative min-h-0 flex-col overflow-hidden md:flex md:rounded-lg md:border md:border-line md:bg-surface ${tab === "chat" ? "flex" : "hidden"}`}>
           <CombatStrip />
           <ChatFeed campaignId={id} />
+          <VotePanel />
           <ReactionPanel />
           <HeroHud />
           <Composer />
