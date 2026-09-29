@@ -23,9 +23,9 @@ export default function Header({ children }: { children?: ReactNode }) {
       <ThemeToggle />
       {user && (
         <>
-          <a className="hidden text-muted hover:text-ink sm:inline" href="/legacy" title="Профиль, герои и настройки — пока в прежнем клиенте">
+          <Link className="max-w-28 truncate text-muted no-underline hover:text-ink" to="/profile" title="Профиль и настройки">
             {user.name}
-          </a>
+          </Link>
           <button
             className="btn px-2 py-1"
             onClick={() => {

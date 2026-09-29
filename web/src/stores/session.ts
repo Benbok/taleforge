@@ -12,6 +12,7 @@ interface SessionState {
   boot(): Promise<void>;
   signIn(token: string, user: User): void;
   signOut(): void;
+  setUser(user: User): void;
   setTheme(theme: Theme): void;
   toggleMode(): void;
 }
@@ -37,6 +38,10 @@ export const useSession = create<SessionState>((set, get) => ({
   signIn(token, user) {
     setToken(token);
     set({ user, ready: true });
+  },
+
+  setUser(user) {
+    set({ user });
   },
 
   signOut() {

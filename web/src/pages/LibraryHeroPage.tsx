@@ -25,8 +25,8 @@ export default function LibraryHeroPage() {
   return (
     <>
       <Header>
-        <Link className="btn px-3 py-1" to="/">
-          ← Кампании
+        <Link className="btn px-3 py-1" to="/" aria-label="К кампаниям">
+          ←<span className="hidden sm:inline"> Кампании</span>
         </Link>
       </Header>
       <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6">

@@ -53,7 +53,7 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
       )}
       <div className="mt-auto flex items-center justify-between gap-2">
         <span className="text-xs text-muted">{last ? `Прошлая сессия: ${last}` : ""}</span>
-        <Link to={action.href} reloadDocument={action.href.startsWith("/legacy")} className={`btn ${action.primary ? "btn-primary" : ""}`}>
+        <Link to={action.href} className={`btn ${action.primary ? "btn-primary" : ""}`}>
           {action.label}
         </Link>
       </div>

@@ -24,9 +24,9 @@ export default function Home() {
     <>
       <Header>
         {isAdmin && (
-          <a className="btn btn-primary px-3 py-1" href="/legacy" title="Создание кампании пока в прежнем клиенте">
+          <Link className="btn btn-primary px-3 py-1" to="/new">
             Новая кампания
-          </a>
+          </Link>
         )}
       </Header>
       <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6">
