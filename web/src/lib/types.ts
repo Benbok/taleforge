@@ -67,6 +67,13 @@ export interface PendingReply {
   created_at: string | null;
 }
 
+/** Голосовая запись реплики (этап голосового ввода). */
+export interface VoiceData {
+  id: string;
+  mime: string;
+  duration: number | null;
+}
+
 export interface ChatMessage {
   id: string;
   seq: number;
@@ -75,7 +82,8 @@ export interface ChatMessage {
   author: string | null;
   content: string;
   whisper: boolean;
-  data?: (RollCard & { ai?: boolean }) | null; // у реплики ИИ-игрока — { ai: true }
+  // у реплики ИИ-игрока — { ai: true }; у голосовой — { voice }: запись автора, content — её расшифровка
+  data?: (RollCard & { ai?: boolean; voice?: VoiceData }) | null;
   created_at: string | null;
   state?: ReplyState | null;
 }

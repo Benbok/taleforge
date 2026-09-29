@@ -14,3 +14,4 @@ htmlcov/
 node_modules/
 *.db
 tools/.cache/
+/media/
