@@ -172,7 +172,7 @@ def test_strong_events_start_chronicle(game_client, monkeypatch):
     monkeypatch.setattr(character, "chronicle", fake)
     hero = SimpleNamespace(id="ch1", name="Бран", status="active", resources={"hp": 5})
     world = SimpleNamespace(characters={"ch1": hero}, scene=SimpleNamespace(mode="combat"))
-    ctx = SimpleNamespace(campaign=SimpleNamespace(id="c1"), world=world)
+    ctx = SimpleNamespace(campaign=SimpleNamespace(id="c1"), world=world, events=[])
 
     async def watch():
         master._watch_strong(ctx)  # задача летописи заводится в цикле событий
@@ -186,3 +186,56 @@ def test_strong_events_start_chronicle(game_client, monkeypatch):
     game_client.portal.call(watch)  # то же состояние — второй записи нет
     game_client.portal.call(master.wait_idle, "c1")
     assert len(reasons) == 1
+
+
+def test_tables_fill_only_empty_places(game_client, admin_g, settings):
+    c, (p1, p2), hero = party(game_client, admin_g, players=2)
+    url = f"/api/campaigns/{c['id']}/characters/{hero['id']}/persona"
+    draft = {"text": "", "fields": {"want": "своё: вернуть долг"}}
+    out = ok(game_client.post(url + "/tables", json={"persona": draft}, headers=p1))
+    got = out["persona"]
+    assert got["fields"]["want"] == "своё: вернуть долг"  # заполненное не трогаем
+    assert got["text"] and got["fields"]["secret"] and got["fields"]["conflict"]
+    assert [x["slot"] for x in out["taken"]] == ["trait", "bond", "flaw"]
+    # ничего не сохраняется само; другой игрок таблицами не пользуется
+    assert ok(game_client.get(url, headers=p1))["persona"]["text"] == ""
+    assert game_client.post(url + "/tables", json={}, headers=p2).status_code == 403
+    # всё занято — пустой список, без ошибки
+    again = ok(game_client.post(url + "/tables", json={"persona": got}, headers=p1))
+    assert again["taken"] == [] and again["persona"] == got
+
+
+def test_from_tables_prefers_own_table():
+    from app.core import persona
+
+    tables = [
+        {"slot": "ideal", "rows": ["общий"]},
+        {"slot": "ideal", "rows": ["для воина"], "for": ["class.fighter"]},
+    ]
+    first = lambda rows: rows[0]  # noqa: E731
+    out, _ = persona.from_tables({}, tables, {"class.fighter"}, first)
+    assert out["fields"]["want"] == "для воина"
+    out, _ = persona.from_tables({}, tables, {"class.wizard"}, first)
+    assert out["fields"]["want"] == "общий"
+
+
+def test_marked_moment_starts_chronicle(game_client, monkeypatch):
+    master = game_client.app.state.master
+    reasons = []
+
+    async def fake(svc, cid, reason, **kw):
+        reasons.append(reason)
+        return 0
+
+    monkeypatch.setattr(character, "chronicle", fake)
+    hero = SimpleNamespace(id="ch1", name="Бран", status="active", resources={"hp": 5})
+    world = SimpleNamespace(characters={"ch1": hero}, scene=SimpleNamespace(mode="explore"))
+    ev = SimpleNamespace(tool="mark_moment", payload={"label": "предательство", "text": "Марта сдала отряд страже"})
+    ctx = SimpleNamespace(campaign=SimpleNamespace(id="c2"), world=world, events=[ev])
+
+    async def watch():
+        master._watch_strong(ctx)
+
+    game_client.portal.call(watch)  # отметка работает и в первом наблюдении
+    game_client.portal.call(master.wait_idle, "c2")
+    assert reasons == ["предательство: Марта сдала отряд страже"]

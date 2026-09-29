@@ -14,7 +14,8 @@ from sqlalchemy import select
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
 from app.agents.player import PlayerAgents
-from app.api import admin, auth, campaigns, characters, home, library, models, personas, plan, profile
+from app.agents.stt import SpeechToText
+from app.api import admin, auth, campaigns, characters, home, library, models, personas, plan, profile, voice
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core.campaigns import AccessDenied, Conflict, NotFound
@@ -71,6 +72,9 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
         app.state.master.players = PlayerAgents(app.state.master)
+        app.state.stt = SpeechToText(
+            settings.stt_api_base, settings.stt_model, settings.stt_language, settings.stt_concurrency
+        )
         try:
             yield
         finally:
@@ -101,6 +105,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(personas.router)
     app.include_router(plan.router)
     app.include_router(profile.router)
+    app.include_router(voice.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")

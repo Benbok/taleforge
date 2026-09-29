@@ -496,6 +496,35 @@ async def help_persona(
     }
 
 
+@router.post("/characters/{character_id}/persona/tables")
+async def tables_persona(
+    campaign_id: str,
+    character_id: str,
+    body: PersonaDraftIn,
+    user: UserDep,
+    session: SessionDep,
+    as_seat: str | None = None,
+) -> dict:
+    """«Из таблиц пакета»: черта, идеал, привязанность и слабость — по строке в пустые места анкеты.
+    Результат не сохраняется сам, как у «Помочь»."""
+    import random
+
+    from app.core import persona
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch, mine = await _persona_target(session, v, character_id)
+    if not mine:
+        raise AccessDenied("таблицы характера — у игрока героя")
+    sheet = body.persona.model_dump() if body.persona else dict(ch.persona or {})
+    cat = await campaign_catalog(session, v.campaign)
+    tables = [e.data for e in cat.by_kind("persona_table")]
+    if not tables:
+        raise Conflict("в версии пакета, на которой идёт кампания, нет таблиц характера")
+    hero_ids = {x for x in ((ch.sheet or {}).get("class_id"), (ch.sheet or {}).get("origin_id")) if x}
+    out, taken = persona.from_tables(sheet, tables, hero_ids, random.SystemRandom().choice)
+    return {"persona": out, "taken": taken}
+
+
 @router.post("/characters/{character_id}/persona/test")
 async def test_persona(
     campaign_id: str,

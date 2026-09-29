@@ -25,12 +25,18 @@ class Settings:
     superadmin_name: str | None = None
     superadmin_password: str | None = None
     content_dir: Path = ROOT / "content"
+    media_dir: Path = ROOT / "media"  # голосовые реплики игроков
     ws_auth_timeout_sec: float = 10.0
     message_max_len: int = 4000
     history_on_join: int = 50
     open_signup: bool = True  # регистрация игрока без приглашения; кампании он всё равно видит только по приглашению
     # Журнал мастера показывает скрытые броски и шёпот. Выключите — останется только факт такого действия
     master_log_secrets: bool = True
+    # Голосовой ввод: локальный сервер расшифровки (Speaches, whisper.cpp). Без адреса кнопки микрофона нет
+    stt_api_base: str | None = None
+    stt_model: str = "deepdml/faster-whisper-large-v3-turbo-ct2"
+    stt_language: str = "ru"
+    stt_concurrency: int = 1
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -47,6 +53,11 @@ class Settings:
             superadmin_name=_env("SUPERADMIN_NAME"),
             superadmin_password=_env("SUPERADMIN_PASSWORD"),
             content_dir=Path(_env("CONTENT_DIR", str(ROOT / "content"))),
+            media_dir=Path(_env("MEDIA_DIR", str(ROOT / "media"))),
             open_signup=(_env("OPEN_SIGNUP", "1") or "1").lower() not in ("0", "false", "no"),
             master_log_secrets=(_env("MASTER_LOG_SECRETS", "1") or "1").lower() not in ("0", "false", "no"),
+            stt_api_base=_env("STT_API_BASE"),
+            stt_model=_env("STT_MODEL", cls.stt_model),
+            stt_language=_env("STT_LANGUAGE", cls.stt_language),
+            stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
         )

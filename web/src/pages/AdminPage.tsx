@@ -1,12 +1,13 @@
 import { Link, useSearchParams } from "react-router-dom";
 import PacksSection from "../admin/PacksSection";
 import SpendSection from "../admin/SpendSection";
+import VoiceSection from "../admin/VoiceSection";
 import Header from "../components/Header";
 import ModelsSection from "../profile/ModelsSection";
 import UsersSection from "../profile/UsersSection";
 import { useSession } from "../stores/session";
 
-type Tab = "packs" | "models" | "spend" | "users";
+type Tab = "packs" | "models" | "voice" | "spend" | "users";
 
 interface TabItem {
   id: Tab;
@@ -62,6 +63,27 @@ export default function AdminPage() {
           <circle cx="9" cy="13" r="1.5" fill={active ? "var(--tf-accent)" : "currentColor"} />
           <circle cx="15" cy="13" r="1.5" fill={active ? "var(--tf-accent)" : "currentColor"} />
           <path d="M10 17h4" />
+        </svg>
+      ),
+    },
+    {
+      id: "voice",
+      label: "Голос",
+      icon: (active) => (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={active ? "var(--tf-accent)" : "currentColor"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <path d="M12 17v5" />
         </svg>
       ),
     },
@@ -214,6 +236,7 @@ export default function AdminPage() {
             <div className="flex flex-col gap-6">
               {tab === "packs" && <PacksSection />}
               {tab === "models" && <ModelsSection superAdmin={superAdmin} />}
+              {tab === "voice" && <VoiceSection />}
               {tab === "spend" && <SpendSection />}
               {tab === "users" && superAdmin && <UsersSection me={user} />}
             </div>

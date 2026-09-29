@@ -113,3 +113,36 @@ def edit_note(n: PersonaNote, text: str | None, cause: str | None, reverted: boo
         n.cause, n.edited = cause.strip()[:300], True
     if reverted is not None:
         revert(n, reverted)
+
+
+# Таблицы характера пакета (вид записи persona_table): черта идёт в свободный текст, остальное — в поля.
+TABLE_SLOTS: dict[str, tuple[str | None, str]] = {
+    "trait": (None, "Черта"),
+    "ideal": ("want", "Идеал"),
+    "bond": ("secret", "Привязанность"),
+    "flaw": ("conflict", "Слабость"),
+}
+
+
+def from_tables(
+    sheet: dict[str, Any] | None, tables: list[dict[str, Any]], hero_ids: set[str], pick
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    """По строке из таблиц пакета в пустые места анкеты; заполненное не трогает. ``pick(rows)`` выбирает строку.
+    Таблица с ``for`` действует только для героя с этим классом или происхождением и вытесняет общую."""
+    out = normalize(sheet)
+    taken: list[dict[str, str]] = []
+    for slot, (field, label) in TABLE_SLOTS.items():
+        own = [t for t in tables if t.get("slot") == slot and set(t.get("for") or []) & hero_ids]
+        common = [t for t in tables if t.get("slot") == slot and not t.get("for")]
+        rows = [r for t in (own or common) for r in t.get("rows") or [] if isinstance(r, str) and r.strip()]
+        if not rows:
+            continue
+        if field is None:
+            if out["text"]:
+                continue
+            out["text"] = pick(rows).strip()[:TEXT_MAX]
+            taken.append({"slot": slot, "label": label, "text": out["text"]})
+        elif not out["fields"].get(field):
+            out["fields"][field] = pick(rows).strip()[:FIELD_MAX]
+            taken.append({"slot": slot, "label": label, "text": out["fields"][field]})
+    return out, taken

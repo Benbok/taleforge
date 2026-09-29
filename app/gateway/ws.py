@@ -23,7 +23,8 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import chat, combat
+from app.agents.stt import STTError
+from app.core import chat, combat, voice
 from app.core.actions import available
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer, stand_in_seats
 from app.core.security import read_token
@@ -361,10 +362,36 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
     kind, text = str(payload.get("kind") or "auto"), str(payload.get("text", ""))
     as_seat = payload.get("as_seat") or None  # герой ушедшего игрока, которого ведёт этот игрок
 
+    heard: str | None = None  # расшифровка голосовой реплики: при отказе она вернётся игроку в поле ввода
+
     async def reject(reason: str) -> None:
-        await conn.send(
-            envelope("message.rejected", conn.campaign_id, {"reason": reason, "client_id": payload.get("client_id")})
-        )
+        body = {"reason": reason, "client_id": payload.get("client_id")}
+        if heard:
+            body["text"] = heard
+        await conn.send(envelope("message.rejected", conn.campaign_id, body))
+
+    # Голосовая реплика: запись уже на сервере, сначала расшифровка, дальше — как обычный текст
+    voice_meta = None
+    if payload.get("voice"):
+        try:
+            voice_meta, audio = voice.read(settings.media_dir, conn.campaign_id, str(payload["voice"]))
+        except NotFound as e:
+            await reject(str(e))
+            return
+        if voice_meta.get("user_id") != user.id:
+            await reject("это чужая запись")
+            return
+        try:
+            result = await app.state.stt.transcribe(audio, voice_meta["mime"])
+        except STTError as e:
+            await reject(f"голосовое не расшифровано: {e}")
+            return
+        heard = text = result["text"]
+        if not text:
+            await reject("речь не распознана: скажите ещё раз громче или ближе к микрофону")
+            return
+        if kind != "whisper":
+            kind = "auto"
 
     if kind in ("auto", "action") and text.strip().startswith(chat.OOC_PREFIX):
         kind = "ooc"
@@ -408,6 +435,13 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
             m = await chat.post_message(session, viewer, kind, text, settings.message_max_len)
             if parsed is not None and parsed.intent and m.kind == "action":
                 m.intent = parsed.intent
+            if voice_meta is not None:
+                clip = {
+                    "id": voice_meta["id"],
+                    "mime": voice_meta["mime"],
+                    "duration": voice.duration(payload.get("duration")),
+                }
+                m.data = {**(m.data or {}), "voice": clip}
             await session.commit()
             names = await _names(session, viewer.campaign)
             state = (await chat.message_states(session, viewer.campaign, [m])).get(m.id)

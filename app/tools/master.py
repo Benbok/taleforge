@@ -1287,6 +1287,43 @@ async def auto_success(ctx: ToolContext, a: ReasonArgs) -> dict:
     return {"character": ch.name, "success": a.reason}
 
 
+MOMENTS = {
+    "betrayal": "предательство",
+    "rescue": "спасение",
+    "failure": "крупный провал",
+    "victory": "крупная победа",
+    "loss": "тяжёлая потеря",
+}
+
+
+class MomentArgs(BaseModel):
+    kind: Literal["betrayal", "rescue", "failure", "victory", "loss"] = Field(
+        description="betrayal — предательство, rescue — спасение, failure — крупный провал, "
+        "victory — крупная победа, loss — тяжёлая потеря (не гибель героя: её сервер видит сам)"
+    )
+    character_ids: list[str] = Field(default_factory=list, description="герои, которых это задело")
+    text: str = Field(min_length=1, max_length=300, description="что случилось, одной фразой")
+
+
+@tool(
+    "mark_moment",
+    "Отмечает сильный момент для летописи характера героев под ИИ и ИИ-мастера: предательство, спасение, "
+    "крупный провал или победу, тяжёлую потерю. Только по-настоящему поворотное, не каждый удачный бросок. "
+    "Игроки отметку не видят.",
+    MomentArgs,
+    ids={"character_ids": "characters"},
+    closes=False,
+)
+async def mark_moment(ctx: ToolContext, a: MomentArgs) -> dict:
+    names = [_character(ctx, cid).name for cid in a.character_ids]
+    await ctx.record(
+        "mark_moment",
+        payload={"kind": a.kind, "label": MOMENTS[a.kind], "characters": a.character_ids, "text": a.text},
+        hidden=True,
+    )
+    return {"marked": MOMENTS[a.kind], "characters": names}
+
+
 class ReviewArgs(BaseModel):
     character_id: str
     approve: bool

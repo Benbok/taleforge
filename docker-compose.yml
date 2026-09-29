@@ -1,5 +1,7 @@
 # Локальный запуск: docker compose up
 # С публичной ссылкой для друзей: docker compose --profile tunnel up   (адрес — в логах сервиса tunnel)
+# С голосовыми репликами (локальный Whisper на видеокарте NVIDIA): docker compose --profile voice up
+#   и STT_API_BASE=http://stt:8000/v1 в .env. Профили складываются: --profile voice --profile tunnel
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -25,10 +27,12 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://taleforge:${POSTGRES_PASSWORD:-taleforge}@db/taleforge
       REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /srv/media
     ports:
       - "8000:8000"
     volumes:
       - ./content:/srv/content:ro
+      - media:/srv/media  # голосовые реплики игроков
     depends_on:
       db:
         condition: service_healthy
@@ -41,5 +45,29 @@ services:
     command: tunnel --no-autoupdate --url http://app:8000
     depends_on: [app]
 
+  # Сервер расшифровки речи (Speaches, faster-whisper) с OpenAI-совместимым /v1/audio/transcriptions.
+  # Модель скачивается при первом запуске и остаётся в томе whisper-models. Без видеокарты NVIDIA — образ
+  # ghcr.io/speaches-ai/speaches:latest-cpu, секцию deploy уберите, а STT_MODEL лучше взять поменьше
+  # (Systran/faster-whisper-small) и указать её же в PRELOAD_MODELS.
+  stt:
+    image: ghcr.io/speaches-ai/speaches:latest-cuda-12.6.3
+    profiles: ["voice"]
+    environment:
+      PRELOAD_MODELS: '["${STT_MODEL:-deepdml/faster-whisper-large-v3-turbo-ct2}"]'
+      STT_MODEL_TTL: "-1"  # модель всё время в памяти: первая реплика не ждёт загрузки
+      WHISPER__COMPUTE_TYPE: int8_float16
+      ENABLE_UI: "false"
+    volumes:
+      - whisper-models:/home/ubuntu/.cache/huggingface/hub
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
 volumes:
   pgdata:
+  media:
+  whisper-models:

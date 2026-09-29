@@ -1,4 +1,5 @@
 # Фракции канона: цель, что знают и чего не знают, ресурсы, отношения (attitude −3…+3).
+# leader_ref — глава (ключевое лицо атласа), seat_ref — резиденция (atlas.md#4.1).
 kind: faction
 items:
 - id: faction.syndicates
@@ -8,6 +9,7 @@ items:
   doc: canon.md#5.1
   tags: [faction]
   goal: 'Сохранить власть и вечный спрос на субстанции: добыча во внутренних тушах не должна прекращаться никогда (Протокол Тишины).'
+  seat_ref: location.old_mother_skull
   knows:
   - Туши живы и шевелятся, когда добыча стихает
   - В рубках спит кто-то ещё
@@ -31,6 +33,8 @@ items:
   tags: [faction]
   parent_ref: faction.syndicates
   goal: 'Держать топливную монополию: огнемёты Кордона, паровозы и заводы горят на их мозге.'
+  leader_ref: creature.npc_agrafena_kostrishcheva
+  seat_ref: location.old_mother
   knows: [Протокол Тишины (как член Совета), 'Сколько топлива нужно Кордону, чтобы не пасть']
   doesnt_know: [Что гудки заводов — оружие против эха]
   resources: [Паровозы и пути вдоль хребтов, Склады чёрного желе, Костры костного мозга]
@@ -46,6 +50,8 @@ items:
   tags: [faction]
   parent_ref: faction.syndicates
   goal: Удерживать тайну и поток ликвора; контролировать всех, кто лазит в рубки.
+  leader_ref: creature.npc_matvey_peregudov
+  seat_ref: location.city_kubovaya
   knows: [Туши живы; в рубках коконы, Протокол Тишины — их работа, Что ликвор меняет людей (Перемена)]
   doesnt_know: ['Что ликвор — пища Спящих, без которой они умирают', Что для роя ликвор — яд]
   resources: [Перегонные заводы, Агенты и шпионы, Контракты на причастие]
@@ -61,6 +67,8 @@ items:
   tags: [faction]
   parent_ref: faction.syndicates
   goal: 'Держать города в долгу: деньги, лекарства и выпуск шахтёров.'
+  leader_ref: creature.npc_efrosinya_velk
+  seat_ref: location.old_mother_skull
   knows: [Протокол Тишины, Кто кому должен в каждом городе]
   doesnt_know: [Природа Резонанса]
   resources: [Банк ФК и векселя, Лимфатические лампы и лекарства, Пенсии выпускников]
@@ -75,6 +83,8 @@ items:
   doc: canon.md#5.2
   tags: [faction]
   goal: Знание и лечение; внутри — спор реформаторов и прагматиков.
+  leader_ref: creature.npc_serafima_ort
+  seat_ref: location.city_svetlitsa
   knows: [Карты органов, Как остановить раннюю мутацию (Сломленные), Туши «поют»]
   doesnt_know: [Что в рубках спят экипажи (кроме Слушателей), Что добыча кормит Резонанс]
   resources: [Клиники, Эхолокаторы и батискафы, Антидоты и инъекторы]
@@ -90,6 +100,8 @@ items:
   tags: [faction]
   parent_ref: faction.guild
   goal: Убрать детей из шахт, не останавливая добычу.
+  leader_ref: creature.npc_ludwig_kessel
+  seat_ref: location.hook_hospital_mercy
   knows: [Как паразиты отличают своих]
   doesnt_know: [Что остановка добычи оживит корабли]
   resources: [Опыты с прививкой, Связи с подпольем]
@@ -104,6 +116,8 @@ items:
   tags: [faction]
   parent_ref: faction.guild
   goal: Деньги и влияние Гильдии.
+  leader_ref: creature.npc_arkady_shtol
+  seat_ref: location.city_svetlitsa
   knows: [Цены и контракты Домов]
   doesnt_know: [Протокол Тишины]
   resources: [Патенты, Лаборатории]
@@ -117,6 +131,7 @@ items:
   tags: [faction]
   parent_ref: faction.guild
   goal: Понять, кто говорит внутри туш.
+  leader_secret_ref: secret.npc_serafima_tuning_fork  # глава — Камертон, имя тайное (atlas.md#4.1)
   knows: [Туши переговариваются эхо-речью, Имя «Кормчие» — их термин]
   doesnt_know: [Что основной флот спит в разломах и ждёт сигнала]
   resources: [Архивы расшифровок, Паровые эхолокаторы]
@@ -130,6 +145,8 @@ items:
   doc: canon.md#5.3
   tags: [faction]
   goal: Причастие и власть над душами; верхушка — бессмертие через «возвышение».
+  leader_ref: creature.npc_ioakim
+  seat_ref: location.whisperer
   knows: [Жрецы слышат голоса (посвящённые)]
   doesnt_know: ['Что «ангелы» — корабли, а в рубках спят экипажи', Что причастие держит «ангелов» во сне]
   resources: [Собор Шепчущий, Приходы, Ликвор причастия, Рыцари Исполина]
@@ -144,6 +161,8 @@ items:
   tags: [faction]
   parent_ref: faction.church
   goal: Кормить бедных, прятать беглых детей.
+  leader_ref: creature.npc_malasha
+  seat_ref: location.whisperer_neck_cells
   knows: [Где прячут беглых]
   doesnt_know: [Что верхушка приглашена]
   resources: [Приходы, Хлеб и приюты]
@@ -158,6 +177,8 @@ items:
   tags: [faction]
   parent_ref: faction.church
   goal: Бессмертие и власть; на деле — стать матерями.
+  leader_ref: creature.npc_ioakim
+  seat_ref: location.whisperer_ascension
   knows: ['Голоса, которые они слышат, дают силу («ангельский гнев»)']
   doesnt_know: ['Что это приглашение Резонанса, а не благодать ангелов']
   resources: [Собор, Паломничества к Кольцу, Домен голода]
@@ -172,6 +193,8 @@ items:
   doc: canon.md#5.4
   tags: [faction]
   goal: 'Разное: нормальная жизнь, «следующая ступень» или пробуждение Спящих.'
+  leader_refs: [creature.npc_olkha, creature.npc_savva, creature.npc_lisa]  # Круг, три течения
+  seat_ref: location.rib_forest
   knows: [Голоса Резонанса и сны экипажей из первых уст]
   doesnt_know: [Что их голоса — две разные расы]
   resources: [Врождённая магия, Рёберный лес — приют]
@@ -186,6 +209,8 @@ items:
   doc: canon.md#5.5
   tags: [faction]
   goal: Остановить детский труд и добычу.
+  leader_ref: creature.npc_praskovya
+  seat_ref: location.rib_forest_spore_lowlands
   knows: [Где шахты хуже всего]
   doesnt_know: ['Что остановка добычи оживит корабли, и никто не скажет, кого корабль послушает']
   resources: [Тайные протоки, Типографии, Взрывчатка на желе]
@@ -200,6 +225,8 @@ items:
   doc: canon.md#5.6; open-questions.md#12
   tags: [faction]
   goal: Удержать черту.
+  leader_ref: creature.npc_erofey_gar
+  seat_ref: location.city_oplot
   knows: ['Резонанс жив, растёт и держится на матерях', Налёт возвращается, Проба звоном и ликвором находит скрытых]
   doesnt_know: ['Что туши живы, а в рубках спят экипажи']
   resources:
@@ -235,6 +262,8 @@ items:
   doc: canon.md#1.3; races.md#2
   tags: [faction]
   goal: 'Ничего осознанно: поглощать, захватывать, распространяться. Цель волн — прорыв, пленные и заражение.'
+  leader_ref: creature.mother_stingy
+  seat_ref: location.hook_echolite_heart
   knows: ['Матери знают людей изнутри и понимают, что без них и эхолита сгусток рассеется']
   doesnt_know: ['Сам Резонанс не знает ничего: у него нет самосознания']
   resources: [Матери, Налёт, 'Выводки, штаммы, колоссы', Приглашённые и скрытые в городах, Эхолит по всему материку]
@@ -249,6 +278,8 @@ items:
   doc: canon.md#7
   tags: [faction]
   goal: Жить тихо и не пустить материк к себе.
+  leader_ref: creature.npc_vedana
+  seat_ref: location.city_zatishye
   knows: [Старые знания до Сгущения]
   doesnt_know: [Что происходит на материке сейчас, Что их скромность и есть защита]
   resources: [Паровые суда, Старые библиотеки]
@@ -262,6 +293,8 @@ items:
   doc: canon.md#1.7
   tags: [faction]
   goal: Учить Отклику и хранить колокола.
+  leader_ref: creature.npc_father_molchan
+  seat_ref: location.hook_bell_monastery
   knows: [Шум сбивает эхо, Отклик ослабляет Резонанс]
   doesnt_know: [Что Отклик может изменить сам Резонанс]
   resources: [Колокола Лиги, Наставники Отклика]

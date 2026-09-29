@@ -189,6 +189,28 @@ export default function PersonaEditor({
           >
             Помочь
           </ActionButton>
+          {!master && (
+            <ActionButton
+              className="font-mono text-xs"
+              title="Черта, идеал, привязанность и слабость из таблиц мира — в пустые места анкеты"
+              run={async () => {
+                const out = await api<{
+                  persona: PersonaSheet;
+                  taken: { label: string }[];
+                }>(url("/tables"), {
+                  body: { persona: draft },
+                });
+                setDraft(out.persona);
+                toast.ok(
+                  out.taken.length
+                    ? `Взял из таблиц: ${out.taken.map((x) => x.label.toLowerCase()).join(", ")}. Проверьте и сохраните`
+                    : "Места для таблиц уже заполнены: очистите поле, чтобы взять другое",
+                );
+              }}
+            >
+              Из таблиц мира
+            </ActionButton>
+          )}
           <ActionButton
             className="font-mono text-xs"
             title="Три короткие пробные сцены по текущей анкете, даже несохранённой"
@@ -271,8 +293,8 @@ function Chronicle({
       {notes.length === 0 ? (
         <p className="text-xs text-muted">
           Пока пусто. После сессии и после сильных событий (гибель героя, конец
-          боя) здесь появится, как {who} изменился и почему. Неизменные черты
-          летопись не трогает.
+          боя, предательство, спасение) здесь появится, как {who} изменился и
+          почему. Неизменные черты летопись не трогает.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">

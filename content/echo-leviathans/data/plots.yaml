@@ -1,0 +1,161 @@
+# Шаблоны сюжетов мира «Эха Левиафанов» для архитектора кампании. Источник: atlas.md#6.1.
+# Это те же формы, что и шаблоны SRD (расследование, ограбление, путешествие…), но с опорами атласа.
+# Пока шаблоны в статусе proposal, их видят только тестовые кампании; шаблоны SRD остаются рядом. При равном
+# счёте по анкете выигрывает шаблон мира (сортировка по id: plot.el_ раньше SRD). После одобрения Arty — canon,
+# и шаблоны SRD можно исключить в pack.yaml (atlas.md#8, вопрос 6).
+# pillars — насколько шаблон подходит под акценты анкеты (0–2), emotions — эмоции, которые он даёт сам.
+# location_refs, npc_refs, lore_refs — опоры атласа: архитектор может взять другие, если анкета просит.
+kind: plot_structure
+items:
+- id: plot.el_vein
+  name: Жила
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Шахты туш, детские артели и Синдикаты. Герои втянуты в судьбу одной жилы в Старой Матери, Горниле или Кубовой и узнают, чем на самом деле платят за топливо и ликвор.'
+  pillars: {combat: 1, exploration: 1, social: 2, mystery: 1, puzzles: 0}
+  emotions: [tragedy, moral, heroism]
+  location_refs: [location.old_mother_womb, location.city_gornilo, location.city_kubovaya]
+  npc_refs: [creature.npc_ulita_krivaya, creature.npc_agrafena_kostrishcheva, creature.npc_praskovya]
+  lore_refs: [lore.small_hands, lore.release]
+  beats:
+    - 'Завязка: беда в жиле (обвал, пропавшая артель, контракт Дома), у героев есть причина спуститься.'
+    - 'Протоки: туша изнутри, санитары и нитевики, дети-шахтёры как NPC, а не как цели.'
+    - 'Хозяева: Дом, надсмотрщики и подполье тянут героев в разные стороны, у каждого своя правда.'
+    - 'Странность: в рубке кокон, туша шевелится в прилив, в жиле больше санитаров, чем выжигают.'
+    - 'Выбор: спасти артель, сорвать добычу или сохранить её, и узнать цену каждого решения.'
+
+- id: plot.el_half_truths
+  name: Половинки правды
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Расследование заговора: каждая сильная фракция держит половину тайны. Герои идут по следу от бытового преступления к Протоколу Тишины и Реестру туш.'
+  pillars: {combat: 0, exploration: 1, social: 2, mystery: 2, puzzles: 2}
+  emotions: [mystery, moral, fear]
+  location_refs: [location.old_mother_skull, location.city_svetlitsa, location.city_oplot]
+  npc_refs: [creature.npc_miron_lad, creature.npc_serafima_ort, creature.npc_nestor]
+  lore_refs: [lore.atlas_registry]
+  beats:
+    - 'Завязка: мелкое преступление или смерть, за которой стоит больше, чем кажется (фальшивые флаконы, пропавший вагон, мёртвый писарь Реестра).'
+    - 'Улики: несколько путей к правде, свидетели из разных Домов лгут по-разному.'
+    - 'Ложный след: очевидный виновный оказывается пешкой, Дом отвечает силой.'
+    - 'Вторая половина: другая фракция знает то, чего не знает первая; сложить их могут только герои.'
+    - 'Развязка: что делать с правдой, которая может обрушить порядок.'
+
+- id: plot.el_hold_the_line
+  name: Держать черту
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Война на Пепельной черте: башни, волны, звонари и нехватка топлива. Враг снаружи, предатель внутри.'
+  pillars: {combat: 2, exploration: 1, social: 1, mystery: 1, puzzles: 0}
+  emotions: [heroism, fear, tragedy]
+  location_refs: [location.city_oplot, location.hook_tower_17, location.hook_unceasing, location.landmark_cordon_thread]
+  npc_refs: [creature.npc_erofey_gar, creature.npc_velimira_zvonova, creature.npc_kirill_tish]
+  lore_refs: [lore.atlas_towers, lore.waves]
+  beats:
+    - 'Призыв: героев направляют на черту или они оказываются там по делу; первая волна.'
+    - 'Башня: гарнизон, звонари, шагоходы и то, чего им не хватает.'
+    - 'Нить рвётся: обрыв телеграфа, соседняя башня молчит, в гарнизоне кто-то слишком спокоен.'
+    - 'Большая волна: сростки, колоссы, пленение; черта держится ценой потерь.'
+    - 'Итог: удержать, отступить или открыть правду о том, почему черту держат ровно на грани.'
+
+- id: plot.el_treasury_job
+  name: Касса Казны
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Ограбление или подмена в мире, где деньги — кровь во флаконах: Казна ФК, дирижабль с ликвором, архив Реестра или склад Кубовой.'
+  pillars: {combat: 1, exploration: 1, social: 2, mystery: 0, puzzles: 2}
+  emotions: [adventure, humor, moral]
+  location_refs: [location.landmark_treasury, location.city_svetlitsa, location.city_kubovaya, location.hook_seam_junction]
+  npc_refs: [creature.npc_gordey_velk, creature.npc_zinovy_kran, creature.npc_arkady_shtol]
+  lore_refs: [lore.coin, lore.atlas_treasury]
+  beats:
+    - 'Заказ: цель, награда и почему это почти невозможно (пересчёт Казны, охрана Дома, прилив).'
+    - 'Подготовка: разведка, нужные люди (контрабандисты, диагносты, звонари), у каждого своя цена.'
+    - 'Проникновение: план встречает тушу, санитаров и стражу; всплывает неучтённое.'
+    - 'Поворот: в хранилище не то, что ждали (разбавленные флаконы, кокон, копия Реестра).'
+    - 'Отход: уйти с добычей и решить, кому она достанется.'
+
+- id: plot.el_patience_voyage
+  name: Рейс «Терпения»
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Путешествие через прибрежье и море к Тихим островам на пароходе «Терпение»: разломы, спящий флот и люди, которые живут без голода.'
+  pillars: {combat: 1, exploration: 2, social: 1, mystery: 1, puzzles: 0}
+  emotions: [adventure, mystery, heroism]
+  location_refs: [location.hook_salt_hook, location.drowned, location.landmark_grey_rift, location.city_zatishye]
+  npc_refs: [creature.npc_varvara_mel, creature.npc_ida_islands, creature.npc_vedana]
+  lore_refs: [lore.islands, lore.atlas_forty_days, lore.atlas_rifts]
+  beats:
+    - 'Зов: зачем плыть и почему сейчас (беглец, посланница, груз, лоция).'
+    - 'Берег: порт, капитанская управа, кто ещё хочет на борт и зачем.'
+    - 'Море: шторм у разлома, бортовые организмы спящего флота, туман Сизого разлома.'
+    - 'Худший час: судно повреждено или на борту чужой голод; приходится платить.'
+    - 'Острова: сорок дней на Пристани и выбор, что увезти с собой на материк.'
+
+- id: plot.el_awakening
+  name: Проснувшийся
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Мистика и ужас пробуждения: туша начинает жить, в рубке кто-то поёт, сигналы из разломов отвечают. Никто не знает, кого послушает корабль.'
+  pillars: {combat: 1, exploration: 2, social: 0, mystery: 2, puzzles: 1}
+  emotions: [fear, mystery, tragedy]
+  location_refs: [location.hook_nameless, location.drowned, location.hook_maw_rift, location.old_mother_skull]
+  npc_refs: [creature.npc_nameless_warden, creature.npc_matvey_peregudov, creature.npc_yan_kroha]
+  lore_refs: [lore.atlas_now_nameless, lore.atlas_now_maw, lore.tide]
+  beats:
+    - 'Знак: прилив сильнее обычного, стук из рубки, сигнал из моря.'
+    - 'Спуск: герои идут туда, куда пролезают только дети и Глубинные; туша сопротивляется.'
+    - 'Контакт: в рубке кто-то живой, и он не человек.'
+    - 'Гонка: Дом, Церковь, Резонанс и сами герои хотят разного от проснувшегося.'
+    - 'Выбор: усыпить, разбудить или отдать; туша двигается или замирает.'
+
+- id: plot.el_invited
+  name: Приглашённые
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Паранойя и предательство: среди своих есть те, кто согласился на голод. Собор, башня черты или городской совет, где кто-то «слишком спокоен».'
+  pillars: {combat: 1, exploration: 0, social: 2, mystery: 2, puzzles: 1}
+  emotions: [fear, moral, mystery]
+  location_refs: [location.whisperer, location.hook_tower_17, location.hook_bell_monastery]
+  npc_refs: [creature.npc_ioakim, creature.npc_kirill_tish, creature.npc_father_molchan, creature.npc_anna_pilgrim]
+  lore_refs: [lore.invited_history, lore.bell_over_door]
+  beats:
+    - 'Тревога: странная смерть, исчезновение или слишком удачная полоса у кого-то.'
+    - 'Подозрение: кто угодно может быть приглашённым, включая союзников героев.'
+    - 'Проверка: звон, ликвор, старый обряд; каждая проверка стоит доверия.'
+    - 'Разоблачение: круг приглашённых больше и выше, чем думали.'
+    - 'Развязка: вырвать гниль, вернуть кого-то назад или признать, что их не отличить.'
+
+- id: plot.el_league_summons
+  name: Созыв Лиги
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Большая политика и Третий путь: собрать тех, кто может ударить по кратеру разом, — князя с Уставом Лиги, Кордон, Гильдию, Сломленных, — пока Синдикаты мешают.'
+  pillars: {combat: 1, exploration: 1, social: 2, mystery: 1, puzzles: 1}
+  emotions: [heroism, moral, tragedy]
+  location_refs: [location.city_vyshegrad, location.landmark_veche_bell, location.city_oplot, location.landmark_cordon_thread]
+  npc_refs: [creature.npc_vseslav, creature.npc_velimira_zvonova, creature.npc_lisa, creature.npc_serafima_ort]
+  lore_refs: [lore.atlas_league_charter, lore.atlas_common_ring]
+  beats:
+    - 'Искра: находка (подлинник Устава, донесение 40 года, карта 38 года) показывает, что Лигу можно созвать.'
+    - 'Союзники: каждого нужно убедить, и у каждого своя цена.'
+    - 'Противодействие: Синдикаты покупают, шантажируют, убивают; рой рвёт Нить.'
+    - 'Созыв: колокол, звон по Нити, первая общая победа или первое общее поражение.'
+    - 'Цена: кто спустится к эхолиту, и готов ли мир к тому, что будет после.'
+
+- id: plot.el_brood_hunt
+  name: Охота на выводок
+  status: proposal
+  doc: atlas.md#6.1
+  description: 'Выводок, сросток или гнездо терзает округу вдали от черты: поглощённая провинция, выработанная туша или трущобы. Выследить, понять, откуда он, и выжечь.'
+  pillars: {combat: 2, exploration: 2, social: 1, mystery: 1, puzzles: 0}
+  emotions: [heroism, fear, adventure]
+  location_refs: [location.belt_old_lands, location.hook_empty_hunchback, location.hook_grey_field]
+  npc_refs: [creature.npc_prokhor]
+  lore_refs: [lore.blight_returns, lore.brood_blind]
+  beats:
+    - 'Беда: пропадают люди и скот, по ночам ходит то, что не должно ходить так далеко от кратера.'
+    - 'След: налёт под пашней, пустая туша, слишком спокойный местный.'
+    - 'Логово: гнездо, узел налёта или мать, которая только растёт.'
+    - 'Цена огня: выжечь значит сжечь чужое поле, туннель или дом.'
+    - 'Итог: гнездо уничтожено, но кто-то его сюда позвал.'

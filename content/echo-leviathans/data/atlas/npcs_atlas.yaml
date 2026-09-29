@@ -1,0 +1,308 @@
+# Ключевые лица атласа: главы сил и хозяева новых городов, матери кратера. Источник: atlas.md#4.
+# Как в locations/npcs.yaml: base_ref — шаблон пакета, srd_ref — шаблон SRD 5.1, secret_ref — тайна (видит мастер).
+# Тег unique — ключевое лицо мира: архитектор кампании видит его цель и тайну и может взять его в каркас.
+kind: creature_template
+items:
+# ---------------------------------------------------------------- Синдикаты
+- id: creature.npc_matvey_peregudov
+  name: Матвей Перегудов
+  description: 'Глава Дома Ликвора, самый осведомлённый человек Совета Домов. Шестьдесят лет, худой, пахнет магией так, что рядом кружится голова. Живёт в Кубовой, а не в Старой Матери.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, syndicate, liquor, kubovaya, faction_head]
+  creature_type: humanoid
+  base_ref: creature.guild_listener
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  alteration: 3
+  behavior: {profile: cowardly, flee_threshold: 0.6, note: 'в бой вступает только загнанным; охрана — наёмники Синдиката'}
+  escort: {creature_refs: [creature.syndicate_enforcer], count: '4', note: 'Наёмники Синдиката'}
+  faction_ref: faction.house_liquor
+  location_ref: location.city_kubovaya
+  goal: 'Открыть рубку Безымянной и получать «чистый» ликвор прямо от Спящего.'
+  secret_ref: secret.npc_matvey_drinks_sleeper
+
+- id: creature.npc_luka_kostrishchev
+  name: Лука Кострищев
+  description: 'Сын Аграфены, начальник Горнила и Хребтовой магистрали. В молодости служил на черте. Прямой, щедрый к рабочим, жёсткий к конкурентам.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, syndicate, gornilo, rail]
+  creature_type: humanoid
+  base_ref: creature.cordon_officer
+  srd_ref: {type: monster, name: Knight}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction_ref: faction.house_kostrishchev
+  location_ref: location.city_gornilo
+  goal: 'Довести магистраль до Переднего края.'
+  secret_ref: secret.npc_luka_deal
+
+- id: creature.npc_gordey_velk
+  name: Гордей Вельк
+  description: 'Хранитель Казны ФК в Светлице, брат Ефросиньи Вельк. Вежливый, усталый, очень аккуратный.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, syndicate, bank, svetlitsa]
+  creature_type: humanoid
+  base_ref: creature.syndicate_noble
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8}
+  faction_ref: faction.lymph_company
+  location_ref: location.landmark_treasury
+  goal: 'Чтобы пересчёт Казны прошёл тихо.'
+  secret_ref: secret.npc_gordey_true_flasks
+
+# ---------------------------------------------------------------- Гильдия
+- id: creature.npc_serafima_ort
+  name: Серафима Орт
+  description: 'Декан Гильдии Диагностов, лучший хирург мира. Говорит мало и точно. Держит Гильдию единой между реформаторами и прагматиками.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, guild, svetlitsa, faction_head]
+  creature_type: humanoid
+  base_ref: creature.guild_listener
+  srd_ref: {type: monster, name: Mage}
+  cr: 6
+  alteration: 2
+  behavior: {profile: cowardly, flee_threshold: 0.6}
+  faction_ref: faction.guild
+  location_ref: location.city_svetlitsa
+  goal: 'Чтобы Гильдия пережила любой исход.'
+  secret_ref: secret.npc_serafima_tuning_fork
+
+- id: creature.npc_ludwig_kessel
+  name: Людвиг Кессель
+  description: 'Вождь реформаторов Гильдии, главный врач Госпиталя «Милосердие». Горячий, честный, упрямый.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, guild, reformers, hospital]
+  creature_type: humanoid
+  base_ref: creature.guild_diagnost
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: cowardly, flee_threshold: 0.5}
+  faction_ref: faction.guild_reformers
+  location_ref: location.hook_hospital_mercy
+  goal: 'Заменить детей в шахтах взрослыми, «привитыми» кровью титана.'
+  secret_ref: secret.npc_kessel_volunteers
+
+- id: creature.npc_arkady_shtol
+  name: Аркадий Штоль
+  description: 'Вождь прагматиков Гильдии, хозяин аптек Светлых рядов, член правления Лимфатической компании. Обаятелен и циничен.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, guild, pragmatists, syndicate, svetlitsa]
+  creature_type: humanoid
+  base_ref: creature.syndicate_noble
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.8}
+  faction_ref: faction.guild_pragmatists
+  location_ref: location.city_svetlitsa
+  goal: 'Продавать всем, кто платит.'
+  secret_ref: secret.npc_shtol_elixir
+
+# ---------------------------------------------------------------- Кордон и Обитель
+- id: creature.npc_erofey_gar
+  name: Ерофей Гарь
+  description: 'Маршал черты, командующий Пепельным Кордоном. Шестьдесят восемь лет, из них пятьдесят на черте. Старая гвардия: верит только огню и колоколам.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, cordon, oplot, faction_head]
+  creature_type: humanoid
+  base_ref: creature.cordon_veteran
+  srd_ref: {type: monster, name: Veteran}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.1}
+  faction_ref: faction.ash_cordon
+  location_ref: location.city_oplot
+  goal: 'Удержать черту любой ценой.'
+  secret_ref: secret.npc_erofey_one_season
+
+- id: creature.npc_velimira_zvonova
+  name: Велимира Звонова «Семнадцатая»
+  description: 'Капитан-звонарь, командир Неумолчной, голос молодых офицеров Кордона. Выросла в Башне 17, отсюда позывной.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, cordon, bells, young_officers]
+  creature_type: humanoid
+  base_ref: creature.cordon_officer
+  srd_ref: {type: monster, name: Knight}
+  cr: 3
+  behavior: {profile: defender, flee_threshold: 0.2}
+  faction_ref: faction.ash_cordon
+  location_ref: location.hook_unceasing
+  goal: 'Союз Кордона с Гильдией и Сломленными и общий звон по Нити.'
+  secret_ref: secret.npc_velimira_letters
+
+- id: creature.npc_kirill_tish
+  name: Кирилл Тишь
+  description: 'Комендант Башни 17. Спокойный, улыбчивый; его гарнизон не теряет людей уже год.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, cordon, tower, invited]
+  creature_type: humanoid
+  base_ref: creature.invited
+  srd_ref: {type: monster, name: Cult Fanatic}
+  cr: 2
+  behavior: {profile: capturer, flee_threshold: 0.4}
+  faction_ref: faction.resonance
+  location_ref: location.hook_tower_17
+  goal: 'Открыть ворота черты в нужную ночь.'
+  secret_ref: secret.npc_kirill_gate
+
+- id: creature.npc_father_molchan
+  name: Отец Молчан
+  description: 'Настоятель Обители Звона, старший Молчальник. Не говорит тридцать лет, объясняется колоколом и мелом.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, bells, monastery, faction_head]
+  creature_type: humanoid
+  base_ref: creature.church_priest
+  srd_ref: {type: monster, name: Priest}
+  cr: 2
+  behavior: {profile: defender, flee_threshold: 0.3}
+  faction_ref: faction.bell_monastery
+  location_ref: location.hook_bell_monastery
+  goal: 'Сохранить старый обряд звона и учить звонарей.'
+  secret_ref: secret.npc_molchan_ban
+
+- id: creature.npc_nestor
+  name: Нестор Пепельник
+  description: 'Архивариус Архива Лиги под Оплотом. Старик, который знает каждую карту налёта.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, cordon, archive, league]
+  creature_type: humanoid
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.9, note: не сражается}
+  faction_ref: faction.ash_cordon
+  location_ref: location.hook_league_archive
+  goal: 'Чтобы Архив читали.'
+  secret_ref: secret.npc_nestor_report_40
+
+# ---------------------------------------------------------------- Старые земли, острова, дно
+- id: creature.npc_vseslav
+  name: Князь Всеслав Вышеградский
+  description: 'Правитель Вышеграда, сорок лет. В долгах у Лимфатической компании, горд, как все князья без княжества.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, old_lands, vyshegrad, league, faction_head]
+  creature_type: humanoid
+  srd_ref: {type: monster, name: Noble}
+  cr: 0.125
+  behavior: {profile: cowardly, flee_threshold: 0.7, note: 'за него дерётся дружина'}
+  escort: {srd_monsters: [Veteran], count: '4', note: 'Дружина из ветеранов (ПО 3)'}
+  location_ref: location.city_vyshegrad
+  goal: 'Независимость Старых земель от Синдикатов.'
+  secret_ref: secret.npc_vseslav_league_right
+
+- id: creature.npc_vedana
+  name: Старейшина Ведана
+  description: 'Глава совета Затишья. Спокойная, внимательная, помнит каждого, кто приплывал на острова.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, islands, faction_head]
+  creature_type: humanoid
+  base_ref: creature.islander
+  srd_ref: {type: monster, name: Commoner}
+  cr: 0
+  behavior: {profile: cowardly, flee_threshold: 0.9, note: не сражается}
+  faction_ref: faction.islanders
+  location_ref: location.city_zatishye
+  goal: 'Чтобы острова остались тихими.'
+  secret_ref: secret.npc_vedana_quiet_word
+
+- id: creature.npc_zinovy_kran
+  name: Зиновий Кран
+  description: 'Вербовщик и контрабандист Последнего перрона. Весёлый, лживый и очень полезный.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, smuggler, last_platform]
+  creature_type: humanoid
+  base_ref: creature.smuggler_captain
+  srd_ref: {type: monster, name: Bandit Captain}
+  cr: 2
+  behavior: {profile: aggressive, flee_threshold: 0.4}
+  location_ref: location.hook_last_platform
+  goal: 'Денег, и чтобы его не трогали.'
+  secret_ref: secret.npc_zinovy_wagons
+
+- id: creature.npc_nameless_warden
+  name: Сторож Безымянной
+  description: 'Кормчий в открытой рубке Безымянной, проснувшийся наполовину. Не говорит словами: щёлкает и поёт.'
+  status: proposal
+  doc: atlas.md#4.2
+  tags: [npc, unique, atlas, helmsmen, sleeper, cockpit]
+  base_ref: creature.sleeper_cocoon
+  cr: 0
+  behavior: {profile: defender, flee_threshold: 0.0, mobile: false}
+  faction_ref: faction.helmsmen
+  location_ref: location.hook_nameless
+  goal: 'Ликвора и вернуться к флоту.'
+  secret_ref: secret.nameless_half_awake
+
+# ---------------------------------------------------------------- Матери кратера
+- id: creature.mother_stingy
+  name: Скупая
+  description: 'Первая мать, срослась с Сердцем эхолита на дне кратера. Говорит голосами всех, кто торговался с голодом.'
+  status: proposal
+  doc: atlas.md#1.6
+  tags: [unique, atlas, mother, resonance, crater, boss]
+  base_ref: creature.mother_human
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 10
+  behavior: {profile: defender, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  faction_ref: faction.resonance
+  location_ref: location.hook_echolite_heart
+  goal: 'Держать эхолит и кормиться всем, что копится на поверхности.'
+  secret_ref: secret.mother_stingy_origin
+
+- id: creature.mother_imperious
+  name: Властная
+  description: 'Мать северных гнездовых террас. Её выводки ходят строем.'
+  status: proposal
+  doc: atlas.md#1.6
+  tags: [unique, atlas, mother, resonance, crater, boss]
+  base_ref: creature.mother_human
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 10
+  behavior: {profile: defender, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  faction_ref: faction.resonance
+  location_ref: location.hook_nest_terraces
+  goal: 'Подчинить черту, как когда-то подчиняла горный город.'
+  secret_ref: secret.mother_imperious_origin
+
+- id: creature.mother_vengeful
+  name: Мстительная
+  description: 'Мать восточного склона, ближе всех к черте. Её волны бьют в одни и те же башни.'
+  status: proposal
+  doc: atlas.md#1.6
+  tags: [unique, atlas, mother, resonance, crater, boss]
+  base_ref: creature.mother_human
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 10
+  behavior: {profile: defender, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  faction_ref: faction.resonance
+  location_ref: location.belt_crater
+  goal: 'Отомстить Лиге и её наследникам, Кордону.'
+  secret_ref: secret.mother_vengeful_origin
+
+- id: creature.mother_mute
+  name: Немая
+  description: 'Чужая мать у Спуска штурмовиков. Не шепчет людям, живёт в чужом ритме. Кордон считает Немых по номерам: их три.'
+  status: proposal
+  doc: atlas.md#1.6
+  tags: [unique, atlas, mother, resonance, crater, alien, boss]
+  base_ref: creature.mother_alien
+  srd_ref: {type: monster, name: Aboleth}
+  cr: 11
+  count: 3
+  behavior: {profile: defender, flee_threshold: 0.0, guards: lair, uses_minions: true}
+  faction_ref: faction.resonance
+  location_ref: location.landmark_stormtrooper_descent
+  goal: 'Звать флот своим ритмом.'
+  secret_ref: secret.alien_mothers

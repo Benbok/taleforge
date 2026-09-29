@@ -209,12 +209,20 @@ def tool_spec() -> dict:
 # --- выбор шаблона сюжета ---
 
 
+WISH_WEIGHT, WISH_MAX = 1.5, 2
+
+
 def score_structure(entry_data: dict, brief: dict) -> float:
     pillars = entry_data.get("pillars") or {}
     wanted = brief.get("pillars") or {}
     score = sum(AMOUNT_WEIGHT[wanted.get(k, "mid")] * float(pillars.get(k, 0)) for k in PILLARS)
     emotions = set(brief.get("emotions") or [])
     score += 2 * len(emotions & set(entry_data.get("emotions") or []))
+    # свободные пожелания: слова из названия и описания шаблона («война на черте» → «Держать черту»)
+    wishes = set(terms(brief.get("wishes") or ""))
+    if wishes:
+        words = set(terms(f"{entry_data.get('name', '')} {entry_data.get('description', '')}"))
+        score += WISH_WEIGHT * min(len(wishes & words), WISH_MAX)
     return score
 
 
@@ -426,6 +434,8 @@ SYSTEM = """Ты — архитектор кампании для текстов
 Правила:
 - Строй каркас внутри мира пакета: места, фракции и факты бери из лора ниже, ссылайся на них через lore_ref и ref.
 - NPC и антагонистов привязывай к шаблонам существ из списка (template_id), локации — к шаблонам локаций.
+- Ключевые лица и места мира — канон: не переименовывай их и не меняй их роль. Второстепенных NPC придумывай сам
+  на шаблонах существ.
 - Узлы описывают, что происходит, а не что должны сделать игроки. Решения игроков меняют исход, а не отменяют узел.
 - К каждой тайне — не меньше трёх зацепок хотя бы в двух разных местах или у разных NPC.
 - План угрозы антагониста — шаги, которые он сделает сам, если герои медлят.
@@ -448,6 +458,8 @@ def plan_input(
     npcs: list,
     note: str = "",
     previous: dict | None = None,
+    figures: list[str] | None = None,
+    places: list[str] | None = None,
 ) -> str:
     lim = LIMITS.get(length) or LIMITS["short"]
     parts = [
@@ -468,6 +480,13 @@ def plan_input(
     parts.append("Лор мира:\n" + (lore or "в пакете нет лора: опирайся на классическое фэнтези SRD."))
     if locations:
         parts.append("Шаблоны локаций: " + "; ".join(f"{e.id} ({e.name})" for e in locations))
+    if places:
+        parts.append("Ключевые места мира:\n" + "\n".join(places))
+    if figures:
+        parts.append(
+            "Ключевые лица мира (template_id — их id; бери тех, кто подходит к анкете, а не всех):\n"
+            + "\n".join(figures)
+        )
     if npcs:
         parts.append("Шаблоны существ для NPC: " + "; ".join(f"{e.id} ({e.name})" for e in npcs))
     if previous:
@@ -478,6 +497,29 @@ def plan_input(
     if note.strip():
         parts.append(f"Пожелание владельца к этому варианту: {note.strip()}")
     return "\n\n".join(parts)
+
+
+def _short(text: Any, limit: int) -> str:
+    t = " ".join(str(text or "").split())
+    return t if len(t) <= limit else t[: limit - 1].rstrip() + "…"
+
+
+def place_line(e) -> str:
+    """Ключевое место пакета одной строкой для архитектора."""
+    return f"- {e.id} ({e.name}): {_short(e.data.get('description'), 200)}"
+
+
+def figure_line(e, secret: str = "") -> str:
+    """Ключевое лицо пакета одной строкой: кто, чего хочет, где, тайна (архитектор работает на стороне мастера)."""
+    d = e.data
+    bits = [_short(d.get("description"), 180)]
+    if d.get("goal"):
+        bits.append(f"хочет: {_short(d['goal'], 140)}")
+    if d.get("location_ref"):
+        bits.append(f"где: {d['location_ref']}")
+    if secret:
+        bits.append(f"тайна: {_short(secret, 220)}")
+    return f"- {e.id} ({e.name}): " + "; ".join(b for b in bits if b)
 
 
 def poster(plan: dict) -> dict:

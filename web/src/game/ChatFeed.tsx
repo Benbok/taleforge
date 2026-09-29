@@ -134,10 +134,11 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
         {pending.map((p) => (
           <div key={p.clientId} className="ml-auto max-w-[70ch] rounded-lg bg-raised px-3 py-2 opacity-70">
             <p className="flex items-center gap-2 text-xs text-muted">
-              <Spinner /> {now - p.at > 4000 ? "мастер разбирает реплику…" : "отправляется"}
+              <Spinner />{" "}
+              {p.voice ? "голосовое · расшифровываю…" : now - p.at > 4000 ? "мастер разбирает реплику…" : "отправляется"}
               {p.whisper ? " · шёпот мастеру" : ""}
             </p>
-            <p>{p.text}</p>
+            {p.text && <p>{p.text}</p>}
           </div>
         ))}
         {masterStage && STAGES[masterStage] && (
