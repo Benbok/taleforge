@@ -14,6 +14,42 @@ items:
     variants:
       - {id: rupture, name: Разрыв, note: "связь с матерью оборвана, шкалы Зова роя нет"}
       - {id: kept_self, name: Сохранил себя, note: "есть шкала Зова роя (stat.hive_call)"}
+    # Каста — какое желание чуть не поглотило героя на Пороге (таблица «Раскол», rules.md#3.4). Выбирается один раз
+    # при переходе, даёт одну черту поверх общих. Каста Глубинных — только дети-шахтёры, героям недоступна.
+    castes:
+      - id: herald
+        name: Глашатай
+        desire: власть, ложь
+        description: Голод поймал вас на жажде власти. Вы по-прежнему чувствуете, чего хотят люди, и умеете говорить их голосом.
+        status: proposal
+        features:
+          - name: Чужое лицо
+            text: "Владение Обманом. Преимущество на проверки Проницательности: вы слышите желания собеседника."
+            modifiers:
+              - {op: proficiency, kind: skill, value: deception}
+              - {op: advantage, "on": check, skill: insight}
+      - id: warrior
+        name: Воитель
+        desire: месть, гнев
+        description: Голод вырос из вашей ярости. Хитин лёг на вас толще, чем на других, а тело помнит штурм.
+        status: proposal
+        features:
+          - name: Панцирь воителя
+            text: "+1 к КД. Владение Атлетикой."
+            modifiers:
+              - {op: add, target: ac, value: 1}
+              - {op: proficiency, kind: skill, value: athletics}
+      - id: weaver
+        name: Ткач
+        desire: накопление, покой
+        description: Голод зацепился за жадность или тоску по своему углу. Налёт для вас — дом, и вы видите, что в нём спрятано.
+        status: proposal
+        features:
+          - name: Кровь налёта
+            text: "Сопротивление урону ядом. Владение Анализом."
+            modifiers:
+              - {op: resistance, damage: poison}
+              - {op: proficiency, kind: skill, value: investigation}
     features:
       - name: Тело роя
         status: proposal
@@ -85,6 +121,42 @@ items:
     keeps: [class, level, abilities, origin_features, echo]
     size: medium
     gained_via_ref: effect.silence_threshold_trial
+    # Каста — чья память Кормчих пришла с ликвором на Пороге тишины (races.md#1.4). Выбирается один раз при переходе,
+    # даёт одну черту поверх общих. Память пилотов в коконах слишком глубока: героям она недоступна.
+    castes:
+      - id: voice
+        name: Звучащий
+        role: навигация, связь, язык эха
+        description: В вас осела память навигатора. Вы слышите ложь в дрожании голоса и понимаете аккорды Кормчих.
+        status: proposal
+        features:
+          - name: Язык эха
+            text: "Владение Проницательностью. Вы понимаете язык эха Кормчих и можете отвечать на нём."
+            modifiers:
+              - {op: proficiency, kind: skill, value: insight}
+              - {op: proficiency, kind: language, value: echo_chord}
+      - id: gardener
+        name: Садовник
+        role: корабли, паразиты, органы-механизмы
+        description: В вас осела память тех, кто выращивал корабли. Живые механизмы туш для вас понятны, как свои руки.
+        status: proposal
+        features:
+          - name: Рука садовника
+            text: "Владение Медициной и Природой."
+            modifiers:
+              - {op: proficiency, kind: skill, value: medicine}
+              - {op: proficiency, kind: skill, value: nature}
+      - id: silent_guard
+        name: Тихий страж
+        role: охрана, охота на эхо-сущности
+        description: В вас осела память охотников на эхо. Вы двигаетесь без звука и не теряете голову перед роем.
+        status: proposal
+        features:
+          - name: Шаг без эха
+            text: "Владение Скрытностью. Преимущество на спасброски против испуга."
+            modifiers:
+              - {op: proficiency, kind: skill, value: stealth}
+              - {op: advantage, "on": save, vs: frightened}
     features:
       - name: Тело Кормчего
         status: proposal

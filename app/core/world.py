@@ -127,6 +127,28 @@ def _collect(effs: list[tuple[ActiveEffect, Entry]], cat: CatalogView) -> mod.Mo
     return mod.collect(((rec.id, rec.data, e.stacks) for e, rec in effs), lookup)
 
 
+def lineage_features(sheet: dict, cat: CatalogView) -> tuple[Entry | None, dict | None, list[dict]]:
+    """Вторая раса героя после Порога (sheet.lineage_id) и его каста (sheet.lineage_caste): запись, каста и черты."""
+    lin = cat.find(sheet.get("lineage_id") or "", "lineage")
+    if lin is None:
+        return None, None, []
+    caste = next((c for c in lin.data.get("castes") or [] if c.get("id") == sheet.get("lineage_caste")), None)
+    feats = [f for f in lin.data.get("features") or [] if isinstance(f, dict)]
+    feats += [f for f in (caste or {}).get("features") or [] if isinstance(f, dict)]
+    return lin, caste, feats
+
+
+def natural_ac(feats: list[dict], dex_mod: int) -> int | None:
+    """«Тело роя»: КД 13 + Лов без доспехов (модификатор set ac_base)."""
+    for f in feats:
+        for m in f.get("modifiers") or []:
+            if m.get("op") == "set" and m.get("target") == "ac_base":
+                base = str(m.get("value", "")).split("+")[0].strip()
+                if base.isdigit():
+                    return int(base) + dex_mod
+    return None
+
+
 def character_actor(
     ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list[ActiveEffect]
 ) -> Actor:
@@ -140,19 +162,41 @@ def character_actor(
             inv.append((it.id, {"id": rec.id, **rec.data}, it.equipped, it.display_name or rec.name))
     d = derive(sheet, cls.data if cls else None, origin.data if origin else None, inv)
     effs = _effects_for(ch.id, effects, cat)
-    mods_ = _collect(effs, cat)
+    lin, _, feats = lineage_features(sheet, cat)
+    lin_mods = [m for f in feats for m in f.get("modifiers") or [] if isinstance(m, dict)]
+    extra = [(lin.id, {"modifiers": lin_mods}, 1)] if lin else []
+    mods_ = mod.collect(
+        [*extra, *((rec.id, rec.data, e.stacks) for e, rec in effs)],
+        lambda name: (lambda r: {"id": r.id, **r.data} if r else None)(
+            cat.find(name if "." in name else f"condition.{name}")
+        ),
+    )
     res, vul, imm = mod.defenses(mods_)
+    skills = dict(d.skills)
+    for m in lin_mods:
+        # владения навыками от Порога: к навыку, которым герой ещё не владеет, прибавляется бонус мастерства
+        s = m.get("value")
+        if m.get("op") == "proficiency" and m.get("kind") == "skill" and s in SKILLS and skills[s] == d.mods[SKILLS[s]]:
+            skills[s] += d.pb
+    ac = d.ac
+    armored = any(
+        eq and item.get("category") == "armor" and item.get("armor_type") != "shield" for _, item, eq, _ in inv
+    )
+    natural = natural_ac(feats, d.mods["dex"]) if lin else None
+    if natural is not None and not armored:
+        shield = next((i for _, i, eq, _ in inv if eq and i.get("armor_type") == "shield"), None)
+        ac = max(ac, natural + (int(shield.get("ac_bonus", 2)) if shield else 0))
     return Actor(
         id=ch.id,
         name=ch.name,
         kind="character",
         obj=ch,
         hp=_hp_from(ch.resources or {}, d.hp_max),
-        ac=d.ac + mod.add_value(mods_, "ac"),
+        ac=ac + mod.add_value(mods_, "ac"),
         abilities=d.abilities,
         mods=d.mods,
         saves=d.saves,
-        skills=d.skills,
+        skills=skills,
         pb=d.pb,
         attacks=[a.as_dict() for a in d.attacks],
         resistances=set(d.resistances) | res,

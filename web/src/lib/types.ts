@@ -203,6 +203,8 @@ export interface HeroAttack {
 export interface HeroSheet extends HeroPublic {
   class_name?: string | null;
   origin_name?: string | null;
+  /** Вторая раса после Порога и её каста. */
+  lineage?: { id: string; name: string; caste: string | null; features: string[] } | null;
   sheet: Record<string, unknown> & { level?: number; skills?: string[] };
   resources: {
     hp?: number;

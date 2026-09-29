@@ -71,3 +71,50 @@ def test_copy_into_other_world_names_what_to_replace(client, admin, worlds):
     )
     assert fixed["sheet"]["foreign"] == {}
     assert ok(client.get(f"/api/campaigns/{c['id']}/characters/{copy['id']}", headers=h))["errors"] == []
+
+
+def test_threshold_gives_second_race_and_caste(client, admin, worlds, settings):
+    from app.db.models import Campaign
+    from app.tools.registry import execute
+    from app.tools.runtime import flush_outbox, open_context
+    from tests.game import QueueDice
+    from tests.test_api import register
+
+    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans", creation_rules={"review": "auto"})
+    h = register(client, invite(client, admin, c["id"])["token"], "Арагорн")
+    ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=ECHO_FIGHTER, headers=h), 201)
+    assert ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=h))["status"] == "approved"
+    before = ok(client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=h))
+
+    async def go(s):
+        ctx = await open_context(s, await s.get(Campaign, c["id"]), QueueDice([]), turn_id="t_test", seat_id=None)
+        found = await execute(ctx, "lookup_template", {"kind": "lineage", "query": "Сохранивший себя"})
+        bad = await execute(
+            ctx, "cross_threshold", {"character_id": ch["id"], "lineage_id": "lineage.kept_self", "caste": "deep"}
+        )
+        good = await execute(
+            ctx,
+            "cross_threshold",
+            {"character_id": ch["id"], "lineage_id": "lineage.kept_self", "caste": "warrior", "variant": "kept_self"},
+        )
+        again = await execute(
+            ctx, "cross_threshold", {"character_id": ch["id"], "lineage_id": "lineage.kept_heart", "caste": "voice"}
+        )
+        await flush_outbox(s, ctx)
+        await s.commit()
+        return found, bad, good, again
+
+    found, bad, good, again = run(settings, go)
+    kept_self = next(x for x in found["result"]["results"] if x["id"] == "lineage.kept_self")
+    castes = [x["id"] for x in kept_self["castes"]]
+    assert castes == ["herald", "warrior", "weaver"]
+    assert not bad["ok"] and "нет касты deep" in bad["error"]
+    assert good["ok"] and good["result"]["caste"] == "Воитель"
+    assert not again["ok"] and "уже прошёл Порог" in again["error"]
+    after = ok(client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=h))
+    assert after["lineage"]["name"] == "Сохранивший себя" and after["lineage"]["caste"] == "Воитель"
+    assert "Панцирь воителя" in after["lineage"]["features"]
+    # класс и происхождение на месте; «Панцирь воителя» +1 к КД, Атлетикой воин уже владел
+    assert after["sheet"]["class_id"] == "class.fighter" and after["sheet"]["origin_id"] == "origin.tushevik"
+    assert after["derived"]["ac"] >= before["derived"]["ac"] + 1
+    assert after["derived"]["skills"]["athletics"] == before["derived"]["skills"]["athletics"]

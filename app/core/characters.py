@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import CatalogView
 from app.core import bonds
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
-from app.core.world import character_actor, get_scene
+from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
 from app.rules.dnd5e.character import (
@@ -511,6 +511,14 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
             }
         except Exception:  # noqa: BLE001 — незаконченный черновик: производных ещё нет
             pass
+    lin, caste, feats = lineage_features(ch.sheet or {}, cat)
+    if lin is not None:
+        out["lineage"] = {
+            "id": lin.id,
+            "name": lin.name,
+            "caste": (caste or {}).get("name"),
+            "features": [f.get("name") for f in feats if f.get("name")],
+        }
     out["inventory"] = [
         {
             "id": it.id,
