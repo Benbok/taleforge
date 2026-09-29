@@ -253,6 +253,98 @@ async def put_master_persona(
     return persona_out(agent)
 
 
+# --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---
+
+
+class MasterCharacterIn(BaseModel):
+    text: str = ""
+    fields: dict[str, str] = {}
+    core: list[str] | None = None
+
+
+class MasterDraftIn(BaseModel):
+    persona: MasterCharacterIn | None = None
+
+
+class MasterNoteIn(BaseModel):
+    text: str | None = None
+    cause: str | None = None
+    reverted: bool | None = None
+
+
+async def _master_character_out(session, campaign_id: str, agent: AgentConfig) -> dict:
+    from app.core import persona
+
+    notes = await persona.notes_of(session, campaign_id, None)
+    return {
+        "persona": persona.normalize((agent.settings or {}).get("character"), master=True),
+        "schema": persona.schema(master=True),
+        "notes": [persona.note_out(n) for n in notes],
+        "can_edit": True,
+    }
+
+
+@router.get("/campaigns/{campaign_id}/master-character")
+async def get_master_character(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    return await _master_character_out(session, campaign_id, agent)
+
+
+@router.put("/campaigns/{campaign_id}/master-character")
+async def put_master_character(campaign_id: str, body: MasterCharacterIn, user: UserDep, session: SessionDep) -> dict:
+    """Свободный текст и поля характера ИИ-мастера: в подсказку мастера со следующего хода."""
+    from app.core import persona
+
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    agent.settings = {**(agent.settings or {}), "character": persona.normalize(body.model_dump(), master=True)}
+    await session.commit()
+    return await _master_character_out(session, campaign_id, agent)
+
+
+async def _master_draft(session, user, campaign_id: str, body: MasterDraftIn) -> dict:
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    sheet = body.persona.model_dump() if body.persona else dict((agent.settings or {}).get("character") or {})
+    await session.rollback()  # модель думает долго: базу не держим
+    return sheet
+
+
+@router.post("/campaigns/{campaign_id}/master-character/help")
+async def help_master_character(
+    campaign_id: str, body: MasterDraftIn, user: UserDep, session: SessionDep, request: Request
+) -> dict:
+    from app.agents import character
+
+    sheet = await _master_draft(session, user, campaign_id, body)
+    return {"persona": await character.help_fill(request.app.state.master, campaign_id, sheet, character_id=None)}
+
+
+@router.post("/campaigns/{campaign_id}/master-character/test")
+async def test_master_character(
+    campaign_id: str, body: MasterDraftIn, user: UserDep, session: SessionDep, request: Request
+) -> dict:
+    """Пробные сцены мастера: описание места, реакция NPC, провал героя."""
+    from app.agents import character
+
+    sheet = await _master_draft(session, user, campaign_id, body)
+    return {"scenes": await character.try_scenes(request.app.state.master, campaign_id, sheet, character_id=None)}
+
+
+@router.patch("/campaigns/{campaign_id}/master-character/notes/{note_id}")
+async def patch_master_note(
+    campaign_id: str, note_id: str, body: MasterNoteIn, user: UserDep, session: SessionDep
+) -> dict:
+    from app.core import persona
+    from app.db.models import PersonaNote
+
+    agent = await _master_agent(session, user, campaign_id, "летопись мастера")
+    n = await session.get(PersonaNote, note_id)
+    if n is None or n.campaign_id != campaign_id or n.character_id is not None:
+        raise Conflict("запись летописи не найдена")
+    persona.edit_note(n, body.text, body.cause, body.reverted)
+    await session.commit()
+    return await _master_character_out(session, campaign_id, agent)
+
+
 @router.delete("/campaigns/{campaign_id}", status_code=204)
 async def delete_campaign(campaign_id: str, user: UserDep, session: SessionDep, request: Request) -> Response:
     v = await _viewer(session, user, campaign_id)

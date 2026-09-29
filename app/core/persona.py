@@ -104,3 +104,12 @@ def note_out(n: PersonaNote) -> dict[str, Any]:
 
 def revert(n: PersonaNote, back: bool = True) -> None:
     n.reverted_at = datetime.now(UTC) if back else None
+
+
+def edit_note(n: PersonaNote, text: str | None, cause: str | None, reverted: bool | None) -> None:
+    if text is not None and text.strip() != n.text:
+        n.text, n.edited = text.strip()[:500], True
+    if cause is not None and cause.strip() != n.cause:
+        n.cause, n.edited = cause.strip()[:300], True
+    if reverted is not None:
+        revert(n, reverted)

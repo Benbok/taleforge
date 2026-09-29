@@ -253,7 +253,7 @@ async def chronicle(svc, cid: str, reason: str, *, session_id: str | None = None
             subjects.append((ch.id, ch.name, ch.persona or {}, await persona.notes_of(s, cid, ch.id)))
         if ms.occupant_type == "agent" and ms.agent_config_id:
             cfg = await s.get(AgentConfig, ms.agent_config_id)
-            sheet = ((cfg.settings or {}).get("persona") or {}).get("sheet") or {}
+            sheet = (cfg.settings or {}).get("character") or {}
             subjects.append((None, "ИИ-мастер", sheet, await persona.notes_of(s, cid, None)))
         if not subjects:
             return 0
