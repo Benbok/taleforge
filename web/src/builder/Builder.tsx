@@ -44,9 +44,12 @@ export default function Builder({
   hero,
   onSaved,
   onSubmitted,
+  packId,
 }: {
   mode: BuilderMode;
   campaignId?: string;
+  /** Мир героя профиля: null — базовые правила. Кампания берёт мир из своих настроек. */
+  packId?: string | null;
   opts: BuilderOptions;
   hero: SavedHero | null;
   onSaved: (h: SavedHero) => void;
@@ -66,13 +69,14 @@ export default function Builder({
   const urls = builderUrls(mode, campaignId, saved?.id);
   const cls = opts.classes.find((c) => c.id === draft.class_id);
   const origin = opts.origins.find((o) => o.id === draft.origin_id);
-  const preview = usePreview(urls.preview, draft, rolls);
+  const extra = useMemo(() => (mode === "library" ? { pack_id: packId ?? "" } : {}), [mode, packId]);
+  const preview = usePreview(urls.preview, draft, rolls, extra);
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const setAbility = (a: string, v: number | null) => setDraft((d) => ({ ...d, abilities: { ...d.abilities, [a]: v } }));
 
   async function save(): Promise<SavedHero> {
-    const obj = await api<SavedHero>(urls.save, { method: saved ? "PUT" : "POST", body: toBody(draft, rolls) });
+    const obj = await api<SavedHero>(urls.save, { method: saved ? "PUT" : "POST", body: { ...toBody(draft, rolls), ...extra } });
     setSaved(obj);
     onSaved(obj);
     return obj;
@@ -467,8 +471,8 @@ function PointStepper({
 }
 
 /** Живой лист: через паузу после правки спрашиваем сервер, ответы на устаревшие правки отбрасываем. */
-function usePreview(url: string, draft: Draft, rolls: number[] | null) {
-  const body = useMemo(() => JSON.stringify(toBody(draft, rolls)), [draft, rolls]);
+function usePreview(url: string, draft: Draft, rolls: number[] | null, extra: Record<string, unknown>) {
+  const body = useMemo(() => JSON.stringify({ ...toBody(draft, rolls), ...extra }), [draft, rolls, extra]);
   const [data, setData] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -248,7 +248,10 @@ async def from_library(campaign_id: str, library_id: str, user: UserDep, session
     """Копия героя из профиля — черновиком в кампании. Дальше его можно поправить и отправить мастеру."""
     v = await get_viewer(session, user, campaign_id)
     lc = await lib.get_mine(session, user, library_id)
-    ch = await lib.copy_to_campaign(session, v, lc, await svc.creation_rules(session, v.campaign))
+    source = await lib.Worlds(session).of(lc)
+    target = await campaign_catalog(session, v.campaign)
+    rules = await svc.creation_rules(session, v.campaign)
+    ch = await lib.copy_to_campaign(session, v, lc, rules, source.cat, target)
     await session.commit()
     return await _view(session, v, ch)
 

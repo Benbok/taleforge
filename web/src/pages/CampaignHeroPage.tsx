@@ -12,6 +12,7 @@ interface Room {
   name: string;
   my_seat_id: string | null;
   my_role: string | null;
+  pack_id: string | null;
 }
 
 /** Герой в кампании: выбрать готового, взять из профиля или собрать; дальше — проверка мастером. */
@@ -75,7 +76,8 @@ export default function CampaignHeroPage() {
         </Link>
       </section>
     );
-  else if (building || (hero && (hero.sheet as Record<string, unknown> | null)?.class_id))
+  // черновик уже есть (в том числе копия героя из другого мира без класса) — только доработка в конструкторе
+  else if (building || hero)
     body = (
       <>
         {hero?.review_comment && (
@@ -102,6 +104,7 @@ export default function CampaignHeroPage() {
         id={id}
         premades={(list.data ?? []).filter((c) => c.status === "premade" && !c.errors?.length)}
         library={library.data ?? []}
+        packId={room.data?.pack_id ?? null}
         onNew={() => setBuilding(true)}
         onDone={refresh}
         openBuilder={() => setBuilding(true)}
@@ -127,6 +130,7 @@ function Choose({
   id,
   premades,
   library,
+  packId,
   onNew,
   onDone,
   openBuilder,
@@ -134,6 +138,7 @@ function Choose({
   id: string;
   premades: CampaignHero[];
   library: LibraryHero[];
+  packId: string | null;
   onNew: () => void;
   onDone: () => Promise<unknown>;
   openBuilder: () => void;
@@ -154,7 +159,18 @@ function Choose({
       {library.length > 0 && (
         <Group title="Мои герои из профиля">
           {library.map((h) => (
-            <Pick key={h.id} name={h.name} sub={[h.origin_name, h.class_name, h.errors.length ? "не закончен" : null]} bio={h.public_bio}>
+            <Pick
+              key={h.id}
+              name={h.name}
+              sub={[
+                h.origin_name,
+                h.class_name,
+                h.errors.length ? "не закончен" : null,
+                // собран для другого мира: чего нет в этом мире, игрок выберет заново в конструкторе
+                (h.pack_id ?? null) !== packId ? `из мира «${h.world_name}», часть выбора придётся заменить` : null,
+              ]}
+              bio={h.public_bio}
+            >
               <ActionButton
                 run={async () => {
                   // копия встаёт черновиком; готовую сразу отправляем мастеру, иначе открываем на доработку

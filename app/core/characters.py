@@ -128,8 +128,23 @@ def errors_for(ch: Character, cat: CatalogView, rules: dict) -> list[str]:
     cls = cat.find(sheet.get("class_id") or "", "class")
     origin = cat.find(sheet.get("origin_id") or "", "origin")
     errs = validate_character(sheet, cls.data if cls else None, origin.data if origin else None, rules, _items(cat))
+    errs = foreign_errors(sheet, errs)
     if not ch.name.strip():
         errs.append("нужно имя")
+    return errs
+
+
+FOREIGN = {"class": ("класс", "класс не выбран"), "origin": ("происхождение", "происхождение не выбрано")}
+
+
+def foreign_errors(sheet: dict, errs: list[str]) -> list[str]:
+    """Герой пришёл из профиля, собранный для другого мира: вместо общей ошибки называем, что именно не подходит."""
+    for key, name in (sheet.get("foreign") or {}).items():
+        if key not in FOREIGN or sheet.get(f"{key}_id"):
+            continue
+        what, generic = FOREIGN[key]
+        errs = [e for e in errs if not e.startswith(generic)]
+        errs.insert(0, f"{what} «{name}» не из мира этой кампании: выберите {what} этого мира")
     return errs
 
 
@@ -170,6 +185,9 @@ def _apply(ch: Character, data: dict[str, Any]) -> None:
     for k in SHEET_FIELDS:
         if k in data and data[k] is not None:
             sheet[k] = data[k]
+    if sheet.get("foreign"):
+        # замена выбрана: пометка о герое из другого мира больше не нужна
+        sheet["foreign"] = {k: v for k, v in sheet["foreign"].items() if not sheet.get(f"{k}_id")}
     ch.sheet = sheet
     for k in ("public_bio", "private_backstory"):
         if data.get(k) is not None:
