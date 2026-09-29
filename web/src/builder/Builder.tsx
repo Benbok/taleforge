@@ -26,6 +26,7 @@ import {
   type SavedHero,
 } from "../lib/builder";
 import { ABILITIES, ABILITY_RU, SKILLS } from "../game/hero";
+import ClassChoices from "./ClassChoices";
 import LiveSheet from "./LiveSheet";
 import OriginChoices from "./OriginChoices";
 
@@ -144,13 +145,9 @@ export default function Builder({
 
         {/* Step 2: Class */}
         <Step id="class" title="Класс">
-          <Choices
+          <ClassChoices
             items={opts.classes}
             value={draft.class_id}
-            meta={(c) => [
-              c.hit_die ? `кость хитов d${c.hit_die}` : null,
-              c.saving_throws.map((a) => ABILITY_RU[a]).join(", "),
-            ]}
             onPick={(id) => {
               const next = opts.classes.find((c) => c.id === id);
               set({ class_id: id, skills: [], equipment_choices: equipFor(next, [], opts) });
@@ -485,54 +482,6 @@ function Step({ id, title, children }: { id: string; title: string; children: Re
   );
 }
 
-function Choices<T extends { id: string; name: string; description: string }>({
-  items,
-  value,
-  meta,
-  onPick,
-}: {
-  items: T[];
-  value: string;
-  meta: (x: T) => (string | null)[];
-  onPick: (id: string) => void;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2" role="radiogroup">
-      {items.map((x) => {
-        const on = x.id === value;
-        return (
-          <button
-            key={x.id}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            className={`group rounded-[12px] border p-4 text-left transition ${
-              on
-                ? "border-accent bg-accent/10 shadow-[0_0_12px_rgba(201,138,75,0.15)] ring-1 ring-accent/30"
-                : "border-line bg-raised/40 hover:border-accent/60 hover:bg-raised/70"
-            }`}
-            onClick={() => onPick(x.id)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className={`font-heading text-base font-bold transition ${on ? "text-accent" : "text-ink"}`}>
-                {on ? "✓ " : ""}
-                {x.name}
-              </span>
-            </div>
-            <span className="block font-mono text-[11px] text-accent mt-1">
-              {meta(x).filter(Boolean).join(" · ")}
-            </span>
-            {x.description && (
-              <span className="mt-2 line-clamp-3 block text-xs text-muted leading-relaxed">
-                {x.description}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function PointStepper({
   value,
