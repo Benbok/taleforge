@@ -1,0 +1,209 @@
+# Лор атласа: номенклатура, имена, города, великие объекты и живые линии 352 года. Источник: atlas.md.
+# knowledge: common — знают все, initiated — знание фракций. Правда о них — в secrets_atlas.yaml.
+# Тег now — живая линия мира (atlas.md#5.2): идёт в любой кампании, пока герои не вмешаются.
+kind: lore_fact
+items:
+# ---------------------------------------------------------------- Номенклатура
+- id: lore.atlas_calendar
+  name: Летосчисление
+  status: proposal
+  doc: atlas.md#1.1
+  tags: [lore, nomenclature, calendar]
+  topic: nomenclature
+  text: 'Годы считают от Сгущения: «352 год п. С.». Всё, что было раньше, — «до горы». Сутки делят приливами («встретимся после прилива»), смены — гудками: первый, второй и третий. На черте время меряют сменами звонарей.'
+  knowledge: common
+- id: lore.atlas_registry
+  name: Реестр туш
+  status: proposal
+  doc: atlas.md#1.2
+  tags: [lore, nomenclature, guild, registry]
+  topic: nomenclature
+  text: 'С 160 года Гильдия ведёт Реестр туш: номер «Р-» по порядку описи, народное имя, класс (малая до мили, средняя 1–3, большая 3–5, великая больше 5 миль), состояние (жила, пустая, запретная) и концессия Дома. Р-001 — Старая Мать. Туши без жителей имени не имеют, только номер; самая известная из них — Безымянная, Р-213. По Реестру выдают концессии и считают налоги.'
+  knowledge: common
+- id: lore.atlas_great_carcasses
+  name: Великие туши
+  status: proposal
+  doc: atlas.md#1.2
+  tags: [lore, nomenclature, leviathans]
+  topic: nomenclature
+  text: 'Великих туш, длиннее пяти миль, две: Старая Мать (Р-001, 7 миль) и Горнило (Р-017, 6 миль). Обе — концессии, на которых держатся Дома.'
+  knowledge: common
+- id: lore.atlas_railways
+  name: Линии железных дорог
+  status: proposal
+  doc: atlas.md#1.3
+  tags: [lore, nomenclature, rail]
+  topic: geography
+  text: 'Хребтовая магистраль: Старая Мать — Узел Шов — Последний перрон. Поясная: кольцо Среднего пояса через Старую Мать, Горнило, Светлицу и Узел Шов. Береговая ветка — к Утопленнику, Лесная — к станции Опушка, Паломничья — от Узла Шов к Шепчущему. Узкоколейка Кордона — от Последнего перрона к Оплоту. В Вышеград ведёт только тракт. Дальше Последнего перрона поездов нет.'
+  knowledge: common
+- id: lore.atlas_towers
+  name: Башни черты
+  status: proposal
+  doc: atlas.md#1.4
+  tags: [lore, nomenclature, cordon, ash_line]
+  topic: nomenclature
+  text: 'Кордон нумерует 64 башни черты по кругу, от Неумолчной (Башня 1) по солнцу, одна на 4–5 миль, на руинах колокольных крепостей. Номер — главный адрес на фронте: «с Семнадцатой». Потерянная башня в журнале «чёрная», отбитая — «отбитая» с числом раз. Оплот стоит за линией, между Одиннадцатой и Двенадцатой.'
+  knowledge: common
+- id: lore.atlas_cordon_thread_spans
+  name: Пролёты Нити
+  status: proposal
+  doc: atlas.md#1.4
+  tags: [lore, cordon, telegraph]
+  topic: cordon
+  text: 'Отрезки Нити Кордона между башнями называют пролётами. Обрыв на пролёте — первое, что проверяет Журнальная Оплота: за обрывом часто идёт волна.'
+  knowledge: initiated
+- id: lore.atlas_rifts
+  name: Три разлома
+  status: proposal
+  doc: atlas.md#1.5
+  tags: [lore, nomenclature, sea, rift]
+  topic: geography
+  text: 'Люди знают три разлома, куда спускались батискафы: Пасть в 60 милях от южного берега (тёплая вода, пахнет медью), Сизый разлом в 150 милях к западу (туман в любую погоду) и Глухой разлом в 200 милях к северу (эхолокаторы глохнут; батискаф «Верный» пропал там в 344 году).'
+  knowledge: common
+- id: lore.atlas_mothers_names
+  name: Прозвища матерей
+  status: proposal
+  doc: atlas.md#1.6
+  tags: [lore, nomenclature, cordon, resonance, mothers]
+  topic: resonance
+  text: 'Кордон зовёт матерей кратера по голоду, который в них слышен: Скупая (на Сердце эхолита), Властная (северные террасы), Мстительная (восточный склон, ближе всех к черте). Матерей, которые не шепчут людям и живут в чужом ритме, зовут Немыми и считают по номерам.'
+  knowledge: initiated
+# ---------------------------------------------------------------- Имена
+- id: lore.atlas_names_common
+  name: Имена простых людей
+  status: proposal
+  doc: atlas.md#1.7
+  tags: [lore, names, nomenclature]
+  topic: names
+  text: 'Тушевики носят короткое имя и прозвище по ремеслу, органу или улице туши: Гаврила Жилин, Нюра Рёберная, Сенька Клапан. Окраинцы — старинное полное имя и отчество или деревню: Милава из Серой пашни, Путята Ольхович. Мореходы — прозвище по судну или случаю: Варвара Мель, Тимоха Сизый, Дуня Терпение.'
+  knowledge: common
+- id: lore.atlas_names_orders
+  name: Имена сословий и орденов
+  status: proposal
+  doc: atlas.md#1.7
+  tags: [lore, names, nomenclature]
+  topic: names
+  text: 'Синдикатские носят фамилию Дома или клиентской семьи: Кострищевы, Перегудовы (Дом Ликвора), Вельки, Штоли и Ордынцевы (правление Лимфатической компании). Церковь даёт имя пострига: Иоаким Светлый, сестра Малаша, брат Демьян. В Кордоне к фамилии добавляют позывной по башне: Звонова «Семнадцатая». У Гильдии фамилии старых учёных родов: Орт, Кессель, Пепельник.'
+  knowledge: common
+- id: lore.atlas_names_others
+  name: Имена отверженных и чужих
+  status: proposal
+  doc: atlas.md#1.7
+  tags: [lore, names, nomenclature]
+  topic: names
+  text: 'Сломленные берут новое имя сами, из природы и тишины: Ольха Тихая, Лиса Сновидица, Мох. Островитяне носят древние мягкие имена без фамилий: Ида, Ведана, Любава. Отзвучные говорят голосами поглощённых и носят их имена. У Кормчих имени нет, это аккорд; люди называют их по рубке: Сторож Безымянной.'
+  knowledge: common
+- id: lore.atlas_houses_families
+  name: Дома как семьи
+  status: proposal
+  doc: atlas.md#1.7
+  tags: [lore, syndicate]
+  topic: factions
+  text: 'Дом Кострищевых — одна семья, глава Аграфена. Дом Ликвора держит семья Перегудовых, глава Матвей Перегудов живёт в Кубовой. Лимфатическая компания — правление трёх семей: Вельки держат банк, Штоли — аптеки, Ордынцевы — магистраты городов.'
+  knowledge: common
+# ---------------------------------------------------------------- Города и объекты
+- id: lore.atlas_ten_cities
+  name: Десять городов
+  status: proposal
+  doc: atlas.md#2
+  tags: [lore, geography, atlas]
+  topic: geography
+  text: 'Главные города мира: Старая Мать (столица Синдикатов), Горнило (печи Кострищевых), Светлица (Казна ФК и Коллегия Гильдии), Утопленник (порт наполовину в море), Вышеград (каменный город последнего королевства), Кубовая (ликвор Дома Ликвора у самой черты), Шепчущий (собор Церкви), Рёберный лес (приют Сломленных), Оплот (штаб Кордона) и Затишье на Тихих островах.'
+  knowledge: common
+- id: lore.atlas_gornilo_breath
+  name: Вдох Горнила
+  status: proposal
+  doc: atlas.md#2.1
+  tags: [lore, gornilo, tide]
+  topic: geography
+  text: 'Горнило ближе к кромке, чем Старая Мать, и прилив здесь сильнее. Печи гасят каждый прилив, и город на час замолкает. Рабочие зовут этот час «вдохом».'
+  knowledge: common
+- id: lore.atlas_treasury
+  name: Казна ФК
+  status: proposal
+  doc: atlas.md#2.2
+  tags: [lore, bank, svetlitsa]
+  topic: economy
+  text: 'Казна ФК в Светлице хранит резервы флаконов Лимфатической компании. От её пересчётов зависит курс ФК во всём мире: слух о недостаче поднимает цены быстрее, чем волна на черте.'
+  knowledge: common
+- id: lore.atlas_league_charter
+  name: Устав Лиги
+  status: proposal
+  doc: atlas.md#3
+  tags: [lore, league, vyshegrad, history]
+  topic: history
+  text: 'Подлинник Устава Пепельной лиги хранится в Кремле Вышеграда рядом с Вечевым колоколом. Кордон живёт по списку с этого Устава триста лет. Историки спорят, что в подлиннике написано о созыве Лиги.'
+  knowledge: initiated
+- id: lore.atlas_forty_days
+  name: Сорок дней
+  status: proposal
+  doc: atlas.md#2.6
+  tags: [lore, islands]
+  topic: islands
+  text: 'Чужаков на Тихих островах держат сорок дней на Пристани, прежде чем пустить дальше. Островитяне говорят, что за сорок дней «из человека уходит материк».'
+  knowledge: common
+- id: lore.atlas_common_ring
+  name: Общий звон
+  status: proposal
+  doc: atlas.md#3.2
+  tags: [lore, cordon, bells, telegraph]
+  topic: cordon
+  text: 'Молодые офицеры Кордона говорят, что если по Нити дать один сигнал, все 64 звонницы черты ударят разом. Старая гвардия считает это пустой затеей: колокола и так звонят.'
+  knowledge: initiated
+# ---------------------------------------------------------------- Живые линии 352 года
+- id: lore.atlas_now_mainline
+  name: Магистраль к кромке
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, rail, syndicate, cordon]
+  topic: now
+  text: 'Кострищевы тянут Хребтовую магистраль от Последнего перрона к Переднему краю. Говорят, Аграфена хочет забрать топливный подряд Кордона целиком, а строителей у черты уже дважды отбивали от выводков.'
+  knowledge: common
+- id: lore.atlas_now_treasury
+  name: Пересчёт Казны
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, bank, svetlitsa]
+  topic: now
+  text: 'Правление Лимфатической компании назначило пересчёт Казны ФК. На биржах нервничают, в Светлице удвоили стражу.'
+  knowledge: common
+- id: lore.atlas_now_nameless
+  name: Рубка Безымянной
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, liquor, cockpit]
+  topic: now
+  text: 'Год назад в Безымянной рухнула шахта и открылась нетронутая рубка. Дом Ликвора закрыл вход, а Кубовая с тех пор продаёт ликвор чище прежнего.'
+  knowledge: common
+- id: lore.atlas_now_calm_tower
+  name: Спокойная башня
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, cordon, tower]
+  topic: now
+  text: 'Башня 17 не теряет людей уже год. Гарнизон хвалят в приказах, а старые звонари отворачиваются, когда проходят мимо.'
+  knowledge: initiated
+- id: lore.atlas_now_cathedral
+  name: Большое возвышение
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, church]
+  topic: now
+  text: 'В Шепчущем готовят большое возвышение Первосвященника Иоакима. Паломников на Паперти вдвое больше, аптеки Штолей везут в собор ящики «эликсира».'
+  knowledge: common
+- id: lore.atlas_now_maw
+  name: Ответы из Пасти
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, sea, drowned]
+  topic: now
+  text: 'Батискафщики Утопленника говорят, что эхолокаторы над Пастью ловят сигналы чаще, чем раньше, и сигналы стали похожи на ответ.'
+  knowledge: initiated
+- id: lore.atlas_now_vyshegrad
+  name: Долги князя
+  status: proposal
+  doc: atlas.md#5.2
+  tags: [lore, now, vyshegrad, politics]
+  topic: now
+  text: 'Лимфатическая компания выкупает долги князя Всеслава, Кострищевы предлагают провести в Вышеград ветку. Вече шумит, в Заречье печатают листовки против Синдикатов.'
+  knowledge: common

@@ -7,6 +7,7 @@ items:
 # ---------------------------------------------------------------- Старая Мать
 - id: creature.npc_agrafena_kostrishcheva
   name: Аграфена Кострищева
+  creature_type: humanoid
   description: Глава Дома Кострищевых. Держит Утробу, железную дорогу и Хвост Старой Матери.
   status: proposal
   doc: locations.md#2.1
@@ -23,6 +24,7 @@ items:
 
 - id: creature.npc_miron_lad
   name: Мирон Лад
+  creature_type: humanoid
   description: Смотритель Тихого этажа под биржей, Дом Ликвора. Официально держит Протокол, чтобы никто не узнал, что туша жива.
   status: proposal
   doc: locations.md#2.1
@@ -38,6 +40,7 @@ items:
 
 - id: creature.npc_efrosinya_velk
   name: Ефросинья Вельк
+  creature_type: humanoid
   description: Председатель Лимфатической компании, хозяйка магистрата, банка и Сердечной насосной.
   status: proposal
   doc: locations.md#2.1
@@ -53,6 +56,7 @@ items:
 
 - id: creature.npc_ulita_krivaya
   name: Улита Кривая
+  creature_type: humanoid
   description: Надсмотрщица детских артелей в Утробе. Жёсткая, но следит, чтобы никто не погиб.
   status: proposal
   doc: locations.md#2.1
@@ -68,6 +72,7 @@ items:
 
 - id: creature.npc_pavel_rovny
   name: Павел Ровный
+  creature_type: humanoid
   description: Счетовод биржи, раздувает панику и жадность на торгах. На деле — Глашатай стадии I.
   status: proposal
   doc: locations.md#2.1
@@ -104,6 +109,7 @@ items:
 # ---------------------------------------------------------------- Утопленник
 - id: creature.npc_varvara_mel
   name: Варвара Мель
+  creature_type: humanoid
   description: Старшина Капитанской управы Утопленника. Держит порт на деле, а не на бумаге.
   status: proposal
   doc: locations.md#2.2
@@ -120,6 +126,7 @@ items:
 
 - id: creature.npc_taras_gorky
   name: Тарас Горький
+  creature_type: humanoid
   description: Управляющий концессии Дома Ликвора в Утопленнике.
   status: proposal
   doc: locations.md#2.2
@@ -136,6 +143,7 @@ items:
 
 - id: creature.npc_yan_kroha
   name: Ян Кроха
+  creature_type: humanoid
   description: Батискафщик Гильдии в Затопленной утробе. Тайно — «Слушатель».
   status: proposal
   doc: locations.md#2.2
@@ -151,6 +159,7 @@ items:
 
 - id: creature.npc_ida_islands
   name: Ида с Островов
+  creature_type: humanoid
   description: Старая островитянка, торгует солью на рынке в Горле.
   status: proposal
   doc: locations.md#2.2
@@ -184,6 +193,7 @@ items:
 # ---------------------------------------------------------------- Шепчущий
 - id: creature.npc_ioakim
   name: Иоаким Светлый
+  creature_type: humanoid
   description: Первосвященник Собора Вознесения. Ведёт верхушку через «возвышение».
   status: proposal
   doc: locations.md#2.3
@@ -202,6 +212,7 @@ items:
 
 - id: creature.npc_malasha
   name: Сестра Малаша
+  creature_type: humanoid
   description: Настоятельница Шейных келий. Прячет беглых детей и кормит бедных.
   status: proposal
   doc: locations.md#2.3
@@ -217,6 +228,7 @@ items:
 
 - id: creature.npc_demyan_skala
   name: Демьян Скала
+  creature_type: humanoid
   description: Брат-рыцарь, страж Ковчега мощей.
   status: proposal
   doc: locations.md#2.3
@@ -233,6 +245,7 @@ items:
 
 - id: creature.npc_filipp_cantor
   name: Кантор Филипп
+  creature_type: humanoid
   description: Регент хора Шепчущего. Тайно — «Слушатель» Гильдии.
   status: proposal
   doc: locations.md#2.3
@@ -248,6 +261,7 @@ items:
 
 - id: creature.npc_anna_pilgrim
   name: Паломница Анна
+  creature_type: humanoid
   description: Вечная паломница, 20 лет живёт на Паперти и приводит новых паломников к Иоакиму. Глашатай стадии II.
   status: proposal
   doc: locations.md#2.3
@@ -266,6 +280,7 @@ items:
 # ---------------------------------------------------------------- Рёберный лес
 - id: creature.npc_olkha
   name: Ольха Тихая
+  creature_type: humanoid
   description: Старейшина Круга, течение «лечения».
   status: proposal
   doc: locations.md#2.4
@@ -280,6 +295,7 @@ items:
 
 - id: creature.npc_savva
   name: Савва Гремучий
+  creature_type: humanoid
   description: Вожак Сломленных, «слушающих зов». Проповедует, что Сломленные — следующая ступень человека.
   status: proposal
   doc: locations.md#2.4
@@ -296,6 +312,7 @@ items:
 
 - id: creature.npc_lisa
   name: Лиса Сновидица
+  creature_type: humanoid
   description: Вожак Сломленных, «слушающих сны». Ведёт обряды слушания в Черепе-Молельне.
   status: proposal
   doc: locations.md#2.4
@@ -311,6 +328,7 @@ items:
 
 - id: creature.npc_praskovya
   name: Мать Прасковья
+  creature_type: humanoid
   description: Беглая жрица, голос подполья. Печатает листовки в Споровых низинах.
   status: proposal
   doc: locations.md#2.4
@@ -325,6 +343,7 @@ items:
 
 - id: creature.npc_prokhor
   name: Прохор Ржавый
+  creature_type: humanoid
   description: Охотник за беглыми на жалованье Кострищевых. Бывший шахтёр.
   status: proposal
   doc: locations.md#2.4

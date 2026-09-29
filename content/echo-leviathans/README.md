@@ -25,6 +25,8 @@ data/
   encounters.yaml         encounter_tables
   factions.yaml           фракции
   locations/*.yaml        location_templates и опорные локации
+  atlas/*.yaml            атлас мира: 6 ключевых городов, великие объекты, главы сил, их тайны, номенклатура
+  plots.yaml              plot_structures: шаблоны сюжета мира для архитектора кампании
   lore.yaml               lore_facts: канон с уровнями знания
   secrets.yaml            campaign_secrets по умолчанию
 schema/schema.yaml        JSON Schema для каждого вида записей
@@ -33,7 +35,7 @@ tools/validate.py         проверка: схема, уникальность
 
 ## Соглашения
 
-- **Файл** — YAML-документ вида `{kind: <вид>, items: [ ... ]}`. Вид совпадает с таблицей ТЗ: `stat_definition`, `clock`, `effect_template`, `hazard_template`, `origin`, `lineage`, `class`, `subclass`, `echo_technique`, `spell_note`, `item_template`, `loot_table`, `price_index`, `creature_template`, `encounter_table`, `faction`, `location_template`, `lore_fact`, `campaign_secret`.
+- **Файл** — YAML-документ вида `{kind: <вид>, items: [ ... ]}`. Вид совпадает с таблицей ТЗ: `stat_definition`, `clock`, `effect_template`, `hazard_template`, `origin`, `lineage`, `class`, `subclass`, `echo_technique`, `spell_note`, `item_template`, `loot_table`, `price_index`, `creature_template`, `encounter_table`, `faction`, `location_template`, `lore_fact`, `campaign_secret`, `plot_structure`.
 - **id** — латиница, `snake_case`, с префиксом вида через точку: `item.chitin_longsword`, `effect.corruption_3`, `creature.brood_swarm`. Уникален во всём пакете.
 - **Общие поля** каждой записи:
   - `id`, `name` (по-русски), `description` (1–3 предложения, для мастера);

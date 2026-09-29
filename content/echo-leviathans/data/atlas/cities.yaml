@@ -1,0 +1,191 @@
+# Шесть ключевых городов атласа сверх четырёх опорных туш (carcasses.yaml). Источник: atlas.md#2.
+# location_type: hulk — город на туше, city — город без туши, settlement — селение.
+# registry — запись Гильдейского реестра туш (atlas.md#1.2). districts — районы одной строкой: подробные
+# записи районов появятся, когда город понадобится кампании (create_location в границах parent_ref).
+# Тег atlas — ключевое место мира: архитектор кампании видит его описание.
+kind: location_template
+items:
+- id: location.city_gornilo
+  name: Горнило
+  description: 'Город печей Кострищевых на великой туше, упавшей на бок. В позвоночном канале топят костный мозг; отсюда топливо, чёрное желе для Кордона и паровозы. Смены по гудку, бараки в рёбрах, долговые артели.'
+  status: proposal
+  doc: atlas.md#2.1
+  tags: [hulk, city, atlas, syndicate, fuel, rail, factory, mines]
+  keywords: печи топливо желе завод забастовка рабочие магистраль поезд шахты
+  location_type: hulk
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  distance_from_rim_miles: 140
+  direction: восток
+  size: {length_miles: 6}
+  population: 180000
+  registry: {number: Р-017, class: great, state: [vein, protocol], concession_ref: faction.house_kostrishchev}
+  ruler: 'Лука Кострищев, начальник Хребтовой магистрали; концессия Дома Кострищевых.'
+  faction_ref: faction.house_kostrishchev
+  faction_refs: [faction.house_kostrishchev, faction.miners_underground, faction.ash_cordon]
+  districts:
+  - {name: Печной канал, text: 'Мозговые печи и депо в позвоночном канале. Жара, кровь кипит в трубах.'}
+  - {name: Нижний бок, text: 'Бараки, рынок, бойцовые ямы.'}
+  - {name: Верхний бок, text: 'Конторы Кострищевых, особняки инженеров, Управа Магистрали.'}
+  - {name: Брюшной склад, text: 'Цистерны с чёрным желе, отсюда уходят составы на черту.'}
+  npc_refs: [creature.npc_luka_kostrishchev]
+  hazard_refs: [hazard.corpse_gas]
+  lore_refs: [lore.atlas_gornilo_breath]
+  secret_refs: [secret.npc_luka_deal]
+  hooks:
+  - {name: Забастовка печников, text: 'Печники встали перед отправкой топлива на черту. Кострищевы нанимают тех, кто «разгонит», подполье — тех, кто защитит.'}
+  - {name: Горячая жила, text: 'В Печном канале нашли жилу, которая не остывает после прилива.'}
+  - {name: Встреча на перроне, text: 'Лука Кострищев тайно встречается с офицером Кордона.', npc_refs: [creature.npc_luka_kostrishchev]}
+  awakening: {clock_ref: clock.carcass_awakening, start: 1}
+
+- id: location.city_svetlitsa
+  name: Светлица
+  description: 'Город светящейся лимфы: жилы под кожей туши горят бледно-зелёным, темноты почти нет. Казна ФК, от которой зависит курс денег, и Коллегия Гильдии Диагностов. Детских артелей нет, лимфу качают насосами.'
+  status: proposal
+  doc: atlas.md#2.2
+  tags: [hulk, city, atlas, syndicate, bank, guild, medicine]
+  keywords: банк казна флаконы деньги векселя лечение клиника гильдия коллегия реестр ограбление
+  location_type: hulk
+  belt: middle_belt
+  parent_ref: location.belt_middle
+  distance_from_rim_miles: 260
+  direction: юго-восток
+  size: {length_miles: 4}
+  population: 150000
+  registry: {number: Р-031, class: large, state: [vein], concession_ref: faction.lymph_company}
+  ruler: 'Правление Лимфатической компании; хранитель Казны — Гордей Вельк. Коллегией руководит Декан Серафима Орт.'
+  faction_ref: faction.lymph_company
+  faction_refs: [faction.lymph_company, faction.guild, faction.guild_pragmatists]
+  districts:
+  - {name: Казна, text: 'Хранилище флаконов в бывшем лимфатическом узле, стража, биржа векселей.'}
+  - {name: Коллегия, text: 'Анатомические театры, клиники, архив Реестра туш.'}
+  - {name: Светлые ряды, text: 'Аптеки Штолей, лечебницы для богатых.'}
+  - {name: Отстойники, text: 'Сливы отработанной лимфы, трущобы, дешёвые кровники.'}
+  npc_refs: [creature.npc_gordey_velk, creature.npc_serafima_ort, creature.npc_arkady_shtol]
+  hazard_refs: [hazard.infected_blood]
+  lore_refs: [lore.atlas_registry, lore.atlas_treasury]
+  secret_refs: [secret.npc_gordey_true_flasks, secret.npc_serafima_tuning_fork]
+  hooks:
+  - {name: Пересчёт, text: 'В Казне пересчёт, и счёт не сходится.', npc_refs: [creature.npc_gordey_velk]}
+  - {name: Поющее тело, text: 'В Коллегии вскрывают тело Глубинного, и оно ещё поёт.'}
+  - {name: Подменённый реестр, text: 'Том Реестра туш украден или подменён.'}
+  awakening: {clock_ref: clock.carcass_awakening, start: 0}
+
+- id: location.city_kubovaya
+  name: Кубовая
+  description: 'Перегонные кубы Дома Ликвора в туше Кольца Паломников, в 30 милях от кромки. Самый чистый ликвор и самые высокие цены. Поездов нет: вагонетки до Последнего перрона и дирижабли Дома. Кордон зовёт её «кошельком на передовой».'
+  status: proposal
+  doc: atlas.md#2.3
+  tags: [hulk, city, atlas, syndicate, liquor, mines, frontier]
+  keywords: ликвор магия перегонка шахты протоки дирижабль рубка кокон спящий безымянная
+  location_type: hulk
+  belt: pilgrim_ring
+  parent_ref: location.belt_pilgrim_ring
+  distance_from_rim_miles: 30
+  direction: северо-восток
+  size: {length_miles: 4}
+  population: 35000
+  registry: {number: Р-112, class: large, state: [vein, protocol], concession_ref: faction.house_liquor}
+  ruler: 'Матвей Перегудов, глава Дома Ликвора.'
+  faction_ref: faction.house_liquor
+  faction_refs: [faction.house_liquor, faction.ash_cordon, faction.miners_underground]
+  districts:
+  - {name: Кубы, text: 'Перегонные залы в желудках: пар и запах магии.'}
+  - {name: Протоки, text: 'Шахты и детские артели.'}
+  - {name: Причальная мачта, text: 'Вышка дирижаблей Дома над черепом.'}
+  - {name: Ворота Безымянной, text: 'Охраняемый ход к соседней туше, где открылась нетронутая рубка.'}
+  adjacent_refs: [location.hook_nameless, location.hook_last_platform]
+  npc_refs: [creature.npc_matvey_peregudov, creature.npc_nameless_warden]
+  hazard_refs: [hazard.parasite_nest]
+  lore_refs: [lore.atlas_now_nameless]
+  secret_refs: [secret.npc_matvey_drinks_sleeper, secret.nameless_half_awake]
+  hooks:
+  - {name: Недолёт, text: 'Дирижабль с ликвором не долетел до Старой Матери.'}
+  - {name: Кокон на носилках, text: 'Из Безымянной выносят кокон, и носильщики не спят третью ночь.'}
+  - {name: Проверить тишину, text: 'Перегудов нанимает людей «проверить тишину» в протоках.', npc_refs: [creature.npc_matvey_peregudov]}
+  awakening: {clock_ref: clock.carcass_awakening, start: 2}
+
+- id: location.city_vyshegrad
+  name: Вышеград
+  description: 'Каменный город на реке Вышне, столица последнего королевства Лиги. Пережил Сгущение, Войну налёта и флот, прошедший в сорока милях. Вольный город Старых земель: хлеб, ярмарки, беглецы от долгов и старые знания. Здесь звонят колокола, а не гудки.'
+  status: proposal
+  doc: atlas.md#2.4
+  tags: [city, atlas, old_lands, league, politics]
+  keywords: князь вече кремль колокол устав лига ярмарка хлеб беглецы должники архив королевство политика
+  location_type: city
+  belt: old_lands
+  parent_ref: location.belt_old_lands
+  distance_from_rim_miles: 560
+  direction: север
+  population: 60000
+  ruler: 'Князь Всеслав Вышеградский и вече посадских. У Синдикатов только контора.'
+  faction_refs: [faction.syndicates, faction.miners_underground]
+  districts:
+  - {name: Кремль, text: 'Княжий двор, Вечевой колокол, хранилище Устава Лиги.'}
+  - {name: Посад, text: 'Ремесло и ярмарка.'}
+  - {name: Заречье, text: 'Беглые должники; подполье печатает листовки.'}
+  - {name: Книжная слобода, text: 'Переписчики, старые архивы, школа звонарей старого обряда.'}
+  npc_refs: [creature.npc_vseslav]
+  lore_refs: [lore.atlas_league_charter, lore.atlas_now_vyshegrad]
+  secret_refs: [secret.npc_vseslav_league_right]
+  hooks:
+  - {name: Ветка на север, text: 'Синдикаты хотят провести сюда ветку и выкупить долги князя.'}
+  - {name: Невозможная карта, text: 'В Книжной слободе нашли карту налёта 38 года с пометками, которых не может быть.'}
+  - {name: Защита веча, text: 'Беглый ребёнок-шахтёр просит у веча защиты, Кострищевы требуют выдать его.', npc_refs: [creature.child_runaway]}
+
+- id: location.city_oplot
+  name: Оплот
+  description: 'Штаб Пепельного Кордона в колокольной крепости Огненного вала, которую не взяли ни в 38 году, ни потом. Казармы, двор шагоходов, школа выжигателей, Большая звонница. Под крепостью — Архив Лиги.'
+  status: proposal
+  doc: atlas.md#2.5
+  tags: [city, atlas, cordon, fortress, frontier, war]
+  keywords: кордон штаб маршал крепость шагоходы звонница выжигатели фронт черта война архив
+  location_type: city
+  belt: ash_line
+  parent_ref: location.strip_rear_rampart
+  distance_from_rim_miles: 42
+  direction: север, между Одиннадцатой и Двенадцатой башнями
+  population: 12000
+  ruler: 'Маршал черты Ерофей Гарь.'
+  faction_ref: faction.ash_cordon
+  faction_refs: [faction.ash_cordon, faction.bell_monastery]
+  districts:
+  - {name: Двор шагоходов, text: 'Ремонт, котлы, вечная нехватка деталей.'}
+  - {name: Звонница, text: 'Смены звонарей, колокола старого литья.'}
+  - {name: Журнальная, text: 'Телеграф Нити Кордона: отсюда видно весь фронт.'}
+  - {name: Архив Лиги, text: 'Подземелья с картами налёта и журналами башен.'}
+  adjacent_refs: [location.hook_league_archive]
+  npc_refs: [creature.npc_erofey_gar, creature.npc_nestor]
+  lore_refs: [lore.atlas_towers, lore.atlas_cordon_thread_spans]
+  secret_refs: [secret.npc_erofey_one_season, secret.npc_nestor_report_40]
+  hooks:
+  - {name: Пустой обоз, text: 'Обоз с желе пришёл пустым.'}
+  - {name: Проверить Семнадцатую, text: 'Маршал ищет людей, чтобы проверить Башню 17.', npc_refs: [creature.npc_erofey_gar]}
+  - {name: Журнал сорокового года, text: 'В Архиве нашли журнал 40 года: «боги» что-то оставили у Спуска.', npc_refs: [creature.npc_nestor]}
+
+- id: location.city_zatishye
+  name: Затишье
+  description: 'Главное селение Тихих островов, в 2–4 неделях пути от Солёного Крюка. Каменные дома, общие поля, старые мастерские и книги. Ликвора и магии нет, эхо спит. Чужаков держат сорок дней на Пристани.'
+  status: proposal
+  canon_parts: [Острова без ликвора и магии, эхо спит (canon.md#7)]
+  doc: atlas.md#2.6; canon.md#7
+  tags: [settlement, atlas, islands, sea]
+  keywords: острова море пароход терпение пристань старейшины тишина покой мастерские
+  location_type: settlement
+  belt: sea
+  parent_ref: location.islands
+  population: 6000
+  ruler: 'Старейшина Ведана и совет.'
+  faction_ref: faction.islanders
+  districts:
+  - {name: Пристань, text: 'Единственное место, куда пускают чужих.'}
+  - {name: Общинный дом, text: 'Совет старейшин и Книга прибывших.'}
+  - {name: Старые мастерские, text: 'Знания до горы: стекло, часы, печатный станок.'}
+  - {name: Молчаливый мыс, text: 'Маяк, с которого слушают море у Сизого разлома.'}
+  npc_refs: [creature.npc_vedana, creature.npc_ida_islands]
+  lore_refs: [lore.atlas_forty_days]
+  secret_refs: [secret.npc_vedana_quiet_word]
+  hooks:
+  - {name: Чёрные вены, text: 'На остров прибыл беглец с чёрными венами.'}
+  - {name: Пароход не пришёл, text: '«Терпение» в этот раз не пришло.'}
+  - {name: Посланница, text: 'Старейшины решают, отправить ли на материк посланницу.', npc_refs: [creature.npc_ida_islands]}

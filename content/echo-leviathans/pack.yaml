@@ -1,6 +1,6 @@
 id: echo-leviathans
 name: "Эхо Левиафанов"
-version: 0.1.4
+version: 0.2.0
 ruleset: dnd5e
 ruleset_base: srd-5.1
 license: "Setting: © Arty. Rules base: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0"
@@ -24,6 +24,7 @@ source_docs:
   races: design/setting/echo-leviathans-races.md
   living_lore: design/setting/living-lore.md
   locations: design/setting/locations.md
+  atlas: design/setting/atlas.md
   items: design/setting/items.md
   decisions: design/setting/open-questions.md
 # Вид интерфейса: тёмная медь и бирюза ликвора на графите. Раскладку и виджеты пакет не меняет.
