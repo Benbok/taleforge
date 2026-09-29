@@ -4,7 +4,7 @@
 # получено «Увеличение характеристик»), class_specific — числа класса из таблицы (ярость, скрытая атака, ци...).
 # starting_equipment: fixed — всегда; choices — список выборов, каждый выбор — список альтернатив, каждая
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
-# martial_melee, qty} | {other: <английское имя вещи вне пакета>, qty}; other — прочее снаряжение.
+# martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
 # This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the
 # Coast LLC, licensed under CC BY 4.0. Данные: 5e-bits/5e-database, коммит bce51b3958573819e3b842fbc0cd9524fe4bc2e1.
@@ -33,7 +33,7 @@ items:
         - - {any: martial_melee, qty: 1}
       - - - {item: item.handaxe, qty: 2}
         - - {any: simple, qty: 1}
-      other: [Explorer's Pack]
+      other: [Набор путешественника]
     levels:
     - level: 1
       pb: 2
@@ -277,10 +277,10 @@ items:
       - - - {item: item.rapier, qty: 1}
         - - {item: item.longsword, qty: 1}
         - - {any: simple, qty: 1}
-      - - - {other: Diplomat's Pack, qty: 1}
-        - - {other: Entertainer's Pack, qty: 1}
-      - - - {other: Lute, qty: 1}
-        - - {other: any other musical instrument, qty: 1}
+      - - - {other: Набор дипломата, qty: 1}
+        - - {other: Набор артиста, qty: 1}
+      - - - {other: Лютня, qty: 1}
+        - - {other: любой другой музыкальный инструмент, qty: 1}
     spellcasting: {ability: cha}
     levels:
     - level: 1
@@ -669,11 +669,12 @@ items:
         - - {item: item.leather, qty: 1}
         - - {item: item.chain_mail, qty: 1}
       - - - {item: item.light_crossbow, qty: 1}
-          - {other: Crossbow bolt, qty: 20}
+          - {other: Арбалетный болт, qty: 20}
         - - {any: simple, qty: 1}
-      - - - {other: Priest's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
-      - - - {other: holy symbol, qty: 1}
+      - - - {other: Набор священника, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
+      - - - &id001 {other: священный символ, qty: 1}
+      other: *id001
     spellcasting: {ability: wis}
     levels:
     - level: 1
@@ -989,8 +990,8 @@ items:
         - - {any: simple, qty: 1}
       - - - {item: item.scimitar, qty: 1}
         - - {any: simple_melee, qty: 1}
-      - - - {other: druidic focus, qty: 1}
-      other: [Explorer's Pack]
+      - - - &id002 {other: друидическая фокусировка, qty: 1}
+      other: *id002
     spellcasting: {ability: wis}
     levels:
     - level: 1
@@ -1247,15 +1248,15 @@ items:
       - - - {item: item.chain_mail, qty: 1}
         - - {item: item.leather, qty: 1}
           - {item: item.longbow, qty: 1}
-          - {other: Arrow, qty: 20}
+          - {other: Стрела, qty: 20}
       - - - {any: martial, qty: 1}
           - {item: item.shield, qty: 1}
         - - {any: martial, qty: 2}
       - - - {item: item.light_crossbow, qty: 1}
-          - {other: Crossbow bolt, qty: 20}
+          - {other: Арбалетный болт, qty: 20}
         - - {item: item.handaxe, qty: 2}
-      - - - {other: Dungeoneer's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
+      - - - {other: Набор исследователя подземелий, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
     levels:
     - level: 1
       pb: 2
@@ -1497,8 +1498,8 @@ items:
       choices:
       - - - {item: item.shortsword, qty: 1}
         - - {any: simple, qty: 1}
-      - - - {other: Dungeoneer's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
+      - - - {other: Набор исследователя подземелий, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
     levels:
     - level: 1
       pb: 2
@@ -1762,9 +1763,10 @@ items:
         - - {any: martial, qty: 2}
       - - - {item: item.javelin, qty: 5}
         - - {any: simple, qty: 1}
-      - - - {other: Priest's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
-      - - - {other: holy symbol, qty: 1}
+      - - - {other: Набор священника, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
+      - - - &id003 {other: священный символ, qty: 1}
+      other: *id003
     spellcasting: {ability: cha}
     levels:
     - level: 1
@@ -2044,9 +2046,9 @@ items:
         - - {item: item.leather, qty: 1}
       - - - {item: item.shortsword, qty: 2}
         - - {any: simple_melee, qty: 2}
-      - - - {other: Dungeoneer's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
-      other: [Arrow (20)]
+      - - - {other: Набор исследователя подземелий, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
+      other: [Стрела (20)]
     spellcasting: {ability: wis}
     levels:
     - level: 1
@@ -2384,12 +2386,12 @@ items:
       - - - {item: item.rapier, qty: 1}
         - - {item: item.shortsword, qty: 1}
       - - - {item: item.shortbow, qty: 1}
-          - {other: Arrow, qty: 20}
+          - {other: Стрела, qty: 20}
         - - {item: item.shortsword, qty: 1}
-      - - - {other: Burglar's Pack, qty: 1}
-        - - {other: Dungeoneer's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
-      other: [Thieves' Tools]
+      - - - {other: Набор взломщика, qty: 1}
+        - - {other: Набор исследователя подземелий, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
+      other: [Воровские инструменты]
     levels:
     - level: 1
       pb: 2
@@ -2606,12 +2608,12 @@ items:
       - {item: item.dagger, qty: 2}
       choices:
       - - - {item: item.light_crossbow, qty: 1}
-          - {other: Crossbow bolt, qty: 20}
+          - {other: Арбалетный болт, qty: 20}
         - - {any: simple, qty: 1}
-      - - - {other: Component pouch, qty: 1}
-        - - {other: arcane focus, qty: 1}
-      - - - {other: Dungeoneer's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
+      - - - {other: Мешочек с компонентами, qty: 1}
+        - - {other: магическая фокусировка, qty: 1}
+      - - - {other: Набор исследователя подземелий, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
     spellcasting: {ability: cha}
     levels:
     - level: 1
@@ -3077,13 +3079,14 @@ items:
       - {item: item.leather, qty: 1}
       choices:
       - - - {item: item.light_crossbow, qty: 1}
-          - {other: Crossbow bolt, qty: 20}
+          - {other: Арбалетный болт, qty: 20}
         - - {any: simple, qty: 1}
-      - - - {other: Component pouch, qty: 1}
-        - - {other: arcane focus, qty: 1}
-      - - - {other: Scholar's Pack, qty: 1}
-        - - {other: Dungeoneer's Pack, qty: 1}
+      - - - {other: Мешочек с компонентами, qty: 1}
+        - - {other: магическая фокусировка, qty: 1}
+      - - - {other: Набор учёного, qty: 1}
+        - - {other: Набор исследователя подземелий, qty: 1}
       - - - {any: simple, qty: 1}
+      other: {other: any simple weapon, qty: 1}
     spellcasting: {ability: cha}
     levels:
     - level: 1
@@ -3656,11 +3659,11 @@ items:
       choices:
       - - - {item: item.quarterstaff, qty: 1}
         - - {item: item.dagger, qty: 1}
-      - - - {other: Component pouch, qty: 1}
-        - - {other: arcane focus, qty: 1}
-      - - - {other: Scholar's Pack, qty: 1}
-        - - {other: Explorer's Pack, qty: 1}
-      other: [Spellbook]
+      - - - {other: Мешочек с компонентами, qty: 1}
+        - - {other: магическая фокусировка, qty: 1}
+      - - - {other: Набор учёного, qty: 1}
+        - - {other: Набор путешественника, qty: 1}
+      other: [Книга заклинаний]
     spellcasting: {ability: int}
     levels:
     - level: 1

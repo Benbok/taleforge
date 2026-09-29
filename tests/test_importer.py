@@ -24,13 +24,13 @@ def run(settings, fn):
 
 
 def test_import_base_pack_once(settings):
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.0", "imported")]
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.0", "unchanged")]
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.1", "imported")]
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.1", "unchanged")]
 
     async def check(s):
         n = await s.scalar(select(func.count()).select_from(ContentRecord).where(ContentRecord.kind == "dc_scale"))
         pack = await latest_version(s, "dnd5e-srd")
-        rec = await s.get(ContentRecord, ("dnd5e-srd", "0.4.0", "condition.exhaustion"))
+        rec = await s.get(ContentRecord, ("dnd5e-srd", "0.4.1", "condition.exhaustion"))
         return n, pack, rec
 
     n, pack, rec = run(settings, check)
