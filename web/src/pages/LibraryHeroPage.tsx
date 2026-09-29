@@ -95,6 +95,8 @@ export default function LibraryHeroPage() {
         ) : (
           <>
             <Builder
+              // без hid в ключе: после первого сохранения URL меняется с /new на /:id, а конструктор
+              // должен остаться тем же (шаг, броски, черновик), иначе игрока выкидывает на первый шаг
               key={`library-${packId ?? "base"}`}
               mode="library"
               packId={packId}

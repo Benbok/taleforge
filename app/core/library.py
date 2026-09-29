@@ -212,8 +212,8 @@ async def update(session: AsyncSession, lc: LibraryCharacter, data: dict[str, An
 
 
 async def roll(session: AsyncSession, lc: LibraryCharacter, dice: Dice) -> list[int]:
-    if (lc.sheet or {}).get("ability_rolls"):
-        raise Conflict("характеристики уже брошены: перебрасывать нельзя")
+    """Герой профиля — личный черновик: перебрасывать можно сколько угодно, прежние броски заменяются.
+    В кампании копия берёт последние броски, а там переброс запрещён (core.characters.roll)."""
     totals, _ = roll_ability_scores(dice)
     lc.sheet = {**(lc.sheet or {}), "ability_method": "roll", "ability_rolls": totals}
     await session.flush()

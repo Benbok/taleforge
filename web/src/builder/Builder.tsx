@@ -111,18 +111,28 @@ export default function Builder({
   const setAbility = (a: string, v: number | null) =>
     setDraft((d) => ({ ...d, abilities: { ...d.abilities, [a]: v } }));
 
-  async function save(): Promise<SavedHero> {
-    const obj = await api<SavedHero>(urls.save, { method: saved ? "PUT" : "POST", body: { ...toBody(draft, rolls), ...extra } });
+  /** Сохраняет черновик и возвращает героя, не уведомляя родителя (не вызывает navigate). */
+  async function _saveToApi(body: Record<string, unknown>): Promise<SavedHero> {
+    const obj = await api<SavedHero>(urls.save, { method: saved ? "PUT" : "POST", body });
     setSaved(obj);
+    return obj;
+  }
+
+  async function save(): Promise<SavedHero> {
+    const obj = await _saveToApi({ ...toBody(draft, rolls), ...extra });
     onSaved(obj);
     return obj;
   }
 
   async function roll() {
-    const obj = saved ?? (await save());
-    const r = await api<{ rolls: number[] }>(builderUrls(mode, campaignId, obj.id, asSeat).roll!, { method: "POST" });
+    // Сначала получаем id (сохраняем без уведомления родителя, чтобы navigate не убил компонент).
+    const obj = saved ?? (await _saveToApi({ ...toBody(draft, rolls), ...extra }));
+    const rollUrl = builderUrls(mode, campaignId, obj.id, asSeat).roll!;
+    const r = await api<{ rolls: number[] }>(rollUrl, { method: "POST" });
     setRolls(r.rolls);
     setDraft((d) => ({ ...d, abilities: Object.fromEntries(ABILITIES.map((a) => [a, null])) }));
+    // Уведомляем родителя только после броска — navigate произойдёт тут, с уже обновлённым состоянием.
+    onSaved(obj);
   }
 
   async function submit() {
@@ -403,9 +413,9 @@ export default function Builder({
                       onChange={(e) => setAbility(a, e.target.value ? Number(e.target.value) : null)}
                     >
                       <option value="">— выбор —</option>
-                      {uniq(poolLeft(draft.ability_method === "roll" ? rolls! : opts.standard_array, draft.abilities, a)).map(
-                        (v) => (
-                          <option key={v} value={v}>
+                      {sortDesc(poolLeft(draft.ability_method === "roll" ? rolls! : opts.standard_array, draft.abilities, a)).map(
+                        (v, i) => (
+                          <option key={i} value={v}>
                             {v}
                           </option>
                         ),
@@ -418,7 +428,20 @@ export default function Builder({
           )}
 
           {draft.ability_method === "roll" && rolls && (
-            <p className="mt-3 font-mono text-xs text-muted">Выпавшие значения кубиков: {rolls.join(", ")}</p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="font-mono text-xs text-muted">Выпавшие значения кубиков: {rolls.join(", ")}</p>
+              {/* переброс — только у героя профиля; в кампании броски окончательные */}
+              {mode === "library" && (
+                <ActionButton
+                  className="border-line px-3 py-1 font-mono text-xs text-muted hover:text-ink"
+                  run={roll}
+                  done="Кубики переброшены"
+                  confirm="Перебросить все шесть характеристик? Текущие значения и расстановка пропадут."
+                >
+                  ПЕРЕБРОСИТЬ
+                </ActionButton>
+              )}
+            </div>
           )}
 
           {/* Racial ability bonuses */}
@@ -832,6 +855,7 @@ function toggle(list: string[], x: string): string[] {
   return list.includes(x) ? list.filter((y) => y !== x) : [...list, x];
 }
 
-function uniq(xs: number[]): number[] {
-  return [...new Set(xs)].sort((a, b) => b - a);
+/** Сортировка по убыванию без дедупликации — для пула бросков 4d6, где дубли допустимы. */
+function sortDesc(xs: number[]): number[] {
+  return [...xs].sort((a, b) => b - a);
 }

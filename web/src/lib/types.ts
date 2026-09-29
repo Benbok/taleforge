@@ -223,7 +223,8 @@ export interface HeroSheet extends HeroPublic {
     dead?: boolean;
   };
   private_backstory?: string | null;
-  personality?: string | null;
+  /** Анкета характера {text, fields, core}; у старых героев — плоский словарь «поле: текст». */
+  personality?: Record<string, unknown> | null;
   derived?: {
     abilities: Record<string, number>;
     mods: Record<string, number>;

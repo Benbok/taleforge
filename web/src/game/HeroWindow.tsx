@@ -212,7 +212,34 @@ function State({ h }: { h: HeroSheet }) {
   );
 }
 
+/** Подписи полей анкеты — как в app/core/persona.py (HERO_FIELDS). */
+const PERSONA_LABEL: Record<string, string> = {
+  conflict: "Противоречие",
+  want: "Чего хочет",
+  fear: "Чего боится",
+  voice: "Голос",
+  party: "Отношение к отряду",
+  secret: "Тайна или долг",
+  never: "Чего никогда не сделает",
+  goal: "Цель в кампании",
+};
+
+/** Анкета характера строками. Это словарь, а не текст: отданный React как есть, он роняет всё окно игры. */
+function personaLines(p: Record<string, unknown> | null | undefined): { label: string | null; text: string }[] {
+  if (!p || typeof p !== "object") return [];
+  const isSheet = "fields" in p || "text" in p;
+  const fields = (isSheet ? p.fields : p) as Record<string, unknown> | undefined;
+  const out: { label: string | null; text: string }[] = [];
+  if (isSheet && typeof p.text === "string" && p.text.trim()) out.push({ label: null, text: p.text });
+  for (const [k, v] of Object.entries(fields ?? {})) {
+    if (k === "bonds" || typeof v !== "string" || !v.trim()) continue;
+    out.push({ label: PERSONA_LABEL[k] ?? k, text: v });
+  }
+  return out;
+}
+
 function Persona({ h }: { h: HeroSheet }) {
+  const traits = personaLines(h.personality);
   return (
     <div className="flex flex-col gap-3 font-narration">
       {h.public_bio && (
@@ -221,10 +248,15 @@ function Persona({ h }: { h: HeroSheet }) {
           <p>{h.public_bio}</p>
         </section>
       )}
-      {h.personality && (
-        <section>
+      {traits.length > 0 && (
+        <section className="flex flex-col gap-1">
           <h3 className="font-ui text-sm text-muted">Характер</h3>
-          <p>{h.personality}</p>
+          {traits.map((t, i) => (
+            <p key={i}>
+              {t.label && <span className="font-ui text-sm text-muted">{t.label}: </span>}
+              {t.text}
+            </p>
+          ))}
         </section>
       )}
       {h.private_backstory && (

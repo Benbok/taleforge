@@ -71,7 +71,9 @@ def test_library_hero_copied_into_campaign(client, admin, base):
 
     rolled = ok(client.post("/api/me/characters", json={"name": "Кубик"}, headers=h), 201)
     ok(client.post(f"/api/me/characters/{rolled['id']}/roll-abilities", headers=h))
-    assert client.post(f"/api/me/characters/{rolled['id']}/roll-abilities", headers=h).status_code == 409
+    # герой профиля — личный черновик: переброс разрешён, в листе остаются последние броски
+    again = ok(client.post(f"/api/me/characters/{rolled['id']}/roll-abilities", headers=h))["rolls"]
+    assert ok(client.get(f"/api/me/characters/{rolled['id']}", headers=h))["sheet"]["ability_rolls"] == again
 
     c = make_campaign(client, admin, players=2, creation_rules={"review": "auto"})
     ok(client.post(f"/api/invites/{invite(client, admin, c['id'])['token']}/accept", headers=h))
