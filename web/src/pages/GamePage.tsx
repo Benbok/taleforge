@@ -14,6 +14,7 @@ import FallenScene from "../game/FallenScene";
 import { myHero } from "../game/hero";
 import HeroHud from "../game/HeroHud";
 import HeroWindow from "../game/HeroWindow";
+import MasterPanel from "../master/MasterPanel";
 import { PartyPanel, ScenePanel } from "../game/Panels";
 import PauseOverlay from "../game/PauseOverlay";
 import ReactionPanel from "../game/ReactionPanel";
@@ -92,12 +93,14 @@ export default function GamePage() {
   const heroCta = card && actionOf(card).href.endsWith("/hero") && actionOf(card).primary ? actionOf(card) : null;
   const status = card ? STATUS_TEXT[statusOf(card)] : null;
   const live = !!snapshot?.session;
-  const manage = !!card?.is_owner || snapshot?.me.role === "master";
+  const master = snapshot?.me.role === "master";
+  const manage = !!card?.is_owner || master;
 
   const side = (
     <>
+      {master && <MasterPanel campaignId={id} />}
       <ScenePanel />
-      <About card={card} />
+      {!master && <About card={card} />}
     </>
   );
 
@@ -128,7 +131,11 @@ export default function GamePage() {
           </Link>
         </div>
       )}
-      <div className="mx-auto grid min-h-0 w-full max-w-[96rem] flex-1 md:grid-cols-[1fr_18rem] md:gap-4 md:px-4 md:py-4 lg:grid-cols-[16rem_1fr_18rem]">
+      <div
+        className={`mx-auto grid min-h-0 w-full max-w-[96rem] flex-1 md:gap-4 md:px-4 md:py-4 ${
+          master ? "md:grid-cols-[1fr_24rem] lg:grid-cols-[16rem_1fr_28rem]" : "md:grid-cols-[1fr_18rem] lg:grid-cols-[16rem_1fr_18rem]"
+        }`}
+      >
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           <PartyPanel />
         </aside>
@@ -165,7 +172,7 @@ export default function GamePage() {
             aria-current={tab === t ? "page" : undefined}
             onClick={() => setTab(t)}
           >
-            {name}
+            {master && t === "scene" ? "Мастер" : name /* у мастера здесь его панель вместе со сценой */}
           </button>
         ))}
       </nav>
