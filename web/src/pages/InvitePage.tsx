@@ -22,44 +22,92 @@ export default function InvitePage() {
 
   async function accept() {
     const c = await run(() => api<Pick<CampaignCard, "id">>(`/api/invites/${token}/accept`, { method: "POST" }));
-    if (c) toast.ok("Вы за столом. Соберите героя, чтобы вступить в игру.");
+    if (c) toast.ok("Вы заняли место за столом. Соберите героя, чтобы вступить в игру.");
     if (c) navigate(`/c/${c.id}`, { replace: true });
   }
 
   const p = preview.data;
+
   return (
     <>
       <Header />
-      <main className="mx-auto flex max-w-lg flex-col gap-5 px-4 py-8">
-        {preview.isLoading && <p className="text-muted">Открываем приглашение…</p>}
-        {preview.isError && <p className="text-bad">Приглашение не найдено.</p>}
+      <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8 md:py-12">
+        {preview.isLoading && (
+          <div className="card p-8 text-center text-muted font-mono text-sm">
+            Проверяем судовой реестр приглашений…
+          </div>
+        )}
+
+        {preview.isError && (
+          <div className="card border-bad/40 bg-bad/5 p-6 text-center text-bad font-mono text-sm">
+            Приглашение не найдено или срок его действия истёк.
+          </div>
+        )}
+
         {p && (
-          <section className="card flex flex-col gap-3 p-5">
-            <p className="text-xs uppercase tracking-wide text-muted">Приглашение в кампанию</p>
-            <h1 className="text-2xl font-semibold">{p.campaign_name || "Кампания"}</h1>
-            {p.public_intro && <p className="font-narration text-lg leading-relaxed">{p.public_intro}</p>}
-            {p.valid ? (
-              <p className="text-muted">Свободных мест: {p.free_seats}</p>
-            ) : (
-              <p className="text-bad">Войти нельзя: {p.problem}</p>
+          <section className="card p-6 sm:p-7 border-2 border-accent/40 bg-surface shadow-2xl relative overflow-hidden flex flex-col gap-4">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-accent/10 blur-xl" />
+
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent font-semibold">
+                Приглашение в экспедицию
+              </span>
+              {p.valid && (
+                <span className="font-mono text-xs text-patina-hi border border-patina/40 bg-patina/10 px-2.5 py-0.5 rounded-full">
+                  Мест свободно: {p.free_seats}
+                </span>
+              )}
+            </div>
+
+            <div>
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-ink">
+                {p.campaign_name || "Безымянная кампания"}
+              </h1>
+              {p.public_intro && (
+                <div className="mt-3 rounded-[8px] bg-raised/50 p-4 font-narration text-base leading-relaxed text-ink-2 whitespace-pre-line border border-line/60">
+                  «{p.public_intro}»
+                </div>
+              )}
+            </div>
+
+            {!p.valid && (
+              <div className="rounded-[8px] border border-bad/40 bg-bad/10 p-3 font-mono text-xs text-bad">
+                Войти нельзя: {p.problem}
+              </div>
             )}
           </section>
         )}
+
         {p?.valid &&
           (user ? (
-            <div className="flex flex-col gap-2">
-              <button className="btn btn-primary" disabled={busy} aria-busy={busy} onClick={accept}>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                className="btn btn-primary font-mono text-xs tracking-wider py-3 shadow-lg"
+                disabled={busy}
+                aria-busy={busy}
+                onClick={accept}
+              >
                 {busy && <Spinner />}
-                Сесть за стол как {user.name}
+                СЕСТЬ ЗА СТОЛ КАК {user.name.toUpperCase()} →
               </button>
-              {error && <p className="text-bad" role="alert">Не получилось: {error}</p>}
+              {error && (
+                <p className="font-mono text-xs text-bad text-center" role="alert">
+                  Ошибка входа: {error}
+                </p>
+              )}
             </div>
           ) : (
-            <AuthForm
-              inviteToken={token}
-              initial="signup"
-              onDone={(joined) => (joined ? navigate("/", { replace: true }) : void accept())}
-            />
+            <div className="flex flex-col gap-2">
+              <p className="text-center font-mono text-xs text-muted">
+                Создайте учётную запись или войдите, чтобы занять место за этим столом:
+              </p>
+              <AuthForm
+                inviteToken={token}
+                initial="signup"
+                onDone={(joined) => (joined ? navigate("/", { replace: true }) : void accept())}
+              />
+            </div>
           ))}
       </main>
     </>

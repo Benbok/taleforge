@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import ActionButton from "../components/ActionButton";
+import ActionButton, { Spinner } from "../components/ActionButton";
+import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
 import { api } from "../lib/api";
 import type { Poster } from "../lib/campaign";
@@ -13,7 +14,6 @@ interface PlanState {
   poster: Poster | null;
   public_intro: string;
   can_generate: boolean;
-  /** Каркас целиком — только месту мастера. */
   plan?: Plot;
   revision?: { status?: string } | null;
   note?: string | null;
@@ -51,194 +51,364 @@ export default function PlotTab({ campaignId }: { campaignId: string }) {
   const plan = useQuery({
     queryKey: ["plan", campaignId],
     queryFn: () => api<PlanState>(`/api/campaigns/${campaignId}/plan`),
-    // событие о готовности приходит в игру; здесь, пока идёт работа, просто переспрашиваем
-    refetchInterval: (q) => (q.state.data?.status === "generating" || q.state.data?.revision?.status === "revising" ? 4000 : false),
+    refetchInterval: (q) =>
+      q.state.data?.status === "generating" || q.state.data?.revision?.status === "revising" ? 4000 : false,
   });
   const p = plan.data;
   const options = useQuery({
     queryKey: ["plan-options", campaignId, structure],
-    queryFn: () => api<PlanOptions>(`/api/campaigns/${campaignId}/plan/options${structure ? `?structure_id=${encodeURIComponent(structure)}` : ""}`),
+    queryFn: () =>
+      api<PlanOptions>(
+        `/api/campaigns/${campaignId}/plan/options${structure ? `?structure_id=${encodeURIComponent(structure)}` : ""}`,
+      ),
     enabled: !!p?.can_generate && p.status !== "generating",
   });
 
-  if (plan.isError) return <p className="text-bad">Не удалось загрузить сюжет: {(plan.error as Error).message}</p>;
-  if (!p) return <p className="text-muted">Загружаем…</p>;
+  if (plan.isError) {
+    return (
+      <div className="card border-bad/40 bg-bad/5 p-5 text-sm text-bad">
+        Не удалось загрузить сюжетную арку: {(plan.error as Error).message}
+      </div>
+    );
+  }
+
+  if (!p) {
+    return (
+      <div className="card p-8 text-center text-muted font-mono text-sm">
+        Изучение сюжетных свитков экспедиции…
+      </div>
+    );
+  }
+
   const e = options.data?.estimate;
 
+  const structureOptions: SelectOption[] = [
+    {
+      value: "",
+      label: "Автоматически по анкете",
+      sublabel: "Архитектор подберёт оптимальную структуру под выбранную тему",
+      badge: "АВТО",
+      badgeTone: "muted",
+    },
+    ...(options.data?.structures ?? []).map((s) => ({
+      value: s.id,
+      label: s.name,
+      sublabel: s.description,
+      badge: s.best ? "РЕКОМЕНДУЕТСЯ" : undefined,
+      badgeTone: s.best ? ("accent" as const) : undefined,
+    })),
+  ];
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      {/* Poster */}
       {p.poster?.title && (
-        <section className="card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted">Афиша, её видят все</p>
-          <h2 className="font-heading text-xl">{p.poster.title}</h2>
-          {p.poster.tagline && <p className="font-narration italic">{p.poster.tagline}</p>}
+        <section className="card p-5 sm:p-6 border border-line bg-surface relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-line pb-3 mb-4">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-accent font-semibold">
+              Афиша приключения · видят все игроки
+            </span>
+            {p.version && (
+              <span className="font-mono text-xs text-muted">
+                Вариант сюжета #{p.version}
+              </span>
+            )}
+          </div>
+
+          <h2 className="font-heading text-2xl sm:text-3xl font-bold text-ink">{p.poster.title}</h2>
+          {p.poster.tagline && (
+            <p className="mt-1 font-narration italic text-base sm:text-lg text-accent-hi">
+              «{p.poster.tagline}»
+            </p>
+          )}
+
           {!!p.poster.tags?.length && (
-            <p className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-2">
               {p.poster.tags.map((t) => (
-                <span key={t} className="rounded-full border border-line px-2 py-0.5 text-xs">
+                <span
+                  key={t}
+                  className="rounded-full border border-line bg-raised px-3 py-0.5 font-mono text-xs text-ink-2"
+                >
                   {t}
                 </span>
               ))}
-            </p>
+            </div>
           )}
-          {p.public_intro && <p className="mt-3 whitespace-pre-line font-narration leading-relaxed text-muted">{p.public_intro}</p>}
+
+          {p.public_intro && (
+            <div className="mt-4 rounded-[10px] border border-line/60 bg-raised/40 p-4 font-narration text-sm sm:text-base leading-relaxed text-ink-2 whitespace-pre-line">
+              {p.public_intro}
+            </div>
+          )}
         </section>
       )}
 
-      <section className="card flex flex-col gap-3 p-4">
-        <h2 className="text-base font-semibold">Сюжет</h2>
-        <p className={p.status === "failed" ? "text-bad" : "text-muted"} role="status">
-          {p.status === "ready" ? `Сюжет готов, вариант ${p.version}.` : STATUS_TEXT[p.status]}
+      {/* Plot Status & Generation Card */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+        <div className="flex items-center justify-between border-b border-line pb-3">
+          <h2 className="font-heading text-xl font-bold text-ink">Генератор и статус сюжета</h2>
+          {p.status === "generating" && (
+            <span className="flex items-center gap-1.5 font-mono text-xs text-patina-hi">
+              <Spinner /> генерация в фоне
+            </span>
+          )}
+        </div>
+
+        <p className={`text-sm ${p.status === "failed" ? "text-bad font-semibold" : "text-muted"}`} role="status">
+          {p.status === "ready" ? `Сюжет готов (редакция ${p.version}).` : STATUS_TEXT[p.status]}
           {p.status === "failed" && p.error ? `: ${p.error}` : ""}
         </p>
-        {p.revision?.status === "revising" && <p className="text-sm text-muted">Акт закрыт: мастер пересматривает дальнейшие акты с учётом того, что уже случилось.</p>}
-        {p.revision?.status === "failed" && <p className="text-sm text-muted">Пересмотреть дальнейшие акты не вышло: игра идёт по прежнему плану.</p>}
-        {!p.can_generate && p.status !== "generating" && (
-          <p className="text-sm text-muted">Игра уже началась: дальше сюжет меняется по ходу, а не заново.</p>
+
+        {p.revision?.status === "revising" && (
+          <div className="rounded-[8px] border border-accent/40 bg-accent/10 p-3 font-mono text-xs text-accent">
+            Акт завершён: ИИ-мастер пересматривает последующие акты с учётом принятых решений.
+          </div>
         )}
+
+        {p.revision?.status === "failed" && (
+          <div className="rounded-[8px] border border-warn/40 bg-warn/10 p-3 font-mono text-xs text-warn">
+            Пересмотр актов завершился сбоем: игра продолжается по текущему зафиксированному плану.
+          </div>
+        )}
+
+        {!p.can_generate && p.status !== "generating" && (
+          <p className="text-xs font-mono text-faint">
+            Кампания уже началась: сюжетные ходы адаптируются ведущим динамически в реальном времени.
+          </p>
+        )}
+
         {p.can_generate && p.status !== "generating" && (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Шаблон сюжета">
-                <select className="field" value={structure} onChange={(ev) => setStructure(ev.target.value)}>
-                  <option value="">Автоматически по анкете</option>
-                  {(options.data?.structures ?? []).map((s) => (
-                    <option key={s.id} value={s.id} title={s.description}>
-                      {s.name}
-                      {s.best ? " — лучше всего подходит" : ""}
-                    </option>
-                  ))}
-                </select>
+          <div className="flex flex-col gap-4 pt-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Структурный архетип сюжета">
+                <CustomSelect
+                  value={structure}
+                  options={structureOptions}
+                  onChange={setStructure}
+                  ariaLabel="Структура сюжета"
+                />
               </Field>
-              <Field label="Пожелание к варианту" hint="Например «мрачнее», «короче».">
-                <input className="field" maxLength={500} value={note} onChange={(ev) => setNote(ev.target.value)} />
+
+              <Field label="Пожелания к редакции" hint="Например «больше интриг», «динамичнее финал».">
+                <input
+                  className="field text-sm"
+                  maxLength={500}
+                  placeholder="Дополнительные акценты для архитектора..."
+                  value={note}
+                  onChange={(ev) => setNote(ev.target.value)}
+                />
               </Field>
             </div>
+
             {e && (
-              <p className="text-xs text-muted">
-                Примерно {Math.round((e.tokens_in + e.tokens_out) / 1000)} тыс. токенов на модели {e.model}
-                {e.usd != null ? `, около $${e.usd.toFixed(2)}.` : ": цена неизвестна или модель локальная."} Если каркас не пройдёт
-                проверку, будет до трёх попыток.
-              </p>
+              <div className="rounded-[8px] bg-raised/60 p-3 border border-line/60 font-mono text-xs text-muted flex items-center justify-between flex-wrap gap-2">
+                <span>
+                  Модель: <span className="text-ink font-semibold">{e.model}</span> (около{" "}
+                  {Math.round((e.tokens_in + e.tokens_out) / 1000)} тыс. токенов)
+                </span>
+                <span className="text-accent font-semibold">
+                  {e.usd != null ? `~$${e.usd.toFixed(2)}` : "локальная / бесплатно"}
+                </span>
+              </div>
             )}
+
             <div>
               <ActionButton
                 primary
-                done="Архитектор взялся за сюжет"
+                className="font-mono text-xs tracking-wider"
+                done="Архитектор сюжета приступил к работе"
                 run={async () => {
-                  const next = await api<PlanState>(`/api/campaigns/${campaignId}/plan`, { body: { note: note.trim(), structure_id: structure || null } });
+                  const next = await api<PlanState>(`/api/campaigns/${campaignId}/plan`, {
+                    body: { note: note.trim(), structure_id: structure || null },
+                  });
                   setNote("");
                   qc.setQueryData(["plan", campaignId], next);
                 }}
               >
-                {p.status === "ready" ? "Другой вариант" : "Подготовить сюжет"}
+                {p.status === "ready" ? "СГЕНЕРИРОВАТЬ ДРУГОЙ ВАРИАНТ" : "ПОДГОТОВИТЬ СЮЖЕТНУЮ АРКУ"}
               </ActionButton>
             </div>
-          </>
+          </div>
         )}
       </section>
 
+      {/* Secret Plot Details for Master */}
       {p.plan?.title && <PlotDetails plot={p.plan} />}
     </div>
   );
 }
 
-const ACT_MARK: Record<string, string> = { active: "идёт", done: "пройден", pending: "впереди" };
+const ACT_MARK: Record<string, string> = { active: "идёт сейчас", done: "завершён", pending: "впереди" };
 const NODE_MARK: Record<string, string> = { done: "пройден", skipped: "обойдён" };
 const s = (x: unknown) => (x == null ? "" : String(x));
 
 /** Каркас целиком. Его видит только место мастера: сервер не отдаёт его владельцу-игроку. */
 export function PlotDetails({ plot, open = false }: { plot: Plot; open?: boolean }) {
   return (
-    <details className="card p-4" open={open}>
-      <summary className="cursor-pointer font-semibold">Каркас целиком · видит только мастер</summary>
-      <div className="mt-3 flex flex-col gap-4 text-sm">
-        <p>
-          <b>Конфликт:</b> {plot.conflict} <b>Ставки:</b> {plot.stakes}
-        </p>
-        <Block title="Антагонисты" items={plot.antagonists}>
+    <details className="card p-5 sm:p-6 border border-accent/40 bg-surface shadow-xl" open={open}>
+      <summary className="cursor-pointer font-heading text-lg font-bold text-accent hover:text-accent-hi transition select-none flex items-center justify-between">
+        <span>Сюжетный каркас целиком · Секретные материалы мастера</span>
+        <span className="font-mono text-xs text-muted">развернуть ↓</span>
+      </summary>
+
+      <div className="mt-5 flex flex-col gap-5 text-sm border-t border-line pt-4">
+        {/* Conflict & Stakes */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[8px] border border-line bg-raised/60 p-3">
+            <span className="font-mono text-[10px] text-muted uppercase tracking-wider block">
+              Основной конфликт
+            </span>
+            <p className="mt-1 font-semibold text-ink leading-snug">{plot.conflict}</p>
+          </div>
+
+          <div className="rounded-[8px] border border-line bg-raised/60 p-3">
+            <span className="font-mono text-[10px] text-muted uppercase tracking-wider block">
+              Ставки экспедиции
+            </span>
+            <p className="mt-1 font-semibold text-ink leading-snug">{plot.stakes}</p>
+          </div>
+        </div>
+
+        {/* Antagonists */}
+        <Block title="Антагонисты и план угрозы" items={plot.antagonists}>
           {(a) => {
             const threat = (a.threat as string[]) ?? [];
             const step = Number(a.threat_step ?? 0);
             return (
-              <>
-                <b>{s(a.name)}</b>: {s(a.goal)}. Слабость: {s(a.weakness)}. Тайна: {s(a.secret)}
-                <span className="block text-muted">
-                  План угрозы, сделано {step} из {threat.length}:{" "}
-                  {threat.map((t, i) => (
-                    <span key={i} className={i < step ? "line-through" : ""}>
-                      {i ? " → " : ""}
-                      {t}
+              <div className="flex flex-col gap-1.5 py-1">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="font-heading text-base font-bold text-ink">{s(a.name)}:</span>
+                  <span className="text-ink-2">{s(a.goal)}</span>
+                </div>
+                <div className="font-mono text-xs text-muted">
+                  <span className="text-warn">Слабость:</span> {s(a.weakness)} ·{" "}
+                  <span className="text-accent">Тайна:</span> {s(a.secret)}
+                </div>
+                {threat.length > 0 && (
+                  <div className="mt-1 rounded-[6px] bg-raised p-2 font-mono text-xs">
+                    <span className="text-accent font-semibold block mb-1">
+                      План угрозы (шаг {step} из {threat.length}):
                     </span>
-                  ))}
-                </span>
-              </>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {threat.map((t, i) => (
+                        <span key={i} className="flex items-center gap-1">
+                          <span
+                            className={
+                              i < step
+                                ? "line-through text-muted"
+                                : i === step
+                                  ? "text-bad font-bold"
+                                  : "text-ink-2"
+                            }
+                          >
+                            {i + 1}. {t}
+                          </span>
+                          {i < threat.length - 1 && <span className="text-faint">→</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           }}
         </Block>
-        <Block title="Акты" items={plot.acts}>
+
+        {/* Acts */}
+        <Block title="Акты приключения" items={plot.acts}>
           {(a) => (
-            <>
-              <b>{s(a.title)}</b> <Mark text={ACT_MARK[s(a.status)]} /> — {s(a.goal)}
-              {!!a.outcome && <span className="block text-muted">Итог: {s(a.outcome)}</span>}
-              <ul className="mt-1 list-disc pl-5">
+            <div className="flex flex-col gap-1 py-1">
+              <div className="flex items-center gap-2">
+                <span className="font-heading text-base font-bold text-ink">{s(a.title)}</span>
+                <Mark text={ACT_MARK[s(a.status)]} />
+              </div>
+              <p className="text-sm text-ink-2">{s(a.goal)}</p>
+              {!!a.outcome && <span className="font-mono text-xs text-patina-hi">Итог: {s(a.outcome)}</span>}
+              <ul className="mt-2 space-y-1.5 pl-4 border-l-2 border-line">
                 {((a.nodes as Item[]) ?? []).map((n, i) => (
-                  <li key={i}>
-                    {s(n.title)} <Mark text={NODE_MARK[s(n.status)]} />: {s(n.summary)}
-                    {!!n.outcome && <span className="block text-muted">Итог: {s(n.outcome)}</span>}
+                  <li key={i} className="text-xs">
+                    <span className="font-semibold text-ink">{s(n.title)}</span>{" "}
+                    <Mark text={NODE_MARK[s(n.status)]} />: {s(n.summary)}
+                    {!!n.outcome && <span className="block font-mono text-patina-hi">Итог: {s(n.outcome)}</span>}
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </Block>
-        <Block title="Места" items={plot.locations}>
+
+        {/* Locations */}
+        <Block title="Ключевые локации" items={plot.locations}>
           {(l) => (
-            <>
-              <b>{s(l.name)}</b>
-              {l.status === "developed" && <Mark text="развёрнуто" />}: {s(l.role)} <span className="text-muted">Секрет: {s(l.secret)}</span>
-            </>
+            <div className="py-1">
+              <span className="font-semibold text-ink">{s(l.name)}</span>
+              {l.status === "developed" && <Mark text="развёрнуто" />}: {s(l.role)}{" "}
+              <span className="font-mono text-xs text-accent">Секрет: {s(l.secret)}</span>
+            </div>
           )}
         </Block>
-        <Block title="NPC" items={plot.npcs}>
+
+        {/* NPCs */}
+        <Block title="Персонажи ведущего (NPC)" items={plot.npcs}>
           {(n) => (
-            <>
-              <b>{s(n.name)}</b>
-              {n.status === "developed" && <Mark text="развёрнут" />}: {s(n.role)}; хочет — {s(n.want)}{" "}
-              <span className="text-muted">Тайна: {s(n.secret)}</span>
-            </>
+            <div className="py-1">
+              <span className="font-semibold text-ink">{s(n.name)}</span>
+              {n.status === "developed" && <Mark text="развёрнут" />}: {s(n.role)}; мотив: {s(n.want)}{" "}
+              <span className="font-mono text-xs text-accent">Скрытое: {s(n.secret)}</span>
+            </div>
           )}
         </Block>
-        <Block title="Тайны" items={plot.reveals}>
+
+        {/* Reveals */}
+        <Block title="Тайны и зацепки" items={plot.reveals}>
           {(r) => (
-            <>
-              {s(r.truth)} {!!r.revealed && <Mark text="раскрыта" />}{" "}
-              <span className="text-muted">({((r.clues as unknown[]) ?? []).length} зацепки)</span>
-            </>
+            <div className="py-1">
+              <span className="text-ink">{s(r.truth)}</span> {!!r.revealed && <Mark text="раскрыта" />}{" "}
+              <span className="font-mono text-xs text-muted">
+                ({((r.clues as unknown[]) ?? []).length} зацепки)
+              </span>
+            </div>
           )}
         </Block>
-        <Block title="Финалы" items={(plot.endings ?? []).map((e) => ({ e }))}>
-          {(x) => s(x.e)}
+
+        {/* Endings */}
+        <Block title="Возможные финалы" items={(plot.endings ?? []).map((e) => ({ e }))}>
+          {(x) => <span className="text-ink-2 py-0.5 block">{s(x.e)}</span>}
         </Block>
       </div>
     </details>
   );
 }
 
-function Block({ title, items, children }: { title: string; items?: Item[]; children: (x: Item) => React.ReactNode }) {
+function Block({
+  title,
+  items,
+  children,
+}: {
+  title: string;
+  items?: Item[];
+  children: (x: Item) => React.ReactNode;
+}) {
   if (!items?.length) return null;
   return (
-    <div>
-      <h3 className="mb-1 font-semibold">{title}</h3>
-      <ul className="list-disc pl-5">
+    <div className="flex flex-col gap-2 rounded-[10px] border border-line bg-raised/40 p-4">
+      <h3 className="font-mono text-xs font-bold text-accent uppercase tracking-wider">{title}</h3>
+      <div className="divide-y divide-line/60">
         {items.map((x, i) => (
-          <li key={i}>{children(x)}</li>
+          <div key={i} className="py-2 first:pt-0 last:pb-0">
+            {children(x)}
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
 function Mark({ text }: { text?: string }) {
-  return text ? <span className="text-xs text-muted">[{text}]</span> : null;
+  if (!text) return null;
+  return (
+    <span className="rounded bg-raised border border-line px-1.5 py-0.2 font-mono text-[10px] text-accent">
+      {text}
+    </span>
+  );
 }
