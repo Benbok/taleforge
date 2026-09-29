@@ -112,6 +112,7 @@ class MasterService:
         self._summarizing: set[str] = set()
         self._intro_locks: dict[str, asyncio.Lock] = {}
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
+        self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
 
     # --- очередь ---
 
@@ -196,12 +197,20 @@ class MasterService:
     async def wait_idle(self, campaign_id: str | None = None) -> None:
         # ход может запустить фоновую задачу в самом конце (пересмотр каркаса), поэтому проверяем по кругу
         while True:
+            agents = self.players._tasks if self.players is not None else set()
             if self._background:
                 await asyncio.wait(set(self._background))
+            elif agents:
+                await asyncio.wait(set(agents))
             elif (t := self._tasks.get(campaign_id)) is not None and not t.done():
                 await asyncio.wait({t})
             else:
                 return
+
+    def wake_players(self, cid: str) -> None:
+        """Новое повествование в ответ живому игроку: ИИ-игроки могут откликнуться."""
+        if self.players is not None:
+            self.players.after_narration(cid)
 
     async def stop(self) -> None:
         tasks = [*self._tasks.values(), *self._background, *self._timers.values()]
@@ -253,6 +262,7 @@ class MasterService:
                 if cur is not None and any(m.kind == "action" and m.seat_id == cur.seat_id for m in new):
                     return 0
                 return None
+            agents = {x.id for x in c.seats if x.occupant_type == "agent"}
             players = {
                 ch.seat_id
                 for ch in await s.scalars(
@@ -262,6 +272,7 @@ class MasterService:
             }
             if self.presence is not None:
                 players -= self.presence.away(cid)  # ушедшего игрока не ждём
+            players -= agents  # ИИ-игрок отвечает после мастера, его реплику не ждём
             wrote = {m.seat_id for m in new}
             if players and players <= wrote:
                 return 0
@@ -320,6 +331,7 @@ class MasterService:
             await s.commit()
             turn_id = turn.id
             ids = [m.id for m in new]
+            human = any(not (m.data or {}).get("ai") for m in new)  # ИИ-игроки отвечают только на ответ людям
 
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
@@ -335,6 +347,8 @@ class MasterService:
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
+            if human:
+                self.wake_players(cid)
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
@@ -900,6 +914,10 @@ class MasterService:
             self._timers[cid] = asyncio.create_task(self._timeout_after(cid, marker, float(turn["deadline"])))
         if self.presence is not None:
             await self.presence.turn_changed(cid, turn)
+        if turn and not turn.get("submitted") and self.players is not None:
+            seat = next((x for x in ctx.campaign.seats if x.id == turn.get("seat_id")), None)
+            if seat is not None and seat.role == "player" and seat.occupant_type == "agent":
+                self.players.combat_turn(cid, seat.id)
 
     async def _timeout_after(self, cid: str, marker: str | None, deadline: float) -> None:
         try:
@@ -1029,6 +1047,9 @@ class MasterService:
         """Кнопка реакции игроку с таймером (по умолчанию 15 с). Нет ответа — реакция не используется."""
         if not ch.seat_id:
             return False
+        seat = next((x for x in ctx.campaign.seats if x.id == ch.seat_id), None)
+        if seat is not None and seat.role == "player" and seat.occupant_type == "agent":
+            return not seat.delegated_from  # ИИ-игрок бьёт вслед; за ушедшего игрока — осторожно, не бьёт
         cid = ctx.campaign.id
         wait = float((ctx.campaign.settings or {}).get("reaction_sec") or combat.REACTION_SEC)
         prompt_id = "rx_" + uuid.uuid4().hex[:12]

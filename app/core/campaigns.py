@@ -106,10 +106,13 @@ def master_seat(campaign: Campaign) -> Seat:
     return next(s for s in campaign.seats if s.role == "master")
 
 
-async def get_viewer(session: AsyncSession, user: User, campaign_id: str, as_seat: str | None = None) -> Viewer:
+async def get_viewer(
+    session: AsyncSession, user: User, campaign_id: str, as_seat: str | None = None, *, ai_seat: bool = False
+) -> Viewer:
     """Доступ к кампании есть у владельца и у тех, кто занимает в ней место. Остальным — «не найдено».
 
-    ``as_seat`` — место, чьего героя этот игрок ведёт по итогам голосования, пока его игрок офлайн (раздел 11)."""
+    ``as_seat`` — место, чьего героя этот игрок ведёт по итогам голосования, пока его игрок офлайн (раздел 11).
+    ``ai_seat`` — ещё и место ИИ-игрока, за которое владелец собирает героя (этап 9); говорит за него только ИИ."""
     campaign = await session.get(Campaign, campaign_id)
     if campaign is None:
         raise NotFound("кампания не найдена")
@@ -118,7 +121,13 @@ async def get_viewer(session: AsyncSession, user: User, campaign_id: str, as_sea
         raise NotFound("кампания не найдена")
     if as_seat:
         seat = next((s for s in campaign.seats if s.id == as_seat), None)
-        if seat is None or seat.role != "player" or seat.stand_in_user_id != user.id:
+        # владелец собирает героя ИИ-игроку за его место (этап 9)
+        builds = ai_seat and seat is not None and seat.occupant_type == "agent" and not seat.delegated_from
+        if (
+            seat is None
+            or seat.role != "player"
+            or not (seat.stand_in_user_id == user.id or builds and viewer.is_owner)
+        ):
             raise NotFound("вы не ведёте этого героя: его игрок вернулся или голосование решило иначе")
         return Viewer(user, campaign, seat)
     return viewer
@@ -313,6 +322,7 @@ async def accept_invite(session: AsyncSession, user: User, token: str) -> Seat:
         raise Conflict("свободных мест нет")
     free.occupant_type, free.user_id, free.joined_at = "human", user.id, now()
     invite.uses += 1
+    await inherit_hero(session, free, user.id)
     await session.flush()
     return free
 
@@ -327,8 +337,36 @@ async def take_seat(session: AsyncSession, viewer: Viewer) -> Seat:
     if free is None:
         raise Conflict("свободных мест нет")
     free.occupant_type, free.user_id, free.joined_at = "human", viewer.user.id, now()
+    await inherit_hero(session, free, viewer.user.id)
     await session.flush()
     return free
+
+
+async def inherit_hero(session: AsyncSession, seat: Seat, user_id: str) -> None:
+    """Живой игрок сел на место, где остался герой (ИИ-игрока или исключённого): герой теперь его."""
+    from app.db.models import Character
+
+    q = select(Character).where(Character.seat_id == seat.id, Character.status.in_(("approved", "active")))
+    for ch in (await session.scalars(q)).all():
+        ch.owner_user_id = user_id
+
+
+async def seat_agent(session: AsyncSession, viewer: Viewer, seat_id: str, model_profile_id: str | None) -> Seat:
+    """ИИ-игрок на пустом месте (раздел 5.2): модель из профиля админки или профиль по умолчанию."""
+    if not viewer.is_owner:
+        raise AccessDenied("сажать ИИ-игроков может только владелец")
+    seat = next((s for s in viewer.campaign.seats if s.id == seat_id), None)
+    if seat is None or seat.role != "player":
+        raise NotFound("место игрока не найдено")
+    if seat.occupant_type != "empty":
+        raise Conflict("место занято: сначала освободите его")
+    agent = await agent_for_master(session, {"model_profile_id": model_profile_id} if model_profile_id else {})
+    agent.settings = {**(agent.settings or {}), "role": "player"}
+    session.add(agent)
+    await session.flush()
+    seat.occupant_type, seat.agent_config_id, seat.joined_at = "agent", agent.id, now()
+    await session.flush()
+    return seat
 
 
 async def free_seat(session: AsyncSession, viewer: Viewer, seat_id: str) -> Seat:
@@ -341,6 +379,7 @@ async def free_seat(session: AsyncSession, viewer: Viewer, seat_id: str) -> Seat
     if seat.role == "master":
         raise Conflict("место мастера так не освобождается")
     seat.occupant_type, seat.user_id, seat.agent_config_id, seat.joined_at = "empty", None, None, None
+    seat.delegated_from = seat.stand_in_user_id = None
     await session.flush()
     return seat
 

@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
+from app.agents.player import PlayerAgents
 from app.api import admin, auth, campaigns, characters, home, library, models, personas, plan, profile
 from app.api.errors import validation_handler
 from app.config import Settings
@@ -69,10 +70,12 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         await app.state.master.resume_timers()
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
+        app.state.master.players = PlayerAgents(app.state.master)
         try:
             yield
         finally:
             await app.state.presence.stop()
+            await app.state.master.players.stop()
             await app.state.master.stop()
             await app.state.bus.stop()
             await engine.dispose()

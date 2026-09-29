@@ -4,7 +4,8 @@
 становится «офлайн». В бою ход такого героя пропускается (через 5 секунд: перезагрузка страницы — не уход),
 вне боя мастер его реплику не ждёт.
 Когда игрок ушёл, оставшиеся живые игроки голосуют: отдать героя другому игроку или поставить паузу
-(передать героя ИИ — с ИИ-игроками, этап 9). Ушёл живой мастер — голосуют за ИИ-мастера или паузу.
+или передать героя ИИ (этап 9, если в админке есть профиль модели). Ушёл живой мастер — голосуют за ИИ-мастера
+или паузу.
 Решает простое большинство (больше половины голосующих); ничья или 2 минуты без решения — пауза.
 Вернулся во время голосования — оно отменяется. Вернулся, когда героя уже ведёт другой, — получает его обратно
 в начале следующего хода и короткую сводку пропущенного. Ушли все игроки — пауза без голосования.
@@ -24,9 +25,9 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core import chat
-from app.core.campaigns import agent_for_master, master_seat
+from app.core.campaigns import agent_for_master, apply_model, default_model_profile, master_seat
 from app.core.world import get_scene
-from app.db.models import Campaign, Character, Seat
+from app.db.models import AgentConfig, Campaign, Character, Seat
 from app.gateway.events import envelope, publish_message
 from app.gateway.hub import Connection, Hub
 
@@ -116,18 +117,25 @@ class Presence:
     # --- события сокетов ---
 
     async def before_join(self, user_id: str, campaign_id: str) -> None:
-        """Живой мастер вернулся, а игру пока ведёт ИИ-мастер: место возвращается ему до входа, чтобы снимок уже
-        показывал его мастером."""
+        """Игрок или живой мастер вернулся, а его место пока ведёт ИИ: место возвращается ему до входа, чтобы снимок
+        уже показывал его на своём месте."""
         async with self.maker() as s:
             c = await s.get(Campaign, campaign_id)
             if c is None:
                 return
-            seat = master_seat(c)
-            if not (seat.occupant_type == "agent" and seat.delegated_from and seat.delegated_from == user_id):
+            seat = next((x for x in c.seats if x.occupant_type == "agent" and x.delegated_from == user_id), None)
+            if seat is None:
                 return
             seat.occupant_type, seat.delegated_from = "human", None
             game = await chat.active_session(s, c.id)
-            msg = await chat.system_message(s, c, "Мастер вернулся и снова ведёт игру.", game)
+            if seat.role == "master":
+                text = "Мастер вернулся и снова ведёт игру."
+            else:
+                q = select(Character).where(Character.seat_id == seat.id, Character.status.in_(HERO))
+                ch = (await s.scalars(q)).first()
+                who = seat.user.name if seat.user else "Игрок"
+                text = f"{who} вернулся и снова ведёт {ch.name}." if ch else f"{who} вернулся."
+            msg = await chat.system_message(s, c, text, game)
             await s.commit()
             seat_id = seat.id
         await publish_message(self.bus, msg)
@@ -312,6 +320,8 @@ class Presence:
                     return  # героя в игре нет: решать нечего
                 hero = ch.name
                 options = [{"id": f"seat:{x.id}", "label": f"Передать {names[x.id]}"} for x in present]
+                if await self._model_ready(s, c):
+                    options.append({"id": "ai_player", "label": "Передать ИИ"})
                 options.append({"id": "pause", "label": "Поставить на паузу"})
             who = seat.user.name
             wait = _setting(c, "vote_timeout_sec", VOTE_SEC)
@@ -359,6 +369,8 @@ class Presence:
             await self._pause(vote.campaign_id, f"Голосование: пауза, пока {vote.who} вне сети.")
         elif outcome == "ai_master":
             await self._ai_master(vote.campaign_id, vote.seat_id)
+        elif outcome == "ai_player":
+            await self._ai_player(vote)
         elif outcome.startswith("seat:"):
             await self._hand_over(vote, outcome.removeprefix("seat:"))
 
@@ -418,6 +430,39 @@ class Presence:
         await publish_message(self.bus, msg)
         await self._publish_stand_in(campaign_id, seat_id, {"ai": True, "name": "ИИ-мастер"})
         self.master.notify(campaign_id)  # ответить на реплики, которые ждали живого мастера
+
+    async def _model_ready(self, s, c: Campaign) -> bool:
+        """Есть модель для ИИ-игрока: профиль по умолчанию в админке или модель ИИ-мастера кампании."""
+        return await default_model_profile(s) is not None or master_seat(c).agent_config_id is not None
+
+    async def _ai_player(self, vote: Vote) -> None:
+        """Героя ушедшего игрока ведёт ИИ, осторожно (раздел 11). Вернётся игрок — место снова его (before_join)."""
+        cid = vote.campaign_id
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            seat = next((x for x in c.seats if x.id == vote.seat_id), None) if c else None
+            game = await chat.active_session(s, cid) if c else None
+            if seat is None or game is None or seat.occupant_type != "human":
+                return
+            if await default_model_profile(s) is not None:
+                agent = await agent_for_master(s, {})
+            else:
+                src = await s.get(AgentConfig, master_seat(c).agent_config_id)
+                agent = AgentConfig(settings={})
+                apply_model(agent, src.provider, src.model, src.temperature, (src.settings or {}).get("api_base"), None)
+            agent.settings = {**(agent.settings or {}), "role": "player"}
+            s.add(agent)
+            await s.flush()
+            seat.occupant_type, seat.delegated_from, seat.agent_config_id = "agent", seat.user_id, agent.id
+            text = f"Пока {vote.who} вне сети, {vote.hero} ведёт ИИ, осторожно."
+            msg = await chat.system_message(s, c, text, game)
+            await s.commit()
+            in_turn = await self._current_seat(s, cid) == vote.seat_id
+        self._covered.add((cid, vote.seat_id))
+        await publish_message(self.bus, msg)
+        await self._publish_stand_in(cid, vote.seat_id, {"ai": True, "name": "ИИ"})
+        if in_turn and self.master.players is not None:
+            self.master.players.combat_turn(cid, vote.seat_id)  # его ход уже идёт: ИИ ходит сразу
 
     async def _give_back(self, campaign_id: str, seat_id: str) -> None:
         async with self.maker() as s:

@@ -74,9 +74,9 @@ export function PartyPanel() {
                 ) : (
                   <span className="block truncate">{title}</span>
                 )}
-                {s.role === "player" && s.user_name && (
+                {s.role === "player" && (s.user_name || s.occupant_type === "agent") && (
                   <span className="block text-xs text-muted">
-                    {s.user_name}
+                    {s.occupant_type === "agent" && !s.stand_in ? "ИИ-игрок" : s.user_name}
                     {h ? ` · ур. ${h.level}` : ""}
                     {acting ? " · ходит" : ""}
                   </span>
@@ -102,6 +102,8 @@ function Away({ seat }: { seat: SeatState }) {
         {seat.user_name} вне сети · {seat.stand_in.user_id === me ? "героя ведёте вы" : `ведёт ${seat.stand_in.name}`}
       </span>
     );
+  if (seat.stand_in?.ai && seat.role === "player")
+    return <span className="block text-xs text-warn">{seat.user_name} вне сети · героя осторожно ведёт ИИ</span>;
   if (seat.occupant_type !== "human") return null;
   if (seat.presence === "reconnecting") return <span className="block text-xs text-warn">Переподключается…</span>;
   return null;

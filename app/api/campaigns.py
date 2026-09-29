@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.agents import memory
@@ -328,6 +329,32 @@ async def kick(campaign_id: str, seat_id: str, user: UserDep, session: SessionDe
     await session.commit()
     await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat_id}), None)
     return await campaign_out(session, v.campaign, user)
+
+
+class SeatAgentIn(BaseModel):
+    model_profile_id: str | None = None
+
+
+@router.post("/campaigns/{campaign_id}/seats/{seat_id}/agent")
+async def seat_agent(
+    campaign_id: str, seat_id: str, body: SeatAgentIn, user: UserDep, session: SessionDep, request: Request
+) -> CampaignOut:
+    """ИИ-игрок на пустое место (этап 9). Героя ему владелец собирает сам: конструктор с ``as_seat``."""
+    v = await _viewer(session, user, campaign_id)
+    await svc.seat_agent(session, v, seat_id, body.model_profile_id)
+    await session.commit()
+    await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat_id}), None)
+    return await campaign_out(session, v.campaign, user)
+
+
+@router.get("/campaigns/{campaign_id}/party-roles")
+async def get_party_roles(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    """Каких ролей не хватает отряду и какие классы их закроют — подсказка перед тем, как сажать ИИ-игрока."""
+    from app.content.catalog import campaign_catalog
+    from app.core.party import party_roles
+
+    v = await _viewer(session, user, campaign_id)
+    return await party_roles(session, v.campaign, await campaign_catalog(session, v.campaign))
 
 
 @router.post("/campaigns/{campaign_id}/seats/take")
