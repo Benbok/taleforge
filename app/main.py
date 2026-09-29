@@ -15,9 +15,23 @@ from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
 from app.agents.player import PlayerAgents
 from app.agents.stt import SpeechToText
-from app.api import admin, auth, campaigns, characters, home, library, models, personas, plan, profile, voice
+from app.api import (
+    admin,
+    auth,
+    campaigns,
+    characters,
+    home,
+    library,
+    models,
+    personas,
+    plan,
+    profile,
+    voice,
+)
+from app.api import audio as audio_api
 from app.api.errors import validation_handler
 from app.config import Settings
+from app.core import audio
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.core.security import hash_password
 from app.db.models import User
@@ -86,6 +100,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
 
     app = FastAPI(title="Taleforge", version="0.3.0", lifespan=lifespan)
     app.state.settings = settings
+    app.state.audio = audio.configure(settings.audio_dir)
 
     for exc, code in ((NotFound, 404), (AccessDenied, 403), (Conflict, 409)):
 
@@ -106,6 +121,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(plan.router)
     app.include_router(profile.router)
     app.include_router(voice.router)
+    app.include_router(audio_api.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")

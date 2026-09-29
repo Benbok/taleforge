@@ -252,6 +252,7 @@ class CampaignPatchIn(BaseModel):
     spend_limit_usd: float | None = Field(default=None, ge=0)
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
+    audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
     brief: BriefIn | None = None
 
 

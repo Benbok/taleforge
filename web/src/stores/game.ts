@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { Connection, GameSocket } from "../lib/socket";
 import type {
+  AudioState,
   ChatMessage,
   EntityCard,
   EntityType,
@@ -44,8 +45,20 @@ interface GameState {
   connectionDetail: string | null;
   snapshot: Omit<
     Snapshot,
-    "messages" | "seats" | "heroes" | "scene" | "actions" | "blocked" | "turn" | "pending" | "reaction" | "summary" | "votes"
+    | "messages"
+    | "seats"
+    | "heroes"
+    | "scene"
+    | "actions"
+    | "blocked"
+    | "turn"
+    | "pending"
+    | "reaction"
+    | "summary"
+    | "votes"
+    | "audio"
   > | null;
+  audio: AudioState | null; // звук сцены: что звучит в каждом слое
   seats: SeatState[];
   heroes: Record<string, HeroPublic>;
   scene: Scene | null;
@@ -103,6 +116,7 @@ const initial = {
   seats: [],
   heroes: {},
   scene: null,
+  audio: null,
   turn: null,
   actions: [],
   blocked: {},
@@ -169,7 +183,7 @@ export const useGame = create<GameState>((set, get) => ({
     const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, actions, blocked, turn, pending, reaction, summary, votes, ...rest } =
+        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, ...rest } =
           p as unknown as Snapshot;
         set((s) => ({
           votes: votes ?? [],
@@ -181,6 +195,7 @@ export const useGame = create<GameState>((set, get) => ({
           seats,
           heroes: Object.fromEntries((heroes ?? []).map((h) => [h.id, h])),
           scene: scene ?? null,
+          audio: audio ?? null,
           turn: turn ?? null,
           actions: actions ?? [],
           blocked: blocked ?? {},
@@ -260,6 +275,11 @@ export const useGame = create<GameState>((set, get) => ({
       case "turn.changed":
         set((s) => ({ turn: (p.turn as Turn) ?? null, scene: s.scene ? { ...s.scene, turn: (p.turn as Turn) ?? null } : s.scene }));
         return;
+      case "audio.state": {
+        const { cues: _cues, ...state } = p as unknown as AudioState;
+        set({ audio: state });
+        return;
+      }
       case "scene.updated":
         set({ scene: p as unknown as Scene, turn: ((p as unknown as Scene).turn as Turn) ?? null });
         return;

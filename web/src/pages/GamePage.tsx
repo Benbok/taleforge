@@ -20,6 +20,7 @@ import PauseOverlay from "../game/PauseOverlay";
 import ReactionPanel from "../game/ReactionPanel";
 import VotePanel from "../game/VotePanel";
 import SessionControls from "../game/SessionControls";
+import SoundControl from "../game/SoundControl";
 import { api } from "../lib/api";
 import { actionOf, STATUS_TEXT, statusOf } from "../lib/cards";
 import type { CampaignCard, HeroSheet, Theme } from "../lib/types";
@@ -139,7 +140,11 @@ export default function GamePage() {
           </span>
         </span>
 
+        <div className="ml-auto flex items-center gap-2 md:hidden">
+          <SoundControl />
+        </div>
         <div className="ml-auto hidden items-center gap-2 md:flex">
+          <SoundControl />
           <SessionControls campaignId={id} />
           {manage && (
             <Link className="btn btn-outline-copper h-8 px-3 text-xs font-mono tracking-wider" to={`/c/${id}/manage`}>

@@ -37,6 +37,7 @@ export interface Room {
     collect_window_sec?: number;
     spend_limit_usd?: number | null;
     excluded_themes?: string[];
+    audio_enabled?: boolean;
     poster?: Poster | null;
     [k: string]: unknown;
   };

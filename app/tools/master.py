@@ -13,7 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import combat
+from app.core import audio, combat
 from app.core.campaigns import master_seat
 from app.core.world import PLAYABLE, ZONE_FT, ZONE_NAMES, Actor, WorldError, format_time, lineage_features
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem, Knowledge, KnownFact
@@ -1011,8 +1011,10 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         for f in ("mode", "round", "turn_order", "state")
     ]
     if a.mode == "free":
+        won = sc.mode == "combat" and bool(combat._heroes_standing(ctx)) and not combat._hostiles_left(ctx)
         sc.mode, sc.round, sc.turn_order = "free", 0, []
         combat.end_combat(ctx)
+        audio.on_mode(ctx, "free", victory=won)
         await ctx.record("set_scene_mode", payload={"mode": "free"}, inverse=inverse)
         return {"mode": "free"}
     ids = a.participants
@@ -1036,6 +1038,7 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     sc.mode, sc.round = "combat", 1
     sc.turn_order = [{"id": i, "initiative": totals[i]} for i in order]
     combat.start_combat(ctx)
+    audio.on_mode(ctx, "combat")
     names = [f"{ctx.world.actor(i).name} ({totals[i]})" for i in order]
     await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
     return {"mode": "combat", "round": 1, "initiative": names}

@@ -32,7 +32,7 @@ from app.agents import character, memory, rhythm
 from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
-from app.core import bonds, combat, persona, plot
+from app.core import audio, bonds, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
@@ -55,6 +55,7 @@ from app.db.models import (
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import plot as plot_tools
+from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
@@ -76,10 +77,12 @@ DECISION_TOOLS = [n for n in REGISTRY if n != "review_character"]
 
 
 def decision_tools(ctx: ToolContext) -> list[str]:
-    """Инструменты фазы решения. Инструменты сюжета — только когда у кампании есть каркас."""
-    if plot.has_plan(ctx.world.plot):
-        return DECISION_TOOLS
-    return [n for n in DECISION_TOOLS if n not in plot_tools.PLOT_TOOLS]
+    """Инструменты фазы решения. Инструменты сюжета — только когда у кампании есть каркас, звука — когда владелец
+    включил его и библиотека не пуста."""
+    off = set() if plot.has_plan(ctx.world.plot) else set(plot_tools.PLOT_TOOLS)
+    if not audio.enabled(ctx.campaign):
+        off |= set(AUDIO_TOOLS)
+    return [n for n in DECISION_TOOLS if n not in off]
 
 
 _env = jinja2.Environment(
@@ -535,7 +538,8 @@ class MasterService:
                     if call.name in ROLL_TOOLS:
                         await self._status(cid, "rolling")
                     result = await execute(ctx, call.name, call.arguments, key=f"{turn_id}:{call.id}")
-                    done_calls += 1
+                    if call.name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
+                        done_calls += 1
                 trace_calls.append({"tool": call.name, "args": call.arguments, "result": result})
                 msgs.append(
                     {
@@ -692,6 +696,7 @@ class MasterService:
             pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
+            audio=audio.prompt_block(c, ctx.world.scene),
         )
 
     # --- память (раздел 9) ---

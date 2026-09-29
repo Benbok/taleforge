@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { VoiceData } from "../lib/types";
 import { useGame } from "../stores/game";
+import { sound } from "./sound";
 import { clock, voiceUrl } from "./voice";
 
 /** Плеер голосовой реплики: живой голос автора. Играет только по нажатию — без какофонии за столом. */
@@ -11,7 +12,20 @@ export default function VoiceClip({ clip }: { clip: VoiceData }) {
   const [error, setError] = useState<string | null>(null);
   const [pos, setPos] = useState(0);
 
-  useEffect(() => () => audio.current?.pause(), []);
+  const ducking = useRef(false);
+  // пока звучит голос игрока, музыка сцены тише
+  const duck = (on: boolean) => {
+    if (ducking.current === on) return;
+    ducking.current = on;
+    sound.duck(on);
+  };
+  useEffect(
+    () => () => {
+      audio.current?.pause();
+      if (ducking.current) sound.duck(false);
+    },
+    [],
+  );
 
   async function toggle() {
     if (state === "playing") {
@@ -25,12 +39,19 @@ export default function VoiceClip({ clip }: { clip: VoiceData }) {
         setState("loading");
         const a = new Audio(await voiceUrl(campaignId, clip.id));
         a.ontimeupdate = () => setPos(a.currentTime);
-        a.onpause = () => setState("idle");
+        a.onpause = () => {
+          setState("idle");
+          duck(false);
+        };
         a.onended = () => {
           setState("idle");
           setPos(0);
+          duck(false);
         };
-        a.onplay = () => setState("playing");
+        a.onplay = () => {
+          setState("playing");
+          duck(true);
+        };
         audio.current = a;
       }
       await audio.current.play();
