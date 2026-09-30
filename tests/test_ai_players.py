@@ -109,22 +109,18 @@ def test_ai_player_answers_once_after_master(game_client, admin_g, settings, llm
         assert ai["occupant_type"] == "agent" and ai["stand_in"] is None
         whisper(settings, cid, me)
         llm.replies += [
-            DONE,
-            DONE,
-            {"text": "Тоннель уходит вниз."},
             {"text": "«Я пойду первым», — говорит Торин и зажигает факел."},
             DONE,
             DONE,
             {"text": "Факел выхватывает из тьмы ступени."},
         ]
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран осматривается"}})
-        assert narration(ws).endswith("Тоннель уходит вниз.")
         for _ in range(40):
             m = next_of(ws, "message.new")["payload"]
             if m["seat_id"] == seat:
                 break
         assert m["content"].startswith("Я пойду первым") and m["data"] == {"ai": True} and m["author"] is None
-        # мастер отвечает и ИИ-игроку, но на ответ ИИ-игроку агенты уже не откликаются: нет разговора по кругу
+        # мастер отвечает на действия всей партии одним повествованием
         assert narration(ws).endswith("ступени.")
         game_client.portal.call(game_client.app.state.master.wait_idle, cid)
     assert llm.replies == []
@@ -194,18 +190,16 @@ def test_vote_hands_hero_to_ai_and_back(game_client, admin_g, settings, llm):
         assert seat.occupant_type == "agent" and seat.delegated_from and seat.agent_config_id
 
         # ИИ ведёт Брана осторожно: в подсказке модели пометка
-        llm.replies += [DONE, DONE, {"text": "Коридор пуст."}, {"text": "Бран держится позади отряда."}]
+        llm.replies += [{"text": "Бран держится позади отряда."}, DONE, DONE, {"text": "Коридор пуст."}]
         w2.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Торин идёт вперёд"}})
-        assert narration(w2).endswith("Коридор пуст.")
         for _ in range(40):
             m = next_of(w2, "message.new")["payload"]
             if m["seat_id"] == arag:
                 break
         assert m["content"] == "Бран держится позади отряда."
+        assert narration(w2).endswith("Коридор пуст.")
         ask = next(r for r in llm.requests if r["messages"][0]["content"].startswith("Ты — игрок"))
         assert "осторожно" in ask["messages"][0]["content"]
-        llm.replies += [DONE, DONE, {"text": "Бран отступает."}]
-        narration(w2)
         game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
 
         # Арагорн вернулся: место снова его

@@ -135,11 +135,21 @@ class MasterService:
     """Очередь ходов ИИ-мастера по кампаниям. Один ход кампании за раз; реплики, пришедшие во время хода,
     уходят в следующий пакет."""
 
-    def __init__(self, sessionmaker: async_sessionmaker, bus, llm: LLM, dice_factory=Dice):
+    def __init__(
+        self,
+        sessionmaker: async_sessionmaker,
+        bus,
+        llm: LLM,
+        dice_factory=Dice,
+        media_dir: Path | None = None,
+        tts: Any = None,
+    ):
         self.maker = sessionmaker
         self.bus = bus
         self.llm = llm
         self.dice_factory = dice_factory
+        self.media_dir = media_dir
+        self.tts = tts
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._locks: dict[str, asyncio.Lock] = {}
@@ -314,7 +324,7 @@ class MasterService:
             }
             if self.presence is not None:
                 players -= self.presence.away(cid)  # ушедшего игрока не ждём
-            players -= agents  # ИИ-игрок отвечает после мастера, его реплику не ждём
+            players -= agents  # живые игроки закрывают окно сбора; ИИ ходит синхронно перед мастером
             wrote = {m.seat_id for m in new}
             if players and players <= wrote:
                 return 0
@@ -334,6 +344,8 @@ class MasterService:
     async def run_turn(self, cid: str) -> str | None:
         lock = self._locks.setdefault(cid, asyncio.Lock())
         async with lock:
+            if self.players is not None:
+                await self.players.take_turns(cid)
             return await self._run_turn(cid)
 
     async def _run_turn(self, cid: str) -> str | None:
@@ -389,8 +401,8 @@ class MasterService:
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
-            if human:
-                self.wake_players(cid)
+            if self.players is not None:
+                self.players.reset_round(cid)
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
@@ -435,7 +447,7 @@ class MasterService:
                 messages,
                 model=model,
                 tools=tools,
-                max_tokens=4096 if tools else 2048,
+                max_tokens=8192,
                 temperature=0.2 if purpose == "decide" else cfg.temperature,
                 api_base=(cfg.settings or {}).get("api_base"),
             )
@@ -613,14 +625,32 @@ class MasterService:
             calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
         )
 
+        tts_task = None
+        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None):
+            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, narration))
+
         whispers = await flush_outbox(s, ctx)
+        linked = await link_text(s, cid, narration)
+
+        voice_data = None
+        if tts_task is not None:
+            try:
+                voice_data = await tts_task
+            except Exception:
+                log.exception("ошибка генерации озвучки мастера")
+
+        msg_data: dict[str, Any] = {}
+        if voice_data:
+            msg_data["voice"] = voice_data
+
         msg = Message(
             campaign_id=cid,
             session_id=ctx.game_session_id,
             seq=await next_seq(s, cid),
             seat_id=seat.id,
             kind="narration",
-            content=await link_text(s, cid, narration),
+            content=linked,
+            data=msg_data or None,
         )
         s.add(msg)
         await s.flush()
@@ -688,6 +718,10 @@ class MasterService:
             return m.group(2)
 
         text = MARKUP.sub(strip, text)
+        # Очистка от случайных вызовов инструментов в тексте мастера (например, set_soundscape {...})
+        text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
+        # Очистка от оборванного незакрытого тега разметки в конце текста
+        text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
         return text or "…", audit
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
@@ -865,7 +899,7 @@ class MasterService:
                 reply = await self.llm.complete(
                     [{"role": "system", "content": CATCH_UP_SYSTEM}, {"role": "user", "content": "\n".join(lines)}],
                     model=model,
-                    max_tokens=600,
+                    max_tokens=1500,
                     temperature=0.2,
                     api_base=api_base,
                 )
@@ -963,7 +997,7 @@ class MasterService:
             ],
             model=model,
             tools=[intents.tool_spec(values)],
-            max_tokens=800,
+            max_tokens=1500,
             temperature=0.0,
             api_base=api_base,
         )
@@ -1377,6 +1411,8 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
 def _render_results(ctx: ToolContext) -> str:
     out = []
     for ev in ctx.events:
+        if ev.tool in AUDIO_TOOLS:
+            continue
         res = ev.payload.get("result", ev.payload)
         if ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock":
             mark = " [СЮЖЕТ: только для мастера, прямо не называй]"

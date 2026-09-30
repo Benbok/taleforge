@@ -62,11 +62,38 @@ class PlayerAgents:
         self.master = master
         self._busy: set[tuple[str, str]] = set()
         self._tasks: set[asyncio.Task] = set()
+        self._passed: dict[str, set[str]] = {}
+
+    def passed_seats(self, cid: str) -> set[str]:
+        return set(self._passed.get(cid, set()))
+
+    def reset_round(self, cid: str) -> None:
+        self._passed.pop(cid, None)
 
     # --- когда говорить ---
 
+    async def take_turns(self, cid: str) -> list[str]:
+        """Перед ходом мастера вне боя: дать ИИ-сопартийцам заявить действие в текущий раунд."""
+        async with self.master.maker() as s:
+            c = await s.get(Campaign, cid)
+            sc = await get_scene(s, cid) if c is not None else None
+            if c is None or sc is None or sc.mode == "combat":
+                return []
+            from app.agents.master import _new_player_messages
+            new = await _new_player_messages(s, c)
+            if not new:
+                return []
+            wrote = {m.seat_id for m in new}
+            seats = [x.id for x in c.seats if is_agent_player(x) and x.id not in wrote]
+        posted = []
+        for seat_id in seats:
+            msg_id = await self.speak(cid, seat_id, combat_turn=False)
+            if msg_id:
+                posted.append(msg_id)
+        return posted
+
     def after_narration(self, cid: str) -> None:
-        """Мастер ответил живому игроку: каждый ИИ-игрок может откликнуться одной репликой."""
+        """Совместимость: живой мастер описал сцену вручную."""
         self._spawn(self._answer_all(cid))
 
     async def _answer_all(self, cid: str) -> None:
@@ -111,6 +138,8 @@ class PlayerAgents:
         try:
             prompt = await self._prompt(cid, seat_id, combat_turn)
             if prompt is None:
+                if not combat_turn:
+                    self._passed.setdefault(cid, set()).add(seat_id)
                 return None
             system, user, cfg_model, api_base, careful = prompt
             text = await self._ask(cid, seat_id, system, user, cfg_model, api_base)
@@ -183,7 +212,7 @@ class PlayerAgents:
             reply = await self.master.llm.complete(
                 [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 model=model,
-                max_tokens=400,
+                max_tokens=2500,
                 temperature=0.9,
                 api_base=api_base,
             )
@@ -259,6 +288,6 @@ def _render(ch, sheet, last, rows, chars, place, here, combat_turn: bool) -> str
     lines.append(
         "Сейчас бой, и это ход твоего героя: заяви одно действие на ход."
         if combat_turn
-        else "Мастер только что ответил. Что делает или говорит твой герой?"
+        else "Игроки заявляют свои действия мастеру. Что делает или говорит твой герой?"
     )
     return "\n".join(lines)
