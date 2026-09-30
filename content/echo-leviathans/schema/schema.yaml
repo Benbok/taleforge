@@ -48,6 +48,8 @@ kinds:
   price_index: {required: [rules]}
   creature_template: {required: [cr]}
   encounter_table: {required: [dice, rows]}
+  event_table: {required: [dice, rows]}
+  standing_table: {required: [faction_ref]}
   faction: {required: [goal]}
   location_template: {required: [belt]}
   lore_fact: {required: [text, knowledge]}

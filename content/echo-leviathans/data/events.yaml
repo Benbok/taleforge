@@ -1,0 +1,256 @@
+# Таблицы случайных событий (инструмент мастера roll_fortune и проверка по расписанию места).
+# Исход бывает любым: tone — boon (удача), bane (беда), twist (поворот: и то и другое, решают герои).
+# Механика строки — только ссылками: check {stat, kind, dc_ref, success, failure} → roll_check; hazard_ref → apply_hazard;
+# effect_ref → apply_effect; creature_refs + count → spawn_entity (бюджет встречи); item_refs + qty — сервер кладёт в сцену;
+# loot_ref — бросок по таблице добычи. Числа — только из dc_scale и шаблонов. Живые дети — никогда не враги.
+# role: find_catch — подвох находки: сервер бросает её сам после каждой находки.
+kind: event_table
+items:
+- id: event.road
+  name: В пути
+  description: 'Дорога между городами и тушами: старые земли, насыпи железных дорог, тропы контрабанды.'
+  status: proposal
+  doc: rules.md#6
+  tags: [events, travel]
+  belt: any
+  dice: 1d12
+  rows:
+  - roll: '1'
+    name: Обвал насыпи
+    tone: bane
+    text: Путь размыт или засыпан; обход крадёт полдня, а кто полезет напрямик — рискует.
+    check: {stat: athletics, dc_ref: dc.medium, success: прошли напрямик, failure: сорвались — падение и потерянное время}
+  - roll: '2'
+    name: Туман с налёта
+    tone: bane
+    text: Туман над поглощённой провинцией; компас врёт, колокольцы звенят сами.
+    check: {stat: survival, dc_ref: dc.medium, success: держат направление, failure: заблудились}
+    effect_ref: effect.lost_direction
+  - roll: '3'
+    name: Засада контрабандистов
+    tone: bane
+    text: На тропе ждут не их, но свидетели контрабандистам не нужны.
+    creature_refs: [creature.smuggler]
+    count: 1d4 + 1
+    hostile: true
+  - roll: '4'
+    name: Брошенный обоз
+    tone: twist
+    text: Опрокинутая телега, следы борьбы, груз наполовину цел. Кто-то за ним вернётся.
+    loot_ref: loot_table.tier1_syndicate
+  - roll: '5'
+    name: Раненый путник
+    tone: twist
+    text: Путник в крови просит помочь. Правда ли он тот, за кого себя выдаёт — решит проницательность.
+    creature_refs: [creature.stalker]
+    count: '1'
+    hostile: false
+    check: {stat: insight, dc_ref: dc.medium, success: видно, что он скрывает, failure: верят на слово}
+  - roll: '6'
+    name: Попутный поезд
+    tone: boon
+    text: Состав Кострищевых встал на заправку; машинист готов подвезти за услугу или за плату.
+  - roll: '7'
+    name: Тихий налёт под ногами
+    tone: bane
+    text: Почва мертва, под ней спит налёт. Шум или кровь — и он проснётся.
+    hazard_ref: hazard.blight
+  - roll: '8'
+    name: Окраинцы с колокольцем
+    tone: twist
+    text: Деревенские проверяют чужаков звоном. Кто ведёт себя «слишком спокойно» — под подозрением.
+    creature_refs: [creature.crowd_commoner]
+    count: 2d4
+    hostile: false
+    check: {stat: persuasion, dc_ref: dc.easy, success: пускают к огню и делятся слухами, failure: гонят прочь с угрозами}
+  - roll: '9'
+    name: Тайник проводника
+    tone: boon
+    text: Зарубка на столбе — знак сталкеров. Под камнем запас на чёрный день.
+    item_refs: [item.blood_serum, item.fat_lamp]
+    qty: [1, 1]
+  - roll: '10'
+    name: Патруль Кордона
+    tone: twist
+    text: Разведчики Кордона проверяют пробой звоном. Помогут тем, кому верят, и задержат подозрительных.
+    creature_refs: [creature.cordon_scout]
+    count: 1d3
+    hostile: false
+  - roll: '11'
+    name: Стая
+    tone: bane
+    text: Одиночки роя вышли на запах.
+    creature_refs: [creature.brood_hound]
+    count: 1d3
+    hostile: true
+  - roll: '12'
+    name: Старая плита из эхолита
+    tone: twist
+    text: Храмовая плита у дороги поёт на ветру. Кто прислушается — узнает слух, кто задержится — рискует.
+    check: {stat: wis, kind: save, dc_ref: dc.corruption_light, success: услышали и ушли, failure: голос зацепился}
+
+- id: event.carcass
+  name: В недрах туши
+  description: Жилы, полости и шахты живых туш. Туша шевелится, когда добыча стихает.
+  status: proposal
+  doc: locations.md#1; rules.md#3.1
+  tags: [events, carcass]
+  belt: carcass
+  dice: 1d10
+  rows:
+  - roll: '1'
+    name: Туша вздрогнула
+    tone: bane
+    text: Стенки полости сжимаются; кто замешкается, того придавит.
+    check: {stat: dex, kind: save, dc_ref: dc.medium, success: успели проскочить, failure: зажало — урон и потерянное снаряжение}
+  - roll: '2'
+    name: Карман газа
+    tone: bane
+    text: Прорыв гнилостной полости.
+    hazard_ref: hazard.corpse_gas
+  - roll: '3'
+    name: Гнездо паразитов
+    tone: bane
+    text: Шорох в стенках — нитевики чуют тепло.
+    hazard_ref: hazard.parasite_nest
+  - roll: '4'
+    name: Санитары на обходе
+    tone: bane
+    text: Бортовые организмы вычищают чужое. Шум их привлечёт, тишина — пропустит.
+    creature_refs: [creature.organism_sanitar]
+    count: 1d4
+    hostile: true
+    check: {stat: stealth, dc_ref: dc.medium, success: санитары прошли мимо, failure: заметили}
+  - roll: '5'
+    name: Забытая смена
+    tone: twist
+    text: Выработка, брошенная в спешке. Инструменты, пайки — и чьи-то следы, ведущие глубже.
+    loot_ref: loot_table.tier1_carcass
+  - roll: '6'
+    name: Беглый ребёнок
+    tone: twist
+    text: Ребёнок-шахтёр прячется от надсмотрщиков. Помочь ему — значит нажить врага в Синдикате.
+    creature_refs: [creature.child_runaway]
+    count: '1'
+    hostile: false
+  - roll: '7'
+    name: Жила ликвора
+    tone: boon
+    text: Тонкая жилка ликвора пробилась к стене. Взять можно — если никто не видит.
+    item_refs: [item.liquor_drop]
+    qty: [1d2]
+  - roll: '8'
+    name: Эхо в рубке
+    tone: twist
+    text: Сквозь хрящ доносится ритм — то ли пульс, то ли речь. Слушателям Гильдии это было бы интересно.
+    check: {stat: investigation, dc_ref: dc.hard, success: поняли, откуда звук, failure: только тревога}
+  - roll: '9'
+    name: Кровяная медуза
+    tone: bane
+    text: В затопленной жиле медуза ждёт у выхода.
+    creature_refs: [creature.organism_blood_jelly_small]
+    count: '1'
+    hostile: true
+  - roll: '10'
+    name: Надсмотрщик с людьми
+    tone: twist
+    text: Надсмотрщик ищет пропавших работников и не любит чужих в своей шахте.
+    creature_refs: [creature.mine_overseer]
+    count: '1'
+    hostile: false
+
+- id: event.city
+  name: В городе Синдикатов
+  description: Города на спинах туш, слободы, биржи, приходы.
+  status: proposal
+  doc: canon.md#7; locations.md#2
+  tags: [events, city, middle_belt]
+  belt: middle_belt
+  dice: 1d10
+  rows:
+  - roll: '1'
+    name: Карманник
+    tone: bane
+    text: В толчее кто-то тянется к поясу героя.
+    check: {stat: perception, dc_ref: dc.medium, success: схватили за руку, failure: кошелёк или вещь пропала}
+  - roll: '2'
+    name: Облава
+    tone: bane
+    text: Стража Дома проверяет пропуска и маски; у кого бумаги не в порядке — в участок или взятка.
+    creature_refs: [creature.syndicate_guard]
+    count: 1d4 + 1
+    hostile: false
+    check: {stat: persuasion, dc_ref: dc.medium, success: отпустили, failure: задержание или взятка}
+  - roll: '3'
+    name: Листовки подполья
+    tone: twist
+    text: Мальчишка суёт листовку и убегает; за ним уже бегут стражники.
+  - roll: '4'
+    name: Благодарный лавочник
+    tone: boon
+    text: Лавочник узнаёт героев по слухам и предлагает товар со скидкой — или просит о небольшой услуге.
+  - roll: '5'
+    name: Громилы слобод
+    tone: bane
+    text: В узком переулке отряду предлагают заплатить «за проход».
+    creature_refs: [creature.slum_thug]
+    count: 1d3
+    hostile: true
+  - roll: '6'
+    name: Слух на бирже
+    tone: boon
+    text: Цены прыгнули — кто-то знает больше. Разговорить маклера — узнать, что случилось.
+    check: {stat: persuasion, dc_ref: dc.medium, success: слух о событии в мире, failure: только сплетни}
+  - roll: '7'
+    name: Проповедь на площади
+    tone: twist
+    text: Жрец Исполинов раздаёт причастие; толпа не любит, когда отказываются.
+    creature_refs: [creature.church_priest]
+    count: '1'
+    hostile: false
+  - roll: '8'
+    name: Кровавый бой в яме
+    tone: twist
+    text: Зазывала ищет бойцов; награда хороша, а бой честен не всегда.
+    creature_refs: [creature.pit_fighter]
+    count: '1'
+    hostile: false
+  - roll: '9'
+    name: Потерянный пакет
+    tone: twist
+    text: Курьер Дома уронил пакет. Вернуть — благодарность Дома, вскрыть — их тайна и их гнев.
+    loot_ref: loot_table.tier1_syndicate
+  - roll: '10'
+    name: Приступ Перемены
+    tone: bane
+    text: Прохожий бьётся в судорогах; толпа кричит «скрытый!» и хватается за камни.
+    check: {stat: medicine, dc_ref: dc.medium, success: спасли человека и успокоили толпу, failure: толпа растерзает его и ищет сообщников}
+
+- id: event.find_catch
+  name: Подвох находки
+  description: 'Бросается после каждой находки: у всякой вещи есть прошлое.'
+  status: proposal
+  doc: items.md#7
+  tags: [events, find]
+  role: find_catch
+  belt: any
+  dice: 1d6
+  rows:
+  - roll: 1-3
+    name: Чисто
+    tone: boon
+    text: Находка как находка.
+  - roll: '4'
+    name: Хозяин ищет
+    tone: twist
+    text: Вещь кто-то ищет — владелец, его люди или его фракция. Вернуть — благодарность, оставить — ответ.
+  - roll: '5'
+    name: Ловушка
+    tone: bane
+    text: Тайник с сюрпризом — растяжка, игла, капкан.
+    check: {stat: dex, kind: save, dc_ref: dc.medium, success: успели отдёрнуть руку, failure: ловушка сработала}
+  - roll: '6'
+    name: Заражено
+    tone: bane
+    text: Находка в крови туши или роя.
+    hazard_ref: hazard.infected_blood

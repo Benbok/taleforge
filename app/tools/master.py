@@ -246,6 +246,7 @@ class CheckArgs(BaseModel):
         description="id записи шкалы сложностей (dc.*) или id сущности, у которой сложность задана в шаблоне"
     )
     reason: str = Field(description="что проверяется, для журнала")
+    inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
 
 
 @tool(
@@ -267,6 +268,9 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         bonus, ability = act.ability_check_bonus(a.stat)
     mode, reasons = mod.roll_mode(act.modifiers, a.kind, ability, a.stat if a.stat in SKILLS else None)
     auto = mod.save_auto_fail(act.modifiers, ability) if a.kind == "save" else None
+    spent = _inspire(ctx, act, a.inspiration, mode, reasons)
+    if spent:
+        mode, reasons, spent = spent
     res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode)
     success = res.success and auto is None
     hidden = a.kind == "check" and a.stat in _hidden_skills(ctx)
@@ -284,14 +288,33 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         result["reasons"] = reasons
     if auto:
         result["auto_fail"] = auto
+    if spent:
+        result["inspiration_spent"] = True
     await ctx.record(
         "roll_check",
         actor_id=act.id,
         payload={"reason": a.reason, **result},
         dice=[dice_json(res.roll)],
         hidden=hidden,
+        inverse=spent or [],
     )
     return result
+
+
+def _inspire(ctx: ToolContext, act: Actor, use: bool, mode, reasons: list) -> tuple | None:
+    """Вдохновение героя (SRD): преимущество на этот бросок. None — не тратится."""
+    if not use:
+        return None
+    from app.core.standing import StandingError, spend_inspiration
+
+    if not isinstance(act.obj, Character):
+        raise ToolError("вдохновение бывает только у героев")
+    try:
+        out = spend_inspiration(act.obj, mode, list(reasons))
+    except StandingError as e:
+        raise ToolError(str(e)) from e
+    ctx.changed.add(act.id)
+    return out
 
 
 def _difficulty(ctx: ToolContext, ref: str) -> int:
@@ -316,6 +339,7 @@ class AttackArgs(BaseModel):
     attacker_id: str = Field(description="атакующий: персонаж или существо")
     target_id: str
     attack: str = Field(description="ключ атаки из листа: id предмета инвентаря, ключ оружия или действия существа")
+    inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
 
 
 @tool(
@@ -365,7 +389,11 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальняя атака вплотную к врагу")
     target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
-    roll = engine.attack(ctx.dice, int(weapon["attack_bonus"]) + am.bonus, target_ac, am.mode)
+    mode, am_reasons = am.mode, list(am.reasons)
+    spent = _inspire(ctx, att, a.inspiration, mode, am_reasons)
+    if spent:
+        mode, am_reasons, spent = spent
+    roll = engine.attack(ctx.dice, int(weapon["attack_bonus"]) + am.bonus, target_ac, mode)
     critical = roll.critical or (roll.hit and am.auto_crit)
     result: dict = {
         "attacker": att.name,
@@ -376,14 +404,16 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         "target_ac": target_ac,
         "hit": roll.hit,
         "critical": critical,
-        "mode": str(am.mode),
+        "mode": str(mode),
     }
-    if am.reasons:
-        result["reasons"] = list(am.reasons)
+    if am_reasons:
+        result["reasons"] = am_reasons
+    if spent:
+        result["inspiration_spent"] = True
     if COVER_AC.get(cover):
         result["cover"] = f"+{COVER_AC[cover]} к КД за укрытие"
     dice = [dice_json(roll.roll)]
-    inverse = [snapshot(tgt)]
+    inverse = [snapshot(tgt), *(spent or [])]
     if roll.hit:
         o, droll = fx.damage_to(tgt, weapon["damage"], weapon["damage_type"], critical, ctx.dice)
         dice.append(droll)

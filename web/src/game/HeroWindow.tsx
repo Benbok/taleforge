@@ -352,6 +352,11 @@ export default function HeroWindow() {
               {[sheet.origin_name, sheet.class_name, `${sheet.level} уровень`].filter(Boolean).join(" · ")}
             </p>
             <Xp h={sheet} />
+            {sheet.resources.inspiration && (
+              <p className="text-xs text-accent" title="Награда мастера за яркую игру. Попроси мастера потратить её, и следующий бросок атаки, проверки или спасброска будет с преимуществом.">
+                ✦ Вдохновение: преимущество на один бросок
+              </p>
+            )}
             {sheet.lineage && (
               <p className="text-sm" title={sheet.lineage.features.join(", ")}>
                 {sheet.lineage.name}

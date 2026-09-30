@@ -182,8 +182,11 @@ async def patch_campaign(
         "excluded_themes",
         "audio_enabled",
         "leveling",
+        "random_events",
     ):
-        if key in body.model_fields_set and (key != "leveling" or body.leveling is not None):
+        if key in body.model_fields_set and (
+            key not in ("leveling", "random_events") or getattr(body, key) is not None
+        ):
             settings[key] = getattr(body, key)
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     c.settings = settings
