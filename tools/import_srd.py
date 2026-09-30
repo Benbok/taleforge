@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.rules.dice import DiceError, parse  # noqa: E402
 from app.rules.dnd5e.tables import CONDITIONS, DAMAGE_TYPES, SKILLS  # noqa: E402
+from tools.srd_blurbs import CLASS_BLURBS, RACE_BLURBS  # noqa: E402
 
 SHA = "bce51b3958573819e3b842fbc0cd9524fe4bc2e1"
 BASE_URL = f"https://raw.githubusercontent.com/5e-bits/5e-database/{SHA}/src/2014/en/"
@@ -1004,6 +1005,7 @@ CLASSES_HEADER = """\
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
 # martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
+# epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 """
 
 
@@ -1024,6 +1026,7 @@ def build_classes(raw: dict[str, Any]) -> list[dict]:
         rec = {
             "id": f"class.{snake(ci)}",
             "name": CLASS_RU[ci],
+            **CLASS_BLURBS.get(ci, {}),
             "status": "canon",
             "doc": "SRD 5.1: Classes",
             "tags": ["class", "srd"],
@@ -1081,6 +1084,7 @@ RACES_HEADER = """\
 # languages — английские названия; languages_choose — сколько языков выбрать дополнительно.
 # proficiencies: skills / weapons (id пакета) / tools, *_choose — выбор. darkvision — футы.
 # features — черты расы (английский текст SRD); options — варианты выбора (драконье происхождение).
+# epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 """
 
 
@@ -1183,6 +1187,7 @@ def build_races(raw: dict[str, Any]) -> list[dict]:
         rec = {
             "id": rid,
             "name": ru,
+            **RACE_BLURBS.get(key, {}),
             "status": "canon",
             "doc": "SRD 5.1: Races",
             "tags": ["race", "srd"],

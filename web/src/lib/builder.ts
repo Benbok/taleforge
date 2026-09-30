@@ -10,12 +10,23 @@ export interface EquipPart {
   other?: string;
 }
 
-export interface ClassOption {
+/** Тексты карточки из пакета мира: строка под именем, метка, коротко и главные особенности. */
+export interface CardTexts {
+  epithet?: string;
+  badge?: string;
+  summary?: string;
+  highlights?: string[];
+}
+
+export interface ClassOption extends CardTexts {
   id: string;
   name: string;
   description: string;
   hit_die: number | null;
   saving_throws: string[];
+  proficiencies?: { armor?: string[]; weapons?: string[]; tools?: string[] };
+  spellcasting_ability?: string | null;
+  subclasses?: { name: string; description: string }[];
   skills_choose: { count?: number; from?: string[] };
   equipment_fixed: { item: string; name?: string; qty?: number }[];
   equipment_choices: EquipPart[][][];
@@ -28,10 +39,14 @@ export interface AbilityGroup {
   distinct_from_prior: boolean;
 }
 
-export interface OriginOption {
+export interface OriginOption extends CardTexts {
   id: string;
   name: string;
   description: string;
+  traits?: { name: string; description: string }[];
+  size?: string | null;
+  darkvision?: number | null;
+  proficiencies?: { skills?: string[]; skills_choose?: { count?: number }; tools?: string[] };
   ability_bonuses: Record<string, number>;
   /** Прибавки на выбор игрока, по порядку; distinct_from_prior — не туда, куда уже выбрано раньше. */
   ability_groups: AbilityGroup[];

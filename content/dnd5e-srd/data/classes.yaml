@@ -6,6 +6,7 @@
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
 # martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
+# epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 # This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the
 # Coast LLC, licensed under CC BY 4.0. Данные: 5e-bits/5e-database, коммит bce51b3958573819e3b842fbc0cd9524fe4bc2e1.
 # Файл сгенерирован tools/import_srd.py — не править руками, правьте генератор.
@@ -13,6 +14,15 @@ kind: class
 items:
   - id: class.barbarian
     name: Варвар
+    epithet: Ярость в чистом виде
+    badge: Ближний бой
+    summary: 'Самый живучий боец: входит в ярость, бьёт сильнее и держит удар без доспехов.'
+    description: Варвар полагается на силу, чутьё и ярость. У него самая большая кость хитов, и он лучше всех стоит в первой линии, принимая удары на себя.
+    highlights:
+    - 'Ярость: бонусным действием — преимущество на проверки и спасброски Силы, добавочный урон и сопротивление дробящему, колющему и рубящему урону'
+    - 'Защита без доспехов: КД = 10 + Ловкость + Телосложение'
+    - 'Безрассудная атака (2 ур.): преимущество на свои атаки ценой преимущества врагам'
+    - 'Путь дикости (3 ур.): Берсерк и другие пути'
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -238,6 +248,15 @@ items:
       description: At 20th level, you embody the power of the wilds. Your Strength and Constitution scores increase by 4. Your maximum for those scores is now 24.
   - id: class.bard
     name: Бард
+    epithet: Магия слова и песни
+    badge: Поддержка
+    summary: 'Заклинатель на Харизме: вдохновляет союзников, лечит, очаровывает и знает понемногу обо всём.'
+    description: Бард творит магию музыкой и словом. Он хорош в разговоре, знает больше навыков, чем кто-либо, и поддерживает отряд заклинаниями и вдохновением.
+    highlights:
+    - 'Заклинания на Харизме: лечение, очарование, иллюзии'
+    - 'Вдохновение барда: союзник добавляет кость к броску'
+    - 'Мастер на все руки (2 ур.): половина бонуса мастерства ко всем проверкам без владения'
+    - Три навыка на выбор из любых
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -647,6 +666,15 @@ items:
       description: At 20th level, when you roll initiative and have no uses of Bardic Inspiration left, you regain one use.
   - id: class.cleric
     name: Жрец
+    epithet: Проводник божественной силы
+    badge: Лекарь
+    summary: 'Заклинатель на Мудрости в тяжёлой броне: лечит, защищает и изгоняет нежить.'
+    description: 'Жрец получает силу от своего божества. Он главный лекарь отряда, но может и воевать: носит средние доспехи и щит, а домен добавляет свои умения.'
+    highlights:
+    - Заклинания на Мудрости, готовятся каждый день из всего списка
+    - 'Божественный домен (1 ур.): определяет умения и броню'
+    - 'Божественный канал (2 ур.): изгнание нежити и умение домена'
+    - Средние доспехи и щит
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -959,6 +987,15 @@ items:
       description: At 20th level, your call for intervention succeeds automatically, no roll required.
   - id: class.druid
     name: Друид
+    epithet: Хранитель природы
+    badge: Облик зверя
+    summary: Заклинатель на Мудрости, который управляет природой и превращается в зверей.
+    description: 'Друид черпает силу из природы: вызывает стихии, лечит и оборачивается животным, получая его тело и хиты.'
+    highlights:
+    - Заклинания на Мудрости, готовятся каждый день
+    - 'Дикий облик (2 ур.): превращение в зверя со своими хитами'
+    - Друидический язык
+    - Не носит металлических доспехов
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -1231,6 +1268,15 @@ items:
         Additionally, you can ignore the verbal and somatic components of your druid spells, as well as any material components that lack a cost and aren't consumed by a spell. You gain this benefit in both your normal shape and your beast shape from Wild Shape.
   - id: class.fighter
     name: Воин
+    epithet: Мастер оружия
+    badge: Универсальный боец
+    summary: Владеет любым оружием и доспехами, атакует чаще всех и быстро приходит в себя.
+    description: 'Воин — профессионал боя. Он надёжен в любой роли: танк в латах, лучник или дуэлянт, и больше всех получает атак и увеличений характеристик.'
+    highlights:
+    - 'Боевой стиль (1 ур.): постоянный бонус к выбранной манере боя'
+    - 'Второе дыхание: бонусным действием восстановить хиты'
+    - 'Всплеск действий (2 ур.): лишнее действие в ход'
+    - Все доспехи, щиты и воинское оружие
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -1480,6 +1526,15 @@ items:
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn. The number of attacks increases to three when you reach 11th level in this class and to four when you reach 20th level in this class.
   - id: class.monk
     name: Монах
+    epithet: Боец без оружия
+    badge: Ци · Скорость
+    summary: 'Быстрый боец без доспехов: бьёт руками и ногами и тратит ци на особые приёмы.'
+    description: Монах тренирует тело и дух. Он быстрее всех, бьёт несколько раз за ход и обходится без брони, полагаясь на Ловкость и Мудрость.
+    highlights:
+    - 'Защита без доспехов: КД = 10 + Ловкость + Мудрость'
+    - 'Боевые искусства: удар без оружия бонусным действием'
+    - 'Ци (2 ур.): шквал ударов, терпеливая оборона, шаг ветра'
+    - 'Движение без доспехов: скорость растёт с уровнем'
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -1742,6 +1797,15 @@ items:
       description: At 20th level, when you roll for initiative and have no ki points remaining, you regain 4 ki points.
   - id: class.paladin
     name: Паладин
+    epithet: Воин клятвы
+    badge: Латы · Кара
+    summary: 'Тяжёлый боец, связанный клятвой: лечит наложением рук и вкладывает магию в удары.'
+    description: Паладин сочетает латы и оружие с божественной силой. Он защищает союзников аурами, лечит и наносит сокрушительные удары.
+    highlights:
+    - 'Божественное чувство: чует нежить, исчадий и небожителей'
+    - 'Наложение рук: запас лечения, равный уровню × 5'
+    - 'Божественная кара (2 ур.): тратит ячейку на добавочный урон'
+    - Все доспехи и щиты, заклинания на Харизме со 2 уровня
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -2026,6 +2090,15 @@ items:
         Your choice grants you features at 3rd level and again at 7th, 15th, and 20th level. Those features include oath spells and the Channel Divinity feature.
   - id: class.ranger
     name: Следопыт
+    epithet: Охотник и следопыт
+    badge: Разведка
+    summary: 'Охотник дикой местности: выслеживает врага, стреляет метко и владеет магией природы.'
+    description: Следопыт живёт на границе цивилизации. Он знает своих врагов и местность, хорошо стреляет и дополняет бой простыми заклинаниями.
+    highlights:
+    - 'Избранный враг: преимущество на выслеживание и знания о нём'
+    - 'Исследователь природы: легче путешествует по избранной местности'
+    - Боевой стиль и заклинания на Мудрости (2 ур.)
+    - Воинское оружие, средние доспехи и щит
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -2354,6 +2427,15 @@ items:
       description: At 20th level, you become an unparalleled hunter of your enemies. Once on each of your turns, you can add your Wisdom modifier to the attack roll or the damage roll of an attack you make against one of your favored enemies. You can choose to use this feature before or after the roll, but before any effects of the roll are applied.
   - id: class.rogue
     name: Плут
+    epithet: Ловкач и мастер навыков
+    badge: Скрытая атака
+    summary: Точные удары из засады, лучшее владение навыками и умение ускользнуть от опасности.
+    description: 'Плут берёт хитростью, а не силой: крадётся, взламывает, обманывает и бьёт туда, где больнее всего.'
+    highlights:
+    - 'Скрытая атака: добавочный урон при преимуществе или союзнике рядом с целью'
+    - 'Компетентность: двойной бонус мастерства к двум навыкам'
+    - 'Хитрое действие (2 ур.): рывок, отход или засада бонусным действием'
+    - Воровской жаргон и четыре навыка на выбор
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -2592,6 +2674,15 @@ items:
         Once you use this feature, you can't use it again until you finish a short or long rest.
   - id: class.sorcerer
     name: Чародей
+    epithet: Магия в крови
+    badge: Метамагия
+    summary: 'Врождённый заклинатель на Харизме: меньше заклинаний, но может их изменять.'
+    description: Чародей не учит магию — она в нём с рождения. Источник силы определяет его происхождение, а очки чародейства позволяют перекраивать заклинания.
+    highlights:
+    - Заклинания на Харизме, известные заранее
+    - 'Происхождение чародея (1 ур.): источник силы и умения'
+    - 'Очки чародейства (2 ур.): новые ячейки из очков'
+    - 'Метамагия (3 ур.): усиление, ускорение, скрытность заклинаний'
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -3061,6 +3152,15 @@ items:
       description: At 20th level, you regain 4 expended sorcery points whenever you finish a short rest.
   - id: class.warlock
     name: Колдун
+    epithet: Договор с покровителем
+    badge: Договор
+    summary: Заклинатель на Харизме, получивший силу по договору; мало ячеек, но они восстанавливаются быстро.
+    description: Колдун заключил договор с могущественным существом. Его ячейки возвращаются после короткого отдыха, а таинственные воззвания дают особые приёмы.
+    highlights:
+    - 'Потусторонний покровитель (1 ур.): Исчадие и другие'
+    - 'Магия договора: ячейки восстанавливаются на коротком отдыхе'
+    - 'Таинственные воззвания (2 ур.): постоянные магические умения'
+    - Мистический заряд — главный атакующий заговор
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]
@@ -3644,6 +3744,15 @@ items:
         Once you regain spell slots with this feature, you must finish a long rest before you can do so again.
   - id: class.wizard
     name: Волшебник
+    epithet: Учёный маг
+    badge: Книга заклинаний
+    summary: Заклинатель на Интеллекте с самым большим выбором заклинаний; хрупок, но гибок.
+    description: Волшебник изучает магию по книгам. Он знает больше всех заклинаний и каждый день выбирает, какие подготовить, но у него мало хитов и нет доспехов.
+    highlights:
+    - 'Книга заклинаний: записывает новые заклинания'
+    - 'Магическое восстановление: часть ячеек на коротком отдыхе'
+    - 'Магическая традиция (2 ур.): школа Воплощения и другие'
+    - Ритуалы из книги без траты ячеек
     status: canon
     doc: 'SRD 5.1: Classes'
     tags: [class, srd]

@@ -48,12 +48,12 @@ class InspectError(Exception):
 
 
 def entity_type(e: Entity) -> str:
-    """Тип для цвета разметки: враг, NPC, предмет или место (цвета задаёт тема пакета)."""
+    """Тип для цвета разметки: враг, NPC, предмет, место или примета места (цвета задаёт тема пакета)."""
     if e.kind == "creature":
         return "creature" if (e.state or {}).get("attitude", "hostile") == "hostile" else "npc"
     if e.kind == "location":
         return "location"
-    return "item"
+    return "landmark" if (e.state or {}).get("landmark") else "item"
 
 
 async def viewer_hero(session: AsyncSession, viewer: Viewer) -> Character | None:

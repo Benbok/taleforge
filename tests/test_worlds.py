@@ -34,6 +34,23 @@ def test_campaign_builder_offers_only_world_origins(client, admin, worlds):
     assert SRD_RACES <= {o["id"] for o in opts["origins"]}
 
 
+def test_card_texts_come_from_world_pack(client, admin, worlds):
+    """Карточка класса и происхождения берёт тексты из пакета мира, а не общие тексты SRD."""
+    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
+    opts = ok(client.get(f"/api/campaigns/{c['id']}/character-options", headers=admin))
+    bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
+    assert bard["epithet"] == "Звонарь Кордона" and bard["summary"] and bard["highlights"]
+    assert bard["spellcasting_ability"] == "cha" and bard["hit_die"] == 8
+    tushevik = next(o for o in opts["origins"] if o["id"] == "origin.tushevik")
+    assert tushevik["summary"] and {t["name"] for t in tushevik["traits"]} >= {"Привычка к газу", "Чувство туши"}
+    # в базовых правилах тот же класс описан по SRD, без звонарей Кордона
+    base = make_campaign(client, admin, players=1)
+    opts = ok(client.get(f"/api/campaigns/{base['id']}/character-options", headers=admin))
+    srd_bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
+    assert srd_bard["epithet"] != bard["epithet"] and srd_bard["summary"] and srd_bard["highlights"]
+    assert all(o["summary"] and o["highlights"] for o in opts["origins"])
+
+
 def test_library_hero_built_for_world(client, worlds):
     h = signup(client, "Гимли")
     names = [w["name"] for w in ok(client.get("/api/me/worlds", headers=h))]

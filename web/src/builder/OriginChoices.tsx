@@ -1,10 +1,9 @@
 import { ABILITY_RU } from "../game/hero";
 import type { OriginOption } from "../lib/builder";
+import { ChoiceCard, OriginDetails } from "./ChoiceDetails";
 
 interface OriginArtMeta {
   img: string;
-  sub: string;
-  badge: string;
   badgeClass: string;
 }
 
@@ -13,50 +12,34 @@ interface OriginArtMeta {
 const ORIGIN_ART_MAP: Record<string, OriginArtMeta> = {
   "lineage.kept_self": {
     img: "/assets/races/kept_self.png",
-    sub: "Прошедший Порог роя",
-    badge: "Порог · Рой",
     badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
   },
   "lineage.kept_heart": {
     img: "/assets/races/helmsman.png",
-    sub: "Прошедший Порог Кормчих",
-    badge: "Порог · Кормчий",
     badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
   },
   "origin.tushevik": {
     img: "/assets/races/carcass_born.png",
-    sub: "Рождённый на туше",
-    badge: "Люди · Туша",
     badgeClass: "bg-amber-600/15 text-amber-300 border-amber-600/30",
   },
   "origin.slomlenny": {
     img: "/assets/races/the_broken.png",
-    sub: "Человек на два голоса",
-    badge: "Бывший шахтёр",
     badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
   },
   "origin.krovnik": {
     img: "/assets/races/blood_bound.png",
-    sub: "Пьющий кровь титанов",
-    badge: "Кровь титанов",
     badgeClass: "bg-rose-600/15 text-rose-300 border-rose-600/30",
   },
   "origin.okrainets": {
     img: "/assets/races/outlander.png",
-    sub: "Житель Старых земель",
-    badge: "Старые земли",
     badgeClass: "bg-emerald-600/15 text-emerald-300 border-emerald-600/30",
   },
   "origin.morekhod": {
     img: "/assets/races/seafarer.png",
-    sub: "Человек портов и моря",
-    badge: "Порты · Моря",
     badgeClass: "bg-sky-600/15 text-sky-300 border-sky-600/30",
   },
   "origin.syndicate": {
     img: "/assets/races/syndicate_heir.png",
-    sub: "Наследник Дома",
-    badge: "Дома · Кредит",
     badgeClass: "bg-amber-500/15 text-amber-200 border-amber-500/30",
   },
 };
@@ -101,13 +84,13 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
         const stats = formatOriginStats(o);
 
         return (
-          <button
+          <ChoiceCard
             key={o.id}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onPick(o.id)}
-            className={`group relative flex h-[175px] sm:h-[185px] w-full text-left rounded-[12px] border overflow-hidden transition-all duration-200 cursor-pointer ${
+            name={o.name}
+            selected={on}
+            onPick={() => onPick(o.id)}
+            details={<OriginDetails o={o} stats={stats} />}
+            className={`group relative flex h-[190px] sm:h-[196px] w-full text-left rounded-[12px] border overflow-hidden transition-all duration-200 cursor-pointer ${
               on
                 ? "border-accent bg-surface shadow-[0_4px_24px_rgba(201,138,75,0.24)] ring-1 ring-accent/40"
                 : "border-line bg-surface/80 hover:border-accent/60 hover:bg-surface hover:-translate-y-0.5 hover:shadow-lg"
@@ -115,7 +98,7 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
           >
             {/* Текстовая колонка слева */}
             <div className="relative z-10 flex flex-1 flex-col justify-between p-3.5 sm:p-4 min-w-0">
-              <div className="flex flex-col">
+              <div className="flex flex-col pr-12 sm:pr-20 md:pr-14">
                 <div className="flex items-center gap-1.5">
                   {on && (
                     <span className="font-bold text-accent text-sm leading-none">✓</span>
@@ -129,26 +112,26 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
                   </span>
                 </div>
 
-                {art?.sub && (
+                {o.epithet && (
                   <span className="font-serif italic text-xs text-muted/90 mt-0.5 tracking-wide">
-                    {art.sub}
+                    {o.epithet}
                   </span>
                 )}
 
-                {o.description && (
-                  <p className="mt-1.5 text-xs text-muted/80 line-clamp-2 leading-relaxed">
-                    {o.description}
+                {(o.summary || o.description) && (
+                  <p className="mt-1.5 text-xs text-ink/80 line-clamp-3 leading-relaxed">
+                    {o.summary || o.description}
                   </p>
                 )}
               </div>
 
               {/* Нижняя строчка: бейдж и бонусы */}
               <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-line/40">
-                {art?.badge ? (
+                {o.badge ? (
                   <span
-                    className={`font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${art.badgeClass}`}
+                    className={`shrink-0 whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${art?.badgeClass ?? "bg-accent/10 text-accent border-accent/30"}`}
                   >
-                    {art.badge}
+                    {o.badge}
                   </span>
                 ) : (
                   <span className="font-mono text-[10px] text-muted">
@@ -166,7 +149,7 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
 
             {/* Иллюстрированный портрет справа с виньеткой */}
             {art?.img && (
-              <div className="relative w-36 sm:w-44 h-full shrink-0 overflow-hidden pointer-events-none select-none">
+              <div className="absolute inset-y-0 right-0 w-32 sm:w-44 md:w-36 overflow-hidden pointer-events-none select-none">
                 {/* Мягкая градиентная маска */}
                 <div className="absolute inset-0 z-1 bg-gradient-to-r from-surface via-surface/85 to-transparent to-75%" />
                 <img
@@ -177,7 +160,7 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
                 />
               </div>
             )}
-          </button>
+          </ChoiceCard>
         );
       })}
     </div>
