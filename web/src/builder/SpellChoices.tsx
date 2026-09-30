@@ -165,6 +165,11 @@ function Group({
                       {on ? "✓ " : ""}
                       {s.name}
                     </span>
+                    {s.flavor && (
+                      <span className="font-serif italic text-xs text-accent/90 line-clamp-2 leading-relaxed">
+                        {s.flavor}
+                      </span>
+                    )}
                     <span className="text-[11px] text-muted">{spellMeta(s)}</span>
                     <span className="flex flex-wrap gap-1 pt-0.5">
                       {s.concentration && <Tag>концентрация</Tag>}

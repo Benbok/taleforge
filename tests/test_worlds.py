@@ -51,6 +51,26 @@ def test_card_texts_come_from_world_pack(client, admin, worlds):
     assert all(o["summary"] and o["highlights"] for o in opts["origins"])
 
 
+def test_echo_spells_flavor_and_renames(client, admin, worlds):
+    """Заклинания мира Эхо получают лорную подачу (flavor), источники сил классов, а в SRD остаются базовыми."""
+    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
+    opts = ok(client.get(f"/api/campaigns/{c['id']}/character-options", headers=admin))
+    wiz = next(x for x in opts["classes"] if x["id"] == "class.wizard")
+    assert "формулы" in wiz["spells"]["source"]
+    bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
+    assert "колокол" in bard["spells"]["source"]
+    spells = {s["id"]: s for s in wiz["spells"]["spells"]}
+    assert spells["spell.fire_bolt"]["flavor"] == "Капля горящего ликвора срывается с пальцев и пахнет палёной медью."
+    assert spells["spell.magic_missile"]["flavor"] == "Три медные искры — команды Кормчих — бьют без промаха."
+
+    base = make_campaign(client, admin, players=1)
+    base_opts = ok(client.get(f"/api/campaigns/{base['id']}/character-options", headers=admin))
+    base_wiz = next(x for x in base_opts["classes"] if x["id"] == "class.wizard")
+    base_spells = {s["id"]: s for s in base_wiz["spells"]["spells"]}
+    assert base_spells["spell.fire_bolt"]["flavor"] == ""
+    assert base_wiz["spells"]["source"] == ""
+
+
 def test_library_hero_built_for_world(client, worlds):
     h = signup(client, "Гимли")
     names = [w["name"] for w in ok(client.get("/api/me/worlds", headers=h))]

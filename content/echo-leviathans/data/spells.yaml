@@ -35,7 +35,7 @@ items:
   - id: spell_note.liquor_high_circle_alteration
     name: Перемена от сильных заклинаний
     description: Заклинатели ликвора (волшебник, жрец, паладин, чародей, диагност) после заклинания 5-го круга и выше совершают спасбросок против Перемены со сложностью 10 + круг.
-    status: proposal
+    status: canon
     doc: rules.md#3.5
     tags: [spell_rule, alteration, liquor_caster]
     applies_to_class_refs: [class.wizard, class.cleric, class.paladin, class.sorcerer, class.diagnost]
@@ -55,7 +55,7 @@ items:
   - id: spell_note.liquor_withdrawal_top_slot
     name: Ломка и ячейки
     description: При ломке на Перемене 3 и выше заклинатель ликвора не может тратить ячейку самого высокого доступного круга. «Капля» с чёрного рынка снимает ломку, но ячейку не восстанавливает.
-    status: proposal
+    status: canon
     doc: rules.md#3.5
     tags: [spell_rule, alteration, addiction]
     modifiers:
@@ -69,7 +69,7 @@ items:
   - id: spell_note.alteration_floor_for_casters
     name: Перемена не падает ниже 1 у практикующих
     description: Снизить Перемену ниже 1 у заклинателя ликвора, который продолжает колдовать, нельзя.
-    status: proposal
+    status: canon
     doc: rules.md#3.5
     tags: [spell_rule, alteration, liquor_caster]
     modifiers:
@@ -78,7 +78,7 @@ items:
   - id: spell_note.greater_restoration_alteration
     name: «Высшее восстановление» и Перемена
     description: «Высшее восстановление» снижает Перемену на 1.
-    status: proposal
+    status: canon
     doc: rules.md#3.5
     tags: [spell_rule, alteration, healing]
     srd_ref: {type: spell, name: Greater Restoration}
@@ -89,7 +89,7 @@ items:
   - id: spell_note.silence_pull_high_circle
     name: Тяга тишины от сильных заклинаний
     description: У «Сохранившего сердце» каждое заклинание 5-го круга и выше — спасбросок Харизмы, сл. 12, провал — +1 Тяга тишины. Доза ликвора восстанавливает ему ячейку без спасброска.
-    status: proposal
+    status: canon
     doc: rules.md#3.5
     tags: [spell_rule, silence_pull, lineage]
     triggers:
@@ -105,7 +105,7 @@ items:
   - id: spell_note.hunger_domain_corruption
     name: Домен голода — Скверна за каждое заклинание
     description: Жрец Домена голода после каждого заклинания 1-го круга и выше совершает спасбросок против Скверны, сл. 8 + круг. Каждое использование «Божественного канала» сдвигает настрой эха на 1 к Голоду.
-    status: proposal
+    status: canon
     doc: rules.md#7.3
     tags: [spell_rule, corruption, hunger_domain]
     subclass_ref: subclass.hunger_domain
@@ -114,7 +114,7 @@ items:
   - id: spell_note.resonance_patron_corruption
     name: Покровитель «Резонанс» — Скверна за сильные заклинания
     description: Колдун Резонанса начинает с 1 очком Скверны и совершает спасбросок против Скверны, сл. 10, после каждого заклинания 3-го круга и выше.
-    status: proposal
+    status: canon
     doc: rules.md#7.4
     tags: [spell_rule, corruption, resonance_patron]
     subclass_ref: subclass.resonance_patron
@@ -123,7 +123,7 @@ items:
   - id: spell_note.renamed_spells
     name: Переименования заклинаний
     description: Некоторые заклинания SRD в мире называются иначе. Числа не меняются.
-    status: proposal
+    status: canon
     doc: rules.md#7.1
     tags: [spell_rule, rename]
     renames:
@@ -193,7 +193,7 @@ items:
   - id: spell_note.source_sound_resonance
     name: "Источник: звук и резонанс (бард)"
     description: Звонарь творит магию через звук и резонанс туш и колоколов. Звонари Кордона — наследники колокольных крепостей.
-    status: proposal
+    status: canon
     doc: rules.md#7.0
     tags: [spell_source]
     source_code: sound_resonance
@@ -202,7 +202,7 @@ items:
   - id: spell_note.source_parasite_herding
     name: "Источник: паразиты (друид)"
     description: Пастух паразитов черпает силу из живой плоти туш и паразитов; дикий облик — временная мутация тела.
-    status: proposal
+    status: canon
     doc: rules.md#7.0
     tags: [spell_source]
     source_code: parasite_herding
@@ -211,7 +211,7 @@ items:
   - id: spell_note.source_stalker_lore
     name: "Источник: знание троп (следопыт)"
     description: Сталкер Глубинных троп пользуется выученным знанием туш и паразитов.
-    status: proposal
+    status: canon
     doc: rules.md#7.0
     tags: [spell_source]
     source_code: stalker_lore
@@ -230,7 +230,7 @@ items:
   - id: spell_note.no_other_planes
     name: Иных планов нет
     description: Мир замкнут на одной планете — Эфира, Астрала и чужих планов нет. Заклинания, которые держатся на них, убраны из списков героев. «Мерцание», «Эфирная» часть «Видения невидимого» и подобные эффекты подаются как короткий уход «в изнанку эха» без выхода за пределы мира.
-    status: proposal
+    status: canon
     doc: items.md#6.3
     tags: [spell_rule, cosmology]
     applies_to: all_player_characters
@@ -241,7 +241,7 @@ items:
   - id: spell_note.lore_flavor
     name: Как заклинания выглядят в мире
     description: Подача заклинаний SRD под мир «Эхо Левиафанов». Любое заклинание ликвора пахнет медью и озоном, у мага на миг чернеют вены; в толпе это выдаёт колдующего.
-    status: proposal
+    status: canon
     doc: items.md#6.1
     tags: [spell_rule, flavor]
     flavors:

@@ -199,6 +199,7 @@ function SpellRow({
         </span>
         <span className="text-xs text-muted">{spellMeta(s)}</span>
       </button>
+      {s.flavor && <p className="font-serif italic text-xs text-accent/90 line-clamp-2 leading-relaxed -mt-1">{s.flavor}</p>}
       {open && <SpellDetails s={s} />}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {targets.length > 0 && (
@@ -342,6 +343,11 @@ function Manage({ h, b, onClose }: { h: HeroSheet; b: Book; onClose: () => void 
                         {on ? "✓ " : ""}
                         {s.name}
                       </span>
+                      {s.flavor && (
+                        <span className="font-serif italic text-xs text-accent/90 line-clamp-2 leading-relaxed">
+                          {s.flavor}
+                        </span>
+                      )}
                       <span className="text-[11px] text-muted">{spellMeta(s)}</span>
                     </ChoiceCard>
                   );
