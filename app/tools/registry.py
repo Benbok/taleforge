@@ -240,8 +240,9 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         ctx.closed.add(cid)
     for cid in getattr(args, "character_ids", None) or []:
         ctx.closed.add(cid)
-    if t.closes_actions and getattr(args, "attacker_id", None):
-        ctx.closed.add(args.attacker_id)
+    for f in ("attacker_id", "caster_id"):
+        if t.closes_actions and getattr(args, f, None):
+            ctx.closed.add(getattr(args, f))
     return {"ok": True, "result": result, "event_id": ev.id if ev else None}
 
 

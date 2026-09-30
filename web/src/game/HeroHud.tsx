@@ -84,9 +84,26 @@ export default function HeroHud() {
           ))}
         </span>
       )}
-      <button className="btn ml-auto px-2 py-1 text-xs" onClick={() => showWindow()}>
+      {sheet.spellbook && (
+        <button
+          className="btn ml-auto px-2 py-1 text-xs"
+          onClick={() => showWindow("spells")}
+          title="Книга заклинаний: ячейки, описания и сотворение"
+        >
+          Заклинания{slotsNote(sheet.spellbook)}
+        </button>
+      )}
+      <button className={`btn px-2 py-1 text-xs ${sheet.spellbook ? "" : "ml-auto"}`} onClick={() => showWindow()}>
         Лист героя
       </button>
     </div>
   );
+}
+
+/** Сколько ячеек осталось — коротко на кнопке книги заклинаний. */
+function slotsNote(b: NonNullable<ReturnType<typeof useGame.getState>["sheet"]>["spellbook"]): string {
+  if (!b) return "";
+  const left = Object.values(b.slots_left).reduce((a, x) => a + x, 0) + (b.pact_slots ? b.pact_left : 0);
+  const all = b.slots.reduce((a, x) => a + x, 0) + b.pact_slots;
+  return all ? ` · ${left}/${all}` : "";
 }

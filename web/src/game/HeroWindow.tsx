@@ -5,11 +5,13 @@ import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
 import { ABILITIES, ABILITY_ABBR, ABILITY_RU, DAMAGE_RU, signed, SKILLS, useExplain } from "./hero";
 import { attack } from "./quick";
+import Spellbook from "./Spellbook";
 
-type Tab = "stats" | "combat" | "gear" | "state" | "persona" | "log";
+type Tab = "stats" | "combat" | "spells" | "gear" | "state" | "persona" | "log";
 const TABS: [Tab, string][] = [
   ["stats", "Характеристики"],
   ["combat", "Бой"],
+  ["spells", "Заклинания"],
   ["gear", "Снаряжение"],
   ["state", "Состояние"],
   ["persona", "Личность"],
@@ -369,7 +371,7 @@ export default function HeroWindow() {
           </button>
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-line px-2" aria-label="Разделы листа">
-          {TABS.map(([t, name]) => (
+          {TABS.filter(([t]) => t !== "spells" || sheet.spellbook).map(([t, name]) => (
             <button
               key={t}
               className={`shrink-0 border-b-2 px-3 py-2 text-sm ${tab === t ? "border-accent text-ink" : "border-transparent text-muted"}`}
@@ -386,6 +388,8 @@ export default function HeroWindow() {
             <Stats h={sheet} />
           ) : tab === "combat" ? (
             <Combat h={sheet} />
+          ) : tab === "spells" ? (
+            <Spellbook h={sheet} onCast={hide} />
           ) : tab === "gear" ? (
             <Gear h={sheet} />
           ) : tab === "state" ? (

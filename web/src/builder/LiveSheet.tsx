@@ -146,6 +146,23 @@ export default function LiveSheet({
               </ul>
             </div>
           )}
+
+          {d.spellcasting && (
+            <div>
+              <h3 className="mb-1.5 font-mono text-[11px] font-semibold text-muted uppercase tracking-wider">
+                Заклинания
+              </h3>
+              <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-muted">
+                <span>
+                  Сл спасброска <span className="text-accent font-semibold">{d.spellcasting.save_dc}</span>
+                </span>
+                <span>
+                  атака <span className="text-patina-hi font-semibold">{signed(d.spellcasting.attack)}</span>
+                </span>
+                {d.spellcasting.needs.prepared > 0 && <span>готовит {d.spellcasting.needs.prepared}</span>}
+              </p>
+            </div>
+          )}
         </>
       )}
 

@@ -1,0 +1,150 @@
+# Свитки заклинаний SRD 5.1 (Magic Items: Spell Scroll) для частых заклинаний 1–3-го круга.
+# spell_scroll: {spell_ref, slot_level} — use_item творит заклинание по правилам cast_spell без ячейки;
+# сложность и бонус атаки — по кругу свитка (1–2-й круг: сл. 13 / +5, 3-й: сл. 15 / +7).
+# Цены — ориентир по редкости, в SRD у свитков цены нет.
+kind: item_template
+items:
+- id: item.scroll_magic_missile
+  name: 'Свиток: Волшебная стрела'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Волшебная стрела». Прочесть может заклинатель, у которого оно в списке класса; круг выше
+    доступного — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: common
+  price:
+    gp: 50
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.magic_missile
+    slot_level: 1
+- id: item.scroll_cure_wounds
+  name: 'Свиток: Лечение ран'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Лечение ран». Прочесть может заклинатель, у которого оно в списке класса; круг выше доступного
+    — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: common
+  price:
+    gp: 50
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.cure_wounds
+    slot_level: 1
+- id: item.scroll_shield
+  name: 'Свиток: Щит'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Щит». Прочесть может заклинатель, у которого оно в списке класса; круг выше доступного
+    — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: common
+  price:
+    gp: 50
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.shield
+    slot_level: 1
+- id: item.scroll_misty_step
+  name: 'Свиток: Туманный шаг'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Туманный шаг». Прочесть может заклинатель, у которого оно в списке класса; круг выше
+    доступного — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: uncommon
+  price:
+    gp: 150
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.misty_step
+    slot_level: 2
+- id: item.scroll_lesser_restoration
+  name: 'Свиток: Малое восстановление'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Малое восстановление». Прочесть может заклинатель, у которого оно в списке класса; круг
+    выше доступного — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: uncommon
+  price:
+    gp: 150
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.lesser_restoration
+    slot_level: 2
+- id: item.scroll_fireball
+  name: 'Свиток: Огненный шар'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Огненный шар». Прочесть может заклинатель, у которого оно в списке класса; круг выше
+    доступного — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: uncommon
+  price:
+    gp: 300
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.fireball
+    slot_level: 3
+- id: item.scroll_revivify
+  name: 'Свиток: Возрождение'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Возрождение». Прочесть может заклинатель, у которого оно в списке класса; круг выше доступного
+    — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: uncommon
+  price:
+    gp: 300
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.revivify
+    slot_level: 3
+- id: item.scroll_dispel_magic
+  name: 'Свиток: Рассеивание магии'
+  status: canon
+  doc: 'SRD 5.1: Magic Items (Spell Scroll)'
+  description: Свиток с заклинанием «Рассеивание магии». Прочесть может заклинатель, у которого оно в списке класса; круг
+    выше доступного — проверка заклинательной характеристики, сл. 10 + круг. После прочтения свиток рассыпается.
+  tags:
+  - scroll
+  - srd
+  - magic_item
+  category: consumable
+  rarity: uncommon
+  price:
+    gp: 300
+  weight: 0
+  spell_scroll:
+    spell_ref: spell.dispel_magic
+    slot_level: 3

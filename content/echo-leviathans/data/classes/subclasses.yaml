@@ -309,7 +309,7 @@ items:
       "7": [{name: Усыхание, srd: Blight, spell_ref: spell.blight}, {name: Замешательство, srd: Confusion, spell_ref: spell.confusion}]
       "9": [{name: Заражение, srd: Contagion, spell_ref: spell.contagion}, {name: Насекомые, srd: Insect Plague, spell_ref: spell.insect_plague}]
     triggers:
-      - "on": cast_spell
+      - "on": spell_cast
         if: {spell_level_gte: 1}
         do:
           - op: save
@@ -401,7 +401,7 @@ items:
         do:
           - {op: resource, stat: corruption, delta: 1}
           - {op: set, target: hive_call_enabled, value: true}
-      - "on": cast_spell
+      - "on": spell_cast
         if: {spell_level_gte: 3}
         do:
           - op: save

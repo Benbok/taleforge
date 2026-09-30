@@ -12,6 +12,7 @@ import {
   partLabel,
   pointsSpent,
   poolLeft,
+  spellNeed,
   steps,
   toBody,
   weaponSlots,
@@ -29,6 +30,7 @@ import { ABILITIES, ABILITY_RU, SKILLS } from "../game/hero";
 import ClassChoices from "./ClassChoices";
 import LiveSheet from "./LiveSheet";
 import OriginChoices from "./OriginChoices";
+import SpellChoices from "./SpellChoices";
 
 const SKILL_RU = Object.fromEntries(SKILLS.map(([id, ru]) => [id, ru]));
 
@@ -54,6 +56,10 @@ const STEP_GUIDE: Record<string, { subtitle: string; hint: string }> = {
   abilities: {
     subtitle: "Сила, ловкость и разум",
     hint: "Распределите ключевые показатели характеристик персонажа. Учитывайте ключевые параметры выбранного класса.",
+  },
+  spells: {
+    subtitle: "Формулы, молитвы и договоры",
+    hint: "Выберите заговоры и заклинания героя. Наведите на заклинание или нажмите «i», чтобы прочитать, что оно делает.",
   },
   skills: {
     subtitle: "Мастерство и тренировка",
@@ -145,7 +151,9 @@ export default function Builder({
     onSubmitted?.(r.status);
   }
 
-  const st = steps(draft, opts);
+  const st = steps(draft, opts, preview.data);
+  const at = (id: string) => Math.max(0, st.findIndex((x) => x.id === id));
+  const sn = spellNeed(cls, preview.data);
   const skillNeed = cls?.skills_choose?.count ?? 0;
   const skillFrom = cls?.skills_choose?.from?.length ? cls.skills_choose.from : SKILLS.map(([id]) => id);
 
@@ -265,7 +273,7 @@ export default function Builder({
 
           <nav
             aria-label="Шаги создания героя"
-            className="grid grid-cols-4 sm:grid-cols-7 gap-1.5"
+            className={`grid grid-cols-4 gap-1.5 ${st.length > 7 ? "sm:grid-cols-8" : "sm:grid-cols-7"}`}
           >
             {st.map((s, idx) => {
               const isActive = s.id === activeStep && wizardMode;
@@ -298,7 +306,7 @@ export default function Builder({
           hint={STEP_GUIDE.name.hint}
           active={activeStep === "name"}
           wizardMode={wizardMode}
-          footer={renderFooter(0)}
+          footer={renderFooter(at("name"))}
         >
           <input
             className="field w-full font-heading text-lg"
@@ -317,7 +325,7 @@ export default function Builder({
           hint={STEP_GUIDE.class.hint}
           active={activeStep === "class"}
           wizardMode={wizardMode}
-          footer={renderFooter(1)}
+          footer={renderFooter(at("class"))}
         >
           <ClassChoices
             items={opts.classes}
@@ -325,7 +333,14 @@ export default function Builder({
             value={draft.class_id}
             onPick={(id) => {
               const next = opts.classes.find((c) => c.id === id);
-              set({ class_id: id, skills: [], equipment_choices: equipFor(next, [], opts) });
+              set({
+                class_id: id,
+                skills: [],
+                cantrips: [],
+                spells: [],
+                prepared: [],
+                equipment_choices: equipFor(next, [], opts),
+              });
             }}
           />
         </Step>
@@ -338,7 +353,7 @@ export default function Builder({
           hint={STEP_GUIDE.origin.hint}
           active={activeStep === "origin"}
           wizardMode={wizardMode}
-          footer={renderFooter(2)}
+          footer={renderFooter(at("origin"))}
         >
           <OriginChoices
             items={opts.origins}
@@ -355,7 +370,7 @@ export default function Builder({
           hint={STEP_GUIDE.abilities.hint}
           active={activeStep === "abilities"}
           wizardMode={wizardMode}
-          footer={renderFooter(3)}
+          footer={renderFooter(at("abilities"))}
         >
           {methods.length > 1 && (
             <div className="mb-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Способ распределения">
@@ -487,7 +502,7 @@ export default function Builder({
           hint={STEP_GUIDE.skills.hint}
           active={activeStep === "skills"}
           wizardMode={wizardMode}
-          footer={renderFooter(4)}
+          footer={renderFooter(at("skills"))}
         >
           {!cls ? (
             <p className="text-sm text-muted">Сначала выберите класс: он определяет список доступных навыков.</p>
@@ -519,6 +534,26 @@ export default function Builder({
           )}
         </Step>
 
+        {/* Заклинания — только у заклинателей */}
+        {cls?.spells && sn && (
+          <Step
+            id="spells"
+            title="Заклинания"
+            subtitle={STEP_GUIDE.spells.subtitle}
+            hint={STEP_GUIDE.spells.hint}
+            active={activeStep === "spells"}
+            wizardMode={wizardMode}
+            footer={renderFooter(at("spells"))}
+          >
+            <SpellChoices
+              cs={cls.spells}
+              need={sn}
+              value={{ cantrips: draft.cantrips, spells: draft.spells, prepared: draft.prepared }}
+              onChange={(v) => set(v)}
+            />
+          </Step>
+        )}
+
         {/* Step 6: Gear */}
         <Step
           id="gear"
@@ -527,7 +562,7 @@ export default function Builder({
           hint={STEP_GUIDE.gear.hint}
           active={activeStep === "gear"}
           wizardMode={wizardMode}
-          footer={renderFooter(5)}
+          footer={renderFooter(at("gear"))}
         >
           {!cls ? (
             <p className="text-sm text-muted">Стартовые наборы снаряжения зависят от выбранного класса.</p>
@@ -620,7 +655,7 @@ export default function Builder({
           hint={STEP_GUIDE.story.hint}
           active={activeStep === "story"}
           wizardMode={wizardMode}
-          footer={renderFooter(6)}
+          footer={renderFooter(at("story"))}
         >
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-semibold text-ink">Публичное описание (видно всем за столом)</span>

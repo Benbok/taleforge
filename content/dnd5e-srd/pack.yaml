@@ -1,6 +1,6 @@
 id: dnd5e-srd
 name: "D&D 5e SRD 5.1 — базовый пакет правил"
-version: 0.4.3
+version: 0.5.0
 ruleset: dnd5e
 provides: srd-5.1
 level_cap: 20

@@ -74,7 +74,16 @@ CATCH_UP_SYSTEM = (
     "Перескажи ему по-русски в 2–4 предложениях, что произошло и на чём остановились, обращаясь на «вы». "
     "Без чисел хитов и урона, ничего не выдумывай: только то, что есть в сообщениях."
 )
-ROLL_TOOLS = ("roll_check", "resolve_attack", "death_save", "apply_hazard", "set_scene_mode", "rest", "use_item")
+ROLL_TOOLS = (
+    "roll_check",
+    "resolve_attack",
+    "cast_spell",
+    "death_save",
+    "apply_hazard",
+    "set_scene_mode",
+    "rest",
+    "use_item",
+)
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 DECISION_TOOLS = [n for n in REGISTRY if n != "review_character"]
 
@@ -97,6 +106,22 @@ _env = jinja2.Environment(
 
 def render(name: str, **kw: Any) -> str:
     return _env.get_template(name).render(**kw).strip()
+
+
+def _routable_cast(ctx: ToolContext, intent: dict | None) -> dict | None:
+    """Заклинание из книги героя с ясной целью сервер творит сам; площадные остаются мастеру (кто в области)."""
+    from app.core.spells import spell_catalog
+    from app.rules.dnd5e.spells import target_kind
+
+    args = intents.routable_cast(intent)
+    if args is None:
+        return None
+    spell = spell_catalog(ctx.world.catalog).spells.get(args["spell_id"])
+    if spell is None or target_kind(spell) == "area":
+        return None
+    if target_kind(spell) == "enemy" and not args.get("target_ids"):
+        return None
+    return args
 
 
 def _world_choices(cat) -> str:
@@ -478,16 +503,23 @@ class MasterService:
         trace_calls: list[dict] = []
         routed: list[str] = []
         for m in new:
-            args = intents.routable_attack(m.intent) if m.kind == "action" else None
-            if not args or args["attacker_id"] not in required:
+            name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
+            if args is None and m.kind == "action":
+                name, args = "cast_spell", _routable_cast(ctx, m.intent)
+            actor = (args or {}).get("attacker_id") or (args or {}).get("caster_id")
+            if not args or actor not in required:
                 continue
-            if hero_turn is not None and args["attacker_id"] != hero_turn.id:
+            if hero_turn is not None and actor != hero_turn.id:
                 continue
             await self._status(cid, "rolling")
-            r = await execute(ctx, "resolve_attack", args, key=f"{turn_id}:route:{m.id}")
-            trace_calls.append({"tool": "resolve_attack", "args": args, "result": r, "routed": True})
+            r = await execute(ctx, name, args, key=f"{turn_id}:route:{m.id}")
+            trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
             if r.get("ok"):
-                routed.append(f"{args['attacker_id']}: resolve_attack уже выполнен сервером по намерению")
+                routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
+            elif name == "cast_spell":
+                routed.append(
+                    f"{actor}: cast_spell отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
+                )
         route_note = ""
         if routed:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)

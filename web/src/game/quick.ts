@@ -8,6 +8,9 @@ export interface QuickAction {
   target_id?: string | null;
   instrument_id?: string | null;
   skill?: string | null;
+  spell_id?: string | null;
+  slot_level?: number | null;
+  ritual?: boolean;
 }
 
 let n = 0;
@@ -31,5 +34,26 @@ export function attackText(target: string, a: HeroAttack): string {
 export function attack(targetId: string, targetName: string, a: HeroAttack): string | null {
   return sendQuick(attackText(targetName, a), [
     { verb: "attack", target_id: targetId, instrument_id: a.inventory_id ?? null },
+  ]);
+}
+
+/** Строка заклинания в чате: что, в кого, какой ячейкой. */
+export function castText(spell: string, target: string | null, slot: number | null, ritual: boolean): string {
+  const parts = [`Творю «${spell}»`];
+  if (target) parts.push(`на ${target}`);
+  if (ritual) parts.push("ритуалом");
+  else if (slot) parts.push(`ячейкой ${slot}-го круга`);
+  return parts.join(" ");
+}
+
+export function cast(
+  spellId: string,
+  spellName: string,
+  target: { id: string; name: string } | null,
+  slot: number | null,
+  ritual: boolean,
+): string | null {
+  return sendQuick(castText(spellName, target?.name ?? null, slot, ritual), [
+    { verb: "cast", spell_id: spellId, target_id: target?.id ?? null, slot_level: slot, ritual },
   ]);
 }

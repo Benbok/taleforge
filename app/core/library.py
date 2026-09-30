@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import BASE_PACK_ID, BASE_RULES, CatalogView, load_catalog, resolve_chain
 from app.content.importer import latest_version
 from app.content.manifest import version_tuple
+from app.core import spells as spellbook
 from app.core.campaigns import Conflict, NotFound, Viewer
 from app.core.characters import DEFAULT_RULES, SHEET_FIELDS, _items, create_draft
 from app.core.world import character_actor
@@ -94,6 +95,8 @@ def errors_for(lc: LibraryCharacter, cat: CatalogView, rules: dict = LIBRARY_RUL
     cls = cat.find(sheet.get("class_id") or "", "class")
     origin = cat.find(sheet.get("origin_id") or "", "origin")
     errs = validate_character(sheet, cls.data if cls else None, origin.data if origin else None, rules, _items(cat))
+    if cls is not None and origin is not None:
+        errs += spellbook.errors_for(sheet, cat)
     if not lc.name.strip():
         errs.append("нужно имя")
     return errs
@@ -244,6 +247,8 @@ async def copy_to_campaign(
             # навыки и стартовые наборы выбирались из списков прежнего класса
             data.pop("skills", None)
             data.pop("equipment_choices", None)
+            for k in ("cantrips", "spells", "prepared"):
+                data.pop(k, None)
         if "origin" in foreign:
             data.pop("ability_choice", None)
     data.update(

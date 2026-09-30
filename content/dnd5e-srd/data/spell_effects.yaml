@@ -1,0 +1,70 @@
+# Эффекты заклинаний SRD 5.1, которые движок держит на цели (усиления и помехи). Их накладывает cast_spell
+# по полям effect и on_fail записи заклинания; длительность — из заклинания, концентрация снимает их вместе с ней.
+# Написано вручную по тексту SRD 5.1. Язык модификаторов — как у состояний (conditions.yaml).
+kind: effect_template
+items:
+  - id: effect.spell_shield
+    name: Щит
+    description: Невидимый барьер. +5 к КД до начала следующего хода заклинателя.
+    status: canon
+    doc: "SRD 5.1: Shield"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: add, target: ac, value: 5}
+  - id: effect.spell_shield_of_faith
+    name: Щит веры
+    description: Мерцающее поле вокруг существа. +2 к КД, пока длится концентрация.
+    status: canon
+    doc: "SRD 5.1: Shield of Faith"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: add, target: ac, value: 2}
+  - id: effect.spell_mage_armor
+    name: Доспехи мага
+    description: Силовое поле. Без доспеха базовый КД равен 13 + модификатор Ловкости.
+    status: canon
+    doc: "SRD 5.1: Mage Armor"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: set, target: ac_base, value: "13 + dex"}
+  - id: effect.spell_barkskin
+    name: Дубовая кожа
+    description: Кожа грубеет. КД не ниже 16, какой бы доспех ни был надет.
+    status: canon
+    doc: "SRD 5.1: Barkskin"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: set, target: ac_min, value: 16}
+  - id: effect.spell_blur
+    name: Размытый образ
+    description: Очертания дрожат и плывут. Атаки по существу совершаются с помехой.
+    status: canon
+    doc: "SRD 5.1: Blur"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: disadvantage, who: attackers, "on": attack}
+  - id: effect.spell_faerie_fire
+    name: Огонь фей
+    description: Существо очерчено светом. Атаки по нему с преимуществом, невидимым оно быть не может.
+    status: canon
+    doc: "SRD 5.1: Faerie Fire"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: advantage, who: attackers, "on": attack}
+  - id: effect.spell_haste
+    name: Ускорение
+    description: +2 к КД, преимущество на спасброски Ловкости, скорость удвоена и одно лишнее действие за ход (атака, рывок, отход, засада или использование предмета). Когда заклинание кончается, существо теряет ход.
+    status: canon
+    doc: "SRD 5.1: Haste"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: add, target: ac, value: 2}
+      - {op: advantage, "on": save, stat: dex}
+  - id: effect.spell_stoneskin
+    name: Каменная кожа
+    description: Плоть твердеет как камень. Сопротивление немагическому дробящему, колющему и рубящему урону.
+    status: canon
+    doc: "SRD 5.1: Stoneskin"
+    tags: [spell_effect, srd]
+    modifiers:
+      - {op: resistance, damage: [bludgeoning, piercing, slashing]}

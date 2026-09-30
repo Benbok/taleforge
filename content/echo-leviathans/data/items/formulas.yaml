@@ -1,0 +1,150 @@
+# Готовые формулы — ампулы ликвора с записанной командой Кормчих (свитки заклинаний SRD 5.1, Spell Scroll).
+# Источник: items.md#1.4 (общий шаблон item.liquor_formula), #6.1. Движок: use_item → cast_spell без ячейки,
+# сложность и бонус атаки — по кругу формулы (SRD: 1–2-й круг сл. 13 / +5, 3–4-й — сл. 15 / +7).
+# Прочесть может заклинатель, у которого заклинание в списке класса; круг выше доступного — проверка
+# заклинательной характеристики, сл. 10 + круг, провал — ампула пропала. Цены — по item.liquor_formula.
+kind: item_template
+items:
+  - id: item.formula_cure_wounds
+    name: "Формула: Лечение ран"
+    description: Ампула мутного ликвора. Разбей о рану — ткани стягиваются, остаётся шрам с медным блеском.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, healing]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: common
+    price: {fk: 100}
+    weight: 0
+    spell_scroll: {spell_ref: spell.cure_wounds, slot_level: 1}
+  - id: item.formula_healing_word
+    name: "Формула: Лечащее слово"
+    description: Короткая команда в тонкой ампуле — хватает шёпота, чтобы рана союзника затянулась.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, healing]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: common
+    price: {fk: 100}
+    weight: 0
+    spell_scroll: {spell_ref: spell.healing_word, slot_level: 1}
+  - id: item.formula_shield
+    name: "Формула: Щит"
+    description: Команда брони Кормчих. Ампула лопается в кулаке, и на пути удара встаёт пластина ликвора.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, defense]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: common
+    price: {fk: 100}
+    weight: 0
+    spell_scroll: {spell_ref: spell.shield, slot_level: 1}
+  - id: item.formula_magic_missile
+    name: "Формула: Волшебная стрела"
+    description: Три медные искры в стекле. Выпущенные, бьют без промаха.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, attack]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: common
+    price: {fk: 100}
+    weight: 0
+    spell_scroll: {spell_ref: spell.magic_missile, slot_level: 1}
+  - id: item.formula_detect_magic
+    name: "Формула: Обнаружение магии"
+    description: Капля, после которой запах меди и озона становится видимым.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, utility]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: common
+    price: {fk: 100}
+    weight: 0
+    spell_scroll: {spell_ref: spell.detect_magic, slot_level: 1}
+  - id: item.formula_misty_step
+    name: "Формула: Туманный шаг"
+    description: Шаг сквозь эхо, запечатанный в стекле. Любимая формула контрабандистов Кордона.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, movement]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: uncommon
+    price: {fk: 250}
+    weight: 0
+    spell_scroll: {spell_ref: spell.misty_step, slot_level: 2}
+  - id: item.formula_lesser_restoration
+    name: "Формула: Малое восстановление"
+    description: Горький ликвор выжигает яд и хворь, оставляя медный привкус.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, healing]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: uncommon
+    price: {fk: 250}
+    weight: 0
+    spell_scroll: {spell_ref: spell.lesser_restoration, slot_level: 2}
+  - id: item.formula_scorching_ray
+    name: "Формула: Палящий луч"
+    description: Три струи горящего ликвора в одной ампуле. Держать подальше от лица.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, attack]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: uncommon
+    price: {fk: 250}
+    weight: 0
+    spell_scroll: {spell_ref: spell.scorching_ray, slot_level: 2}
+  - id: item.formula_revivify
+    name: "Формула: Возрождение"
+    description: "Разряд: ток по нервам, как у паровоза на старте. Только в первую минуту после смерти."
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, healing]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: rare
+    price: {fk: 500}
+    weight: 0
+    spell_scroll: {spell_ref: spell.revivify, slot_level: 3}
+  - id: item.formula_fireball
+    name: "Формула: Огненный шар"
+    description: Тяжёлая ампула горящего ликвора. Раскрывается с рёвом котла.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, attack]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: rare
+    price: {fk: 500}
+    weight: 0
+    spell_scroll: {spell_ref: spell.fireball, slot_level: 3}
+  - id: item.formula_dispel_magic
+    name: "Формула: Рассеивание магии"
+    description: Встречная команда — ликвор гасит ликвор. На эхо не действует.
+    status: proposal
+    doc: items.md#1.4
+    tags: [liquor, scroll, formula, utility]
+    category: consumable
+    source: liquor
+    index_group: liquor
+    rarity: rare
+    price: {fk: 500}
+    weight: 0
+    spell_scroll: {spell_ref: spell.dispel_magic, slot_level: 3}

@@ -22,6 +22,7 @@ from app.tools import audio as _audio_tools  # noqa: F401 — звук сцен�
 from app.tools import master as _tools  # noqa: F401 — регистрирует инструменты в реестре
 from app.tools import plot as _plot_tools  # noqa: F401 — инструменты ведения по каркасу
 from app.tools import progress as _progress_tools  # noqa: F401 — опыт и уровни
+from app.tools import spells as _spell_tools  # noqa: F401 — сотворение заклинаний
 from app.tools.registry import ToolContext
 
 

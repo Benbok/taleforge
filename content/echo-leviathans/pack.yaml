@@ -1,6 +1,6 @@
 id: echo-leviathans
 name: "Эхо Левиафанов"
-version: 0.2.2
+version: 0.2.3
 ruleset: dnd5e
 ruleset_base: srd-5.1
 license: "Setting: © Arty. Rules base: SRD 5.1 by Wizards of the Coast LLC, CC BY 4.0"
@@ -18,6 +18,15 @@ excludes:
   - origin.half_elf
   - origin.half_orc
   - origin.tiefling
+# Свитки SRD в мире — формулы ликвора (data/items/formulas.yaml, items.md#1.4).
+  - item.scroll_magic_missile
+  - item.scroll_cure_wounds
+  - item.scroll_shield
+  - item.scroll_misty_step
+  - item.scroll_lesser_restoration
+  - item.scroll_fireball
+  - item.scroll_revivify
+  - item.scroll_dispel_magic
 source_docs:
   canon: design/setting/echo-leviathans-canon.md
   rules: design/setting/echo-leviathans-rules.md

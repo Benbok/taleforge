@@ -1,8 +1,7 @@
 """Инструменты мастера (ТЗ, разделы 7, 7.1, 7.2, 8.1). Числа считает движок правил, мастер передаёт только
 шаблоны, цели и параметры из данных. Каждый изменяющий вызов оставляет событие в журнале с обратной дельтой.
 
-Не вошли в этап 3: ``lookup_rules`` (поиск по фрагментам правил — этап «Память»), ``cast_spell`` (механика
-заклинаний), автоматический ход монстров по профилю поведения и очередь хода (этап 4).
+Заклинания — в app/tools/spells.py (``cast_spell``).
 """
 
 from __future__ import annotations
@@ -132,6 +131,30 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         ],
         "personality": ch.personality,
         "public_bio": ch.public_bio,
+        **_spellbook(ctx, ch),
+    }
+
+
+def _spellbook(ctx: ToolContext, ch: Character) -> dict:
+    """Заклинания героя для мастера: сложность, бонус атаки, ячейки и что он может сотворить (для cast_spell)."""
+    from app.core.spells import book_view
+
+    b = book_view(ch.sheet or {}, ch.resources or {}, ctx.world.catalog)
+    if b is None:
+        return {}
+    return {
+        "spellcasting": {
+            "save_dc": b["save_dc"],
+            "attack": b["attack"],
+            "slots_left": b["slots_left"],
+            "pact_left": b["pact_left"] if b["pact_slots"] else None,
+            "concentration": (b["concentration"] or {}).get("name"),
+            "spells": [
+                {"id": x["id"], "name": x["name"], "level": x["level"], "ritual": x["ritual"]}
+                for x in b["spells"]
+                if x["prepared"]
+            ],
+        }
     }
 
 
@@ -430,6 +453,11 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             result["target_status"] = o2["status"]
         if tgt.hp.dead:
             result["killed"] = True
+        from app.tools.spells import concentration_check
+
+        conc = await concentration_check(ctx, tgt, int(result["damage"]))
+        if conc:
+            result["concentration_check"] = conc
     await ctx.record("resolve_attack", actor_id=att.id, target_id=tgt.id, payload=result, dice=dice, inverse=inverse)
     w.invalidate(tgt.id)
     return result
@@ -574,7 +602,8 @@ class UseItemArgs(BaseModel):
 
 @tool(
     "use_item",
-    "Применяет предмет инвентаря по его шаблону (зелье, расходник). Оружие — через resolve_attack.",
+    "Применяет предмет инвентаря по его шаблону (зелье, расходник). Свиток или формула творит записанное в нём "
+    "заклинание по правилам cast_spell без ячейки. Оружие — через resolve_attack.",
     UseItemArgs,
     ids={"character_id": "characters", "inventory_id": "inventory", "target_id": "combatants"},
 )
@@ -586,6 +615,10 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     if it.item_template_id == FOUND_ITEM:
         raise ToolError(f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
+    if rec.data.get("spell_scroll"):
+        from app.tools.spells import read_scroll
+
+        return await read_scroll(ctx, ch, it, rec, [a.target_id] if a.target_id else [])
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
         raise ToolError(f"у предмета {rec.name} нет механики применения")
@@ -1773,6 +1806,14 @@ async def expire_effects(ctx: ToolContext, inverse: list) -> list[str]:
             ctx.world.effects.remove(e)
             ctx.world.invalidate(e.target_id)
             ctx.changed.add(e.target_id)
+    for ch in ctx.world.characters.values():
+        conc = (ch.resources or {}).get("concentration")
+        if isinstance(conc, dict) and conc.get("until") is not None and conc["until"] <= ctx.world.scene.game_time:
+            inverse.append(snapshot(ctx.world.actor(ch.id)))
+            ch.resources = {k: v for k, v in ch.resources.items() if k != "concentration"}
+            out.append(f"{ch.id}: концентрация на «{conc.get('name')}» закончилась")
+            ctx.world.invalidate(ch.id)
+            ctx.changed.add(ch.id)
     await ctx.session.flush()
     return out
 
@@ -1785,7 +1826,7 @@ class RestArgs(BaseModel):
 
 @tool(
     "rest",
-    "Короткий (1 час) или продолжительный (8 часов) отдых по SRD: время, хиты, кости хитов.",
+    "Короткий (1 час) или продолжительный (8 часов) отдых по SRD: время, хиты, кости хитов, ячейки заклинаний.",
     RestArgs,
     ids={"character_ids": "characters"},
 )
@@ -1816,8 +1857,11 @@ async def rest(ctx: ToolContext, a: RestArgs) -> dict:
             act.hp.death_saves = type(act.hp.death_saves)()
             hd_left = min(level, hd_left + max(1, level // 2))
             act.save_hp()
-            ch.resources = {**ch.resources, "hit_dice": hd_left}
+            # ячейки заклинаний возвращаются, заклинатели снова готовят заклинания на день (SRD)
+            rest_res = {k: v for k, v in ch.resources.items() if k not in ("slots_used", "pact_used", "concentration")}
+            ch.resources = {**rest_res, "hit_dice": hd_left, "can_prepare": True}
             results.append({"character": ch.name, "hp": act.hp.current, "hit_dice": hd_left})
+            ctx.world.invalidate(ch.id)
             continue
         cls = ctx.world.catalog.find((ch.sheet or {}).get("class_id", ""), "class")
         die = int(str((cls.data if cls else {}).get("hit_die", "d8")).lstrip("d"))
@@ -1832,7 +1876,8 @@ async def rest(ctx: ToolContext, a: RestArgs) -> dict:
             healed += gain
             hd_left -= 1
         act.save_hp()
-        ch.resources = {**ch.resources, "hit_dice": hd_left}
+        # ячейки договора колдуна возвращаются на коротком отдыхе
+        ch.resources = {**{k: v for k, v in ch.resources.items() if k != "pact_used"}, "hit_dice": hd_left}
         results.append({"character": ch.name, "healed": healed, "hp": act.hp.current, "hit_dice": hd_left})
         ctx.world.invalidate(ch.id)
     ctx.world.scene.game_time += hours * 3600

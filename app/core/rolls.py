@@ -77,10 +77,12 @@ def _dmg(dice: list[dict]) -> list[dict[str, Any]]:
 
 def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
     """Данные карточки для события или None, если карточки у события нет."""
-    if ev.hidden or not ev.dice:
+    if ev.hidden or (not ev.dice and ev.tool != "cast_spell"):
         return None
     p = ev.payload or {}
     dice = ev.dice or []
+    if ev.tool == "cast_spell":
+        return _spell_card(ev, p, dice, hero_ids)
     if ev.tool == "roll_check":
         label = SKILL_RU.get(p.get("stat"), ABILITY_RU.get(p.get("stat"), p.get("stat")))
         return {
@@ -144,6 +146,73 @@ def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
         "dice": _dmg(dice),
         "outcome": "info",
     }
+
+
+def _spell_card(ev: Event, p: dict, dice: list[dict], hero_ids: set[str]) -> dict[str, Any]:
+    """Заклинание: ячейка, бросок атаки заклинанием или спасброски целей, урон и лечение по целям."""
+    rows = [r for r in p.get("outcomes") or [] if r.get("target")]
+    slot = p.get("slot") or {}
+    title = f"Заклинание: {p.get('spell')}"
+    notes: list[str] = []
+    if p.get("source"):
+        notes.append(f"со свитка «{p['source']}»: без ячейки")
+    sc = p.get("scroll_check") or {}
+    if sc:
+        notes.append(
+            f"проверка свитка {sc.get('total')} против Сл {sc.get('dc')} — "
+            + ("прочитан" if sc.get("success") else "не удалась, свиток пропал")
+        )
+    if p.get("ritual"):
+        notes.append("ритуал: без ячейки, на 10 минут дольше")
+    elif slot:
+        notes.append(f"{'ячейка договора' if slot.get('kind') == 'pact' else 'ячейка'} {slot.get('level')}-го круга")
+    for r in rows:
+        bits = [str(r["target"])]
+        if "save" in r:
+            bits.append(
+                f"спасбросок {ABILITY_RU.get(r['save'], r['save'])} {r.get('total')} против Сл {r.get('dc')} — "
+                + ("успех" if r.get("success") else "провал")
+            )
+        elif "attack_roll" in r and len(rows) > 1:
+            bits.append("попадание" if r.get("hit") else "промах")
+        if r.get("damage"):
+            types = ", ".join(DAMAGE_RU.get(t, t) for t in r.get("damage_types") or [])
+            bits.append(f"урон {r['damage']}" + (f" ({types})" if types else ""))
+        if r.get("healed") is not None:
+            bits.append(f"лечение {r['healed']}")
+        if r.get("temp_hp"):
+            bits.append(f"временные хиты {r['temp_hp']}")
+        if r.get("killed"):
+            bits.append("повержен")
+        conc = r.get("concentration_check")
+        if conc and not conc.get("kept", True):
+            bits.append(f"концентрация на «{conc.get('concentration')}» сорвана")
+        if len(bits) > 1:
+            notes.append(f"{bits[0]}: {', '.join(bits[1:])}")
+    if (p.get("concentration_ended") or {}).get("spell"):
+        notes.append(f"концентрация на «{p['concentration_ended']['spell']}» прервана")
+    out: dict[str, Any] = {"tool": ev.tool, "title": title, "who": p.get("caster"), "outcome": "info", "notes": notes}
+    attacks = [r for r in rows if "attack_roll" in r]
+    if len(attacks) == 1:
+        a = attacks[0]
+        out["target"] = a["target"]
+        out["roll"] = _d20(dice)
+        out["outcome"] = "crit" if a.get("critical") else "hit" if a.get("hit") else "miss"
+        if a.get("target_id") in hero_ids:
+            out["against"] = {"label": "КБ", "value": a.get("target_ac")}
+    elif len(rows) == 1:
+        out["target"] = rows[0]["target"]
+    total = sum(int(r.get("damage") or 0) for r in rows)
+    if total:
+        types = sorted({t for r in rows for t in r.get("damage_types") or []})
+        out["damage"] = {
+            "amount": total,
+            "type": ", ".join(DAMAGE_RU.get(t, t) for t in types),
+            "dice": _dmg(dice),
+        }
+    elif dice:
+        out["dice"] = _dmg(dice)
+    return out
 
 
 def line(c: dict[str, Any], names: dict[str, str] | None = None) -> str:

@@ -24,17 +24,17 @@ def run(settings, fn):
 
 
 def test_import_base_pack_once(settings):
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.3", "imported")]
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.4.3", "unchanged")]
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.5.0", "imported")]
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.5.0", "unchanged")]
 
     async def check(s):
         n = await s.scalar(select(func.count()).select_from(ContentRecord).where(ContentRecord.kind == "dc_scale"))
         pack = await latest_version(s, "dnd5e-srd")
-        rec = await s.get(ContentRecord, ("dnd5e-srd", "0.4.3", "condition.exhaustion"))
+        rec = await s.get(ContentRecord, ("dnd5e-srd", "0.5.0", "condition.exhaustion"))
         return n, pack, rec
 
     n, pack, rec = run(settings, check)
-    assert n == 6 and isinstance(pack, ContentPack) and pack.import_report["counts"]["item_template"] == 64
+    assert n == 6 and isinstance(pack, ContentPack) and pack.import_report["counts"]["item_template"] == 72
     assert rec.data["levels"]["6"][0]["target"] == "alive"
 
 

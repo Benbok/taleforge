@@ -32,6 +32,9 @@ class CharacterIn(BaseModel):
     ability_choice: list[str] | None = None
     skills: list[str] | None = None
     equipment_choices: list[dict[str, Any]] | None = None
+    cantrips: list[str] | None = Field(None, max_length=30)
+    spells: list[str] | None = Field(None, max_length=80)
+    prepared: list[str] | None = Field(None, max_length=60)
     public_bio: str | None = Field(None, max_length=4000)
     private_backstory: str | None = Field(None, max_length=4000)
     personality: dict[str, str] | None = None
@@ -146,6 +149,51 @@ async def update_character(
     )
     await session.commit()
     return await _view(session, v, ch)
+
+
+class SpellsIn(BaseModel):
+    cantrips: list[str] | None = Field(None, max_length=30)
+    spells: list[str] | None = Field(None, max_length=80)
+    prepared: list[str] | None = Field(None, max_length=60)
+
+
+@router.get("/characters/{character_id}/spells/options")
+async def spell_options(
+    campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
+) -> dict:
+    """Что герой может выучить или подготовить: заклинания его класса до доступного круга."""
+    from app.core import spells as spellbook
+
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch = await svc.get_character(session, v, character_id)
+    if not (v.seat is not None and ch.seat_id == v.seat.id) and not v.can_review:
+        raise AccessDenied("чужую книгу заклинаний видит только её хозяин и мастер")
+    cat = await campaign_catalog(session, v.campaign)
+    return {"spells": spellbook.learnable(ch.sheet or {}, cat)}
+
+
+@router.put("/characters/{character_id}/spells")
+async def update_spells(
+    campaign_id: str,
+    character_id: str,
+    body: SpellsIn,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+) -> dict:
+    """Книга заклинаний в игре: выучить открывшееся с уровнем, сменить подготовленные после отдыха."""
+    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    ch = await svc.get_character(session, v, character_id)
+    cat = await campaign_catalog(session, v.campaign)
+    await svc.update_spells(session, v, ch, cat, body.model_dump(exclude_none=True))
+    await session.commit()
+    view = await _view(session, v, ch)
+    if ch.seat_id:
+        await request.app.state.bus.publish(
+            campaign_id, envelope("character.sheet", campaign_id, {"character": view}), [ch.seat_id]
+        )
+    return view
 
 
 @router.post("/characters/{character_id}/roll-abilities")

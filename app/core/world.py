@@ -184,9 +184,22 @@ def character_actor(
         eq and item.get("category") == "armor" and item.get("armor_type") != "shield" for _, item, eq, _ in inv
     )
     natural = natural_ac(feats, d.mods["dex"]) if lin else None
+    # «Доспехи мага» и подобные: базовый КД без доспеха из эффекта (set ac_base)
+    spell_base = natural_ac([rec.data for _, rec in effs], d.mods["dex"])
+    if spell_base is not None:
+        natural = max(natural or 0, spell_base)
     if natural is not None and not armored:
         shield = next((i for _, i, eq, _ in inv if eq and i.get("armor_type") == "shield"), None)
         ac = max(ac, natural + (int(shield.get("ac_bonus", 2)) if shield else 0))
+    floor = max(
+        (
+            int(m["value"])
+            for _, m in mods_.own("set")
+            if m.get("target") == "ac_min" and isinstance(m.get("value"), int)
+        ),
+        default=0,
+    )
+    ac = max(ac, floor)  # «Дубовая кожа»: КД не ниже 16
     return Actor(
         id=ch.id,
         name=ch.name,

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView
 from app.core import bonds
+from app.core import spells as spellbook
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
@@ -45,6 +46,9 @@ SHEET_FIELDS = (
     "ability_choice",
     "skills",
     "equipment_choices",
+    "cantrips",  # заговоры
+    "spells",  # известные заклинания; у волшебника — книга заклинаний
+    "prepared",  # подготовленные на день (жрец, друид, паладин, волшебник, диагност)
 )
 
 
@@ -115,6 +119,7 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
                 "proficiencies": d.get("proficiencies", {}),
                 "spellcasting_ability": (d.get("spellcasting") or {}).get("ability"),
                 "subclasses": subclasses.get(e.id, []),
+                "spells": spellbook.class_options(cat, e.id, d, int(rules.get("start_level") or 1)),
                 "equipment_fixed": [
                     {**x, "name": items.get(x.get("item"), {}).get("name", x.get("item"))}
                     for x in ((se.get("fixed") or []) if isinstance(se, dict) else [])
@@ -158,6 +163,8 @@ def errors_for(ch: Character, cat: CatalogView, rules: dict) -> list[str]:
     origin = cat.find(sheet.get("origin_id") or "", "origin")
     errs = validate_character(sheet, cls.data if cls else None, origin.data if origin else None, rules, _items(cat))
     errs = foreign_errors(sheet, errs)
+    if cls is not None and origin is not None:
+        errs += spellbook.errors_for(sheet, cat)
     if not ch.name.strip():
         errs.append("нужно имя")
     return errs
@@ -332,6 +339,9 @@ def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, An
         "speed": int((origin.data if origin else {}).get("speed") or 30),
         "attacks": a.attacks,
     }
+    caster = spellbook.caster_for(ch.sheet, cat)
+    if caster is not None:
+        out["derived"]["spellcasting"] = {**caster.as_dict(), "needs": spellbook.rules.needs(caster)}
     out["inventory"] = [
         {"item": r.item_template_id, "name": _name(cat, r.item_template_id), "qty": r.qty, "equipped": r.equipped}
         for r in rows
@@ -360,6 +370,7 @@ async def approve_character(session: AsyncSession, campaign: Campaign, ch: Chara
         "hit_dice": level,
         "death_saves": [0, 0],
         "dead": False,
+        "can_prepare": True,  # заклинатель может сменить подготовленные до первого отдыха
     }
     scene = await get_scene(session, campaign.id)
     ch.location_id = scene.location_id
@@ -549,6 +560,9 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
             "features": [f.get("name") for f in feats if f.get("name")],
         }
     out["progress"] = progress_view(ch.sheet)
+    book = spellbook.book_view(ch.sheet or {}, ch.resources or {}, cat)
+    if book is not None:
+        out["spellbook"] = book
     out["inventory"] = [
         {
             "id": it.id,
@@ -560,3 +574,47 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
         for it in inventory
     ]
     return out
+
+
+async def update_spells(session: AsyncSession, viewer: Viewer, ch: Character, cat: CatalogView, data: dict) -> None:
+    """Книга заклинаний героя в игре: вне боя игрок добирает открывшиеся с уровнем заговоры и заклинания и меняет
+    подготовленные после продолжительного отдыха. Выученное не забывается."""
+    _own(viewer, ch)
+    if ch.status not in ("approved", "active"):
+        raise Conflict("книгу заклинаний меняют у героя в игре; черновик правят в конструкторе")
+    scene = await get_scene(session, ch.campaign_id)
+    if scene.mode == "combat":
+        raise Conflict("в бою книгу заклинаний не открыть: заклинания учат и готовят вне боя")
+    sheet = dict(ch.sheet or {})
+    old = spellbook.rules.Choice.of(sheet)
+    new = {
+        k: [str(x) for x in data.get(k) or []] for k in ("cantrips", "spells", "prepared") if data.get(k) is not None
+    }
+    for k, label in (("cantrips", "заговоры"), ("spells", "заклинания")):
+        if k in new:
+            lost = [x for x in getattr(old, k) if x not in new[k]]
+            if lost:
+                raise Conflict(f"{label}: выученное не забывается, уберите из списка только новое")
+    res = dict(ch.resources or {})
+    if "prepared" in new and set(new["prepared"]) != set(old.prepared):
+        dropped = [x for x in old.prepared if x not in new["prepared"]]
+        if dropped and not res.get("can_prepare", True):
+            raise Conflict("подготовленные меняют после продолжительного отдыха; сейчас можно только добавить")
+        if dropped:
+            res["can_prepare"] = False
+    sheet.update(new)
+    errs = spellbook.errors_for(sheet, cat, exact=False)
+    if errs:
+        raise Conflict("; ".join(errs))
+    ch.sheet = sheet
+    ch.resources = res
+    session.add(
+        Event(
+            campaign_id=ch.campaign_id,
+            tool="update_spells",
+            actor_id=ch.id,
+            target_id=ch.id,
+            payload={k: v for k, v in new.items()},
+        )
+    )
+    await session.flush()
