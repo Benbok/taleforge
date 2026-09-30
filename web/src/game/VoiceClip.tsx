@@ -4,8 +4,10 @@ import { useGame } from "../stores/game";
 import { sound } from "./sound";
 import { clock, voiceUrl } from "./voice";
 
-/** Плеер голосовой реплики: живой голос автора. Играет только по нажатию — без какофонии за столом. */
-export default function VoiceClip({ clip }: { clip: VoiceData }) {
+let activeAudio: HTMLAudioElement | null = null;
+
+/** Плеер голосовой реплики: живой голос автора или мастера. */
+export default function VoiceClip({ clip, autoPlay }: { clip: VoiceData; autoPlay?: boolean }) {
   const campaignId = useGame((s) => s.snapshot?.campaign.id);
   const audio = useRef<HTMLAudioElement | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
@@ -13,7 +15,7 @@ export default function VoiceClip({ clip }: { clip: VoiceData }) {
   const [pos, setPos] = useState(0);
 
   const ducking = useRef(false);
-  // пока звучит голос игрока, музыка сцены тише
+  // пока звучит голос мастера или игрока, музыка сцены тише
   const duck = (on: boolean) => {
     if (ducking.current === on) return;
     ducking.current = on;
@@ -23,15 +25,12 @@ export default function VoiceClip({ clip }: { clip: VoiceData }) {
     () => () => {
       audio.current?.pause();
       if (ducking.current) sound.duck(false);
+      if (activeAudio === audio.current) activeAudio = null;
     },
     [],
   );
 
-  async function toggle() {
-    if (state === "playing") {
-      audio.current?.pause();
-      return;
-    }
+  async function playAudio() {
     if (!campaignId) return;
     setError(null);
     try {
@@ -54,11 +53,34 @@ export default function VoiceClip({ clip }: { clip: VoiceData }) {
         };
         audio.current = a;
       }
+      if (activeAudio && activeAudio !== audio.current) {
+        activeAudio.pause();
+      }
+      activeAudio = audio.current;
       await audio.current.play();
     } catch (e) {
       setState("idle");
+      if (e instanceof Error && e.name === "NotAllowedError") {
+        return;
+      }
       setError(`Не проигрывается: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+
+  const autoPlayed = useRef(false);
+  useEffect(() => {
+    if (autoPlay && campaignId && !autoPlayed.current) {
+      autoPlayed.current = true;
+      void playAudio();
+    }
+  }, [autoPlay, campaignId]);
+
+  async function toggle() {
+    if (state === "playing") {
+      audio.current?.pause();
+      return;
+    }
+    await playAudio();
   }
 
   const total = clip.duration ?? 0;

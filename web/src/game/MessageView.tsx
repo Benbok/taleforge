@@ -40,7 +40,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "narration" && !m.whisper) {
     return (
       <div className="tf-pop max-w-[70ch] whitespace-pre-line font-narration text-[18px] leading-relaxed">
-        {m.data?.voice && <VoiceClip clip={m.data.voice} />}
+        {m.data?.voice && <VoiceClip clip={m.data.voice} autoPlay={m.fresh} />}
         <RichText text={m.content} />
       </div>
     );
@@ -67,7 +67,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {fromMaster ? "Шёпот мастера" : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}
         </p>
-        {m.data?.voice && <VoiceClip clip={m.data.voice} />}
+        {m.data?.voice && <VoiceClip clip={m.data.voice} autoPlay={m.fresh && fromMaster} />}
         <p className="font-narration">
           <RichText text={m.content} />
         </p>

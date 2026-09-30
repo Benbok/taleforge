@@ -10,8 +10,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _load_env_file(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        out[k.strip()] = v.strip().strip("'\"")
+    return out
+
+
+DOTENV = _load_env_file(ROOT / ".env")
+
+
 def _env(name: str, default: str | None = None) -> str | None:
-    v = os.environ.get(name)
+    v = os.environ.get(name) or DOTENV.get(name)
     return v if v not in (None, "") else default
 
 
@@ -38,6 +54,10 @@ class Settings:
     stt_model: str = "deepdml/faster-whisper-large-v3-turbo-ct2"
     stt_language: str = "ru"
     stt_concurrency: int = 1
+    # Озвучка текста мастера (Gemini TTS): генерация аудио для реплик мастера
+    tts_api_key: str | None = None
+    tts_model: str = "gemini-3.8-flash-tts"
+    tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -62,4 +82,7 @@ class Settings:
             stt_model=_env("STT_MODEL", cls.stt_model),
             stt_language=_env("STT_LANGUAGE", cls.stt_language),
             stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
+            tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY"),
+            tts_model=_env("TTS_MODEL", cls.tts_model),
+            tts_voice=_env("TTS_VOICE", cls.tts_voice),
         )

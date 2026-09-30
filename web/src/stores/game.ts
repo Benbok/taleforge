@@ -205,7 +205,7 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "message.new": {
-        const m = p as unknown as ChatMessage;
+        const m = { ...(p as unknown as ChatMessage), fresh: true };
         const mine = get().snapshot?.me?.seat_id;
         const also = standInFor(get());
         set((s) => {

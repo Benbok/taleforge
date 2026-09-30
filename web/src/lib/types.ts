@@ -88,6 +88,7 @@ export interface ChatMessage {
   data?: (RollCard & { ai?: boolean; voice?: VoiceData }) | null;
   created_at: string | null;
   state?: ReplyState | null;
+  fresh?: boolean;
 }
 
 export interface RollCard {
