@@ -11,8 +11,8 @@
 | `save` | 126 |
 | `run` | 96 |
 | `immunity` | 95 |
-| `advantage` | 82 |
-| `add` | 81 |
+| `advantage` | 84 |
+| `add` | 82 |
 | `custom` | 67 |
 | `disadvantage` | 60 |
 | `extra_damage` | 58 |
@@ -20,14 +20,14 @@
 | `condition` | 40 |
 | `grant_action` | 37 |
 | `vulnerability` | 33 |
-| `resistance` | 24 |
+| `resistance` | 25 |
 | `remove_condition` | 21 |
 | `check` | 15 |
 | `multiply` | 15 |
+| `proficiency` | 14 |
 | `choose` | 7 |
 | `move` | 6 |
 | `natural_weapon` | 6 |
-| `proficiency` | 6 |
 | `behavior` | 4 |
 | `cast` | 2 |
 | `clock` | 1 |
@@ -48,7 +48,7 @@
 | `resource_changed` | 6 |
 | `reduce_target_to_0` | 5 |
 | `scene_end` | 5 |
-| `cast_spell` | 4 |
+| `spell_cast` | 4 |
 | `drop_to_0` | 3 |
 | `hour_passed` | 3 |
 | `short_rest` | 3 |
@@ -155,8 +155,8 @@
 | Значение | Раз |
 |---|---|
 | `set: disguised` | 24 |
+| `add: ac` | 10 |
 | `add: hp` | 10 |
-| `add: ac` | 9 |
 | `set: speed` | 7 |
 | `set: spell_source` | 7 |
 | `add: hp_max` | 6 |

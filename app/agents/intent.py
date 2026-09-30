@@ -64,6 +64,9 @@ class IntentAction(BaseModel):
     verb: Literal[VERBS]  # type: ignore[valid-type]
     target_id: str | None = Field(None, description="id цели из перечня сущностей сцены или героев")
     instrument_id: str | None = Field(None, description="id предмета из снаряжения героя")
+    spell_id: str | None = Field(None, description="id заклинания из книги героя, если он творит заклинание")
+    slot_level: int | None = Field(None, ge=1, le=9, description="круг ячейки, если игрок назвал его явно")
+    ritual: bool = Field(False, description="заклинание творится ритуалом (игрок так сказал)")
     zone: Literal["melee", "near", "far"] | None = Field(None, description="куда перемещается: вплотную/близко/далеко")
     skill: str | None = Field(None, max_length=32, description="навык, если игрок его назвал")
     manner: str = Field("", max_length=300, description="как именно: «с разбега, целясь в ноги»")
@@ -136,14 +139,25 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
         lines.append(f"{en.id}  {en.name} ({kind}, {ZONE_NAMES.get(en.zone, en.zone)}{extra})")
     items = world.inventory.get(ch.id, [])
     inv = [f"{it.id}  {world.item_name(it)}{' [надет]' if it.equipped else ''}" for it in items]
+    spells = _castable(world, ch)
+    sp = [f"{sid}  {name} ({'заговор' if lvl == 0 else f'{lvl}-й круг'})" for sid, name, lvl in spells]
     mode = "бой: за ход одно действие и перемещение" if world.scene.mode == "combat" else "свободный режим"
     text = (
         f"Персонаж игрока: {ch.id} {ch.name}. Режим сцены: {mode}.\n"
         f"Сущности сцены:\n{chr(10).join(lines) or 'нет'}\n"
         f"Снаряжение героя:\n{chr(10).join(inv) or 'нет'}\n"
-        f"Глаголы: {', '.join(VERBS)}."
+        + (f"Заклинания героя (для cast — spell_id):\n{chr(10).join(sp)}\n" if sp else "")
+        + f"Глаголы: {', '.join(VERBS)}."
     )
-    return text, {"target_id": targets, "instrument_id": [it.id for it in items]}
+    return text, {"target_id": targets, "instrument_id": [it.id for it in items], "spell_id": [s[0] for s in spells]}
+
+
+def _castable(world: World, ch: Character) -> list[tuple[str, str, int]]:
+    """Заклинания, которые герой может сотворить: заговоры, известные и подготовленные."""
+    from app.core.spells import book_view
+
+    b = book_view(ch.sheet or {}, ch.resources or {}, world.catalog)
+    return [(x["id"], x["name"], x["level"]) for x in (b or {}).get("spells", []) if x["prepared"]]
 
 
 def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
@@ -161,6 +175,7 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
 
     valid_targets = set(world.characters) | {e.id for e in world.in_scene_entities()}
     own = {it.id for it in world.inventory.get(ch.id, [])}
+    known = {s[0] for s in _castable(world, ch)}
     notes: list[str] = []
     acts: list[dict[str, Any]] = []
     for a in intent.actions:
@@ -170,6 +185,11 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
             d["target_id"] = None
         if d["instrument_id"] and d["instrument_id"] not in own:
             d["missing_item"] = True  # предмета нет: мастер обыграет («рука нащупывает пустые ножны»)
+        if d["spell_id"] and d["spell_id"] not in known:
+            d["unknown_spell"] = True  # такого заклинания герой не знает: мастер откажет словами
+        if d["verb"] != "cast":
+            d.pop("slot_level", None)
+            d.pop("ritual", None)
         acts.append(d)
 
     notice = None
@@ -227,11 +247,13 @@ def describe(intent: dict[str, Any] | None) -> str:
     parts = []
     for a in intent.get("actions") or []:
         bits = [a["verb"]]
-        for k in ("target_id", "instrument_id", "zone", "skill"):
+        for k in ("target_id", "instrument_id", "spell_id", "slot_level", "zone", "skill"):
             if a.get(k):
                 bits.append(f"{k}={a[k]}")
         if a.get("missing_item"):
             bits.append("ПРЕДМЕТА НЕТ В СНАРЯЖЕНИИ")
+        if a.get("unknown_spell"):
+            bits.append("ГЕРОЙ НЕ ЗНАЕТ ЭТОГО ЗАКЛИНАНИЯ")
         if a.get("manner"):
             bits.append(f"«{a['manner']}»")
         parts.append(" ".join(bits))
@@ -252,3 +274,24 @@ def routable_attack(intent: dict[str, Any] | None) -> dict[str, Any] | None:
     if a["verb"] != "attack" or not a.get("target_id") or not a.get("instrument_id") or a.get("missing_item"):
         return None
     return {"attacker_id": intent["character_id"], "target_id": a["target_id"], "attack": a["instrument_id"]}
+
+
+def routable_cast(intent: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Однозначное заклинание из книги героя (кнопкой или ясной репликой) сервер творит сам через cast_spell.
+    Площадные заклинания и заклинания без ясной цели остаются мастеру: он решает, кто попал в область."""
+    if not intent or intent.get("confidence", 0) < ROUTE_CONFIDENCE:
+        return None
+    acts = [a for a in intent.get("actions") or [] if a["verb"] not in MOVE_VERBS]
+    if len(acts) != 1:
+        return None
+    a = acts[0]
+    if a["verb"] != "cast" or not a.get("spell_id") or a.get("unknown_spell"):
+        return None
+    args: dict[str, Any] = {"caster_id": intent["character_id"], "spell_id": a["spell_id"]}
+    if a.get("target_id"):
+        args["target_ids"] = [a["target_id"]]
+    if a.get("slot_level"):
+        args["slot_level"] = int(a["slot_level"])
+    if a.get("ritual"):
+        args["ritual"] = True
+    return args

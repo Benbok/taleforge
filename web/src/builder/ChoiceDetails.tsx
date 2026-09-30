@@ -22,13 +22,15 @@ interface ChoiceCardProps {
   className: string;
   children: ReactNode;
   details: ReactNode;
+  /** Выбор одного из многих (radio) или нескольких (checkbox, заклинания). */
+  role?: "radio" | "checkbox";
 }
 
 /**
  * Карточка выбора с подробностями: мышью — при наведении, на телефоне и с клавиатуры — кнопкой «i».
  * Подробности на телефоне открываются снизу листом, как разбор чисел в игре.
  */
-export function ChoiceCard({ name, selected, onPick, className, children, details }: ChoiceCardProps) {
+export function ChoiceCard({ name, selected, onPick, className, children, details, role = "radio" }: ChoiceCardProps) {
   const [mode, setMode] = useState<Mode>("closed");
   const [, setTick] = useState(0);
   const wrap = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
 
   return (
     <div ref={wrap} className="relative min-w-0" onPointerEnter={hoverIn} onPointerLeave={hoverOut}>
-      <button type="button" role="radio" aria-checked={selected} onClick={onPick} className={className}>
+      <button type="button" role={role} aria-checked={selected} onClick={onPick} className={className}>
         {children}
       </button>
       <button
@@ -142,8 +144,19 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-sm">{details}</div>
             {mode === "pinned" && (
               <div className="border-t border-line/60 px-4 py-3 shrink-0">
-                {selected ? (
+                {selected && role === "radio" ? (
                   <p className="text-center text-sm font-semibold text-accent">✓ Выбрано</p>
+                ) : selected ? (
+                  <button
+                    type="button"
+                    className="btn w-full border-line"
+                    onClick={() => {
+                      onPick();
+                      close();
+                    }}
+                  >
+                    Убрать из выбора
+                  </button>
                 ) : (
                   <button
                     type="button"

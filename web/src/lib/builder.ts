@@ -1,5 +1,6 @@
 // Конструктор героя: черновик на клиенте и его проверка. Правила и числа считает сервер (живой лист —
 // character-preview), здесь только то, что нужно, чтобы подсказать игроку до запроса.
+import type { ClassSpells } from "./spells";
 import type { HeroAttack } from "./types";
 
 export interface EquipPart {
@@ -27,6 +28,8 @@ export interface ClassOption extends CardTexts {
   proficiencies?: { armor?: string[]; weapons?: string[]; tools?: string[] };
   spellcasting_ability?: string | null;
   subclasses?: { name: string; description: string }[];
+  /** Заклинания класса на стартовом уровне; null — класс не колдует. */
+  spells?: ClassSpells | null;
   skills_choose: { count?: number; from?: string[] };
   equipment_fixed: { item: string; name?: string; qty?: number }[];
   equipment_choices: EquipPart[][][];
@@ -82,6 +85,9 @@ export interface Draft {
   ability_picks: string[][];
   skills: string[];
   equipment_choices: EquipChoice[];
+  cantrips: string[];
+  spells: string[];
+  prepared: string[];
   public_bio: string;
   private_backstory: string;
 }
@@ -98,6 +104,13 @@ export interface Preview {
     pb: number;
     speed: number;
     attacks: HeroAttack[];
+    /** Заклинатель: сложность спасброска, бонус атаки и сколько выбрать заклинаний. */
+    spellcasting?: {
+      ability: string;
+      save_dc: number;
+      attack: number;
+      needs: { cantrips: number; spells: number; prepared: number };
+    };
   } | null;
   inventory: { item: string; name: string; qty: number; equipped: boolean }[];
 }
@@ -137,6 +150,9 @@ export function emptyDraft(opts: BuilderOptions): Draft {
     ability_picks: [],
     skills: [],
     equipment_choices: [],
+    cantrips: [],
+    spells: [],
+    prepared: [],
     public_bio: "",
     private_backstory: "",
   };
@@ -156,6 +172,9 @@ export function draftFrom(obj: SavedHero, opts: BuilderOptions): Draft {
     ability_picks: splitPicks((s.ability_choice as string[]) ?? [], opts.origins.find((o) => o.id === s.origin_id)),
     skills: (s.skills as string[]) ?? [],
     equipment_choices: ((s.equipment_choices as EquipChoice[]) ?? []).map((c) => ({ ...c, items: c.items ?? [] })),
+    cantrips: (s.cantrips as string[]) ?? [],
+    spells: (s.spells as string[]) ?? [],
+    prepared: (s.prepared as string[]) ?? [],
     public_bio: obj.public_bio ?? "",
     private_backstory: obj.private_backstory ?? "",
   };
@@ -173,6 +192,9 @@ export function toBody(d: Draft, rolls?: number[] | null): Record<string, unknow
     ability_choice: d.ability_picks.flat(),
     skills: d.skills,
     equipment_choices: d.equipment_choices,
+    cantrips: d.cantrips,
+    spells: d.spells,
+    prepared: d.prepared,
     public_bio: d.public_bio,
     private_backstory: d.private_backstory,
     ...(rolls?.length ? { ability_rolls: rolls } : {}),
@@ -236,11 +258,40 @@ export function partLabel(p: EquipPart): string {
   return qty + (p.name ?? p.other ?? p.item ?? "");
 }
 
+/** Сколько заклинаний выбрать: заговоры и известные — из класса, подготовленные — из живого листа. */
+export function spellNeed(cls: ClassOption | undefined, preview: Preview | null) {
+  const cs = cls?.spells;
+  if (!cs) return null;
+  const live = preview?.derived?.spellcasting?.needs;
+  return {
+    cantrips: live?.cantrips ?? cs.cantrips,
+    spells: live?.spells ?? cs.known ?? 0,
+    prepared: cs.mode === "known" ? 0 : (live?.prepared ?? null),
+  };
+}
+
 /** Шаги конструктора и готов ли каждый: чтобы игрок видел, что осталось. */
-export function steps(d: Draft, opts: BuilderOptions): { id: string; label: string; done: boolean }[] {
+export function steps(
+  d: Draft,
+  opts: BuilderOptions,
+  preview: Preview | null = null,
+): { id: string; label: string; done: boolean }[] {
   const cls = opts.classes.find((c) => c.id === d.class_id);
   const need = cls?.skills_choose?.count ?? 0;
   const origin = opts.origins.find((o) => o.id === d.origin_id);
+  const sn = spellNeed(cls, preview);
+  const spellStep = sn
+    ? [
+        {
+          id: "spells",
+          label: "Заклинания",
+          done:
+            d.cantrips.length === sn.cantrips &&
+            (cls?.spells?.mode === "prepared" || d.spells.length === sn.spells) &&
+            (sn.prepared === 0 || (sn.prepared != null && d.prepared.length === sn.prepared)),
+        },
+      ]
+    : [];
   return [
     { id: "name", label: "Имя", done: !!d.name.trim() },
     { id: "class", label: "Класс", done: !!cls },
@@ -253,6 +304,7 @@ export function steps(d: Draft, opts: BuilderOptions): { id: string; label: stri
         (origin?.ability_groups ?? []).every((g, i) => (d.ability_picks[i]?.length ?? 0) === g.count),
     },
     { id: "skills", label: "Навыки", done: !!cls && d.skills.length === need },
+    ...spellStep,
     { id: "gear", label: "Снаряжение", done: !!cls },
     { id: "story", label: "История", done: !!d.public_bio.trim() },
   ];
