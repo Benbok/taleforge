@@ -4,6 +4,7 @@
 # languages — английские названия; languages_choose — сколько языков выбрать дополнительно.
 # proficiencies: skills / weapons (id пакета) / tools, *_choose — выбор. darkvision — футы.
 # features — черты расы (английский текст SRD); options — варианты выбора (драконье происхождение).
+# epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 # This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the
 # Coast LLC, licensed under CC BY 4.0. Данные: 5e-bits/5e-database, коммит bce51b3958573819e3b842fbc0cd9524fe4bc2e1.
 # Файл сгенерирован tools/import_srd.py — не править руками, правьте генератор.
@@ -11,6 +12,15 @@ kind: origin
 items:
   - id: origin.dwarf_hill
     name: Холмовой дварф
+    epithet: Стойкий житель гор
+    badge: Живучесть
+    summary: 'Выносливый и мудрый: сопротивление яду, тёмное зрение и больше хитов.'
+    description: Холмовые дварфы крепки телом и упрямы духом. Они хорошо переносят яды и раны и знают толк в камне и металле.
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Дварфийская стойкость: преимущество против яда и сопротивление ядовитому урону'
+    - 'Дварфийская выдержка: +1 хит за каждый уровень'
+    - Знание камня и владение боевыми топорами и молотами
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -48,6 +58,15 @@ items:
       description: Your hit point maximum increases by 1, and it increases by 1 every time you gain a level.
   - id: origin.elf_high
     name: Высший эльф
+    epithet: Изящный и чуткий
+    badge: Магия · Ловкость
+    summary: 'Ловкий и умный: зоркие чувства, защита от очарования и один заговор волшебника.'
+    description: Высшие эльфы живут долго, не спят, а медитируют, и с детства знакомы с магией.
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Наследие фей: преимущество против очарования, магия не усыпляет'
+    - 'Транс: 4 часа медитации вместо сна'
+    - 'Острые чувства: владение Восприятием; заговор волшебника'
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -101,6 +120,15 @@ items:
       description: You can speak, read, and write one extra language of your choice.
   - id: origin.halfling_lightfoot
     name: Легконогий полурослик
+    epithet: Маленький и везучий
+    badge: Удача
+    summary: 'Ловкий и обаятельный: перебрасывает единицы и прячется за спинами больших.'
+    description: Полурослики малы, но храбры и удивительно везучи. Легконогие особенно незаметны.
+    highlights:
+    - 'Везучий: перебросить 1 на к20'
+    - 'Храбрый: преимущество против испуга'
+    - 'Проворство: проходит сквозь место существа крупнее себя'
+    - Естественная скрытность; маленький размер, скорость 25 футов
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -125,6 +153,11 @@ items:
       description: You can attempt to hide even when you are obscured only by a creature that is at least one size larger than you.
   - id: origin.human
     name: Человек
+    epithet: Разносторонний
+    badge: Все +1
+    summary: '+1 ко всем характеристикам: подходит к любому классу.'
+    description: Люди — самый распространённый и разнообразный народ. У них нет особых черт, зато все характеристики чуть выше.
+    highlights: [+1 ко всем шести характеристикам, Дополнительный язык на выбор]
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -137,6 +170,14 @@ items:
     features: []
   - id: origin.dragonborn
     name: Драконорождённый
+    epithet: Потомок драконов
+    badge: Дыхание
+    summary: 'Сильный и харизматичный: дышит стихией своего предка и устойчив к ней.'
+    description: Драконорождённые несут в себе кровь драконов. Цвет предка определяет вид урона их дыхания и сопротивление.
+    highlights:
+    - 'Драконье происхождение: выбор предка и вида урона'
+    - 'Оружие дыхания: урон по области, спасбросок уменьшает'
+    - Сопротивление урону своей стихии
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -201,6 +242,15 @@ items:
       description: You have resistance to the damage type associated with your draconic ancestry.
   - id: origin.gnome_rock
     name: Скальный гном
+    epithet: Изобретатель
+    badge: Ум · Хитрость
+    summary: 'Умный и выносливый: защищён от магии разума и мастерит механические игрушки.'
+    description: Скальные гномы — любопытные мастера и изобретатели. Их ум трудно сломить магией.
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Гномья хитрость: преимущество на спасброски Инт, Мдр и Хар против магии'
+    - Знания ремесленника и механические поделки
+    - Маленький размер, скорость 25 футов
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -233,6 +283,15 @@ items:
         Music Box: When opened, this music box plays a single song at a moderate volume. The box stops playing when it reaches the song's end or when it is closed.
   - id: origin.half_elf
     name: Полуэльф
+    epithet: Между двух миров
+    badge: Харизма · Навыки
+    summary: Харизма +2 и ещё две прибавки на выбор, два навыка и защита от очарования.
+    description: 'Полуэльфы соединяют лучшее от людей и эльфов: гибкость, обаяние и эльфийскую чуткость.'
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Наследие фей: преимущество против очарования, магия не усыпляет'
+    - 'Разносторонность: два навыка на выбор'
+    - Харизма +2 и +1 к двум другим характеристикам
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -281,6 +340,15 @@ items:
       description: You gain proficiency in two skills of your choice.
   - id: origin.half_orc
     name: Полуорк
+    epithet: Неукротимый
+    badge: Сила · Стойкость
+    summary: 'Сильный и выносливый: не падает с первого раза и бьёт критами больнее.'
+    description: Полуорки грозны видом и нравом. Их трудно свалить, а в ближнем бою они страшны.
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Непоколебимая стойкость: раз за отдых остаться с 1 хитом вместо 0'
+    - 'Свирепые атаки: лишняя кость урона при критическом ударе'
+    - 'Угрожающий вид: владение Запугиванием'
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
@@ -305,6 +373,14 @@ items:
     - {key: menacing, name: Menacing, description: You gain proficiency in the Intimidation skill.}
   - id: origin.tiefling
     name: Тифлинг
+    epithet: Наследник преисподней
+    badge: Огонь · Магия
+    summary: 'Харизматичный и умный: сопротивление огню и врождённые заклинания.'
+    description: Тифлинги несут печать инфернального предка. Им не доверяют, но огонь и тьма им подвластны.
+    highlights:
+    - Тёмное зрение 60 футов
+    - 'Адское сопротивление: сопротивление урону огнём'
+    - 'Дьявольское наследие: «Чудотворство», позже «Адское возмездие» и «Тьма»'
     status: canon
     doc: 'SRD 5.1: Races'
     tags: [race, srd]
