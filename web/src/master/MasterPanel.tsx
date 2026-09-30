@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
+import CustomSelect from "../components/CustomSelect";
 import { Tabs } from "../components/Form";
 import { PlotDetails, type Plot } from "../cabinet/PlotTab";
 import { api } from "../lib/api";
@@ -188,15 +189,13 @@ function Templates({ onUse }: { onUse: (tool: string, prefill: Values) => void }
       >
         <label className="flex flex-col gap-1 text-sm">
           Что ищем
-          <select className="field" value={kind} onChange={(e) => (setKind(e.target.value), setFound(null))}>
-            {Object.keys(VALUE_RU)
+          <CustomSelect
+            value={kind}
+            options={Object.keys(VALUE_RU)
               .filter((k) => k.endsWith("_template") || ["dc_scale", "faction", "lore_fact", "class", "origin"].includes(k))
-              .map((k) => (
-                <option key={k} value={k}>
-                  {VALUE_RU[k]}
-                </option>
-              ))}
-          </select>
+              .map((k) => ({ value: k, label: VALUE_RU[k] }))}
+            onChange={(v) => { setKind(v); setFound(null); }}
+          />
         </label>
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
           Слова

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import ActionButton from "../components/ActionButton";
 import { api, getToken } from "../lib/api";
 import { toast } from "../stores/toasts";
+import CustomSelect from "../components/CustomSelect";
 
 export interface TrackCard {
   id: string;
@@ -253,14 +254,14 @@ function CardForm({
       {!loop && (
         <label className="flex flex-col gap-1 text-xs text-muted">
           Играет движок сам
-          <select className="field" value={c.cue ?? ""} onChange={(e) => set({ cue: e.target.value || null })}>
-            <option value="">нет, эффект выбирает мастер</option>
-            {lib.cues.map((x) => (
-              <option key={x} value={x}>
-                {CUE_LABELS[x] ?? x}
-              </option>
-            ))}
-          </select>
+          <CustomSelect
+            value={c.cue ?? ""}
+            options={[
+              { value: "", label: "нет, эффект выбирает мастер" },
+              ...lib.cues.map((x) => ({ value: x, label: CUE_LABELS[x] ?? x })),
+            ]}
+            onChange={(v) => set({ cue: v || null })}
+          />
         </label>
       )}
       <label className="flex flex-col gap-1 text-xs text-muted">
@@ -425,14 +426,14 @@ export default function AudioSection() {
       {lib && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">Мир:</span>
-          <select className="field w-auto" value={world} onChange={(e) => setWorld(e.target.value)}>
-            <option value="">все треки</option>
-            {lib.packs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <CustomSelect
+            value={world}
+            options={[
+              { value: "", label: "все треки" },
+              ...lib.packs.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            onChange={setWorld}
+          />
           {world && <span className="text-xs text-muted">Отметьте треки, которые подходят этому миру.</span>}
         </div>
       )}

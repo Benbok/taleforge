@@ -9,6 +9,7 @@ import { api } from "../lib/api";
 import type { BuilderOptions, CampaignHero } from "../lib/builder";
 import type { ModelProfile, Room, Seat } from "../lib/campaign";
 import { toast } from "../stores/toasts";
+import CustomSelect from "../components/CustomSelect";
 
 interface Invite {
   token: string;
@@ -285,14 +286,16 @@ function SeatAi({ campaignId, seat, onRoom }: { campaignId: string; seat: Seat; 
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       {!!models.data?.length && (
-        <select className="field py-0.5 text-xs" value={profile} onChange={(e) => setProfile(e.target.value)} aria-label="Модель ИИ-игрока">
-          <option value="">Модель по умолчанию</option>
-          {models.data.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        <CustomSelect
+          ariaLabel="Модель ИИ-игрока"
+          size="sm"
+          value={profile}
+          options={[
+            { value: "", label: "Модель по умолчанию" },
+            ...models.data.map((m) => ({ value: m.id, label: m.name })),
+          ]}
+          onChange={setProfile}
+        />
       )}
       <ActionButton
         className="px-2 py-0.5 text-xs"

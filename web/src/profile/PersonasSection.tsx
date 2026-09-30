@@ -163,19 +163,11 @@ export default function PersonasSection() {
 
             {FIELDS.map(([k, label]) => (
               <Field key={k} label={label}>
-                <select
-                  className="field text-sm"
+                <CustomSelect
                   value={String(form.settings[k] ?? "")}
-                  onChange={(e) =>
-                    setting(k, /^\d+$/.test(e.target.value) ? Number(e.target.value) : e.target.value)
-                  }
-                >
-                  {Object.entries(o[k] ?? {}).map(([v, text]) => (
-                    <option key={v} value={v}>
-                      {text}
-                    </option>
-                  ))}
-                </select>
+                  options={Object.entries(o[k] ?? {}).map(([v, text]) => ({ value: v, label: String(text) }))}
+                  onChange={(v) => setting(k, /^\d+$/.test(v) ? Number(v) : v)}
+                />
               </Field>
             ))}
           </div>

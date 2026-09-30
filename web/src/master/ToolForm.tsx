@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import ActionButton from "../components/ActionButton";
+import CustomSelect from "../components/CustomSelect";
 import { toast } from "../stores/toasts";
 import ResultView from "./ResultView";
 import {
@@ -132,11 +133,15 @@ function FieldInput({
       return (
         <label className="flex flex-col gap-1">
           {head}
-          <select className="field" value={String(value)} onChange={(e) => onChange(e.target.value)}>
-            <option value="">не менять</option>
-            <option value="true">да</option>
-            <option value="false">нет</option>
-          </select>
+          <CustomSelect
+            value={value == null ? "" : String(value)}
+            options={[
+              { value: "", label: "не менять" },
+              { value: "true", label: "да" },
+              { value: "false", label: "нет" },
+            ]}
+            onChange={onChange}
+          />
           {hint}
         </label>
       );
@@ -156,14 +161,14 @@ function FieldInput({
       return (
         <label className="flex flex-col gap-1">
           {head}
-          <select className="field" value={str} onChange={(e) => onChange(e.target.value)}>
-            <option value="">{f.required ? "— выберите —" : "— не задано —"}</option>
-            {f.options.map((o) => (
-              <option key={o} value={o}>
-                {labelOf(labels, o)}
-              </option>
-            ))}
-          </select>
+        <CustomSelect
+          value={str}
+          options={[
+            { value: "", label: f.required ? "— выберите —" : "— не задано —" },
+            ...f.options.map((o) => ({ value: o, label: labelOf(labels, o) })),
+          ]}
+          onChange={onChange}
+        />
           {f.options.length === 0 && <span className="text-xs text-muted">Сейчас выбрать не из чего.</span>}
           {hint}
         </label>

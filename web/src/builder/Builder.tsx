@@ -27,6 +27,7 @@ import {
   type SavedHero,
 } from "../lib/builder";
 import { ABILITIES, ABILITY_RU, SKILLS } from "../game/hero";
+import CustomSelect from "../components/CustomSelect";
 import ClassChoices from "./ClassChoices";
 import LiveSheet from "./LiveSheet";
 import OriginChoices from "./OriginChoices";
@@ -603,27 +604,23 @@ export default function Builder({
                           ? Array.from({ length: part.qty ?? 1 }, () => {
                               const k = slot++;
                               return (
-                                <select
+                                <CustomSelect
                                   key={k}
-                                  className="field font-mono text-xs max-w-xs"
-                                  aria-label="Оружие на выбор"
+                                  className="max-w-xs"
+                                  ariaLabel="Оружие на выбор"
+                                  size="sm"
                                   value={pick.items[k] ?? ""}
-                                  onChange={(e) =>
+                                  options={weaponsOf(part.any!, opts).map(([id, name]) => ({ value: id, label: name }))}
+                                  onChange={(v) =>
                                     set({
                                       equipment_choices: draft.equipment_choices.map((x) =>
                                         x.choice === i
-                                          ? { ...x, items: x.items.map((v, n) => (n === k ? e.target.value : v)) }
+                                          ? { ...x, items: x.items.map((val, n) => (n === k ? v : val)) }
                                           : x,
                                       ),
                                     })
                                   }
-                                >
-                                  {weaponsOf(part.any!, opts).map(([id, name]) => (
-                                    <option key={id} value={id}>
-                                      {name}
-                                    </option>
-                                  ))}
-                                </select>
+                                />
                               );
                             })
                           : [],

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Header from "../components/Header";
+import CustomSelect from "../components/CustomSelect";
 import Builder from "../builder/Builder";
 import { api } from "../lib/api";
 import { HERO_STATUS_RU, type BuilderOptions, type LibraryHero, type World } from "../lib/builder";
@@ -73,13 +74,13 @@ export default function LibraryHeroPage() {
         {worlds.data && worlds.data.length > 1 && (
           <label className="card flex flex-wrap items-center gap-3 p-4">
             <span>Мир героя</span>
-            <select className="field max-w-xs" aria-label="Мир героя" value={packId ?? ""} onChange={(e) => setPicked(e.target.value || null)}>
-              {worlds.data.map((w) => (
-                <option key={w.id ?? ""} value={w.id ?? ""}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              className="max-w-xs"
+              ariaLabel="Мир героя"
+              value={packId ?? ""}
+              options={worlds.data.map((w) => ({ value: w.id ?? "", label: w.name }))}
+              onChange={(v) => setPicked(v || null)}
+            />
             <span className="text-sm text-muted">Конструктор предложит расы и классы этого мира.</span>
           </label>
         )}
