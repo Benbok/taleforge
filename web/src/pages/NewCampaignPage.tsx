@@ -21,9 +21,11 @@ import {
   WIZARD_STEPS,
   type CampaignDraft,
   type CampaignOptions,
+  type MasterPreset,
   type ModelProfile,
   type Pack,
   type Persona,
+  type PersonaPick,
   type Room,
 } from "../lib/campaign";
 import { useSession } from "../stores/session";
@@ -36,6 +38,7 @@ export default function NewCampaignPage() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState<CampaignDraft>(() => loadDraft(user.id) ?? EMPTY_DRAFT);
   const [resumed] = useState(() => !!loadDraft(user.id));
+  const [testScenes, setTestScenes] = useState<{ scene: string; situation: string; reply: string }[] | null>(null);
   useEffect(() => saveDraft(user.id, draft), [user.id, draft]);
 
   const admin = user.platform_role !== "player";
@@ -43,6 +46,7 @@ export default function NewCampaignPage() {
   const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs"), enabled: admin });
   const models = useQuery({ queryKey: ["models"], queryFn: () => api<ModelProfile[]>("/api/admin/models"), enabled: admin });
   const personas = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas"), enabled: admin });
+  const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets"), enabled: admin });
   const size = useQuery({
     queryKey: ["party-size", draft.difficulty, draft.pack_id],
     queryFn: () =>
@@ -277,14 +281,161 @@ export default function NewCampaignPage() {
           </>
         )}
 
-        {draft.step === 1 && (
-          <>
-            <div>
-              <h2 className="font-heading text-xl font-bold text-ink">Ведущий и роль мастера</h2>
-              <p className="mt-0.5 text-xs text-muted">
-                Выберите, кто будет вести кампанию — искусственный интеллект или живой мастер
-              </p>
-            </div>
+        {draft.step === 1 && (() => {
+          const activePreset = presets.data?.find((p) => p.id === draft.master_preset_id);
+          return (
+            <>
+              <div>
+                <h2 className="font-heading text-xl font-bold text-ink">Ведущий и роль мастера</h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  Выберите, кто будет вести кампанию — искусственный интеллект или живой мастер
+                </p>
+              </div>
+
+              {presets.data && presets.data.length > 0 && (
+                <Field
+                  label="Готовый пресет мастера"
+                  hint="Выберите сохранённую связку модели, тона и анкеты характера мастера, чтобы не настраивать с нуля."
+                >
+                  <CustomSelect
+                    value={draft.master_preset_id ?? ""}
+                    options={[
+                      {
+                        value: "",
+                        label: "Без пресета (ручная настройка)",
+                        sublabel: "Настроить модель и характер мастера ниже вручную",
+                        badge: "ВРУЧНУЮ",
+                        badgeTone: "muted",
+                      },
+                      ...presets.data.map((pr) => ({
+                        value: pr.id,
+                        label: pr.name,
+                        sublabel: `${pr.model_profile_name ? `Модель: ${pr.model_profile_name}` : "Модель по умолчанию"}${pr.style_preview ? ` · «${pr.style_preview.slice(0, 45)}…»` : ""}`,
+                        badge: "ПРЕСЕТ",
+                        badgeTone: "patina" as const,
+                      })),
+                    ]}
+                    onChange={(val) => {
+                      setTestScenes(null);
+                      if (!val) {
+                        set({
+                          master_preset_id: null,
+                          master_style: "",
+                          master_character: null,
+                        });
+                      } else {
+                        const pr = presets.data?.find((p) => p.id === val);
+                        if (pr) {
+                          set({
+                            master_preset_id: pr.id,
+                            master: pr.model_profile_id ?? "",
+                            persona: (pr.persona_preset
+                              ? `pre:${pr.persona_preset}`
+                              : pr.persona_id
+                                ? `my:${pr.persona_id}`
+                                : "") as PersonaPick,
+                            master_style: pr.style ?? "",
+                            master_character: pr.character ?? null,
+                          });
+                        }
+                      }
+                    }}
+                    ariaLabel="Пресет мастера"
+                  />
+                </Field>
+              )}
+
+              {activePreset && !owner && (
+                <div className="rounded-[10px] border border-patina/40 bg-patina/5 p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading text-sm font-bold text-ink">
+                        Пресет «{activePreset.name}»
+                      </span>
+                      <span className="font-mono text-[10px] text-patina-hi px-1.5 py-0.5 rounded border border-patina/30 bg-patina/10">
+                        АКТИВЕН
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="font-mono text-xs text-muted hover:text-bad underline"
+                      onClick={() => {
+                        setTestScenes(null);
+                        set({
+                          master_preset_id: null,
+                          master_style: "",
+                          master_character: null,
+                        });
+                      }}
+                    >
+                      сбросить пресет
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-muted">
+                    <div>
+                      <span className="text-ink">Модель: </span>
+                      {activePreset.model_profile_name || "По умолчанию"}
+                    </div>
+                    {activePreset.style_preview && (
+                      <div>
+                        <span className="text-ink">Тон: </span>
+                        {activePreset.style_preview}
+                      </div>
+                    )}
+                  </div>
+                  {activePreset.character?.text && (
+                    <p className="text-xs text-muted italic font-serif border-t border-line/30 pt-1.5 mt-0.5 line-clamp-2">
+                      «{activePreset.character.text}»
+                    </p>
+                  )}
+                  {testScenes && testScenes.length > 0 ? (
+                    <div className="mt-2 flex flex-col gap-2 border-t border-line/40 pt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[11px] text-accent uppercase font-semibold">
+                          Пробные сцены пресета:
+                        </span>
+                        <button
+                          type="button"
+                          className="text-xs font-mono text-muted hover:text-ink"
+                          onClick={() => setTestScenes(null)}
+                        >
+                          ✕ Скрыть
+                        </button>
+                      </div>
+                      {testScenes.map((s, idx) => (
+                        <div key={idx} className="rounded border border-line bg-raised/50 p-2.5 text-xs">
+                          <div className="font-mono text-[10px] text-accent font-semibold">{s.scene}</div>
+                          <div className="text-muted mt-0.5">{s.situation}</div>
+                          <div className="italic text-ink mt-1">«{s.reply}»</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="pt-1">
+                      <ActionButton
+                        className="font-mono text-xs px-2.5 py-1"
+                        run={async () => {
+                          const res = await api<{ scenes: { scene: string; situation: string; reply: string }[] }>(
+                            "/api/me/master-presets/test",
+                            {
+                              method: "POST",
+                              body: {
+                                model_profile_id: activePreset.model_profile_id,
+                                style: activePreset.style,
+                                character: activePreset.character,
+                              },
+                            },
+                          );
+                          setTestScenes(res.scenes);
+                        }}
+                        done="Пробные сцены сгенерированы"
+                      >
+                        Проверить сцены мастера
+                      </ActionButton>
+                    </div>
+                  )}
+                </div>
+              )}
 
             <Field
               label="Кто ведёт приключение"
@@ -339,7 +490,8 @@ export default function NewCampaignPage() {
               />
             </Field>
           </>
-        )}
+        );
+      })()}
 
         {draft.step === 2 && (
           <>

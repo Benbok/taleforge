@@ -19,6 +19,9 @@ from app.api.schemas import (
     InvitePreviewOut,
     MasterModelIn,
     MasterModelOut,
+    MasterCharacterIn,
+    MasterPresetOut,
+    MasterPresetSaveFromCampaignIn,
     PersonaChoiceIn,
     SeatOut,
     SecretsIn,
@@ -29,7 +32,7 @@ from app.core import audio, chat, master_log
 from app.core import campaigns as svc
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import get_scene
-from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, ModelProfile, User
+from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, MasterPreset, ModelProfile, User
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -275,12 +278,6 @@ async def put_master_persona(
 # --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---
 
 
-class MasterCharacterIn(BaseModel):
-    text: str = ""
-    fields: dict[str, str] = {}
-    core: list[str] | None = None
-
-
 class MasterDraftIn(BaseModel):
     persona: MasterCharacterIn | None = None
 
@@ -362,6 +359,70 @@ async def patch_master_note(
     persona.edit_note(n, body.text, body.cause, body.reverted)
     await session.commit()
     return await _master_character_out(session, campaign_id, agent)
+
+
+@router.post("/campaigns/{campaign_id}/save-master-preset")
+async def save_campaign_master_preset(
+    campaign_id: str, body: MasterPresetSaveFromCampaignIn, user: UserDep, session: SessionDep
+) -> MasterPresetOut:
+    """Сохраняет текущую конфигурацию мастера (модель, тон, анкета характера) как пресет."""
+    from app.api.personas import preset_name_taken, preset_out
+
+    agent = await _master_agent(session, user, campaign_id, "пресет мастера")
+    extra = dict(agent.settings or {})
+    persona_meta = extra.get("persona") or {}
+    char_data = extra.get("character") or {}
+
+    name = body.name.strip()
+    if body.preset_id:
+        preset = await session.get(MasterPreset, body.preset_id)
+        if preset is None or preset.user_id != user.id:
+            raise NotFound("пресет не найден")
+        if await preset_name_taken(session, user, name, except_id=preset.id):
+            raise Conflict("пресет с таким названием уже есть")
+        preset.name = name
+        preset.model_profile_id = extra.get("model_profile_id")
+        preset.persona_id = persona_meta.get("persona_id") if persona_meta.get("source") == "profile" else None
+        preset.persona_preset = persona_meta.get("preset") if persona_meta.get("source") == "preset" else None
+        preset.persona_settings = persona_meta.get("settings") or {}
+        preset.style = persona_meta.get("style") or agent.persona
+        preset.character = char_data
+    else:
+        if await preset_name_taken(session, user, name):
+            raise Conflict("пресет с таким названием уже есть")
+        preset = MasterPreset(
+            user_id=user.id,
+            name=name,
+            model_profile_id=extra.get("model_profile_id"),
+            persona_id=persona_meta.get("persona_id") if persona_meta.get("source") == "profile" else None,
+            persona_preset=persona_meta.get("preset") if persona_meta.get("source") == "preset" else None,
+            persona_settings=persona_meta.get("settings") or {},
+            style=persona_meta.get("style") or agent.persona,
+            character=char_data,
+        )
+        session.add(preset)
+
+    await session.commit()
+    return await preset_out(session, preset)
+
+
+@router.post("/campaigns/{campaign_id}/apply-master-preset/{preset_id}")
+async def apply_campaign_master_preset(
+    campaign_id: str, preset_id: str, user: UserDep, session: SessionDep
+) -> dict:
+    """Применяет сохранённый пресет к ИИ-мастеру кампании."""
+    agent = await _master_agent(session, user, campaign_id, "пресет мастера")
+    preset = await session.get(MasterPreset, preset_id)
+    if preset is None or preset.user_id != user.id:
+        raise NotFound("пресет мастера не найден")
+    await svc.apply_master_preset(session, agent, preset, owner=user)
+    await session.commit()
+    return {
+        "ok": True,
+        "model": await master_model_out(session, agent),
+        "persona": persona_out(agent),
+        "character": await _master_character_out(session, campaign_id, agent),
+    }
 
 
 @router.delete("/campaigns/{campaign_id}", status_code=204)

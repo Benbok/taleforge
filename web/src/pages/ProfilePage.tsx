@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { api } from "../lib/api";
 import AccountSection, { type Profile } from "../profile/AccountSection";
+import MasterPresetsSection from "../profile/MasterPresetsSection";
 import PersonasSection from "../profile/PersonasSection";
 
 /** Профиль: аккаунт у всех, персоны мастера — у админов. Модели, пакеты, расходы и пользователи — в админке. */
@@ -94,8 +95,13 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            {/* Master Personas Section (admins only) */}
-            {p.can_manage_models && <PersonasSection />}
+            {/* Master Presets & Personas (admins only) */}
+            {p.can_manage_models && (
+              <>
+                <MasterPresetsSection />
+                <PersonasSection />
+              </>
+            )}
           </div>
         )}
       </main>

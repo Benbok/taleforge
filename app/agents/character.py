@@ -20,7 +20,7 @@ from app.agents.llm import LLMError, model_for, parser_model_for
 from app.content.catalog import campaign_catalog
 from app.core import persona
 from app.core.campaigns import Conflict, default_model_profile, master_seat
-from app.db.models import AgentConfig, Campaign, Character, LlmCall, PersonaNote
+from app.db.models import AgentConfig, Campaign, Character, LlmCall, ModelProfile, PersonaNote
 
 log = logging.getLogger(__name__)
 
@@ -61,23 +61,34 @@ async def _model(s, c: Campaign, seat_id: str | None) -> tuple[str, str, str | N
     raise Conflict("нет модели: у кампании живой мастер, а в админке нет профиля модели по умолчанию")
 
 
-async def _complete(svc, cid: str, seat_id: str | None, purpose: str, model, api_base, temperature, msgs, tools=None):
-    call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose=purpose, model=model)
+async def _complete(svc, cid: str | None, seat_id: str | None, purpose: str, model, api_base, temperature, msgs, tools=None):
     try:
         reply = await svc.llm.complete(
             msgs, model=model, tools=tools, max_tokens=1500, temperature=temperature, api_base=api_base
         )
     except LLMError as e:
-        call.error = str(e)[:2000]
+        if cid:
+            call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose=purpose, model=model, error=str(e)[:2000])
+            async with svc.maker() as s:
+                s.add(call)
+                await s.commit()
+        raise Conflict(f"модель не ответила: {str(e)[:300]}") from e
+
+    if cid:
+        call = LlmCall(
+            campaign_id=cid,
+            seat_id=seat_id,
+            turn_id=None,
+            purpose=purpose,
+            model=reply.model,
+            tokens_in=reply.tokens_in,
+            tokens_out=reply.tokens_out,
+            cost=reply.cost,
+            latency_ms=reply.latency_ms,
+        )
         async with svc.maker() as s:
             s.add(call)
             await s.commit()
-        raise Conflict(f"модель не ответила: {str(e)[:300]}") from e
-    call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
-    call.cost, call.latency_ms = reply.cost, reply.latency_ms
-    async with svc.maker() as s:
-        s.add(call)
-        await s.commit()
     return reply
 
 
@@ -202,6 +213,36 @@ async def try_scenes(svc, cid: str, sheet: dict, *, character_id: str | None) ->
     for title, text in scenes:
         msgs = [{"role": "system", "content": system}, {"role": "user", "content": f"{world}\n\nСцена: {text}"}]
         reply = await _complete(svc, cid, seat_id, "persona_test", model, api_base, temperature, msgs)
+        out.append({"scene": title, "situation": text, "reply": (reply.text or "").strip() or "—"})
+    return out
+
+
+async def try_preset_scenes(
+    svc, profile_id: str | None, sheet: dict, style: str | None = None
+) -> list[dict[str, str]]:
+    """Три пробные сцены для пресета мастера (без привязки к конкретной кампании)."""
+    async with svc.maker.begin() as s:
+        if profile_id:
+            p = await s.get(ModelProfile, profile_id)
+        else:
+            p = await default_model_profile(s)
+        if p is not None:
+            provider, model, api_base, temperature = p.provider, model_for(p.provider, p.model), p.api_base, p.temperature
+        else:
+            provider, model, api_base, temperature = "claude", model_for("claude", ""), None, 0.8
+
+    sheet = persona.normalize(sheet, master=True)
+    character = persona.render(sheet, [], master=True)
+    if style and style.strip():
+        character = (style.strip() + "\n\n" + character) if character else style.strip()
+
+    system = "Ты — мастер текстовой ролевой игры по D&D 5e. Пиши по-русски, 3–6 предложений, в своей манере:\n" + (
+        character or "манера не задана"
+    )
+    out = []
+    for title, text in MASTER_SCENES:
+        msgs = [{"role": "system", "content": system}, {"role": "user", "content": f"Сцена: {text}"}]
+        reply = await _complete(svc, None, None, "persona_test", model, api_base, temperature, msgs)
         out.append({"scene": title, "situation": text, "reply": (reply.text or "").strip() or "—"})
     return out
 

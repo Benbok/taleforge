@@ -111,6 +111,12 @@ class CampaignPersonaOut(BaseModel):
     style: str | None
 
 
+class MasterCharacterIn(BaseModel):
+    text: str = Field(default="", max_length=4000)
+    fields: dict[str, str] = Field(default_factory=dict)
+    core: list[str] | None = None
+
+
 class MasterIn(BaseModel):
     """ИИ-мастер: профиль модели из админки (model_profile_id) или явные провайдер и модель.
     Без того и другого берётся профиль по умолчанию, а если его нет — Claude."""
@@ -124,6 +130,49 @@ class MasterIn(BaseModel):
     persona_id: str | None = None
     persona_preset: str | None = None
     persona: PersonaSettingsIn | None = None
+    character: MasterCharacterIn | None = None
+    preset_id: str | None = None
+
+
+class MasterPresetIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    model_profile_id: str | None = None
+    persona_id: str | None = None
+    persona_preset: str | None = None
+    persona_settings: PersonaSettingsIn | None = None
+    style: str | None = Field(default=None, max_length=2000)
+    character: MasterCharacterIn | None = None
+
+
+class MasterPresetPatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    model_profile_id: str | None = None
+    persona_id: str | None = None
+    persona_preset: str | None = None
+    persona_settings: PersonaSettingsIn | None = None
+    style: str | None = Field(default=None, max_length=2000)
+    character: MasterCharacterIn | None = None
+
+
+class MasterPresetSaveFromCampaignIn(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    preset_id: str | None = None
+
+
+class MasterPresetOut(BaseModel):
+    id: str
+    name: str
+    model_profile_id: str | None = None
+    model_profile_name: str | None = None
+    model_resolved: str | None = None
+    provider: str | None = None
+    persona_id: str | None = None
+    persona_preset: str | None = None
+    persona_settings: dict | None = None
+    style: str | None = None
+    style_preview: str | None = None
+    character: dict | None = None
+    updated_at: datetime | None = None
 
 
 class MasterModelIn(BaseModel):

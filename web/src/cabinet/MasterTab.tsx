@@ -10,6 +10,7 @@ import {
   personaBody,
   PROVIDER_RU,
   type CampaignOptions,
+  type MasterPreset,
   type ModelProfile,
   type Persona,
   type PersonaPick,
@@ -43,13 +44,19 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
   const models = useQuery({ queryKey: ["models"], queryFn: () => api<ModelProfile[]>("/api/admin/models") });
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const mine = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas") });
+  const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets") });
 
   const [pickedModel, setPickedModel] = useState("");
   const [pick, setPick] = useState<PersonaPick>("");
   const [style, setStyle] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState("");
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [savePresetName, setSavePresetName] = useState("");
+  const [saveOverwriteId, setSaveOverwriteId] = useState("");
+  const [characterRev, setCharacterRev] = useState(0);
 
   useEffect(() => {
-    if (model.data?.model_profile_id) setPickedModel(model.data.model_profile_id);
+    setPickedModel(model.data?.model_profile_id ?? "");
   }, [model.data?.model_profile_id]);
 
   useEffect(() => {
@@ -59,7 +66,10 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
       setPick(`pre:${opts.data.presets.find((p) => p.name === cur.name)?.id ?? ""}` as PersonaPick);
     } else if (cur.source === "profile") {
       setPick(`my:${(mine.data ?? []).find((p) => p.name === cur.name)?.id ?? ""}` as PersonaPick);
+    } else {
+      setPick("");
     }
+    setStyle(cur.style ?? "");
   }, [persona.data, opts.data, mine.data]);
 
   const problem = model.error ?? persona.error ?? models.error ?? opts.error;
@@ -90,8 +100,161 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
     badgeTone: x.is_default ? ("accent" as const) : ("patina" as const),
   }));
 
+  const presetOptions: SelectOption[] = (presets.data ?? []).map((x) => ({
+    value: x.id,
+    label: x.name,
+    sublabel: x.model_profile_name ? `Модель: ${x.model_profile_name}` : "Модель по умолчанию",
+    badge: "ПРЕСЕТ",
+    badgeTone: "patina" as const,
+  }));
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Master Presets Card */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
+          <div>
+            <h2 className="font-heading text-xl font-bold text-ink">Пресеты мастера</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Сохраняйте проверенную связку модели, тона и анкеты мастера или применяйте готовый пресет к этому столу.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline-copper font-mono text-xs self-start sm:self-center"
+            onClick={() => setShowSavePreset((v) => !v)}
+          >
+            {showSavePreset ? "✕ ЗАКРЫТЬ СОХРАНЕНИЕ" : "💾 СОХРАНИТЬ КАК ПРЕСЕТ"}
+          </button>
+        </div>
+
+        {/* Save preset form */}
+        {showSavePreset && (
+          <div className="rounded-[10px] border border-accent/40 bg-accent/5 p-4 flex flex-col gap-3">
+            <h3 className="font-heading text-sm font-bold text-ink">
+              Сохранить текущую конфигурацию мастера как пресет
+            </h3>
+            <p className="text-xs text-muted">
+              В пресет войдут: текущая модель ({m.model_profile_name || (PROVIDER_RU[m.provider] ?? m.provider) || m.model}),
+              настройки тона и стиля, а также заполненная анкета характера мастера.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+              <div className="flex-1 min-w-0">
+                <Field label="Название пресета">
+                  <input
+                    className="field text-sm"
+                    maxLength={64}
+                    placeholder="например: Мрачный тактик D&D"
+                    value={savePresetName}
+                    onChange={(e) => setSavePresetName(e.target.value)}
+                  />
+                </Field>
+              </div>
+              {presets.data && presets.data.length > 0 && (
+                <div className="flex-1 min-w-0">
+                  <Field label="Или перезаписать существующий">
+                    <CustomSelect
+                      value={saveOverwriteId}
+                      options={[
+                        { value: "", label: "Создать новый пресет", badge: "НОВЫЙ", badgeTone: "accent" },
+                        ...presets.data.map((pr) => ({
+                          value: pr.id,
+                          label: pr.name,
+                          sublabel: pr.model_profile_name || pr.provider || undefined,
+                          badge: "ПЕРЕЗАПИСЬ",
+                          badgeTone: "patina" as const,
+                        })),
+                      ]}
+                      onChange={(val) => {
+                        setSaveOverwriteId(val);
+                        if (val) {
+                          const found = presets.data?.find((pr) => pr.id === val);
+                          if (found) setSavePresetName(found.name);
+                        }
+                      }}
+                      placeholder="Выберите пресет..."
+                    />
+                  </Field>
+                </div>
+              )}
+              <ActionButton
+                primary
+                className="font-mono text-xs whitespace-nowrap"
+                run={async () => {
+                  if (!savePresetName.trim()) throw new Error("Укажите название пресета");
+                  await api<MasterPreset>(`/api/campaigns/${campaignId}/save-master-preset`, {
+                    method: "POST",
+                    body: { name: savePresetName.trim(), preset_id: saveOverwriteId || null },
+                  });
+                  await qc.invalidateQueries({ queryKey: ["master-presets"] });
+                  setShowSavePreset(false);
+                  setSavePresetName("");
+                  setSaveOverwriteId("");
+                }}
+                done="Пресет мастера сохранён"
+              >
+                СОХРАНИТЬ
+              </ActionButton>
+            </div>
+          </div>
+        )}
+
+        {/* Apply preset form */}
+        {presets.data && presets.data.length > 0 ? (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-1">
+            <div className="flex-1 min-w-0">
+              <Field
+                label="Применить сохранённый пресет к столу"
+                hint="Заменит модель, тон нарратива и анкету характера мастера на настройки из пресета."
+              >
+                <CustomSelect
+                  value={selectedPresetId}
+                  options={presetOptions}
+                  onChange={setSelectedPresetId}
+                  placeholder="Выберите пресет мастера..."
+                  ariaLabel="Пресет мастера"
+                />
+              </Field>
+            </div>
+            <ActionButton
+              primary
+              className="font-mono text-xs tracking-wider whitespace-nowrap"
+              run={async () => {
+                if (!selectedPresetId) throw new Error("Выберите пресет мастера");
+                const res = await api<{
+                  ok: boolean;
+                  model: MasterModel;
+                  persona: CampaignPersona;
+                  character: unknown;
+                }>(`/api/campaigns/${campaignId}/apply-master-preset/${selectedPresetId}`, {
+                  method: "POST",
+                });
+                qc.setQueryData(["master-model", campaignId], res.model);
+                qc.setQueryData(["master-persona", campaignId], res.persona);
+                qc.setQueryData(["persona", `/api/campaigns/${campaignId}/master-character`, ""], res.character);
+                setPickedModel(res.model.model_profile_id ?? "");
+                if (res.persona.source === "preset") {
+                  setPick(`pre:${opts.data?.presets.find((p) => p.name === res.persona.name)?.id ?? ""}` as PersonaPick);
+                } else if (res.persona.source === "profile") {
+                  setPick(`my:${(mine.data ?? []).find((p) => p.name === res.persona.name)?.id ?? ""}` as PersonaPick);
+                } else {
+                  setPick("");
+                }
+                setStyle(res.persona.style ?? "");
+                setCharacterRev((r) => r + 1);
+              }}
+              done="Пресет применён к столу"
+            >
+              ПРИМЕНИТЬ ПРЕСЕТ
+            </ActionButton>
+          </div>
+        ) : (
+          <p className="text-xs text-muted">
+            У вас пока нет сохранённых пресетов мастера. Вы можете настроить параметры ниже и нажать «Сохранить как пресет», чтобы использовать их в новых кампаниях.
+          </p>
+        )}
+      </section>
+
       {/* Current Model Configuration */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
         <div className="border-b border-line pb-3">
@@ -200,7 +363,7 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
             Поверх тона выше: свободный текст и подсказки. Мастер меняется по ходу игры — это видно в летописи.
           </p>
         </div>
-        <PersonaEditor base={`/api/campaigns/${campaignId}/master-character`} master />
+        <PersonaEditor key={characterRev} base={`/api/campaigns/${campaignId}/master-character`} master />
       </section>
     </div>
   );

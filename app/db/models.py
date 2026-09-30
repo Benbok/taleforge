@@ -94,6 +94,25 @@ class MasterPersona(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class MasterPreset(Base):
+    """Пресет настроек и характера ИИ-мастера (модель, тон, анкета характера). Используется для создания кампаний."""
+
+    __tablename__ = "master_presets"
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("mpre"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    model_profile_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    persona_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    persona_preset: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    persona_settings: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    style: Mapped[str | None] = mapped_column(Text, nullable=True)
+    character: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 # --- Пакеты контента (раздел 3.2) ---
 
 

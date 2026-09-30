@@ -38,6 +38,33 @@ describe("создание кампании", () => {
     expect(body).toMatchObject({ master: { type: "owner" }, owner_plays: false, players: 3 });
   });
 
+  it("ИИ-мастер с пресетом, стилем и анкетой характера", () => {
+    const body = createBody({
+      ...EMPTY_DRAFT,
+      name: "Поход",
+      master: "mp1",
+      master_preset_id: "preset-123",
+      master_style: "говорит тихо и загадочно",
+      master_character: {
+        text: "Строгий судья",
+        fields: { tricks: "паузы перед боем", never: "не врёт о бросках" },
+        core: ["never"],
+      },
+    });
+    expect(body.master).toEqual({
+      type: "agent",
+      model_profile_id: "mp1",
+      persona_preset: "storyteller",
+      preset_id: "preset-123",
+      style: "говорит тихо и загадочно",
+      character: {
+        text: "Строгий судья",
+        fields: { tricks: "паузы перед боем", never: "не врёт о бросках" },
+        core: ["never"],
+      },
+    });
+  });
+
   it("мелочи", () => {
     expect(personaBody("my:p1")).toEqual({ persona_id: "p1" });
     expect(personaBody("")).toEqual({});

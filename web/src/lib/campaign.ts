@@ -77,6 +77,28 @@ export interface Persona {
   style: string;
 }
 
+export interface MasterCharacterSheet {
+  text: string;
+  fields: Record<string, string>;
+  core: string[];
+}
+
+export interface MasterPreset {
+  id: string;
+  name: string;
+  model_profile_id: string | null;
+  model_profile_name: string | null;
+  model_resolved: string | null;
+  provider: string | null;
+  persona_id: string | null;
+  persona_preset: string | null;
+  persona_settings: PersonaSettings | null;
+  style: string | null;
+  style_preview: string | null;
+  character: MasterCharacterSheet | null;
+  updated_at: string | null;
+}
+
 export interface ModelCheck {
   at?: string;
   ok?: boolean;
@@ -155,6 +177,9 @@ export interface CampaignDraft {
   /** "owner" — ведёт сам, иначе id профиля модели ("" — модель по умолчанию). */
   master: string;
   persona: PersonaPick;
+  master_preset_id: string | null;
+  master_character: MasterCharacterSheet | null;
+  master_style: string;
   owner_plays: boolean;
   review: "master" | "auto";
   brief: Brief;
@@ -172,6 +197,9 @@ export const EMPTY_DRAFT: CampaignDraft = {
   players: null,
   master: "",
   persona: "pre:storyteller",
+  master_preset_id: null,
+  master_character: null,
+  master_style: "",
   owner_plays: true,
   review: "master",
   brief: {},
@@ -233,6 +261,9 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
         ...(d.master ? { model_profile_id: d.master } : {}),
         ...(persona.preset ? { persona_preset: persona.preset } : {}),
         ...(persona.persona_id ? { persona_id: persona.persona_id } : {}),
+        ...(d.master_style ? { style: d.master_style } : {}),
+        ...(d.master_character ? { character: d.master_character } : {}),
+        ...(d.master_preset_id ? { preset_id: d.master_preset_id } : {}),
       };
   return {
     name: d.name.trim(),

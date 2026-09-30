@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import personas
+from app.core import persona, personas
 from app.db.models import (
     AgentConfig,
     Campaign,
@@ -16,6 +16,7 @@ from app.db.models import (
     ContentPack,
     Invite,
     MasterPersona,
+    MasterPreset,
     ModelProfile,
     Seat,
     User,
@@ -188,12 +189,48 @@ def has_persona_choice(master: dict) -> bool:
     return any(master.get(k) for k in ("persona_id", "persona_preset", "persona", "preset", "settings"))
 
 
+async def apply_master_preset(
+    session: AsyncSession, agent: AgentConfig, preset: MasterPreset, owner: User | None = None
+) -> AgentConfig:
+    """Применяет пресет мастера (модель, тон, характер) к конфигурации агента."""
+    if preset.model_profile_id:
+        profile = await session.get(ModelProfile, preset.model_profile_id)
+        if profile is not None:
+            apply_model(agent, profile.provider, profile.model, profile.temperature, profile.api_base, profile.id)
+    choice = {}
+    if preset.persona_id:
+        choice["persona_id"] = preset.persona_id
+    elif preset.persona_preset:
+        choice["preset"] = preset.persona_preset
+    elif preset.persona_settings:
+        choice["settings"] = preset.persona_settings
+    if preset.style:
+        choice["style"] = preset.style
+    u = owner or (await session.get(User, preset.user_id))
+    if u is not None and (has_persona_choice(choice) or choice.get("style")):
+        await apply_persona(session, u, agent, choice)
+    elif preset.style:
+        agent.persona = preset.style
+    if preset.character:
+        agent.settings = {
+            **(agent.settings or {}),
+            "character": persona.normalize(preset.character, master=True),
+        }
+    return agent
+
+
 async def agent_for_master(
     session: AsyncSession, master: dict, agent: AgentConfig | None = None, owner: User | None = None
 ) -> AgentConfig:
-    """Настройки ИИ-мастера: профиль модели из админки, явные провайдер и модель или профиль по умолчанию.
+    """Настройки ИИ-мастера: профиль модели из админки, явные провайдер и модель, профиль по умолчанию или пресет.
     Кампания хранит копию: правка профиля потом не меняет идущие кампании без явной смены модели."""
     agent = agent or AgentConfig(settings={})
+    preset_id = master.get("preset_id")
+    if preset_id:
+        preset = await session.get(MasterPreset, preset_id)
+        if preset is not None:
+            await apply_master_preset(session, agent, preset, owner=owner)
+
     temperature = master.get("temperature")
     profile_id = master.get("model_profile_id")
     profile = None
@@ -201,12 +238,12 @@ async def agent_for_master(
         profile = await session.get(ModelProfile, profile_id)
         if profile is None:
             raise NotFound("профиль модели не найден")
-    elif not master.get("provider"):
+    elif not master.get("provider") and not agent.provider:
         profile = await default_model_profile(session)
     if profile is not None:
         t = profile.temperature if temperature is None else float(temperature)
         apply_model(agent, profile.provider, profile.model, t, profile.api_base, profile.id)
-    else:
+    elif not agent.provider or master.get("provider"):
         provider = master.get("provider") or "claude"
         if provider not in PROVIDERS:
             raise Conflict(f"провайдер один из: {', '.join(PROVIDERS)}")
@@ -214,10 +251,17 @@ async def agent_for_master(
             raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
         t = (agent.temperature if agent.temperature is not None else 0.8) if temperature is None else float(temperature)
         apply_model(agent, provider, str(master.get("model") or ""), t, master.get("api_base"), None)
+
     if owner is not None and has_persona_choice(master):
         await apply_persona(session, owner, agent, master)
-    elif "style" in master:
+    elif "style" in master and master["style"]:
         agent.persona = master.get("style")
+
+    if "character" in master and master["character"]:
+        agent.settings = {
+            **(agent.settings or {}),
+            "character": persona.normalize(master["character"], master=True),
+        }
     return agent
 
 
