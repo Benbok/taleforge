@@ -538,6 +538,7 @@ async def preview_invite(token: str, session: SessionDep) -> InvitePreviewOut:
         free_seats=free,
         valid=problem is None and free > 0,
         problem=problem or (None if free else "свободных мест нет"),
+        pack_id=campaign.pack_id,
     )
 
 

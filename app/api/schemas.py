@@ -314,6 +314,7 @@ class InvitePreviewOut(BaseModel):
     free_seats: int
     valid: bool
     problem: str | None
+    pack_id: str | None = None
 
 
 class PackOut(BaseModel):

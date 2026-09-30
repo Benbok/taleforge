@@ -40,6 +40,7 @@ export interface InvitePreview {
   free_seats: number;
   valid: boolean;
   problem: string | null;
+  pack_id?: string | null;
 }
 
 export type Palette = Record<string, string>;

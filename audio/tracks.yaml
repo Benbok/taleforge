@@ -1,171 +1,349 @@
-# Карточки треков: слой, настроения, места, темп, миры. Правит админка «Звук» или вы вручную.
-# Описание полей и список треков — docs/audio-mixer.md и docs/audio-tracklist.md.
+# Библиотека звуков TaleForge — Сеттинг «Эхо Левиафанов»
 
-- id: mel_battle
-  file: aggressive_strings_riff.mp3
+- id: mel_tavern_cozy
+  file: mel_tavern_cozy.ogg
   layer: music
-  title: "Агрессивный рифф (Бой)"
-  hint: "напряжённый бой, схватка, кульминация сцены"
-  moods: [battle, tension]
-  places: []
-  bpm: 100
-  packs: []
+  title: "Уютный кабак у туши"
+  hint: "усталый покой, кабак шахтеров у туши, дружеская беседа"
+  moods: [calm, warm]
+  places: [tavern, slums, city]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: mel_crystalline
-  file: crystalline_glass_intro.mp3
+- id: mel_camp_hearth
+  file: mel_camp_hearth.ogg
   layer: music
-  title: "Кристальный отзвук"
-  hint: "тайна, резонанс кристаллов, древний артефакт или чуждое присутствие"
+  title: "Привал выжигателей"
+  hint: "ночной костер у черты, ностальгия, передышка перед патрулем"
+  moods: [calm, sorrow]
+  places: [camp, wasteland, cordon]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: mel_carcass_wonder
+  file: mel_carcass_wonder.ogg
+  layer: music
+  title: "Полости Левиафана"
+  hint: "исследование живых залов туши, древняя биотехника, величие"
   moods: [mystery, wonder]
-  places: []
-  bpm: 100
-  packs: []
+  places: [carcass, ruins, dungeon]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: mel_lullaby
-  file: music_box_lullaby.mp3
+- id: mel_liquor_mind
+  file: mel_liquor_mind.ogg
   layer: music
-  title: "Колыбельная шкатулки"
-  hint: "обманчивый покой, детская шкатулка, тревожная меланхолия"
-  moods: [calm, sorrow, dread]
-  places: []
-  bpm: 100
-  packs: []
+  title: "Холодный разум Безмолвных"
+  hint: "действие ликвора, математическая ясность, отрешенность Кормчих"
+  moods: [mystery, calm]
+  places: [carcass, sanctuary]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: mel_gothic
-  file: solemn_gothic_interlude.mp3
+- id: mel_consumed_plains
+  file: mel_consumed_plains.ogg
   layer: music
-  title: "Торжественный готический интерлюд"
-  hint: "мрачное величие, руины собора, скорбь или падение святыни"
-  moods: [dread, sorrow, mystery]
-  places: []
-  bpm: 100
-  packs: []
+  title: "Поглощенные земли"
+  hint: "мертвая серая равнина, покинутые деревни, тихая скорбь"
+  moods: [sorrow, tension]
+  places: [wasteland, ruins]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: rhy_pounding
-  file: pure_rhythmic_pounding.mp3
-  layer: rhythm
-  title: "Тяжёлый ритмичный пульс"
-  hint: "погоня, таймер опасности, непрекращающееся давление"
-  moods: [tension, chase, battle]
-  places: []
-  bpm: 100
-  packs: []
+- id: mel_stealth_shadows
+  file: mel_stealth_shadows.ogg
+  layer: music
+  title: "Скрытное проникновение"
+  hint: "тайная вылазка в шахту, осторожные шаги, засада в тумане"
+  moods: [tension, mystery]
+  places: [slums, carcass, mine]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: rhy_iron_clatter
-  file: rhythmic_iron_clatter.mp3
-  layer: rhythm
-  title: "Скрежет и лязг железа"
-  hint: "шагоход, механизмы заводов Кордона, индустриальный бой"
-  moods: [tension, battle]
-  places: []
-  bpm: 100
-  packs: []
-
-- id: rhy_war_drums
-  file: rolling_war_drums.mp3
-  layer: rhythm
-  title: "Барабаны войны"
-  hint: "сражение, атака, боевой раж"
-  moods: [battle]
-  places: []
-  bpm: 100
-  packs: []
-
-- id: amb_subterranean
-  file: subterranean_ambient_melody.mp3
-  layer: ambience
-  title: "Подземные глубины"
-  hint: "нутро туши, трюм левиафана, затопленные катакомбы"
-  moods: [mystery, dread]
-  places: [dungeon, carcass]
-  packs: []
-
-- id: sfx_carapace
-  file: heavy_organic_carapace.mp3
-  layer: sfx
-  title: "Хруст панциря"
-  hint: "тяжёлый хруст или смещение органического хитина"
+- id: mel_corruption_whisper
+  file: mel_corruption_whisper.ogg
+  layer: music
+  title: "Шепот Скверны"
+  hint: "приближение Резонанса, мутация, искушение чужим голодом"
   moods: [dread, horror]
-  places: []
-  packs: []
+  places: [crater, carcass, ruins]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_harpoon
-  file: pneumatic_harpoon_launch.mp3
-  layer: sfx
-  title: "Выстрел пневмогарпуна"
-  hint: "выстрел корабельного гарпуна или натяжение троса"
+- id: mel_skirmish_blades
+  file: mel_skirmish_blades.ogg
+  layer: music
+  title: "Стычка в узких проходах"
+  hint: "ближний бой в шахте, драка с наемниками Синдиката"
   moods: [battle, tension]
-  places: []
-  packs: []
+  places: [slums, carcass, mine]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_bell_1
-  file: single_heavy_church_bell_1.mp3
-  layer: sfx
-  title: "Тяжёлый колокол (удар 1)"
-  hint: "одиночный низкий удар соборного колокола"
-  moods: [dread, sorrow]
-  places: []
-  packs: []
+- id: mel_siege_wall
+  file: mel_siege_wall.ogg
+  layer: music
+  title: "Штурм башни Кордона"
+  hint: "тяжелый бой с выводком, отражение волны у Пепельной черты"
+  moods: [battle, heroic]
+  places: [wall, cordon]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_bell_2
-  file: single_heavy_church_bell_2.mp3
-  layer: sfx
-  title: "Тяжёлый колокол (удар 2)"
-  hint: "одиночный низкий удар соборного колокола"
-  moods: [dread, sorrow]
-  places: []
-  packs: []
+- id: mel_triumph_beacons
+  file: mel_triumph_beacons.ogg
+  layer: music
+  title: "Триумф защитников черты"
+  hint: "победа, удержание рубежа, зажжение сигнального маяка"
+  moods: [heroic, triumph]
+  places: [wall, cordon, city]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_bell_3
-  file: single_heavy_church_bell_3.mp3
-  layer: sfx
-  title: "Тяжёлый колокол (удар 3)"
-  hint: "одиночный низкий удар соборного колокола"
-  moods: [dread, sorrow]
-  places: []
-  packs: []
+- id: rhy_tavern_shuffle
+  file: rhy_tavern_shuffle.ogg
+  layer: rhythm
+  title: "Шаркающий тавернский ритм"
+  hint: "мягкая ручная перкуссия, живой фон таверны или ярмарки"
+  moods: [calm, warm]
+  places: [tavern, slums]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_bell_4
-  file: single_heavy_church_bell_4.mp3
-  layer: sfx
-  title: "Тяжёлый колокол (удар 4)"
-  hint: "одиночный низкий удар соборного колокола"
-  moods: [dread, sorrow]
-  places: []
-  packs: []
+- id: rhy_caravan_step
+  file: rhy_caravan_step.ogg
+  layer: rhythm
+  title: "Походный шаг каравана"
+  hint: "глухой размеренный барабан марша по пеплу и пустошам"
+  moods: [tension, calm]
+  places: [wasteland, cordon]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_roar_1
-  file: terrifying_alien_mutation_1.mp3
-  layer: sfx
-  title: "Крик твари Роя (вар. 1)"
-  hint: "пронзительный визг или рёв мутанта Резонанса"
+- id: rhy_mine_pistons
+  file: rhy_mine_pistons.ogg
+  layer: rhythm
+  title: "Паровые молоты шахты"
+  hint: "металлический стук поршней, подъемники и клети Синдикатов"
+  moods: [tension]
+  places: [mine, carcass, slums]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: rhy_stealth_clock
+  file: rhy_stealth_clock.ogg
+  layer: rhythm
+  title: "Тикающий саспенс"
+  hint: "тиканье механизма, редкие удары литавр, нарастание тревоги"
+  moods: [tension, mystery]
+  places: [carcass, slums, ruins]
+  bpm: 80
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: rhy_titan_pulse
+  file: rhy_titan_pulse.ogg
+  layer: rhythm
+  title: "Пульс сердца Левиафана"
+  hint: "сверхнизкое биение сердца спящего гиганта, органический гул"
+  moods: [dread, horror]
+  places: [carcass, dungeon]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: rhy_swarm_chatter
+  file: rhy_swarm_chatter.ogg
+  layer: rhythm
+  title: "Стрекот нитевиков"
+  hint: "шорох хитиновых лапок, щелканье паразитов в стенах"
   moods: [horror, dread]
-  places: []
-  packs: []
+  places: [carcass, mine, ruins]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_roar_2
-  file: terrifying_alien_mutation_2.mp3
-  layer: sfx
-  title: "Крик твари Роя (вар. 2)"
-  hint: "пронзительный визг или рёв мутанта Резонанса"
-  moods: [horror, dread]
-  places: []
-  packs: []
+- id: rhy_pit_brawl
+  file: rhy_pit_brawl.ogg
+  layer: rhythm
+  title: "Грохот бойцовских ям"
+  hint: "удары в железные бочки, звон цепей, грязь и агрессия"
+  moods: [battle, tension]
+  places: [slums, city]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_roar_3
-  file: terrifying_alien_mutation_3.mp3
-  layer: sfx
-  title: "Крик твари Роя (вар. 3)"
-  hint: "пронзительный визг или рёв мутанта Резонанса"
-  moods: [horror, dread]
-  places: []
-  packs: []
+- id: rhy_draisine_chase
+  file: rhy_draisine_chase.ogg
+  layer: rhythm
+  title: "Паровой разгон дрезины"
+  hint: "стук колес по рельсам, погоня на паровой тяге, спешка"
+  moods: [chase, tension]
+  places: [mine, carcass, wasteland]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
 
-- id: sfx_roar_4
-  file: terrifying_alien_mutation_4.mp3
+- id: rhy_assault_taiko
+  file: rhy_assault_taiko.ogg
+  layer: rhythm
+  title: "Штурмовые барабаны"
+  hint: "сотрясающие землю тяжелые боевые барабаны, лобовой штурм"
+  moods: [battle]
+  places: [wall, cordon]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: rhy_cordon_march
+  file: rhy_cordon_march.ogg
+  layer: rhythm
+  title: "Линейный набат Кордона"
+  hint: "четкая дробь малого барабана и тревожный набат колоколов"
+  moods: [heroic, battle]
+  places: [wall, cordon, city]
+  bpm: 120
+  bars: 16
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: amb_slums_steam
+  file: amb_slums_steam.ogg
+  layer: ambience
+  title: "Шахты и пар Синдикатов"
+  hint: "шипение паровых труб, стук молотов, капли ликвора"
+  moods: [tension, calm]
+  places: [slums, city, carcass]
+  bpm: null
+  gain_db: -3
+  packs: [echo-leviathans]
+
+- id: amb_carcass_guts
+  file: amb_carcass_guts.ogg
+  layer: ambience
+  title: "Чрево Левиафана"
+  hint: "влажная глубина живой плоти, тихий органический гул, шорохи"
+  moods: [mystery, dread]
+  places: [carcass, dungeon]
+  bpm: null
+  gain_db: -3
+  packs: [echo-leviathans]
+
+- id: amb_cordon_wind
+  file: amb_cordon_wind.ogg
+  layer: ambience
+  title: "Пепельная пустошь"
+  hint: "завывание ветра над чертой, треск горящего масла во рвах"
+  moods: [sorrow, tension]
+  places: [wall, cordon, wasteland]
+  bpm: null
+  gain_db: -3
+  packs: [echo-leviathans]
+
+- id: amb_ward_bells
+  file: amb_ward_bells.ogg
+  layer: ambience
+  title: "Колокола Обители"
+  hint: "мерный спасительный звон монастырских колоколов против эха"
+  moods: [calm, wonder]
+  places: [city, cordon, sanctuary]
+  bpm: null
+  gain_db: -3
+  packs: [echo-leviathans]
+
+- id: amb_crater_hum
+  file: amb_crater_hum.ogg
+  layer: ambience
+  title: "Гул Поющего камня"
+  hint: "потусторонний низкий резонанс эхолита, вибрация скал кратера"
+  moods: [dread, horror]
+  places: [crater, ruins]
+  bpm: null
+  gain_db: -3
+  packs: [echo-leviathans]
+
+- id: sfx_war_bell
+  file: sfx_war_bell.ogg
   layer: sfx
-  title: "Крик твари Роя (вар. 4)"
-  hint: "пронзительный визг или рёв мутанта Резонанса"
-  moods: [horror, dread]
-  places: []
-  packs: []
+  title: "Удар набата"
+  hint: "тревожный тяжелый колокол, сигнал опасности на стене"
+  moods: [battle, tension]
+  places: [wall, cordon, city]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: sfx_brood_screech
+  file: sfx_brood_screech.ogg
+  layer: sfx
+  title: "Визг выводка"
+  hint: "органический резкий вопль мутанта или сросшегося существа"
+  moods: [horror, battle]
+  places: [wall, carcass, ruins]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: sfx_harpoon_launch
+  file: sfx_harpoon_launch.ogg
+  layer: sfx
+  title: "Выстрел гарпуна"
+  hint: "пневматический залп гарпунной пушки, свист троса"
+  moods: [battle]
+  places: [carcass, slums, wall]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: sfx_chitin_crack
+  file: sfx_chitin_crack.ogg
+  layer: sfx
+  title: "Хруст хитина"
+  hint: "пробитие тяжелой брони паразита или раскол панциря"
+  moods: [battle]
+  places: [carcass, wall, mine]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]
+
+- id: sfx_cordon_siren
+  file: sfx_cordon_siren.ogg
+  layer: sfx
+  title: "Паровая сирена Кордона"
+  hint: "протяжный воющий гудок паровой трубы, общая тревога"
+  moods: [tension, battle]
+  places: [wall, cordon, slums]
+  bpm: null
+  gain_db: 0
+  packs: [echo-leviathans]

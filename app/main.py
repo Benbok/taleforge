@@ -141,6 +141,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     async def spa(path: str) -> Response:
         if path.startswith(("api/", "assets/")) or path == "ws":
             raise HTTPException(404)
+        if path:
+            candidate = (DIST / path).resolve()
+            if candidate.is_file() and candidate.is_relative_to(DIST):
+                return FileResponse(candidate)
         index = DIST / "index.html"
         if not index.is_file():
             # разработка сервера и тесты: клиент не собран

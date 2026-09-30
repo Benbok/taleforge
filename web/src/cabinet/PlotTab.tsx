@@ -3,6 +3,7 @@ import { useState } from "react";
 import ActionButton, { Spinner } from "../components/ActionButton";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
+import WorldIntroPlayer from "../components/WorldIntroPlayer";
 import { api } from "../lib/api";
 import type { Poster } from "../lib/campaign";
 
@@ -44,7 +45,13 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 /** Сюжет кампании: афиша для всех, подготовка и новый вариант — до начала игры, каркас — только мастеру. */
-export default function PlotTab({ campaignId }: { campaignId: string }) {
+export default function PlotTab({
+  campaignId,
+  packId,
+}: {
+  campaignId: string;
+  packId?: string | null;
+}) {
   const qc = useQueryClient();
   const [structure, setStructure] = useState("");
   const [note, setNote] = useState("");
@@ -132,6 +139,12 @@ export default function PlotTab({ campaignId }: { campaignId: string }) {
                   {t}
                 </span>
               ))}
+            </div>
+          )}
+
+          {(!packId || packId === "echo-leviathans") && (
+            <div className="mt-4">
+              <WorldIntroPlayer />
             </div>
           )}
 

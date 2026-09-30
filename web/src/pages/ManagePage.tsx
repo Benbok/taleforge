@@ -178,7 +178,7 @@ export default function ManagePage() {
 
         {/* Tab Content */}
         <div className="flex flex-col gap-6">
-          {tab === "plot" && <PlotTab campaignId={id} />}
+          {tab === "plot" && <PlotTab campaignId={id} packId={r?.pack_id} />}
           {tab === "players" && <PlayersTab room={r} onRoom={setRoom} />}
           {tab === "master" && <MasterTab campaignId={id} />}
           {tab === "settings" && <SettingsTab key={r.id} room={r} onRoom={setRoom} />}
