@@ -150,18 +150,26 @@ export interface Placed<T> {
   y: number;
 }
 
+export interface AroundLayout {
+  areas: Placed<MapArea>[];
+  things: Placed<MapThing>[];
+  heroes: Placed<MapHero>[];
+  exits: Placed<MapExit>[];
+}
+
 /** Точки на кольцах: север вверху, по часовой стрелке. Соседи в одной стороне и зоне расходятся веером. */
 export function placeAround<T extends { id: string; bearing: Bearing | null }>(
   items: T[],
   radius: (item: T) => number,
   cx = 200,
   cy = 200,
+  taken: Map<string, number> = new Map<string, number>(),
 ): Placed<T>[] {
-  const taken = new Map<string, number>();
   return items.map((item) => {
     const r = radius(item);
     const a0 = baseAngle(item.id, item.bearing);
-    const key = `${r}:${Math.round((a0 * 8) / (2 * Math.PI))}`;
+    const sector = Math.round((a0 * 8) / (2 * Math.PI)) % 8;
+    const key = `${r}:${sector}`;
     const n = taken.get(key) ?? 0;
     taken.set(key, n + 1);
     // 0, +1, −1, +2, −2… шагом, который на этом кольце даёт ~60px между центрами: подписи не налезают
@@ -177,7 +185,12 @@ export function areaPx(ft: number): number {
 }
 
 /** Герои в строю отряда стоят кучкой вокруг центра, чтобы подписи не слипались. */
-export function placeParty(heroes: MapHero[], cx = 200, cy = 200): Placed<MapHero>[] {
+export function placeParty(
+  heroes: MapHero[],
+  cx = 200,
+  cy = 200,
+  taken: Map<string, number> = new Map<string, number>(),
+): Placed<MapHero>[] {
   const inRank = heroes.filter((h) => !h.zone);
   const out: Placed<MapHero>[] = inRank.map((item, i) => {
     if (inRank.length === 1) return { item, x: cx, y: cy };
@@ -189,8 +202,20 @@ export function placeParty(heroes: MapHero[], cx = 200, cy = 200): Placed<MapHer
     (h) => RING[h.zone as Zone],
     cx,
     cy,
+    taken,
   );
   return [...out, ...out2];
+}
+
+/** Единая раскладка схемы «Вокруг»: общий пул занятых секторов гарантирует, что герои, монстры и зоны не слипаются. */
+export function layoutAround(m: MapState, cx = 200, cy = 200): AroundLayout {
+  const taken = new Map<string, number>();
+  return {
+    areas: placeAround(m.areas ?? [], (a) => RING[a.zone] ?? RING.near, cx, cy, taken),
+    things: placeAround(m.around, (t) => RING[t.zone] ?? RING.near, cx, cy, taken),
+    heroes: placeParty(m.party ?? [], cx, cy, taken),
+    exits: placeAround(m.exits, () => EDGE, cx, cy, taken),
+  };
 }
 
 // --- раскладка «Места» ---

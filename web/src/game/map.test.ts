@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
-import { areaPx, layoutPlaces, mapEvent, placeAround, placeParty, useMapWindow, type MapHero, type MapState } from "./map";
+import {
+  areaPx,
+  layoutAround,
+  layoutPlaces,
+  mapEvent,
+  placeAround,
+  placeParty,
+  useMapWindow,
+  type MapHero,
+  type MapState,
+  type MapThing,
+} from "./map";
 
 const empty: MapState = { here: null, around: [], exits: [], places: [], links: [], bearings: {} as MapState["bearings"] };
 
@@ -18,6 +29,55 @@ describe("карта", () => {
     expect(n.y).toBeCloseTo(100);
     expect(e.x).toBeCloseTo(300);
     expect(Math.hypot(n2.x - n.x, n2.y - n.y)).toBeGreaterThan(55);
+  });
+
+  it("layoutAround предотвращает наложение героев и существ в одной зоне и стороне света", () => {
+    const hero: MapHero = {
+      id: "h1",
+      name: "Воин",
+      mine: true,
+      zone: "near",
+      bearing: "e",
+      elevation: "ground",
+      cover: "none",
+      down: false,
+    };
+    const monster: MapThing = {
+      id: "m1",
+      name: "Гоблин",
+      type: "creature",
+      zone: "near",
+      zone_name: "близко",
+      bearing: "e",
+    };
+    const monster2: MapThing = {
+      id: "m2",
+      name: "Орк",
+      type: "creature",
+      zone: "near",
+      zone_name: "близко",
+      bearing: "e",
+    };
+
+    const state: MapState = {
+      ...empty,
+      party: [hero],
+      around: [monster, monster2],
+    };
+
+    const layout = layoutAround(state);
+    const hPos = layout.heroes.find((x) => x.item.id === "h1")!;
+    const m1Pos = layout.things.find((x) => x.item.id === "m1")!;
+    const m2Pos = layout.things.find((x) => x.item.id === "m2")!;
+
+    // Ни один из трёх участников не должен стоять на тех же координатах
+    const distHM1 = Math.hypot(hPos.x - m1Pos.x, hPos.y - m1Pos.y);
+    const distM1M2 = Math.hypot(m1Pos.x - m2Pos.x, m1Pos.y - m2Pos.y);
+    const distHM2 = Math.hypot(hPos.x - m2Pos.x, hPos.y - m2Pos.y);
+
+    expect(distHM1).toBeGreaterThan(45);
+    expect(distM1M2).toBeGreaterThan(45);
+    expect(distHM2).toBeGreaterThan(45);
   });
 
   it("места раскладываются по числу переходов от героя, несвязанные — последним столбцом", () => {
@@ -57,3 +117,4 @@ describe("карта", () => {
     expect(areaPx(120)).toBe(90);
   });
 });
+
