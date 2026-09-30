@@ -53,6 +53,7 @@ class Actor:
     modifiers: mod.Modifiers = field(default_factory=mod.Modifiers)
     zone: str = "near"
     template_id: str | None = None
+    speed: int = 30  # футов за ход, для перемещения в бою
 
     @property
     def alive(self) -> bool:
@@ -206,6 +207,7 @@ def character_actor(
         effects=effs,
         modifiers=mods_,
         zone="party",
+        speed=int(d.speed or 30),
     )
 
 
@@ -276,7 +278,18 @@ def creature_actor(en: Entity, cat: CatalogView, effects: list[ActiveEffect]) ->
         modifiers=mods_,
         zone=en.zone,
         template_id=en.template_id,
+        speed=_walk_speed(rec.data.get("speed")),
     )
+
+
+def _walk_speed(v: Any) -> int:
+    """Скорость существа из шаблона: число, {walk: 30} или строка «30 ft., fly 60 ft.»."""
+    if isinstance(v, dict):
+        v = v.get("walk") or next(iter(v.values()), 30)
+    if isinstance(v, (int, float)):
+        return int(v)
+    digits = "".join(ch if ch.isdigit() else " " for ch in str(v or "")).split()
+    return int(digits[0]) if digits else 30
 
 
 @dataclass
@@ -317,13 +330,11 @@ class World:
         self._actors.pop(actor_id, None)
 
     def distance_ft(self, a: Actor, b: Actor) -> int:
-        if a.kind == "character" and b.kind == "character":
-            return 5
-        if a.kind == "character":
-            return ZONE_FT.get(b.zone, 30)
-        if b.kind == "character":
-            return ZONE_FT.get(a.zone, 30)
-        return 30
+        """Футы между участниками по их позициям в сцене (app/core/positions.py)."""
+        from app.core.positions import distance, pos_of
+
+        both = a.kind == "creature" and b.kind == "creature"
+        return distance(pos_of(self, a.id), pos_of(self, b.id), both_creatures=both)
 
     def in_scene_entities(self) -> list[Entity]:
         loc = self.scene.location_id
@@ -360,7 +371,7 @@ class World:
             if ch.status not in PLAYABLE and ch.status != "dead":
                 continue
             a = self.actor(ch.id)
-            lines.append(f"{a.id}  {a.name} (герой)  {a.status()}  КД {a.ac}{_effects_note(a)}")
+            lines.append(f"{a.id}  {a.name} (герой)  {a.status()}  КД {a.ac}{_pos_note(self, a.id)}{_effects_note(a)}")
             items = self.inventory.get(ch.id, [])
             if items:
                 inv = ", ".join(
@@ -379,7 +390,8 @@ class World:
                 att = (en.state or {}).get("attitude", "hostile")
                 lines.append(
                     f"{a.id}  {a.name} [{en.template_id}]  {a.status()}  КД {a.ac}  "
-                    f"{ZONE_NAMES.get(en.zone, en.zone)}  отношение: {att}{_effects_note(a)}"
+                    f"{ZONE_NAMES.get(en.zone, en.zone)}{_pos_note(self, en.id, zone=False)}  отношение: {att}"
+                    f"{_effects_note(a)}"
                 )
             elif is_scene_item(en):
                 qty = int((en.state or {}).get("qty") or 1)
@@ -389,6 +401,21 @@ class World:
                 )
             else:
                 lines.append(f"{en.id}  {en.name} ({en.kind})  {ZONE_NAMES.get(en.zone, en.zone)}")
+        from app.core.positions import active_areas, inside
+
+        for ar in active_areas(self):
+            data = ar.state["area"]
+            who = [
+                x.name
+                for x in [*self.characters.values(), *self.in_scene_entities()]
+                if (x.id in self.characters and x.status in PLAYABLE) or getattr(x, "kind", "") == "creature"
+                if inside(self, ar, x.id)
+            ]
+            tail = f", до {format_time(data['expires_at'])}" if data.get("expires_at") is not None else ""
+            lines.append(
+                f"{ar.id}  область «{ar.name}» радиус {data['radius_ft']} фт, {ZONE_NAMES.get(ar.zone, ar.zone)}"
+                f"{tail}; внутри: {', '.join(who) or 'никого'}"
+            )
         others = [e for e in self.entities.values() if e.kind == "location" and e.id != self.scene.location_id]
         if others:
             lines.append("Известные локации: " + ", ".join(f"{e.id} {e.name}" for e in others))
@@ -398,6 +425,23 @@ class World:
 def is_scene_item(e: Entity) -> bool:
     """Предмет, лежащий в сцене (объект с шаблоном предмета): его можно подобрать в инвентарь."""
     return e.kind == "object" and bool((e.state or {}).get("item"))
+
+
+def _pos_note(w: World, actor_id: str, zone: bool = True) -> str:
+    """Позиция для таблицы мастера: только то, что отличается от «в строю, на земле, без укрытия»."""
+    from app.core.positions import COVER_NAMES, ELEVATION_NAMES, pos_of
+
+    p = pos_of(w, actor_id)
+    parts = []
+    if zone and p.zone:
+        parts.append(ZONE_NAMES.get(p.zone, p.zone) + " от отряда")
+    if p.bearing:
+        parts.append(f"сторона {p.bearing}")
+    if p.elevation != "ground":
+        parts.append(ELEVATION_NAMES.get(p.elevation, p.elevation))
+    if p.cover != "none":
+        parts.append(COVER_NAMES.get(p.cover, p.cover))
+    return f"  [{', '.join(parts)}]" if parts else ""
 
 
 def _effects_note(a: Actor) -> str:

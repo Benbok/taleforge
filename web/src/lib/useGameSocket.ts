@@ -7,12 +7,14 @@ import { voteQuestion } from "../game/VotePanel";
 import { toast } from "../stores/toasts";
 import { resolveToolResult } from "../master/tools";
 import { sound } from "../game/sound";
+import { mapEvent } from "../game/map";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
 const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
+  mapEvent(e.type, e.payload);
   if (e.type === "state.snapshot") {
     const a = (e.payload as unknown as Snapshot).audio;
     if (a) void sound.apply(a);

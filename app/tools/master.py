@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from app.core import audio, combat
 from app.core.campaigns import master_seat
+from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import (
     PLAYABLE,
     ZONE_FT,
@@ -35,6 +36,12 @@ from app.tools.registry import ToolContext, ToolError, dice_json, tool
 
 engine = Dnd5eEngine()
 Zone = Literal["melee", "near", "far"]
+Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
+Elevation = Literal["low", "ground", "high"]
+ELEVATION_HINT = "высота: low — внизу (яма, трюм), ground — на земле, high — на возвышении (балкон, гребень)"
+Cover = Literal["none", "half", "three_quarters", "total"]
+COVER_HINT = "укрытие по SRD: half +2 к КД, three_quarters +5, total — цель нельзя атаковать напрямую"
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
 # Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
@@ -334,6 +341,9 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         opts = ", ".join(f"{x.get('inventory_id') or x['key']} ({x['name']})" for x in att.attacks)
         raise ToolError(f"у {att.name} нет атаки {a.attack}; доступно: {opts}")
 
+    cover = pos_of(w, tgt.id).cover
+    if cover == "total":
+        raise ToolError(f"{tgt.name} за полным укрытием: напрямую не атаковать, сначала выманить или обойти")
     dist = w.distance_ft(att, tgt)
     extra = []
     if weapon["kind"] == "melee" and dist > int(weapon.get("reach_ft") or 5) and weapon.get("normal_ft"):
@@ -342,7 +352,7 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         if dist > int(weapon.get("reach_ft") or 5):
             raise ToolError(
                 f"{tgt.name} {ZONE_NAMES.get(tgt.zone if tgt.kind != 'character' else att.zone, 'далеко')}: "
-                "для рукопашной атаки нужно сблизиться (update_entity zone=melee или move)"
+                "для рукопашной атаки нужно сблизиться (reposition или update_entity zone=melee)"
             )
     else:
         long_ft = weapon.get("long_ft") or weapon.get("normal_ft")
@@ -353,8 +363,9 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальше обычной дистанции")
         if dist <= 5:
             extra.append("помеха: дальняя атака вплотную к врагу")
+    target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
-    roll = engine.attack(ctx.dice, int(weapon["attack_bonus"]) + am.bonus, tgt.ac, am.mode)
+    roll = engine.attack(ctx.dice, int(weapon["attack_bonus"]) + am.bonus, target_ac, am.mode)
     critical = roll.critical or (roll.hit and am.auto_crit)
     result: dict = {
         "attacker": att.name,
@@ -362,13 +373,15 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         "attack": weapon["name"],
         "roll": roll.roll.total,
         "natural": roll.roll.natural,
-        "target_ac": tgt.ac,
+        "target_ac": target_ac,
         "hit": roll.hit,
         "critical": critical,
         "mode": str(am.mode),
     }
     if am.reasons:
         result["reasons"] = list(am.reasons)
+    if COVER_AC.get(cover):
+        result["cover"] = f"+{COVER_AC[cover]} к КД за укрытие"
     dice = [dice_json(roll.roll)]
     inverse = [snapshot(tgt)]
     if roll.hit:
@@ -443,11 +456,16 @@ async def apply_hazard(ctx: ToolContext, a: HazardArgs) -> dict:
     for p in rec.data.get("params_schema") or {}:
         if p not in params:
             raise ToolError(f"опасности {rec.name} нужен параметр {p}")
+    return await _hazard_on(ctx, rec, tgt, params)
+
+
+async def _hazard_on(ctx: ToolContext, rec, tgt: Actor, params: dict | None = None) -> dict:
     inv = [snapshot(tgt)]
-    out = await fx.run_ops(ctx, rec.id, rec.data.get("modifiers") or [], tgt, params)
+    out = await fx.run_ops(ctx, rec.id, rec.data.get("modifiers") or [], tgt, params or {})
     result = {"hazard": rec.name, "target": tgt.name, **out, "target_status": ctx.world.actor(tgt.id).status()}
     dice = result.pop("dice")
     await ctx.record("apply_hazard", target_id=tgt.id, payload={**result, "hazard_id": rec.id}, dice=dice, inverse=inv)
+    ctx.world.invalidate(tgt.id)
     return result
 
 
@@ -1004,6 +1022,7 @@ class SpawnArgs(BaseModel):
     name: str = Field(max_length=128, description="имя экземпляра, например «Гоблин-лучник»")
     count: int = Field(1, ge=1, le=12)
     zone: Zone = "near"
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
     attitude: Literal["hostile", "neutral", "friendly"] = "hostile"
     description: str = Field(
         "",
@@ -1041,7 +1060,7 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
             name=name,
             template_id=rec.id,
             description=a.description,
-            state={"hp": hp, "hp_max": hp, "attitude": a.attitude},
+            state={"hp": hp, "hp_max": hp, "attitude": a.attitude, **({"bearing": a.bearing} if a.bearing else {})},
             location_id=ctx.world.scene.location_id,
             zone=a.zone,
         )
@@ -1064,12 +1083,16 @@ class UpdateEntityArgs(BaseModel):
     mood: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500, description="нарративная пометка: мотив, что пообещал")
     zone: Zone | None = Field(None, description="сблизился или отошёл: вплотную, близко, далеко")
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
+    elevation: Elevation | None = Field(None, description=ELEVATION_HINT)
+    cover: Cover | None = Field(None, description=COVER_HINT)
     fled: bool | None = Field(None, description="существо ушло со сцены")
 
 
 @tool(
     "update_entity",
-    "Меняет нарративные поля сущности: отношение, настроение, зону, пометки. Хиты и статы так не меняются.",
+    "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки. Хиты и статы так "
+    "не меняются.",
     UpdateEntityArgs,
     ids={"entity_id": "entities"},
     closes=False,
@@ -1083,9 +1106,10 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
         {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},
         {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
     ]
+    was = {x.id for x in areas_at(ctx.world, en.id)} if en.kind == "creature" else set()
     st = dict(en.state or {})
     changes = {}
-    for k in ("attitude", "mood", "note"):
+    for k in ("attitude", "mood", "note", "bearing", "elevation", "cover"):
         v = getattr(a, k)
         if v is not None:
             st[k] = v
@@ -1099,7 +1123,196 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     en.state = st
     ctx.world.invalidate(en.id)
     await ctx.record("update_entity", target_id=en.id, payload={"name": en.name, **changes}, inverse=inverse)
-    return {"entity": en.name, **changes}
+    out = {"entity": en.name, **changes}
+    if en.kind == "creature" and en.location_id is not None:
+        hit = await enter_areas(ctx, en.id, was)
+        if hit:
+            out["areas"] = hit
+    return out
+
+
+# --- позиции и области (app/core/positions.py) ---
+
+
+async def _area_hits(ctx: ToolContext, area: Entity, actor_id: str) -> dict:
+    """Участник оказался в области: опасность и эффект области по шаблонам."""
+    ar = (area.state or {}).get("area") or {}
+    tgt = ctx.world.actor(actor_id)
+    out: dict = {"area": area.name, "who": tgt.name}
+    if not tgt.alive:
+        return out
+    if ar.get("hazard_template_id"):
+        rec = ctx.world.catalog.get(ar["hazard_template_id"], "hazard_template")
+        out["hazard"] = await _hazard_on(ctx, rec, tgt)
+    if ar.get("effect_template_id"):
+        rec = ctx.world.catalog.get(ar["effect_template_id"], "effect_template")
+        left = ar.get("expires_at")
+        dur = int(left) - ctx.world.scene.game_time if left is not None else None
+        eff, note = await fx.add_effect(ctx, ctx.world.actor(actor_id), rec, dur)
+        await ctx.record(
+            "apply_effect",
+            target_id=actor_id,
+            payload={"target": tgt.name, "effect": rec.name, "note": note, "area": area.name},
+            inverse=[{"table": "active_effects", "op": "delete", "id": eff.id}] if eff is not None else [],
+        )
+        out["effect"] = rec.name
+        ctx.world.invalidate(actor_id)
+    return out
+
+
+async def enter_areas(ctx: ToolContext, actor_id: str, before: set[str]) -> list[dict]:
+    """Области, в которые участник вошёл этим перемещением (SRD: действует при входе)."""
+    return [await _area_hits(ctx, e, actor_id) for e in areas_at(ctx.world, actor_id) if e.id not in before]
+
+
+class RepositionArgs(BaseModel):
+    actor_id: str = Field(description="герой или существо")
+    zone: Literal["center", "melee", "near", "far"] | None = Field(
+        None, description="где от центра отряда: center — в строю отряда, melee — вплотную, near — близко, far — далеко"
+    )
+    bearing: Bearing | None = Field(None, description="в какой стороне; n — север (вверх схемы)")
+    elevation: Elevation | None = Field(None, description=ELEVATION_HINT)
+    cover: Cover | None = Field(None, description=COVER_HINT)
+
+
+@tool(
+    "reposition",
+    "Перемещает героя или существо внутри сцены: зона от центра отряда, сторона, высота, укрытие. В бою движение "
+    "дальше скорости — рывок (тратит действие), дальше двух скоростей — нельзя.",
+    RepositionArgs,
+    ids={"actor_id": "combatants"},
+    closes=False,
+)
+async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
+    w = ctx.world
+    act = w.actor(a.actor_id)
+    before = pos_of(w, act.id)
+    was = {x.id for x in areas_at(w, act.id)}
+    after = Pos(before.zone, before.bearing, before.elevation, before.cover)
+    if a.zone is not None:
+        after.zone = None if a.zone == "center" else a.zone
+        if a.zone == "center":
+            after.bearing = None
+    if a.bearing is not None:
+        after.bearing = a.bearing
+    if a.elevation is not None:
+        after.elevation = a.elevation
+    if a.cover is not None:
+        after.cover = a.cover
+    if act.kind == "creature" and after.zone is None:
+        raise ToolError("существо не встаёт в строй отряда: укажите melee, near или far")
+    moved = 0
+    if (after.zone, after.bearing, after.elevation) != (before.zone, before.bearing, before.elevation):
+        moved = distance(before, after)
+    out: dict = {"who": act.name, "position": after.public(), "moved_ft": moved}
+    if combat.in_combat(ctx) and moved:
+        if moved > 2 * act.speed:
+            raise ToolError(
+                f"{act.name} проходит за ход не больше {2 * act.speed} футов с рывком, а тут {moved}: "
+                "переместите ближе, остальное — следующим ходом"
+            )
+        if moved > act.speed:
+            out["note"] = f"рывок: {moved} футов больше скорости {act.speed}, действие потрачено на рывок"
+    if act.kind == "character":
+        sc = w.scene
+        inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)}]
+        positions = hero_positions(sc)
+        positions[act.id] = after.public()
+        sc.state = {**(sc.state or {}), "positions": positions}
+    else:
+        en = w.entities[act.id]
+        inverse = [
+            {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
+            {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},
+        ]
+        en.zone = after.zone or en.zone
+        st = {**(en.state or {}), "elevation": after.elevation, "cover": after.cover}
+        if after.bearing:
+            st["bearing"] = after.bearing
+        en.state = st
+    w.invalidate(act.id)
+    await ctx.record("reposition", actor_id=act.id, target_id=act.id, payload=out, inverse=inverse)
+    hit = await enter_areas(ctx, act.id, was)
+    if hit:
+        out["areas"] = hit
+    return out
+
+
+class AreaArgs(BaseModel):
+    name: str = Field(max_length=80, description="что это: «Облако трупного газа», «Горящее масло», «Туман»")
+    zone: Zone = "near"
+    bearing: Bearing | None = Field(None, description="где центр области; n — север (вверх)")
+    radius_ft: Literal[5, 10, 15, 20, 30] = Field(10, description="радиус области в футах")
+    hazard_template_id: str | None = Field(None, description="опасность по шаблону: срабатывает на тех, кто внутри")
+    effect_template_id: str | None = Field(None, description="эффект или состояние на тех, кто внутри")
+    duration_rounds: int | None = Field(
+        None, ge=1, le=600, description="сколько раундов держится; пусто — пока не уберут"
+    )
+
+
+@tool(
+    "place_area",
+    "Отмечает на схеме область: облако, огонь, туман, лужу масла. Опасность и эффект из шаблонов срабатывают на "
+    "всех внутри сразу и на тех, кто войдёт потом.",
+    AreaArgs,
+    ids={"hazard_template_id": "templates:hazard_template", "effect_template_id": "templates:effect_template"},
+    closes=False,
+)
+async def place_area(ctx: ToolContext, a: AreaArgs) -> dict:
+    w = ctx.world
+    if w.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    if a.hazard_template_id:
+        rec = w.catalog.get(a.hazard_template_id, "hazard_template")
+        if rec.data.get("params_schema"):
+            raise ToolError(f"опасности {rec.name} нужны параметры: примените её apply_hazard к каждой цели")
+    if a.effect_template_id:
+        w.catalog.get(a.effect_template_id, "effect_template")
+    area: dict = {"radius_ft": a.radius_ft}
+    for k in ("hazard_template_id", "effect_template_id"):
+        if getattr(a, k):
+            area[k] = getattr(a, k)
+    if a.duration_rounds:
+        area["expires_at"] = w.scene.game_time + a.duration_rounds * 6
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=a.name,
+        state={"area": area, "landmark": True, **({"bearing": a.bearing} if a.bearing else {})},
+        location_id=w.scene.location_id,
+        zone=a.zone,
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    w.entities[en.id] = en
+    await ctx.record(
+        "place_area",
+        target_id=en.id,
+        payload={"name": a.name, "zone": a.zone, "radius_ft": a.radius_ft},
+        inverse=[{"table": "entities", "op": "delete", "id": en.id}],
+    )
+    ids = [c.id for c in w.characters.values() if c.status in PLAYABLE] + [
+        e.id for e in w.in_scene_entities() if e.kind == "creature" and not (e.state or {}).get("dead")
+    ]
+    caught = [i for i in ids if inside(w, en, i)]
+    hits = [await _area_hits(ctx, en, i) for i in caught]
+    return {"area_id": en.id, "name": a.name, "inside": [w.actor(i).name for i in caught], "hits": hits}
+
+
+class RemoveAreaArgs(BaseModel):
+    area_id: str
+
+
+@tool("remove_area", "Убирает область со схемы: облако рассеялось, огонь погас.", RemoveAreaArgs, closes=False)
+async def remove_area(ctx: ToolContext, a: RemoveAreaArgs) -> dict:
+    en = ctx.world.entities.get(a.area_id)
+    if en is None or not (en.state or {}).get("area"):
+        ids = ", ".join(f"{e.id} {e.name}" for e in active_areas(ctx.world)) or "нет"
+        raise ToolError(f"нет области {a.area_id}; области сцены: {ids}")
+    inverse = [{"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id}]
+    en.location_id = None
+    await ctx.record("remove_area", target_id=en.id, payload={"name": en.name}, inverse=inverse)
+    return {"removed": en.name}
 
 
 class CreateLocationArgs(BaseModel):
@@ -1109,20 +1322,101 @@ class CreateLocationArgs(BaseModel):
     )
     template_id: str | None = Field(None, description="шаблон локации пакета, если есть подходящий")
     make_current: bool = Field(False, description="сразу сделать текущей локацией сцены")
+    parent_id: str | None = Field(None, description="внутри какого места находится: район туши, дом на улице, комната")
+    link_to: list[str] = Field(
+        default_factory=list, max_length=6, description="соседние места, куда отсюда можно пройти (появятся на карте)"
+    )
+    via: str | None = Field(None, max_length=40, description="чем связаны с соседями: лестница, переулок, тоннель")
+    bearing: Bearing | None = Field(None, description="в какой стороне от текущего места; n — север (вверх)")
+    secret: bool = Field(False, description="тайное место: на карте только после того, как герои его нашли")
+
+
+def _link(a: Entity, b_id: str, label: str | None = None, bearing: str | None = None) -> bool:
+    """Путь между местами хранится у места ``a`` в ``state.links``. Повтор не добавляет второй путь."""
+    st = dict(a.state or {})
+    links = list(st.get("links") or [])
+    if any(x.get("to") == b_id for x in links):
+        return False
+    links.append({"to": b_id, **({"label": label} if label else {}), **({"bearing": bearing} if bearing else {})})
+    st["links"] = links
+    a.state = st
+    return True
+
+
+def _linked(ctx: ToolContext, a: Entity, b: Entity) -> bool:
+    """Места уже связаны на карте: путь в любую сторону или одно внутри другого."""
+    return (
+        a.location_id == b.id
+        or b.location_id == a.id
+        or any(x.get("to") == b.id for x in (a.state or {}).get("links") or [])
+        or any(x.get("to") == a.id for x in (b.state or {}).get("links") or [])
+    )
+
+
+def _connect(ctx: ToolContext, a: Entity, b: Entity, inverse: list) -> None:
+    """Герои прошли из ``a`` в ``b``: путь отмечается на карте, если места ещё не связаны."""
+    if a.id != b.id and not _linked(ctx, a, b):
+        inverse.append({"table": "entities", "id": a.id, "field": "state", "before": copy.deepcopy(a.state)})
+        _link(a, b.id)
+
+
+def _visit(ctx: ToolContext, loc: Entity, heroes: list[Character], inverse: list) -> None:
+    st = dict(loc.state or {})
+    seen = list(st.get("visited_by") or [])
+    new = [h.id for h in heroes if h.id not in seen]
+    if not new:
+        return
+    inverse.append({"table": "entities", "id": loc.id, "field": "state", "before": copy.deepcopy(loc.state)})
+    st["visited_by"] = seen + new
+    loc.state = st
+
+
+def _reset_positions(ctx: ToolContext, inverse: list) -> None:
+    """В новом месте герои снова стоят в строю отряда."""
+    sc = ctx.world.scene
+    if hero_positions(sc):
+        inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)})
+        sc.state = {k: v for k, v in (sc.state or {}).items() if k != "positions"}
+
+
+def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
+    """Сцена переходит в новое место вместе с героями, которые стояли в старом: место отмечается посещённым,
+    а старое и новое связываются на карте, если ещё не связаны."""
+    old_id = ctx.world.scene.location_id
+    old = ctx.world.entities.get(old_id or "")
+    party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
+    going = [c for c in party if (c.location_id or old_id) == old_id]
+    if old is not None and old.id != loc.id:
+        _visit(ctx, old, going, inverse)
+        _connect(ctx, old, loc, inverse)
+    for c in going:
+        if c.location_id is not None and c.location_id != loc.id:
+            inverse.append({"table": "characters", "id": c.id, "field": "location_id", "before": c.location_id})
+            c.location_id = loc.id
+    inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": old_id})
+    _reset_positions(ctx, inverse)
+    ctx.world.scene.location_id = loc.id
+    _visit(ctx, loc, going, inverse)
 
 
 @tool(
     "create_location",
-    "Регистрирует локацию в реестре мира (по шаблону пакета, если он есть).",
+    "Регистрирует локацию в реестре мира (по шаблону пакета, если он есть). Место сразу попадает на карту героев: "
+    "укажи, внутри чего оно и с какими местами соседствует.",
     CreateLocationArgs,
+    ids={"parent_id": "locations", "link_to": "locations"},
     closes=False,
 )
 async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
-    state = {}
+    state: dict = {}
     if a.template_id:
         rec = ctx.world.catalog.get(a.template_id, "location_template")
         if rec.data.get("dc") is not None:
             state["dc"] = rec.data["dc"]
+    if a.bearing:
+        state["bearing"] = a.bearing
+    if a.secret:
+        state["secret"] = True
     en = Entity(
         campaign_id=ctx.campaign.id,
         kind="location",
@@ -1130,20 +1424,92 @@ async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
         template_id=a.template_id,
         description=a.description,
         state=state,
+        location_id=a.parent_id,
     )
     ctx.session.add(en)
     await ctx.session.flush()
     ctx.world.entities[en.id] = en
     inverse = [{"table": "entities", "op": "delete", "id": en.id}]
+    for other in dict.fromkeys(a.link_to):
+        if other != en.id:
+            _link(en, other, a.via)
     if a.make_current:
-        inverse.append(
-            {"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": ctx.world.scene.location_id}
-        )
-        ctx.world.scene.location_id = en.id
+        relocate_scene(ctx, en, inverse)
     await ctx.record(
-        "create_location", target_id=en.id, payload={"name": a.name, "current": a.make_current}, inverse=inverse
+        "create_location",
+        target_id=en.id,
+        payload={"name": a.name, "current": a.make_current, "parent": a.parent_id, "links": a.link_to},
+        inverse=inverse,
     )
     return {"location_id": en.id, "name": a.name, "current": a.make_current}
+
+
+class LinkArgs(BaseModel):
+    from_id: str
+    to_id: str
+    via: str | None = Field(None, max_length=40, description="чем связаны: лестница, переулок, тоннель, люк")
+    bearing: Bearing | None = Field(None, description="в какой стороне от from_id; n — север (вверх)")
+
+
+@tool(
+    "link_locations",
+    "Отмечает на карте путь между двумя местами реестра: герои нашли проход, лестницу, тоннель.",
+    LinkArgs,
+    ids={"from_id": "locations", "to_id": "locations"},
+    closes=False,
+)
+async def link_locations(ctx: ToolContext, a: LinkArgs) -> dict:
+    if a.from_id == a.to_id:
+        raise ToolError("место не связывают само с собой")
+    src, dst = ctx.world.entities[a.from_id], ctx.world.entities[a.to_id]
+    before = copy.deepcopy(src.state)
+    if not _link(src, dst.id, a.via, a.bearing):
+        return {"linked": False, "note": "путь уже отмечен"}
+    await ctx.record(
+        "link_locations",
+        target_id=src.id,
+        payload={"from": src.name, "to": dst.name, "via": a.via},
+        inverse=[{"table": "entities", "id": src.id, "field": "state", "before": before}],
+    )
+    return {"linked": True, "from": src.name, "to": dst.name}
+
+
+class LandmarkArgs(BaseModel):
+    name: str = Field(max_length=128, description="что видно: «Фонтан с костяной чашей», «Запертая дверь»")
+    description: str = Field("", max_length=1000, description="как это выглядит для героев, без тайн")
+    zone: Zone = "near"
+    bearing: Bearing | None = Field(None, description=BEARING_HINT)
+
+
+@tool(
+    "add_landmark",
+    "Отмечает на схеме места заметную примету: дверь, статую, лавку, провал. Механики у приметы нет: для существ — "
+    "spawn_entity, для отдельного места, куда можно войти, — create_location.",
+    LandmarkArgs,
+    closes=False,
+)
+async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
+    if ctx.world.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=a.name,
+        description=a.description,
+        state={"landmark": True, **({"bearing": a.bearing} if a.bearing else {})},
+        location_id=ctx.world.scene.location_id,
+        zone=a.zone,
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    ctx.world.entities[en.id] = en
+    await ctx.record(
+        "add_landmark",
+        target_id=en.id,
+        payload={"name": a.name, "zone": a.zone},
+        inverse=[{"table": "entities", "op": "delete", "id": en.id}],
+    )
+    return {"landmark_id": en.id, "name": a.name}
 
 
 class MoveArgs(BaseModel):
@@ -1153,7 +1519,8 @@ class MoveArgs(BaseModel):
 
 @tool(
     "move",
-    "Перемещает героев в локацию реестра. Если уходят все герои — локация становится текущей сценой.",
+    "Перемещает героев в локацию реестра. Если уходят все герои — локация становится текущей сценой. Путь сам "
+    "отмечается на карте.",
     MoveArgs,
     ids={"character_ids": "characters", "location_id": "locations"},
 )
@@ -1161,16 +1528,26 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     loc = ctx.world.entities.get(a.location_id)
     if loc is None or loc.kind != "location":
         raise ToolError(f"нет локации {a.location_id}; сначала create_location")
-    inverse = []
+    inverse: list = []
+    scene_loc = ctx.world.scene.location_id
+    moved = []
     for cid in a.character_ids:
         ch = _character(ctx, cid)
+        was = ctx.world.entities.get(ch.location_id or scene_loc or "")
+        if was is not None and was.id != loc.id:
+            _visit(ctx, was, [ch], inverse)
+            _connect(ctx, was, loc, inverse)
         inverse.append({"table": "characters", "id": ch.id, "field": "location_id", "before": ch.location_id})
         ch.location_id = loc.id
+        moved.append(ch)
+    _visit(ctx, loc, moved, inverse)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if all(c.location_id == loc.id for c in party):
         inverse.append(
             {"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": ctx.world.scene.location_id}
         )
+        if ctx.world.scene.location_id != loc.id:
+            _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
     await ctx.record(
         "move", target_id=loc.id, payload={"characters": a.character_ids, "location": loc.name}, inverse=inverse
