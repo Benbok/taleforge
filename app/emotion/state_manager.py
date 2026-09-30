@@ -1,15 +1,15 @@
-from typing import Dict
+
 from app.emotion.interfaces import IStateManager
 from app.emotion.schemas import EmotionState
 
+
 class InMemoryStateManager(IStateManager):
     """
-    Простая in-memory реализация трекера состояния эмоций для сессий.
-    В будущем может быть заменена на RedisStateManager.
+    In-memory реализация трекера состояния эмоций для сессий.
     """
     def __init__(self):
         # Хранилище: session_id -> EmotionState
-        self._states: Dict[str, EmotionState] = {}
+        self._states: dict[str, EmotionState] = {}
 
     async def get_state(self, session_id: str) -> EmotionState:
         if session_id not in self._states:
@@ -18,8 +18,8 @@ class InMemoryStateManager(IStateManager):
 
     async def update_state(self, session_id: str, delta: EmotionState) -> EmotionState:
         current = await self.get_state(session_id)
-        
-        # Прибавляем дельту и жестко ограничиваем значения диапазоном [0.0, 10.0]
+
+        # Прибавляем дельту и ограничиваем диапазон [0.0, 10.0]
         new_state = EmotionState(
             anger=max(0.0, min(10.0, current.anger + delta.anger)),
             joy=max(0.0, min(10.0, current.joy + delta.joy)),
@@ -29,18 +29,19 @@ class InMemoryStateManager(IStateManager):
         self._states[session_id] = new_state
         return new_state
 
-    async def apply_decay(self, session_id: str, decay_rate: float = 0.5) -> EmotionState:
+    async def apply_decay(self, session_id: str, rates: EmotionState | None = None) -> EmotionState:
         """
-        Механика естественного «затухания» эмоций. 
-        Плавно возвращает все эмоции к нейтральному состоянию (0.0).
+        Естественное затухание эмоций.
+        Если rates не передан, используются дефолтные скорости затухания.
         """
         current = await self.get_state(session_id)
-        
+        r = rates or EmotionState(anger=0.5, joy=0.8, suspicion=0.3, boredom=1.0)
+
         new_state = EmotionState(
-            anger=max(0.0, current.anger - decay_rate),
-            joy=max(0.0, current.joy - decay_rate),
-            suspicion=max(0.0, current.suspicion - decay_rate),
-            boredom=max(0.0, current.boredom - decay_rate)
+            anger=max(0.0, current.anger - r.anger),
+            joy=max(0.0, current.joy - r.joy),
+            suspicion=max(0.0, current.suspicion - r.suspicion),
+            boredom=max(0.0, current.boredom - r.boredom)
         )
         self._states[session_id] = new_state
         return new_state
