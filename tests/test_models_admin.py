@@ -67,6 +67,18 @@ def test_superadmin_changes_roles(client, root, admin, player):
     assert client.patch(f"/api/admin/users/{me}", json={"platform_role": "admin"}, headers=root).status_code == 409
 
 
+def test_superadmin_deletes_user(client, root, admin, player):
+    users = {u["name"]: u for u in ok(client.get("/api/admin/users", headers=root))}
+    gimli = users["Гимли"]["id"]
+    root_id = users["root"]["id"]
+
+    assert client.delete(f"/api/admin/users/{gimli}", headers=admin).status_code == 403
+    assert client.delete(f"/api/admin/users/{root_id}", headers=root).status_code == 409
+    assert client.delete(f"/api/admin/users/{gimli}", headers=root).status_code == 204
+    assert "Гимли" not in {u["name"] for u in ok(client.get("/api/admin/users", headers=root))}
+    assert client.post("/api/auth/login", json={"name": "Гимли", "password": "pass123"}).status_code == 401
+
+
 def test_providers_show_only_whether_key_is_set(client, admin, player, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-secret")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
