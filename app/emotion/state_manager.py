@@ -1,4 +1,3 @@
-
 from app.emotion.interfaces import IStateManager
 from app.emotion.schemas import EmotionState
 
@@ -7,6 +6,7 @@ class InMemoryStateManager(IStateManager):
     """
     In-memory реализация трекера состояния эмоций для сессий.
     """
+
     def __init__(self):
         # Хранилище: session_id -> EmotionState
         self._states: dict[str, EmotionState] = {}
@@ -24,7 +24,7 @@ class InMemoryStateManager(IStateManager):
             anger=max(0.0, min(10.0, current.anger + delta.anger)),
             joy=max(0.0, min(10.0, current.joy + delta.joy)),
             suspicion=max(0.0, min(10.0, current.suspicion + delta.suspicion)),
-            boredom=max(0.0, min(10.0, current.boredom + delta.boredom))
+            boredom=max(0.0, min(10.0, current.boredom + delta.boredom)),
         )
         self._states[session_id] = new_state
         return new_state
@@ -41,7 +41,7 @@ class InMemoryStateManager(IStateManager):
             anger=max(0.0, current.anger - r.anger),
             joy=max(0.0, current.joy - r.joy),
             suspicion=max(0.0, current.suspicion - r.suspicion),
-            boredom=max(0.0, current.boredom - r.boredom)
+            boredom=max(0.0, current.boredom - r.boredom),
         )
         self._states[session_id] = new_state
         return new_state

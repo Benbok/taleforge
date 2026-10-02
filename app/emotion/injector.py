@@ -1,4 +1,3 @@
-
 from app.emotion.interfaces import IEmotionInjector
 from app.emotion.schemas import EmotionState
 
@@ -55,15 +54,13 @@ class SystemPromptInjector(IEmotionInjector):
             )
         if "joy" in strong and "suspicion" in strong:
             return (
-                "Ты относишься к игрокам с ироничным недоверием. Забавляйся их попытками схитрить, "
-                "но держи ухо востро."
+                "Ты относишься к игрокам с ироничным недоверием. Забавляйся их попытками схитрить, но держи ухо востро."
             )
         if "joy" in strong and "boredom" in strong:
             return "Ты снисходителен и расслаблен. Относись к действиям героев легко, словно к детским шалостям."
         if "suspicion" in strong and "boredom" in strong:
             return (
-                "Ты устал и ни во что не веришь. Реагируй отстранённо, сухо, "
-                "требуй строгих проверок и доказательств."
+                "Ты устал и ни во что не веришь. Реагируй отстранённо, сухо, требуй строгих проверок и доказательств."
             )
         return None
 
