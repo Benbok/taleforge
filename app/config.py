@@ -82,7 +82,7 @@ class Settings:
             stt_model=_env("STT_MODEL", cls.stt_model),
             stt_language=_env("STT_LANGUAGE", cls.stt_language),
             stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
-            tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY"),
+            tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY") or _env("GEMINI_API_KEY"),
             tts_model=_env("TTS_MODEL", cls.tts_model),
             tts_voice=_env("TTS_VOICE", cls.tts_voice),
         )
