@@ -38,6 +38,7 @@ export interface Room {
     spend_limit_usd?: number | null;
     excluded_themes?: string[];
     audio_enabled?: boolean;
+    tts_enabled?: boolean;
     leveling?: "xp" | "milestone";
     random_events?: "auto" | "manual";
     poster?: Poster | null;

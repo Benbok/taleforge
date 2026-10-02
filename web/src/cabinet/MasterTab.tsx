@@ -14,6 +14,7 @@ import {
   type ModelProfile,
   type Persona,
   type PersonaPick,
+  type Room,
 } from "../lib/campaign";
 
 interface MasterModel {
@@ -31,7 +32,15 @@ interface CampaignPersona {
 }
 
 /** ИИ-мастер кампании: модель и характер. Меняются между ходами: следующий ход мастер сделает уже по-новому. */
-export default function MasterTab({ campaignId }: { campaignId: string }) {
+export default function MasterTab({
+  campaignId,
+  room,
+  onRoom,
+}: {
+  campaignId: string;
+  room?: Room;
+  onRoom?: (r: Room) => void;
+}) {
   const qc = useQueryClient();
   const model = useQuery({
     queryKey: ["master-model", campaignId],
@@ -54,6 +63,7 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
   const [savePresetName, setSavePresetName] = useState("");
   const [saveOverwriteId, setSaveOverwriteId] = useState("");
   const [characterRev, setCharacterRev] = useState(0);
+  const ttsEnabled = (room?.settings?.tts_enabled ?? true) !== false;
 
   useEffect(() => {
     setPickedModel(model.data?.model_profile_id ?? "");
@@ -305,6 +315,35 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
             </ActionButton>
           </div>
         )}
+      </section>
+
+      {/* Master Voice */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Озвучка мастера">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
+          <p className="text-xs text-muted">
+            Голосовой синтез речи (Gemini TTS) для реплик и описаний ИИ-мастера. Выключено — мастер отвечает только
+            текстом, без генерации аудиодорожек.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${ttsEnabled ? "text-patina-hi" : "text-muted"}`}>
+            {ttsEnabled ? "● включено" : "○ выключено"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена: реплики мастера будут озвучиваться"}
+            run={async () => {
+              const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                method: "PATCH",
+                body: { tts_enabled: !ttsEnabled },
+              });
+              onRoom?.(updated);
+            }}
+          >
+            {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
+          </ActionButton>
+        </div>
       </section>
 
       {/* Persona and Tone */}

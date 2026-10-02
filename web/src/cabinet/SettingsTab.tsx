@@ -27,6 +27,8 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
   const navigate = useNavigate();
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const st = room.settings;
+  const aiMaster = room.seats.some((s) => s.role === "master" && s.occupant_type === "agent");
+  const ttsEnabled = (st.tts_enabled ?? true) !== false;
   const [f, setF] = useState({
     name: room.name,
     public_intro: room.public_intro,
@@ -192,6 +194,38 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           </ActionButton>
         </div>
       </section>
+
+      {/* Master Voice */}
+      {aiMaster && (
+        <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Озвучка мастера">
+          <div className="border-b border-line pb-3">
+            <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
+            <p className="text-xs text-muted">
+              Синтез речи (Gemini TTS) для реплик и описаний ИИ-мастера. Выключено — мастер отвечает только
+              текстом, без генерации аудиодорожек.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`font-mono text-xs ${ttsEnabled ? "text-patina-hi" : "text-muted"}`}>
+              {ttsEnabled ? "● включено" : "○ выключено"}
+            </span>
+            <ActionButton
+              className="btn-outline-copper"
+              done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена: реплики мастера будут озвучиваться"}
+              run={async () =>
+                onRoom(
+                  await api<Room>(`/api/campaigns/${room.id}`, {
+                    method: "PATCH",
+                    body: { tts_enabled: !ttsEnabled },
+                  }),
+                )
+              }
+            >
+              {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
+            </ActionButton>
+          </div>
+        </section>
+      )}
 
       {/* Brief Form */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
