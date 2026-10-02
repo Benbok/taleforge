@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
+import CustomSelect from "../components/CustomSelect";
 import { Field, Segmented } from "../components/Form";
 import BriefForm from "./BriefForm";
 import { api } from "../lib/api";
@@ -11,6 +12,7 @@ import {
   LEVELING_HINT,
   LEVELING_RU,
   splitThemes,
+  TTS_VOICES,
   type Brief,
   type CampaignOptions,
   type Room,
@@ -224,6 +226,36 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
               {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
             </ActionButton>
           </div>
+
+          {ttsEnabled && (
+            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+              <Field
+                label="Голос ИИ-мастера"
+                hint="Голос, которым Gemini озвучивает описания сцен и реплики мастера в чате."
+              >
+                <CustomSelect
+                  value={st.tts_voice || "Fenrir"}
+                  options={TTS_VOICES.map((v) => ({
+                    value: v.id,
+                    label: v.name,
+                    sublabel: `${v.gender} · ${v.description}`,
+                    badge: v.id === "Fenrir" ? "ПО УМОЛЧАНИЮ" : v.gender.toUpperCase(),
+                    badgeTone: v.id === "Fenrir" ? ("accent" as const) : ("patina" as const),
+                  }))}
+                  onChange={async (val) => {
+                    if (val === (st.tts_voice || "Fenrir")) return;
+                    onRoom(
+                      await api<Room>(`/api/campaigns/${room.id}`, {
+                        method: "PATCH",
+                        body: { tts_voice: val },
+                      }),
+                    );
+                  }}
+                  ariaLabel="Голос мастера"
+                />
+              </Field>
+            </div>
+          )}
         </section>
       )}
 

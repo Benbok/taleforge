@@ -9,6 +9,7 @@ import { api } from "../lib/api";
 import {
   personaBody,
   PROVIDER_RU,
+  TTS_VOICES,
   type CampaignOptions,
   type MasterPreset,
   type ModelProfile,
@@ -344,6 +345,35 @@ export default function MasterTab({
             {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
           </ActionButton>
         </div>
+
+        {ttsEnabled && (
+          <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+            <Field
+              label="Голос ИИ-мастера"
+              hint="Голос, которым Gemini озвучивает описания сцен и реплики мастера в чате."
+            >
+              <CustomSelect
+                value={room?.settings?.tts_voice || "Fenrir"}
+                options={TTS_VOICES.map((v) => ({
+                  value: v.id,
+                  label: v.name,
+                  sublabel: `${v.gender} · ${v.description}`,
+                  badge: v.id === "Fenrir" ? "ПО УМОЛЧАНИЮ" : v.gender.toUpperCase(),
+                  badgeTone: v.id === "Fenrir" ? ("accent" as const) : ("patina" as const),
+                }))}
+                onChange={async (val) => {
+                  if (val === (room?.settings?.tts_voice || "Fenrir")) return;
+                  const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                    method: "PATCH",
+                    body: { tts_voice: val },
+                  });
+                  onRoom?.(updated);
+                }}
+                ariaLabel="Голос мастера"
+              />
+            </Field>
+          </div>
+        )}
       </section>
 
       {/* Persona and Tone */}
