@@ -80,6 +80,7 @@ class PlayerAgents:
             if c is None or sc is None or sc.mode == "combat":
                 return []
             from app.agents.master import _new_player_messages
+
             new = await _new_player_messages(s, c)
             if not new:
                 return []
