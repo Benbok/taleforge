@@ -17,9 +17,9 @@ from app.api.schemas import (
     InviteCreateIn,
     InviteOut,
     InvitePreviewOut,
+    MasterCharacterIn,
     MasterModelIn,
     MasterModelOut,
-    MasterCharacterIn,
     MasterPresetOut,
     MasterPresetSaveFromCampaignIn,
     PersonaChoiceIn,
@@ -143,6 +143,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
             "leveling": body.leveling,
+            "tts_enabled": body.tts_enabled,
         },
         owner_plays=body.owner_plays,
         brief=body.brief.model_dump(exclude_defaults=True),
@@ -184,6 +185,7 @@ async def patch_campaign(
         "collect_window_sec",
         "excluded_themes",
         "audio_enabled",
+        "tts_enabled",
         "leveling",
         "random_events",
     ):
@@ -407,9 +409,7 @@ async def save_campaign_master_preset(
 
 
 @router.post("/campaigns/{campaign_id}/apply-master-preset/{preset_id}")
-async def apply_campaign_master_preset(
-    campaign_id: str, preset_id: str, user: UserDep, session: SessionDep
-) -> dict:
+async def apply_campaign_master_preset(campaign_id: str, preset_id: str, user: UserDep, session: SessionDep) -> dict:
     """Применяет сохранённый пресет к ИИ-мастеру кампании."""
     agent = await _master_agent(session, user, campaign_id, "пресет мастера")
     preset = await session.get(MasterPreset, preset_id)

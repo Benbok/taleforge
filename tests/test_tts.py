@@ -272,3 +272,97 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         # Сообщение мастера успешно отправлено, несмотря на сбой TTS
         assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
 
+
+def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_path):
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(
+        settings,
+        media_dir=tmp_path / "media",
+        tts_api_key="test-gemini-key",
+    )
+
+    fake_pcm = b"\x00\x00" * 24000
+    b64_audio = base64.b64encode(fake_pcm).decode("ascii")
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "inlineData": {
+                                        "mimeType": "audio/pcm;rate=24000",
+                                        "data": b64_audio,
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    llm = ScriptedLLM([])
+
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15, 18]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+
+        c, (p1,), ch = party(client, admin)
+
+        # Выключаем озвучку мастера через PATCH кампании
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": False}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_enabled"] is False
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "выступ"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Вы тихо крадётесь по каменному выступу."},
+        ]
+
+        narration_msg = act(client, p1, c["id"], "Иду тихо.")
+        assert narration_msg["kind"] == "narration"
+        # Озвучки нет, так как tts_enabled выключен в настройках кампании
+        assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
+
+        # Включаем озвучку обратно
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": True}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_enabled"] is True
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "зала"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Перед вами открывается просторная зала."},
+        ]
+        narration_msg_2 = act(client, p1, c["id"], "Осматриваюсь.")
+        assert narration_msg_2["kind"] == "narration"
+        assert "data" in narration_msg_2 and narration_msg_2["data"] is not None
+        assert "voice" in narration_msg_2["data"]
+
+

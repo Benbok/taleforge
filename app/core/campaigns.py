@@ -32,6 +32,7 @@ DEFAULT_SETTINGS = {
     "turn_timeout_sec": 300,  # ход до 5 минут, игра вживую
     "collect_window_sec": 60,  # окно сбора реплик в свободном режиме
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
+    "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
 }
 
 

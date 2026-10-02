@@ -385,7 +385,6 @@ class MasterService:
             await s.commit()
             turn_id = turn.id
             ids = [m.id for m in new]
-            human = any(not (m.data or {}).get("ai") for m in new)  # ИИ-игроки отвечают только на ответ людям
 
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
@@ -626,7 +625,8 @@ class MasterService:
         )
 
         tts_task = None
-        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None):
+        tts_on = bool((c.settings or {}).get("tts_enabled", True))
+        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None) and tts_on:
             tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, narration))
 
         whispers = await flush_outbox(s, ctx)
