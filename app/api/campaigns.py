@@ -144,6 +144,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "allow_proposals": body.test_mode,
             "leveling": body.leveling,
             "tts_enabled": body.tts_enabled,
+            "tts_voice": body.tts_voice,
         },
         owner_plays=body.owner_plays,
         brief=body.brief.model_dump(exclude_defaults=True),
@@ -186,6 +187,7 @@ async def patch_campaign(
         "excluded_themes",
         "audio_enabled",
         "tts_enabled",
+        "tts_voice",
         "leveling",
         "random_events",
     ):

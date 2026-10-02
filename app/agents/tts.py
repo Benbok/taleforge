@@ -96,7 +96,7 @@ class TextToSpeech:
     def enabled(self) -> bool:
         return bool(self.api_key)
 
-    async def synthesize(self, text: str) -> tuple[bytes, str, float] | None:
+    async def synthesize(self, text: str, voice_name: str | None = None) -> tuple[bytes, str, float] | None:
         """Синтезирует речь из текста.
 
         Возвращает (audio_bytes, mime_type, duration_seconds) или None в случае ошибки.
@@ -108,6 +108,7 @@ class TextToSpeech:
         if not clean:
             return None
 
+        resolved_voice = voice_name or self.voice
         url = f"{GEMINI_API_URL.format(model=self.model)}?key={self.api_key}"
         payload: dict[str, Any] = {
             "contents": [
@@ -120,7 +121,7 @@ class TextToSpeech:
                 "speechConfig": {
                     "voiceConfig": {
                         "prebuiltVoiceConfig": {
-                            "voiceName": self.voice,
+                            "voiceName": resolved_voice,
                         }
                     }
                 },
@@ -172,7 +173,7 @@ class TextToSpeech:
             return None
 
     async def voice_for_narration(
-        self, media_dir: Path, campaign_id: str, narration_text: str
+        self, media_dir: Path, campaign_id: str, narration_text: str, voice_name: str | None = None
     ) -> dict[str, Any] | None:
         """Синтезирует аудио и сохраняет его в медиа-хранилище кампании.
 
@@ -182,7 +183,7 @@ class TextToSpeech:
         if not self.enabled:
             return None
 
-        result = await self.synthesize(narration_text)
+        result = await self.synthesize(narration_text, voice_name=voice_name)
         if not result:
             return None
 

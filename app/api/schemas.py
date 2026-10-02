@@ -295,6 +295,7 @@ class CampaignCreateIn(BaseModel):
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
     tts_enabled: bool = Field(default=True, description="озвучка реплик мастера (TTS)")
+    tts_voice: str | None = Field(default=None, max_length=32, description="голос озвучки мастера (TTS)")
 
 
 class CampaignPatchIn(BaseModel):
@@ -307,6 +308,7 @@ class CampaignPatchIn(BaseModel):
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
     audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
     tts_enabled: bool | None = None  # озвучка реплик мастера (TTS)
+    tts_voice: str | None = Field(default=None, max_length=32)  # голос озвучки мастера (TTS)
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None

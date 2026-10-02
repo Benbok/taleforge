@@ -366,3 +366,87 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
         assert "voice" in narration_msg_2["data"]
 
 
+def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(
+        settings,
+        media_dir=tmp_path / "media",
+        tts_api_key="test-gemini-key",
+        tts_voice="Fenrir",
+    )
+
+    fake_pcm = b"\x00\x00" * 24000
+    b64_audio = base64.b64encode(fake_pcm).decode("ascii")
+
+    requested_voices = []
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        v = (
+            body.get("generationConfig", {})
+            .get("speechConfig", {})
+            .get("voiceConfig", {})
+            .get("prebuiltVoiceConfig", {})
+            .get("voiceName")
+        )
+        requested_voices.append(v)
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "inlineData": {
+                                        "mimeType": "audio/pcm;rate=24000",
+                                        "data": b64_audio,
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    llm = ScriptedLLM([])
+
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+
+        c, (p1,), ch = party(client, admin)
+
+        # Меняем голос мастера на "Aoede" через PATCH кампании
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_voice": "Aoede"}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_voice"] == "Aoede"
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "выступ"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Вы тихо крадётесь по каменному выступу."},
+        ]
+
+        narration_msg = act(client, p1, c["id"], "Иду тихо.")
+        assert narration_msg["kind"] == "narration"
+        assert "data" in narration_msg and "voice" in narration_msg["data"]
+        # Проверяем, что запрос к Gemini ушёл с голосом Aoede
+        assert requested_voices == ["Aoede"]
+
+

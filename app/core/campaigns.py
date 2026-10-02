@@ -33,6 +33,7 @@ DEFAULT_SETTINGS = {
     "collect_window_sec": 60,  # окно сбора реплик в свободном режиме
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
+    "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
 }
 
 
