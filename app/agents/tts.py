@@ -1,4 +1,4 @@
-﻿import abc
+import abc
 import base64
 import io
 import logging
@@ -13,7 +13,7 @@ from app.core import voice
 
 log = logging.getLogger(__name__)
 
-# Р В Р ВµР С–РЎС“Р В»РЎРЏРЎР‚Р С”Р С‘ Р Т‘Р В»РЎРЏ Р С•РЎвЂЎР С‘РЎРѓРЎвЂљР С”Р С‘ РЎвЂљР ВµР С”РЎРѓРЎвЂљР В°
+# Регулярки для очистки текста
 MARKUP_RE = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 MD_HEADER_RE = re.compile(r"^#+\s*", re.MULTILINE)
 MD_FORMAT_RE = re.compile(r"[*_~`]")
@@ -60,7 +60,7 @@ def wav_duration(wav_bytes: bytes) -> float:
 
 
 class TTSEngine(abc.ABC):
-    """Р вЂР В°Р В·Р С•Р Р†РЎвЂ№Р в„– Р С”Р В»Р В°РЎРѓРЎРѓ Р Т‘Р В»РЎРЏ Р Р†РЎРѓР ВµРЎвЂ¦ TTS-Р С—РЎР‚Р С•Р Р†Р В°Р в„–Р Т‘Р ВµРЎР‚Р С•Р Р†."""
+    """Базовый класс для всех TTS-провайдеров."""
 
     @property
     @abc.abstractmethod
@@ -69,8 +69,8 @@ class TTSEngine(abc.ABC):
 
     @abc.abstractmethod
     async def synthesize(self, text: str, voice_name: str | None = None) -> tuple[bytes, str, float] | None:
-        """Р РЋР С‘Р Р…РЎвЂљР ВµР В·Р С‘РЎР‚РЎС“Р ВµРЎвЂљ РЎР‚Р ВµРЎвЂЎРЎРЉ Р С‘Р В· РЎвЂљР ВµР С”РЎРѓРЎвЂљР В°.
-        Р вЂ™Р С•Р В·Р Р†РЎР‚Р В°РЎвЂ°Р В°Р ВµРЎвЂљ (audio_bytes, mime_type, duration_seconds) Р С‘Р В»Р С‘ None Р Р† РЎРѓР В»РЎС“РЎвЂЎР В°Р Вµ Р С•РЎв‚¬Р С‘Р В±Р С”Р С‘.
+        """Синтезирует речь из текста.
+        Возвращает (audio_bytes, mime_type, duration_seconds) или None в случае ошибки.
         """
         pass
 
@@ -95,7 +95,7 @@ class TTSEngine(abc.ABC):
             )
             return {"id": saved["id"], "duration": duration}
         except Exception as e:
-            log.warning("Р Р…Р Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р С‘РЎвЂљРЎРЉ Р В°РЎС“Р Т‘Р С‘Р С•РЎвЂћР В°Р в„–Р В» Р С•Р В·Р Р†РЎС“РЎвЂЎР С”Р С‘ Р СР В°РЎРѓРЎвЂљР ВµРЎР‚Р В°: %s", e)
+            log.warning("не удалось сохранить аудиофайл озвучки Мастера: %s", e)
             return None
 
 
@@ -105,7 +105,7 @@ class GeminiTTS(TTSEngine):
         api_key: str | None,
         model: str = "gemini-3.8-flash-tts",
         voice: str = "Fenrir",
-        timeout: float = 30.0,
+        timeout: float = 120.0,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.api_key = api_key.strip() if api_key else None
@@ -143,7 +143,7 @@ class GeminiTTS(TTSEngine):
             async with httpx.AsyncClient(timeout=self.timeout, transport=self._transport) as client:
                 res = await client.post(url, json=payload)
                 if res.status_code != 200:
-                    log.warning("Gemini TTS Р С•РЎв‚¬Р С‘Р В±Р С”Р В° %s: %s", res.status_code, res.text[:500])
+                    log.warning("Gemini TTS ошибка %s: %s", res.status_code, res.text[:500])
                     return None
 
                 data = res.json()
@@ -171,79 +171,58 @@ class GeminiTTS(TTSEngine):
                     duration = wav_duration(raw_bytes)
                     return raw_bytes, "audio/wav", duration
         except Exception as e:
-            log.warning("РЎРѓР В±Р С•Р в„– Р С—РЎР‚Р С‘ Р Р†РЎвЂ№Р В·Р С•Р Р†Р Вµ Gemini TTS: %s", e)
+            log.warning("сбой при вызове Gemini TTS: %s", e)
             return None
 
 
-class SileroTTS(TTSEngine):
-    """Р ВР Р…РЎвЂљР ВµР С–РЎР‚Р В°РЎвЂ Р С‘РЎРЏ РЎРѓ Р В»Р С•Р С”Р В°Р В»РЎРЉР Р…РЎвЂ№Р С Silero TTS (РЎвЂЎР ВµРЎР‚Р ВµР В· silero-api-server)."""
+
+class VoiceStudioTTS(TTSEngine):
+    """OpenAI-compatible TTS engine for Voice Studio with dynamic profile resolution."""
 
     def __init__(
         self,
-        api_base: str = "http://localhost:8001",
-        voice: str = "xenia",
-        timeout: float = 30.0,
-        transport: httpx.AsyncBaseTransport | None = None,
-    ) -> None:
-        self.api_base = api_base.rstrip("/")
-        self.voice = voice
-        self.timeout = timeout
-        self._transport = transport
-
-    @property
-    def enabled(self) -> bool:
-        return bool(self.api_base)
-
-    async def synthesize(self, text: str, voice_name: str | None = None) -> tuple[bytes, str, float] | None:
-        clean = clean_narration_text(text)
-        if not clean:
-            return None
-
-        resolved_voice = voice_name or self.voice
-        # Р Р€ Р В±Р С•Р В»РЎРЉРЎв‚¬Р С‘Р Р…РЎРѓРЎвЂљР Р†Р В° Р С•Р В±Р ВµРЎР‚РЎвЂљР С•Р С” Silero РЎРЊР Р…Р Т‘Р С—Р С•Р С‘Р Р…РЎвЂљ Р С–Р ВµР Р…Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘ Р Р…Р В°РЎвЂ¦Р С•Р Т‘Р С‘РЎвЂљРЎРѓРЎРЏ Р С—Р С• Р С—РЎС“РЎвЂљР С‘ /tts/generate
-        url = f"{self.api_base}/generate"
-        
-        payload = {
-            "text": clean,
-            "speaker": resolved_voice
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout, transport=self._transport) as client:
-                # Р С›РЎвЂљР С—РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С POST Р В·Р В°Р С—РЎР‚Р С•РЎРѓ. Р вЂР С•Р В»РЎРЉРЎв‚¬Р С‘Р Р…РЎРѓРЎвЂљР Р†Р С• РЎРѓР ВµРЎР‚Р Р†Р ВµРЎР‚Р С•Р Р† (Р Р†Р С”Р В». twirapp Р С‘ ouoertheo) Р Р†Р С•Р В·Р Р†РЎР‚Р В°РЎвЂ°Р В°РЎР‹РЎвЂљ Р В°РЎС“Р Т‘Р С‘Р С•
-                res = await client.post(url, json=payload)
-                if res.status_code != 200:
-                    # Р СџР С•Р С—РЎР‚Р С•Р В±РЎС“Р ВµР С GET, Р ВµРЎРѓР В»Р С‘ POST Р Р…Р Вµ Р С—РЎР‚Р С•РЎв‚¬Р ВµР В»
-                    res = await client.get(url, params=payload)
-                    if res.status_code != 200:
-                        log.warning("Silero TTS Р С•РЎв‚¬Р С‘Р В±Р С”Р В° %s: %s", res.status_code, res.text[:500])
-                        return None
-                
-                audio_bytes = res.content
-                duration = wav_duration(audio_bytes)
-                return audio_bytes, "audio/wav", duration
-        except Exception as e:
-            log.warning("РЎРѓР В±Р С•Р в„– Р С—РЎР‚Р С‘ Р Р†РЎвЂ№Р В·Р С•Р Р†Р Вµ Silero TTS: %s", e)
-            return None
-
-class XttsEngine(TTSEngine):
-    """РРЅС‚РµРіСЂР°С†РёСЏ СЃ Р»РѕРєР°Р»СЊРЅС‹Рј XTTS v2 (С‡РµСЂРµР· xtts-api-server)."""
-
-    def __init__(
-        self,
-        api_base: str = "http://localhost:8020",
-        voice: str = "default.wav",
+        api_base: str = "http://host.docker.internal:3900/v1",
+        api_key: str | None = None,
+        voice: str = "demo0001",
         timeout: float = 120.0,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.api_base = api_base.rstrip("/")
+        self.api_key = api_key
         self.voice = voice
         self.timeout = timeout
         self._transport = transport
+        self._profiles_cache: dict[str, dict[str, Any]] = {}
+        self._profiles_cache_time: float = 0.0
 
     @property
     def enabled(self) -> bool:
         return bool(self.api_base)
+
+    async def _get_profile(self, voice_id: str) -> dict[str, Any] | None:
+        """Fetch and cache profile metadata from Voice Studio to dynamically apply language, seed, etc."""
+        import time
+        now = time.time()
+        if not self._profiles_cache or (now - self._profiles_cache_time) > 60.0:
+            profiles_url = f"{self.api_base.rsplit('/v1', 1)[0]}/profiles"
+            headers = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            try:
+                async with httpx.AsyncClient(timeout=5.0, transport=self._transport) as client:
+                    resp = await client.get(profiles_url, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if isinstance(data, list):
+                            self._profiles_cache = {
+                                str(p.get("id")): p
+                                for p in data
+                                if isinstance(p, dict) and p.get("id")
+                            }
+                            self._profiles_cache_time = now
+            except Exception as e:
+                log.debug("Не удалось обновить профили Voice Studio: %s", e)
+        return self._profiles_cache.get(voice_id)
 
     async def synthesize(self, text: str, voice_name: str | None = None) -> tuple[bytes, str, float] | None:
         clean = clean_narration_text(text)
@@ -251,27 +230,46 @@ class XttsEngine(TTSEngine):
             return None
 
         resolved_voice = voice_name or self.voice
-        url = f"{self.api_base}/tts_to_audio/"
+        url = f"{self.api_base}/audio/speech"
         
-        payload = {
-            "text": clean,
-            "speaker_wav": resolved_voice,
-            "language": "ru"
+        payload: dict[str, Any] = {
+            "model": "tts-1",
+            "input": clean,
+            "voice": resolved_voice,
+            "response_format": "wav",
         }
+
+        # Динамически подтягиваем настройки профиля из Voice Studio без хардкода
+        profile = await self._get_profile(resolved_voice)
+        if profile:
+            lang = profile.get("language")
+            if lang and str(lang).lower() != "auto":
+                payload["language"] = lang
+            else:
+                payload["language"] = "Russian"
+
+            if profile.get("seed") is not None:
+                payload["seed"] = profile["seed"]
+        else:
+            payload["language"] = "Russian"
+
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout, transport=self._transport) as client:
-                res = await client.post(url, json=payload)
+                res = await client.post(url, json=payload, headers=headers)
                 if res.status_code != 200:
-                    log.warning("XTTS РѕС€РёР±РєР° %s: %s", res.status_code, res.text[:500])
+                    log.warning("Voice Studio TTS error %s: %s", res.status_code, res.text[:500])
                     return None
                 
-                audio_bytes = res.content
-                duration = wav_duration(audio_bytes)
-                return audio_bytes, "audio/wav", duration
+                duration = max(0.1, len(res.content) / 32000.0)
+                return res.content, "audio/wav", duration
         except Exception as e:
-            log.warning("СЃР±РѕР№ РїСЂРё РІС‹Р·РѕРІРµ XTTS: %s", e)
+            log.exception("Failed to connect to Voice Studio TTS: %s", e)
             return None
+
 
 class DisabledTTS(TTSEngine):
     @property
@@ -287,8 +285,7 @@ class TTSManager:
     def __init__(self, settings):
         self.engines = {
             "gemini": GeminiTTS(api_key=settings.gemini_tts_api_key, model=settings.gemini_tts_model, voice=settings.gemini_tts_voice),
-            "silero": SileroTTS(api_base=settings.silero_api_base, voice=settings.silero_voice),
-            "xtts": XttsEngine(api_base=settings.xtts_api_base, voice=settings.xtts_voice),
+            "voicestudio": VoiceStudioTTS(api_base=settings.voicestudio_api_base, api_key=settings.voicestudio_api_key, voice=settings.voicestudio_voice),
         }
         self.default_provider = settings.tts_provider
 
@@ -302,7 +299,7 @@ class TTSManager:
         engine = self.get_engine(provider)
         if not engine.enabled:
             return None
-        if provider and provider != "gemini":
+        if provider and provider not in ("gemini", "voicestudio"):
             voice_name = None
         return await engine.voice_for_narration(media_dir, campaign_id, narration_text, voice_name)
 

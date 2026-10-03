@@ -57,6 +57,17 @@ export interface TtsVoiceOption {
   description: string;
 }
 
+export interface VoiceStudioProfile {
+  id: string;
+  name: string;
+  kind?: "clone" | "design" | string;
+  language?: string;
+  instruct?: string;
+  ref_text?: string;
+  description?: string;
+  is_demo?: number | boolean;
+}
+
 export const TTS_VOICES: TtsVoiceOption[] = [
   { id: "Fenrir", name: "Fenrir", gender: "мужской", description: "Глубокий, повествовательный тон (по умолчанию)" },
   { id: "Charon", name: "Charon", gender: "мужской", description: "Низкий, мрачный, таинственный" },

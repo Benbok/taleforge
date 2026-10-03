@@ -59,10 +59,11 @@ class Settings:
     gemini_tts_api_key: str | None = None
     gemini_tts_model: str = "gemini-3.8-flash-tts"
     gemini_tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
-    silero_api_base: str = "http://localhost:8001"
-    silero_voice: str = "aidar"
-    xtts_api_base: str = "http://localhost:8020"
-    xtts_voice: str = "echo.wav"
+    voicestudio_api_base: str = "http://host.docker.internal:3900/v1"
+    voicestudio_api_key: str | None = None
+    voicestudio_voice: str = "demo0001"
+    
+    
 
     llm_provider: str = "claude"
     gemini_main_model: str = "gemini-2.5-pro"
@@ -99,10 +100,11 @@ class Settings:
             gemini_tts_api_key=_env("GEMINI_TTS_API_KEY") or _env("GEMINI_API_KEY"),
             gemini_tts_model=_env("GEMINI_TTS_MODEL", cls.gemini_tts_model),
             gemini_tts_voice=_env("GEMINI_TTS_VOICE", cls.gemini_tts_voice),
-            silero_api_base=_env("SILERO_API_BASE", cls.silero_api_base),
-            silero_voice=_env("SILERO_VOICE", cls.silero_voice),
-            xtts_api_base=_env("XTTS_API_BASE", cls.xtts_api_base),
-            xtts_voice=_env("XTTS_VOICE", cls.xtts_voice),
+            voicestudio_api_base=_env("VOICESTUDIO_API_BASE", cls.voicestudio_api_base),
+            voicestudio_api_key=_env("VOICESTUDIO_API_KEY", cls.voicestudio_api_key),
+            voicestudio_voice=_env("VOICESTUDIO_VOICE", cls.voicestudio_voice),
+            
+            
             llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
             gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
             gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
