@@ -54,10 +54,15 @@ class Settings:
     stt_model: str = "deepdml/faster-whisper-large-v3-turbo-ct2"
     stt_language: str = "ru"
     stt_concurrency: int = 1
-    # Озвучка текста мастера (Gemini TTS): генерация аудио для реплик мастера
-    tts_api_key: str | None = None
-    tts_model: str = "gemini-3.8-flash-tts"
-    tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
+    # Озвучка текста мастера
+    tts_provider: str = "gemini"  # gemini, silero, none
+    gemini_tts_api_key: str | None = None
+    gemini_tts_model: str = "gemini-3.8-flash-tts"
+    gemini_tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
+    silero_api_base: str = "http://localhost:8001"
+    silero_voice: str = "aidar"
+    xtts_api_base: str = "http://localhost:8020"
+    xtts_voice: str = "echo.wav"
 
     llm_provider: str = "claude"
     gemini_main_model: str = "gemini-2.5-pro"
@@ -90,9 +95,14 @@ class Settings:
             stt_model=_env("STT_MODEL", cls.stt_model),
             stt_language=_env("STT_LANGUAGE", cls.stt_language),
             stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
-            tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY") or _env("GEMINI_API_KEY"),
-            tts_model=_env("TTS_MODEL", cls.tts_model),
-            tts_voice=_env("TTS_VOICE", cls.tts_voice),
+            tts_provider=_env("TTS_PROVIDER", cls.tts_provider).lower(),
+            gemini_tts_api_key=_env("GEMINI_TTS_API_KEY") or _env("TTS_GEMINI_API_KEY") or _env("GEMINI_API_KEY"),
+            gemini_tts_model=_env("GEMINI_TTS_MODEL", cls.gemini_tts_model),
+            gemini_tts_voice=_env("GEMINI_TTS_VOICE", cls.gemini_tts_voice),
+            silero_api_base=_env("SILERO_API_BASE", cls.silero_api_base),
+            silero_voice=_env("SILERO_VOICE", cls.silero_voice),
+            xtts_api_base=_env("XTTS_API_BASE", cls.xtts_api_base),
+            xtts_voice=_env("XTTS_VOICE", cls.xtts_voice),
             llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
             gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
             gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
@@ -123,4 +133,5 @@ def update_env(key: str, value: str):
     settings = Settings.from_env()
 
 settings = Settings.from_env()
+
 

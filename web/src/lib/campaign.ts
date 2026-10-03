@@ -1,5 +1,5 @@
-// Кампания вне игры: создание по шагам, кабинет владельца, настройки мастера. Подписи вариантов приходят
-// с сервера (/api/campaign-options), здесь только типы и то, что собирает запросы.
+﻿// РљР°РјРїР°РЅРёСЏ РІРЅРµ РёРіСЂС‹: СЃРѕР·РґР°РЅРёРµ РїРѕ С€Р°РіР°Рј, РєР°Р±РёРЅРµС‚ РІР»Р°РґРµР»СЊС†Р°, РЅР°СЃС‚СЂРѕР№РєРё РјР°СЃС‚РµСЂР°. РџРѕРґРїРёСЃРё РІР°СЂРёР°РЅС‚РѕРІ РїСЂРёС…РѕРґСЏС‚
+// СЃ СЃРµСЂРІРµСЂР° (/api/campaign-options), Р·РґРµСЃСЊ С‚РѕР»СЊРєРѕ С‚РёРїС‹ Рё С‚Рѕ, С‡С‚Рѕ СЃРѕР±РёСЂР°РµС‚ Р·Р°РїСЂРѕСЃС‹.
 
 export interface Seat {
   id: string;
@@ -19,7 +19,7 @@ export interface Brief {
   wishes?: string;
 }
 
-/** Кампания, как её видит участник (GET /api/campaigns/{id}). brief — только владельцу и мастеру. */
+/** РљР°РјРїР°РЅРёСЏ, РєР°Рє РµС‘ РІРёРґРёС‚ СѓС‡Р°СЃС‚РЅРёРє (GET /api/campaigns/{id}). brief вЂ” С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»СЊС†Сѓ Рё РјР°СЃС‚РµСЂСѓ. */
 export interface Room {
   id: string;
   name: string;
@@ -38,6 +38,7 @@ export interface Room {
     spend_limit_usd?: number | null;
     excluded_themes?: string[];
     audio_enabled?: boolean;
+    tts_provider?: string;
     tts_enabled?: boolean;
     tts_voice?: string | null;
     leveling?: "xp" | "milestone";
@@ -52,16 +53,16 @@ export interface Room {
 export interface TtsVoiceOption {
   id: string;
   name: string;
-  gender: "мужской" | "женский" | "универсальный";
+  gender: "РјСѓР¶СЃРєРѕР№" | "Р¶РµРЅСЃРєРёР№" | "СѓРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№";
   description: string;
 }
 
 export const TTS_VOICES: TtsVoiceOption[] = [
-  { id: "Fenrir", name: "Fenrir", gender: "мужской", description: "Глубокий, повествовательный тон (по умолчанию)" },
-  { id: "Charon", name: "Charon", gender: "мужской", description: "Низкий, мрачный, таинственный" },
-  { id: "Puck", name: "Puck", gender: "универсальный", description: "Живой, озорной, выразительный" },
-  { id: "Kore", name: "Kore", gender: "женский", description: "Спокойный, мягкий, атмосферный" },
-  { id: "Aoede", name: "Aoede", gender: "женский", description: "Мелодичный, драматический, эпический" },
+  { id: "Fenrir", name: "Fenrir", gender: "РјСѓР¶СЃРєРѕР№", description: "Р“Р»СѓР±РѕРєРёР№, РїРѕРІРµСЃС‚РІРѕРІР°С‚РµР»СЊРЅС‹Р№ С‚РѕРЅ (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)" },
+  { id: "Charon", name: "Charon", gender: "РјСѓР¶СЃРєРѕР№", description: "РќРёР·РєРёР№, РјСЂР°С‡РЅС‹Р№, С‚Р°РёРЅСЃС‚РІРµРЅРЅС‹Р№" },
+  { id: "Puck", name: "Puck", gender: "СѓРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№", description: "Р–РёРІРѕР№, РѕР·РѕСЂРЅРѕР№, РІС‹СЂР°Р·РёС‚РµР»СЊРЅС‹Р№" },
+  { id: "Kore", name: "Kore", gender: "Р¶РµРЅСЃРєРёР№", description: "РЎРїРѕРєРѕР№РЅС‹Р№, РјСЏРіРєРёР№, Р°С‚РјРѕСЃС„РµСЂРЅС‹Р№" },
+  { id: "Aoede", name: "Aoede", gender: "Р¶РµРЅСЃРєРёР№", description: "РњРµР»РѕРґРёС‡РЅС‹Р№, РґСЂР°РјР°С‚РёС‡РµСЃРєРёР№, СЌРїРёС‡РµСЃРєРёР№" },
 ];
 
 export interface Poster {
@@ -157,24 +158,24 @@ export interface Pack {
 }
 
 export const PROVIDER_RU: Record<string, string> = { claude: "Claude", gemini: "Gemini", local: "LM Studio" };
-export const ROLE_RU: Record<string, string> = { super_admin: "Суперадмин", admin: "Админ", player: "Игрок" };
+export const ROLE_RU: Record<string, string> = { super_admin: "РЎСѓРїРµСЂР°РґРјРёРЅ", admin: "РђРґРјРёРЅ", player: "РРіСЂРѕРє" };
 export const DIFFICULTY_RU: Record<string, string> = {
-  easy: "Лёгкая",
-  normal: "Обычная",
-  hard: "Сложная",
-  deadly: "Смертельная",
+  easy: "Р›С‘РіРєР°СЏ",
+  normal: "РћР±С‹С‡РЅР°СЏ",
+  hard: "РЎР»РѕР¶РЅР°СЏ",
+  deadly: "РЎРјРµСЂС‚РµР»СЊРЅР°СЏ",
 };
 
 export const LEVELING_RU: Record<string, string> = {
-  xp: "По опыту",
-  milestone: "По вехам сюжета",
+  xp: "РџРѕ РѕРїС‹С‚Сѓ",
+  milestone: "РџРѕ РІРµС…Р°Рј СЃСЋР¶РµС‚Р°",
 };
 export const LEVELING_HINT: Record<string, string> = {
-  xp: "Опыт за побеждённых врагов, задачи и квесты делится поровну между героями; уровень растёт сам по таблице SRD.",
-  milestone: "Опыт не копится: мастер поднимает уровень всему отряду на вехах сюжета.",
+  xp: "РћРїС‹С‚ Р·Р° РїРѕР±РµР¶РґС‘РЅРЅС‹С… РІСЂР°РіРѕРІ, Р·Р°РґР°С‡Рё Рё РєРІРµСЃС‚С‹ РґРµР»РёС‚СЃСЏ РїРѕСЂРѕРІРЅСѓ РјРµР¶РґСѓ РіРµСЂРѕСЏРјРё; СѓСЂРѕРІРµРЅСЊ СЂР°СЃС‚С‘С‚ СЃР°Рј РїРѕ С‚Р°Р±Р»РёС†Рµ SRD.",
+  milestone: "РћРїС‹С‚ РЅРµ РєРѕРїРёС‚СЃСЏ: РјР°СЃС‚РµСЂ РїРѕРґРЅРёРјР°РµС‚ СѓСЂРѕРІРµРЅСЊ РІСЃРµРјСѓ РѕС‚СЂСЏРґСѓ РЅР° РІРµС…Р°С… СЃСЋР¶РµС‚Р°.",
 };
 
-/** Выбор персоны в одном поле: своя из профиля, встроенная или никакой. */
+/** Р’С‹Р±РѕСЂ РїРµСЂСЃРѕРЅС‹ РІ РѕРґРЅРѕРј РїРѕР»Рµ: СЃРІРѕСЏ РёР· РїСЂРѕС„РёР»СЏ, РІСЃС‚СЂРѕРµРЅРЅР°СЏ РёР»Рё РЅРёРєР°РєРѕР№. */
 export type PersonaPick = "" | `my:${string}` | `pre:${string}`;
 
 export function personaBody(pick: PersonaPick): { persona_id?: string; preset?: string } {
@@ -183,17 +184,17 @@ export function personaBody(pick: PersonaPick): { persona_id?: string; preset?: 
   return {};
 }
 
-// --- черновик новой кампании: живёт в браузере, пока кампания не создана ---
+// --- С‡РµСЂРЅРѕРІРёРє РЅРѕРІРѕР№ РєР°РјРїР°РЅРёРё: Р¶РёРІС‘С‚ РІ Р±СЂР°СѓР·РµСЂРµ, РїРѕРєР° РєР°РјРїР°РЅРёСЏ РЅРµ СЃРѕР·РґР°РЅР° ---
 
 export interface CampaignDraft {
   step: number;
   name: string;
   pack_id: string;
   difficulty: string;
-  /** Рост уровней: по опыту SRD или по вехам сюжета. */
+  /** Р РѕСЃС‚ СѓСЂРѕРІРЅРµР№: РїРѕ РѕРїС‹С‚Сѓ SRD РёР»Рё РїРѕ РІРµС…Р°Рј СЃСЋР¶РµС‚Р°. */
   leveling: "xp" | "milestone";
   players: number | null;
-  /** "owner" — ведёт сам, иначе id профиля модели ("" — модель по умолчанию). */
+  /** "owner" вЂ” РІРµРґС‘С‚ СЃР°Рј, РёРЅР°С‡Рµ id РїСЂРѕС„РёР»СЏ РјРѕРґРµР»Рё ("" вЂ” РјРѕРґРµР»СЊ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ). */
   master: string;
   persona: PersonaPick;
   master_preset_id: string | null;
@@ -227,7 +228,7 @@ export const EMPTY_DRAFT: CampaignDraft = {
   plan_now: true,
 };
 
-export const WIZARD_STEPS = ["Мир", "Мастер", "Чего ждёте", "Вводная"] as const;
+export const WIZARD_STEPS = ["РњРёСЂ", "РњР°СЃС‚РµСЂ", "Р§РµРіРѕ Р¶РґС‘С‚Рµ", "Р’РІРѕРґРЅР°СЏ"] as const;
 
 const DRAFT_KEY = "tf-campaign-draft";
 
@@ -246,7 +247,7 @@ export function saveDraft(userId: string, draft: CampaignDraft | null): void {
     if (draft) localStorage.setItem(DRAFT_KEY, JSON.stringify({ user: userId, draft }));
     else localStorage.removeItem(DRAFT_KEY);
   } catch {
-    /* приватный режим: черновик живёт, пока открыта вкладка */
+    /* РїСЂРёРІР°С‚РЅС‹Р№ СЂРµР¶РёРј: С‡РµСЂРЅРѕРІРёРє Р¶РёРІС‘С‚, РїРѕРєР° РѕС‚РєСЂС‹С‚Р° РІРєР»Р°РґРєР° */
   }
 }
 
@@ -258,7 +259,7 @@ export function splitThemes(s: string): string[] {
     .slice(0, 20);
 }
 
-/** Анкета без пустых полей: чего не выбрали, решает мастер. Средние доли не шлём — это и так по умолчанию. */
+/** РђРЅРєРµС‚Р° Р±РµР· РїСѓСЃС‚С‹С… РїРѕР»РµР№: С‡РµРіРѕ РЅРµ РІС‹Р±СЂР°Р»Рё, СЂРµС€Р°РµС‚ РјР°СЃС‚РµСЂ. РЎСЂРµРґРЅРёРµ РґРѕР»Рё РЅРµ С€Р»С‘Рј вЂ” СЌС‚Рѕ Рё С‚Р°Рє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ. */
 export function cleanBrief(b: Brief): Brief {
   const out: Brief = {};
   if (b.length) out.length = b.length;
@@ -299,8 +300,9 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
   };
 }
 
-/** Что мешает перейти дальше с шага: пустой список — можно. */
+/** Р§С‚Рѕ РјРµС€Р°РµС‚ РїРµСЂРµР№С‚Рё РґР°Р»СЊС€Рµ СЃ С€Р°РіР°: РїСѓСЃС‚РѕР№ СЃРїРёСЃРѕРє вЂ” РјРѕР¶РЅРѕ. */
 export function stepProblems(d: CampaignDraft, step: number): string[] {
-  if (step === 0 && !d.name.trim()) return ["Назовите кампанию"];
+  if (step === 0 && !d.name.trim()) return ["РќР°Р·РѕРІРёС‚Рµ РєР°РјРїР°РЅРёСЋ"];
   return [];
 }
+

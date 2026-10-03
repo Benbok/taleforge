@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.agents.llm import ScriptedLLM
 from app.agents.tts import (
-    TextToSpeech,
+    GeminiTTS,
     clean_narration_text,
     pcm_to_wav,
     wav_duration,
@@ -49,7 +49,7 @@ def test_pcm_to_wav_and_duration():
 
 @pytest.mark.anyio
 async def test_tts_disabled_when_no_key():
-    tts = TextToSpeech(api_key=None)
+    tts = GeminiTTS(api_key=None)
     assert not tts.enabled
     res = await tts.synthesize("Привет")
     assert res is None
@@ -88,7 +88,7 @@ async def test_tts_synthesize_success():
         )
 
     transport = httpx.MockTransport(mock_handler)
-    tts = TextToSpeech(api_key="fake-gemini-key", model="gemini-2.0-flash", voice="Fenrir", transport=transport)
+    tts = GeminiTTS(api_key="fake-gemini-key", model="gemini-2.0-flash", voice="Fenrir", transport=transport)
 
     result = await tts.synthesize("В пещере темно и сыро.")
     assert result is not None
@@ -126,7 +126,7 @@ async def test_tts_voice_for_narration(tmp_path: Path):
             },
         )
 
-    tts = TextToSpeech(api_key="key-123", transport=httpx.MockTransport(mock_handler))
+    tts = GeminiTTS(api_key="key-123", transport=httpx.MockTransport(mock_handler))
     media_dir = tmp_path / "media"
     campaign_id = "camp1"
 
@@ -147,7 +147,7 @@ async def test_tts_api_error_returns_none():
     def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500, text="Internal Server Error")
 
-    tts = TextToSpeech(api_key="key-123", transport=httpx.MockTransport(mock_handler))
+    tts = GeminiTTS(api_key="key-123", transport=httpx.MockTransport(mock_handler))
     res = await tts.synthesize("Текст")
     assert res is None
 
@@ -161,7 +161,7 @@ def test_master_turn_attaches_voice_when_tts_enabled(settings, tmp_path):
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
+        gemini_tts_api_key="test-gemini-key",
     )
 
     fake_pcm = b"\x00\x00" * 24000  # 1 сек
@@ -237,7 +237,7 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
+        gemini_tts_api_key="test-gemini-key",
     )
 
     def mock_tts_fail(request: httpx.Request) -> httpx.Response:
@@ -282,7 +282,7 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
+        gemini_tts_api_key="test-gemini-key",
     )
 
     fake_pcm = b"\x00\x00" * 24000
@@ -375,8 +375,8 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
-        tts_voice="Fenrir",
+        gemini_tts_api_key="test-gemini-key",
+        gemini_tts_voice="Fenrir",
     )
 
     fake_pcm = b"\x00\x00" * 24000
@@ -459,8 +459,8 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
-        tts_voice="Fenrir",
+        gemini_tts_api_key="test-gemini-key",
+        gemini_tts_voice="Fenrir",
     )
 
     fake_pcm = b"\x00\x00" * 24000

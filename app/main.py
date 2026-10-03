@@ -1,4 +1,4 @@
-"""Точка входа сервера: ``uvicorn app.main:app``."""
+﻿"""РўРѕС‡РєР° РІС…РѕРґР° СЃРµСЂРІРµСЂР°: ``uvicorn app.main:app``."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
 from app.agents.player import PlayerAgents
 from app.agents.stt import SpeechToText
-from app.agents.tts import TextToSpeech
+from app.agents.tts import GeminiTTS, SileroTTS, DisabledTTS
 from app.api import (
     admin,
     auth,
@@ -43,15 +43,15 @@ from app.gateway.presence import Presence
 from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
-DIST = Path(__file__).parent / "web" / "dist"  # сборка клиента (web/, npm run build)
+DIST = Path(__file__).parent / "web" / "dist"  # СЃР±РѕСЂРєР° РєР»РёРµРЅС‚Р° (web/, npm run build)
 NOT_BUILT = (
     '<!doctype html><html lang="ru"><meta charset="utf-8"><title>Taleforge</title>'
-    "<p>Клиент не собран: выполните <code>npm ci &amp;&amp; npm run build</code> в папке web/.</p></html>"
+    "<p>РљР»РёРµРЅС‚ РЅРµ СЃРѕР±СЂР°РЅ: РІС‹РїРѕР»РЅРёС‚Рµ <code>npm ci &amp;&amp; npm run build</code> РІ РїР°РїРєРµ web/.</p></html>"
 )
 
 
 async def bootstrap_superadmin(maker, settings: Settings) -> None:
-    """Первый вход: Super Admin из SUPERADMIN_NAME и SUPERADMIN_PASSWORD, если такого ещё нет."""
+    """РџРµСЂРІС‹Р№ РІС…РѕРґ: Super Admin РёР· SUPERADMIN_NAME Рё SUPERADMIN_PASSWORD, РµСЃР»Рё С‚Р°РєРѕРіРѕ РµС‰С‘ РЅРµС‚."""
     if not (settings.superadmin_name and settings.superadmin_password):
         return
     async with maker() as session:
@@ -65,11 +65,11 @@ async def bootstrap_superadmin(maker, settings: Settings) -> None:
                 )
             )
             await session.commit()
-            log.info("создан Super Admin %s", settings.superadmin_name)
+            log.info("СЃРѕР·РґР°РЅ Super Admin %s", settings.superadmin_name)
 
 
 def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_factory=Dice) -> FastAPI:
-    """``llm`` и ``dice_factory`` подменяются в тестах: модель с заданными ответами и кубики с seed."""
+    """``llm`` Рё ``dice_factory`` РїРѕРґРјРµРЅСЏСЋС‚СЃСЏ РІ С‚РµСЃС‚Р°С…: РјРѕРґРµР»СЊ СЃ Р·Р°РґР°РЅРЅС‹РјРё РѕС‚РІРµС‚Р°РјРё Рё РєСѓР±РёРєРё СЃ seed."""
     settings = settings or Settings.from_env()
 
     @asynccontextmanager
@@ -82,11 +82,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         await app.state.bus.start()
         await bootstrap_superadmin(app.state.sessionmaker, settings)
         app.state.dice_factory = dice_factory
-        app.state.tts = TextToSpeech(
-            api_key=settings.tts_api_key,
-            model=settings.tts_model,
-            voice=settings.tts_voice,
-        )
+        from app.agents.tts import TTSManager
+        app.state.tts = TTSManager(settings)
         app.state.master = MasterService(
             app.state.sessionmaker,
             app.state.bus,
@@ -149,7 +146,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             raise HTTPException(404)
         return FileResponse(file_path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
-    # Все остальные адреса — страницы одностраничного клиента, маршруты разбирает он сам.
+    # Р’СЃРµ РѕСЃС‚Р°Р»СЊРЅС‹Рµ Р°РґСЂРµСЃР° вЂ” СЃС‚СЂР°РЅРёС†С‹ РѕРґРЅРѕСЃС‚СЂР°РЅРёС‡РЅРѕРіРѕ РєР»РёРµРЅС‚Р°, РјР°СЂС€СЂСѓС‚С‹ СЂР°Р·Р±РёСЂР°РµС‚ РѕРЅ СЃР°Рј.
     @app.get("/{path:path}", include_in_schema=False)
     async def spa(path: str) -> Response:
         if path.startswith(("api/", "assets/")) or path == "ws":
@@ -160,7 +157,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
                 return FileResponse(candidate)
         index = DIST / "index.html"
         if not index.is_file():
-            # разработка сервера и тесты: клиент не собран
+            # СЂР°Р·СЂР°Р±РѕС‚РєР° СЃРµСЂРІРµСЂР° Рё С‚РµСЃС‚С‹: РєР»РёРµРЅС‚ РЅРµ СЃРѕР±СЂР°РЅ
             return HTMLResponse(NOT_BUILT, status_code=503)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
@@ -168,3 +165,5 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
 
 
 app = create_app()
+
+

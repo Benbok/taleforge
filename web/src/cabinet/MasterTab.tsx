@@ -347,11 +347,37 @@ export default function MasterTab({
         </div>
 
         {ttsEnabled && (
-          <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
-            <Field
-              label="Голос ИИ-мастера"
-              hint="Голос, которым Gemini озвучивает описания сцен и реплики мастера в чате."
-            >
+          <>
+            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+              <Field
+                label="Источник озвучки (TTS Provider)"
+                hint="Выберите сервис для синтеза речи (облачный Gemini или локальный XTTS / Silero)."
+              >
+                <CustomSelect
+                  value={room?.settings?.tts_provider || "gemini"}
+                  options={[
+                    { value: "gemini", label: "Gemini TTS (Cloud)" },
+                    { value: "xtts", label: "XTTS v2 (Local)" },
+                    { value: "silero", label: "Silero TTS (Local)" },
+                  ]}
+                  onChange={async (val) => {
+                    if (val === (room?.settings?.tts_provider || "gemini")) return;
+                    const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                      method: "PATCH",
+                      body: { tts_provider: val },
+                    });
+                    onRoom?.(updated);
+                  }}
+                  ariaLabel="Источник озвучки"
+                />
+              </Field>
+            </div>
+
+            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+              <Field
+                label="Голос ИИ-мастера (Gemini)"
+                hint="Голос, которым озвучиваются описания сцен и реплики мастера в чате."
+              >
               <CustomSelect
                 value={room?.settings?.tts_voice || "Fenrir"}
                 options={TTS_VOICES.map((v) => ({
@@ -373,6 +399,7 @@ export default function MasterTab({
               />
             </Field>
           </div>
+          </>
         )}
       </section>
 

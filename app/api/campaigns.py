@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
@@ -95,7 +95,7 @@ async def _viewer(session, user: User, campaign_id: str) -> Viewer:
     return await svc.get_viewer(session, user, campaign_id)
 
 
-# --- Кампании ---
+# --- РљР°РјРїР°РЅРёРё ---
 
 
 @router.get("/campaigns")
@@ -107,7 +107,7 @@ async def list_campaigns(user: UserDep, session: SessionDep) -> list[CampaignOut
 async def recommend_party(
     user: UserDep, session: SessionDep, difficulty: str = "normal", pack_id: str | None = None
 ) -> dict:
-    """Рекомендация размера отряда для мастера создания кампании (раздел 5.2)."""
+    """Р РµРєРѕРјРµРЅРґР°С†РёСЏ СЂР°Р·РјРµСЂР° РѕС‚СЂСЏРґР° РґР»СЏ РјР°СЃС‚РµСЂР° СЃРѕР·РґР°РЅРёСЏ РєР°РјРїР°РЅРёРё (СЂР°Р·РґРµР» 5.2)."""
     pack = await latest_version(session, pack_id) if pack_id else None
     return svc.party_size(pack, difficulty)
 
@@ -122,9 +122,9 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             else await latest_version(session, body.pack_id)
         )
         if pack is None:
-            raise NotFound("пакет не импортирован")
+            raise NotFound("РїР°РєРµС‚ РЅРµ РёРјРїРѕСЂС‚РёСЂРѕРІР°РЅ")
         if pack.manifest.get("ruleset") != "dnd5e":
-            raise Conflict("пакет для другой системы правил")
+            raise Conflict("РїР°РєРµС‚ РґР»СЏ РґСЂСѓРіРѕР№ СЃРёСЃС‚РµРјС‹ РїСЂР°РІРёР»")
     campaign = await svc.create_campaign(
         session,
         user,
@@ -143,6 +143,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
             "leveling": body.leveling,
+            "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
             "tts_voice": body.tts_voice,
         },
@@ -154,7 +155,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
     except CatalogError as e:
         if pack is not None:
             raise Conflict(str(e)) from None
-        # без пакета мира цепочка — базовый пакет правил; если он ещё не импортирован, её найдут при первой игре
+        # Р±РµР· РїР°РєРµС‚Р° РјРёСЂР° С†РµРїРѕС‡РєР° вЂ” Р±Р°Р·РѕРІС‹Р№ РїР°РєРµС‚ РїСЂР°РІРёР»; РµСЃР»Рё РѕРЅ РµС‰С‘ РЅРµ РёРјРїРѕСЂС‚РёСЂРѕРІР°РЅ, РµС‘ РЅР°Р№РґСѓС‚ РїСЂРё РїРµСЂРІРѕР№ РёРіСЂРµ
     await session.commit()
     return await campaign_out(session, campaign, user)
 
@@ -171,7 +172,7 @@ async def patch_campaign(
 ) -> CampaignOut:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:
-        raise AccessDenied("менять кампанию может только владелец")
+        raise AccessDenied("РјРµРЅСЏС‚СЊ РєР°РјРїР°РЅРёСЋ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
     c = v.campaign
     if body.name is not None:
         c.name = body.name
@@ -186,6 +187,7 @@ async def patch_campaign(
         "collect_window_sec",
         "excluded_themes",
         "audio_enabled",
+        "tts_provider",
         "tts_enabled",
         "tts_voice",
         "leveling",
@@ -200,21 +202,21 @@ async def patch_campaign(
     if body.brief is not None:
         c.brief = body.brief.model_dump(exclude_defaults=True)
     await session.commit()
-    if sound:  # звук включили или выключили посреди игры: у игроков он заиграет или смолкнет сразу
+    if sound:  # Р·РІСѓРє РІРєР»СЋС‡РёР»Рё РёР»Рё РІС‹РєР»СЋС‡РёР»Рё РїРѕСЃСЂРµРґРё РёРіСЂС‹: Сѓ РёРіСЂРѕРєРѕРІ РѕРЅ Р·Р°РёРіСЂР°РµС‚ РёР»Рё СЃРјРѕР»РєРЅРµС‚ СЃСЂР°Р·Сѓ
         sc = await get_scene(session, c.id)
         env = envelope("audio.state", c.id, {**audio.public_state(c, sc), "cues": []})
         await request.app.state.bus.publish(c.id, env, None)
     return await campaign_out(session, c, user)
 
 
-async def _master_agent(session, user: User, campaign_id: str, what: str = "модель мастера") -> AgentConfig:
+async def _master_agent(session, user: User, campaign_id: str, what: str = "РјРѕРґРµР»СЊ РјР°СЃС‚РµСЂР°") -> AgentConfig:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:
-        raise AccessDenied(f"{what} меняет только владелец кампании")
+        raise AccessDenied(f"{what} РјРµРЅСЏРµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РєР°РјРїР°РЅРёРё")
     seat = next((s for s in v.campaign.seats if s.role == "master"), None)
     agent = await session.get(AgentConfig, seat.agent_config_id) if seat and seat.agent_config_id else None
     if agent is None:
-        raise Conflict("мастер этой кампании — человек, а не ИИ")
+        raise Conflict("РјР°СЃС‚РµСЂ СЌС‚РѕР№ РєР°РјРїР°РЅРёРё вЂ” С‡РµР»РѕРІРµРє, Р° РЅРµ РР")
     return agent
 
 
@@ -243,10 +245,10 @@ async def get_master_model(campaign_id: str, user: UserDep, session: SessionDep)
 
 @router.put("/campaigns/{campaign_id}/master-model")
 async def put_master_model(campaign_id: str, body: MasterModelIn, user: UserDep, session: SessionDep) -> MasterModelOut:
-    """Сменить модель ИИ-мастера: следующий ход мастер сделает уже новой моделью."""
+    """РЎРјРµРЅРёС‚СЊ РјРѕРґРµР»СЊ РР-РјР°СЃС‚РµСЂР°: СЃР»РµРґСѓСЋС‰РёР№ С…РѕРґ РјР°СЃС‚РµСЂ СЃРґРµР»Р°РµС‚ СѓР¶Рµ РЅРѕРІРѕР№ РјРѕРґРµР»СЊСЋ."""
     agent = await _master_agent(session, user, campaign_id)
     if not body.model_profile_id and not body.provider:
-        raise Conflict("выберите профиль модели или провайдера")
+        raise Conflict("РІС‹Р±РµСЂРёС‚Рµ РїСЂРѕС„РёР»СЊ РјРѕРґРµР»Рё РёР»Рё РїСЂРѕРІР°Р№РґРµСЂР°")
     await svc.agent_for_master(session, body.model_dump(), agent)
     await session.commit()
     return await master_model_out(session, agent)
@@ -265,21 +267,21 @@ def persona_out(agent: AgentConfig) -> CampaignPersonaOut:
 
 @router.get("/campaigns/{campaign_id}/master-persona")
 async def get_master_persona(campaign_id: str, user: UserDep, session: SessionDep) -> CampaignPersonaOut:
-    return persona_out(await _master_agent(session, user, campaign_id, "характер мастера"))
+    return persona_out(await _master_agent(session, user, campaign_id, "С…Р°СЂР°РєС‚РµСЂ РјР°СЃС‚РµСЂР°"))
 
 
 @router.put("/campaigns/{campaign_id}/master-persona")
 async def put_master_persona(
     campaign_id: str, body: PersonaChoiceIn, user: UserDep, session: SessionDep
 ) -> CampaignPersonaOut:
-    """Сменить характер ИИ-мастера: следующий ход мастер ведёт уже в новом тоне."""
-    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    """РЎРјРµРЅРёС‚СЊ С…Р°СЂР°РєС‚РµСЂ РР-РјР°СЃС‚РµСЂР°: СЃР»РµРґСѓСЋС‰РёР№ С…РѕРґ РјР°СЃС‚РµСЂ РІРµРґС‘С‚ СѓР¶Рµ РІ РЅРѕРІРѕРј С‚РѕРЅРµ."""
+    agent = await _master_agent(session, user, campaign_id, "С…Р°СЂР°РєС‚РµСЂ РјР°СЃС‚РµСЂР°")
     await svc.apply_persona(session, user, agent, body.model_dump())
     await session.commit()
     return persona_out(agent)
 
 
-# --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---
+# --- С…Р°СЂР°РєС‚РµСЂ РР-РјР°СЃС‚РµСЂР° (СЌС‚Р°Рї 9Р±): Р°РЅРєРµС‚Р°, РїРѕРјРѕС‰РЅРёРє, РїСЂРѕРІРµСЂРєР°, Р»РµС‚РѕРїРёСЃСЊ ---
 
 
 class MasterDraftIn(BaseModel):
@@ -306,25 +308,25 @@ async def _master_character_out(session, campaign_id: str, agent: AgentConfig) -
 
 @router.get("/campaigns/{campaign_id}/master-character")
 async def get_master_character(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    agent = await _master_agent(session, user, campaign_id, "С…Р°СЂР°РєС‚РµСЂ РјР°СЃС‚РµСЂР°")
     return await _master_character_out(session, campaign_id, agent)
 
 
 @router.put("/campaigns/{campaign_id}/master-character")
 async def put_master_character(campaign_id: str, body: MasterCharacterIn, user: UserDep, session: SessionDep) -> dict:
-    """Свободный текст и поля характера ИИ-мастера: в подсказку мастера со следующего хода."""
+    """РЎРІРѕР±РѕРґРЅС‹Р№ С‚РµРєСЃС‚ Рё РїРѕР»СЏ С…Р°СЂР°РєС‚РµСЂР° РР-РјР°СЃС‚РµСЂР°: РІ РїРѕРґСЃРєР°Р·РєСѓ РјР°СЃС‚РµСЂР° СЃРѕ СЃР»РµРґСѓСЋС‰РµРіРѕ С…РѕРґР°."""
     from app.core import persona
 
-    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    agent = await _master_agent(session, user, campaign_id, "С…Р°СЂР°РєС‚РµСЂ РјР°СЃС‚РµСЂР°")
     agent.settings = {**(agent.settings or {}), "character": persona.normalize(body.model_dump(), master=True)}
     await session.commit()
     return await _master_character_out(session, campaign_id, agent)
 
 
 async def _master_draft(session, user, campaign_id: str, body: MasterDraftIn) -> dict:
-    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    agent = await _master_agent(session, user, campaign_id, "С…Р°СЂР°РєС‚РµСЂ РјР°СЃС‚РµСЂР°")
     sheet = body.persona.model_dump() if body.persona else dict((agent.settings or {}).get("character") or {})
-    await session.rollback()  # модель думает долго: базу не держим
+    await session.rollback()  # РјРѕРґРµР»СЊ РґСѓРјР°РµС‚ РґРѕР»РіРѕ: Р±Р°Р·Сѓ РЅРµ РґРµСЂР¶РёРј
     return sheet
 
 
@@ -342,7 +344,7 @@ async def help_master_character(
 async def test_master_character(
     campaign_id: str, body: MasterDraftIn, user: UserDep, session: SessionDep, request: Request
 ) -> dict:
-    """Пробные сцены мастера: описание места, реакция NPC, провал героя."""
+    """РџСЂРѕР±РЅС‹Рµ СЃС†РµРЅС‹ РјР°СЃС‚РµСЂР°: РѕРїРёСЃР°РЅРёРµ РјРµСЃС‚Р°, СЂРµР°РєС†РёСЏ NPC, РїСЂРѕРІР°Р» РіРµСЂРѕСЏ."""
     from app.agents import character
 
     sheet = await _master_draft(session, user, campaign_id, body)
@@ -356,10 +358,10 @@ async def patch_master_note(
     from app.core import persona
     from app.db.models import PersonaNote
 
-    agent = await _master_agent(session, user, campaign_id, "летопись мастера")
+    agent = await _master_agent(session, user, campaign_id, "Р»РµС‚РѕРїРёСЃСЊ РјР°СЃС‚РµСЂР°")
     n = await session.get(PersonaNote, note_id)
     if n is None or n.campaign_id != campaign_id or n.character_id is not None:
-        raise Conflict("запись летописи не найдена")
+        raise Conflict("Р·Р°РїРёСЃСЊ Р»РµС‚РѕРїРёСЃРё РЅРµ РЅР°Р№РґРµРЅР°")
     persona.edit_note(n, body.text, body.cause, body.reverted)
     await session.commit()
     return await _master_character_out(session, campaign_id, agent)
@@ -369,10 +371,10 @@ async def patch_master_note(
 async def save_campaign_master_preset(
     campaign_id: str, body: MasterPresetSaveFromCampaignIn, user: UserDep, session: SessionDep
 ) -> MasterPresetOut:
-    """Сохраняет текущую конфигурацию мастера (модель, тон, анкета характера) как пресет."""
+    """РЎРѕС…СЂР°РЅСЏРµС‚ С‚РµРєСѓС‰СѓСЋ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ РјР°СЃС‚РµСЂР° (РјРѕРґРµР»СЊ, С‚РѕРЅ, Р°РЅРєРµС‚Р° С…Р°СЂР°РєС‚РµСЂР°) РєР°Рє РїСЂРµСЃРµС‚."""
     from app.api.personas import preset_name_taken, preset_out
 
-    agent = await _master_agent(session, user, campaign_id, "пресет мастера")
+    agent = await _master_agent(session, user, campaign_id, "РїСЂРµСЃРµС‚ РјР°СЃС‚РµСЂР°")
     extra = dict(agent.settings or {})
     persona_meta = extra.get("persona") or {}
     char_data = extra.get("character") or {}
@@ -381,9 +383,9 @@ async def save_campaign_master_preset(
     if body.preset_id:
         preset = await session.get(MasterPreset, body.preset_id)
         if preset is None or preset.user_id != user.id:
-            raise NotFound("пресет не найден")
+            raise NotFound("РїСЂРµСЃРµС‚ РЅРµ РЅР°Р№РґРµРЅ")
         if await preset_name_taken(session, user, name, except_id=preset.id):
-            raise Conflict("пресет с таким названием уже есть")
+            raise Conflict("РїСЂРµСЃРµС‚ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ РµСЃС‚СЊ")
         preset.name = name
         preset.model_profile_id = extra.get("model_profile_id")
         preset.persona_id = persona_meta.get("persona_id") if persona_meta.get("source") == "profile" else None
@@ -393,7 +395,7 @@ async def save_campaign_master_preset(
         preset.character = char_data
     else:
         if await preset_name_taken(session, user, name):
-            raise Conflict("пресет с таким названием уже есть")
+            raise Conflict("РїСЂРµСЃРµС‚ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ РµСЃС‚СЊ")
         preset = MasterPreset(
             user_id=user.id,
             name=name,
@@ -412,11 +414,11 @@ async def save_campaign_master_preset(
 
 @router.post("/campaigns/{campaign_id}/apply-master-preset/{preset_id}")
 async def apply_campaign_master_preset(campaign_id: str, preset_id: str, user: UserDep, session: SessionDep) -> dict:
-    """Применяет сохранённый пресет к ИИ-мастеру кампании."""
-    agent = await _master_agent(session, user, campaign_id, "пресет мастера")
+    """РџСЂРёРјРµРЅСЏРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹Р№ РїСЂРµСЃРµС‚ Рє РР-РјР°СЃС‚РµСЂСѓ РєР°РјРїР°РЅРёРё."""
+    agent = await _master_agent(session, user, campaign_id, "РїСЂРµСЃРµС‚ РјР°СЃС‚РµСЂР°")
     preset = await session.get(MasterPreset, preset_id)
     if preset is None or preset.user_id != user.id:
-        raise NotFound("пресет мастера не найден")
+        raise NotFound("РїСЂРµСЃРµС‚ РјР°СЃС‚РµСЂР° РЅРµ РЅР°Р№РґРµРЅ")
     await svc.apply_master_preset(session, agent, preset, owner=user)
     await session.commit()
     return {
@@ -431,22 +433,22 @@ async def apply_campaign_master_preset(campaign_id: str, preset_id: str, user: U
 async def delete_campaign(campaign_id: str, user: UserDep, session: SessionDep, request: Request) -> Response:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:
-        raise AccessDenied("удалить кампанию может только владелец")
+        raise AccessDenied("СѓРґР°Р»РёС‚СЊ РєР°РјРїР°РЅРёСЋ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
     await session.delete(v.campaign)
     await session.commit()
     await request.app.state.bus.publish(campaign_id, envelope("campaign.deleted", campaign_id, {}), None)
     return Response(status_code=204)
 
 
-# --- Скрытые данные мастера ---
+# --- РЎРєСЂС‹С‚С‹Рµ РґР°РЅРЅС‹Рµ РјР°СЃС‚РµСЂР° ---
 
 
 @router.get("/campaigns/{campaign_id}/secrets")
 async def get_secrets(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    """Только место мастера. Владелец без места мастера их не видит (раздел 2)."""
+    """РўРѕР»СЊРєРѕ РјРµСЃС‚Рѕ РјР°СЃС‚РµСЂР°. Р’Р»Р°РґРµР»РµС† Р±РµР· РјРµСЃС‚Р° РјР°СЃС‚РµСЂР° РёС… РЅРµ РІРёРґРёС‚ (СЂР°Р·РґРµР» 2)."""
     v = await _viewer(session, user, campaign_id)
     if not v.is_master:
-        raise NotFound("нет доступа")
+        raise NotFound("РЅРµС‚ РґРѕСЃС‚СѓРїР°")
     s = await session.get(CampaignSecret, campaign_id)
     return {"setting": s.setting, "plot": s.plot}
 
@@ -455,7 +457,7 @@ async def get_secrets(campaign_id: str, user: UserDep, session: SessionDep) -> d
 async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session: SessionDep) -> dict:
     v = await _viewer(session, user, campaign_id)
     if not v.is_master:
-        raise NotFound("нет доступа")
+        raise NotFound("РЅРµС‚ РґРѕСЃС‚СѓРїР°")
     s = await session.get(CampaignSecret, campaign_id)
     if body.setting is not None:
         s.setting = body.setting
@@ -467,33 +469,33 @@ async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session:
 
 @router.get("/campaigns/{campaign_id}/master-panel")
 async def get_master_panel(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    """Формы инструментов для живого мастера: схемы, допустимые значения и подписи к id. Только место мастера."""
+    """Р¤РѕСЂРјС‹ РёРЅСЃС‚СЂСѓРјРµРЅС‚РѕРІ РґР»СЏ Р¶РёРІРѕРіРѕ РјР°СЃС‚РµСЂР°: СЃС…РµРјС‹, РґРѕРїСѓСЃС‚РёРјС‹Рµ Р·РЅР°С‡РµРЅРёСЏ Рё РїРѕРґРїРёСЃРё Рє id. РўРѕР»СЊРєРѕ РјРµСЃС‚Рѕ РјР°СЃС‚РµСЂР°."""
     from app.content.catalog import campaign_catalog
     from app.core.master_panel import panel
     from app.core.world import load_world
 
     v = await _viewer(session, user, campaign_id)
     if not v.is_master:
-        raise NotFound("нет доступа")
+        raise NotFound("РЅРµС‚ РґРѕСЃС‚СѓРїР°")
     world = await load_world(session, v.campaign, await campaign_catalog(session, v.campaign))
     return panel(world)
 
 
-# --- Журнал мастера ---
+# --- Р–СѓСЂРЅР°Р» РјР°СЃС‚РµСЂР° ---
 
 
 @router.get("/campaigns/{campaign_id}/master-log")
 async def get_master_log(
     campaign_id: str, user: UserDep, session: SessionDep, settings: SettingsDep, limit: int = 30
 ) -> dict:
-    """Что делал мастер по ходам: вызовы, броски, результаты, обращения к модели. Только Admin и Super Admin."""
+    """Р§С‚Рѕ РґРµР»Р°Р» РјР°СЃС‚РµСЂ РїРѕ С…РѕРґР°Рј: РІС‹Р·РѕРІС‹, Р±СЂРѕСЃРєРё, СЂРµР·СѓР»СЊС‚Р°С‚С‹, РѕР±СЂР°С‰РµРЅРёСЏ Рє РјРѕРґРµР»Рё. РўРѕР»СЊРєРѕ Admin Рё Super Admin."""
     await _viewer(session, user, campaign_id)
     if not svc.is_admin(user):
-        raise AccessDenied("журнал мастера доступен только администраторам")
+        raise AccessDenied("Р¶СѓСЂРЅР°Р» РјР°СЃС‚РµСЂР° РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°Рј")
     return await master_log.build(session, campaign_id, settings, max(1, min(limit, 100)))
 
 
-# --- Места и участники ---
+# --- РњРµСЃС‚Р° Рё СѓС‡Р°СЃС‚РЅРёРєРё ---
 
 
 @router.delete("/campaigns/{campaign_id}/seats/{seat_id}/occupant")
@@ -513,7 +515,7 @@ class SeatAgentIn(BaseModel):
 async def seat_agent(
     campaign_id: str, seat_id: str, body: SeatAgentIn, user: UserDep, session: SessionDep, request: Request
 ) -> CampaignOut:
-    """ИИ-игрок на пустое место (этап 9). Героя ему владелец собирает сам: конструктор с ``as_seat``."""
+    """РР-РёРіСЂРѕРє РЅР° РїСѓСЃС‚РѕРµ РјРµСЃС‚Рѕ (СЌС‚Р°Рї 9). Р“РµСЂРѕСЏ РµРјСѓ РІР»Р°РґРµР»РµС† СЃРѕР±РёСЂР°РµС‚ СЃР°Рј: РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ СЃ ``as_seat``."""
     v = await _viewer(session, user, campaign_id)
     await svc.seat_agent(session, v, seat_id, body.model_profile_id)
     await session.commit()
@@ -523,7 +525,7 @@ async def seat_agent(
 
 @router.get("/campaigns/{campaign_id}/party-roles")
 async def get_party_roles(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    """Каких ролей не хватает отряду и какие классы их закроют — подсказка перед тем, как сажать ИИ-игрока."""
+    """РљР°РєРёС… СЂРѕР»РµР№ РЅРµ С…РІР°С‚Р°РµС‚ РѕС‚СЂСЏРґСѓ Рё РєР°РєРёРµ РєР»Р°СЃСЃС‹ РёС… Р·Р°РєСЂРѕСЋС‚ вЂ” РїРѕРґСЃРєР°Р·РєР° РїРµСЂРµРґ С‚РµРј, РєР°Рє СЃР°Р¶Р°С‚СЊ РР-РёРіСЂРѕРєР°."""
     from app.content.catalog import campaign_catalog
     from app.core.party import party_roles
 
@@ -550,7 +552,7 @@ async def leave(campaign_id: str, user: UserDep, session: SessionDep, request: R
     return Response(status_code=204)
 
 
-# --- Приглашения ---
+# --- РџСЂРёРіР»Р°С€РµРЅРёСЏ ---
 
 
 @router.post("/campaigns/{campaign_id}/invites", status_code=201)
@@ -568,7 +570,7 @@ async def create_invite(
 async def list_invites(campaign_id: str, user: UserDep, session: SessionDep, settings: SettingsDep) -> list[InviteOut]:
     v = await _viewer(session, user, campaign_id)
     if not v.can_manage_members:
-        raise AccessDenied("только владелец")
+        raise AccessDenied("С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
     rows = (await session.scalars(select(Invite).where(Invite.campaign_id == campaign_id))).all()
     return [invite_out(i, settings.public_url) for i in rows]
 
@@ -577,10 +579,10 @@ async def list_invites(campaign_id: str, user: UserDep, session: SessionDep, set
 async def revoke_invite(campaign_id: str, token: str, user: UserDep, session: SessionDep) -> Response:
     v = await _viewer(session, user, campaign_id)
     if not v.can_manage_members:
-        raise AccessDenied("только владелец")
+        raise AccessDenied("С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
     invite = await session.get(Invite, token)
     if invite is None or invite.campaign_id != campaign_id:
-        raise NotFound("приглашение не найдено")
+        raise NotFound("РїСЂРёРіР»Р°С€РµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ")
     invite.revoked = True
     await session.commit()
     return Response(status_code=204)
@@ -588,7 +590,7 @@ async def revoke_invite(campaign_id: str, token: str, user: UserDep, session: Se
 
 @router.get("/invites/{token}")
 async def preview_invite(token: str, session: SessionDep) -> InvitePreviewOut:
-    """Без входа: что за кампания и есть ли места. Скрытых данных здесь нет."""
+    """Р‘РµР· РІС…РѕРґР°: С‡С‚Рѕ Р·Р° РєР°РјРїР°РЅРёСЏ Рё РµСЃС‚СЊ Р»Рё РјРµСЃС‚Р°. РЎРєСЂС‹С‚С‹С… РґР°РЅРЅС‹С… Р·РґРµСЃСЊ РЅРµС‚."""
     invite = await session.get(Invite, token)
     problem = svc.invite_problem(invite)
     campaign = await session.get(Campaign, invite.campaign_id) if invite else None
@@ -600,7 +602,7 @@ async def preview_invite(token: str, session: SessionDep) -> InvitePreviewOut:
         public_intro=campaign.public_intro,
         free_seats=free,
         valid=problem is None and free > 0,
-        problem=problem or (None if free else "свободных мест нет"),
+        problem=problem or (None if free else "СЃРІРѕР±РѕРґРЅС‹С… РјРµСЃС‚ РЅРµС‚"),
         pack_id=campaign.pack_id,
     )
 
@@ -614,7 +616,7 @@ async def accept(token: str, user: UserDep, session: SessionDep, request: Reques
     return await campaign_out(session, campaign, user)
 
 
-# --- Сессии ---
+# --- РЎРµСЃСЃРёРё ---
 
 
 @router.post("/campaigns/{campaign_id}/session/{action}")
@@ -628,13 +630,13 @@ async def control_session(
         event = "session.started"
         last = await memory.latest(session, campaign_id)
         if last is not None and last.content.get("recap"):
-            # мастер открывает сессию коротким «Ранее в кампании…» по сводке (раздел 5)
-            recap = await chat.system_message(session, v.campaign, "Ранее в кампании: " + last.content["recap"], game)
+            # РјР°СЃС‚РµСЂ РѕС‚РєСЂС‹РІР°РµС‚ СЃРµСЃСЃРёСЋ РєРѕСЂРѕС‚РєРёРј В«Р Р°РЅРµРµ РІ РєР°РјРїР°РЅРёРёвЂ¦В» РїРѕ СЃРІРѕРґРєРµ (СЂР°Р·РґРµР» 5)
+            recap = await chat.system_message(session, v.campaign, "Р Р°РЅРµРµ РІ РєР°РјРїР°РЅРёРё: " + last.content["recap"], game)
     elif action in ("pause", "end"):
         game, msg = await chat.stop_session(session, v, "paused" if action == "pause" else "ended")
         event = "session.paused" if action == "pause" else "session.ended"
     else:
-        raise NotFound("действие: start, pause или end")
+        raise NotFound("РґРµР№СЃС‚РІРёРµ: start, pause РёР»Рё end")
     game_id = game.id if game else None
     await session.commit()
     bus = request.app.state.bus
@@ -643,9 +645,10 @@ async def control_session(
         await publish_message(bus, recap)
     await bus.publish(campaign_id, envelope(event, campaign_id, {"status": v.campaign.status}), None)
     if action in ("pause", "end"):
-        await request.app.state.presence.session_stopped(campaign_id)  # замещения и голосования заканчиваются
-        # сводка сессии, затем у ИИ-мастера с каркасом зацепка на следующий раз или, при завершении, эпилог
+        await request.app.state.presence.session_stopped(campaign_id)  # Р·Р°РјРµС‰РµРЅРёСЏ Рё РіРѕР»РѕСЃРѕРІР°РЅРёСЏ Р·Р°РєР°РЅС‡РёРІР°СЋС‚СЃСЏ
+        # СЃРІРѕРґРєР° СЃРµСЃСЃРёРё, Р·Р°С‚РµРј Сѓ РР-РјР°СЃС‚РµСЂР° СЃ РєР°СЂРєР°СЃРѕРј Р·Р°С†РµРїРєР° РЅР° СЃР»РµРґСѓСЋС‰РёР№ СЂР°Р· РёР»Рё, РїСЂРё Р·Р°РІРµСЂС€РµРЅРёРё, СЌРїРёР»РѕРі
         request.app.state.master.schedule_session_close(campaign_id, game_id, ended=action == "end")
     else:
-        request.app.state.master.schedule_session_open(campaign_id, game_id)  # вступление и цель на вечер
+        request.app.state.master.schedule_session_open(campaign_id, game_id)  # РІСЃС‚СѓРїР»РµРЅРёРµ Рё С†РµР»СЊ РЅР° РІРµС‡РµСЂ
     return await campaign_out(session, v.campaign, user)
+

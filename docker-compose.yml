@@ -29,6 +29,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_DIR: /srv/media
       AUDIO_DIR: /srv/audio
+      SILERO_API_BASE: ${SILERO_API_BASE:-http://silero:8001}
     ports:
       - "8000:8000"
     volumes:
@@ -69,7 +70,40 @@ services:
               count: all
               capabilities: [gpu]
 
+  # Сервер озвучки речи (Kokoro-FastAPI TTS) с OpenAI-совместимым /v1/audio/speech.
+  # Локальная озвучка через Silero TTS (быстрая модель для русского языка)
+  # API будет доступен на 8001 порту
+  silero:
+    image: twirapp/silero-tts-api-server
+    profiles: ["voice"]
+    ports:
+      - "8001:8000"
+    volumes:
+      - silero-cache:/silero_cache
+
+  xtts:
+    image: daswer123/xtts-api-server:latest
+    profiles: ["voice"]
+    environment:
+      - EXAMPLE_FOLDER=/app/speakers
+    ports:
+      - "8020:8020"
+    volumes:
+      - xtts-models:/app/xtts_models
+      - ./speakers:/app/speakers
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
 volumes:
   pgdata:
   media:
   whisper-models:
+  silero-cache:
+  xtts-models:
+
+
