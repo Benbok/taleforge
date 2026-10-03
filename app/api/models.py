@@ -6,12 +6,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
-from sqlalchemy import func, select, update
-
-from __future__ import annotations
-
-from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
+from sqlalchemy import func, select, update
 
 from app.agents.providers import check_model, list_local_models, provider_status
 from app.api.deps import UserDep

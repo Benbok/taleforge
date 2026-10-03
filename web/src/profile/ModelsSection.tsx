@@ -51,7 +51,7 @@ function CheckLine({ c }: { c: ModelCheck | null | undefined }) {
   );
 }
 
-export default function ModelsSection({ superAdmin }: { superAdmin: boolean }) {
+export default function ModelsSection({ superAdmin: _superAdmin }: { superAdmin: boolean }) {
   const qc = useQueryClient();
   const providers = useQuery({ queryKey: ["providers"], queryFn: () => api<Provider[]>("/api/admin/providers") });
   const [checks, setChecks] = useState<Record<string, ModelCheck>>({});

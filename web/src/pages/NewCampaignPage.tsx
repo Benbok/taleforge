@@ -22,7 +22,6 @@ import {
   type CampaignDraft,
   type CampaignOptions,
   type MasterPreset,
-  type ModelProfile,
   type Pack,
   type Persona,
   type PersonaPick,

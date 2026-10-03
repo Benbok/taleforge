@@ -50,6 +50,7 @@ class LLM(Protocol):
         max_tokens: int = 4096,
         temperature: float | None = None,
         api_base: str | None = None,
+        stream_callback: Callable[[str], Any] | None = None,
     ) -> LLMReply: ...
 
 
@@ -114,6 +115,7 @@ class LiteLLMClient:
         max_tokens: int = 4096,
         temperature: float | None = None,
         api_base: str | None = None,
+        stream_callback: Callable[[str], Any] | None = None,
     ) -> LLMReply:
         import litellm
 
@@ -143,12 +145,34 @@ class LiteLLMClient:
         # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
         if temperature is not None and not model.startswith("anthropic/"):
             kwargs["temperature"] = temperature
+        if stream_callback:
+            kwargs["stream"] = True
         started = time.monotonic()
         try:
             resp = await litellm.acompletion(**kwargs)
         except Exception as e:  # noqa: BLE001 — любая ошибка провайдера останавливает ход, а не сервер
             raise LLMError(f"{type(e).__name__}: {e}") from e
         latency = int((time.monotonic() - started) * 1000)
+        
+        if stream_callback:
+            chunks = []
+            async for chunk in resp:
+                delta = getattr(chunk.choices[0].delta, "content", None)
+                if delta:
+                    chunks.append(delta)
+                    await stream_callback(delta)
+            text = "".join(chunks)
+            return LLMReply(
+                text=text,
+                tool_calls=[],
+                message={"role": "assistant", "content": text},
+                model=getattr(resp, "model", model) or model,
+                tokens_in=0,
+                tokens_out=0,
+                cost=0.0,
+                latency_ms=latency,
+            )
+
         choice = resp.choices[0]
         msg = choice.message
         calls = [
@@ -188,7 +212,7 @@ class ScriptedLLM:
         self.voice_requests: list[dict[str, Any]] = []
 
     async def complete(
-        self, messages, *, model, tools=None, tool_choice=None, max_tokens=4096, temperature=None, api_base=None
+        self, messages, *, model, tools=None, tool_choice=None, max_tokens=4096, temperature=None, api_base=None, stream_callback=None
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
         auto = _auto_tool(tools)
