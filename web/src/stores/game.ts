@@ -219,6 +219,14 @@ export const useGame = create<GameState>((set, get) => ({
         });
         return;
       }
+      case "message.chunk": {
+        const id = String(p.id);
+        const chunk = String(p.chunk);
+        set((s) => ({
+          messages: s.messages.map((m) => (m.id === id ? { ...m, content: (m.content || "") + chunk } : m)),
+        }));
+        return;
+      }
       case "message.rejected": {
         const clientId = p.client_id as string | undefined;
         set((s) => {
