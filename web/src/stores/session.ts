@@ -1,7 +1,7 @@
 // Кто вошёл и какая тема сейчас на экране.
 import { create } from "zustand";
 import { api, getToken, setToken } from "../lib/api";
-import { applyTheme, saveMode, savedMode, type Mode } from "../lib/theme";
+import { applyTheme, initThemeMode, saveMode, type Mode } from "../lib/theme";
 import type { Theme, User } from "../lib/types";
 
 interface SessionState {
@@ -21,7 +21,7 @@ export const useSession = create<SessionState>((set, get) => ({
   user: null,
   ready: false,
   theme: null,
-  mode: savedMode(),
+  mode: initThemeMode(),
 
   async boot() {
     let user: User | null = null;
@@ -57,6 +57,9 @@ export const useSession = create<SessionState>((set, get) => ({
   toggleMode() {
     const mode: Mode = get().mode === "dark" ? "light" : "dark";
     saveMode(mode);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.theme = mode;
+    }
     const theme = get().theme;
     if (theme) applyTheme(theme, mode);
     set({ mode });

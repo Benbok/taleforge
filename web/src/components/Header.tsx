@@ -125,7 +125,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           <Link
             to="/profile"
             title={`Профиль: ${user.name}`}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-accent bg-[#3a4c63] text-sm font-semibold text-ink no-underline transition hover:scale-105"
+            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-accent bg-[#3a4c63] text-sm font-semibold text-white no-underline transition hover:scale-105"
           >
             {initial}
           </Link>

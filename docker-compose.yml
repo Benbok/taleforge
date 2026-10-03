@@ -36,6 +36,7 @@ services:
       - ./content:/srv/content:ro
       - media:/srv/media  # голосовые реплики игроков
       - ./audio:/srv/audio  # библиотека звука: на запись, админка кладёт треки прямо в папку проекта
+      - ./app/web/dist:/srv/app/web/dist  # фронтенд веб-клиента
     depends_on:
       db:
         condition: service_healthy
