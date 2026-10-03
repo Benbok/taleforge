@@ -54,10 +54,10 @@ async def _model(s, c: Campaign, seat_id: str | None) -> tuple[str, str, str | N
         if seat.occupant_type == "agent" and seat.agent_config_id:
             cfg = await s.get(AgentConfig, seat.agent_config_id)
             api_base = (cfg.settings or {}).get("api_base")
-            return cfg.provider, model_for(cfg.provider, cfg.model), api_base, cfg.temperature, seat.id
+            return cfg.provider, model_for(), api_base, cfg.temperature, seat.id
     p = await default_model_profile(s)
     if p is not None:
-        return p.provider, model_for(p.provider, p.model), p.api_base, p.temperature, None
+        return p.provider, model_for(), p.api_base, p.temperature, None
     raise Conflict("нет модели: у кампании живой мастер, а в админке нет профиля модели по умолчанию")
 
 
@@ -231,12 +231,12 @@ async def try_preset_scenes(svc, profile_id: str | None, sheet: dict, style: str
         if p is not None:
             _, model, api_base, temperature = (
                 p.provider,
-                model_for(p.provider, p.model),
+                model_for(),
                 p.api_base,
                 p.temperature,
             )
         else:
-            _, model, api_base, temperature = "claude", model_for("claude", ""), None, 0.8
+            _, model, api_base, temperature = "claude", model_for(), None, 0.8
 
     sheet = persona.normalize(sheet, master=True)
     character = persona.render(sheet, [], master=True)
@@ -313,7 +313,7 @@ async def chronicle(svc, cid: str, reason: str, *, session_id: str | None = None
             provider, model, api_base, _, seat_id = await _model(s, c, None)
         except Conflict:
             return 0
-        model = parser_model_for(provider, model)
+        model = parser_model_for()
     written = 0
     for character_id, name, sheet, notes in subjects:
         master = character_id is None

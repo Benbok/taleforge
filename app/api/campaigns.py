@@ -222,7 +222,7 @@ async def master_model_out(session, agent: AgentConfig) -> MasterModelOut:
     extra = agent.settings or {}
     profile = await session.get(ModelProfile, extra["model_profile_id"]) if extra.get("model_profile_id") else None
     try:
-        resolved = model_for(agent.provider, agent.model)
+        resolved = model_for()
     except LLMError:
         resolved = None
     return MasterModelOut(

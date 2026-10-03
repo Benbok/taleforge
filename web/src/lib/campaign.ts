@@ -142,8 +142,10 @@ export interface Provider {
   title: string;
   key_env: string | null;
   key_set: boolean | null;
-  default_model: string | null;
+  main_model: string | null;
+  technical_model: string | null;
   api_base: string | null;
+  is_active: boolean;
 }
 
 export interface Pack {

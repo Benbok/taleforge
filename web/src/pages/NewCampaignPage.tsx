@@ -44,7 +44,6 @@ export default function NewCampaignPage() {
   const admin = user.platform_role !== "player";
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options"), enabled: admin });
   const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs"), enabled: admin });
-  const models = useQuery({ queryKey: ["models"], queryFn: () => api<ModelProfile[]>("/api/admin/models"), enabled: admin });
   const personas = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas"), enabled: admin });
   const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets"), enabled: admin });
   const size = useQuery({
@@ -68,7 +67,6 @@ export default function NewCampaignPage() {
     saveDraft(user.id, null);
     await qc.invalidateQueries({ queryKey: ["my-campaigns"] });
     if (draft.plan_now && !owner) {
-      // сюжет готовится в фоне; не вышло запустить — кампания всё равно создана, запустить можно из кабинета
       await api(`/api/campaigns/${c.id}/plan`, { body: {} }).catch((e: Error) =>
         toast.error(`Сюжет не запущен: ${e.message}`),
       );
@@ -95,7 +93,7 @@ export default function NewCampaignPage() {
     );
   }
 
-  const loadError = opts.error ?? models.error ?? packs.error;
+  const loadError = opts.error ?? packs.error;
   if (loadError) {
     return (
       <Shell>
@@ -106,7 +104,7 @@ export default function NewCampaignPage() {
     );
   }
 
-  if (!opts.data || !models.data) {
+  if (!opts.data) {
     return (
       <Shell>
         <div className="card p-8 text-center text-muted font-mono text-sm">
@@ -115,8 +113,6 @@ export default function NewCampaignPage() {
       </Shell>
     );
   }
-
-  const defModel = models.data.find((m) => m.is_default);
 
   // Options for World Pack select
   const packOptions: SelectOption[] = [
@@ -139,21 +135,12 @@ export default function NewCampaignPage() {
   // Options for Master model select
   const masterOptions: SelectOption[] = [
     {
-      value: "",
-      label: defModel ? `ИИ-мастер: ${defModel.name}` : "ИИ-мастер (по умолчанию)",
-      sublabel: defModel?.resolved_model || "Системная рекомендуемая нейросеть",
-      badge: "AI DEFAULT",
+      value: "ai",
+      label: "ИИ-мастер (автоматически)",
+      sublabel: "Сюжет и отыгрыш полностью генерируется нейросетью",
+      badge: "AI",
       badgeTone: "accent",
     },
-    ...models.data
-      .filter((m) => !m.is_default)
-      .map((m) => ({
-        value: m.id,
-        label: `ИИ-мастер: ${m.name}`,
-        sublabel: `${m.provider.toUpperCase()} · ${m.resolved_model || m.model}`,
-        badge: "AI",
-        badgeTone: "patina" as const,
-      })),
     {
       value: "owner",
       label: "Я веду сам (живой мастер)",
@@ -439,7 +426,7 @@ export default function NewCampaignPage() {
 
             <Field
               label="Кто ведёт приключение"
-              hint={models.data.length ? undefined : "Модели ещё не добавлены в админке: будет использована системная Claude."}
+              hint="Нейросеть генерирует сюжет по вашим параметрам, или вы лично описываете сцены."
             >
               <CustomSelect
                 value={draft.master}
@@ -563,7 +550,7 @@ export default function NewCampaignPage() {
 
             <div>
               <h3 className="font-heading text-base font-bold text-ink mb-2">Формуляр создаваемой кампании:</h3>
-              <Summary draft={draft} models={models.data} opts={opts.data} packs={packs.data ?? []} />
+              <Summary draft={draft} opts={opts.data} packs={packs.data ?? []} />
             </div>
           </>
         )}
@@ -650,19 +637,17 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function Summary({
   draft,
-  models,
   opts,
   packs,
 }: {
   draft: CampaignDraft;
-  models: ModelProfile[];
   opts: CampaignOptions;
   packs: Pack[];
 }) {
   const master =
     draft.master === "owner"
       ? "Владелец кампании (живой мастер)"
-      : `ИИ: ${models.find((m) => m.id === draft.master)?.name ?? models.find((m) => m.is_default)?.name ?? "модель по умолчанию"}`;
+      : "ИИ-мастер";
   const persona = draft.persona.startsWith("pre:")
     ? opts.presets.find((p) => p.id === draft.persona.slice(4))?.name
     : draft.persona

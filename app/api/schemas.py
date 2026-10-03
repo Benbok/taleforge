@@ -240,8 +240,10 @@ class ProviderOut(BaseModel):
     title: str
     key_env: str | None
     key_set: bool | None
-    default_model: str | None
+    main_model: str | None
+    technical_model: str | None
     api_base: str | None
+    is_active: bool
 
 
 class ProfileOut(BaseModel):

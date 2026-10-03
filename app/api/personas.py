@@ -108,7 +108,7 @@ async def preset_out(session, p: MasterPreset) -> MasterPresetOut:
     resolved = None
     if profile:
         try:
-            resolved = model_for(profile.provider, profile.model)
+            resolved = model_for()
         except Exception:
             resolved = None
 

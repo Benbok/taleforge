@@ -59,6 +59,14 @@ class Settings:
     tts_model: str = "gemini-3.8-flash-tts"
     tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
 
+    llm_provider: str = "claude"
+    gemini_main_model: str = "gemini-2.5-pro"
+    gemini_technical_model: str = "gemini-3.5-flash-lite"
+    claude_main_model: str = "anthropic/claude-opus-5"
+    claude_technical_model: str = "anthropic/claude-haiku-4-5"
+    local_main_model: str = "qwen2.5-14b"
+    local_technical_model: str = "qwen2.5-7b"
+
     @classmethod
     def from_env(cls) -> Settings:
         secret = _env("JWT_SECRET")
@@ -85,4 +93,34 @@ class Settings:
             tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY") or _env("GEMINI_API_KEY"),
             tts_model=_env("TTS_MODEL", cls.tts_model),
             tts_voice=_env("TTS_VOICE", cls.tts_voice),
+            llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
+            gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
+            gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
+            claude_main_model=_env("CLAUDE_MAIN_MODEL", cls.claude_main_model),
+            claude_technical_model=_env("CLAUDE_TECHNICAL_MODEL", cls.claude_technical_model),
+            local_main_model=_env("LOCAL_MAIN_MODEL", cls.local_main_model),
+            local_technical_model=_env("LOCAL_TECHNICAL_MODEL", cls.local_technical_model),
         )
+
+def update_env(key: str, value: str):
+    import re
+    env_path = ROOT / ".env"
+    if not env_path.exists():
+        env_path.write_text(f"{key}={value}\n", encoding="utf-8")
+    else:
+        content = env_path.read_text(encoding="utf-8")
+        if re.search(rf"^{key}=", content, flags=re.MULTILINE):
+            content = re.sub(rf"^{key}=.*$", f"{key}={value}", content, flags=re.MULTILINE)
+        else:
+            if not content.endswith("\n"):
+                content += "\n"
+            content += f"{key}={value}\n"
+        env_path.write_text(content, encoding="utf-8")
+    
+    # Reload DOTENV and settings dynamically
+    global DOTENV, settings
+    DOTENV = _load_env_file(ROOT / ".env")
+    settings = Settings.from_env()
+
+settings = Settings.from_env()
+

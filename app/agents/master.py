@@ -439,8 +439,9 @@ class MasterService:
         purpose: str,
         messages: list,
         tools: list | None,
+        override_model: str | None = None,
     ) -> LLMReply:
-        model = model_for(cfg.provider, cfg.model)
+        model = override_model or model_for()
         try:
             reply = await self.llm.complete(
                 messages,
@@ -517,7 +518,16 @@ class MasterService:
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
-            actor = (args or {}).get("attacker_id") or (args or {}).get("caster_id")
+            if args is None and m.kind == "action":
+                routed_call = intents.routable_tool_call(m.intent)
+                if routed_call:
+                    name, args = routed_call
+            actor = (
+                (args or {}).get("attacker_id")
+                or (args or {}).get("caster_id")
+                or (args or {}).get("character_id")
+                or ((args or {}).get("character_ids") or [None])[0]
+            )
             if not args or actor not in required:
                 continue
             if hero_turn is not None and actor != hero_turn.id:
@@ -527,9 +537,9 @@ class MasterService:
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
-            elif name == "cast_spell":
+            else:
                 routed.append(
-                    f"{actor}: cast_spell отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
+                    f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
                 )
         route_note = ""
         if routed:
@@ -620,17 +630,36 @@ class MasterService:
         plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
 
         await self._status(cid, "describing")
-        narration, audit = await self._narrate(
-            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
-        )
-
-        tts_task = None
         tts_on = bool((c.settings or {}).get("tts_enabled", True))
         tts_voice = (c.settings or {}).get("tts_voice")
-        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None) and tts_on:
-            tts_task = asyncio.create_task(
-                self.tts.voice_for_narration(self.media_dir, cid, narration, voice_name=tts_voice)
+        tts_ready = getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None) and tts_on
+
+        voice_line_text: str | None = None
+        if tts_ready:
+            results = await asyncio.gather(
+                self._narrate(calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes),
+                self._voice_line(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes),
+                return_exceptions=True,
             )
+            if isinstance(results[0], Exception):
+                raise results[0]
+            narration, audit = results[0]
+
+            if isinstance(results[1], Exception):
+                log.warning("генерация голосовой реплики мастера не удалась: %s", results[1])
+                voice_line_text = None
+            else:
+                voice_line_text = results[1]
+
+            target_tts_text = voice_line_text or narration
+            tts_task = asyncio.create_task(
+                self.tts.voice_for_narration(self.media_dir, cid, target_tts_text, voice_name=tts_voice)
+            )
+        else:
+            narration, audit = await self._narrate(
+                calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
+            )
+            tts_task = None
 
         whispers = await flush_outbox(s, ctx)
         linked = await link_text(s, cid, narration)
@@ -644,6 +673,8 @@ class MasterService:
 
         msg_data: dict[str, Any] = {}
         if voice_data:
+            if voice_line_text:
+                voice_data["text"] = voice_line_text
             msg_data["voice"] = voice_data
 
         msg = Message(
@@ -661,6 +692,7 @@ class MasterService:
         turn.trace = {
             "calls": trace_calls,
             "audit": audit,
+            "voice_line": voice_line_text,
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
@@ -726,6 +758,53 @@ class MasterService:
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
         return text or "…", audit
+
+    async def _voice_line(
+        self,
+        calls: list,
+        cfg: AgentConfig,
+        c: Campaign,
+        seat_id: str,
+        turn_id: str | None,
+        system: str,
+        ctx: ToolContext,
+        combat_notes: list,
+    ) -> str:
+        results = _render_results(ctx)
+        prompt = render(
+            "voice_line.j2",
+            results=results,
+            combat_notes=list(combat_notes),
+        )
+        lite_model = None
+        custom_voice_model = (cfg.settings or {}).get("voice_line_model")
+        if custom_voice_model:
+            try:
+                lite_model = model_for(None, custom_voice_model)
+            except Exception:
+                pass
+        if not lite_model:
+            voice_defaults = {
+                "gemini": "gemini-3.5-flash-lite",
+                "claude": "anthropic/claude-haiku-4-5",
+            }
+            default_candidate = voice_defaults.get(cfg.provider)
+            if default_candidate:
+                try:
+                    lite_model = model_for(None, default_candidate)
+                except Exception:
+                    pass
+
+        msgs = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+        reply = await self._ask(
+            calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model
+        )
+        text = reply.text.strip().strip("\"'«»—–- ").strip()
+        text = MARKUP.sub(r"\2", text)
+        return text or "Вперёд!"
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)
@@ -821,7 +900,7 @@ class MasterService:
                 prompt = memory.summary_input(prev, rows, lambda m: _who(m, char_by_seat, names))
                 upto = rows[-1].seq
                 prev_version = prev.version if prev else 0
-                model = parser_model_for(cfg.provider, cfg.model)
+                model = parser_model_for()
                 master_seat_id = seat.id
                 api_base = (cfg.settings or {}).get("api_base")
                 await s.rollback()
@@ -893,7 +972,7 @@ class MasterService:
             last = next((m.content for m in reversed(rows) if m.kind == "narration"), None)
             master_seat_id, missed = seat.id, len(rows)
             api_base = (cfg.settings or {}).get("api_base") if cfg is not None else None
-            model = parser_model_for(cfg.provider, cfg.model) if cfg is not None else None
+            model = parser_model_for() if cfg is not None else None
             await s.rollback()
         text = None
         if model is not None:
@@ -964,10 +1043,12 @@ class MasterService:
             ch_id, provider, cfg_model, master_seat_id = ch.id, cfg.provider, cfg.model, seat.id
             api_base = (cfg.settings or {}).get("api_base")
             await s.rollback()
-        model = parser_model_for(provider, cfg_model)
+        model = parser_model_for()
         call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="parse", model=model)
         try:
-            reply = await asyncio.wait_for(self._parse_call(model, info, text, values, api_base), timeout=PARSE_TIMEOUT)
+            reply = await asyncio.wait_for(
+                self._parse_call(model, info, text, values, api_base, provider=provider), timeout=PARSE_TIMEOUT
+            )
         except TimeoutError:
             call.error = f"парсер не ответил за {PARSE_TIMEOUT} с"
             reply = None
@@ -991,8 +1072,15 @@ class MasterService:
             return intents.check(raw, ctx.world, ch)
 
     async def _parse_call(
-        self, model: str, info: str, text: str, values: dict, api_base: str | None = None
+        self,
+        model: str,
+        info: str,
+        text: str,
+        values: dict,
+        api_base: str | None = None,
+        provider: str | None = None,
     ) -> LLMReply:
+        tool_choice = {"type": "function", "function": {"name": "submit_intent"}} if provider == "gemini" else None
         return await self.llm.complete(
             [
                 {"role": "system", "content": intents.PARSER_SYSTEM},
@@ -1000,7 +1088,8 @@ class MasterService:
             ],
             model=model,
             tools=[intents.tool_spec(values)],
-            max_tokens=1500,
+            tool_choice=tool_choice,
+            max_tokens=500,
             temperature=0.0,
             api_base=api_base,
         )
