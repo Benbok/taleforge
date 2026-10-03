@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
-import CustomSelect from "../components/CustomSelect";
 import { Field, Segmented } from "../components/Form";
 import BriefForm from "./BriefForm";
 import { api } from "../lib/api";
@@ -12,7 +11,6 @@ import {
   LEVELING_HINT,
   LEVELING_RU,
   splitThemes,
-  TTS_VOICES,
   type Brief,
   type CampaignOptions,
   type Room,
@@ -29,8 +27,6 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
   const navigate = useNavigate();
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const st = room.settings;
-  const aiMaster = room.seats.some((s) => s.role === "master" && s.occupant_type === "agent");
-  const ttsEnabled = (st.tts_enabled ?? true) !== false;
   const [f, setF] = useState({
     name: room.name,
     public_intro: room.public_intro,
@@ -197,96 +193,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
         </div>
       </section>
 
-      {/* Master Voice */}
-      {aiMaster && (
-        <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Озвучка мастера">
-          <div className="border-b border-line pb-3">
-            <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
-            <p className="text-xs text-muted">
-              Синтез речи (Gemini TTS) для реплик и описаний ИИ-мастера. Выключено — мастер отвечает только
-              текстом, без генерации аудиодорожек.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className={`font-mono text-xs ${ttsEnabled ? "text-patina-hi" : "text-muted"}`}>
-              {ttsEnabled ? "● включено" : "○ выключено"}
-            </span>
-            <ActionButton
-              className="btn-outline-copper"
-              done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена: реплики мастера будут озвучиваться"}
-              run={async () =>
-                onRoom(
-                  await api<Room>(`/api/campaigns/${room.id}`, {
-                    method: "PATCH",
-                    body: { tts_enabled: !ttsEnabled },
-                  }),
-                )
-              }
-            >
-              {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
-            </ActionButton>
-          </div>
-
-          {ttsEnabled && (
-            <>
-              <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
-                <Field
-                  label="Источник озвучки (TTS Provider)"
-                  hint="Выберите сервис для синтеза речи (облачный Gemini или локальный XTTS / Silero)."
-                >
-                  <CustomSelect
-                    value={st.tts_provider || "gemini"}
-                    options={[
-                      { value: "gemini", label: "Gemini TTS (Cloud)" },
-                      { value: "xtts", label: "XTTS v2 (Local)" },
-                      { value: "silero", label: "Silero TTS (Local)" },
-                    ]}
-                    onChange={async (val) => {
-                      if (val === (st.tts_provider || "gemini")) return;
-                      onRoom(
-                        await api<Room>(`/api/campaigns/${room.id}`, {
-                          method: "PATCH",
-                          body: { tts_provider: val },
-                        }),
-                      );
-                    }}
-                    ariaLabel="Источник озвучки"
-                  />
-                </Field>
-              </div>
-
-              <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
-                <Field
-                  label="Голос ИИ-мастера (Gemini)"
-                  hint="Голос, которым озвучиваются описания сцен и реплики мастера в чате."
-                >
-                  <CustomSelect
-                    value={st.tts_voice || "Fenrir"}
-                    options={TTS_VOICES.map((v) => ({
-                      value: v.id,
-                      label: v.name,
-                      sublabel: `${v.gender} · ${v.description}`,
-                      badge: v.id === "Fenrir" ? "ПО УМОЛЧАНИЮ" : v.gender.toUpperCase(),
-                      badgeTone: v.id === "Fenrir" ? ("accent" as const) : ("patina" as const),
-                    }))}
-                    onChange={async (val) => {
-                      if (val === (st.tts_voice || "Fenrir")) return;
-                      onRoom(
-                        await api<Room>(`/api/campaigns/${room.id}`, {
-                          method: "PATCH",
-                          body: { tts_voice: val },
-                        }),
-                      );
-                    }}
-                    ariaLabel="Голос мастера"
-                  />
-                </Field>
-                  <TtsTestButton provider={st.tts_provider || "gemini"} voice={st.tts_voice || "Fenrir"} />
-              </div>
-            </>
-          )}
-        </section>
-      )}
+      
 
       {/* Brief Form */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
@@ -339,68 +246,6 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           УДАЛИТЬ КАМПАНИЮ НАВСЕГДА
         </ActionButton>
       </section>
-    </div>
-  );
-}
-
-
-function TtsTestButton({ provider, voice }: { provider: string; voice: string }) {
-  const [playing, setPlaying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const testAudio = async () => {
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
-      return;
-    }
-    
-    setPlaying(true);
-    setError(null);
-    try {
-      const { getToken } = await import('../lib/api');
-      const res = await fetch(`/api/voice/tts-test?provider=${provider}&voice=${voice}`, {
-        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail || 'Ошибка сети');
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setPlaying(false);
-      audio.onerror = () => {
-        setPlaying(false);
-        setError('Не удалось воспроизвести аудио');
-      };
-      audio.onpause = () => setPlaying(false);
-      await audio.play();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setPlaying(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
-
-  return (
-    <div className="mt-4 flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={testAudio}
-        className="flex items-center justify-center gap-2 rounded border border-line bg-surface text-ink px-4 py-2 text-sm font-semibold shadow-sm hover:bg-line/20 transition-colors w-max"
-      >
-        {playing ? "⏹ Остановить проверку" : "▶ Проверить озвучку"}
-      </button>
-      {error && <p className="text-warn text-xs">{error}</p>}
     </div>
   );
 }

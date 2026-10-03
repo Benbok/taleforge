@@ -302,5 +302,7 @@ class TTSManager:
         engine = self.get_engine(provider)
         if not engine.enabled:
             return None
+        if provider and provider != "gemini":
+            voice_name = None
         return await engine.voice_for_narration(media_dir, campaign_id, narration_text, voice_name)
 

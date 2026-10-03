@@ -85,7 +85,7 @@ async def tts_test(request: Request, user: UserDep, provider: str = "gemini", vo
         raise HTTPException(400, "Провайдер выключен или не настроен в .env")
     
     text_ru = f"Приветствую! Это проверка синтеза речи. Выбранный провайдер: {provider}. Надеюсь, звучит отлично!"
-    res = await engine.synthesize(text_ru, voice_name=voice)
+    res = await engine.synthesize(text_ru, voice_name=voice if provider == "gemini" else None)
     if not res:
         raise HTTPException(500, "Ошибка синтеза речи")
     
