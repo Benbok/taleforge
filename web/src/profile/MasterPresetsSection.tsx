@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import ActionButton from "../components/ActionButton";
-import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
 import PersonaPicker from "../cabinet/PersonaPicker";
 import { api } from "../lib/api";
@@ -10,7 +9,6 @@ import {
   PROVIDER_RU,
   type CampaignOptions,
   type MasterPreset,
-  type ModelProfile,
   type Persona,
   type PersonaPick,
 } from "../lib/campaign";
@@ -43,7 +41,6 @@ interface Scene {
 export default function MasterPresetsSection() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets") });
-  const models = useQuery({ queryKey: ["models"], queryFn: () => api<ModelProfile[]>("/api/admin/models") });
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const personas = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas") });
 
@@ -54,23 +51,6 @@ export default function MasterPresetsSection() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["master-presets"] });
 
-  const defModel = (models.data ?? []).find((m) => m.is_default);
-  const modelOptions: SelectOption[] = [
-    {
-      value: "",
-      label: defModel ? `По умолчанию (${defModel.name})` : "По умолчанию (рекомендуемая модель)",
-      sublabel: defModel?.resolved_model || "Системная рекомендуемая нейросеть",
-      badge: "СИСТЕМНАЯ",
-      badgeTone: "accent",
-    },
-    ...(models.data ?? []).map((m) => ({
-      value: m.id,
-      label: m.name,
-      sublabel: `${PROVIDER_RU[m.provider] ?? m.provider} · ${m.resolved_model || m.model}`,
-      badge: PROVIDER_RU[m.provider]?.toUpperCase(),
-      badgeTone: m.is_default ? ("accent" as const) : ("patina" as const),
-    })),
-  ];
 
   return (
     <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-5" aria-label="Пресеты мастера">
@@ -283,14 +263,6 @@ export default function MasterPresetsSection() {
               />
             </Field>
 
-            <Field label="Нейросетевая модель мастера">
-              <CustomSelect
-                value={form.model_profile_id}
-                options={modelOptions}
-                onChange={(val) => setForm({ ...form, model_profile_id: val })}
-                ariaLabel="Модель мастера"
-              />
-            </Field>
           </div>
 
           {opts.data && (
