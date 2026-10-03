@@ -39,6 +39,8 @@ export interface Room {
     excluded_themes?: string[];
     audio_enabled?: boolean;
     tts_enabled?: boolean;
+    tts_voice?: string | null;
+    tts_provider?: string;
     leveling?: "xp" | "milestone";
     random_events?: "auto" | "manual";
     poster?: Poster | null;
@@ -47,6 +49,21 @@ export interface Room {
   brief: Brief | null;
   seats: Seat[];
 }
+
+export interface TtsVoiceOption {
+  id: string;
+  name: string;
+  gender: "мужской" | "женский" | "универсальный";
+  description: string;
+}
+
+export const TTS_VOICES: TtsVoiceOption[] = [
+  { id: "Fenrir", name: "Fenrir", gender: "мужской", description: "Глубокий, повествовательный тон (по умолчанию)" },
+  { id: "Charon", name: "Charon", gender: "мужской", description: "Низкий, мрачный, таинственный" },
+  { id: "Puck", name: "Puck", gender: "универсальный", description: "Живой, озорной, выразительный" },
+  { id: "Kore", name: "Kore", gender: "женский", description: "Спокойный, мягкий, атмосферный" },
+  { id: "Aoede", name: "Aoede", gender: "женский", description: "Мелодичный, драматический, эпический" },
+];
 
 export interface Poster {
   title?: string;
@@ -123,11 +140,15 @@ export interface ModelProfile {
 
 export interface Provider {
   id: string;
+  name?: string;
   title: string;
   key_env: string | null;
   key_set: boolean | null;
-  default_model: string | null;
+  main_model?: string | null;
+  technical_model?: string | null;
+  default_model?: string | null;
   api_base: string | null;
+  is_active?: boolean;
 }
 
 export interface Pack {
