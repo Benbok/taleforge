@@ -103,7 +103,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
 
       {user && (
-        <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] text-patina-hi">
+        <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] text-patina-hi shrink-0">
           <span className="inline-block h-2 w-2 rounded-full bg-patina animate-pulse" />
           <span>СВЯЗЬ ЕСТЬ{onlineCount !== undefined ? ` · ${onlineCount} НА ЛИНИИ` : ""}</span>
         </div>
@@ -112,7 +112,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
       <ThemeToggle />
 
       {user && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {user.platform_role !== "player" && (
             <Link
               className="hidden text-sm text-muted no-underline hover:text-ink sm:inline font-mono text-[11px] tracking-wider"
