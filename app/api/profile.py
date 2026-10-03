@@ -4,14 +4,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from app.api.auth import user_out
 from app.api.deps import SessionDep, UserDep
 from app.api.schemas import MePatchIn, PasswordIn, ProfileOut, UserOut, UserRoleIn
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
 from app.core.security import hash_password, verify_password
-from app.db.models import Campaign, LibraryCharacter, LlmCall, Seat, User
+from app.db.models import Campaign, Invite, LibraryCharacter, LlmCall, Seat, User
 
 router = APIRouter(prefix="/api", tags=["profile"])
 
@@ -86,3 +86,29 @@ async def set_role(user_id: str, body: UserRoleIn, user: UserDep, session: Sessi
     target.platform_role = body.platform_role
     await session.commit()
     return user_out(target)
+
+
+@router.delete("/admin/users/{user_id}", status_code=204)
+async def delete_user(user_id: str, user: UserDep, session: SessionDep) -> None:
+    """Super Admin удаляет учётную запись, не оставляя её в местах кампаний и приглашениях."""
+    if user.platform_role != "super_admin":
+        raise AccessDenied("только Super Admin")
+    target = await session.get(User, user_id)
+    if target is None:
+        raise NotFound("пользователь не найден")
+    if target.id == user.id:
+        raise Conflict("нельзя удалить собственную учётную запись")
+    if await session.scalar(select(Campaign.id).where(Campaign.owner_id == target.id).limit(1)) is not None:
+        raise Conflict("сначала передайте или удалите кампании пользователя")
+
+    seats = (await session.scalars(select(Seat).where(Seat.user_id == target.id))).all()
+    if any(seat.role == "master" for seat in seats):
+        raise Conflict("сначала замените мастера во всех кампаниях пользователя")
+    for seat in seats:
+        seat.occupant_type, seat.user_id, seat.joined_at = "empty", None, None
+        seat.delegated_from = seat.stand_in_user_id = None
+
+    # У Invite.created_by нет SET NULL: приглашения удалённого пользователя больше не должны работать.
+    await session.execute(delete(Invite).where(Invite.created_by == target.id))
+    await session.delete(target)
+    await session.commit()

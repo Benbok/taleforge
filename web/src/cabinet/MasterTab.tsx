@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ActionButton from "../components/ActionButton";
 import PersonaEditor from "../components/PersonaEditor";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
@@ -9,11 +9,13 @@ import { api } from "../lib/api";
 import {
   personaBody,
   PROVIDER_RU,
+  TTS_VOICES,
   type CampaignOptions,
   type MasterPreset,
-  type ModelProfile,
   type Persona,
   type PersonaPick,
+  type Room,
+  type VoiceStudioProfile,
 } from "../lib/campaign";
 
 interface MasterModel {
@@ -31,8 +33,20 @@ interface CampaignPersona {
 }
 
 /** ИИ-мастер кампании: модель и характер. Меняются между ходами: следующий ход мастер сделает уже по-новому. */
-export default function MasterTab({ campaignId }: { campaignId: string }) {
+export default function MasterTab({
+  campaignId,
+  room,
+  onRoom,
+}: {
+  campaignId: string;
+  room?: Room;
+  onRoom?: (r: Room) => void;
+}) {
   const qc = useQueryClient();
+  const { data: vsProfiles = [] } = useQuery<VoiceStudioProfile[]>({
+    queryKey: ["vsProfiles"],
+    queryFn: () => api<VoiceStudioProfile[]>("/api/voice/vs-profiles"),
+  });
   const model = useQuery({
     queryKey: ["master-model", campaignId],
     queryFn: () => api<MasterModel>(`/api/campaigns/${campaignId}/master-model`),
@@ -41,23 +55,21 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
     queryKey: ["master-persona", campaignId],
     queryFn: () => api<CampaignPersona>(`/api/campaigns/${campaignId}/master-persona`),
   });
-  const models = useQuery({ queryKey: ["models"], queryFn: () => api<ModelProfile[]>("/api/admin/models") });
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const mine = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas") });
   const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets") });
 
-  const [pickedModel, setPickedModel] = useState("");
-  const [pick, setPick] = useState<PersonaPick>("");
+    const [pick, setPick] = useState<PersonaPick>("");
   const [style, setStyle] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [showSavePreset, setShowSavePreset] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
   const [saveOverwriteId, setSaveOverwriteId] = useState("");
   const [characterRev, setCharacterRev] = useState(0);
+  const ttsEnabled = (room?.settings?.tts_enabled ?? true) !== false;
 
   useEffect(() => {
-    setPickedModel(model.data?.model_profile_id ?? "");
-  }, [model.data?.model_profile_id]);
+      }, [model.data?.model_profile_id]);
 
   useEffect(() => {
     const cur = persona.data;
@@ -72,7 +84,7 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
     setStyle(cur.style ?? "");
   }, [persona.data, opts.data, mine.data]);
 
-  const problem = model.error ?? persona.error ?? models.error ?? opts.error;
+  const problem = model.error ?? persona.error ?? opts.error;
   if (problem) {
     return (
       <div className="card border-bad/40 bg-bad/5 p-5 text-sm text-bad">
@@ -81,7 +93,7 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
     );
   }
 
-  if (!model.data || !persona.data || !models.data || !opts.data) {
+  if (!model.data || !persona.data || !opts.data) {
     return (
       <div className="card p-8 text-center text-muted font-mono text-sm">
         Связываемся с нейросетевым терминалом мастера…
@@ -91,14 +103,6 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
 
   const m = model.data;
   const p = persona.data;
-
-  const modelOptions: SelectOption[] = (models.data ?? []).map((x) => ({
-    value: x.id,
-    label: x.name,
-    sublabel: `${PROVIDER_RU[x.provider] ?? x.provider} · ${x.resolved_model || x.model}`,
-    badge: x.is_default ? "ОСНОВНАЯ" : PROVIDER_RU[x.provider]?.toUpperCase(),
-    badgeTone: x.is_default ? ("accent" as const) : ("patina" as const),
-  }));
 
   const presetOptions: SelectOption[] = (presets.data ?? []).map((x) => ({
     value: x.id,
@@ -232,8 +236,7 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
                 qc.setQueryData(["master-model", campaignId], res.model);
                 qc.setQueryData(["master-persona", campaignId], res.persona);
                 qc.setQueryData(["persona", `/api/campaigns/${campaignId}/master-character`, ""], res.character);
-                setPickedModel(res.model.model_profile_id ?? "");
-                if (res.persona.source === "preset") {
+                                if (res.persona.source === "preset") {
                   setPick(`pre:${opts.data?.presets.find((p) => p.name === res.persona.name)?.id ?? ""}` as PersonaPick);
                 } else if (res.persona.source === "profile") {
                   setPick(`my:${(mine.data ?? []).find((p) => p.name === res.persona.name)?.id ?? ""}` as PersonaPick);
@@ -255,55 +258,192 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
         )}
       </section>
 
-      {/* Current Model Configuration */}
-      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">
+      {/* Master Voice */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Озвучка мастера">
         <div className="border-b border-line pb-3">
-          <h2 className="font-heading text-xl font-bold text-ink">Нейросетевая модель мастера</h2>
-          <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">
-            <span>Текущая модель:</span>
-            <span className="text-accent font-semibold">
-              {m.model_profile_name ? `${m.model_profile_name} · ` : ""}
-              {PROVIDER_RU[m.provider] ?? m.provider} ({m.resolved_model || m.model})
-            </span>
-          </div>
+          <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
+          <p className="text-xs text-muted">
+            Голосовой синтез речи (Gemini TTS) для реплик и описаний ИИ-мастера. Выключено — мастер отвечает только
+            текстом, без генерации аудиодорожек.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${ttsEnabled ? "text-patina-hi" : "text-muted"}`}>
+            {ttsEnabled ? "● включено" : "○ выключено"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена: реплики мастера будут озвучиваться"}
+            run={async () => {
+              const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                method: "PATCH",
+                body: { tts_enabled: !ttsEnabled },
+              });
+              onRoom?.(updated);
+            }}
+          >
+            {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
+          </ActionButton>
         </div>
 
-        {models.data.length === 0 ? (
-          <p className="text-sm text-muted">
-            Других настроенных моделей нет. Вы можете добавить новые в панели администратора.
-          </p>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-1">
-            <div className="flex-1 min-w-0">
-              <Field label="Сменить модель для стола">
+        {ttsEnabled && (
+          <>
+            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+              <Field
+                label="Источник озвучки (TTS Provider)"
+                hint="Выберите сервис для синтеза речи (облачный Gemini или локальный Voice Studio / XTTS)."
+              >
                 <CustomSelect
-                  value={pickedModel}
-                  options={modelOptions}
-                  onChange={setPickedModel}
-                  placeholder="Выберите модель..."
-                  ariaLabel="Модель мастера"
+                  value={room?.settings?.tts_provider || "gemini"}
+                  options={[
+                    { value: "gemini", label: "Gemini TTS (Cloud)" },
+                    { value: "voicestudio", label: "Voice Studio (Local)" },
+                  ]}
+                  onChange={async (val) => {
+                    if (val === (room?.settings?.tts_provider || "gemini")) return;
+                    const nextVoice =
+                      val === "voicestudio"
+                        ? vsProfiles[0]?.id || "demo0001"
+                        : "Fenrir";
+                    const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                      method: "PATCH",
+                      body: {
+                        tts_provider: val,
+                        tts_voice: nextVoice,
+                      },
+                    });
+                    onRoom?.(updated);
+                  }}
+                  ariaLabel="Источник озвучки"
                 />
               </Field>
             </div>
-            <ActionButton
-              primary
-              className="font-mono text-xs tracking-wider"
-              run={async () => {
-                if (!pickedModel) throw new Error("Выберите модель");
-                if (pickedModel === m.model_profile_id) throw new Error("Эта модель уже активна за столом");
-                qc.setQueryData(
-                  ["master-model", campaignId],
-                  await api<MasterModel>(`/api/campaigns/${campaignId}/master-model`, {
-                    method: "PUT",
-                    body: { model_profile_id: pickedModel },
-                  }),
+
+            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
+              {(() => {
+                const provider = room?.settings?.tts_provider || "gemini";
+                let voiceOptions: SelectOption[] = TTS_VOICES.map((v) => ({
+                  value: v.id,
+                  label: v.name,
+                  sublabel: `${v.gender} - ${v.description}`,
+                  badge: v.id === "Fenrir" ? "ПО УМОЛЧАНИЮ" : v.gender.toUpperCase(),
+                  badgeTone: v.id === "Fenrir" ? ("accent" as const) : ("patina" as const),
+                }));
+
+                if (provider === "voicestudio") {
+                  if (vsProfiles.length > 0) {
+                    voiceOptions = vsProfiles
+                      .map((p) => {
+                        const isDemo = Boolean(p.is_demo);
+                        const isDesign = p.kind === "design";
+                        const isClone = p.kind === "clone";
+
+                        let badge = "VOICESTUDIO";
+                        let badgeTone: "accent" | "patina" | "ember" | "muted" = "muted";
+
+                        if (isDemo) {
+                          badge = "ДЕМО";
+                          badgeTone = "muted";
+                        } else if (isDesign) {
+                          badge = "ДИЗАЙН";
+                          badgeTone = "accent";
+                        } else if (isClone) {
+                          badge = "КЛОН";
+                          badgeTone = "patina";
+                        }
+
+                        let sublabel = "";
+                        if (isDesign) {
+                          if (p.instruct) {
+                            const lang = p.language && p.language !== "Auto" ? `${p.language} · ` : "";
+                            sublabel = `${lang}${p.instruct}`;
+                          } else {
+                            sublabel = p.language ? `Дизайн · ${p.language}` : "Голосовой дизайн";
+                          }
+                        } else if (isClone) {
+                          if (p.description) {
+                            sublabel = p.description;
+                          } else if (p.ref_text) {
+                            const sample =
+                              p.ref_text.length > 55
+                                ? `${p.ref_text.slice(0, 55).trim()}…`
+                                : p.ref_text;
+                            sublabel = `«${sample}»`;
+                          } else if (p.language) {
+                            sublabel = `Клон · ${p.language}`;
+                          } else {
+                            sublabel = "Голосовой клон";
+                          }
+                        } else {
+                          sublabel = p.description || p.language || "Voice Studio";
+                        }
+
+                        return {
+                          value: p.id,
+                          label: p.name,
+                          sublabel,
+                          badge,
+                          badgeTone,
+                          rawKind: p.kind,
+                          isDemo,
+                        };
+                      })
+                      .sort((a, b) => {
+                        const getOrder = (item: typeof a) => {
+                          if (item.isDemo) return 3;
+                          if (item.rawKind === "clone") return 1;
+                          if (item.rawKind === "design") return 2;
+                          return 4;
+                        };
+                        const diff = getOrder(a) - getOrder(b);
+                        if (diff !== 0) return diff;
+                        return a.label.localeCompare(b.label, "ru");
+                      });
+                  } else {
+                    voiceOptions = [
+                      {
+                        value: "demo0001",
+                        label: "Демо-голос (demo0001)",
+                        sublabel: "Voice Studio не подключен или нет сохраненных профилей",
+                        badge: "НЕДОСТУПЕН",
+                        badgeTone: "muted" as const,
+                      },
+                    ];
+                  }
+                }
+
+                const currentVoice = room?.settings?.tts_voice;
+                const activeVoice =
+                  voiceOptions.some((o) => o.value === currentVoice)
+                    ? (currentVoice || "")
+                    : (voiceOptions[0]?.value || (provider === "voicestudio" ? "demo0001" : "Fenrir"));
+
+                return (
+                  <>
+                    <Field
+                      label={`Голос ИИ-мастера (${provider === "voicestudio" ? "Voice Studio" : "Gemini"})`}
+                      hint="Голос, которым озвучиваются описания сцен и реплики мастера в чате."
+                    >
+                      <CustomSelect
+                        value={activeVoice}
+                        options={voiceOptions}
+                        onChange={async (val) => {
+                          if (val === room?.settings?.tts_voice) return;
+                          const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
+                            method: "PATCH",
+                            body: { tts_voice: val },
+                          });
+                          onRoom?.(updated);
+                        }}
+                        ariaLabel="Голос мастера"
+                      />
+                    </Field>
+                    <TtsTestButton provider={provider} voice={activeVoice} />
+                  </>
                 );
-              }}
-              done="Модель переключится со следующего хода мастера"
-            >
-              ПРИМЕНИТЬ МОДЕЛЬ
-            </ActionButton>
-          </div>
+              })()}
+            </div>
+          </>
         )}
       </section>
 
@@ -365,6 +505,68 @@ export default function MasterTab({ campaignId }: { campaignId: string }) {
         </div>
         <PersonaEditor key={characterRev} base={`/api/campaigns/${campaignId}/master-character`} master />
       </section>
+    </div>
+  );
+}
+
+
+function TtsTestButton({ provider, voice }: { provider: string; voice: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const testAudio = async () => {
+    if (playing && audioRef.current) {
+      audioRef.current.pause();
+      return;
+    }
+    
+    setPlaying(true);
+    setError(null);
+    try {
+      const { getToken } = await import('../lib/api');
+      const res = await fetch(`/api/voice/tts-test?provider=${provider}&voice=${voice}`, {
+        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Ошибка сети');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setPlaying(false);
+      audio.onerror = () => {
+        setPlaying(false);
+        setError('Не удалось воспроизвести аудио');
+      };
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setPlaying(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={testAudio}
+        className="flex items-center justify-center gap-2 rounded border border-line bg-surface text-ink px-4 py-2 text-sm font-semibold shadow-sm hover:bg-line/20 transition-colors w-max"
+      >
+        {playing ? "⏹ Остановить проверку" : "▶ Проверить озвучку"}
+      </button>
+      {error && <p className="text-warn text-xs">{error}</p>}
     </div>
   );
 }

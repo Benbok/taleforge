@@ -108,7 +108,7 @@ async def preset_out(session, p: MasterPreset) -> MasterPresetOut:
     resolved = None
     if profile:
         try:
-            resolved = model_for(profile.provider, profile.model)
+            resolved = model_for()
         except Exception:
             resolved = None
 
@@ -230,7 +230,5 @@ async def test_preset(body: dict, user: UserDep, request: Request) -> dict:
     sheet = body.get("character") or body.get("persona") or {}
     profile_id = body.get("model_profile_id")
     style = body.get("style")
-    scenes = await character.try_preset_scenes(
-        request.app.state.master, profile_id, sheet, style=style
-    )
+    scenes = await character.try_preset_scenes(request.app.state.master, profile_id, sheet, style=style)
     return {"scenes": scenes}

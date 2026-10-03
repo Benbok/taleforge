@@ -39,11 +39,11 @@ async def model_of(s, c: Campaign) -> tuple[str, str, str | None, float]:
     seat = master_seat(c)
     if seat.occupant_type == "agent" and seat.agent_config_id:
         cfg = await s.get(AgentConfig, seat.agent_config_id)
-        return cfg.provider, model_for(cfg.provider, cfg.model), (cfg.settings or {}).get("api_base"), cfg.temperature
+        return cfg.provider, model_for(), (cfg.settings or {}).get("api_base"), cfg.temperature
     p = await default_model_profile(s)
     if p is not None:
-        return p.provider, model_for(p.provider, p.model), p.api_base, p.temperature
-    return "claude", model_for("claude", None), None, 0.8
+        return p.provider, model_for(), p.api_base, p.temperature
+    return "claude", model_for(), None, 0.8
 
 
 async def started(s, cid: str) -> bool:

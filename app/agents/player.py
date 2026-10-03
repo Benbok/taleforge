@@ -80,6 +80,7 @@ class PlayerAgents:
             if c is None or sc is None or sc.mode == "combat":
                 return []
             from app.agents.master import _new_player_messages
+
             new = await _new_player_messages(s, c)
             if not new:
                 return []
@@ -201,7 +202,7 @@ class PlayerAgents:
             character = persona.render(ch.persona, await persona.notes_of(s, cid, ch.id))
             system = SYSTEM + ("\n\nХарактер твоего героя:\n" + character if character else "")
             system += "\n\n" + CAUTIOUS if careful else ""
-            model = model_for(cfg.provider, cfg.model)
+            model = model_for()
             api_base = (cfg.settings or {}).get("api_base")
         return system, user_text, model, api_base, careful
 

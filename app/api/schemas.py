@@ -240,8 +240,10 @@ class ProviderOut(BaseModel):
     title: str
     key_env: str | None
     key_set: bool | None
-    default_model: str | None
+    main_model: str | None
+    technical_model: str | None
     api_base: str | None
+    is_active: bool
 
 
 class ProfileOut(BaseModel):
@@ -294,6 +296,9 @@ class CampaignCreateIn(BaseModel):
     )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
+    tts_provider: str = Field(default="gemini", description="TTS Provider")
+    tts_enabled: bool = Field(default=True, description="TTS Enabled")
+    tts_voice: str | None = Field(default=None, max_length=32, description="голос озвучки мастера (TTS)")
 
 
 class CampaignPatchIn(BaseModel):
@@ -305,6 +310,9 @@ class CampaignPatchIn(BaseModel):
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
     audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
+    tts_provider: str | None = Field(default=None, max_length=32)
+    tts_enabled: bool | None = None  # озвучка реплик мастера (TTS)
+    tts_voice: str | None = Field(default=None, max_length=32)  # голос озвучки мастера (TTS)
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None

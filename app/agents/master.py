@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.agents import character, memory, rhythm
 from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
+from app.emotion import EmotionEngine, PlayerActionContext
 from app.agents.providers import explain
 from app.core import audio, bonds, combat, persona, plot
 from app.core.brief import brief_text
@@ -190,13 +191,26 @@ class MasterService:
         self._spawn(prelude.make_hook(self, campaign_id, character_id))
 
     def schedule_session_open(self, campaign_id: str, session_id: str | None) -> None:
-        """Старт сессии: вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
+        """Старт сессии: интро всей кампании, вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
         from app.agents import rhythm
 
         async def run() -> None:
-            await self.introduce(campaign_id)
-            if session_id:
-                await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+            await self._status(campaign_id, "describing")
+            try:
+                # 1. Интро всей кампании (только один раз в самом начале)
+                await self.introduce_campaign(campaign_id)
+                # 2. Вступление для непредставленных героев
+                await self.introduce(campaign_id)
+                # 3. Цель на вечер
+                if session_id:
+                    await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+            finally:
+                async with self.maker() as s:
+                    c = await s.get(Campaign, campaign_id)
+                    if c and (c.settings or {}).get("intro_generating"):
+                        c.settings = {**(c.settings or {}), "intro_generating": False}
+                        await s.commit()
+                await self._status(campaign_id, "idle")
 
         self._spawn(run())
 
@@ -223,6 +237,17 @@ class MasterService:
         except Exception:  # noqa: BLE001 — ритм сессии не должен ронять сервер
             log.exception("%s не удалось", what)
             return None
+
+    async def introduce_campaign(self, campaign_id: str) -> str | None:
+        """Вступление ко всей кампании (2–4 абзаца о мире, ситуации и месте); одно на кампанию."""
+        from app.agents import prelude
+
+        async with self._intro_locks.setdefault(campaign_id, asyncio.Lock()):
+            try:
+                return await prelude.introduce_campaign(self, campaign_id)
+            except Exception:  # noqa: BLE001 — без вступления игра всё равно идёт
+                log.exception("вступление ко всей кампании %s не удалось", campaign_id)
+                return None
 
     async def introduce(self, campaign_id: str) -> str | None:
         """Вступление для ещё не представленных героев; одно на кампанию за раз."""
@@ -385,7 +410,6 @@ class MasterService:
             await s.commit()
             turn_id = turn.id
             ids = [m.id for m in new]
-            human = any(not (m.data or {}).get("ai") for m in new)  # ИИ-игроки отвечают только на ответ людям
 
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
@@ -440,13 +464,16 @@ class MasterService:
         purpose: str,
         messages: list,
         tools: list | None,
+        override_model: str | None = None,
+        stream_callback=None,
     ) -> LLMReply:
-        model = model_for(cfg.provider, cfg.model)
+        model = override_model or model_for()
         try:
             reply = await self.llm.complete(
                 messages,
                 model=model,
                 tools=tools,
+                stream_callback=stream_callback,
                 max_tokens=8192,
                 temperature=0.2 if purpose == "decide" else cfg.temperature,
                 api_base=(cfg.settings or {}).get("api_base"),
@@ -518,7 +545,16 @@ class MasterService:
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
-            actor = (args or {}).get("attacker_id") or (args or {}).get("caster_id")
+            if args is None and m.kind == "action":
+                routed_call = intents.routable_tool_call(m.intent)
+                if routed_call:
+                    name, args = routed_call
+            actor = (
+                (args or {}).get("attacker_id")
+                or (args or {}).get("caster_id")
+                or (args or {}).get("character_id")
+                or ((args or {}).get("character_ids") or [None])[0]
+            )
             if not args or actor not in required:
                 continue
             if hero_turn is not None and actor != hero_turn.id:
@@ -528,9 +564,9 @@ class MasterService:
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
-            elif name == "cast_spell":
+            else:
                 routed.append(
-                    f"{actor}: cast_spell отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
+                    f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
                 )
         route_note = ""
         if routed:
@@ -621,26 +657,29 @@ class MasterService:
         plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
 
         await self._status(cid, "describing")
-        narration, audit = await self._narrate(
-            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
-        )
+        tts_on = bool((c.settings or {}).get("tts_enabled", True))
+        tts_voice = (c.settings or {}).get("tts_voice")
+        tts_provider = (c.settings or {}).get("tts_provider")
+        tts_ready = getattr(self, "tts", None) and getattr(self.tts, "get_engine", lambda p: self.tts)(tts_provider).enabled and getattr(self, "media_dir", None) and tts_on
 
-        tts_task = None
-        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None):
-            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, narration))
-
-        whispers = await flush_outbox(s, ctx)
-        linked = await link_text(s, cid, narration)
-
+        voice_line_text: str | None = None
         voice_data = None
-        if tts_task is not None:
+
+        if tts_ready:
             try:
-                voice_data = await tts_task
+                voice_line_text = await self._voice_line(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes)
+                if voice_line_text:
+                    tts_provider = (c.settings or {}).get("tts_provider")
+                    voice_data = await self.tts.voice_for_narration(self.media_dir, cid, voice_line_text, provider=tts_provider, voice_name=tts_voice)
             except Exception:
-                log.exception("ошибка генерации озвучки мастера")
+                log.warning("ошибка генерации/озвучки voice_line", exc_info=True)
+                voice_line_text = None
+                voice_data = None
 
         msg_data: dict[str, Any] = {}
         if voice_data:
+            if voice_line_text:
+                voice_data["text"] = voice_line_text
             msg_data["voice"] = voice_data
 
         msg = Message(
@@ -649,15 +688,32 @@ class MasterService:
             seq=await next_seq(s, cid),
             seat_id=seat.id,
             kind="narration",
-            content=linked,
+            content="",
             data=msg_data or None,
         )
         s.add(msg)
         await s.flush()
+        
+        await publish_message(self.bus, msg)
+
+        async def stream_chunk(chunk: str):
+            await self.bus.publish(cid, envelope("message.chunk", cid, {"id": msg.id, "chunk": chunk}), None)
+
+        narration, audit = await self._narrate(
+            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes,
+            stream_callback=stream_chunk
+        )
+
+        whispers = await flush_outbox(s, ctx)
+        linked = await link_text(s, cid, narration)
+        
+        msg.content = linked
+        
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             "calls": trace_calls,
             "audit": audit,
+            "voice_line": voice_line_text,
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
@@ -668,7 +724,7 @@ class MasterService:
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _narrate(
-        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=()
+        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=(), stream_callback=None
     ):
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
@@ -691,7 +747,7 @@ class MasterService:
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None)
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=stream_callback)
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
         if unknown:
@@ -723,6 +779,53 @@ class MasterService:
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
         return text or "…", audit
+
+    async def _voice_line(
+        self,
+        calls: list,
+        cfg: AgentConfig,
+        c: Campaign,
+        seat_id: str,
+        turn_id: str | None,
+        system: str,
+        ctx: ToolContext,
+        combat_notes: list,
+    ) -> str:
+        results = _render_results(ctx)
+        prompt = render(
+            "voice_line.j2",
+            results=results,
+            combat_notes=list(combat_notes),
+        )
+        lite_model = None
+        custom_voice_model = (cfg.settings or {}).get("voice_line_model")
+        if custom_voice_model:
+            try:
+                lite_model = model_for(None, custom_voice_model)
+            except Exception:
+                pass
+        if not lite_model:
+            voice_defaults = {
+                "gemini": "gemini-3.5-flash-lite",
+                "claude": "anthropic/claude-haiku-4-5",
+            }
+            default_candidate = voice_defaults.get(cfg.provider)
+            if default_candidate:
+                try:
+                    lite_model = model_for(None, default_candidate)
+                except Exception:
+                    pass
+
+        msgs = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+        reply = await self._ask(
+            calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model
+        )
+        text = reply.text.strip().strip("\"'«»—–- ").strip()
+        text = MARKUP.sub(r"\2", text)
+        return text or "Вперёд!"
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)
@@ -818,7 +921,7 @@ class MasterService:
                 prompt = memory.summary_input(prev, rows, lambda m: _who(m, char_by_seat, names))
                 upto = rows[-1].seq
                 prev_version = prev.version if prev else 0
-                model = parser_model_for(cfg.provider, cfg.model)
+                model = parser_model_for()
                 master_seat_id = seat.id
                 api_base = (cfg.settings or {}).get("api_base")
                 await s.rollback()
@@ -890,7 +993,7 @@ class MasterService:
             last = next((m.content for m in reversed(rows) if m.kind == "narration"), None)
             master_seat_id, missed = seat.id, len(rows)
             api_base = (cfg.settings or {}).get("api_base") if cfg is not None else None
-            model = parser_model_for(cfg.provider, cfg.model) if cfg is not None else None
+            model = parser_model_for() if cfg is not None else None
             await s.rollback()
         text = None
         if model is not None:
@@ -961,10 +1064,12 @@ class MasterService:
             ch_id, provider, cfg_model, master_seat_id = ch.id, cfg.provider, cfg.model, seat.id
             api_base = (cfg.settings or {}).get("api_base")
             await s.rollback()
-        model = parser_model_for(provider, cfg_model)
+        model = parser_model_for()
         call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="parse", model=model)
         try:
-            reply = await asyncio.wait_for(self._parse_call(model, info, text, values, api_base), timeout=PARSE_TIMEOUT)
+            reply = await asyncio.wait_for(
+                self._parse_call(model, info, text, values, api_base, provider=provider), timeout=PARSE_TIMEOUT
+            )
         except TimeoutError:
             call.error = f"парсер не ответил за {PARSE_TIMEOUT} с"
             reply = None
@@ -988,8 +1093,15 @@ class MasterService:
             return intents.check(raw, ctx.world, ch)
 
     async def _parse_call(
-        self, model: str, info: str, text: str, values: dict, api_base: str | None = None
+        self,
+        model: str,
+        info: str,
+        text: str,
+        values: dict,
+        api_base: str | None = None,
+        provider: str | None = None,
     ) -> LLMReply:
+        tool_choice = {"type": "function", "function": {"name": "submit_intent"}} if provider == "gemini" else None
         return await self.llm.complete(
             [
                 {"role": "system", "content": intents.PARSER_SYSTEM},
@@ -997,7 +1109,8 @@ class MasterService:
             ],
             model=model,
             tools=[intents.tool_spec(values)],
-            max_tokens=1500,
+            tool_choice=tool_choice,
+            max_tokens=500,
             temperature=0.0,
             api_base=api_base,
         )

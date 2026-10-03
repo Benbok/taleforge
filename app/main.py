@@ -15,7 +15,7 @@ from app.agents.llm import LLM, LiteLLMClient
 from app.agents.master import MasterService
 from app.agents.player import PlayerAgents
 from app.agents.stt import SpeechToText
-from app.agents.tts import TextToSpeech
+
 from app.api import (
     admin,
     auth,
@@ -82,11 +82,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         await app.state.bus.start()
         await bootstrap_superadmin(app.state.sessionmaker, settings)
         app.state.dice_factory = dice_factory
-        app.state.tts = TextToSpeech(
-            api_key=settings.tts_api_key,
-            model=settings.tts_model,
-            voice=settings.tts_voice,
-        )
+        from app.agents.tts import TTSManager
+        app.state.tts = TTSManager(settings)
         app.state.master = MasterService(
             app.state.sessionmaker,
             app.state.bus,

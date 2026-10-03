@@ -24,12 +24,13 @@ def write_pack(root: Path, files: dict[str, str], manifest: str | None = None) -
             ruleset: dnd5e
             ruleset_base: srd-5.1
             """
-        )
+        ),
+        encoding="utf-8",
     )
     for rel, text in files.items():
         p = root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(dedent(text))
+        p.write_text(dedent(text), encoding="utf-8")
     return root
 
 
@@ -37,7 +38,13 @@ def world(tmp_path: Path, files: dict[str, str], manifest: str | None = None, st
     """Пакет мира рядом с копией базового: как в content/ репозитория."""
     packs = tmp_path / "content"
     packs.mkdir(exist_ok=True)
-    (packs / "dnd5e-srd").symlink_to(BASE, target_is_directory=True)
+    srd = packs / "dnd5e-srd"
+    try:
+        srd.symlink_to(BASE, target_is_directory=True)
+    except OSError:
+        import shutil
+
+        shutil.copytree(BASE, srd)
     root = write_pack(packs / "world", files, manifest)
     return load_with_dependencies(root, packs, strict=strict)
 

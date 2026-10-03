@@ -382,6 +382,8 @@ async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str 
 
     if not viewer.is_player:
         return None
+    if (viewer.campaign.settings or {}).get("intro_generating") and kind != "ooc":
+        return "Мастер готовит вступление к кампании…"
     sc = await get_scene(session, viewer.campaign.id)
     in_combat = sc.mode == "combat" and bool(sc.turn_order)
     if (

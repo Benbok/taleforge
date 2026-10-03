@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.agents.llm import ScriptedLLM
 from app.agents.tts import (
-    TextToSpeech,
+    GeminiTTS,
     clean_narration_text,
     pcm_to_wav,
     wav_duration,
@@ -49,7 +49,7 @@ def test_pcm_to_wav_and_duration():
 
 @pytest.mark.anyio
 async def test_tts_disabled_when_no_key():
-    tts = TextToSpeech(api_key=None)
+    tts = GeminiTTS(api_key=None)
     assert not tts.enabled
     res = await tts.synthesize("Привет")
     assert res is None
@@ -88,7 +88,7 @@ async def test_tts_synthesize_success():
         )
 
     transport = httpx.MockTransport(mock_handler)
-    tts = TextToSpeech(api_key="fake-gemini-key", model="gemini-2.0-flash", voice="Fenrir", transport=transport)
+    tts = GeminiTTS(api_key="fake-gemini-key", model="gemini-2.0-flash", voice="Fenrir", transport=transport)
 
     result = await tts.synthesize("В пещере темно и сыро.")
     assert result is not None
@@ -126,7 +126,7 @@ async def test_tts_voice_for_narration(tmp_path: Path):
             },
         )
 
-    tts = TextToSpeech(api_key="key-123", transport=httpx.MockTransport(mock_handler))
+    tts = GeminiTTS(api_key="key-123", transport=httpx.MockTransport(mock_handler))
     media_dir = tmp_path / "media"
     campaign_id = "camp1"
 
@@ -147,7 +147,7 @@ async def test_tts_api_error_returns_none():
     def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500, text="Internal Server Error")
 
-    tts = TextToSpeech(api_key="key-123", transport=httpx.MockTransport(mock_handler))
+    tts = GeminiTTS(api_key="key-123", transport=httpx.MockTransport(mock_handler))
     res = await tts.synthesize("Текст")
     assert res is None
 
@@ -161,7 +161,7 @@ def test_master_turn_attaches_voice_when_tts_enabled(settings, tmp_path):
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
+        gemini_tts_api_key="test-gemini-key",
     )
 
     fake_pcm = b"\x00\x00" * 24000  # 1 сек
@@ -237,7 +237,7 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
     settings = dataclasses.replace(
         settings,
         media_dir=tmp_path / "media",
-        tts_api_key="test-gemini-key",
+        gemini_tts_api_key="test-gemini-key",
     )
 
     def mock_tts_fail(request: httpx.Request) -> httpx.Response:
@@ -271,4 +271,269 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         assert narration_msg["kind"] == "narration"
         # Сообщение мастера успешно отправлено, несмотря на сбой TTS
         assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
+
+
+def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_path):
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(
+        settings,
+        media_dir=tmp_path / "media",
+        gemini_tts_api_key="test-gemini-key",
+    )
+
+    fake_pcm = b"\x00\x00" * 24000
+    b64_audio = base64.b64encode(fake_pcm).decode("ascii")
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "inlineData": {
+                                        "mimeType": "audio/pcm;rate=24000",
+                                        "data": b64_audio,
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    llm = ScriptedLLM([])
+
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15, 18]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+
+        c, (p1,), ch = party(client, admin)
+
+        # Выключаем озвучку мастера через PATCH кампании
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": False}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_enabled"] is False
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "выступ"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Вы тихо крадётесь по каменному выступу."},
+        ]
+
+        narration_msg = act(client, p1, c["id"], "Иду тихо.")
+        assert narration_msg["kind"] == "narration"
+        # Озвучки нет, так как tts_enabled выключен в настройках кампании
+        assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
+
+        # Включаем озвучку обратно
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": True}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_enabled"] is True
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "зала"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Перед вами открывается просторная зала."},
+        ]
+        narration_msg_2 = act(client, p1, c["id"], "Осматриваюсь.")
+        assert narration_msg_2["kind"] == "narration"
+        assert "data" in narration_msg_2 and narration_msg_2["data"] is not None
+        assert "voice" in narration_msg_2["data"]
+
+
+def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(
+        settings,
+        media_dir=tmp_path / "media",
+        gemini_tts_api_key="test-gemini-key",
+        gemini_tts_voice="Fenrir",
+    )
+
+    fake_pcm = b"\x00\x00" * 24000
+    b64_audio = base64.b64encode(fake_pcm).decode("ascii")
+
+    requested_voices = []
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        v = (
+            body.get("generationConfig", {})
+            .get("speechConfig", {})
+            .get("voiceConfig", {})
+            .get("prebuiltVoiceConfig", {})
+            .get("voiceName")
+        )
+        requested_voices.append(v)
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "inlineData": {
+                                        "mimeType": "audio/pcm;rate=24000",
+                                        "data": b64_audio,
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    llm = ScriptedLLM([])
+
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+
+        c, (p1,), ch = party(client, admin)
+
+        # Меняем голос мастера на "Aoede" через PATCH кампании
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_voice": "Aoede"}, headers=admin)
+        assert patch_res.status_code == 200
+        assert patch_res.json()["settings"]["tts_voice"] == "Aoede"
+
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "выступ"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Вы тихо крадётесь по каменному выступу."},
+        ]
+
+        narration_msg = act(client, p1, c["id"], "Иду тихо.")
+        assert narration_msg["kind"] == "narration"
+        assert "data" in narration_msg and "voice" in narration_msg["data"]
+        # Проверяем, что запрос к Gemini ушёл с голосом Aoede
+        assert requested_voices == ["Aoede"]
+
+
+def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, tmp_path):
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(
+        settings,
+        media_dir=tmp_path / "media",
+        gemini_tts_api_key="test-gemini-key",
+        gemini_tts_voice="Fenrir",
+    )
+
+    fake_pcm = b"\x00\x00" * 24000
+    b64_audio = base64.b64encode(fake_pcm).decode("ascii")
+
+    synthesized_texts = []
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        parts = body.get("contents", [{}])[0].get("parts", [{}])
+        text = parts[0].get("text", "")
+        synthesized_texts.append(text)
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {
+                                    "inlineData": {
+                                        "mimeType": "audio/pcm;rate=24000",
+                                        "data": b64_audio,
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    llm = ScriptedLLM([])
+
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([18]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+
+        c, (p1,), ch = party(client, admin)
+
+        # Задаём ответы модели:
+        # 1. Решение (roll_check)
+        # 2. Решение (готово)
+        # 3. Нарратив (длинный текст)
+        # 4. Реплика голоса (короткая)
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "прыжок"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {
+                "text": (
+                    "Длинный текст повествования: вы перепрыгиваете через пропасть, "
+                    "камни срываются в бездну, свистит холодный ветер."
+                )
+            },
+            {"text": "«Отличный прыжок, храбрец!»", "voice_line": True},
+        ]
+
+        msg = act(client, p1, c["id"], "Прыгаю через пропасть!")
+        assert msg["kind"] == "narration"
+        assert "Длинный текст повествования" in msg["content"]
+        assert "data" in msg and "voice" in msg["data"]
+        # Проверяем, что в TTS ушла короткая реплика, а не длинный нарратив
+        assert synthesized_texts == ["Отличный прыжок, храбрец!"]
+        assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
+
 

@@ -10,7 +10,8 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
-from app.agents.llm import DEFAULT_MODELS, LLM, LLMError, model_for
+from app.agents.llm import LLM, LLMError, model_for
+from app.config import settings
 
 LM_STUDIO_DEFAULT_BASE = "http://localhost:1234/v1"
 PROVIDER_INFO = {
@@ -43,21 +44,38 @@ def explain(error: str) -> str:
 
 
 def local_api_base(api_base: str | None = None) -> str:
-    return (api_base or os.environ.get("LM_STUDIO_API_BASE") or LM_STUDIO_DEFAULT_BASE).rstrip("/")
+    from app.config import _env
+    return (api_base or _env("LM_STUDIO_API_BASE") or LM_STUDIO_DEFAULT_BASE).rstrip("/")
 
 
 def provider_status() -> list[dict[str, Any]]:
     out = []
+    active = settings.llm_provider
     for pid, info in PROVIDER_INFO.items():
         keys = info["key_env"]
+        
+        main_model = None
+        technical_model = None
+        if pid == "claude":
+            main_model = settings.claude_main_model
+            technical_model = settings.claude_technical_model
+        elif pid == "gemini":
+            main_model = settings.gemini_main_model
+            technical_model = settings.gemini_technical_model
+        elif pid == "local":
+            main_model = settings.local_main_model
+            technical_model = settings.local_technical_model
+
         out.append(
             {
                 "id": pid,
                 "title": info["title"],
                 "key_env": keys[0] if keys else None,
                 "key_set": any(os.environ.get(k) for k in keys) if keys else None,
-                "default_model": DEFAULT_MODELS.get(pid),
+                "main_model": main_model,
+                "technical_model": technical_model,
                 "api_base": local_api_base() if pid == "local" else None,
+                "is_active": pid == active,
             }
         )
     return out

@@ -15,6 +15,14 @@ export function savedMode(): Mode {
   return "dark"; // тёмная тема по умолчанию (документ дизайна)
 }
 
+export function initThemeMode(): Mode {
+  const m = savedMode();
+  if (typeof document !== "undefined") {
+    document.documentElement.dataset.theme = m;
+  }
+  return m;
+}
+
 export function saveMode(mode: Mode): void {
   try {
     localStorage.setItem(MODE_KEY, mode);

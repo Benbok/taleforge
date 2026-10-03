@@ -128,7 +128,7 @@ def test_master_presets_crud_and_apply(game_client, admin_g, settings, llm):
 
 def test_master_preset_conflicts_and_access(game_client, admin_g, settings):
     # 1. Создание пресета
-    p1 = ok(
+    ok(
         game_client.post(
             "/api/me/master-presets",
             json={"name": "Уникальный мастер", "style": "Лаконичный"},
@@ -164,7 +164,10 @@ def test_master_preset_conflicts_and_access(game_client, admin_g, settings):
 
     # 4. Несуществующий пресет -> 404
     assert game_client.get("/api/me/master-presets/mpre_nonexistent", headers=admin_g).status_code == 404
-    assert game_client.patch("/api/me/master-presets/mpre_nonexistent", json={"name": "Х"}, headers=admin_g).status_code == 404
+    assert (
+        game_client.patch("/api/me/master-presets/mpre_nonexistent", json={"name": "Х"}, headers=admin_g).status_code
+        == 404
+    )
     assert game_client.delete("/api/me/master-presets/mpre_nonexistent", headers=admin_g).status_code == 404
 
     # 5. Игрок без прав админа не имеет доступа к пресетам мастера -> 403
@@ -204,4 +207,3 @@ def test_master_preset_fallback_missing_model(game_client, admin_g, settings):
     )
     assert applied["ok"] is True
     assert applied["persona"]["style"] == "Вкрадчивый"
-
