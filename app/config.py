@@ -96,7 +96,7 @@ class Settings:
             stt_language=_env("STT_LANGUAGE", cls.stt_language),
             stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
             tts_provider=_env("TTS_PROVIDER", cls.tts_provider).lower(),
-            gemini_tts_api_key=_env("GEMINI_TTS_API_KEY") or _env("TTS_GEMINI_API_KEY") or _env("GEMINI_API_KEY"),
+            gemini_tts_api_key=_env("GEMINI_TTS_API_KEY") or _env("GEMINI_API_KEY"),
             gemini_tts_model=_env("GEMINI_TTS_MODEL", cls.gemini_tts_model),
             gemini_tts_voice=_env("GEMINI_TTS_VOICE", cls.gemini_tts_voice),
             silero_api_base=_env("SILERO_API_BASE", cls.silero_api_base),
