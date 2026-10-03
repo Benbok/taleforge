@@ -45,6 +45,8 @@ def admin_g(game_client):
 
 def act(client, head, cid, text):
     """Игрок пишет действие и ждёт повествования мастера."""
+    from app.db.models import Message
+
     with connect(client, head, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": text}})
         for _ in range(40):
@@ -58,7 +60,15 @@ def act(client, head, cid, text):
                     continue
                 # ход дописывает учёт вызовов модели уже после повествования: ждём, чтобы не спорить за SQLite
                 client.portal.call(client.app.state.master.wait_idle, cid)
-                return e["payload"]
+                msg_id = e["payload"]["id"]
+
+                async def get_msg():
+                    async with client.app.state.sessionmaker() as s:
+                        m = await s.get(Message, msg_id)
+                        return m.content if m else ""
+
+                content = client.portal.call(get_msg)
+                return {**e["payload"], "content": content}
     raise AssertionError("мастер не ответил")
 
 

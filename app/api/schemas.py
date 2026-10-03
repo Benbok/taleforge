@@ -1,4 +1,4 @@
-﻿"""РЎС…РµРјС‹ REST API."""
+"""Схемы REST API."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ Amount = Literal["low", "mid", "high"]
 
 
 class BriefIn(BaseModel):
-    """РђРЅРєРµС‚Р° РєР°РјРїР°РЅРёРё (app/core/brief.py). Р’СЃРµ РїРѕР»СЏ РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅС‹: Р±РµР· РѕС‚РІРµС‚Р° РіРµРЅРµСЂР°С‚РѕСЂ СЂРµС€Р°РµС‚ СЃР°Рј."""
+    """Анкета кампании (app/core/brief.py). Все поля необязательны: без ответа генератор решает сам."""
 
     length: Literal["oneshot", "short", "long"] | None = None
     pillars: dict[Literal["combat", "exploration", "social", "mystery", "puzzles"], Amount] = Field(
@@ -64,7 +64,7 @@ class BriefIn(BaseModel):
 
 
 class PersonaSettingsIn(BaseModel):
-    """РҐР°СЂР°РєС‚РµСЂ РїРѕРґР°С‡Рё РР-РјР°СЃС‚РµСЂР° (app/core/personas.py). РњРµС…Р°РЅРёРєСѓ Рё СЃР»РѕР¶РЅРѕСЃС‚СЊ РЅРµ РјРµРЅСЏРµС‚."""
+    """Характер подачи ИИ-мастера (app/core/personas.py). Механику и сложность не меняет."""
 
     seriousness: int = Field(default=4, ge=1, le=5)
     humor: Literal["none", "dry", "light", "absurd"] = "dry"
@@ -95,8 +95,8 @@ class MasterPersonaOut(BaseModel):
 
 
 class PersonaChoiceIn(BaseModel):
-    """Р’С‹Р±РѕСЂ РїРµСЂСЃРѕРЅС‹ РјР°СЃС‚РµСЂР°: СЃРІРѕСЏ РёР· РїСЂРѕС„РёР»СЏ (persona_id), РІСЃС‚СЂРѕРµРЅРЅР°СЏ (preset) РёР»Рё РЅР°СЃС‚СЂРѕР№РєРё РЅР°РїСЂСЏРјСѓСЋ.
-    style вЂ” РґРѕРїРѕР»РЅРµРЅРёРµ СЃРІРѕРёРјРё СЃР»РѕРІР°РјРё РїРѕРІРµСЂС… РїРµСЂСЃРѕРЅС‹."""
+    """Выбор персоны мастера: своя из профиля (persona_id), встроенная (preset) или настройки напрямую.
+    style — дополнение своими словами поверх персоны."""
 
     persona_id: str | None = None
     preset: str | None = None
@@ -118,8 +118,8 @@ class MasterCharacterIn(BaseModel):
 
 
 class MasterIn(BaseModel):
-    """РР-РјР°СЃС‚РµСЂ: РїСЂРѕС„РёР»СЊ РјРѕРґРµР»Рё РёР· Р°РґРјРёРЅРєРё (model_profile_id) РёР»Рё СЏРІРЅС‹Рµ РїСЂРѕРІР°Р№РґРµСЂ Рё РјРѕРґРµР»СЊ.
-    Р‘РµР· С‚РѕРіРѕ Рё РґСЂСѓРіРѕРіРѕ Р±РµСЂС‘С‚СЃСЏ РїСЂРѕС„РёР»СЊ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ, Р° РµСЃР»Рё РµРіРѕ РЅРµС‚ вЂ” Claude."""
+    """ИИ-мастер: профиль модели из админки (model_profile_id) или явные провайдер и модель.
+    Без того и другого берётся профиль по умолчанию, а если его нет — Claude."""
 
     type: Literal["owner", "agent"] = "agent"
     model_profile_id: str | None = None
@@ -176,7 +176,7 @@ class MasterPresetOut(BaseModel):
 
 
 class MasterModelIn(BaseModel):
-    """РЎРјРµРЅР° РјРѕРґРµР»Рё РР-РјР°СЃС‚РµСЂР° Сѓ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ РєР°РјРїР°РЅРёРё."""
+    """Смена модели ИИ-мастера у существующей кампании."""
 
     model_profile_id: str | None = None
     provider: Provider | None = None
@@ -228,7 +228,7 @@ class ModelProfileOut(BaseModel):
 
 
 class ModelCheckIn(BaseModel):
-    """РџСЂРѕРІРµСЂРєР° РµС‰С‘ РЅРµ СЃРѕС…СЂР°РЅС‘РЅРЅРѕР№ РјРѕРґРµР»Рё РёР· С„РѕСЂРјС‹."""
+    """Проверка ещё не сохранённой модели из формы."""
 
     provider: Provider
     model: str = Field(default="", max_length=128)
@@ -268,7 +268,7 @@ class UserRoleIn(BaseModel):
 
 
 class CreationRulesIn(BaseModel):
-    """РќР°СЃС‚СЂРѕР№РєРё СЃРѕР·РґР°РЅРёСЏ РїРµСЂСЃРѕРЅР°Р¶Р° (СЂР°Р·РґРµР» 5.1)."""
+    """Настройки создания персонажа (раздел 5.1)."""
 
     ability_methods: list[Literal["standard_array", "point_buy", "roll"]] = Field(
         default=["standard_array", "point_buy", "roll"], min_length=1
@@ -287,18 +287,18 @@ class CampaignCreateIn(BaseModel):
     public_intro: str = Field(default="", max_length=10000)
     turn_timeout_sec: int = Field(default=300, ge=30, le=300)
     spend_limit_usd: float | None = Field(default=None, ge=0)
-    collect_window_sec: int = Field(default=60, ge=0, le=300, description="РѕРєРЅРѕ СЃР±РѕСЂР° СЂРµРїР»РёРє РґРѕ РѕС‚РІРµС‚Р° РјР°СЃС‚РµСЂР°")
+    collect_window_sec: int = Field(default=60, ge=0, le=300, description="окно сбора реплик до ответа мастера")
     excluded_themes: list[str] = Field(default_factory=list, max_length=20)
     brief: BriefIn = BriefIn()
     creation_rules: CreationRulesIn = CreationRulesIn()
     leveling: Literal["xp", "milestone"] = Field(
-        default="xp", description="СЂРѕСЃС‚ СѓСЂРѕРІРЅРµР№: xp вЂ” РїРѕ РѕРїС‹С‚Сѓ SRD, milestone вЂ” РїРѕ РІРµС…Р°Рј СЃСЋР¶РµС‚Р°"
+        default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
     )
-    test_mode: bool = Field(default=False, description="С‚РµСЃС‚РѕРІР°СЏ РєР°РјРїР°РЅРёСЏ: РІРёРґРЅС‹ С‡РµСЂРЅРѕРІС‹Рµ Р·Р°РїРёСЃРё РїР°РєРµС‚Р°")
-    owner_plays: bool = Field(default=True, description="РІР»Р°РґРµР»РµС†, РµСЃР»Рё РѕРЅ РЅРµ РјР°СЃС‚РµСЂ, СЃСЂР°Р·Сѓ Р·Р°РЅРёРјР°РµС‚ РјРµСЃС‚Рѕ РёРіСЂРѕРєР°")
+    test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
+    owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
     tts_provider: str = Field(default="gemini", description="TTS Provider")
     tts_enabled: bool = Field(default=True, description="TTS Enabled")
-    tts_voice: str | None = Field(default=None, max_length=32, description="РіРѕР»РѕСЃ РѕР·РІСѓС‡РєРё РјР°СЃС‚РµСЂР° (TTS)")
+    tts_voice: str | None = Field(default=None, max_length=32, description="голос озвучки мастера (TTS)")
 
 
 class CampaignPatchIn(BaseModel):
@@ -309,12 +309,12 @@ class CampaignPatchIn(BaseModel):
     spend_limit_usd: float | None = Field(default=None, ge=0)
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
-    audio_enabled: bool | None = None  # Р·РІСѓРєРѕРІРѕРµ СЃРѕРїСЂРѕРІРѕР¶РґРµРЅРёРµ РР-РјР°СЃС‚РµСЂР°
-    tts_provider: str | None = Field(default=None, max_length=32) 
-    tts_enabled: bool | None = None
-    tts_voice: str | None = Field(default=None, max_length=32)  # РіРѕР»РѕСЃ РѕР·РІСѓС‡РєРё РјР°СЃС‚РµСЂР° (TTS)
-    leveling: Literal["xp", "milestone"] | None = None  # СЂРѕСЃС‚ СѓСЂРѕРІРЅРµР№: РїРѕ РѕРїС‹С‚Сѓ РёР»Рё РїРѕ РІРµС…Р°Рј
-    # СЃР»СѓС‡Р°Р№РЅРѕСЃС‚Рё: auto вЂ” СЃРµСЂРІРµСЂ СЃР°Рј РїСЂРѕРІРµСЂСЏРµС‚ РёС… РїРѕ РёРіСЂРѕРІРѕРјСѓ РІСЂРµРјРµРЅРё, manual вЂ” С‚РѕР»СЊРєРѕ РєРѕРіРґР° Р±СЂРѕСЃР°РµС‚ РјР°СЃС‚РµСЂ
+    audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
+    tts_provider: str | None = Field(default=None, max_length=32)
+    tts_enabled: bool | None = None  # озвучка реплик мастера (TTS)
+    tts_voice: str | None = Field(default=None, max_length=32)  # голос озвучки мастера (TTS)
+    leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
+    # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None
     brief: BriefIn | None = None
 
@@ -345,7 +345,7 @@ class CampaignOut(BaseModel):
     party_size_recommended: int
     public_intro: str
     settings: dict
-    brief: dict | None = None  # Р°РЅРєРµС‚Р°: С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»СЊС†Сѓ Рё РјР°СЃС‚РµСЂСѓ, РІ РїРѕР¶РµР»Р°РЅРёСЏС… РјРѕРіСѓС‚ Р±С‹С‚СЊ СЃРїРѕР№Р»РµСЂС‹
+    brief: dict | None = None  # анкета: только владельцу и мастеру, в пожеланиях могут быть спойлеры
     seats: list[SeatOut]
     created_at: datetime
 
@@ -389,5 +389,3 @@ class SecretsIn(BaseModel):
 
 
 TokenOut.model_rebuild()
-
-

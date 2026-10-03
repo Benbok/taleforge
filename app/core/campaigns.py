@@ -1,4 +1,4 @@
-﻿"""РљР°РјРїР°РЅРёРё, РјРµСЃС‚Р° Рё РїСЂРёРіР»Р°С€РµРЅРёСЏ: РїСЂР°РІРёР»Р° РґРѕСЃС‚СѓРїР° РёР· РўР—, СЂР°Р·РґРµР» 2, Рё СЃРѕСЃС‚Р°РІ РёР· СЂР°Р·РґРµР»Р° 5.2."""
+"""Кампании, места и приглашения: правила доступа из ТЗ, раздел 2, и состав из раздела 5.2."""
 
 from __future__ import annotations
 
@@ -27,14 +27,13 @@ from app.db.models import (
 MAX_PLAYERS = 6
 DIFFICULTIES = ("easy", "normal", "hard", "deadly")
 PROVIDERS = ("claude", "gemini", "local")
-DEFAULT_PARTY = {"min": 3, "recommended": 4, "max": 6}  # Р±СЋРґР¶РµС‚ РІСЃС‚СЂРµС‡ SRD СЂР°СЃСЃС‡РёС‚Р°РЅ РЅР° РѕС‚СЂСЏРґ РёР· 4
+DEFAULT_PARTY = {"min": 3, "recommended": 4, "max": 6}  # бюджет встреч SRD рассчитан на отряд из 4
 DEFAULT_SETTINGS = {
-    "turn_timeout_sec": 300,  # С…РѕРґ РґРѕ 5 РјРёРЅСѓС‚, РёРіСЂР° РІР¶РёРІСѓСЋ
-    "collect_window_sec": 60,  # РѕРєРЅРѕ СЃР±РѕСЂР° СЂРµРїР»РёРє РІ СЃРІРѕР±РѕРґРЅРѕРј СЂРµР¶РёРјРµ
-    "spend_limit_usd": None,  # Р»РёРјРёС‚ СЂР°СЃС…РѕРґРѕРІ Р·Р°РґР°С‘С‚ Admin, РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РЅРµС‚
-    "tts_provider": "gemini",
-    "tts_enabled": True,  # РѕР·РІСѓС‡РєР° СЂРµРїР»РёРє РјР°СЃС‚РµСЂР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РІРєР»СЋС‡РµРЅР°
-    "tts_voice": "Fenrir",  # РіРѕР»РѕСЃ РѕР·РІСѓС‡РєРё РјР°СЃС‚РµСЂР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (Fenrir, Puck, Charon, Kore, Aoede)
+    "turn_timeout_sec": 300,  # ход до 5 минут, игра вживую
+    "collect_window_sec": 60,  # окно сбора реплик в свободном режиме
+    "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
+    "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
+    "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
 }
 
 
@@ -52,7 +51,7 @@ class Conflict(Exception):
 
 @dataclass(frozen=True)
 class Viewer:
-    """РљС‚Рѕ СЃРјРѕС‚СЂРёС‚ РЅР° РєР°РјРїР°РЅРёСЋ: РІР»Р°РґРµР»РµС† Рё/РёР»Рё Р·Р°РЅСЏС‚РѕРµ РёРј РјРµСЃС‚Рѕ."""
+    """Кто смотрит на кампанию: владелец и/или занятое им место."""
 
     user: User
     campaign: Campaign
@@ -72,8 +71,8 @@ class Viewer:
 
     @property
     def can_review(self) -> bool:
-        """Р“РµСЂРѕРµРІ РїСЂРѕРІРµСЂСЏРµС‚ РјР°СЃС‚РµСЂ. Р•СЃР»Рё РјР°СЃС‚РµСЂ вЂ” РР, РІР»Р°РґРµР»РµС† С‚РѕР¶Рµ РјРѕР¶РµС‚ РїСЂРѕРІРµСЂРёС‚СЊ РІСЂСѓС‡РЅСѓСЋ: РІРґСЂСѓРі РјРѕРґРµР»СЊ
-        РЅРµРґРѕСЃС‚СѓРїРЅР° РёР»Рё РЅРµ СЃРїСЂР°РІРёР»Р°СЃСЊ."""
+        """Героев проверяет мастер. Если мастер — ИИ, владелец тоже может проверить вручную: вдруг модель
+        недоступна или не справилась."""
         return self.is_master or (self.is_owner and master_seat(self.campaign).occupant_type == "agent")
 
     @property
@@ -90,8 +89,8 @@ def is_admin(user: User) -> bool:
 
 
 def party_size(pack: ContentPack | None, difficulty: str) -> dict:
-    """Р РµРєРѕРјРµРЅРґР°С†РёСЏ СЂР°Р·РјРµСЂР° РѕС‚СЂСЏРґР°: РёР· pack.yaml (party_size), СЃРѕ СЃРґРІРёРіРѕРј РїРѕ СЃР»РѕР¶РЅРѕСЃС‚Рё, РµСЃР»Рё РїР°РєРµС‚ РµРіРѕ Р·Р°РґР°С‘С‚
-    (difficulty_levels: [{id, party_size_delta}]). Р‘РµР· РїР°РєРµС‚Р° вЂ” 4 РёР· 3вЂ“6 РїРѕ SRD."""
+    """Рекомендация размера отряда: из pack.yaml (party_size), со сдвигом по сложности, если пакет его задаёт
+    (difficulty_levels: [{id, party_size_delta}]). Без пакета — 4 из 3–6 по SRD."""
     manifest = pack.manifest if pack is not None else {}
     base = {**DEFAULT_PARTY, **(manifest.get("party_size") or {})}
     delta = 0
@@ -113,32 +112,32 @@ def master_seat(campaign: Campaign) -> Seat:
 async def get_viewer(
     session: AsyncSession, user: User, campaign_id: str, as_seat: str | None = None, *, ai_seat: bool = False
 ) -> Viewer:
-    """Р”РѕСЃС‚СѓРї Рє РєР°РјРїР°РЅРёРё РµСЃС‚СЊ Сѓ РІР»Р°РґРµР»СЊС†Р° Рё Сѓ С‚РµС…, РєС‚Рѕ Р·Р°РЅРёРјР°РµС‚ РІ РЅРµР№ РјРµСЃС‚Рѕ. РћСЃС‚Р°Р»СЊРЅС‹Рј вЂ” В«РЅРµ РЅР°Р№РґРµРЅРѕВ».
+    """Доступ к кампании есть у владельца и у тех, кто занимает в ней место. Остальным — «не найдено».
 
-    ``as_seat`` вЂ” РјРµСЃС‚Рѕ, С‡СЊРµРіРѕ РіРµСЂРѕСЏ СЌС‚РѕС‚ РёРіСЂРѕРє РІРµРґС‘С‚ РїРѕ РёС‚РѕРіР°Рј РіРѕР»РѕСЃРѕРІР°РЅРёСЏ, РїРѕРєР° РµРіРѕ РёРіСЂРѕРє РѕС„Р»Р°Р№РЅ (СЂР°Р·РґРµР» 11).
-    ``ai_seat`` вЂ” РµС‰С‘ Рё РјРµСЃС‚Рѕ РР-РёРіСЂРѕРєР°, Р·Р° РєРѕС‚РѕСЂРѕРµ РІР»Р°РґРµР»РµС† СЃРѕР±РёСЂР°РµС‚ РіРµСЂРѕСЏ (СЌС‚Р°Рї 9); РіРѕРІРѕСЂРёС‚ Р·Р° РЅРµРіРѕ С‚РѕР»СЊРєРѕ РР."""
+    ``as_seat`` — место, чьего героя этот игрок ведёт по итогам голосования, пока его игрок офлайн (раздел 11).
+    ``ai_seat`` — ещё и место ИИ-игрока, за которое владелец собирает героя (этап 9); говорит за него только ИИ."""
     campaign = await session.get(Campaign, campaign_id)
     if campaign is None:
-        raise NotFound("РєР°РјРїР°РЅРёСЏ РЅРµ РЅР°Р№РґРµРЅР°")
+        raise NotFound("кампания не найдена")
     viewer = Viewer(user, campaign, seat_for(campaign, user.id))
     if not viewer.is_owner and viewer.seat is None:
-        raise NotFound("РєР°РјРїР°РЅРёСЏ РЅРµ РЅР°Р№РґРµРЅР°")
+        raise NotFound("кампания не найдена")
     if as_seat:
         seat = next((s for s in campaign.seats if s.id == as_seat), None)
-        # РІР»Р°РґРµР»РµС† СЃРѕР±РёСЂР°РµС‚ РіРµСЂРѕСЏ РР-РёРіСЂРѕРєСѓ Р·Р° РµРіРѕ РјРµСЃС‚Рѕ (СЌС‚Р°Рї 9)
+        # владелец собирает героя ИИ-игроку за его место (этап 9)
         builds = ai_seat and seat is not None and seat.occupant_type == "agent" and not seat.delegated_from
         if (
             seat is None
             or seat.role != "player"
             or not (seat.stand_in_user_id == user.id or builds and viewer.is_owner)
         ):
-            raise NotFound("РІС‹ РЅРµ РІРµРґС‘С‚Рµ СЌС‚РѕРіРѕ РіРµСЂРѕСЏ: РµРіРѕ РёРіСЂРѕРє РІРµСЂРЅСѓР»СЃСЏ РёР»Рё РіРѕР»РѕСЃРѕРІР°РЅРёРµ СЂРµС€РёР»Рѕ РёРЅР°С‡Рµ")
+            raise NotFound("вы не ведёте этого героя: его игрок вернулся или голосование решило иначе")
         return Viewer(user, campaign, seat)
     return viewer
 
 
 def stand_in_seats(campaign: Campaign, user_id: str) -> list[str]:
-    """РњРµСЃС‚Р°, С‡СЊРёС… РіРµСЂРѕРµРІ СЌС‚РѕС‚ РёРіСЂРѕРє СЃРµР№С‡Р°СЃ РІРµРґС‘С‚ Р·Р° РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‰РёС…."""
+    """Места, чьих героев этот игрок сейчас ведёт за отсутствующих."""
     return [s.id for s in campaign.seats if s.stand_in_user_id == user_id]
 
 
@@ -162,18 +161,18 @@ def apply_model(agent: AgentConfig, provider: str, model: str, temperature: floa
 
 
 async def apply_persona(session: AsyncSession, owner: User, agent: AgentConfig, choice: dict) -> None:
-    """РџРµСЂСЃРѕРЅР° РјР°СЃС‚РµСЂР°: СЃРІРѕСЏ РёР· РїСЂРѕС„РёР»СЏ РІР»Р°РґРµР»СЊС†Р°, РІСЃС‚СЂРѕРµРЅРЅР°СЏ РёР»Рё РЅР°СЃС‚СЂРѕР№РєРё РЅР°РїСЂСЏРјСѓСЋ; style вЂ” РґРѕРїРѕР»РЅРµРЅРёРµ СЃР»РѕРІР°РјРё.
-    Р’ РєР°РјРїР°РЅРёСЋ РїРёС€РµС‚СЃСЏ РєРѕРїРёСЏ: Рё РіРѕС‚РѕРІС‹Р№ Р°Р±Р·Р°С† СЃС‚РёР»СЏ РґР»СЏ РїСЂРѕРјРїС‚Р°, Рё СЃР°РјРё РЅР°СЃС‚СЂРѕР№РєРё РґР»СЏ РїРѕРєР°Р·Р° Рё РїСЂР°РІРєРё."""
+    """Персона мастера: своя из профиля владельца, встроенная или настройки напрямую; style — дополнение словами.
+    В кампанию пишется копия: и готовый абзац стиля для промпта, и сами настройки для показа и правки."""
     name, source, settings = None, None, None
     if choice.get("persona_id"):
         p = await session.get(MasterPersona, choice["persona_id"])
         if p is None or p.user_id != owner.id:
-            raise NotFound("РїРµСЂСЃРѕРЅР° РјР°СЃС‚РµСЂР° РЅРµ РЅР°Р№РґРµРЅР°")
+            raise NotFound("персона мастера не найдена")
         name, source, settings = p.name, "profile", dict(p.settings)
     elif choice.get("preset") or choice.get("persona_preset"):
         preset = personas.preset(choice.get("preset") or choice.get("persona_preset"))
         if preset is None:
-            raise NotFound("РІСЃС‚СЂРѕРµРЅРЅР°СЏ РїРµСЂСЃРѕРЅР° РЅРµ РЅР°Р№РґРµРЅР°")
+            raise NotFound("встроенная персона не найдена")
         name, source, settings = preset["name"], "preset", dict(preset["settings"])
     elif choice.get("settings") or choice.get("persona"):
         name, source, settings = None, "custom", dict(choice.get("settings") or choice.get("persona"))
@@ -195,7 +194,7 @@ def has_persona_choice(master: dict) -> bool:
 async def apply_master_preset(
     session: AsyncSession, agent: AgentConfig, preset: MasterPreset, owner: User | None = None
 ) -> AgentConfig:
-    """РџСЂРёРјРµРЅСЏРµС‚ РїСЂРµСЃРµС‚ РјР°СЃС‚РµСЂР° (РјРѕРґРµР»СЊ, С‚РѕРЅ, С…Р°СЂР°РєС‚РµСЂ) Рє РєРѕРЅС„РёРіСѓСЂР°С†РёРё Р°РіРµРЅС‚Р°."""
+    """Применяет пресет мастера (модель, тон, характер) к конфигурации агента."""
     if preset.model_profile_id:
         profile = await session.get(ModelProfile, preset.model_profile_id)
         if profile is not None:
@@ -268,13 +267,13 @@ async def create_campaign(
     brief: dict | None = None,
 ) -> Campaign:
     if not is_admin(owner):
-        raise AccessDenied("РєР°РјРїР°РЅРёРё СЃРѕР·РґР°С‘С‚ С‚РѕР»СЊРєРѕ Admin")
+        raise AccessDenied("кампании создаёт только Admin")
     if difficulty not in DIFFICULTIES:
-        raise Conflict(f"СЃР»РѕР¶РЅРѕСЃС‚СЊ РѕРґРЅР° РёР·: {', '.join(DIFFICULTIES)}")
+        raise Conflict(f"сложность одна из: {', '.join(DIFFICULTIES)}")
     rec = party_size(pack, difficulty)
     count = players if players is not None else rec["recommended"]
     if not 1 <= count <= MAX_PLAYERS:
-        raise Conflict(f"РёРіСЂРѕРєРѕРІ РѕС‚ 1 РґРѕ {MAX_PLAYERS}")
+        raise Conflict(f"игроков от 1 до {MAX_PLAYERS}")
 
     master_type = master.get("type")
     if master_type == "owner":
@@ -285,7 +284,7 @@ async def create_campaign(
         await session.flush()
         m = Seat(role="master", position=0, occupant_type="agent", agent_config_id=agent.id, joined_at=now())
     else:
-        raise Conflict("РјР°СЃС‚РµСЂ: {type: owner} РёР»Рё {type: agent, provider, model}")
+        raise Conflict("мастер: {type: owner} или {type: agent, provider, model}")
 
     campaign = Campaign(
         owner_id=owner.id,
@@ -302,7 +301,7 @@ async def create_campaign(
         seats=[m, *(Seat(role="player", position=i) for i in range(1, count + 1))],
     )
     if master_type != "owner" and owner_plays:
-        # РІР»Р°РґРµР»РµС†, РєРѕС‚РѕСЂС‹Р№ РЅРµ РІРµРґС‘С‚ РёРіСЂСѓ СЃР°Рј, СЃСЂР°Р·Сѓ СЃР°РґРёС‚СЃСЏ РЅР° РїРµСЂРІРѕРµ РјРµСЃС‚Рѕ РёРіСЂРѕРєР°
+        # владелец, который не ведёт игру сам, сразу садится на первое место игрока
         first = campaign.seats[1]
         first.occupant_type, first.user_id, first.joined_at = "human", owner.id, now()
     session.add(campaign)
@@ -316,7 +315,7 @@ async def create_invite(
     session: AsyncSession, viewer: Viewer, *, expires_at: datetime | None, max_uses: int | None
 ) -> Invite:
     if not viewer.can_manage_members:
-        raise AccessDenied("РїСЂРёРіР»Р°С€Р°С‚СЊ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
+        raise AccessDenied("приглашать может только владелец")
     invite = Invite(campaign_id=viewer.campaign.id, created_by=viewer.user.id, expires_at=expires_at, max_uses=max_uses)
     session.add(invite)
     await session.flush()
@@ -325,32 +324,32 @@ async def create_invite(
 
 def invite_problem(invite: Invite | None) -> str | None:
     if invite is None or invite.revoked:
-        return "РїСЂРёРіР»Р°С€РµРЅРёРµ РЅРµРґРµР№СЃС‚РІРёС‚РµР»СЊРЅРѕ"
+        return "приглашение недействительно"
     exp = as_utc(invite.expires_at)
     if exp is not None and exp <= datetime.now(UTC):
-        return "СЃСЂРѕРє РїСЂРёРіР»Р°С€РµРЅРёСЏ РёСЃС‚С‘Рє"
+        return "срок приглашения истёк"
     if invite.max_uses is not None and invite.uses >= invite.max_uses:
-        return "РїСЂРёРіР»Р°С€РµРЅРёРµ СѓР¶Рµ РёСЃРїРѕР»СЊР·РѕРІР°РЅРѕ"
+        return "приглашение уже использовано"
     return None
 
 
 async def accept_invite(session: AsyncSession, user: User, token: str) -> Seat:
-    """РЎР°Р¶Р°РµС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅР° РїРµСЂРІРѕРµ СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ РёРіСЂРѕРєР°."""
+    """Сажает пользователя на первое свободное место игрока."""
     invite = await session.get(Invite, token, with_for_update=True)
     problem = invite_problem(invite)
     if problem:
         raise Conflict(problem)
     campaign = await session.get(Campaign, invite.campaign_id)
     if campaign.status == "ended":
-        raise Conflict("РєР°РјРїР°РЅРёСЏ Р·Р°РІРµСЂС€РµРЅР°")
+        raise Conflict("кампания завершена")
     existing = seat_for(campaign, user.id)
     if existing is not None:
         if existing.role == "master":
-            raise Conflict("РјР°СЃС‚РµСЂ РЅРµ Р·Р°РЅРёРјР°РµС‚ РјРµСЃС‚Рѕ РёРіСЂРѕРєР°")
+            raise Conflict("мастер не занимает место игрока")
         return existing
     free = next((s for s in campaign.seats if s.role == "player" and s.occupant_type == "empty"), None)
     if free is None:
-        raise Conflict("СЃРІРѕР±РѕРґРЅС‹С… РјРµСЃС‚ РЅРµС‚")
+        raise Conflict("свободных мест нет")
     free.occupant_type, free.user_id, free.joined_at = "human", user.id, now()
     invite.uses += 1
     await inherit_hero(session, free, user.id)
@@ -359,14 +358,14 @@ async def accept_invite(session: AsyncSession, user: User, token: str) -> Seat:
 
 
 async def take_seat(session: AsyncSession, viewer: Viewer) -> Seat:
-    """Р’Р»Р°РґРµР»РµС† СЃР°РґРёС‚СЃСЏ РЅР° СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ РёРіСЂРѕРєР° РІ СЃРІРѕРµР№ РєР°РјРїР°РЅРёРё (Р±РµР· РїСЂРёРіР»Р°С€РµРЅРёСЏ)."""
+    """Владелец садится на свободное место игрока в своей кампании (без приглашения)."""
     if not viewer.is_owner:
-        raise AccessDenied("Р·Р°РЅСЏС‚СЊ РјРµСЃС‚Рѕ Р±РµР· РїСЂРёРіР»Р°С€РµРЅРёСЏ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
+        raise AccessDenied("занять место без приглашения может только владелец")
     if viewer.seat is not None:
-        raise Conflict("РІС‹ СѓР¶Рµ РЅР° РјРµСЃС‚Рµ " + ("РјР°СЃС‚РµСЂР°" if viewer.is_master else "РёРіСЂРѕРєР°"))
+        raise Conflict("вы уже на месте " + ("мастера" if viewer.is_master else "игрока"))
     free = next((s for s in viewer.campaign.seats if s.role == "player" and s.occupant_type == "empty"), None)
     if free is None:
-        raise Conflict("СЃРІРѕР±РѕРґРЅС‹С… РјРµСЃС‚ РЅРµС‚")
+        raise Conflict("свободных мест нет")
     free.occupant_type, free.user_id, free.joined_at = "human", viewer.user.id, now()
     await inherit_hero(session, free, viewer.user.id)
     await session.flush()
@@ -374,7 +373,7 @@ async def take_seat(session: AsyncSession, viewer: Viewer) -> Seat:
 
 
 async def inherit_hero(session: AsyncSession, seat: Seat, user_id: str) -> None:
-    """Р–РёРІРѕР№ РёРіСЂРѕРє СЃРµР» РЅР° РјРµСЃС‚Рѕ, РіРґРµ РѕСЃС‚Р°Р»СЃСЏ РіРµСЂРѕР№ (РР-РёРіСЂРѕРєР° РёР»Рё РёСЃРєР»СЋС‡С‘РЅРЅРѕРіРѕ): РіРµСЂРѕР№ С‚РµРїРµСЂСЊ РµРіРѕ."""
+    """Живой игрок сел на место, где остался герой (ИИ-игрока или исключённого): герой теперь его."""
     from app.db.models import Character
 
     q = select(Character).where(Character.seat_id == seat.id, Character.status.in_(("approved", "active")))
@@ -383,14 +382,14 @@ async def inherit_hero(session: AsyncSession, seat: Seat, user_id: str) -> None:
 
 
 async def seat_agent(session: AsyncSession, viewer: Viewer, seat_id: str, model_profile_id: str | None) -> Seat:
-    """РР-РёРіСЂРѕРє РЅР° РїСѓСЃС‚РѕРј РјРµСЃС‚Рµ (СЂР°Р·РґРµР» 5.2): РјРѕРґРµР»СЊ РёР· РїСЂРѕС„РёР»СЏ Р°РґРјРёРЅРєРё РёР»Рё РїСЂРѕС„РёР»СЊ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ."""
+    """ИИ-игрок на пустом месте (раздел 5.2): модель из профиля админки или профиль по умолчанию."""
     if not viewer.is_owner:
-        raise AccessDenied("СЃР°Р¶Р°С‚СЊ РР-РёРіСЂРѕРєРѕРІ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
+        raise AccessDenied("сажать ИИ-игроков может только владелец")
     seat = next((s for s in viewer.campaign.seats if s.id == seat_id), None)
     if seat is None or seat.role != "player":
-        raise NotFound("РјРµСЃС‚Рѕ РёРіСЂРѕРєР° РЅРµ РЅР°Р№РґРµРЅРѕ")
+        raise NotFound("место игрока не найдено")
     if seat.occupant_type != "empty":
-        raise Conflict("РјРµСЃС‚Рѕ Р·Р°РЅСЏС‚Рѕ: СЃРЅР°С‡Р°Р»Р° РѕСЃРІРѕР±РѕРґРёС‚Рµ РµРіРѕ")
+        raise Conflict("место занято: сначала освободите его")
     agent = await agent_for_master(session, {"model_profile_id": model_profile_id} if model_profile_id else {})
     agent.settings = {**(agent.settings or {}), "role": "player"}
     session.add(agent)
@@ -401,14 +400,14 @@ async def seat_agent(session: AsyncSession, viewer: Viewer, seat_id: str, model_
 
 
 async def free_seat(session: AsyncSession, viewer: Viewer, seat_id: str) -> Seat:
-    """РСЃРєР»СЋС‡РµРЅРёРµ РёРіСЂРѕРєР°: РјРµСЃС‚Рѕ РѕСЃРІРѕР±РѕР¶РґР°РµС‚СЃСЏ, РїРµСЂСЃРѕРЅР°Р¶ РѕСЃС‚Р°С‘С‚СЃСЏ Р·Р° РјРµСЃС‚РѕРј (СЌС‚Р°Рї 3)."""
+    """Исключение игрока: место освобождается, персонаж остаётся за местом (этап 3)."""
     if not viewer.can_manage_members:
-        raise AccessDenied("РёСЃРєР»СЋС‡Р°С‚СЊ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†")
+        raise AccessDenied("исключать может только владелец")
     seat = next((s for s in viewer.campaign.seats if s.id == seat_id), None)
     if seat is None:
-        raise NotFound("РјРµСЃС‚Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ")
+        raise NotFound("место не найдено")
     if seat.role == "master":
-        raise Conflict("РјРµСЃС‚Рѕ РјР°СЃС‚РµСЂР° С‚Р°Рє РЅРµ РѕСЃРІРѕР±РѕР¶РґР°РµС‚СЃСЏ")
+        raise Conflict("место мастера так не освобождается")
     seat.occupant_type, seat.user_id, seat.agent_config_id, seat.joined_at = "empty", None, None, None
     seat.delegated_from = seat.stand_in_user_id = None
     await session.flush()
@@ -417,8 +416,7 @@ async def free_seat(session: AsyncSession, viewer: Viewer, seat_id: str) -> Seat
 
 async def leave_campaign(session: AsyncSession, viewer: Viewer) -> None:
     if viewer.seat is None or viewer.seat.role != "player":
-        raise Conflict("РїРѕРєРёРЅСѓС‚СЊ РєР°РјРїР°РЅРёСЋ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РёРіСЂРѕРє")
+        raise Conflict("покинуть кампанию может только игрок")
     s = viewer.seat
     s.occupant_type, s.user_id, s.joined_at = "empty", None, None
     await session.flush()
-

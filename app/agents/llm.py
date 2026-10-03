@@ -226,26 +226,37 @@ class ScriptedLLM:
         if _is_voice_line(messages) and not self._next_is_voice():
             self.voice_requests.append(req)
             return LLMReply(text="Осторожнее на выступе!", model=model, tokens_in=10, tokens_out=5)
+        if _is_emotion(messages):
+            return LLMReply(text='{"anger": 0.0, "joy": 0.0, "suspicion": 0.0, "boredom": 0.0}', model=model, tokens_in=10, tokens_out=5)
         self.requests.append(req)
         if not self.replies:
             raise LLMError("ScriptedLLM: ответы закончились")
         r = self.replies.pop(0)
         if callable(r):
             r = r(messages, tools)
+        text_val = r.text if isinstance(r, LLMReply) else r.get("text", "")
+        if stream_callback and text_val:
+            import inspect
+            if inspect.iscoroutinefunction(stream_callback):
+                await stream_callback(text_val)
+            else:
+                res = stream_callback(text_val)
+                if inspect.isawaitable(res):
+                    await res
         if isinstance(r, LLMReply):
             return r
         calls = [
             ToolCall(f"call_{len(self.requests)}_{i}", name, args, json.dumps(args))
             for i, (name, args) in enumerate(r.get("tool_calls") or [])
         ]
-        message: dict[str, Any] = {"role": "assistant", "content": r.get("text", "")}
+        message: dict[str, Any] = {"role": "assistant", "content": text_val}
         if calls:
             message["tool_calls"] = [
                 {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.raw_arguments}}
                 for c in calls
             ]
         return LLMReply(
-            text=r.get("text", ""), tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5
+            text=text_val, tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5
         )
 
     def _next_is(self, tool: str) -> bool:
@@ -273,5 +284,13 @@ def _is_voice_line(messages: list[dict[str, Any]]) -> bool:
     for m in messages:
         c = m.get("content")
         if isinstance(c, str) and ("эмоциональн" in c or ("реплик" in c and "мастера" in c)):
+            return True
+    return False
+
+
+def _is_emotion(messages: list[dict[str, Any]]) -> bool:
+    for m in messages:
+        c = m.get("content")
+        if isinstance(c, str) and "анализатор эмоций" in c:
             return True
     return False
