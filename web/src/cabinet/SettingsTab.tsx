@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import CustomSelect from "../components/CustomSelect";
@@ -281,6 +281,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
                     ariaLabel="Голос мастера"
                   />
                 </Field>
+                  <TtsTestButton provider={st.tts_provider || "gemini"} voice={st.tts_voice || "Fenrir"} />
               </div>
             </>
           )}
@@ -338,6 +339,68 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           УДАЛИТЬ КАМПАНИЮ НАВСЕГДА
         </ActionButton>
       </section>
+    </div>
+  );
+}
+
+
+function TtsTestButton({ provider, voice }: { provider: string; voice: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const testAudio = async () => {
+    if (playing && audioRef.current) {
+      audioRef.current.pause();
+      return;
+    }
+    
+    setPlaying(true);
+    setError(null);
+    try {
+      const { getToken } = await import('../lib/api');
+      const res = await fetch(`/api/voice/tts-test?provider=${provider}&voice=${voice}`, {
+        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Ошибка сети');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setPlaying(false);
+      audio.onerror = () => {
+        setPlaying(false);
+        setError('Не удалось воспроизвести аудио');
+      };
+      audio.onpause = () => setPlaying(false);
+      await audio.play();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setPlaying(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={testAudio}
+        className="flex items-center justify-center gap-2 rounded border border-line bg-surface text-ink px-4 py-2 text-sm font-semibold shadow-sm hover:bg-line/20 transition-colors w-max"
+      >
+        {playing ? "⏹ Остановить проверку" : "▶ Проверить озвучку"}
+      </button>
+      {error && <p className="text-warn text-xs">{error}</p>}
     </div>
   );
 }

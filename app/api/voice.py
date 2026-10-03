@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from sqlalchemy import select
 
 from app.agents.stt import MAX_AUDIO_BYTES, SpeechToText
+from app.agents.tts import TTSManager
 from app.api.deps import SessionDep, UserDep
 from app.core import voice
 from app.core.campaigns import AccessDenied, NotFound, get_viewer, is_admin, stand_in_seats
@@ -73,3 +74,20 @@ async def admin_voice_check(request: Request, user: UserDep) -> dict:
     if not is_admin(user):
         raise AccessDenied("настройка голосового ввода доступна Admin и Super Admin")
     return await stt(request).check()
+
+
+@router.get("/voice/tts-test")
+async def tts_test(request: Request, user: UserDep, provider: str = "gemini", voice: str = "Fenrir") -> Response:
+    """Генерация тестовой аудиозаписи для проверки настроек TTS."""
+    tts_manager: TTSManager = request.app.state.tts
+    engine = tts_manager.get_engine(provider)
+    if not engine.enabled:
+        raise HTTPException(400, "Провайдер выключен или не настроен в .env")
+    
+    text_ru = f"Приветствую! Это проверка синтеза речи. Выбранный провайдер: {provider}. Надеюсь, звучит отлично!"
+    res = await engine.synthesize(text_ru, voice_name=voice)
+    if not res:
+        raise HTTPException(500, "Ошибка синтеза речи")
+    
+    audio_bytes, mime, dur = res
+    return Response(content=audio_bytes, media_type=mime)
