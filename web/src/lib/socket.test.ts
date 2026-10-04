@@ -121,4 +121,17 @@ describe("GameSocket", () => {
     a.recv("session.paused");
     expect(a.sent.at(-1)).toEqual({ type: "campaign.join", payload: { campaign_id: "c1", last_seq: 3 } });
   });
+
+  it("после остановки не передаёт события, которые закрытое соединение ещё дослало", () => {
+    const { sock, sockets, events } = setup();
+    sock.start();
+    const a = sockets[0];
+    a.open();
+    a.recv("auth.ok");
+    a.recv("state.snapshot", snapshot(1), 1);
+    const before = events.length;
+    sock.stop();
+    a.recv("message.new", { id: "m9", seq: 2, kind: "narration", data: { voice: { id: "v1" } } }, 2);
+    expect(events.length).toBe(before);
+  });
 });

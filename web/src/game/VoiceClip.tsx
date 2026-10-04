@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { VoiceData } from "../lib/types";
 import { useGame } from "../stores/game";
 import { sound } from "./sound";
-import { clock, voiceUrl } from "./voice";
+import { claimAutoplay, clock, voiceUrl } from "./voice";
 
 let activeAudio: HTMLAudioElement | null = null;
 
@@ -21,14 +21,16 @@ export default function VoiceClip({ clip, autoPlay }: { clip: VoiceData; autoPla
     ducking.current = on;
     sound.duck(on);
   };
-  useEffect(
-    () => () => {
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       audio.current?.pause();
       if (ducking.current) sound.duck(false);
       if (activeAudio === audio.current) activeAudio = null;
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function playAudio() {
     if (!campaignId) return;
@@ -36,7 +38,9 @@ export default function VoiceClip({ clip, autoPlay }: { clip: VoiceData; autoPla
     try {
       if (!audio.current) {
         setState("loading");
-        const a = new Audio(await voiceUrl(campaignId, clip.id));
+        const url = await voiceUrl(campaignId, clip.id);
+        if (!alive.current) return; // пока грузилась запись, плеер убрали с экрана: играть некому
+        const a = new Audio(url);
         a.ontimeupdate = () => setPos(a.currentTime);
         a.onpause = () => {
           setState("idle");
@@ -67,12 +71,8 @@ export default function VoiceClip({ clip, autoPlay }: { clip: VoiceData; autoPla
     }
   }
 
-  const autoPlayed = useRef(false);
   useEffect(() => {
-    if (autoPlay && campaignId && !autoPlayed.current) {
-      autoPlayed.current = true;
-      void playAudio();
-    }
+    if (autoPlay && campaignId && claimAutoplay(clip.id)) void playAudio();
   }, [autoPlay, campaignId]);
 
   async function toggle() {

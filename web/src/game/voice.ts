@@ -55,6 +55,15 @@ export async function uploadVoice(campaignId: string, blob: Blob): Promise<strin
 }
 
 const urls = new Map<string, Promise<string>>();
+const autoplayed = new Set<string>();
+
+/** Голос сам играет один раз за жизнь вкладки: повторный показ сообщения (смена вкладки, возврат в кампанию)
+ *  его не перезапускает. true — эту запись ещё не включали, и теперь она отмечена. */
+export function claimAutoplay(voiceId: string): boolean {
+  if (autoplayed.has(voiceId)) return false;
+  autoplayed.add(voiceId);
+  return true;
+}
 
 /** Адрес записи для плеера: запрос с токеном, поэтому через blob, один раз на запись. */
 export function voiceUrl(campaignId: string, voiceId: string): Promise<string> {
