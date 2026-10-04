@@ -94,7 +94,7 @@ async def _snapshot(
             "reaction": master.pending_reaction(c.id, seat_id) if master is not None and seat_id else None,
             "summary": memory.public_summary(last.content) if last is not None else None,
             "heroes": await _heroes(session, c.id),
-            "scene": await _scene(session, c),
+            "scene": await _scene(session, c, viewer),
             "audio": await _audio(session, c),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
             "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
@@ -126,27 +126,25 @@ async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
     return [public_view(ch) for ch in (await session.scalars(q)).all()]
 
 
-async def _scene(session: AsyncSession, c: Campaign) -> dict:
+async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     """Сцена для снимка — то же, что ``scene.updated`` (app/tools/runtime.scene_public), но без загрузки
-    каталога: только чтение, чтобы вход в кампанию ничего не блокировал."""
+    каталога: только чтение, чтобы вход в кампанию ничего не блокировал. Герой разделившегося отряда видит своё
+    место."""
     from sqlalchemy import select
 
-    from app.core.world import get_scene
-    from app.tools.runtime import public_entity
+    from app.core.inspect import viewer_hero
+    from app.core.world import get_scene, party_groups, viewer_places
+    from app.tools.runtime import party_public, public_entity
 
     sc = await get_scene(session, c.id)
     ents = (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()
-    loc = next((e for e in ents if e.id == sc.location_id), None)
-    out = [
-        public_entity(e)
-        for e in ents
-        if e.kind != "location" and (sc.location_id is None or e.location_id == sc.location_id)
-    ]
-    chars = {}
-    if sc.turn_order:
-        q = select(Character).where(Character.campaign_id == c.id)
-        chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
+    chars = {ch.id: ch for ch in (await session.scalars(select(Character).where(Character.campaign_id == c.id)))}
+    here, places = viewer_places(chars.values(), sc, await viewer_hero(session, viewer))
+    loc = next((e for e in ents if e.id == here), None)
+    out = [public_entity(e) for e in ents if e.kind != "location" and (not places or e.location_id in places)]
+    split = party_public(party_groups(chars.values(), sc), {e.id: e for e in ents}, here if len(places) == 1 else None)
     return {
+        **({"party": split} if split else {}),
         "mode": sc.mode,
         "round": sc.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,

@@ -45,8 +45,17 @@ def say(ws, text, kind="auto"):
 
 
 def add_turn(settings, cid, upto, status):
+    """Ход мастера, взявший все ещё не взятые реплики до ``upto``."""
+    from sqlalchemy import select
+
     async def go(s):
-        s.add(MasterTurn(campaign_id=cid, upto_seq=upto, status=status, trace={"from_seq": upto}))
+        t = MasterTurn(campaign_id=cid, upto_seq=upto, status=status, trace={"from_seq": upto})
+        s.add(t)
+        await s.flush()
+        q = select(Message).where(Message.campaign_id == cid, Message.seq <= upto, Message.turn_id.is_(None))
+        for m in await s.scalars(q):
+            if m.kind in ("action", "speech", "whisper"):
+                m.turn_id = t.id
         await s.commit()
 
     run(settings, go)
