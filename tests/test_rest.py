@@ -241,9 +241,13 @@ def test_ballots_over_socket(game_client, admin_g, settings):
         upd = next_of(w2, "rest.vote")["payload"]
         assert next(h for h in upd["heroes"] if h["id"] == hero["id"])["choice"] == "sleep"
         w2.send_json({"type": "rest.ballot", "payload": {"vote_id": vid, "character_id": other, "choice": "sleep"}})
-        assert next_of(w1, "rest.ended")["payload"]["vote_id"] == vid
-        for _ in range(10):
-            m = next_of(w1, "message.new")["payload"]
-            if "отдых" in m["content"].lower():
+        seen, said = False, ""
+        for _ in range(30):  # итог в чате приходит раньше, чем карточка голосования закрывается
+            e = w1.receive_json()
+            if e["type"] == "message.new" and "отдых" in e["payload"]["content"].lower():
+                said = e["payload"]["content"]
+            seen = seen or (e["type"] == "rest.ended" and e["payload"]["vote_id"] == vid)
+            if seen and said:
                 break
+        m = {"content": said}
         assert "позади" in m["content"], m
