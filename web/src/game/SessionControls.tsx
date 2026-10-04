@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import { api } from "../lib/api";
 import { toast } from "../stores/toasts";
@@ -8,6 +9,7 @@ import { useGame } from "../stores/game";
 export default function SessionControls({ campaignId }: { campaignId: string }) {
   const actions = useGame((s) => s.actions);
   const status = useGame((s) => s.snapshot?.campaign.status);
+  const notReady = useGame((s) => s.blocked["session.start"]);
   const has = (a: string) => actions.includes(a);
   const session = (action: "start" | "pause" | "end") =>
     api(`/api/campaigns/${campaignId}/session/${action}`, { method: "POST" });
@@ -24,6 +26,14 @@ export default function SessionControls({ campaignId }: { campaignId: string }) 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {notReady && (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-warn" role="status">
+          {notReady}
+          <Link to={`/c/${campaignId}/manage?tab=plot`} className="btn text-xs">
+            Открыть «Сюжет»
+          </Link>
+        </p>
+      )}
       {has("session.start") && (
         <ActionButton primary run={() => session("start")} done={status === "paused" ? "Сессия продолжается" : "Сессия началась"}>
           {status === "paused" ? "Продолжить сессию" : "Начать сессию"}

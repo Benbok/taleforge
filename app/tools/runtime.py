@@ -27,10 +27,20 @@ from app.tools.registry import ToolContext
 
 
 async def open_context(
-    session: AsyncSession, campaign: Campaign, dice: Dice, *, turn_id: str | None, seat_id: str | None
+    session: AsyncSession,
+    campaign: Campaign,
+    dice: Dice,
+    *,
+    turn_id: str | None,
+    seat_id: str | None,
+    focus: str | None = None,
 ) -> ToolContext:
+    """Контекст хода. ``focus`` — место группы разделившегося отряда, ради которой идёт ход."""
     catalog = await campaign_catalog(session, campaign)
     world = await load_world(session, campaign, catalog)
+    if focus is not None:
+        world.focus = focus
+        world.crew = {c.id for c in world.groups().get(focus, [])}
     game = await active_session(session, campaign.id)
     return ToolContext(
         session=session,
@@ -104,11 +114,14 @@ def public_entity(e: Entity) -> dict[str, Any]:
     return item
 
 
-def scene_public(world: World) -> dict[str, Any]:
-    """Сцена, как её видят игроки: имена, зоны и примерное состояние, без чисел существ (раздел 10)."""
-    loc = world.entities.get(world.scene.location_id or "")
-    ents = [public_entity(e) for e in world.in_scene_entities()]
+def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
+    """Сцена, как её видят игроки: имена, зоны и примерное состояние, без чисел существ (раздел 10). ``place`` —
+    место группы разделившегося отряда: её герои видят только своё окружение."""
+    loc = world.entities.get(place or world.home() or "")
+    ents = [public_entity(e) for e in world.in_scene_entities(place)]
+    split = party_public(world.groups(), world.entities, place)
     return {
+        **({"party": split} if split else {}),
         "mode": world.scene.mode,
         "round": world.scene.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,
@@ -117,6 +130,39 @@ def scene_public(world: World) -> dict[str, Any]:
         "order": combat.public_order(world.scene.turn_order, world.characters, world.entities),
         "turn": combat.public_turn(world),
     }
+
+
+def party_public(groups: dict, entities: dict, place: str | None) -> list[dict[str, Any]] | None:
+    """Где кто из разделившегося отряда: для плашки «Отряд разделён». ``here`` — место зрителя."""
+    if len(groups) <= 1:
+        return None
+    return [
+        {
+            "place": entities[p].name if p in entities else None,
+            "names": [h.name for h in heroes],
+            "here": place is not None and p == place,
+        }
+        for p, heroes in groups.items()
+    ]
+
+
+def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
+    """Кому какую сцену отправить. Отряд вместе — одна сцена всем. Разделился — каждой группе своё место, а мастеру
+    и местам без героя на этом месте — все места сразу."""
+    groups = world.groups()
+    if len(groups) <= 1:
+        return [(None, scene_public(world))]
+    out: list[tuple[list[str] | None, dict[str, Any]]] = []
+    placed: set[str] = set()
+    for place, heroes in groups.items():
+        seats = [h.seat_id for h in heroes if h.seat_id]
+        placed.update(seats)
+        if seats:
+            out.append((seats, scene_public(world, place)))
+    rest = [s.id for s in world.campaign.seats if s.id not in placed]
+    if rest:
+        out.insert(0, (rest, scene_public(world)))
+    return out
 
 
 async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names: dict[str, str] | None = None):
@@ -139,7 +185,8 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
             level = (ev.payload or {}).get("level")
             info = {"entity_id": ev.target_id, "name": en.name if en else None, "level": level}
             await bus.publish(cid, envelope("knowledge.revealed", cid, info), [ch.seat_id])
-    await bus.publish(cid, envelope("scene.updated", cid, scene_public(w)), None)
+    for seats, view in scene_views(w):
+        await bus.publish(cid, envelope("scene.updated", cid, view), seats)
     for m in messages:
         await publish_message(bus, m, names)
     if "audio" in ctx.signals:

@@ -111,20 +111,22 @@ def autolink(text: str, names: dict[str, str]) -> str:
 async def linkable(session: AsyncSession, campaign_id: str) -> dict[str, str]:
     """Кого можно размечать: герои отряда, текущее место и его сущности, всё, о чём знает хоть один герой."""
     names: dict[str, str] = {}
-    heroes = await session.scalars(
-        select(Character).where(Character.campaign_id == campaign_id, Character.status.in_(LINKABLE_HEROES))
-    )
-    for ch in heroes.all():
+    q = select(Character).where(Character.campaign_id == campaign_id, Character.status.in_(LINKABLE_HEROES))
+    heroes = (await session.scalars(q)).all()
+    for ch in heroes:
         names[ch.id] = ch.name
     scene = await session.get(Scene, campaign_id)
-    loc = scene.location_id if scene else None
+    # места, где стоят герои: разделившийся отряд стоит в нескольких
+    spots = {ch.location_id or (scene.location_id if scene else None) for ch in heroes} - {None}
+    if scene is not None and scene.location_id:
+        spots.add(scene.location_id)
     known = select(Knowledge.entity_id).join(Character, Character.id == Knowledge.character_id)
     known = known.where(Character.campaign_id == campaign_id)
     q = select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind != "object")
     rows = (await session.scalars(q)).all()
     known_ids = set((await session.scalars(known)).all())
     for e in rows:
-        here = loc is not None and (e.id == loc or e.location_id == loc)
+        here = e.id in spots or e.location_id in spots
         if (here or e.id in known_ids) and not (e.state or {}).get("fled"):
             names[e.id] = e.name
     return names

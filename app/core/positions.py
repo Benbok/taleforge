@@ -87,12 +87,14 @@ def point_distance(p: Pos, center: Pos) -> float:
     return math.hypot(ax - bx, ay - by)
 
 
-def active_areas(world) -> list:
+def active_areas(world, place: str | None = None) -> list:
+    """Действующие области в местах, где стоят герои (или в одном месте ``place``)."""
     now = world.scene.game_time
+    places = [place] if place else world.scene_places()
     out = []
     for e in world.entities.values():
         area = (e.state or {}).get("area")
-        if not area or e.location_id != world.scene.location_id:
+        if not area or e.location_id not in places:
             continue
         if area.get("expires_at") is not None and now >= int(area["expires_at"]):
             continue
@@ -105,6 +107,8 @@ def area_center(e) -> Pos:
 
 
 def inside(world, area_entity, actor_id: str) -> bool:
+    if world.actor_place(actor_id) != area_entity.location_id:
+        return False  # область в другом месте: разделившийся отряд её не касается
     r = int(((area_entity.state or {}).get("area") or {}).get("radius_ft", 10))
     return point_distance(pos_of(world, actor_id), area_center(area_entity)) <= r
 

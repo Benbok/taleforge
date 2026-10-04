@@ -45,17 +45,9 @@ class CampaignCard(BaseModel):
     is_owner: bool
     hero: dict[str, Any] | None = None
     party: list[PartyMember]
-    recap: str | None = None
+    recap: str | None = None  # «Ранее в кампании…» целиком: длинный текст клиент сворачивает сам
     last_session_at: datetime | None = None
     created_at: datetime
-
-
-def _first_line(text: str | None) -> str | None:
-    text = (text or "").strip()
-    if not text:
-        return None
-    line = text.split("\n", 1)[0]
-    return line if len(line) <= 240 else line[:239].rstrip() + "…"
 
 
 @router.get("/theme")
@@ -137,7 +129,7 @@ async def _card(session, c: Campaign, user, online: set[str]) -> CampaignCard:
         if hero
         else None,
         party=party,
-        recap=_first_line((last.content or {}).get("recap")) if last else None,
+        recap=((last.content or {}).get("recap") or "").strip() or None if last else None,
         last_session_at=(game.ended_at or game.started_at) if game else None,
         created_at=c.created_at,
     )

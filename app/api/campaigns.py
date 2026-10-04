@@ -17,9 +17,9 @@ from app.api.schemas import (
     InviteCreateIn,
     InviteOut,
     InvitePreviewOut,
+    MasterCharacterIn,
     MasterModelIn,
     MasterModelOut,
-    MasterCharacterIn,
     MasterPresetOut,
     MasterPresetSaveFromCampaignIn,
     PersonaChoiceIn,
@@ -407,9 +407,7 @@ async def save_campaign_master_preset(
 
 
 @router.post("/campaigns/{campaign_id}/apply-master-preset/{preset_id}")
-async def apply_campaign_master_preset(
-    campaign_id: str, preset_id: str, user: UserDep, session: SessionDep
-) -> dict:
+async def apply_campaign_master_preset(campaign_id: str, preset_id: str, user: UserDep, session: SessionDep) -> dict:
     """Применяет сохранённый пресет к ИИ-мастеру кампании."""
     agent = await _master_agent(session, user, campaign_id, "пресет мастера")
     preset = await session.get(MasterPreset, preset_id)

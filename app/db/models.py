@@ -251,7 +251,10 @@ class GameSession(Base):
 
 class Message(Base):
     __tablename__ = "messages"
-    __table_args__ = (UniqueConstraint("campaign_id", "seq"),)
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "seq"),
+        Index("ix_messages_campaign_turn", "campaign_id", "turn_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("m"))
     campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"))
@@ -264,6 +267,8 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text)
     intent: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
     data: Mapped[dict[str, Any] | None] = mapped_column(JSONType)  # данные карточки броска (app/core/rolls.py)
+    # ход ИИ-мастера, взявший реплику игрока; пусто — реплика ждёт мастера (design/party-split.md)
+    turn_id: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

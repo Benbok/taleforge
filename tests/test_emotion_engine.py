@@ -14,6 +14,7 @@ from app.emotion import (
 
 class MockLLM:
     """Мок LLM-клиента для предсказуемых тестов."""
+
     def __init__(self, reply_text: str = "", raise_error: bool = False):
         self.reply_text = reply_text
         self.raise_error = raise_error
@@ -27,6 +28,7 @@ class MockLLM:
 
 
 # ===================== StateManager Tests =====================
+
 
 def test_state_initial_neutral():
     mgr = InMemoryStateManager()
@@ -64,21 +66,18 @@ def test_state_decay_custom_rates():
 
 # ===================== RuleBasedAnalyzer Tests =====================
 
+
 def test_rule_analyzer_crit_fail_and_success():
     analyzer = RuleBasedAnalyzer(persona_id="sadist")
 
     # Садист радуется провалу игроков
-    ctx_fail = PlayerActionContext(
-        player_id="p1", character_name="Hero", action_text="Бегу", is_critical_failure=True
-    )
+    ctx_fail = PlayerActionContext(player_id="p1", character_name="Hero", action_text="Бегу", is_critical_failure=True)
     delta_fail = asyncio.run(analyzer.analyze(ctx_fail))
     assert delta_fail.joy == 3.0
     assert delta_fail.anger == 0.0
 
     # Садист злится на успех
-    ctx_succ = PlayerActionContext(
-        player_id="p1", character_name="Hero", action_text="Бью", is_critical_success=True
-    )
+    ctx_succ = PlayerActionContext(player_id="p1", character_name="Hero", action_text="Бью", is_critical_success=True)
     delta_succ = asyncio.run(analyzer.analyze(ctx_succ))
     assert delta_succ.anger == 2.0
     assert delta_succ.joy == 0.0
@@ -101,6 +100,7 @@ def test_rule_analyzer_tags():
 
 
 # ===================== SystemPromptInjector Tests =====================
+
 
 def test_injector_neutral():
     injector = SystemPromptInjector()
@@ -140,13 +140,12 @@ def test_injector_conflict_resolution():
 
 # ===================== LLMAnalyzer Tests =====================
 
+
 def test_llm_analyzer_success():
     mock = MockLLM('{"anger": 0.0, "joy": 3.0, "suspicion": 0.0, "boredom": 0.0}')
     analyzer = LLMAnalyzer(llm_client=mock, persona_id="tired_mentor", model="gemini-flash")
 
-    ctx = PlayerActionContext(
-        player_id="p1", character_name="Mage", action_text="Применяю изящную тактику"
-    )
+    ctx = PlayerActionContext(player_id="p1", character_name="Mage", action_text="Применяю изящную тактику")
     delta = asyncio.run(analyzer.analyze(ctx))
     assert delta.joy == 3.0
     assert len(mock.calls) == 1
@@ -189,6 +188,7 @@ def test_llm_analyzer_error_tolerance():
 
 
 # ===================== EmotionEngine Facade Tests =====================
+
 
 def test_emotion_engine_pipeline():
     mock = MockLLM('{"anger": 2.0, "joy": 0.0, "suspicion": 1.0, "boredom": 0.0}')

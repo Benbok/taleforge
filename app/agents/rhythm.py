@@ -2,7 +2,8 @@
 
 На старте сессии ИИ-мастер с каркасом ставит цель на вечер, на паузе оставляет зацепку на следующую сессию,
 а когда кампания завершена — пишет эпилог: хронику и судьбу каждого героя. В ваншоте мастер следит за числом
-ходов и ведёт к финалу (подсказка в системной инструкции, см. ``pacing_note``).
+ходов и ведёт к финалу (подсказка в системной инструкции, см. ``pacing_note``). Если отряд несколько ходов подряд
+буксует на одном препятствии, мастер получает подсказку подбросить миру новую возможность (``stall_note``).
 """
 
 from __future__ import annotations
@@ -26,6 +27,28 @@ GOAL_TOOL = "submit_session_goal"
 NEXT_TOOL = "submit_session_hook"
 EPILOGUE_TOOL = "submit_epilogue"
 ONESHOT_TURNS = 30  # ходов мастера на ваншот: после 70% мастер сводит историю к финалу
+STALL_TURNS = 3  # ходов подряд без продвижения: мастер подбрасывает отряду новую возможность
+# Вызовы, после которых история сдвинулась: новое место, находка, новый участник, событие мира, шаг сюжета
+PROGRESS_TOOLS = {
+    "move",
+    "make_current",
+    "create_location",
+    "link_locations",
+    "spawn_entity",
+    "give_item",
+    "place_item",
+    "pick_up_item",
+    "keep_found_item",
+    "learn_fact",
+    "set_scene_mode",
+    "roll_fortune",
+    "resolve_response",
+    "advance_plot",
+    "develop",
+    "plot_reveal",
+    "end_act",
+    "award_xp",
+}
 
 
 def pacing_note(length: str | None, turns: int, limit: int = ONESHOT_TURNS) -> str:
@@ -37,6 +60,58 @@ def pacing_note(length: str | None, turns: int, limit: int = ONESHOT_TURNS) -> s
     if turns >= int(limit * 0.7):
         return f"Ваншот: сыграно {turns} ходов из примерно {limit}. Пора сводить нити к финалу."
     return f"Ваншот: вся история — за одну сессию, примерно {limit} ходов; сыграно {turns}."
+
+
+def _stalled(trace: dict) -> bool | None:
+    """Буксовал ли отряд в этом ходе: попытки не удались и ничего не сдвинулось. None — ход боя, он не в счёт."""
+    if trace.get("combat"):
+        return None
+    failed = moved = False
+    for call in trace.get("calls") or []:
+        r = call.get("result") or {}
+        if not r.get("ok"):
+            continue
+        tool = call.get("tool")
+        if tool == "cancel_action" and not call.get("auto"):
+            failed = True
+        elif tool == "roll_check":
+            if (r.get("result") or {}).get("success"):
+                moved = True
+            else:
+                failed = True
+        elif tool in PROGRESS_TOOLS:
+            moved = True
+    return failed and not moved
+
+
+async def stalled_turns(s, cid: str, session_id: str | None) -> int:
+    """Сколько последних ходов сессии подряд отряд буксует: попытки проваливаются, а мир не меняется."""
+    q = (
+        select(MasterTurn.trace)
+        .where(MasterTurn.campaign_id == cid, MasterTurn.session_id == session_id, MasterTurn.status == "done")
+        .order_by(MasterTurn.finished_at.desc())
+        .limit(10)
+    )
+    n = 0
+    for trace in await s.scalars(q):
+        stuck = _stalled(trace or {})
+        if stuck is None or not stuck:
+            break
+        n += 1
+    return n
+
+
+def stall_note(turns: int, limit: int = STALL_TURNS) -> str:
+    """Подсказка фазе решения, когда отряд застрял. Не решение за игроков, а новый инструмент в мире."""
+    if turns < limit:
+        return ""
+    return (
+        f"Отряд буксует уже {turns} хода подряд: попытки не удаются, а в мире ничего не меняется. Не отвечай ещё "
+        "одним «не вышло». Если новые реплики снова упираются в то же препятствие, дай миру сдвинуться: событие "
+        "(roll_fortune), проходящий NPC, которого заинтересовала возня героев (spawn_entity), находка (place_item), "
+        "звук, обвал, смена караула, слух (learn_fact). Это не подсказка с готовым решением и не отмена уже "
+        "установленных фактов, а новая возможность, которой игроки могут воспользоваться по-своему.\n\n"
+    )
 
 
 async def turns_played(s, cid: str) -> int:

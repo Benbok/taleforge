@@ -32,10 +32,10 @@ from app.agents import character, memory, rhythm
 from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
 from app.agents.providers import explain
-from app.core import audio, bonds, combat, persona, plot
+from app.core import audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
-from app.core.chat import active_session, next_seq, system_message
+from app.core.chat import TURN_KINDS, active_session, next_seq, system_message, visible
 from app.core.linker import link_text
 from app.db.models import (
     AgentConfig,
@@ -69,7 +69,8 @@ PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
 COMBAT_LENGTH = "один короткий абзац, два-четыре предложения"  # в бою — только исход бросков, без пересказа сцены
-PLAYER_KINDS = ("action", "speech", "whisper")
+PLAYER_KINDS = TURN_KINDS  # шёпот мастеру ход не берёт: на него отвечает answer_whispers
+WHISPER_HISTORY = 12  # сообщений, видимых шепчущему, в контексте ответа на шёпот
 CATCH_UP_SYSTEM = (
     "Игрок текстовой ролевой игры ненадолго выпал из сети. Тебе дают сообщения, которые он пропустил. "
     "Перескажи ему по-русски в 2–4 предложениях, что произошло и на чём остановились, обращаясь на «вы». "
@@ -163,11 +164,15 @@ class MasterService:
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
         self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
         self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
+        self._audience: dict[str, list[str]] = {}  # кто видит идущий ход, если отряд разделён
+        self._whisper_locks: dict[str, asyncio.Lock] = {}
 
     # --- очередь ---
 
     def notify(self, campaign_id: str) -> None:
-        """Пришла реплика игрока: запустить сбор пакета или отметить, что после текущего хода нужен ещё один."""
+        """Пришла реплика игрока: запустить сбор пакета или отметить, что после текущего хода нужен ещё один.
+        Шёпоты мастеру ход не ждут: на них мастер отвечает сразу и отдельно."""
+        self._spawn(self.answer_whispers(campaign_id))
         task = self._tasks.get(campaign_id)
         if task is not None and not task.done():
             self._pending.add(campaign_id)
@@ -280,7 +285,7 @@ class MasterService:
             while True:
                 self._pending.discard(cid)
                 while True:
-                    delay = await self._collect_delay(cid)
+                    delay, place = await self._collect_delay(cid)
                     if delay is None or delay <= 0:
                         break
                     await asyncio.sleep(min(delay, 1.0))
@@ -288,8 +293,8 @@ class MasterService:
                     if cid not in self._pending:
                         break
                     continue
-                await self.run_turn(cid)
-                if cid not in self._pending:
+                # разделившийся отряд: после хода одной группы, возможно, уже готова другая
+                if await self.run_turn(cid, place) is None and cid not in self._pending:
                     break
         except asyncio.CancelledError:
             raise
@@ -298,58 +303,188 @@ class MasterService:
         finally:
             self._tasks.pop(cid, None)
 
-    async def _collect_delay(self, cid: str) -> float | None:
-        """Сколько ещё ждать реплик. None — ход не нужен: мастер не ИИ, сессии нет или новых реплик нет."""
+    async def _collect_delay(self, cid: str) -> tuple[float | None, str | None]:
+        """Сколько ещё ждать реплик и для какой группы отряда. None — ход не нужен: мастер не ИИ, сессии нет или
+        новых реплик нет. Разделившийся отряд собирает реплики по группам: каждая ждёт только своих игроков."""
         async with self.maker() as s:
             c = await s.get(Campaign, cid)
             if c is None or master_seat(c).occupant_type != "agent" or await active_session(s, cid) is None:
-                return None
-            new = await _new_player_messages(s, c)
-            if not new:
-                return None
+                return None, None
+            batches, groups = await _batches(s, c)
+            if not batches:
+                return None, None
             sc = await s.get(Scene, cid)
-            if sc is not None and sc.mode == "combat" and sc.turn_order:
-                # в бою мастер отвечает сразу на действие героя, чей ход; остальное ждёт этого ответа
-                st = sc.state or {}
-                cur = await s.get(Character, sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"])
-                if cur is not None and any(m.kind == "action" and m.seat_id == cur.seat_id for m in new):
-                    return 0
-                return None
             agents = {x.id for x in c.seats if x.occupant_type == "agent"}
-            players = {
-                ch.seat_id
-                for ch in await s.scalars(
-                    select(Character).where(Character.campaign_id == cid, Character.status.in_(("approved", "active")))
-                )
-                if ch.seat_id
-            }
-            if self.presence is not None:
-                players -= self.presence.away(cid)  # ушедшего игрока не ждём
-            players -= agents  # живые игроки закрывают окно сбора; ИИ ходит синхронно перед мастером
-            wrote = {m.seat_id for m in new}
-            if players and players <= wrote:
-                return 0
+            away = self.presence.away(cid) if self.presence is not None else set()
             window = float((c.settings or {}).get("collect_window_sec", 60))
-            waited = (datetime.now(UTC) - as_utc(new[0].created_at)).total_seconds()
-            return max(0.0, window - waited)
+            best: tuple[float | None, str | None] = (None, None)
+            for place, new in batches.items():
+                heroes = groups.get(place, []) if place is not None else [h for hs in groups.values() for h in hs]
+                if sc is not None and sc.mode == "combat" and sc.turn_order and _in_fight(sc, heroes):
+                    # в бою мастер отвечает сразу на действие героя, чей ход; остальное ждёт этого ответа
+                    st = sc.state or {}
+                    cur = await s.get(Character, sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"])
+                    if cur is not None and any(m.kind == "action" and m.seat_id == cur.seat_id for m in new):
+                        return 0, place
+                    continue
+                players = {h.seat_id for h in heroes if h.seat_id}
+                players -= away  # ушедшего игрока не ждём
+                players -= agents  # живые игроки закрывают окно сбора; ИИ ходит синхронно перед мастером
+                wrote = {m.seat_id for m in new}
+                if players and players <= wrote:
+                    return 0, place
+                waited = (datetime.now(UTC) - as_utc(new[0].created_at)).total_seconds()
+                delay = max(0.0, window - waited)
+                if best[0] is None or delay < best[0]:
+                    best = (delay, place)
+            return best
+
+    # --- шёпот мастеру ---
+
+    async def answer_whispers(self, cid: str) -> list[str]:
+        """Шёпот мастеру — вопрос вне хода. ИИ-мастер отвечает сразу и только автору: коротко, строго на вопрос,
+        без повествования для стола и без изменений мира. Ход мастера шёпоты не берёт. Возвращает id ответов."""
+        out: list[str] = []
+        async with self._whisper_locks.setdefault(cid, asyncio.Lock()):
+            while (mid := await self._next_whisper(cid)) is not None:
+                if answer := await self._answer_whisper(cid, mid):
+                    out.append(answer)
+        return out
+
+    async def _next_whisper(self, cid: str) -> str | None:
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            if c is None or master_seat(c).occupant_type != "agent":
+                return None
+            game = await active_session(s, cid)
+            if game is None:
+                return None
+            players = {x.id for x in c.seats if x.role == "player"}
+            q = (
+                select(Message)
+                .where(Message.campaign_id == cid, Message.session_id == game.id, Message.kind == "whisper")
+                .order_by(Message.seq)
+            )
+            for m in await s.scalars(q):
+                if m.seat_id in players and (m.data or {}).get("answer") == "pending":
+                    m.data = {**m.data, "answer": "processing"}  # второй вызов этот шёпот уже не возьмёт
+                    await s.commit()
+                    return m.id
+        return None
+
+    async def _answer_whisper(self, cid: str, mid: str) -> str | None:
+        calls: list[LlmCall] = []
+        await self._states(cid, [mid], "processing")
+        reply_msg = error = None
+        try:
+            async with self.maker() as s:
+                c = await s.get(Campaign, cid)
+                m = await s.get(Message, mid)
+                if c is None or m is None:
+                    return None  # игрок отменил шёпот
+                seat = master_seat(c)
+                limit = (c.settings or {}).get("spend_limit_usd")
+                if limit is not None:
+                    spent = (await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == cid))) or 0.0
+                    if spent >= float(limit):
+                        raise LLMError("лимит расходов на модели в настройках кампании исчерпан")
+                cfg = await s.get(AgentConfig, seat.agent_config_id)
+                ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+                char_by_seat = {ch.seat_id: ch for ch in ctx.world.characters.values() if ch.seat_id}
+                names = await _names(s, c)
+                rows = await s.scalars(
+                    select(Message)
+                    .where(Message.campaign_id == cid, Message.seq < m.seq, Message.kind.notin_(("ooc", "roll")))
+                    .order_by(Message.seq.desc())
+                    .limit(WHISPER_HISTORY * 4)
+                )
+                seen = [x for x in rows if visible(x, m.seat_id)][:WHISPER_HISTORY]
+                system = await self._system_prompt(s, c, cfg, ctx)
+                prompt = render(
+                    "whisper.j2",
+                    who=_who(m, char_by_seat, names),
+                    scene=ctx.world.scene_table(),
+                    convo=_render_history(list(reversed(seen)), char_by_seat, names),
+                    question=m.content,
+                )
+                known = set(ctx.world.characters) | set(ctx.world.entities)
+                seat_id, author, session_id = seat.id, m.seat_id, m.session_id
+                s.expunge(cfg)
+                await s.rollback()  # база не держится, пока думает модель
+            reply = await self._ask(
+                calls,
+                cfg,
+                cid,
+                seat_id,
+                None,
+                "whisper",
+                [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                None,
+            )
+            text = MARKUP.sub(lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or "").strip()
+            text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
+            if not text:
+                raise LLMError("модель вернула пустой ответ")
+        except LLMError as e:
+            error = explain(str(e))
+        except Exception as e:  # noqa: BLE001 — сбой ответа на шёпот не должен ронять очередь
+            log.exception("ответ на шёпот %s не удался", mid)
+            error = f"{type(e).__name__}: {e}"
+        async with self.maker() as s:
+            s.add_all(calls)
+            m = await s.get(Message, mid)
+            if m is None:
+                await s.commit()
+                return None
+            m.data = {**(m.data or {}), "answer": "failed" if error else "answered"}
+            if error:
+                reply_msg = Message(
+                    campaign_id=cid,
+                    session_id=m.session_id,
+                    seq=await next_seq(s, cid),
+                    kind="system",
+                    visible_to=[m.seat_id],
+                    content=f"Мастер не ответил на шёпот: {error}. Спросите ещё раз.",
+                )
+            else:
+                reply_msg = Message(
+                    campaign_id=cid,
+                    session_id=session_id,
+                    seq=await next_seq(s, cid),
+                    seat_id=seat_id,
+                    kind="narration",
+                    visible_to=[author, seat_id],
+                    content=await link_text(s, cid, text),
+                    data={"whisper_reply": mid},
+                )
+            s.add(reply_msg)
+            await s.commit()
+        await publish_message(self.bus, reply_msg)
+        await self._states(cid, [mid], "failed" if error else "answered")
+        return None if error else reply_msg.id
 
     # --- ход ---
 
     async def _status(self, cid: str, stage: str) -> None:
-        await self.bus.publish(cid, envelope("master.status", cid, {"stage": stage}), None)
+        # ход группы разделившегося отряда: «мастер думает» видят только её игроки
+        await self.bus.publish(cid, envelope("master.status", cid, {"stage": stage}), self._audience.get(cid))
 
     async def _states(self, cid: str, ids: list[str], state: str) -> None:
         if ids:
             await self.bus.publish(cid, envelope("message.state", cid, {"ids": ids, "state": state}), None)
 
-    async def run_turn(self, cid: str) -> str | None:
+    async def run_turn(self, cid: str, place: str | None = None) -> str | None:
+        """Ход мастера. ``place`` — группа разделившегося отряда; по умолчанию группа самой ранней реплики."""
         lock = self._locks.setdefault(cid, asyncio.Lock())
         async with lock:
             if self.players is not None:
-                await self.players.take_turns(cid)
-            return await self._run_turn(cid)
+                await self.players.take_turns(cid, place)
+            try:
+                return await self._run_turn(cid, place)
+            finally:
+                self._audience.pop(cid, None)
 
-    async def _run_turn(self, cid: str) -> str | None:
+    async def _run_turn(self, cid: str, place: str | None = None) -> str | None:
         async with self.maker() as s:
             c = await s.get(Campaign, cid)
             if c is None:
@@ -360,9 +495,14 @@ class MasterService:
             game = await active_session(s, cid)
             if game is None:
                 return None
-            new = await _new_player_messages(s, c)
-            if not new:
+            batches, groups = await _batches(s, c)
+            if not batches:
                 return None
+            if place not in batches:
+                place = min(batches, key=lambda p: batches[p][0].seq)  # группа самой ранней реплики
+            new = batches[place]
+            if place is not None:
+                self._audience[cid] = chat.audience(c, groups.get(place, []))
             limit = (c.settings or {}).get("spend_limit_usd")
             if limit is not None:
                 spent = (await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == cid))) or 0.0
@@ -377,16 +517,26 @@ class MasterService:
                         finished_at=now(),
                     )
                     s.add(turn)
+                    await s.flush()
+                    for m in new:
+                        m.turn_id = turn.id
                     await s.commit()
                     await publish_message(self.bus, msg)
                     await self._states(cid, [m.id for m in new], "failed")
                     return None
-            turn = MasterTurn(campaign_id=cid, session_id=game.id, upto_seq=new[-1].seq, trace={"from_seq": new[0].seq})
+            turn = MasterTurn(
+                campaign_id=cid,
+                session_id=game.id,
+                upto_seq=new[-1].seq,
+                trace={"from_seq": new[0].seq, **({"place": place} if place is not None else {})},
+            )
             s.add(turn)
+            await s.flush()
+            for m in new:
+                m.turn_id = turn.id  # реплика взята: её больше не отменить и не взять другим ходом
             await s.commit()
             turn_id = turn.id
             ids = [m.id for m in new]
-            human = any(not (m.data or {}).get("ai") for m in new)  # ИИ-игроки отвечают только на ответ людям
 
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
@@ -479,14 +629,18 @@ class MasterService:
         turn = await s.get(MasterTurn, turn_id)
         seat = master_seat(c)
         cfg = await s.get(AgentConfig, seat.agent_config_id)
-        ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id)
-        new = await _player_messages(s, c, int(turn.trace.get("from_seq", 0)), turn.upto_seq)
+        place = (turn.trace or {}).get("place")
+        ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=place)
+        new = await _turn_messages(s, c, turn_id)
         names = await _names(s, c)
         if not new:  # все реплики пакета отменены, пока ход начинался: модель не зовём
             turn.status, turn.finished_at = "skipped", now()
             await s.commit()
             return {"ctx": ctx, "messages": [], "names": names, "ids": [], "skipped": True}
-        history = await _history(s, c, new[0].seq if new else turn.upto_seq + 1)
+        before = {p: [h.id for h in hs] for p, hs in ctx.world.groups().items()}  # как стоял отряд до хода
+        crew = ctx.world.crew or {h for hs in before.values() for h in hs}
+        seats = {ch.seat_id for ch in ctx.world.characters.values() if ch.id in crew and ch.seat_id}
+        history = await _history(s, c, new[0].seq, seats if place is not None else None)
         char_by_seat = {
             ch.seat_id: ch
             for ch in ctx.world.characters.values()
@@ -503,7 +657,8 @@ class MasterService:
             and m.seat_id in char_by_seat
             and char_by_seat[m.seat_id].status in ("approved", "active")
         }
-        hero_turn = combat.current_character(ctx)  # в бою: чей ход закрывает этот ответ мастера
+        fighting = combat.in_combat(ctx) and ctx.world.fighting_here()  # бой другой группы этот ход не ведёт
+        hero_turn = combat.current_character(ctx) if fighting else None  # в бою: чей ход закрывает ответ мастера
         combat_note = ""
         if hero_turn is not None:
             combat_note = (
@@ -541,12 +696,16 @@ class MasterService:
         memory_note = await self._memory_block(s, c, ctx, new)
         # мир не ждёт: созревшие ответы на поступки героев и случайности, выпавшие, пока шло игровое время
         world_note = await standing_tools.run_standing(ctx) + await fortune_tools.run_watch(ctx)
+        # отряд буксует на одном препятствии: мир подбрасывает новую возможность (в бою не нужно)
+        stall = (
+            "" if hero_turn is not None else rhythm.stall_note(await rhythm.stalled_turns(s, cid, ctx.game_session_id))
+        )
         msgs: list[dict] = [
             {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": (
-                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}"
+                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -612,7 +771,7 @@ class MasterService:
             trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
 
         combat_notes: list[str] = []
-        if combat.in_combat(ctx):
+        if fighting and combat.in_combat(ctx):
             acted = hero_turn is not None and any(m.kind == "action" and m.seat_id == hero_turn.seat_id for m in new)
             if acted and combat.current_id(ctx) == hero_turn.id:
                 await combat.finish_turn(ctx, combat_notes)
@@ -621,16 +780,37 @@ class MasterService:
 
         plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
 
+        party_notes, meet = await _party_change(s, ctx, before, crew, names)
         await self._status(cid, "describing")
+        voiced = bool(getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None))
         narration, audit = await self._narrate(
-            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
+            calls,
+            cfg,
+            c,
+            seat.id,
+            turn_id,
+            system,
+            convo,
+            news,
+            ctx,
+            combat_notes,
+            plot_notes,
+            stalled=bool(stall),
+            voiced=voiced,
+            meet=meet,
         )
 
         tts_task = None
-        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None):
-            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, narration))
+        if voiced:
+            # озвучивается краткая суть хода, подробности остаются текстом
+            spoken = audit.get("voice_text") or narration
+            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, spoken))
 
         whispers = await flush_outbox(s, ctx)
+        heard = _heard_by(ctx, crew)  # отряд разделён: ответ и броски видят герои этой группы
+        for m in whispers:
+            if m.kind == "roll" and heard is not None:
+                m.visible_to = heard
         linked = await link_text(s, cid, narration)
 
         voice_data = None
@@ -643,6 +823,8 @@ class MasterService:
         msg_data: dict[str, Any] = {}
         if voice_data:
             msg_data["voice"] = voice_data
+        if heard is not None and place is not None:
+            msg_data["place"] = place
 
         msg = Message(
             campaign_id=cid,
@@ -650,11 +832,13 @@ class MasterService:
             seq=await next_seq(s, cid),
             seat_id=seat.id,
             kind="narration",
+            visible_to=heard,
             content=linked,
             data=msg_data or None,
         )
         s.add(msg)
         await s.flush()
+        party_msgs = [await system_message(s, c, text, None) for text in party_notes]
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             "calls": trace_calls,
@@ -664,12 +848,34 @@ class MasterService:
             "combat": combat_notes,
             "plot_clock": plot_notes,
             "world": world_note,
+            "stalled": bool(stall),
         }
         await s.commit()
-        return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
+        return {
+            "ctx": ctx,
+            "messages": [*whispers, msg, *party_msgs],
+            "names": names,
+            "ids": [m.id for m in new],
+            "skipped": False,
+        }
 
     async def _narrate(
-        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=()
+        self,
+        calls,
+        cfg,
+        c,
+        seat_id,
+        turn_id,
+        system,
+        convo,
+        news,
+        ctx: ToolContext,
+        notes=(),
+        plot_notes=(),
+        *,
+        stalled: bool = False,
+        voiced: bool = False,
+        meet: str = "",
     ):
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
@@ -677,17 +883,20 @@ class MasterService:
             "narrate.j2",
             results=results,
             scene=ctx.world.scene_table(),
-            length=COMBAT_LENGTH if turn else "от одного до четырёх абзацев",
+            length=_narration_length(ctx, notes),
+            check_only=_check_only(ctx, notes),
             combat_notes=list(notes),
             plot_notes=list(plot_notes),
             next_turn=turn["name"] if turn else None,
+            stalled=stalled,
+            voiced=voiced,
         )
         base = [
             {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
-                f"Реплики игроков этого хода:\n{news}\n\n{prompt}",
+                f"Реплики игроков этого хода:\n{news}\n\n{prompt}" + (f"\n\n{meet}" if meet else ""),
             },
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
@@ -718,6 +927,9 @@ class MasterService:
             audit["stripped"].append(m.group(1))
             return m.group(2)
 
+        voice_text, text = _split_voice(text)
+        if voice_text:
+            audit["voice_text"] = MARKUP.sub(r"\2", voice_text)
         text = MARKUP.sub(strip, text)
         # Очистка от случайных вызовов инструментов в тексте мастера (например, set_soundscape {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
@@ -732,7 +944,7 @@ class MasterService:
         if has_plot:
             # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
             extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.scene.location_id)
+            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.home())
             secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
@@ -784,7 +996,7 @@ class MasterService:
         text = memory.render_content(last.content) if last else ""
         if text:
             parts.append("Сводка кампании (без чисел: числа только в таблице сцены):\n" + text)
-        loc = ctx.world.entities.get(ctx.world.scene.location_id or "")
+        loc = ctx.world.entities.get(ctx.world.home() or "")
         query = " ".join(
             [m.content for m in new]
             + [intents.describe(m.intent) for m in new if m.intent]
@@ -1340,29 +1552,99 @@ class MasterService:
 
 
 async def _new_player_messages(s, c: Campaign) -> list[Message]:
-    """Реплики игроков после последнего хода мастера (удачного, идущего или сорвавшегося: сорвавшийся ход
+    """Реплики игроков, которые ещё не взял ни один ход мастера (удачный, идущий или сорвавшийся: сорвавшийся ход
     просит игроков повторить действие, поэтому его реплики второй раз не берутся)."""
-    last = await s.scalar(select(func.max(MasterTurn.upto_seq)).where(MasterTurn.campaign_id == c.id)) or 0
-    return await _player_messages(s, c, last + 1, None)
-
-
-async def _player_messages(s, c: Campaign, from_seq: int, upto_seq: int | None) -> list[Message]:
     players = {x.id for x in c.seats if x.role == "player"}
-    q = select(Message).where(Message.campaign_id == c.id, Message.seq >= from_seq, Message.kind.in_(PLAYER_KINDS))
-    if upto_seq is not None:
-        q = q.where(Message.seq <= upto_seq)
-    rows = await s.scalars(q.order_by(Message.seq))
-    return [m for m in rows if m.seat_id in players]
+    q = select(Message).where(Message.campaign_id == c.id, Message.turn_id.is_(None), Message.kind.in_(PLAYER_KINDS))
+    return [m for m in await s.scalars(q.order_by(Message.seq)) if m.seat_id in players]
 
 
-async def _history(s, c: Campaign, before_seq: int) -> list[Message]:
-    rows = await s.scalars(
-        select(Message)
-        .where(Message.campaign_id == c.id, Message.seq < before_seq, Message.kind.notin_(("ooc", "roll")))
-        .order_by(Message.seq.desc())
-        .limit(HISTORY)
+async def _batches(s, c: Campaign) -> tuple[dict[str | None, list[Message]], dict]:
+    """Невзятые реплики по группам отряда. Отряд вместе — один пакет под ключом None; разделился — по месту героя
+    автора (игрок без героя — в группе места сцены)."""
+    new = await _new_player_messages(s, c)
+    groups = await chat.party(s, c)
+    if not new:
+        return {}, groups
+    if len(groups) <= 1:
+        return {None: new}, groups
+    where = {h.seat_id: p for p, hs in groups.items() for h in hs if h.seat_id}
+    sc = await s.get(Scene, c.id)
+    home = sc.location_id if sc is not None and sc.location_id in groups else next(iter(groups))
+    out: dict[str | None, list[Message]] = {}
+    for m in new:
+        out.setdefault(where.get(m.seat_id, home), []).append(m)
+    return out, groups
+
+
+def _in_fight(sc: Scene, heroes: list[Character]) -> bool:
+    """Касается ли идущий бой этих героев: кто-то из них в очереди инициативы."""
+    ids = {h.id for h in heroes}
+    return any(x.get("id") in ids for x in sc.turn_order or [])
+
+
+async def _turn_messages(s, c: Campaign, turn_id: str) -> list[Message]:
+    players = {x.id for x in c.seats if x.role == "player"}
+    q = select(Message).where(Message.campaign_id == c.id, Message.turn_id == turn_id, Message.kind.in_(PLAYER_KINDS))
+    return [m for m in await s.scalars(q.order_by(Message.seq)) if m.seat_id in players]
+
+
+async def _history(s, c: Campaign, before_seq: int, seats: set[str] | None = None) -> list[Message]:
+    """Последние сообщения перед ходом. ``seats`` — места героев группы: другие части отряда её не слышат."""
+    q = select(Message).where(
+        Message.campaign_id == c.id, Message.seq < before_seq, Message.kind.notin_(("ooc", "roll"))
     )
-    return list(reversed(rows.all()))
+    rows = (await s.scalars(q.order_by(Message.seq.desc()).limit(HISTORY * 3 if seats else HISTORY))).all()
+    if seats:
+        rows = [m for m in rows if m.visible_to is None or seats & set(m.visible_to)][:HISTORY]
+    return list(reversed(rows))
+
+
+def _heard_by(ctx: ToolContext, crew: set[str]) -> list[str] | None:
+    """Кто видит ответ мастера: герои группы в начале хода и все, кто к концу хода стоит там же, где они.
+    Так момент, когда отряд разделился, видят все, а встречу — обе стороны. None — все."""
+    w = ctx.world
+    groups = w.groups()
+    ends = {w.place_of(w.characters[i]) for i in crew if i in w.characters}
+    heroes = [h for p in ends for h in groups.get(p, [])] + [w.characters[i] for i in crew if i in w.characters]
+    seats = chat.audience(ctx.campaign, heroes)
+    every = {h.seat_id for hs in groups.values() for h in hs if h.seat_id}
+    return None if every <= set(seats) else seats
+
+
+async def _party_change(s, ctx: ToolContext, before: dict, crew: set[str], names) -> tuple[list[str], str]:
+    """Отряд разделился или снова сошёлся за этот ход: строка для всех в чат и, при встрече, просьба мастеру
+    коротко пересказать, что было с другой частью отряда (её реплики эта группа не видела)."""
+    w = ctx.world
+    after = w.groups()
+    ends = {w.place_of(w.characters[i]) for i in crew if i in w.characters}
+    met = [h for p in ends for h in after.get(p, []) if h.id not in crew]
+    notes: list[str] = []
+    if len(before) <= 1 and len(after) > 1:
+        notes.append("Отряд разделился: " + _where(w, after) + ".")
+    elif len(before) > 1 and len(after) <= 1:
+        notes.append("Отряд снова вместе.")
+    elif len(before) > 1 and {frozenset(v) for v in before.values()} != {
+        frozenset(h.id for h in hs) for hs in after.values()
+    }:
+        notes.append("Отряд: " + _where(w, after) + ".")
+    if not met:
+        return notes, ""
+    seats = {h.seat_id for h in met if h.seat_id}
+    q = select(Message).where(Message.campaign_id == ctx.campaign.id, Message.kind == "narration")
+    rows = (await s.scalars(q.order_by(Message.seq.desc()).limit(30))).all()
+    theirs = [m.content for m in rows if m.visible_to and seats & set(m.visible_to) and (m.data or {}).get("place")]
+    told = "\n".join(f"- {t[:600]}" for t in reversed(theirs[:3])) or "- (их ходов не было)"
+    meet = (
+        f"Встреча: к героям присоединились {', '.join(h.name for h in met)}. Пока отряд был порознь, игроки не "
+        "видели ответов друг друга. Одной-двумя фразами, без новых фактов, передай, что было с пришедшими, — "
+        f"по последним ответам им:\n{told}"
+    )
+    return notes, meet
+
+
+def _where(w, groups: dict) -> str:
+    return "; ".join(f"{', '.join(h.name for h in hs)} — {w._place_name(p)}" for p, hs in groups.items())
 
 
 async def _names(s, c: Campaign) -> dict[str, str]:
@@ -1391,7 +1673,9 @@ def _who(m: Message, char_by_seat: dict, names: dict) -> str:
 def _render_history(rows: list[Message], char_by_seat: dict, names: dict) -> str:
     out = []
     for m in rows:
-        if m.kind in ("narration",):
+        if m.kind == "narration" and m.visible_to is not None:
+            out.append(f"[мастер шёпотом, видит только адресат] {m.content}")
+        elif m.kind == "narration":
             out.append(f"[мастер] {m.content}")
         elif m.kind == "system":
             out.append(f"[система] {m.content}")
@@ -1408,6 +1692,34 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
         if m.kind == "action" and m.intent:
             out.append(f"  намерение (разбор парсера): {intents.describe(m.intent)}")
     return "\n".join(out)
+
+
+VOICE_LINE = re.compile(r"^\s*(?:\*\*)?Голос:(?:\*\*)?\s*(.+?)\s*(?:\n\s*\n|\n|$)", re.IGNORECASE)
+
+
+def _split_voice(text: str) -> tuple[str | None, str]:
+    """Первая строка «Голос: …» — краткая суть хода для озвучки; остальное — ответ в чат."""
+    m = VOICE_LINE.match(text)
+    if m is None:
+        return None, text
+    return m.group(1).strip() or None, text[m.end() :].strip()
+
+
+def _check_only(ctx: ToolContext, notes=()) -> bool:
+    """Ход вне боя, в котором были только проверки: ответ — короткое литературное описание исхода."""
+    tools = [ev.tool for ev in ctx.events if ev.tool not in AUDIO_TOOLS]
+    return not notes and not combat.in_combat(ctx) and bool(tools) and set(tools) == {"roll_check"}
+
+
+def _narration_length(ctx: ToolContext, notes=()) -> str:
+    if _check_only(ctx, notes):
+        return "одно-два предложения"
+    if notes or combat.in_combat(ctx):
+        return COMBAT_LENGTH
+    return (
+        "один короткий абзац, два-четыре предложения; второй абзац — только если герои попали в новое место или "
+        "случилось что-то важное для сюжета"
+    )
 
 
 def _render_results(ctx: ToolContext) -> str:

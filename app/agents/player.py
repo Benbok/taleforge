@@ -72,19 +72,26 @@ class PlayerAgents:
 
     # --- когда говорить ---
 
-    async def take_turns(self, cid: str) -> list[str]:
-        """Перед ходом мастера вне боя: дать ИИ-сопартийцам заявить действие в текущий раунд."""
+    async def take_turns(self, cid: str, place: str | None = None) -> list[str]:
+        """Перед ходом мастера вне боя: дать ИИ-сопартийцам заявить действие в текущий раунд. Разделившийся отряд:
+        только ИИ-героям группы ``place`` (по умолчанию — группы самой ранней реплики)."""
         async with self.master.maker() as s:
             c = await s.get(Campaign, cid)
             sc = await get_scene(s, cid) if c is not None else None
             if c is None or sc is None or sc.mode == "combat":
                 return []
-            from app.agents.master import _new_player_messages
-            new = await _new_player_messages(s, c)
-            if not new:
+            from app.agents.master import _batches
+
+            batches, groups = await _batches(s, c)
+            if not batches:
                 return []
-            wrote = {m.seat_id for m in new}
-            seats = [x.id for x in c.seats if is_agent_player(x) and x.id not in wrote]
+            if place not in batches:
+                place = min(batches, key=lambda p: batches[p][0].seq)
+            wrote = {m.seat_id for m in batches[place]}
+            here = {h.seat_id for h in groups.get(place, [])} if place is not None else None
+            seats = [
+                x.id for x in c.seats if is_agent_player(x) and x.id not in wrote and (here is None or x.id in here)
+            ]
         posted = []
         for seat_id in seats:
             msg_id = await self.speak(cid, seat_id, combat_turn=False)
@@ -190,12 +197,13 @@ class PlayerAgents:
                 x.seat_id: x.name for x in (await s.scalars(select(Character).where(Character.campaign_id == cid)))
             }
             ents = (await s.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
+            spot = ch.location_id or sc.location_id  # отряд мог разделиться: ИИ-игрок видит место своего героя
             here = [
                 public_entity(e)["name"]
                 for e in ents
-                if e.kind != "location" and (sc.location_id is None or e.location_id == sc.location_id)
+                if e.kind != "location" and (spot is None or e.location_id == spot)
             ]
-            place = next((e.name for e in ents if e.id == sc.location_id), None)
+            place = next((e.name for e in ents if e.id == spot), None)
             careful = cautious(seat)
             user_text = _render(ch, sheet, last, rows, chars, place, here, combat_turn)
             character = persona.render(ch.persona, await persona.notes_of(s, cid, ch.id))
@@ -249,7 +257,7 @@ class PlayerAgents:
                 return None
             m = await chat.post_message(s, viewer, kind, text, 1000)
             m.author_user_id = None  # автор — ИИ, не владелец
-            m.data = {"ai": True}
+            m.data = {**(m.data or {}), "ai": True}
             if parsed.intent and m.kind == "action":
                 m.intent = parsed.intent
             await s.commit()
