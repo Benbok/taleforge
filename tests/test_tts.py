@@ -272,3 +272,39 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         # Сообщение мастера успешно отправлено, несмотря на сбой TTS
         assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
 
+
+def test_master_voices_short_summary_and_writes_details(settings, tmp_path):
+    """Озвучка — краткая суть хода из строки «Голос:», в чат — подробный текст без этой строки."""
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act
+
+    import_base(settings)
+    settings = dataclasses.replace(settings, media_dir=tmp_path / "media", tts_api_key="test-gemini-key")
+    spoken = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        spoken.append(json.loads(request.content)["contents"][0]["parts"][0]["text"])
+        pcm = base64.b64encode(b"\x00\x00" * 2400).decode("ascii")
+        part = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": pcm}}
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [part]}}]})
+
+    llm = ScriptedLLM([])
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
+        client.app.state.tts._transport = httpx.MockTransport(handler)
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+        c, (p1,), ch = party(client, admin)
+        check = {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "мост"}
+        llm.replies += [
+            {"tool_calls": [("roll_check", check)]},
+            {"text": "готово"},
+            {"text": "Голос: Мост выдержал.\n\nДоски скрипят, внизу шумит река."},
+        ]
+        msg = act(client, p1, c["id"], "Иду по мосту.")
+        assert "Голос:" in llm.requests[-1]["messages"][1]["content"]
+    assert msg["content"] == "Доски скрипят, внизу шумит река." and "voice" in msg["data"]
+    assert spoken == ["Мост выдержал."]

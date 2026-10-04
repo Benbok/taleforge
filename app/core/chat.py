@@ -20,6 +20,9 @@ PLAYER_KINDS = ("action", "speech", "whisper", "ooc")
 MASTER_KINDS = ("narration", "ooc")
 OOC_PREFIX = "//"
 PENDING_KINDS = ("action", "speech", "whisper")  # реплики, на которые отвечает ИИ-мастер
+TURN_KINDS = ("action", "speech")  # реплики, которые берёт ход мастера; шёпот мастер отвечает вне хода
+# Состояние шёпота мастеру в data["answer"]: ход его не берёт, поэтому статус живёт на самом сообщении
+WHISPER_STATES = ("pending", "processing", "answered", "failed")
 PENDING_REASON = "Ваша реплика ждёт мастера. Отмените её, чтобы написать другую, или пишите вне игры через //."
 TURN_STATES = {"running": "processing", "done": "answered", "failed": "failed"}
 
@@ -84,9 +87,10 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
     if kind == "narration":
         text = await link_text(session, viewer.campaign.id, text)  # живой мастер тоже получает ссылки на имена
 
-    visible_to = None
+    visible_to = data = None
     if kind == "whisper":
         visible_to = [seat.id, master_seat(viewer.campaign).id]
+        data = {"answer": "pending"}  # ИИ-мастер ответит на него сразу и только автору (answer_whispers)
 
     msg = Message(
         campaign_id=viewer.campaign.id,
@@ -97,10 +101,19 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
         kind=kind,
         visible_to=visible_to,
         content=text,
+        data=data,
     )
     session.add(msg)
     await session.flush()
     return msg
+
+
+def whisper_state(msg: Message) -> str | None:
+    """Состояние шёпота мастеру; None — шёпот старше ответа вне хода, его статус считается по ходам."""
+    if msg.kind != "whisper":
+        return None
+    state = (msg.data or {}).get("answer")
+    return state if state in WHISPER_STATES else None
 
 
 async def system_message(session: AsyncSession, campaign: Campaign, text: str, game: GameSession | None) -> Message:
@@ -213,20 +226,27 @@ async def _ai_live(session: AsyncSession, campaign: Campaign) -> bool:
 
 
 async def pending_message(session: AsyncSession, campaign: Campaign, seat_id: str | None) -> Message | None:
-    """Реплика места, которую ещё не взял ни один ход ИИ-мастера. Только при ИИ-мастере и идущей сессии."""
-    if seat_id is None or not await _ai_live(session, campaign):
+    """Реплика места, которую ИИ-мастер ещё не взял: действие или речь вне хода, шёпот без ответа.
+    Только при ИИ-мастере и идущей сессии."""
+    if seat_id is None or master_seat(campaign).occupant_type != "agent":
         return None
+    game = await active_session(session, campaign.id)
+    if game is None:
+        return None
+    claimed = await claimed_upto(session, campaign.id)
     q = (
         select(Message)
-        .where(
-            Message.campaign_id == campaign.id,
-            Message.seat_id == seat_id,
-            Message.kind.in_(PENDING_KINDS),
-            Message.seq > await claimed_upto(session, campaign.id),
-        )
-        .order_by(Message.seq)
+        .where(Message.campaign_id == campaign.id, Message.seat_id == seat_id, Message.kind.in_(PENDING_KINDS))
+        .order_by(Message.seq.desc())
+        .limit(20)
     )
-    return (await session.scalars(q)).first()
+    waiting = []
+    for m in (await session.scalars(q)).all():
+        state = whisper_state(m)
+        # шёпот прошлой сессии уже не ждёт: ответ даётся только в идущей
+        if state is None and m.seq > claimed or state in ("pending", "processing") and m.session_id == game.id:
+            waiting.append(m)
+    return min(waiting, key=lambda m: m.seq) if waiting else None
 
 
 async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[Message]) -> dict[str, str]:
@@ -247,9 +267,14 @@ async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[M
     for upto, status in (await session.execute(q)).all():
         if not turns or turns[-1][0] != upto:
             turns.append((upto, status))
-    live = await active_session(session, campaign.id) is not None
+    game = await active_session(session, campaign.id)
+    live = game is not None
     out: dict[str, str] = {}
     for m in mine:
+        if (state := whisper_state(m)) is not None:
+            if state != "pending" or live and m.session_id == game.id:
+                out[m.id] = state
+            continue
         t = next((t for t in turns if t[0] >= m.seq), None)
         if t is None:
             if live:
@@ -272,7 +297,9 @@ async def withdraw_message(session: AsyncSession, viewer: Viewer, message_id: st
         or not await _ai_live(session, viewer.campaign)
     ):
         raise Conflict("Эту реплику отменить нельзя.")
-    if m.seq <= await claimed_upto(session, viewer.campaign.id):
+    state = whisper_state(m)
+    taken = state != "pending" if state is not None else m.seq <= await claimed_upto(session, viewer.campaign.id)
+    if taken:
         raise Conflict("Мастер уже отвечает на эту реплику.")
     await session.delete(m)
     await session.flush()
