@@ -17,6 +17,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.rules.base import RollMode
+from app.rules.dnd5e.modifiers import sources
 
 # ступени отношения: как у отношений между фракциями в пакете (attitude −3…+3)
 TIER_RU = {
@@ -288,5 +289,5 @@ def spend_inspiration(obj, mode: RollMode, reasons: list[str]) -> tuple[RollMode
     inverse = [{"table": "characters", "id": obj.id, "field": "resources", "before": copy.deepcopy(obj.resources)}]
     res["inspiration"] = False
     obj.resources = res
-    new = RollMode.combine(True, mode == RollMode.DISADVANTAGE)
+    new = RollMode.combine(True, sources(mode, reasons)[1])
     return new, [*reasons, "преимущество: вдохновение"], inverse

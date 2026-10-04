@@ -48,6 +48,7 @@ class CheckResult:
     roll: D20Roll
     dc: int
     success: bool
+    critical: str | None = None  # "success" при натуральной 20, "fail" при натуральной 1 — если кампания их считает
 
     @property
     def margin(self) -> int:
@@ -130,9 +131,13 @@ class RulesEngine(Protocol):
 
     def roll_d20(self, dice: Dice, modifier: int, mode: RollMode = RollMode.NORMAL) -> D20Roll: ...
 
-    def check(self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL) -> CheckResult: ...
+    def check(
+        self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL, crits: bool = False
+    ) -> CheckResult: ...
 
-    def saving_throw(self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL) -> CheckResult: ...
+    def saving_throw(
+        self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL, crits: bool = False
+    ) -> CheckResult: ...
 
     def attack(
         self, dice: Dice, attack_bonus: int, target_ac: int, mode: RollMode = RollMode.NORMAL

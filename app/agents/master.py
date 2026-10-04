@@ -68,6 +68,7 @@ MAX_CALLS = 8  # вызовов инструментов за ход (разде
 PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит мастеру без разбора
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
+COMBAT_LENGTH = "один короткий абзац, два-четыре предложения"  # в бою — только исход бросков, без пересказа сцены
 PLAYER_KINDS = TURN_KINDS  # шёпот мастеру ход не берёт: на него отвечает answer_whispers
 WHISPER_HISTORY = 12  # сообщений, видимых шепчущему, в контексте ответа на шёпот
 CATCH_UP_SYSTEM = (
@@ -982,6 +983,7 @@ class MasterService:
             max_calls=MAX_CALLS,
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
+            critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
             audio=audio.prompt_block(c, ctx.world.scene),
         )
 
@@ -1713,7 +1715,7 @@ def _narration_length(ctx: ToolContext, notes=()) -> str:
     if _check_only(ctx, notes):
         return "одно-два предложения"
     if notes or combat.in_combat(ctx):
-        return "от одного до четырёх абзацев"
+        return COMBAT_LENGTH
     return (
         "один короткий абзац, два-четыре предложения; второй абзац — только если герои попали в новое место или "
         "случилось что-то важное для сюжета"

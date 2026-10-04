@@ -297,8 +297,8 @@ async def _flee(ctx: ToolContext, act: Actor, key: str, notes: list[str], ask: R
 def _attack_note(who: str, target: str, r: dict) -> str:
     head = f"{who} атакует {target}: " if who else ""
     if not r.get("hit"):
-        return head + "промах"
-    out = head + f"попадание, {r.get('damage', 0)} урона"
+        return head + ("критический промах (натуральная 1)" if r.get("fumble") else "промах")
+    out = head + ("критическое попадание" if r.get("critical") else "попадание") + f", {r.get('damage', 0)} урона"
     if r.get("target_status") in ("мёртв", "при смерти", "стабилен"):  # числа хитов существ игрокам не показываем
         out += f" ({r['target_status']})"
     return out
