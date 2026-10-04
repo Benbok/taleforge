@@ -144,6 +144,34 @@ class ContentRecord(Base):
     data: Mapped[dict[str, Any]] = mapped_column()
 
 
+class AdventureModule(Base):
+    """Готовое приключение в библиотеке (app/core/modules.py): книга, разбор переводчика, карты и статус.
+    После публикации модуль — пакет ``pack_id`` версии ``pack_version``; файлы лежат в media/modules/<id>/."""
+
+    __tablename__ = "adventure_modules"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("mod"))
+    title: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str | None] = mapped_column(String(64))
+    # reading | translating | mapping | review | published | failed
+    status: Mapped[str] = mapped_column(String(16), default="reading")
+    error: Mapped[str | None] = mapped_column(Text)
+    source_name: Mapped[str] = mapped_column(String(255), default="")
+    pages: Mapped[int] = mapped_column(Integer, default=0)
+    text_chars: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(Text, default="")  # пожелание админа к разбору
+    draft: Mapped[dict[str, Any]] = mapped_column(default=dict)  # сдача переводчика с проверенным каркасом
+    warnings: Mapped[list[Any]] = mapped_column(default=list)
+    # [{id, file, name, location_id, marks: [{number, x, y}], missing, status, error}]
+    maps: Mapped[list[Any]] = mapped_column(default=list)
+    pack_id: Mapped[str | None] = mapped_column(String(64))
+    pack_version: Mapped[str | None] = mapped_column(String(32))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 # --- Кампания ---
 
 

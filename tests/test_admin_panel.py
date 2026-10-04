@@ -78,4 +78,4 @@ def test_spend_by_scope(client, admin, root, settings):
     everything = ok(client.get("/api/admin/spend", headers=root))
     assert everything["scope"] == "all" and round(everything["total"]["cost"], 2) == 2.76
     names = {r["id"]: r["name"] for r in everything["by_campaign"]}
-    assert names[""] == "Вне кампаний: проверка моделей"
+    assert names[""] == "Вне кампаний: проверка моделей и разбор приключений"
