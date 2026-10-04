@@ -1,5 +1,6 @@
 """Криты 20 и 1 в бою и вне боя, преимущество и помеха по обстоятельствам, инициатива с эффектами."""
 
+import pytest
 from sqlalchemy import select
 
 from app.core.rolls import card
@@ -7,11 +8,17 @@ from app.db.models import Event
 from app.rules import FixedDice, RollMode
 from app.rules.dnd5e import Dnd5eEngine
 from app.rules.dnd5e import modifiers as mod
-from tests.game import run
+from tests.game import import_base, party, run
 from tests.test_tools import call, play
-from tests.test_tools import game as game_fixture  # noqa: F401 — фикстура game
 
 E = Dnd5eEngine()
+
+
+@pytest.fixture
+def game(client, admin, settings):
+    import_base(settings)
+    c, _, ch = party(client, admin)
+    return settings, c["id"], ch["id"]
 
 
 def test_check_crits_only_by_campaign_rule():
