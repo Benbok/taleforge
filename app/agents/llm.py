@@ -97,6 +97,11 @@ def parser_model_for(provider: str | None = None, model: str | None = None) -> s
     raise LLMError(f"Unknown provider '{p}'")
 
 
+def decide_model_for() -> str:
+    """Модель фазы решения хода (выбор инструментов и бросков): техническая, DECIDE_MODEL=main вернёт основную."""
+    return model_for() if settings.decide_model == "main" else parser_model_for()
+
+
 def _parse_args(raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
         return raw
@@ -148,6 +153,7 @@ class LiteLLMClient:
             kwargs["temperature"] = temperature
         if stream_callback:
             kwargs["stream"] = True
+            kwargs["stream_options"] = {"include_usage": True}  # без этого поток не несёт токены и цену
         started = time.monotonic()
         try:
             resp = await litellm.acompletion(**kwargs)
@@ -156,23 +162,7 @@ class LiteLLMClient:
         latency = int((time.monotonic() - started) * 1000)
 
         if stream_callback:
-            chunks = []
-            async for chunk in resp:
-                delta = getattr(chunk.choices[0].delta, "content", None)
-                if delta:
-                    chunks.append(delta)
-                    await stream_callback(delta)
-            text = "".join(chunks)
-            return LLMReply(
-                text=text,
-                tool_calls=[],
-                message={"role": "assistant", "content": text},
-                model=getattr(resp, "model", model) or model,
-                tokens_in=0,
-                tokens_out=0,
-                cost=0.0,
-                latency_ms=latency,
-            )
+            return await _collect_stream(litellm, resp, model, msgs, stream_callback, started)
 
         choice = resp.choices[0]
         msg = choice.message
@@ -199,6 +189,37 @@ class LiteLLMClient:
         )
 
 
+async def _collect_stream(litellm, resp, model: str, messages, stream_callback, started: float) -> LLMReply:
+    """Отдаёт куски текста по мере прихода и собирает полный ответ с токенами и ценой для «Расходов»."""
+    raw, parts = [], []
+    try:
+        async for chunk in resp:
+            raw.append(chunk)
+            delta = getattr(chunk.choices[0].delta, "content", None) if chunk.choices else None
+            if delta:
+                parts.append(delta)
+                await stream_callback(delta)
+    except Exception as e:  # noqa: BLE001 — обрыв потока останавливает ход так же, как ошибка провайдера
+        raise LLMError(f"{type(e).__name__}: {e}") from e
+    latency = int((time.monotonic() - started) * 1000)
+    text = "".join(parts)
+    full = litellm.stream_chunk_builder(raw, messages=messages) if raw else None
+    usage = getattr(full, "usage", None)
+    try:
+        cost = float(litellm.completion_cost(completion_response=full) or 0.0) if full is not None else 0.0
+    except Exception:  # noqa: BLE001 — у локальных моделей цены нет
+        cost = 0.0
+    return LLMReply(
+        text=text,
+        message={"role": "assistant", "content": text},
+        model=getattr(full, "model", None) or model,
+        tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
+        tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
+        cost=cost,
+        latency_ms=latency,
+    )
+
+
 Script = Callable[[list[dict[str, Any]], list[dict[str, Any]] | None], LLMReply | dict]
 
 
@@ -211,6 +232,7 @@ class ScriptedLLM:
         self.requests: list[dict[str, Any]] = []
         self.parser_requests: list[dict[str, Any]] = []
         self.voice_requests: list[dict[str, Any]] = []
+        self.intro_requests: list[dict[str, Any]] = []
 
     async def complete(
         self,
@@ -233,9 +255,23 @@ class ScriptedLLM:
             args = AUTO_REPLIES[auto]
             call = ToolCall(f"call_p{len(self.parser_requests)}", auto, args, json.dumps(args))
             return LLMReply(text="", tool_calls=[call], model=model, tokens_in=10, tokens_out=5)
-        if _is_voice_line(messages) and not self._next_is_voice():
+        if _is_voice_line(messages):
+            # реплика озвучки идёт параллельно с повествованием: берём сценарный ответ с пометкой, где бы он ни стоял
             self.voice_requests.append(req)
-            return LLMReply(text="Осторожнее на выступе!", model=model, tokens_in=10, tokens_out=5)
+            scripted = next((r for r in self.replies if isinstance(r, dict) and r.get("voice_line")), None)
+            if scripted is None:
+                return LLMReply(text="Осторожнее на выступе!", model=model, tokens_in=10, tokens_out=5)
+            self.replies.remove(scripted)
+            return LLMReply(text=scripted.get("text", ""), model=model, tokens_in=10, tokens_out=5)
+        if _is_campaign_intro(messages):
+            # вступление ко всей кампании готовится само после каркаса: тесты не обязаны его сценарировать,
+            # а сценарный ответ с пометкой campaign_intro берётся, где бы он ни стоял в очереди
+            self.intro_requests.append(req)
+            scripted = next((r for r in self.replies if isinstance(r, dict) and r.get("campaign_intro")), None)
+            if scripted is None:
+                return LLMReply(text="Туман стелется над причалами.", model=model, tokens_in=10, tokens_out=5)
+            self.replies.remove(scripted)
+            return LLMReply(text=scripted.get("text", ""), model=model, tokens_in=10, tokens_out=5)
         if _is_emotion(messages):
             return LLMReply(
                 text='{"anger": 0.0, "joy": 0.0, "suspicion": 0.0, "boredom": 0.0}',
@@ -277,10 +313,6 @@ class ScriptedLLM:
         r = self.replies[0] if self.replies else None
         return isinstance(r, dict) and any(name == tool for name, _ in r.get("tool_calls") or [])
 
-    def _next_is_voice(self) -> bool:
-        r = self.replies[0] if self.replies else None
-        return isinstance(r, dict) and bool(r.get("voice_line"))
-
 
 AUTO_REPLIES = {
     "submit_intent": {"kind": "action", "actions": [{"verb": "custom"}], "confidence": 1.0},
@@ -295,11 +327,10 @@ def _auto_tool(tools) -> str | None:
 
 
 def _is_voice_line(messages: list[dict[str, Any]]) -> bool:
-    for m in messages:
-        c = m.get("content")
-        if isinstance(c, str) and ("эмоциональн" in c or ("реплик" in c and "мастера" in c)):
-            return True
-    return False
+    # по заголовку промпта voice_line.j2: широкие слова («реплики», «мастера») ловили и парсер, и повествование
+    return any(
+        isinstance(m.get("content"), str) and "Фаза эмоциональной реакции мастера" in m["content"] for m in messages
+    )
 
 
 def _is_emotion(messages: list[dict[str, Any]]) -> bool:
@@ -308,3 +339,7 @@ def _is_emotion(messages: list[dict[str, Any]]) -> bool:
         if isinstance(c, str) and "анализатор эмоций" in c:
             return True
     return False
+
+
+def _is_campaign_intro(messages: list[dict[str, Any]]) -> bool:
+    return any(isinstance(m.get("content"), str) and "вступление к всей кампании" in m["content"] for m in messages)

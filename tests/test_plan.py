@@ -273,7 +273,10 @@ def test_architect_retries_then_saves_plan(game_client, admin_g, llm, settings):
     assert st["public_intro"].startswith("Рыбацкий порт") and "plan" not in st  # владелец не мастер: без каркаса
     (secret,) = rows(settings, CampaignSecret)
     assert secret.plot["title"] == "Туман над Солёной бухтой" and secret.plot["version"] == 1
-    assert [x.purpose for x in rows(settings, LlmCall)] == ["plan", "plan"]
+    # после каркаса мастер сразу готовит вступление ко всей кампании
+    assert [x.purpose for x in rows(settings, LlmCall)] == ["plan", "plan", "campaign_intro"]
+    (secret,) = rows(settings, CampaignSecret)  # вступление лежит в тайнах до старта, игроки его ещё не видят
+    assert secret.setting["campaign_intro"]["text"] and secret.setting["campaign_intro"]["version"] == 1
 
     # второй вариант — новая версия, завязка из каркаса обновляется
     second = good_plan() | {"title": "Песнь маяка", "public_intro": "Маяк снова горит."}

@@ -192,7 +192,7 @@ def test_master_turn_attaches_voice_when_tts_enabled(settings, tmp_path):
 
     with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
         # Подставляем mock transport в tts
-        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
 
         root = login(client, "root", "rootpass")
         client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
@@ -246,7 +246,7 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
     llm = ScriptedLLM([])
 
     with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
-        client.app.state.tts._transport = httpx.MockTransport(mock_tts_fail)
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_fail)
 
         root = login(client, "root", "rootpass")
         client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
@@ -312,7 +312,7 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
     llm = ScriptedLLM([])
 
     with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15, 18]))) as client:
-        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
 
         root = login(client, "root", "rootpass")
         client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
@@ -417,7 +417,7 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
     llm = ScriptedLLM([])
 
     with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
-        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
 
         root = login(client, "root", "rootpass")
         client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
@@ -496,7 +496,7 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
     llm = ScriptedLLM([])
 
     with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([18]))) as client:
-        client.app.state.tts._transport = httpx.MockTransport(mock_tts_handler)
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
 
         root = login(client, "root", "rootpass")
         client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)

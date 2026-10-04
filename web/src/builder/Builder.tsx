@@ -26,7 +26,7 @@ import {
   type Preview,
   type SavedHero,
 } from "../lib/builder";
-import { ABILITIES, ABILITY_ABBR, ABILITY_RU, SKILLS } from "../game/hero";
+import { ABILITIES, ABILITY_ABBR, ABILITY_RU, SKILLS, signed } from "../game/hero";
 import { SKILL_DETAILS } from "../game/statDetails";
 import CustomSelect from "../components/CustomSelect";
 import ClassChoices from "./ClassChoices";
@@ -525,7 +525,10 @@ export default function Builder({
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-[8px] border border-line bg-raised/40 px-3.5 py-2 text-xs">
                 <div className="flex items-center gap-2 text-muted">
                   <span className="text-accent font-semibold">Мастерство:</span>
-                  <span>выбранные навыки получают прибавку бонуса мастерства (+2).</span>
+                  <span>
+                    выбранные навыки получают прибавку бонуса мастерства
+                    {preview.data?.derived ? ` (${signed(preview.data.derived.pb)})` : ""}.
+                  </span>
                 </div>
                 <StatDetailTrigger type="mastery" inline showIcon>
                   <span className="font-mono text-xs font-semibold text-accent hover:underline cursor-help">
@@ -539,9 +542,9 @@ export default function Builder({
                   const on = draft.skills.includes(k);
                   const sk = SKILL_DETAILS[k];
                   return (
-                    <StatDetailTrigger key={k} type="skill" id={k} className="w-full">
+                    <StatDetailTrigger key={k} type="skill" id={k} className="w-full flex items-center gap-1.5" showIcon>
                       <label
-                        className={`flex w-full items-center justify-between gap-2.5 rounded-[8px] border p-2.5 text-sm transition cursor-pointer ${
+                        className={`flex min-w-0 flex-1 items-center justify-between gap-2.5 rounded-[8px] border p-2.5 text-sm transition cursor-pointer ${
                           on
                             ? "border-accent bg-accent/10 text-ink font-medium shadow-xs"
                             : "border-line bg-raised/50 text-ink-2 hover:border-line hover:text-ink"
@@ -557,19 +560,11 @@ export default function Builder({
                           />
                           <span className="truncate">{SKILL_RU[k] ?? k}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {sk && (
-                            <span className="rounded bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] text-muted border border-line/60 uppercase">
-                              {sk.abilityAbbr}
-                            </span>
-                          )}
-                          <span
-                            title="Подробнее о навыке"
-                            className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-serif font-bold italic text-muted hover:border-accent hover:text-accent"
-                          >
-                            i
+                        {sk && (
+                          <span className="shrink-0 rounded bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] text-muted border border-line/60 uppercase">
+                            {sk.abilityAbbr}
                           </span>
-                        </div>
+                        )}
                       </label>
                     </StatDetailTrigger>
                   );

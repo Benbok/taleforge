@@ -83,10 +83,8 @@ class LLMAnalyzer(IEmotionAnalyzer):
         self.persona = PERSONAS.get(persona_id, PERSONAS["tired_mentor"])
         self.model = model
 
-    async def analyze(self, context: PlayerActionContext) -> EmotionState:
-        if not context.action_text or not self.llm_client:
-            return EmotionState()
-
+    def messages(self, context: PlayerActionContext) -> list[dict[str, str]]:
+        """Запрос к модели; вынесен, чтобы мастер мог сделать вызов сам и записать его в расходы."""
         prompt = f"""
 Характер Мастера: {self.persona.name}. {self.persona.description}
 
@@ -104,28 +102,20 @@ class LLMAnalyzer(IEmotionAnalyzer):
 Отвечай СТРОГО в формате JSON без какого-либо дополнительного текста.
 Пример: {{"anger": 0.0, "joy": 2.5, "suspicion": 0.0, "boredom": 0.0}}
 """
-        messages = [
+        return [
             {"role": "system", "content": "Ты — анализатор эмоций. Отвечай строго валидным JSON-объектом."},
             {"role": "user", "content": prompt.strip()},
         ]
 
+    @staticmethod
+    def parse(raw_text: str) -> EmotionState:
+        """Ответ модели в дельту эмоций; мусор и ошибки дают нулевую дельту."""
+        match = re.search(r"\{.*\}", raw_text or "", re.DOTALL)
         try:
-            reply = await self.llm_client.complete(
-                messages,
-                model=self.model,
-                max_tokens=128,
-                temperature=0.2,
-            )
-            raw_text = reply.text.strip() if hasattr(reply, "text") else str(reply)
-
-            # Удаление markdown-блоков ```json ... ``` при наличии
-            match = re.search(r"\{.*\}", raw_text, re.DOTALL)
-            if match:
-                raw_text = match.group(0)
-
-            data = json.loads(raw_text)
-        except Exception:
-            # При любой ошибке (таймаут, парсинг, ошибка сети) не прерываем ход
+            data = json.loads(match.group(0) if match else raw_text)
+        except (ValueError, TypeError):
+            return EmotionState()
+        if not isinstance(data, dict):
             return EmotionState()
 
         def clamp(v: Any) -> float:
@@ -140,6 +130,17 @@ class LLMAnalyzer(IEmotionAnalyzer):
             suspicion=clamp(data.get("suspicion", 0.0)),
             boredom=clamp(data.get("boredom", 0.0)),
         )
+
+    async def analyze(self, context: PlayerActionContext) -> EmotionState:
+        if not context.action_text or not self.llm_client:
+            return EmotionState()
+        try:
+            reply = await self.llm_client.complete(
+                self.messages(context), model=self.model, max_tokens=128, temperature=0.2
+            )
+        except Exception:  # noqa: BLE001 — таймаут или сбой сети не прерывают ход
+            return EmotionState()
+        return self.parse(reply.text if hasattr(reply, "text") else str(reply))
 
 
 class HybridAnalyzer(IEmotionAnalyzer):

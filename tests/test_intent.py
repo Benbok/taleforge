@@ -169,9 +169,12 @@ def test_parser_garbage_passes_through(game_client, admin_g, llm, settings):
 
 def test_describe_and_route_helpers():
     from app.agents.llm import parser_model_for
+    from app.config import settings as app_settings
 
-    assert parser_model_for("gemini", "gemini-2.5-flash") == "gemini/gemini-3.8-flash-lite"
-    assert parser_model_for("claude", None) == "anthropic/claude-haiku-4-5"
+    # пара моделей задаётся в .env: техническая модель провайдера, явная модель только получает префикс
+    assert parser_model_for("gemini") == "gemini/" + app_settings.gemini_technical_model
+    assert parser_model_for("claude") == app_settings.claude_technical_model
+    assert parser_model_for("gemini", "gemini-2.5-flash") == "gemini/gemini-2.5-flash"
 
     it = {
         "character_id": "ch1",

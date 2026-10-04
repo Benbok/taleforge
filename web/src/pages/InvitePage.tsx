@@ -8,7 +8,6 @@ import { useAsync } from "../lib/useAsync";
 import { useSession } from "../stores/session";
 import { toast } from "../stores/toasts";
 import { Spinner } from "../components/ActionButton";
-import WorldIntroPlayer from "../components/WorldIntroPlayer";
 
 /** Вход по ссылке: обложка кампании и публичная вводная, имя и пароль — и сразу в лобби. */
 export default function InvitePage() {
@@ -64,11 +63,6 @@ export default function InvitePage() {
               <h1 className="font-heading text-2xl sm:text-3xl font-bold text-ink">
                 {p.campaign_name || "Безымянная кампания"}
               </h1>
-              {(!p.pack_id || p.pack_id === "echo-leviathans") && (
-                <div className="mt-4">
-                  <WorldIntroPlayer />
-                </div>
-              )}
               {p.public_intro && (
                 <div className="mt-3 rounded-[8px] bg-raised/50 p-4 font-narration text-base leading-relaxed text-ink-2 whitespace-pre-line border border-line/60">
                   «{p.public_intro}»

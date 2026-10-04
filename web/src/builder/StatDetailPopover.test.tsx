@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { StatDetailCardContent, StatDetailTrigger } from "./StatDetailPopover";
 
 describe("StatDetailPopover", () => {
@@ -18,7 +18,7 @@ describe("StatDetailPopover", () => {
     expect(screen.getByText(/Сила \(СИЛ\)/)).toBeDefined();
     expect(screen.getByText("Примеры проверок:")).toBeDefined();
     expect(screen.getByText(/Взбирание по отвесной скале/)).toBeDefined();
-    expect(screen.getByText(/бонус мастерства \(\+2\)/)).toBeDefined();
+    expect(screen.getByText(/Владение навыком прибавляет бонус мастерства/)).toBeDefined();
   });
 
   it("renders mastery details card properly", () => {
@@ -36,5 +36,20 @@ describe("StatDetailPopover", () => {
       </StatDetailTrigger>
     );
     expect(screen.getByText("Ловкость")).toBeDefined();
+  });
+
+  it("info button opens the card and does not toggle the skill checkbox", () => {
+    let toggled = 0;
+    render(
+      <StatDetailTrigger type="skill" id="athletics" showIcon>
+        <label>
+          <input type="checkbox" onChange={() => toggled++} />
+          Атлетика
+        </label>
+      </StatDetailTrigger>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Подробнее" }));
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(toggled).toBe(0);
   });
 });

@@ -114,7 +114,7 @@ def test_turn_with_tool_and_markup_audit(game_client, admin_g, llm, dice, settin
     (ev,) = rows(settings, Event, Event.tool == "roll_check")
     assert ev.turn_id == turn.id
     calls = rows(settings, LlmCall)
-    assert [x.purpose for x in calls] == ["parse", "decide", "decide", "narrate", "narrate"]
+    assert [x.purpose for x in calls] == ["parse", "decide", "decide", "emotion", "narrate", "narrate"]
 
 
 def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
@@ -234,7 +234,7 @@ def test_master_log_for_admins_with_secret_switch(game_client, admin_g, llm, dic
     assert athletics["args"]["reason"] == "дверь"
     assert perception["secret"] and perception["result"]["stat"] == "perception"
     assert whisper["secret"] and "шорох" in whisper["args"]["text"]
-    assert [x["purpose"] for x in turn["llm"]] == ["decide", "decide", "narrate"]
+    assert [x["purpose"] for x in turn["llm"]] == ["decide", "decide", "emotion", "narrate"]
     assert turn["audit"] == {"regenerated": False, "stripped": []}
     assert [x["purpose"] for x in log["service_llm"]] == ["parse"]
 

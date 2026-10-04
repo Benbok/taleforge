@@ -152,7 +152,7 @@ function SkillContent({
         </div>
 
         <div className="rounded-[6px] border border-accent/30 bg-accent/5 p-2 font-mono text-[11px] text-accent leading-relaxed">
-          ✦ Владение навыком прибавляет бонус мастерства (+2) к проверкам характеристики.
+          ✦ Владение навыком прибавляет бонус мастерства к проверкам этой характеристики.
         </div>
       </div>
     </>
@@ -293,6 +293,16 @@ export function StatDetailTrigger({
     later(() => setMode("closed"), HOVER_CLOSE_MS);
   };
 
+  // на телефоне наведения нет: касание открывает карточку там, где нет своей кнопки «i»
+  const tapToggle = () => {
+    if (showIcon || canHover()) return;
+    if (mode === "pinned") close();
+    else {
+      clear();
+      setMode("pinned");
+    }
+  };
+
   const open = mode !== "closed";
   const phone = typeof window !== "undefined" && window.innerWidth < 768;
   let style: React.CSSProperties | undefined;
@@ -321,6 +331,7 @@ export function StatDetailTrigger({
       className={`relative ${inline ? "inline-flex items-center" : "min-w-0"} ${className}`}
       onPointerEnter={hoverIn}
       onPointerLeave={hoverOut}
+      onClick={tapToggle}
     >
       {children}
 
