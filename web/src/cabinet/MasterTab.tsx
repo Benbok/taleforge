@@ -4,6 +4,7 @@ import ActionButton from "../components/ActionButton";
 import PersonaEditor from "../components/PersonaEditor";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
+import MasterTemperPicker from "./MasterTemper";
 import PersonaPicker from "./PersonaPicker";
 import { api } from "../lib/api";
 import {
@@ -461,6 +462,13 @@ export default function MasterTab({
 
         <Field label="Базовый характер">
           <PersonaPicker value={pick} onChange={setPick} opts={opts.data} mine={mine.data ?? []} />
+        </Field>
+
+        <Field
+          label="Нрав мастера"
+          hint="Как мастер эмоционально отзывается на броски и поступки героев. Сохраняется сразу, действует со следующего хода."
+        >
+          <MasterTemperPicker campaignId={campaignId} />
         </Field>
 
         <Field

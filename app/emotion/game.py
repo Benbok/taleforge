@@ -14,10 +14,11 @@ from app.emotion.schemas import EmotionState, GMPersona
 
 MOOD_KEY = "gm_mood"
 FIELDS = ("anger", "joy", "suspicion", "boredom")
+DEFAULT_PERSONA = "tired_mentor"  # нрав мастера, пока владелец не выбрал другой
 
 
 def persona_of(persona_id: str | None) -> GMPersona:
-    return PERSONAS.get(persona_id or "", PERSONAS["tired_mentor"])
+    return PERSONAS.get(persona_id or "", PERSONAS[DEFAULT_PERSONA])
 
 
 def load(scene_state: dict[str, Any] | None) -> EmotionState:

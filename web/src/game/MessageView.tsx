@@ -40,7 +40,9 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "narration" && !m.whisper) {
     return (
       <div className="tf-pop max-w-[70ch] whitespace-pre-line font-narration text-[18px] leading-relaxed">
-        {m.data?.voice && <VoiceClip clip={m.data.voice} autoPlay={m.fresh} />}
+        {(m.data?.voice || m.data?.voice_parts) && (
+          <VoiceClip clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])} expected={m.data.voice_parts} autoPlay={m.fresh} />
+        )}
         <RichText text={m.content} />
       </div>
     );
@@ -67,7 +69,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {fromMaster ? (m.data?.whisper_reply ? "Мастер отвечает на ваш шёпот" : "Шёпот мастера") : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}
         </p>
-        {m.data?.voice && <VoiceClip clip={m.data.voice} autoPlay={m.fresh && fromMaster} />}
+        {m.data?.voice && <VoiceClip clips={[m.data.voice]} autoPlay={m.fresh && fromMaster} />}
         <p className="font-narration">
           <RichText text={m.content} />
         </p>
@@ -86,7 +88,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {name}
           {ai && <span title="Реплику написал ИИ"> · ИИ</span>}
         </p>
-        {m.data?.voice && <VoiceClip clip={m.data.voice} />}
+        {m.data?.voice && <VoiceClip clips={[m.data.voice]} />}
         {m.kind === "speech" ? <p>«{m.content.replace(/^["«]|["»]$/g, "")}»</p> : <p className="italic">{m.content}</p>}
         <ReplyStatus m={m} mine={mine} />
       </div>

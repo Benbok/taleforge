@@ -52,6 +52,7 @@ class LLM(Protocol):
         temperature: float | None = None,
         api_base: str | None = None,
         stream_callback: Callable[[str], Any] | None = None,
+        thinking: bool = True,
     ) -> LLMReply: ...
 
 
@@ -124,8 +125,11 @@ class LiteLLMClient:
         temperature: float | None = None,
         api_base: str | None = None,
         stream_callback: Callable[[str], Any] | None = None,
+        thinking: bool = True,
     ) -> LLMReply:
-        """``tool_choice="required"`` — модель обязана ответить вызовом инструмента, а не текстом."""
+        """``tool_choice="required"`` — модель обязана ответить вызовом инструмента, а не текстом.
+        ``thinking=False`` — художественный текст без скрытых рассуждений: у Gemini 2.5 они входят в max_tokens
+        и обрезают ответ на полуслове, да и ждать их дольше."""
         import litellm
 
         msgs = messages
@@ -152,6 +156,8 @@ class LiteLLMClient:
         # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
         if temperature is not None and not model.startswith("anthropic/"):
             kwargs["temperature"] = temperature
+        if not thinking and model.startswith("gemini/") and "flash" in model:
+            kwargs["reasoning_effort"] = "disable"  # у Pro рассуждения не отключаются
         if stream_callback:
             kwargs["stream"] = True
             kwargs["stream_options"] = {"include_usage": True}  # без этого поток не несёт токены и цену
@@ -246,10 +252,13 @@ class ScriptedLLM:
         temperature=None,
         api_base=None,
         stream_callback=None,
+        thinking=True,
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
         if tool_choice not in (None, "auto"):
             req["tool_choice"] = tool_choice
+        if not thinking:
+            req["thinking"] = False
         auto = _auto_tool(tools)
         if auto and not self._next_is(auto):
             # Парсер намерений и сводки в тестах, где их ответ не задан: действие без разбора, пустая сводка.
@@ -345,4 +354,4 @@ def _is_emotion(messages: list[dict[str, Any]]) -> bool:
 
 
 def _is_campaign_intro(messages: list[dict[str, Any]]) -> bool:
-    return any(isinstance(m.get("content"), str) and "вступление к всей кампании" in m["content"] for m in messages)
+    return any(isinstance(m.get("content"), str) and "вступление ко всей кампании" in m["content"] for m in messages)

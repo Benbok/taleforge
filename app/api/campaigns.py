@@ -292,6 +292,40 @@ async def put_master_persona(
     return persona_out(agent)
 
 
+class MasterTemperIn(BaseModel):
+    value: str
+
+
+def _temper_out(agent: AgentConfig) -> dict:
+    from app.emotion import game as mood
+    from app.emotion.analyzers import PERSONAS
+
+    cur = (agent.settings or {}).get("emotion_persona")
+    return {
+        "value": cur if cur in PERSONAS else mood.DEFAULT_PERSONA,
+        "options": [{"id": k, "name": p.name, "description": p.description} for k, p in PERSONAS.items()],
+    }
+
+
+@router.get("/campaigns/{campaign_id}/master-temper")
+async def get_master_temper(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    """Нрав ИИ-мастера: как он эмоционально отзывается на поступки и броски героев."""
+    return _temper_out(await _master_agent(session, user, campaign_id, "характер мастера"))
+
+
+@router.put("/campaigns/{campaign_id}/master-temper")
+async def put_master_temper(campaign_id: str, body: MasterTemperIn, user: UserDep, session: SessionDep) -> dict:
+    """Сменить нрав ИИ-мастера: со следующего хода мастер реагирует по-новому."""
+    from app.emotion.analyzers import PERSONAS
+
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    if body.value not in PERSONAS:
+        raise Conflict(f"нет такого нрава мастера: {body.value}")
+    agent.settings = {**(agent.settings or {}), "emotion_persona": body.value}
+    await session.commit()
+    return _temper_out(agent)
+
+
 # --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---
 
 

@@ -1008,7 +1008,7 @@ class MasterService:
     async def _mood(self, s, calls, cfg, c, seat_id, turn_id, ctx: ToolContext, new, char_by_seat) -> str:
         """Эмоции мастера за ход (app/emotion): броски героев и оценка реплик технической моделью.
         Состояние живёт в scene.state, итог — строка для системного промпта повествования и озвучки."""
-        persona_id = (cfg.settings or {}).get("emotion_persona") or "tired_mentor"
+        persona_id = (cfg.settings or {}).get("emotion_persona") or mood.DEFAULT_PERSONA
         persona = mood.persona_of(persona_id)
         heroes = {ch.id for ch in char_by_seat.values()}
         hi, lo = mood.hero_naturals(ctx.events, heroes)
