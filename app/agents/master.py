@@ -513,7 +513,6 @@ class MasterService:
             await s.commit()
             turn_id = turn.id
             ids = [m.id for m in new]
-            human = any(not (m.data or {}).get("ai") for m in new)  # ИИ-игроки отвечают только на ответ людям
 
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его

@@ -273,7 +273,6 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         assert narration_msg.get("data") is None or "voice" not in narration_msg.get("data", {})
 
 
-
 def test_master_voices_short_summary_and_writes_details(settings, tmp_path):
     """Озвучка — краткая суть хода из строки «Голос:», в чат — подробный текст без этой строки."""
     from tests.conftest import login

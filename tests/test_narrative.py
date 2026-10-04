@@ -1,4 +1,5 @@
 """Объём повествования мастера, краткая суть для озвучки и подталкивание отряда, который буксует."""
+# ruff: noqa: F811 — фикстуры из test_master приходят в тесты параметрами
 
 from app.agents.master import _split_voice
 from app.agents.rhythm import _stalled, stall_note
@@ -43,7 +44,7 @@ def test_stalled_party_gets_new_opportunity(game_client, admin_g, llm, dice, set
     game = rows(settings, GameSession, GameSession.campaign_id == c["id"])[0]
 
     async def stuck(s):
-        for i, calls in enumerate([[FAIL], [REFUSED], [FAIL, FAIL]]):
+        for calls in ([FAIL], [REFUSED], [FAIL, FAIL]):
             s.add(
                 MasterTurn(campaign_id=c["id"], session_id=game.id, upto_seq=0, status="done", trace={"calls": calls})
             )

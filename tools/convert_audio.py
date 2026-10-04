@@ -20,8 +20,6 @@ tools/convert_audio.py
 """
 
 import argparse
-import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -43,10 +41,13 @@ def check_ffmpeg() -> bool:
 def get_audio_duration(file_path: Path) -> float:
     cmd = [
         "ffprobe",
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(file_path)
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(file_path),
     ]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -113,7 +114,10 @@ def convert_file(
         actual_fade = min(fade, actual_dur / 4)
         head_dur = actual_dur - actual_fade
 
-        print(f"    Режим БЕСШОВНОГО ЛУПА: полная длина ({actual_dur:.1f}с), кроссфейд конца в начало ({actual_fade:.1f}с)")
+        print(
+            f"    Режим БЕСШОВНОГО ЛУПА: полная длина ({actual_dur:.1f}с), "
+            f"кроссфейд конца в начало ({actual_fade:.1f}с)"
+        )
 
         filter_complex = (
             f"[0:a]asplit=2[a1][a2];"
@@ -123,32 +127,31 @@ def convert_file(
         )
 
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(input_file),
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(input_file),
             "-vn",
-            "-filter_complex", filter_complex,
-            "-map", "[out]",
-            "-c:a", "libvorbis",
-            "-q:a", "4",
-            str(output_file)
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[out]",
+            "-c:a",
+            "libvorbis",
+            "-q:a",
+            "4",
+            str(output_file),
         ]
     else:
         print("    Прямая конвертация (без зацикливания)")
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", str(input_file),
-            "-vn",
-            "-c:a", "libvorbis",
-            "-q:a", "4",
-            str(output_file)
-        ]
+        cmd = ["ffmpeg", "-y", "-i", str(input_file), "-vn", "-c:a", "libvorbis", "-q:a", "4", str(output_file)]
 
     try:
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             print(f"[!] Ошибка ffmpeg: {res.stderr}")
             return False
-        
+
         size_kb = output_file.stat().st_size / 1024
         print(f"    Готово: {output_file} ({size_kb:.1f} КБ)")
         return True
@@ -162,9 +165,15 @@ def main():
     parser.add_argument("input", nargs="?", help="Входной файл или папка (по умолчанию audio/raw/)")
     parser.add_argument("--id", help="Целевой ID трека из tracks.yaml (например mel_tavern_cozy)")
     parser.add_argument("--no-loop", action="store_true", help="Отключить бесшовный луп (простая прямая конвертация)")
-    parser.add_argument("--start", "-s", type=float, default=0.0, help="Начало фрагмента в секундах (по умолч. 0.0 - с самого начала)")
-    parser.add_argument("--duration", "-d", type=float, default=0.0, help="Длина лупа в секундах (по умолч. 0.0 - весь трек целиком)")
-    parser.add_argument("--fade", "-f", type=float, default=4.0, help="Длина кроссфейда конца в начало в секундах (по умолч. 4.0)")
+    parser.add_argument(
+        "--start", "-s", type=float, default=0.0, help="Начало фрагмента в секундах (по умолч. 0.0 - с самого начала)"
+    )
+    parser.add_argument(
+        "--duration", "-d", type=float, default=0.0, help="Длина лупа в секундах (по умолч. 0.0 - весь трек целиком)"
+    )
+    parser.add_argument(
+        "--fade", "-f", type=float, default=4.0, help="Длина кроссфейда конца в начало в секундах (по умолч. 4.0)"
+    )
     parser.add_argument("--interactive", "-i", action="store_true", help="Интерактивный выбор ID для каждого файла")
 
     args = parser.parse_args()
@@ -230,14 +239,7 @@ def main():
             target_id = stem
 
         out_file = AUDIO_DIR / f"{target_id}.ogg"
-        convert_file(
-            raw_file,
-            out_file,
-            loop=do_loop,
-            start=args.start,
-            duration=args.duration,
-            fade=args.fade
-        )
+        convert_file(raw_file, out_file, loop=do_loop, start=args.start, duration=args.duration, fade=args.fade)
 
     print("\n[V] Конвертация завершена!")
 

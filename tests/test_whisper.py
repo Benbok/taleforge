@@ -1,4 +1,5 @@
 """Шёпот мастеру: ИИ-мастер отвечает сразу, только автору и строго на вопрос — без хода и повествования для стола."""
+# ruff: noqa: F811 — фикстуры из test_master приходят в тесты параметрами
 
 from app.agents.llm import LLMError
 from app.db.models import LlmCall, MasterTurn, Message
