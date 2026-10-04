@@ -141,7 +141,7 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
     inv = [f"{it.id}  {world.item_name(it)}{' [надет]' if it.equipped else ''}" for it in items]
     spells = _castable(world, ch)
     sp = [f"{sid}  {name} ({'заговор' if lvl == 0 else f'{lvl}-й круг'})" for sid, name, lvl in spells]
-    mode = "бой: за ход одно действие и перемещение" if world.scene.mode == "combat" else "свободный режим"
+    mode = "бой: за ход одно действие и перемещение" if world.in_fight(ch.id) else "свободный режим"
     text = (
         f"Персонаж игрока: {ch.id} {ch.name}. Режим сцены: {mode}.\n"
         f"Сущности сцены:\n{chr(10).join(lines) or 'нет'}\n"
@@ -193,7 +193,7 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
         acts.append(d)
 
     notice = None
-    if world.scene.mode == "combat":
+    if world.in_fight(ch.id):
         main = [a for a in acts if a["verb"] not in MOVE_VERBS]
         moves = [a for a in acts if a["verb"] in MOVE_VERBS]
         keep = main[:1] + moves[:1] if main else moves[:1]

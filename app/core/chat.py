@@ -63,7 +63,10 @@ async def active_session(session: AsyncSession, campaign_id: str) -> GameSession
     return (await session.scalars(q)).first()
 
 
-async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: str, max_len: int) -> Message:
+async def post_message(
+    session: AsyncSession, viewer: Viewer, kind: str, text: str, max_len: int, place: str | None = None
+) -> Message:
+    """Реплика в чат. ``place`` — живой мастер отвечает одной части разделившегося отряда (её место)."""
     text = (text or "").strip()
     if text.startswith(OOC_PREFIX):
         kind, text = "ooc", text[len(OOC_PREFIX) :].strip()
@@ -98,6 +101,13 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
         if group is not None:
             data = {"place": group[0]}
             visible_to = group[1]
+    elif kind == "narration" and place:
+        groups = await party(session, viewer.campaign)
+        if place not in groups:
+            raise Conflict("в этом месте сейчас нет героев: выберите другую часть отряда")
+        if len(groups) > 1:
+            data = {"place": place}
+            visible_to = audience(viewer.campaign, groups[place])
 
     msg = Message(
         campaign_id=viewer.campaign.id,
