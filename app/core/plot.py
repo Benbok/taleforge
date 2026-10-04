@@ -23,7 +23,10 @@ LIMITS: dict[str, dict[str, tuple[int, int]]] = {
     "oneshot": {"acts": (1, 1), "nodes": (3, 5), "locations": (2, 5), "npcs": (2, 6), "reveals": (1, 2)},
     "short": {"acts": (3, 3), "nodes": (2, 4), "locations": (4, 8), "npcs": (3, 8), "reveals": (2, 4)},
     "long": {"acts": (3, 4), "nodes": (3, 6), "locations": (6, 14), "npcs": (5, 14), "reveals": (3, 6)},
+    # каркас готового приключения (app/core/modules.py): объём задаёт книга, а не анкета
+    "module": {"acts": (1, 6), "nodes": (1, 12), "locations": (1, 40), "npcs": (0, 40), "reveals": (0, 12)},
 }
+MODULE = "module"
 MIN_CLUES = 3
 MIN_CLUE_PLACES = 2
 
@@ -285,6 +288,7 @@ def check(
     if not isinstance(raw, dict):
         return None, ["каркас должен быть объектом"]
     lim = LIMITS.get(length) or LIMITS["short"]
+    book = length == MODULE  # у книги своя мера: угроза короче, зацепок и финалов столько, сколько в ней есть
     props = tool_spec()["function"]["parameters"]["properties"]
     plan = copy.deepcopy(raw) if keep_state else {k: raw.get(k) for k in props}
 
@@ -331,8 +335,9 @@ def check(
         oid = reg("антагонист", a)
         if oid:
             template("creature_template", a.get("template_id"), f"антагонист {oid}", False)
-            if not 4 <= len(a.get("threat") or []) <= 6:
-                errors.append(f"антагонист {oid}: план угрозы — от 4 до 6 шагов")
+            lo = 2 if book else 4
+            if not lo <= len(a.get("threat") or []) <= 6:
+                errors.append(f"антагонист {oid}: план угрозы — от {lo} до 6 шагов")
             state(a, "threat_step", 0)
     if not 1 <= len(plan["antagonists"]) <= 3:
         errors.append("антагонистов от 1 до 3")
@@ -361,10 +366,14 @@ def check(
     for key, ru in (("locations", "локаций"), ("npcs", "NPC")):
         lo, hi = lim[key]
         if not keep_state and not lo <= len(plan[key]) <= hi:
-            errors.append(f"{ru} для длительности «{LENGTHS[length]}»: от {lo} до {hi}, сейчас {len(plan[key])}")
+            errors.append(
+                f"{ru} для длительности «{LENGTHS.get(length, length)}»: от {lo} до {hi}, сейчас {len(plan[key])}"
+            )
     lo, hi = lim["acts"]
     if not keep_state and not lo <= len(plan["acts"]) <= hi:
-        errors.append(f"актов для длительности «{LENGTHS[length]}»: от {lo} до {hi}, сейчас {len(plan['acts'])}")
+        errors.append(
+            f"актов для длительности «{LENGTHS.get(length, length)}»: от {lo} до {hi}, сейчас {len(plan['acts'])}"
+        )
     node_ids: set[str] = set()
     for act in plan["acts"]:
         aid = reg("акт", act)
@@ -413,10 +422,14 @@ def check(
         bad = [c.get("at") for c in clues if c.get("at") not in places]
         if bad:
             errors.append(f"тайна {rid}: зацепки ведут в неизвестные места {bad}")
-        if len(clues) < MIN_CLUES or len({c.get("at") for c in clues}) < MIN_CLUE_PLACES:
+        if book:
+            if not clues:
+                errors.append(f"тайна {rid}: нужна хотя бы одна зацепка")
+        elif len(clues) < MIN_CLUES or len({c.get("at") for c in clues}) < MIN_CLUE_PLACES:
             errors.append(f"тайна {rid}: нужно не меньше {MIN_CLUES} зацепок хотя бы в {MIN_CLUE_PLACES} разных местах")
-    if not 2 <= len(plan["endings"]) <= 3:
-        errors.append("финалов от 2 до 3")
+    lo = 1 if book else 2
+    if not lo <= len(plan["endings"]) <= 3:
+        errors.append(f"финалов от {lo} до 3")
 
     hits = _banned(_flat_text(plan), excluded)
     if hits:

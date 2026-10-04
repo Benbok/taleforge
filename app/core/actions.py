@@ -83,6 +83,10 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 actions.append("turn.pass")
         return {"actions": actions, "blocked": blocked, "pending": pending}
 
+    if in_combat and seat.role == "player":  # отряд разделён: бой в другом месте этого героя не держит
+        from app.core import combat
+
+        in_combat = await combat.hero_fights(session, sc, await combat.seat_hero(session, c.id, seat.id))
     # одна ожидающая реплика — только вне боя: в бою ход ограничивает флаг submitted (combat.gate_message)
     msg = None if in_combat else await pending_message(session, c, seat.id)
     if msg is not None:

@@ -78,15 +78,17 @@ class PlayerAgents:
         async with self.master.maker() as s:
             c = await s.get(Campaign, cid)
             sc = await get_scene(s, cid) if c is not None else None
-            if c is None or sc is None or sc.mode == "combat":
+            if c is None or sc is None:
                 return []
-            from app.agents.master import _batches
+            from app.agents.master import _batches, _in_fight
 
             batches, groups = await _batches(s, c)
             if not batches:
                 return []
             if place not in batches:
                 place = min(batches, key=lambda p: batches[p][0].seq)
+            if sc.mode == "combat" and (len(groups) <= 1 or _in_fight(sc, groups.get(place, []))):
+                return []  # в бою агент ходит только в свой ход; бой другой части отряда этой группе не мешает
             wrote = {m.seat_id for m in batches[place]}
             here = {h.seat_id for h in groups.get(place, [])} if place is not None else None
             seats = [
@@ -107,9 +109,12 @@ class PlayerAgents:
         async with self.master.maker() as s:
             c = await s.get(Campaign, cid)
             sc = await get_scene(s, cid) if c is not None else None
-            if c is None or sc.mode == "combat":
-                return  # в бою агент ходит только в свой ход
-            seats = [x.id for x in c.seats if is_agent_player(x)]
+            if c is None:
+                return
+            seats = []
+            for x in c.seats:  # в бою агент ходит только в свой ход; герой вне чужого боя отвечает как обычно
+                if is_agent_player(x) and not await combat.hero_fights(s, sc, await combat.seat_hero(s, cid, x.id)):
+                    seats.append(x.id)
         for seat_id in seats:  # по очереди: следующий видит реплику предыдущего
             await self.speak(cid, seat_id, combat_turn=False)
 
@@ -177,10 +182,10 @@ class PlayerAgents:
             if not is_agent_player(seat) or seat.agent_config_id is None:
                 return None
             sc = await get_scene(s, cid)
-            if (sc.mode == "combat") != combat_turn:
-                return None  # бой начался или кончился, пока агент ждал очереди
             q = select(Character).where(Character.seat_id == seat_id, Character.status.in_(("approved", "active")))
             ch = (await s.scalars(q)).first()
+            if await combat.hero_fights(s, sc, ch) != combat_turn:
+                return None  # бой начался или кончился, пока агент ждал очереди
             if ch is None or (ch.resources or {}).get("hp", 1) <= 0:
                 return None  # героя нет или он без сознания: говорить некому
             cfg = await s.get(AgentConfig, seat.agent_config_id)

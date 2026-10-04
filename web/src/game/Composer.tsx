@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import { api } from "../lib/api";
+import type { ChatMessage, PartyPart } from "../lib/types";
 import { standInFor, useGame } from "../stores/game";
 import { useDraft } from "./draft";
 import { clock, MAX_RECORD_SEC, uploadVoice, useRecorder } from "./voice";
@@ -30,6 +31,24 @@ function useNow(active: boolean): number {
   return now;
 }
 
+/** Кому отвечает живой мастер, пока отряд разделён: по умолчанию — части отряда, написавшей последней. */
+export function lastPlace(parts: PartyPart[], messages: ChatMessage[]): string | null {
+  const ids = new Set(parts.map((p) => p.id));
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if ((m.kind === "action" || m.kind === "speech") && m.data?.place && ids.has(m.data.place)) return m.data.place;
+  }
+  return null;
+}
+
+function useAddressee(parts: PartyPart[], messages: ChatMessage[]) {
+  const [picked, setPicked] = useState<{ value: string | null } | null>(null);
+  const key = parts.map((p) => p.id).join();
+  useEffect(() => setPicked(null), [key]); // отряд сошёлся или разошёлся иначе — выбор снова по последней реплике
+  const value = picked ? picked.value : lastPlace(parts, messages);
+  return { value: parts.length > 1 ? value : null, set: (v: string | null) => setPicked({ value: v }) };
+}
+
 /** Поле ввода — нативный чат: игрок пишет как есть, тип реплики определяет сервер. Отдельно только шёпот
  *  мастеру. Что можно сейчас, решает сервер (actions/blocked): закрытое не прячется молча — над полем причина. */
 export default function Composer() {
@@ -56,6 +75,8 @@ export default function Composer() {
   const actingSeat = playAs ?? snapshot?.me.seat_id ?? null;
   const myTurn = !!turn && !!actingSeat && turn.seat_id === actingSeat;
   const turnSeat = turn?.seat_id ?? null;
+  const parts = isMaster ? (game.scene?.party ?? []).filter((p) => p.id) : [];
+  const target = useAddressee(parts, game.messages);
 
   // в бою ходит герой ушедшего, которого ведёт этот игрок: поле само переключается на него
   useEffect(() => {
@@ -124,7 +145,8 @@ export default function Composer() {
       return;
     }
     const id = clientId();
-    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id, ...asSeat });
+    const to = !whisper && !ooc && target.value ? { place: target.value } : {};
+    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id, ...asSeat, ...to });
     if (!ok) {
       setSendError("Нет связи с сервером: текст сохранён, отправьте после переподключения.");
       return;
@@ -179,6 +201,19 @@ export default function Composer() {
   return (
     <form onSubmit={send} className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-3">
       {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
+      {parts.length > 1 && (
+        <label className="flex items-center gap-2 text-xs text-muted">
+          Отряд разделён, ответ слышат:
+          <select className="field py-1 text-xs" value={target.value ?? ""} onChange={(e) => target.set(e.target.value || null)}>
+            <option value="">все</option>
+            {parts.map((p) => (
+              <option key={p.id} value={p.id ?? ""}>
+                {p.place ?? "место"}: {p.names.join(", ")}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {myTurn && (
         <p className="tf-pop flex items-center gap-2 font-semibold text-accent" role="status">
           Ваш ход{turn?.round ? `, раунд ${turn.round}` : ""}

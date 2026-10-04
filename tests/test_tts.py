@@ -535,3 +535,63 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
         # Проверяем, что в TTS ушла короткая реплика, а не длинный нарратив
         assert synthesized_texts == ["Отличный прыжок, храбрец!"]
         assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
+
+
+def test_campaign_intro_voiced_in_parts(settings, tmp_path):
+    """Вступление кампании без заготовки: текст без служебного заголовка, голос всей вводной по частям,
+    каждая часть отдаётся тому, кто видит сообщение."""
+    from app.agents import rhythm, voiceover
+    from app.db.models import Message
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_lead import checked, set_plan
+    from tests.test_master import rows
+
+    import_base(settings)
+    settings = dataclasses.replace(settings, media_dir=tmp_path / "media", gemini_tts_api_key="test-gemini-key")
+    spoken: list[str] = []
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        spoken.append(json.loads(request.content)["contents"][0]["parts"][0]["text"])
+        pcm = base64.b64encode(b"\x00\x00" * 24000).decode("ascii")
+        part = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": pcm}}
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [part]}}]})
+
+    para = "Железный Конкордат стоит серым колоссом. Его границы начертаны кровью. Дым литейных висит над шпилями. "
+    story = "\n\n".join([para * 2, para, "Перед вами — тёмный коридор и мерцающий фонарь."])
+    llm = ScriptedLLM([])
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+        c, (p1,), _ = party(client, admin)
+        cid = c["id"]
+        idle = lambda: client.portal.call(client.app.state.master.wait_idle, cid)  # noqa: E731
+        idle()
+        set_plan(settings, cid, checked())
+        llm.replies += [
+            {"tool_calls": [(rhythm.NEXT_TOOL, {"hook": "Туман зовёт."})]},
+            {"text": "*Масштабное вступление к кампании:*\n\n" + story, "campaign_intro": True},
+            {"text": "Бран сходит на берег."},
+            {"tool_calls": [(rhythm.GOAL_TOOL, {"goal": "Найти корабль."})]},
+        ]
+        client.post(f"/api/campaigns/{cid}/session/pause", headers=admin)
+        idle()
+        client.post(f"/api/campaigns/{cid}/session/start", headers=admin)
+        idle()
+
+        (intro_req,) = llm.intro_requests
+        assert intro_req.get("thinking") is False  # рассуждения не съедают лимит текста
+        msg = next(m for m in rows(settings, Message, Message.campaign_id == cid) if "Конкордат" in m.content)
+        assert msg.content == story  # служебный заголовок модели игрокам не показан
+        parts = voiceover.split(story)
+        assert len(parts) > 1 and msg.data["voice_parts"] == len(parts) == len(msg.data["voices"])
+        assert msg.data["voice"] == msg.data["voices"][0]
+        intro_spoken = sorted(x for x in spoken if "Бран" not in x)
+        assert intro_spoken == sorted(" ".join(p.split()) for p in parts)  # озвучена вся вводная
+        heroes = next(m for m in rows(settings, Message, Message.campaign_id == cid) if "сходит на берег" in m.content)
+        assert heroes.data["voice_parts"] == 1  # знакомство отряда — тоже часть вводной
+        for v in msg.data["voices"]:
+            res = client.get(f"/api/campaigns/{cid}/voice/{v['id']}", headers=p1)
+            assert res.status_code == 200 and res.content.startswith(b"RIFF")

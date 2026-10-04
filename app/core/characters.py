@@ -582,8 +582,10 @@ async def update_spells(session: AsyncSession, viewer: Viewer, ch: Character, ca
     _own(viewer, ch)
     if ch.status not in ("approved", "active"):
         raise Conflict("книгу заклинаний меняют у героя в игре; черновик правят в конструкторе")
+    from app.core import combat
+
     scene = await get_scene(session, ch.campaign_id)
-    if scene.mode == "combat":
+    if await combat.hero_fights(session, scene, ch):
         raise Conflict("в бою книгу заклинаний не открыть: заклинания учат и готовят вне боя")
     sheet = dict(ch.sheet or {})
     old = spellbook.rules.Choice.of(sheet)

@@ -371,8 +371,17 @@ def choices(campaign, layer: str) -> list[str]:
     return [t.id for t in library().for_pack(pack_of(campaign)) if t.layer == layer and not t.cue]
 
 
-def mixer(scene) -> dict[str, Any]:
-    st = dict((scene.state or {}).get("audio") or {})
+def where(ctx) -> str | None:
+    """Чей звук меняет ход: место группы разделившегося отряда; None — общий звук отряда."""
+    w = ctx.world
+    return w.focus if w.focus and w.split else None
+
+
+def mixer(scene, place: str | None = None) -> dict[str, Any]:
+    """Микшер сцены. ``place`` — место группы разделившегося отряда: у неё свой звук, сначала — копия общего."""
+    state = scene.state or {}
+    own = (state.get("audio_at") or {}).get(place) if place else None
+    st = dict(own if own is not None else state.get("audio") or {})
     for k in LOOPS:
         st.setdefault(k, None)
     st.setdefault("v", 0)
@@ -381,15 +390,60 @@ def mixer(scene) -> dict[str, Any]:
     return st
 
 
-def _store(scene, st: dict[str, Any]) -> None:
+def _store(scene, st: dict[str, Any], place: str | None = None) -> None:
     st["v"] = int(st.get("v", 0)) + 1
-    scene.state = {**(scene.state or {}), "audio": st}
+    if place:
+        scene.state = {**(scene.state or {}), "audio_at": {**((scene.state or {}).get("audio_at") or {}), place: st}}
+    else:
+        scene.state = {**(scene.state or {}), "audio": st}
 
 
-def public_state(campaign, scene) -> dict[str, Any]:
+def regroup(ctx) -> None:
+    """Части отряда сошлись: звучит то, что было у группы в месте встречи; разошлись — звук ушедших мест забыт."""
+    sc = ctx.world.scene
+    at = dict((sc.state or {}).get("audio_at") or {})
+    if not at:
+        return
+    w = ctx.world
+    groups = w.groups()
+    if len(groups) > 1:
+        if w.focus in at:  # группа ушла в другое место — её звук идёт с ней
+            for p in w.scene_places():
+                at.setdefault(p, at[w.focus])
+        keep = {p: v for p, v in at.items() if p in groups}
+        if keep != at:
+            sc.state = {**sc.state, "audio_at": keep}
+        return
+    st = {k: v for k, v in sc.state.items() if k != "audio_at"}
+    place = next(iter(groups), None)
+    if place in at:
+        v = max(int(at[place].get("v", 0)), int((st.get("audio") or {}).get("v", 0))) + 1
+        st["audio"] = {**at[place], "v": v}
+        ctx.signals.add("audio")
+    sc.state = st
+
+
+def views(campaign, scene, groups: dict) -> list[tuple[list[str] | None, dict[str, Any]]]:
+    """Кому какой звук: пока отряд вместе — один всем; разделился — каждой группе свой, мастеру — общий."""
+    if len(groups) <= 1:
+        return [(None, public_state(campaign, scene))]
+    out: list[tuple[list[str] | None, dict[str, Any]]] = []
+    placed: set[str] = set()
+    for place, heroes in groups.items():
+        seats = [h.seat_id for h in heroes if h.seat_id]
+        placed.update(seats)
+        if seats:
+            out.append((seats, public_state(campaign, scene, place)))
+    rest = [x.id for x in campaign.seats if x.id not in placed]
+    if rest:
+        out.append((rest, public_state(campaign, scene)))
+    return out
+
+
+def public_state(campaign, scene, place: str | None = None) -> dict[str, Any]:
     """Состояние для игроков: включён ли звук, что звучит в каждом слое и с какого момента (для совпадения петель
-    у всех). ``now`` — часы сервера: по ним клиент поправляет свои."""
-    st = mixer(scene)
+    у всех). ``now`` — часы сервера: по ним клиент поправляет свои. ``place`` — звук группы этого места."""
+    st = mixer(scene, place)
     lib = library()
     layers: dict[str, Any] = {}
     for k in LOOPS:
@@ -400,8 +454,8 @@ def public_state(campaign, scene) -> dict[str, Any]:
     return {"enabled": on, "v": st["v"], "now": time.time(), "layers": layers if on else dict.fromkeys(LOOPS)}
 
 
-def set_layer(scene, layer: str, track: Track | None, level: str | None = None) -> None:
-    st = mixer(scene)
+def set_layer(scene, layer: str, track: Track | None, level: str | None = None, place: str | None = None) -> None:
+    st = mixer(scene, place)
     cur = st.get(layer)
     if track is None:
         st[layer] = None
@@ -410,7 +464,7 @@ def set_layer(scene, layer: str, track: Track | None, level: str | None = None) 
     else:
         st[layer] = {"track": track.id, "level": level or "mid", "since": time.time()}
     st["changed"] = {**st["changed"], layer: {"at": time.time(), "mode": scene.mode}}
-    _store(scene, st)
+    _store(scene, st, place)
 
 
 def cue(ctx, track: Track) -> None:
@@ -438,17 +492,18 @@ def on_mode(ctx, mode: str, victory: bool = False) -> None:
     if not enabled(ctx.campaign):
         return
     sc = ctx.world.scene
-    st = mixer(sc)
+    place = where(ctx)
+    st = mixer(sc, place)
     lib = library()
     if mode == "combat" and st.get("rhythm") is None:
         music = lib.get(st["music"]["track"]) if st.get("music") else None
         t = pick(ctx.campaign, "rhythm", mood="battle", fits=music)
         if t is not None:
-            set_layer(sc, "rhythm", t)
+            set_layer(sc, "rhythm", t, place=place)
             ctx.signals.add("audio")
     elif mode == "free":
         if st.get("rhythm") is not None:
-            set_layer(sc, "rhythm", None)
+            set_layer(sc, "rhythm", None, place=place)
             ctx.signals.add("audio")
         if victory and (t := pick(ctx.campaign, "sfx", cue_="victory")):
             cue(ctx, t)
@@ -474,12 +529,12 @@ def finalize(ctx) -> None:
         cue(ctx, t)
 
 
-def prompt_block(campaign, scene) -> str:
+def prompt_block(campaign, scene, place: str | None = None) -> str:
     """Блок «Звук» для системной инструкции мастера: что звучит и каталог дорожек."""
     if not enabled(campaign):
         return ""
     pack = pack_of(campaign)
-    st = mixer(scene)
+    st = mixer(scene, place)
     lib = library()
     now_ = []
     for k in LOOPS:

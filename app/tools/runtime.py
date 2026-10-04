@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import audio, combat, rolls
+from app.core.campaigns import master_seat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
 from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
@@ -122,13 +123,28 @@ def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
     split = party_public(world.groups(), world.entities, place)
     return {
         **({"party": split} if split else {}),
-        "mode": world.scene.mode,
-        "round": world.scene.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": ents,
-        "turn_order": world.scene.turn_order,
-        "order": combat.public_order(world.scene.turn_order, world.characters, world.entities),
-        "turn": combat.public_turn(world),
+        **combat_public(world.scene, world.characters, world.entities, place, len(world.groups()) > 1),
+    }
+
+
+def combat_public(scene, characters: dict, entities: dict, place: str | None, split: bool) -> dict[str, Any]:
+    """Режим, раунд и очередь для зрителя. Бой в другом месте разделившегося отряда его не касается: у него
+    свободный режим."""
+    if (
+        split
+        and place is not None
+        and scene.mode == "combat"
+        and place not in combat.fronts_of(scene, characters, entities)
+    ):
+        return {"mode": "free", "round": 0, "turn_order": [], "order": [], "turn": None}
+    return {
+        "mode": scene.mode,
+        "round": scene.round,
+        "turn_order": scene.turn_order,
+        "order": combat.public_order(scene.turn_order, characters, entities),
+        "turn": combat.public_turn_of(scene, characters, entities),
     }
 
 
@@ -138,6 +154,7 @@ def party_public(groups: dict, entities: dict, place: str | None) -> list[dict[s
         return None
     return [
         {
+            "id": p,
             "place": entities[p].name if p in entities else None,
             "names": [h.name for h in heroes],
             "here": place is not None and p == place,
@@ -191,7 +208,16 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
         await publish_message(bus, m, names)
     if "audio" in ctx.signals:
         # после сообщений: эффект звучит, когда игроки уже видят текст хода
-        payload = {**audio.public_state(ctx.campaign, w.scene), "cues": list(ctx.audio)}
-        await bus.publish(cid, envelope("audio.state", cid, payload), None)
+        # отряд разделён: каждой группе свой звук, эффекты хода слышит только группа, ради которой он шёл
+        place = audio.where(ctx)
+        for seats, state in audio.views(ctx.campaign, w.scene, w.groups()):
+            mine = (
+                place is None
+                or seats is None
+                or any(h.seat_id in seats for h in w.groups().get(place, []))
+                or master_seat(ctx.campaign).id in seats
+            )
+            payload = {**state, "cues": list(ctx.audio) if mine else []}
+            await bus.publish(cid, envelope("audio.state", cid, payload), seats)
         ctx.audio.clear()
         ctx.signals.discard("audio")

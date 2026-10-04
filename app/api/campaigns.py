@@ -31,8 +31,18 @@ from app.content.importer import latest_version
 from app.core import audio, chat, master_log
 from app.core import campaigns as svc
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
-from app.core.world import get_scene
-from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, MasterPreset, ModelProfile, User
+from app.core.world import get_scene, party_groups
+from app.db.models import (
+    AgentConfig,
+    Campaign,
+    CampaignSecret,
+    Character,
+    ContentPack,
+    Invite,
+    MasterPreset,
+    ModelProfile,
+    User,
+)
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -204,8 +214,9 @@ async def patch_campaign(
     await session.commit()
     if sound:  # звук включили или выключили посреди игры: у игроков он заиграет или смолкнет сразу
         sc = await get_scene(session, c.id)
-        env = envelope("audio.state", c.id, {**audio.public_state(c, sc), "cues": []})
-        await request.app.state.bus.publish(c.id, env, None)
+        chars = (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()
+        for seats, state in audio.views(c, sc, party_groups(chars, sc)):  # отряд разделён: у групп свой звук
+            await request.app.state.bus.publish(c.id, envelope("audio.state", c.id, {**state, "cues": []}), seats)
     return await campaign_out(session, c, user)
 
 
@@ -279,6 +290,40 @@ async def put_master_persona(
     await svc.apply_persona(session, user, agent, body.model_dump())
     await session.commit()
     return persona_out(agent)
+
+
+class MasterTemperIn(BaseModel):
+    value: str
+
+
+def _temper_out(agent: AgentConfig) -> dict:
+    from app.emotion import game as mood
+    from app.emotion.analyzers import PERSONAS
+
+    cur = (agent.settings or {}).get("emotion_persona")
+    return {
+        "value": cur if cur in PERSONAS else mood.DEFAULT_PERSONA,
+        "options": [{"id": k, "name": p.name, "description": p.description} for k, p in PERSONAS.items()],
+    }
+
+
+@router.get("/campaigns/{campaign_id}/master-temper")
+async def get_master_temper(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    """Нрав ИИ-мастера: как он эмоционально отзывается на поступки и броски героев."""
+    return _temper_out(await _master_agent(session, user, campaign_id, "характер мастера"))
+
+
+@router.put("/campaigns/{campaign_id}/master-temper")
+async def put_master_temper(campaign_id: str, body: MasterTemperIn, user: UserDep, session: SessionDep) -> dict:
+    """Сменить нрав ИИ-мастера: со следующего хода мастер реагирует по-новому."""
+    from app.emotion.analyzers import PERSONAS
+
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    if body.value not in PERSONAS:
+        raise Conflict(f"нет такого нрава мастера: {body.value}")
+    agent.settings = {**(agent.settings or {}), "emotion_persona": body.value}
+    await session.commit()
+    return _temper_out(agent)
 
 
 # --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---
