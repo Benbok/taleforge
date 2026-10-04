@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
 from app.core.linker import link_text
-from app.db.models import Campaign, GameSession, MasterTurn, Message, now
+from app.core.world import get_scene, party_groups
+from app.db.models import Campaign, Character, GameSession, MasterTurn, Message, now
 
 PLAYER_KINDS = ("action", "speech", "whisper", "ooc")
 MASTER_KINDS = ("narration", "ooc")
@@ -83,9 +84,15 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
     if kind == "narration":
         text = await link_text(session, viewer.campaign.id, text)  # живой мастер тоже получает ссылки на имена
 
-    visible_to = None
+    visible_to, data = None, None
     if kind == "whisper":
         visible_to = [seat.id, master_seat(viewer.campaign).id]
+    elif kind in ("action", "speech") and seat is not None and seat.role == "player":
+        # отряд разделён: реплику слышат только герои в том же месте и мастер (design/party-split.md)
+        group = await group_of(session, viewer.campaign, seat.id)
+        if group is not None:
+            data = {"place": group[0]}
+            visible_to = group[1]
 
     msg = Message(
         campaign_id=viewer.campaign.id,
@@ -96,10 +103,34 @@ async def post_message(session: AsyncSession, viewer: Viewer, kind: str, text: s
         kind=kind,
         visible_to=visible_to,
         content=text,
+        data=data,
     )
     session.add(msg)
     await session.flush()
     return msg
+
+
+async def party(session: AsyncSession, campaign: Campaign) -> dict[str | None, list[Character]]:
+    """Герои отряда по местам: одна запись — отряд вместе, несколько — разделился."""
+    scene = await get_scene(session, campaign.id)
+    chars = (await session.scalars(select(Character).where(Character.campaign_id == campaign.id))).all()
+    return party_groups(chars, scene)
+
+
+def audience(campaign: Campaign, heroes: list[Character]) -> list[str]:
+    """Кто видит сообщения группы: места её героев и мастер."""
+    return [*dict.fromkeys(h.seat_id for h in heroes if h.seat_id), master_seat(campaign).id]
+
+
+async def group_of(session: AsyncSession, campaign: Campaign, seat_id: str) -> tuple[str | None, list[str]] | None:
+    """Место героя этого игрока и кто его слышит, если отряд разделён; ``None`` — отряд вместе или героя нет."""
+    groups = await party(session, campaign)
+    if len(groups) <= 1:
+        return None
+    for place, heroes in groups.items():
+        if any(h.seat_id == seat_id for h in heroes):
+            return place, audience(campaign, heroes)
+    return None
 
 
 async def system_message(session: AsyncSession, campaign: Campaign, text: str, game: GameSession | None) -> Message:
@@ -182,12 +213,6 @@ def release_stand_ins(c: Campaign) -> list[str]:
     return back
 
 
-async def claimed_upto(session: AsyncSession, campaign_id: str) -> int:
-    """До какого seq реплики игроков уже взяты ходами мастера."""
-    q = select(func.max(MasterTurn.upto_seq)).where(MasterTurn.campaign_id == campaign_id)
-    return await session.scalar(q) or 0
-
-
 async def _ai_live(session: AsyncSession, campaign: Campaign) -> bool:
     return master_seat(campaign).occupant_type == "agent" and await active_session(session, campaign.id) is not None
 
@@ -202,7 +227,7 @@ async def pending_message(session: AsyncSession, campaign: Campaign, seat_id: st
             Message.campaign_id == campaign.id,
             Message.seat_id == seat_id,
             Message.kind.in_(PENDING_KINDS),
-            Message.seq > await claimed_upto(session, campaign.id),
+            Message.turn_id.is_(None),
         )
         .order_by(Message.seq)
     )
@@ -210,32 +235,26 @@ async def pending_message(session: AsyncSession, campaign: Campaign, seat_id: st
 
 
 async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[Message]) -> dict[str, str]:
-    """Статус реплик игроков при ИИ-мастере. Ход реплики — первый ход с наименьшим upto_seq >= seq: ходы идут
-    по очереди, а ход боя (advance) повторяет upto_seq предыдущего и реплик не берёт."""
+    """Статус реплик игроков при ИИ-мастере: по ходу, который взял реплику (``messages.turn_id``)."""
     if master_seat(campaign).occupant_type != "agent":
         return {}
     players = {s.id for s in campaign.seats if s.role == "player"}
     mine = [m for m in msgs if m.kind in PENDING_KINDS and m.seat_id in players]
     if not mine:
         return {}
-    q = (
-        select(MasterTurn.upto_seq, MasterTurn.status)
-        .where(MasterTurn.campaign_id == campaign.id, MasterTurn.upto_seq >= min(m.seq for m in mine))
-        .order_by(MasterTurn.upto_seq, MasterTurn.started_at)
-    )
-    turns: list[tuple[int, str]] = []
-    for upto, status in (await session.execute(q)).all():
-        if not turns or turns[-1][0] != upto:
-            turns.append((upto, status))
+    ids = {m.turn_id for m in mine if m.turn_id}
+    status: dict[str, str] = {}
+    if ids:
+        q = select(MasterTurn.id, MasterTurn.status).where(MasterTurn.id.in_(ids))
+        status = dict((await session.execute(q)).all())
     live = await active_session(session, campaign.id) is not None
     out: dict[str, str] = {}
     for m in mine:
-        t = next((t for t in turns if t[0] >= m.seq), None)
-        if t is None:
+        if m.turn_id is None:
             if live:
                 out[m.id] = "pending"
         else:
-            out[m.id] = TURN_STATES.get(t[1], "answered")
+            out[m.id] = TURN_STATES.get(status.get(m.turn_id, "done"), "answered")
     return out
 
 
@@ -252,7 +271,7 @@ async def withdraw_message(session: AsyncSession, viewer: Viewer, message_id: st
         or not await _ai_live(session, viewer.campaign)
     ):
         raise Conflict("Эту реплику отменить нельзя.")
-    if m.seq <= await claimed_upto(session, viewer.campaign.id):
+    if m.turn_id is not None:
         raise Conflict("Мастер уже отвечает на эту реплику.")
     await session.delete(m)
     await session.flush()

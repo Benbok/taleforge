@@ -166,6 +166,25 @@ export function ScenePanel() {
         <p className="font-mono text-xs text-muted">Локация ещё не объявлена мастером.</p>
       )}
 
+      {scene.party && (
+        <div className="rounded-[6px] border border-accent/40 bg-accent/5 px-2.5 py-2 text-xs" role="note">
+          <p className="font-semibold text-ink">
+            {scene.party.some((p) => p.here) ? "Вы отдельно от отряда" : "Отряд разделён"}
+          </p>
+          <p className="mt-0.5 text-muted">
+            Реплики и ответы мастера видят только те, кто рядом. Встретитесь — чат снова станет общим.
+          </p>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {scene.party.map((p, i) => (
+              <li key={i} className={p.here ? "font-semibold text-ink" : "text-muted"}>
+                {p.names.join(", ")} — {p.place ?? "неизвестно где"}
+                {p.here ? " (вы здесь)" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {scene.entities.length === 0 ? (
         <p className="font-mono text-xs text-muted">В поле зрения отряда никого нет.</p>
       ) : (

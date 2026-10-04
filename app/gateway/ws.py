@@ -133,8 +133,8 @@ async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     from sqlalchemy import select
 
     from app.core.inspect import viewer_hero
-    from app.core.world import get_scene, viewer_places
-    from app.tools.runtime import public_entity
+    from app.core.world import get_scene, party_groups, viewer_places
+    from app.tools.runtime import party_public, public_entity
 
     sc = await get_scene(session, c.id)
     ents = (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()
@@ -142,7 +142,9 @@ async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     here, places = viewer_places(chars.values(), sc, await viewer_hero(session, viewer))
     loc = next((e for e in ents if e.id == here), None)
     out = [public_entity(e) for e in ents if e.kind != "location" and (not places or e.location_id in places)]
+    split = party_public(party_groups(chars.values(), sc), {e.id: e for e in ents}, here if len(places) == 1 else None)
     return {
+        **({"party": split} if split else {}),
         "mode": sc.mode,
         "round": sc.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,

@@ -315,6 +315,9 @@ class World:
     inventory: dict[str, list[InventoryItem]]
     effects: list[ActiveEffect]
     plot: dict[str, Any] = field(default_factory=dict)  # каркас сюжета (скрыт от игроков, см. app/core/plot.py)
+    # место группы, ради которой идёт ход мастера, когда отряд разделён; None — весь отряд (design/party-split.md)
+    focus: str | None = None
+    crew: set[str] = field(default_factory=set)  # герои этой группы: куда бы они ни ушли за ход, сцена с ними
     _actors: dict[str, Actor] = field(default_factory=dict)
 
     def actor(self, actor_id: str) -> Actor:
@@ -373,7 +376,11 @@ class World:
         return len(self.groups()) > 1
 
     def scene_places(self) -> list[str]:
-        """Места, которые сейчас в сцене: где стоят герои. Пока отряд вместе, это одно место сцены."""
+        """Места, которые сейчас в сцене: где стоят герои. Пока отряд вместе, это одно место сцены; ход группы
+        разделившегося отряда видит только её место."""
+        if self.focus:
+            here = [self.place_of(self.characters[i]) for i in self.crew if i in self.characters]
+            return [p for p in dict.fromkeys(here) if p] or [self.focus]
         places = [p for p in self.groups() if p]
         if not places and self.scene.location_id:
             places = [self.scene.location_id]
@@ -385,6 +392,15 @@ class World:
         if not places:
             return [e for e in self.entities.values() if e.kind != "location"]
         return [e for e in self.entities.values() if e.kind != "location" and e.location_id in places]
+
+    def fighting_here(self) -> bool:
+        """Идёт бой, и он касается группы хода: в очереди инициативы есть кто-то из её места."""
+        if self.scene.mode != "combat":
+            return False
+        if not self.focus or not self.scene.turn_order:
+            return True
+        mine = set(self.scene_places())
+        return any(self.actor_place(x["id"]) in mine for x in self.scene.turn_order)
 
     def home(self) -> str | None:
         """Основное место сцены: место сцены, если там есть герои, иначе первое место, где они стоят."""
@@ -434,16 +450,24 @@ class World:
         """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1). Разделившийся отряд
         показан по местам: у каждого места свои герои, существа, предметы и области."""
         groups = self.groups()
-        mode = "бой" if self.scene.mode == "combat" else "свободный режим"
+        apart: dict[str | None, list[Character]] = {}
+        if self.focus:  # ход группы: в таблице только её места, остальные — одной строкой
+            mine = set(self.scene_places())
+            apart = {p: h for p, h in groups.items() if p not in mine}
+            groups = {p: h for p, h in groups.items() if p in mine}
+        fight = self.fighting_here()
+        mode = "бой" if fight else "свободный режим"
         if len(groups) > 1:
             head = f"СЦЕНА: отряд разделён, мест: {len(groups)} · {mode}"
         else:
             loc = self.entities.get(self.scene_places()[0] if self.scene_places() else "")
             head = f"СЦЕНА: {loc.name if loc else 'локация не задана'} · {mode}"
-        if self.scene.mode == "combat":
+        if fight:
             head += f" · раунд {self.scene.round}"
         lines = [head, f"Игровое время: {format_time(self.scene.game_time)}"]
         shown = [ch for ch in self.characters.values() if ch.status in PLAYABLE or ch.status == "dead"]
+        if apart:
+            shown = [ch for ch in shown if self.place_of(ch) in groups]
         if len(groups) <= 1:
             lines += self._hero_lines(shown)
             lines += self._place_lines(None)
@@ -461,6 +485,12 @@ class World:
             lines.append(
                 "Отряд разделён: существо, предмет или примету ставь с location_id нужного места; описывай каждому "
                 "месту только то, что видят стоящие там герои."
+            )
+        if apart:
+            lines.append(
+                "Отряд разделён, этот ход — только для героев выше. Другие части отряда (не описывай их, они услышат "
+                "свой ответ отдельно): "
+                + "; ".join(f"{', '.join(h.name for h in hs)} — {self._place_name(p)}" for p, hs in apart.items())
             )
         here = set(self.scene_places())
         others = [e for e in self.entities.values() if e.kind == "location" and e.id not in here]

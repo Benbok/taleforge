@@ -138,10 +138,19 @@ export interface OrderEntry {
   out: string | null;
 }
 
+/** Часть разделившегося отряда: где стоят и кто (here — место зрителя). */
+export interface PartyPart {
+  place: string | null;
+  names: string[];
+  here: boolean;
+}
+
 export interface Scene {
   mode: "free" | "combat";
   round: number;
   location: { id: string; name: string } | null;
+  /** Есть, только когда отряд разделился. */
+  party?: PartyPart[];
   entities: SceneEntity[];
   order?: OrderEntry[];
   turn: Turn | null;

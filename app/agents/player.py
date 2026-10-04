@@ -72,19 +72,26 @@ class PlayerAgents:
 
     # --- когда говорить ---
 
-    async def take_turns(self, cid: str) -> list[str]:
-        """Перед ходом мастера вне боя: дать ИИ-сопартийцам заявить действие в текущий раунд."""
+    async def take_turns(self, cid: str, place: str | None = None) -> list[str]:
+        """Перед ходом мастера вне боя: дать ИИ-сопартийцам заявить действие в текущий раунд. Разделившийся отряд:
+        только ИИ-героям группы ``place`` (по умолчанию — группы самой ранней реплики)."""
         async with self.master.maker() as s:
             c = await s.get(Campaign, cid)
             sc = await get_scene(s, cid) if c is not None else None
             if c is None or sc is None or sc.mode == "combat":
                 return []
-            from app.agents.master import _new_player_messages
-            new = await _new_player_messages(s, c)
-            if not new:
+            from app.agents.master import _batches
+
+            batches, groups = await _batches(s, c)
+            if not batches:
                 return []
-            wrote = {m.seat_id for m in new}
-            seats = [x.id for x in c.seats if is_agent_player(x) and x.id not in wrote]
+            if place not in batches:
+                place = min(batches, key=lambda p: batches[p][0].seq)
+            wrote = {m.seat_id for m in batches[place]}
+            here = {h.seat_id for h in groups.get(place, [])} if place is not None else None
+            seats = [
+                x.id for x in c.seats if is_agent_player(x) and x.id not in wrote and (here is None or x.id in here)
+            ]
         posted = []
         for seat_id in seats:
             msg_id = await self.speak(cid, seat_id, combat_turn=False)

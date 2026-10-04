@@ -27,10 +27,20 @@ from app.tools.registry import ToolContext
 
 
 async def open_context(
-    session: AsyncSession, campaign: Campaign, dice: Dice, *, turn_id: str | None, seat_id: str | None
+    session: AsyncSession,
+    campaign: Campaign,
+    dice: Dice,
+    *,
+    turn_id: str | None,
+    seat_id: str | None,
+    focus: str | None = None,
 ) -> ToolContext:
+    """Контекст хода. ``focus`` — место группы разделившегося отряда, ради которой идёт ход."""
     catalog = await campaign_catalog(session, campaign)
     world = await load_world(session, campaign, catalog)
+    if focus is not None:
+        world.focus = focus
+        world.crew = {c.id for c in world.groups().get(focus, [])}
     game = await active_session(session, campaign.id)
     return ToolContext(
         session=session,
@@ -109,7 +119,9 @@ def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
     место группы разделившегося отряда: её герои видят только своё окружение."""
     loc = world.entities.get(place or world.home() or "")
     ents = [public_entity(e) for e in world.in_scene_entities(place)]
+    split = party_public(world.groups(), world.entities, place)
     return {
+        **({"party": split} if split else {}),
         "mode": world.scene.mode,
         "round": world.scene.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,
@@ -118,6 +130,20 @@ def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
         "order": combat.public_order(world.scene.turn_order, world.characters, world.entities),
         "turn": combat.public_turn(world),
     }
+
+
+def party_public(groups: dict, entities: dict, place: str | None) -> list[dict[str, Any]] | None:
+    """Где кто из разделившегося отряда: для плашки «Отряд разделён». ``here`` — место зрителя."""
+    if len(groups) <= 1:
+        return None
+    return [
+        {
+            "place": entities[p].name if p in entities else None,
+            "names": [h.name for h in heroes],
+            "here": place is not None and p == place,
+        }
+        for p, heroes in groups.items()
+    ]
 
 
 def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
