@@ -13,6 +13,7 @@ import type {
   HeroPublic,
   PendingReply,
   ReactionPrompt,
+  RestVote,
   Scene,
   SeatState,
   SessionSummary,
@@ -56,6 +57,7 @@ interface GameState {
     | "reaction"
     | "summary"
     | "votes"
+    | "rest_votes"
     | "audio"
   > | null;
   audio: AudioState | null; // звук сцены: что звучит в каждом слое
@@ -83,6 +85,8 @@ interface GameState {
   summary: SessionSummary | null;
   /** Открытые голосования: кто-то ушёл из сети во время сессии (раздел 11). */
   votes: Vote[];
+  /** Голосования группы за отдых, которые видит этот участник. */
+  restVotes: RestVote[];
   /** За какое место сейчас пишет этот игрок: null — за своего героя, иначе — за героя ушедшего по голосованию. */
   playAs: string | null;
   /** Что можно сейчас герою ушедшего, которого ведёт этот игрок, по месту. */
@@ -135,6 +139,7 @@ const initial = {
   reaction: null,
   summary: null,
   votes: [],
+  restVotes: [],
   playAs: null,
   standIn: {},
 };
@@ -183,10 +188,11 @@ export const useGame = create<GameState>((set, get) => ({
     const p = e.payload as Record<string, unknown>;
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, ...rest } =
+        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, rest_votes, ...rest } =
           p as unknown as Snapshot;
         set((s) => ({
           votes: votes ?? [],
+          restVotes: rest_votes ?? [],
           playAs: s.playAs && rest.me?.stand_in_for?.includes(s.playAs) ? s.playAs : null,
           standIn: {},
           reaction: reaction ?? null,
@@ -275,6 +281,14 @@ export const useGame = create<GameState>((set, get) => ({
       }
       case "vote.ended":
         set((s) => ({ votes: s.votes.filter((x) => x.vote_id !== p.vote_id) }));
+        return;
+      case "rest.vote": {
+        const v = p as unknown as RestVote;
+        set((s) => ({ restVotes: [...s.restVotes.filter((x) => x.vote_id !== v.vote_id), v] }));
+        return;
+      }
+      case "rest.ended":
+        set((s) => ({ restVotes: s.restVotes.filter((x) => x.vote_id !== p.vote_id) }));
         return;
       case "stand_in.changed": {
         const x = p as { seat_id: string; stand_in: SeatState["stand_in"] };

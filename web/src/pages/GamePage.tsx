@@ -19,6 +19,7 @@ import MasterPanel from "../master/MasterPanel";
 import { PartyPanel, ScenePanel } from "../game/Panels";
 import PauseOverlay from "../game/PauseOverlay";
 import ReactionPanel from "../game/ReactionPanel";
+import RestVotePanel from "../game/RestVotePanel";
 import VotePanel from "../game/VotePanel";
 import SessionControls from "../game/SessionControls";
 import SoundControl from "../game/SoundControl";
@@ -187,6 +188,7 @@ export default function GamePage() {
           <CombatStrip />
           <ChatFeed campaignId={id} />
           <VotePanel />
+          <RestVotePanel />
           <ReactionPanel />
           <HeroHud />
           <Composer />

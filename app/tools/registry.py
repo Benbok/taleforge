@@ -47,6 +47,8 @@ class ToolContext:
     signals: set[str] = field(default_factory=set)  # что сделать после фиксации хода (например, "replan")
     carded: set[str] = field(default_factory=set)  # события, у которых уже есть карточка броска в чате
     audio: list[dict[str, Any]] = field(default_factory=list)  # эффекты звука, прозвучат с публикацией хода
+    # события клиентам после фиксации хода: (тип, данные, кому — места или None для всех)
+    notices: list[tuple[str, dict[str, Any], list[str] | None]] = field(default_factory=list)
     call_key: str | None = None
     _first_event: Event | None = None
 
