@@ -1314,7 +1314,7 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
     if (after.zone, after.bearing, after.elevation) != (before.zone, before.bearing, before.elevation):
         moved = distance(before, after)
     out: dict = {"who": act.name, "position": after.public(), "moved_ft": moved}
-    if combat.in_combat(ctx) and moved:
+    if combat.in_combat(ctx) and ctx.world.in_fight(act.id) and moved:
         if moved > 2 * act.speed:
             raise ToolError(
                 f"{act.name} проходит за ход не больше {2 * act.speed} футов с рывком, а тут {moved}: "
@@ -1659,6 +1659,8 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
         ch.location_id = loc.id
         moved.append(ch)
     _visit(ctx, loc, moved, inverse)
+    dice: list = []
+    joined = await _move_in_combat(ctx, moved, inverse, dice)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if all(c.location_id == loc.id for c in party):
         inverse.append(
@@ -1668,9 +1670,42 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
             _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
     await ctx.record(
-        "move", target_id=loc.id, payload={"characters": a.character_ids, "location": loc.name}, inverse=inverse
+        "move",
+        target_id=loc.id,
+        payload={"characters": a.character_ids, "location": loc.name, **joined},
+        dice=dice or None,
+        inverse=inverse,
     )
-    return {"moved": a.character_ids, "location": loc.name, "scene_location": ctx.world.scene.location_id}
+    return {"moved": a.character_ids, "location": loc.name, "scene_location": ctx.world.scene.location_id, **joined}
+
+
+async def _move_in_combat(ctx: ToolContext, moved: list, inverse: list, dice: list) -> dict:
+    """Идёт бой: герой, ушедший из места боя, выходит из очереди; пришедший в место боя бросает инициативу и
+    встаёт в очередь (5e: опоздавший вступает в бой)."""
+    if not combat.in_combat(ctx):
+        return {}
+    sc = ctx.world.scene
+    inverse += [
+        {"table": "scenes", "id": ctx.campaign.id, "field": f, "before": copy.deepcopy(getattr(sc, f))}
+        for f in ("mode", "round", "turn_order", "state")
+    ]
+    fronts = {combat._at(ctx, x["id"]) for x in sc.turn_order if x["id"] not in ctx.world.characters}
+    have = {x["id"] for x in sc.turn_order}
+    out: dict = {}
+    left = combat.drop(ctx, {ch.id for ch in moved if ch.id in have and ch.location_id not in fronts})
+    if left:
+        out["left_combat"] = [ctx.world.characters[i].name for i in left]
+    came = [ch.id for ch in moved if ch.id not in have and ch.location_id in fronts]
+    if came:
+        entries, rolls_ = roll_initiative(ctx, came)
+        combat.insert(ctx, entries)
+        dice += rolls_
+        out["joined_combat"] = [f"{ctx.world.characters[e['id']].name} ({e['initiative']})" for e in entries]
+    if not sc.turn_order:  # в бою никого не осталось
+        sc.mode, sc.round = "free", 0
+        combat.end_combat(ctx)
+        audio.on_mode(ctx, "free")
+    return out
 
 
 class RevealArgs(BaseModel):
@@ -1777,7 +1812,17 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         {"table": "scenes", "id": ctx.campaign.id, "field": f, "before": copy.deepcopy(getattr(sc, f))}
         for f in ("mode", "round", "turn_order", "state")
     ]
+    w = ctx.world
     if a.mode == "free":
+        # отряд разделён: ход группы заканчивает только свой бой, бой другой части отряда идёт дальше
+        mine = set(w.scene_places())
+        elsewhere = [p for p, end in combat.active_fronts(ctx).items() if end is None and p not in mine]
+        if w.focus and combat.in_combat(ctx) and elsewhere:
+            left = combat.drop(ctx, {x["id"] for x in sc.turn_order if combat._at(ctx, x["id"]) in mine})
+            await ctx.record("set_scene_mode", payload={"mode": "free", "left": left}, inverse=inverse)
+            if left:
+                audio.on_mode(ctx, "free")
+            return {"mode": "free", "note": "здесь боя нет; в другом месте отряд ещё сражается"}
         won = sc.mode == "combat" and bool(combat._heroes_standing(ctx)) and not combat._hostiles_left(ctx)
         sc.mode, sc.round, sc.turn_order = "free", 0, []
         combat.end_combat(ctx)
@@ -1785,8 +1830,8 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         await ctx.record("set_scene_mode", payload={"mode": "free"}, inverse=inverse)
         return {"mode": "free"}
     ids = a.participants
+    joining = combat.in_combat(ctx)  # бой уже идёт: новые участники встают в очередь, начатый бой не сбрасывается
     if not ids:
-        w = ctx.world
         foes = [
             e
             for e in w.in_scene_entities()
@@ -1798,6 +1843,26 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
             c.id for c in w.characters.values() if c.status in PLAYABLE and (fronts is None or w.place_of(c) in fronts)
         ]
         ids += [e.id for e in foes]
+    if joining:
+        have = {x["id"] for x in sc.turn_order}
+        ids = [i for i in ids if i not in have]
+    entries, dice = roll_initiative(ctx, ids)
+    if joining:
+        combat.insert(ctx, entries)
+        names = [f"{w.actor(e['id']).name} ({e['initiative']})" for e in entries]
+        await ctx.record("set_scene_mode", payload={"mode": "combat", "joined": names}, dice=dice, inverse=inverse)
+        return {"mode": "combat", "round": sc.round, "joined": names}
+    sc.mode, sc.round = "combat", 1
+    sc.turn_order = entries
+    combat.start_combat(ctx)
+    audio.on_mode(ctx, "combat")
+    names = [f"{w.actor(e['id']).name} ({e['initiative']})" for e in entries]
+    await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
+    return {"mode": "combat", "round": 1, "initiative": names}
+
+
+def roll_initiative(ctx: ToolContext, ids: list[str]) -> tuple[list[dict], list[dict]]:
+    """Броски инициативы: участники по убыванию и карточки бросков."""
     entries, dice = [], []
     for i in ids:
         act = ctx.world.actor(i)
@@ -1808,15 +1873,8 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         roll = engine.initiative(ctx.dice, act.mods["dex"], mode)
         entries.append((act.id, roll, act.mods["dex"]))
         dice.append({"who": act.id, **dice_json(roll), **({"reasons": reasons} if reasons else {})})
-    order = engine.initiative_order(entries)
     totals = {e[0]: e[1].total for e in entries}
-    sc.mode, sc.round = "combat", 1
-    sc.turn_order = [{"id": i, "initiative": totals[i]} for i in order]
-    combat.start_combat(ctx)
-    audio.on_mode(ctx, "combat")
-    names = [f"{ctx.world.actor(i).name} ({totals[i]})" for i in order]
-    await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
-    return {"mode": "combat", "round": 1, "initiative": names}
+    return [{"id": i, "initiative": totals[i]} for i in engine.initiative_order(entries)], dice
 
 
 class TimeArgs(BaseModel):
@@ -1836,7 +1894,7 @@ async def advance_time(ctx: ToolContext, a: TimeArgs) -> dict:
     before = ctx.world.scene.game_time
     ctx.world.scene.game_time = before + seconds
     inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "game_time", "before": before}]
-    if ctx.world.scene.mode == "combat" and a.unit == "round":
+    if ctx.world.in_fight() and a.unit == "round":
         inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "round", "before": ctx.world.scene.round})
         ctx.world.scene.round += a.amount
     expired = await expire_effects(ctx, inverse)
@@ -1894,7 +1952,7 @@ class RestArgs(BaseModel):
     ids={"character_ids": "characters"},
 )
 async def rest(ctx: ToolContext, a: RestArgs) -> dict:
-    if ctx.world.scene.mode == "combat":
+    if any(ctx.world.in_fight(i) for i in a.character_ids):
         raise ToolError("в бою не отдыхают: сначала set_scene_mode free")
     hours = 1 if a.kind == "short" else 8
     last_long = int((ctx.world.scene.state or {}).get("last_long_rest", -(10**9)))

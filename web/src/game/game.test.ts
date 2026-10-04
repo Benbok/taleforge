@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { sideEffects } from "../lib/useGameSocket";
 import type { Envelope } from "../lib/types";
 import { useToasts } from "../stores/toasts";
-import { secondsLeft, waitLeft } from "./Composer";
+import { lastPlace, secondsLeft, waitLeft } from "./Composer";
 
 const env = (type: string, payload: object = {}): Envelope => ({ type, campaign_id: "c1", seq: null, payload: payload as Record<string, unknown> });
 
@@ -35,6 +35,20 @@ describe("игровой экран", () => {
     expect(waitLeft("2026-09-28T10:00:00Z", 60, t0 + 90_000)).toBe(0);
     expect(waitLeft(null, 60, t0)).toBeNull();
     expect(waitLeft("2026-09-28T10:00:00Z", 0, t0)).toBeNull();
+  });
+});
+
+describe("разделённый отряд", () => {
+  it("живой мастер по умолчанию отвечает части отряда, написавшей последней", () => {
+    const parts = [
+      { id: "loc_a", place: "Площадь", names: ["Бран"], here: false },
+      { id: "loc_b", place: "Доки", names: ["Гимли"], here: false },
+    ];
+    const msg = (seq: number, kind: string, place?: string) =>
+      ({ id: `m${seq}`, seq, kind, seat_id: null, author: null, content: "", whisper: !!place, data: place ? { place } : null, created_at: null }) as never;
+    expect(lastPlace(parts, [])).toBeNull();
+    expect(lastPlace(parts, [msg(1, "action", "loc_b"), msg(2, "action", "loc_a"), msg(3, "ooc")])).toBe("loc_a");
+    expect(lastPlace(parts, [msg(1, "speech", "loc_b"), msg(2, "action", "loc_gone")])).toBe("loc_b");
   });
 });
 
