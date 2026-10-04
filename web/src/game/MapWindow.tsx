@@ -1,50 +1,53 @@
 import { useEffect, type MouseEvent } from "react";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
+import { GridLines, roomForLabel, Token } from "./GridBoard";
 import {
-  areaPx,
+  CELL_FT,
   COVER_NAME,
-  EDGE,
   ELEVATION_NAME,
-  layoutAround,
+  GRID_R,
+  layoutGrid,
   layoutPlaces,
-  RING,
   useMapWindow,
+  ZONE_CELLS,
+  type Zone,
   type Cover,
   type Elevation,
   type MapState,
 } from "./map";
 
-const ZONES: [keyof typeof RING, string][] = [
+const ZONES: [Zone, string][] = [
   ["melee", "вплотную"],
   ["near", "близко"],
   ["far", "далеко"],
 ];
 
-const ZONE_LABELS: Record<keyof typeof RING, string> = {
+const ZONE_LABELS: Record<Zone, string> = {
   melee: "вплотную · 5 фт",
   near: "близко · 30 фт",
   far: "далеко · 60+ фт",
 };
 
-const RING_NAME: Record<keyof typeof RING, string> = { melee: "вплотную", near: "близко", far: "далеко" };
+const RING_NAME: Record<Zone, string> = { melee: "вплотную", near: "близко", far: "далеко" };
 
 function short(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
 
-/** Значки у маркера: высота (▲ возвышение, ▼ низ) и укрытие (◧). */
-function Badges({ x, y, elevation, cover }: { x: number; y: number; elevation?: Elevation; cover?: Cover }) {
-  const marks = [elevation === "high" ? "▲" : elevation === "low" ? "▼" : "", cover && cover !== "none" ? (cover === "total" ? "■" : "◧") : ""]
-    .filter(Boolean)
-    .join("");
-  if (!marks) return null;
-  return (
-    <text x={x + 11} y={y - 6} fontSize={9} fill="var(--color-warn, #d9a441)">
-      {marks}
-    </text>
-  );
+/** Пометки у значка: высота (▲ возвышение, ▼ низ) и укрытие (◧, ■ полное). */
+function badge(elevation?: Elevation, cover?: Cover): string | undefined {
+  const marks = [elevation === "high" ? "▲" : elevation === "low" ? "▼" : "", cover && cover !== "none" ? (cover === "total" ? "■" : "◧") : ""];
+  return marks.join("") || undefined;
 }
+
+// Схема «Вокруг» — квадрат клеток по 5 футов, центр отряда в средней клетке
+const CELL = 15;
+const SIDE = 2 * GRID_R + 1;
+const BOARD = SIDE * CELL;
+const MID = GRID_R * CELL + CELL / 2;
+const PAD = 14;
+const px = (c: number) => MID + c * CELL;
 
 function posNote(elevation?: Elevation, cover?: Cover): string | null {
   const parts = [elevation && elevation !== "ground" ? ELEVATION_NAME[elevation] : null, cover && cover !== "none" ? COVER_NAME[cover] : null];
@@ -59,151 +62,92 @@ function useOpen() {
 
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
-  const { things, exits, heroes, areas } = layoutAround(m);
+  const { things, exits, heroes, areas } = layoutGrid(m);
+  const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
+  const name = (s: string, col: number, row: number) => (roomForLabel(occupied, col, row) ? s : undefined);
   const combat = m.mode === "combat";
 
   return (
     <div className="flex flex-col gap-3">
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
-      <svg viewBox="-50 -20 500 440" className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
-        <defs>
-          <radialGradient id="tf-radar-lens" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--tf-accent, #c98a4b)" stopOpacity="0.08" />
-            <stop offset="60%" stopColor="var(--tf-accent, #c98a4b)" stopOpacity="0.02" />
-            <stop offset="95%" stopColor="var(--color-bg, #0f1012)" stopOpacity="0.75" />
-            <stop offset="100%" stopColor="var(--color-bg, #0f1012)" stopOpacity="0.95" />
-          </radialGradient>
-        </defs>
+      <svg viewBox={`${-PAD} ${-PAD} ${BOARD + 2 * PAD} ${BOARD + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
+        <rect x={0} y={0} width={BOARD} height={BOARD} fill="var(--color-surface, #17181c)" />
+        <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />
 
-        {/* Фоновый тактический диск */}
-        <circle cx={200} cy={200} r={EDGE + 8} fill="url(#tf-radar-lens)" stroke="var(--color-line, #2a2b31)" strokeWidth={1} />
-        <circle cx={200} cy={200} r={EDGE + 4} fill="none" stroke="var(--tf-accent, #c98a4b)" strokeWidth={1} strokeOpacity={0.25} strokeDasharray="2 6" />
-
-        {/* Оси видоискателя и румбы */}
-        <line x1={200} y1={25} x2={200} y2={375} stroke="var(--tf-accent, #c98a4b)" strokeWidth={1} strokeOpacity={0.18} strokeDasharray="3 4" />
-        <line x1={25} y1={200} x2={375} y2={200} stroke="var(--tf-accent, #c98a4b)" strokeWidth={1} strokeOpacity={0.18} strokeDasharray="3 4" />
-        <line x1={76} y1={76} x2={324} y2={324} stroke="var(--color-line, #2a2b31)" strokeWidth={1} strokeOpacity={0.3} strokeDasharray="2 6" />
-        <line x1={324} y1={76} x2={76} y2={324} stroke="var(--color-line, #2a2b31)" strokeWidth={1} strokeOpacity={0.3} strokeDasharray="2 6" />
-
-        {/* Кольца зон с плашками дистанций */}
+        {/* Дальности: 5 фт, 30 фт, «далеко» у края */}
         {ZONES.map(([z]) => (
-          <g key={z}>
-            <circle cx={200} cy={200} r={RING[z]} fill="none" stroke="var(--tf-accent, #c98a4b)" strokeWidth={1} strokeOpacity={0.25} strokeDasharray="3 5" />
-            <rect
-              x={200 - RING[z] * 0.38 - 66}
-              y={200 + RING[z] * 0.92 - 12}
-              width={64}
-              height={14}
-              rx={3}
-              fill="var(--color-surface, #17181c)"
-              fillOpacity={0.9}
-              stroke="var(--color-line, #2a2b31)"
-              strokeWidth={0.8}
-            />
-            <text
-              x={200 - RING[z] * 0.38 - 34}
-              y={200 + RING[z] * 0.92 - 2}
-              textAnchor="middle"
-              fontSize={8.5}
-              fontFamily="var(--tf-font-mono, monospace)"
-              fill="var(--color-muted, #a8a296)"
-            >
+          <g key={z} aria-hidden="true">
+            <circle cx={MID} cy={MID} r={(ZONE_CELLS[z] + 0.5) * CELL} fill="none" stroke="var(--tf-accent, #c98a4b)" strokeWidth={0.8} strokeOpacity={0.35} strokeDasharray="3 4" />
+            <text x={MID - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} y={MID - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} textAnchor="end" fontSize={7} fontFamily="var(--tf-font-mono, monospace)" fill="var(--color-muted, #a8a296)">
               {ZONE_LABELS[z]}
             </text>
           </g>
         ))}
 
-        {/* Стороны света (Румбы компаса) */}
-        <g className="font-mono select-none">
-          <polygon points="200,8 196,17 204,17" fill="var(--tf-accent, #c98a4b)" />
-          <text x={200} y={-1} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
+        {/* Стороны света */}
+        <g className="font-mono select-none" aria-hidden="true">
+          <text x={MID} y={-4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
             С
           </text>
-          <text x={200} y={402} textAnchor="middle" fontSize={10} fill="var(--color-muted, #888)">
+          <text x={MID} y={BOARD + 11} textAnchor="middle" fontSize={9} fill="var(--color-muted, #888)">
             Ю
           </text>
-          <text x={402} y={204} textAnchor="start" fontSize={10} fill="var(--color-muted, #888)">
+          <text x={BOARD + 3} y={MID + 3} fontSize={9} fill="var(--color-muted, #888)">
             В
           </text>
-          <text x={-2} y={204} textAnchor="end" fontSize={10} fill="var(--color-muted, #888)">
+          <text x={-3} y={MID + 3} textAnchor="end" fontSize={9} fill="var(--color-muted, #888)">
             З
           </text>
         </g>
 
-        {areas.map(({ item: a, x, y }) => (
+        {areas.map(({ item: a, col, row }) => (
           <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}`}>
-            <circle cx={x} cy={y} r={areaPx(a.radius_ft)} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
-            <text x={x} y={y - areaPx(a.radius_ft) + 12} textAnchor="middle" fontSize={9} fill="var(--tf-ember, #c0563a)">
+            <circle cx={px(col)} cy={px(row)} r={Math.max(0.5, a.radius_ft / CELL_FT) * CELL} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
+            <text x={px(col)} y={px(row) - Math.max(0.5, a.radius_ft / CELL_FT) * CELL + 9} textAnchor="middle" fontSize={8} fill="var(--tf-ember, #c0563a)">
               {short(a.name, 20)} · {a.radius_ft} фт
             </text>
           </g>
         ))}
 
-        {heroes.length === 0 ? (
-          <g>
-            <circle cx={200} cy={200} r={14} fill="var(--tf-accent)" fillOpacity={0.2} />
-            <circle cx={200} cy={200} r={8} fill="var(--tf-accent)" />
-            <text x={200} y={224} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--color-ink, #ddd)">
-              отряд
-            </text>
-          </g>
-        ) : (
-          <>
-            {/* Тонкий ориентир центра строя */}
-            <circle cx={200} cy={200} r={2} fill="var(--tf-accent)" opacity={0.6} />
-            <circle cx={200} cy={200} r={24} fill="none" stroke="var(--tf-accent)" strokeWidth={0.8} strokeOpacity={0.15} strokeDasharray="2 3" />
-            {heroes.map(({ item: h, x, y }) => (
-              <g key={h.id} className="cursor-pointer" onClick={open(h.id, h.name)} role="button" aria-label={h.name}>
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={h.mine ? 10 : 8}
-                  fill="var(--tf-accent)"
-                  fillOpacity={h.down ? 0.35 : 1}
-                  stroke={h.mine ? "var(--color-ink, #ddd)" : "none"}
-                  strokeWidth={1.5}
-                />
-                <text x={x} y={y + 4} textAnchor="middle" fontSize={9} fill="var(--color-bg, #111)">
-                  ★
-                </text>
-                <text x={x} y={y + 21} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
-                  {short(h.name, 14)}
-                </text>
-                <Badges x={x} y={y} elevation={h.elevation} cover={h.cover} />
-              </g>
-            ))}
-          </>
-        )}
-
-        {exits.map(({ item: x, x: px, y: py }) => (
-          <g key={x.id} className="cursor-pointer" onClick={open(x.id, x.name)} role="button" aria-label={`Выход: ${x.name}`}>
-            <line x1={200 + (px - 200) * 0.9} y1={200 + (py - 200) * 0.9} x2={px} y2={py} stroke={TYPE_COLOR.location} strokeWidth={2} />
-            <circle cx={px} cy={py} r={9} fill="var(--color-surface, #222)" stroke={TYPE_COLOR.location} strokeWidth={2} strokeDasharray={x.visited ? undefined : "3 3"} />
-            <text x={px} y={py + 4} textAnchor="middle" fontSize={10} fill={TYPE_COLOR.location}>
-              {TYPE_ICON.location}
-            </text>
-            <text x={px} y={py > 200 ? py - 13 : py + 21} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
-              {short(x.name, 18)}
-            </text>
-          </g>
+        {heroes.length === 0 && <Token cx={MID} cy={MID} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
+        {exits.map(({ item: x, col, row }) => (
+          <Token key={x.id} cx={px(col)} cy={px(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={open(x.id, x.name)} ariaLabel={`Выход: ${x.name}`} />
         ))}
-
-        {things.map(({ item: t, x, y }) => (
-          <g key={t.id} className="cursor-pointer" onClick={open(t.id, t.name)} role="button" aria-label={t.name}>
-            <circle cx={x} cy={y} r={9} fill={TYPE_COLOR[t.type]} fillOpacity={t.condition === "мёртв" ? 0.3 : 0.9} />
-            <text x={x} y={y + 4} textAnchor="middle" fontSize={10} fill="var(--color-bg, #111)">
-              {TYPE_ICON[t.type]}
-            </text>
-            <text x={x} y={y + 21} textAnchor="middle" fontSize={10} fill="var(--color-ink, #ddd)">
-              {short(t.name, 16)}
-            </text>
-            <Badges x={x} y={y} elevation={t.elevation} cover={t.cover} />
-          </g>
+        {things.map(({ item: t, col, row }) => (
+          <Token
+            key={t.id}
+            cx={px(col)}
+            cy={px(row)}
+            size={CELL}
+            color={TYPE_COLOR[t.type]}
+            icon={TYPE_ICON[t.type]}
+            label={name(t.name, col, row)}
+            faded={t.condition === "мёртв"}
+            badge={badge(t.elevation, t.cover)}
+            onClick={open(t.id, t.name)}
+            ariaLabel={t.name}
+          />
+        ))}
+        {heroes.map(({ item: h, col, row }) => (
+          <Token
+            key={h.id}
+            cx={px(col)}
+            cy={px(row)}
+            size={CELL}
+            color="var(--tf-accent)"
+            icon="★"
+            label={name(h.name, col, row)}
+            ring={h.mine}
+            faded={h.down}
+            badge={badge(h.elevation, h.cover)}
+            onClick={open(h.id, h.name)}
+            ariaLabel={h.name}
+          />
         ))}
       </svg>
       {combat && (
         <p className="text-center font-mono text-[11px] text-muted">
-          Бой: ▲ на возвышении, ▼ внизу, ◧ за укрытием (+2 или +5 к КД), ■ полное укрытие. Кольца не в масштабе.
+          Бой: ▲ на возвышении, ▼ внизу, ◧ за укрытием (+2 или +5 к КД), ■ полное укрытие. Клетка — 5 футов; «далеко» нарисовано у края схемы.
         </p>
       )}
 
