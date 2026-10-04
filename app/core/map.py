@@ -217,7 +217,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 }
             )
     book = None
-    if here is not None:
+    if here is not None and (here.template_id or adventure.room_of(here)):  # карта книги — только у мест модуля
         catalog = await campaign_catalog(session, viewer.campaign)
         positions = (scene.state or {}).get("positions") or {}
         q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
