@@ -184,6 +184,22 @@ async def load_catalog(session: AsyncSession, chain: list[list[str]]) -> Catalog
     return cat
 
 
+def from_packs(chain) -> Catalog:
+    """Каталог цепочки, загруженной с диска (app/content/loader.py), — для проверок до записи пакета в БД."""
+    entries: dict[str, Entry] = {}
+    base_entries: list[Entry] = []
+    for pack in chain:
+        is_base = pack.manifest.provides == BASE_RULES or pack.id == BASE_PACK_ID
+        for rid in pack.manifest.excludes:
+            entries.pop(rid, None)
+        for r in pack.records.values():
+            e = Entry(r.id, r.kind, r.status, pack.id, r.data)
+            entries[r.id] = e
+            if is_base:
+                base_entries.append(e)
+    return Catalog(entries, base_entries)
+
+
 async def campaign_catalog(session: AsyncSession, campaign: Campaign) -> CatalogView:
     chain = campaign.content_chain
     if not chain:

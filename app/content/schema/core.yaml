@@ -62,5 +62,7 @@ kinds:
   rule_section: {required: [text]}
   plot_structure: {required: [beats, pillars]}
   campaign_secret: {required: [text]}
+  # готовое приключение (app/core/modules.py): каркас в схеме архитектора, зацепки, эпилог, карты мест
+  adventure: {required: [plot, hooks]}
   persona_table: {required: [slot, rows], properties: {slot: {enum: [trait, ideal, bond, flaw]}, rows: {type: array, minItems: 1, items: {type: string, minLength: 1}}, for: {type: array, items: {type: string}}}}
   dc_scale: {required: [value], properties: {value: {type: integer, minimum: 1, maximum: 40}}}

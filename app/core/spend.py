@@ -69,7 +69,7 @@ async def report(s: AsyncSession, user: User, days: int) -> dict[str, Any]:
         rows.append(
             {
                 **r,
-                "name": name if r["id"] else "Вне кампаний: проверка моделей",
+                "name": name if r["id"] else "Вне кампаний: проверка моделей и разбор приключений",
                 "limit": limit,
                 "spent_total": round(lifetime.get(r["id"], 0.0), 6),
             }

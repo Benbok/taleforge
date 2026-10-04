@@ -129,7 +129,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
     if why:
         raise ToolError(f"{act.name}: {why}")
 
-    combat = w.scene.mode == "combat"
+    combat = w.in_fight(ch.id)  # бой другой части отряда не мешает
     ct = str(spell.get("casting_time"))
     if combat and (a.ritual or ct not in rules.COMBAT_TIMES):
         took = "ритуал идёт 10 минут" if a.ritual else f"оно творится {rules.TIME_RU.get(ct, ct)}"
@@ -340,7 +340,7 @@ async def resolve(
     if dc and (spell.get("save") or not (parts or heal)):
         result["save_dc"] = dc
     took = rules.cast_seconds(spell, ritual)
-    if w.scene.mode != "combat" and took >= 60:
+    if not w.in_fight(act.id) and took >= 60:
         inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "game_time", "before": w.scene.game_time})
         w.scene.game_time += took
         result["time"] = format_time(w.scene.game_time)
@@ -389,7 +389,7 @@ async def read_scroll(ctx: ToolContext, ch: Character, it: Any, rec: Any, target
     except rules.SpellError as e:
         raise ToolError(f"{act.name}: {e}") from e
     ct = str(spell.get("casting_time"))
-    if w.scene.mode == "combat" and ct not in rules.COMBAT_TIMES:
+    if w.in_fight(ch.id) and ct not in rules.COMBAT_TIMES:
         raise ToolError(f"в бою «{spell['name']}» со свитка не успеть: оно творится {rules.TIME_RU.get(ct, ct)}")
 
     level = int(spell.get("level", 0))

@@ -402,6 +402,16 @@ class World:
         mine = set(self.scene_places())
         return any(self.actor_place(x["id"]) in mine for x in self.scene.turn_order)
 
+    def in_fight(self, actor_id: str | None = None) -> bool:
+        """Идёт ли бой для героя (или для группы хода, если герой не указан). Бой другой части отряда не в счёт."""
+        from app.core.combat import fights
+
+        if self.scene.mode != "combat":
+            return False
+        if actor_id is None:
+            return self.fighting_here()
+        return fights(self.scene, self.characters, self.entities, actor_id)
+
     def home(self) -> str | None:
         """Основное место сцены: место сцены, если там есть герои, иначе первое место, где они стоят."""
         places = self.scene_places()
@@ -421,6 +431,58 @@ class World:
             names = ", ".join(f"{p} {self._place_name(p)}" for p in places)
             raise WorldError(f"отряд разделён: укажи location_id — в каком месте {what} ({names})")
         return self.home()
+
+    # --- часы групп: у разошедшегося отряда у каждой части своё время, у кампании — наибольшее из них ---
+    # ``scene.state["lag"]`` — на сколько секунд герой отстаёт от часов кампании. Пока отряд вместе, отставания нет.
+
+    def lags(self) -> dict[str, int]:
+        return {k: int(v) for k, v in ((self.scene.state or {}).get("lag") or {}).items() if v}
+
+    def _set_lags(self, lag: dict[str, int]) -> None:
+        st = {k: v for k, v in (self.scene.state or {}).items() if k != "lag"}
+        self.scene.state = {**st, **({"lag": lag} if lag else {})}
+
+    def enter_clock(self) -> int:
+        """Ход группы: часы сцены на время ход показывают время этой группы. Возвращает часы кампании до хода."""
+        t0 = self.scene.game_time
+        if self.crew:
+            lag = self.lags()
+            self.scene.game_time = t0 - min((lag.get(i, 0) for i in self.crew), default=0)
+        return t0
+
+    def settle_clock(self, t0: int) -> None:
+        """После хода группы: часы кампании — наибольшие из часов групп; кто позади, копит отставание."""
+        if not self.crew:
+            return
+        lag, mine = self.lags(), self.scene.game_time
+        now = max(t0, mine)
+        new = {}
+        for ch in self.characters.values():
+            v = now - mine if ch.id in self.crew else lag.get(ch.id, 0) + now - t0
+            if v > 0 and ch.status in PLAYABLE:
+                new[ch.id] = v
+        self._set_lags(new)
+        self.scene.game_time = now
+
+    def catch_up(self) -> list[tuple[list[str], int]]:
+        """Части отряда сошлись: отставшие догоняют. Возвращает, кто и на сколько секунд отстал."""
+        lag = self.lags()
+        if not lag:
+            return []
+        groups = self.groups()
+        out: list[tuple[list[str], int]] = []
+        new: dict[str, int] = {}
+        for heroes in groups.values():
+            least = min(lag.get(h.id, 0) for h in heroes) if len(groups) > 1 else 0
+            behind: dict[int, list[str]] = {}
+            for h in heroes:
+                if lag.get(h.id, 0) > least:
+                    behind.setdefault(lag[h.id] - least, []).append(h.name)
+                if least:
+                    new[h.id] = least
+            out += [(names, d) for d, names in behind.items()]
+        self._set_lags(new)
+        return out
 
     def _place_name(self, place_id: str | None) -> str:
         e = self.entities.get(place_id or "")

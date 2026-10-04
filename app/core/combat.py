@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import copy
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -96,10 +97,103 @@ async def _next(ctx: ToolContext, notes: list[str]) -> None:
     _set(ctx, turn=i, submitted=False, actor=None, deadline=None)
 
 
-def _hostiles_left(ctx: ToolContext) -> bool:
+# --- бой по местам (разделение отряда, design/party-split.md) ---
+# Очередь инициативы одна, но у каждого участника своё место. Существо бьёт только героев своего места, бой в месте
+# заканчивается сам, когда там не осталось врагов или стоящих героев. Герои, которых нет в очереди, играют свободно.
+
+
+def place_in(scene, characters: dict, entities: dict, actor_id: str) -> str | None:
+    """Место участника боя; без своего места — место сцены."""
+    ch = characters.get(actor_id)
+    en = entities.get(actor_id)
+    own = ch.location_id if ch is not None else en.location_id if en is not None else None
+    return own or scene.location_id
+
+
+def fronts_of(scene, characters: dict, entities: dict) -> set[str | None]:
+    """Места, где идёт бой: места участников очереди инициативы."""
+    if scene.mode != "combat":
+        return set()
+    return {place_in(scene, characters, entities, x["id"]) for x in scene.turn_order or []}
+
+
+def fronts(world) -> set[str | None]:
+    return fronts_of(world.scene, world.characters, world.entities)
+
+
+def _at(ctx: ToolContext, actor_id: str) -> str | None:
+    w = ctx.world
+    return place_in(w.scene, w.characters, w.entities, actor_id)
+
+
+def fights(scene, characters: dict, entities: dict, hero_id: str | None) -> bool:
+    """Касается ли идущий бой героя. Пока отряд вместе (или герой не указан), бой касается всех; разделился — только
+    тех, кто в очереди или стоит в месте боя."""
+    from app.core.world import party_groups
+
+    if scene.mode != "combat":
+        return False
+    if hero_id is None or not scene.turn_order or any(x["id"] == hero_id for x in scene.turn_order):
+        return True
+    if len(party_groups(characters.values(), scene)) <= 1:
+        return True
+    return place_in(scene, characters, entities, hero_id) in fronts_of(scene, characters, entities)
+
+
+async def hero_fights(session, sc, ch: Character | None) -> bool:
+    """То же по базе: для игроков и ИИ-игроков вне хода мастера."""
+    from sqlalchemy import select
+
+    if sc.mode != "combat":
+        return False
+    if ch is None or not sc.turn_order or any(x["id"] == ch.id for x in sc.turn_order):
+        return True
+    chars = (await session.scalars(select(Character).where(Character.campaign_id == sc.campaign_id))).all()
+    from app.core.world import party_groups
+
+    return len(party_groups(chars, sc)) <= 1
+
+
+def drop(ctx: ToolContext, ids: set[str]) -> list[str]:
+    """Убирает участников из очереди, не сбивая чужой ход. Ушёл тот, чей ход, — ход переходит к следующему."""
+    sc = ctx.world.scene
+    order = list(sc.turn_order or [])
+    keep = [x for x in order if x["id"] not in ids]
+    if len(keep) == len(order):
+        return []
+    gone = [x["id"] for x in order if x["id"] in ids]
+    turn = int(state(ctx).get("turn", 0)) % len(order)
+    cur = order[turn]["id"]
+    sc.turn_order = keep
+    if not keep:
+        return gone
+    if cur in ids:
+        nxt = next(x["id"] for x in order[turn:] + order[:turn] if x["id"] not in ids)
+        _set(ctx, turn=[x["id"] for x in keep].index(nxt), submitted=False, actor=None, deadline=None)
+    else:
+        _set(ctx, turn=[x["id"] for x in keep].index(cur))
+    return gone
+
+
+def insert(ctx: ToolContext, entries: list[dict]) -> None:
+    """Опоздавшие встают в очередь по своей инициативе (5e), чей ход сейчас — не меняется."""
+    sc = ctx.world.scene
+    order = list(sc.turn_order or [])
+    cur = order[int(state(ctx).get("turn", 0)) % len(order)]["id"] if order else None
+    for e in entries:
+        i = next((n for n, x in enumerate(order) if (x.get("initiative") or 0) < e["initiative"]), len(order))
+        order.insert(i, e)
+    sc.turn_order = order
+    if cur is not None:
+        _set(ctx, turn=[x["id"] for x in order].index(cur))
+
+
+def _hostiles_left(ctx: ToolContext, place: Any = ...) -> bool:
     for entry in ctx.world.scene.turn_order:
         en = ctx.world.entities.get(entry["id"])
         if en is None or en.kind != "creature":
+            continue
+        if place is not ... and _at(ctx, en.id) != place:
             continue
         st = en.state or {}
         if not st.get("dead") and not st.get("fled") and st.get("attitude", "hostile") == "hostile":
@@ -107,10 +201,13 @@ def _hostiles_left(ctx: ToolContext) -> bool:
     return False
 
 
-def _heroes_standing(ctx: ToolContext) -> list[Actor]:
+def _heroes_standing(ctx: ToolContext, place: Any = ...) -> list[Actor]:
+    """Стоящие на ногах герои в очереди; ``place`` — только в этом месте."""
     out = []
     for entry in ctx.world.scene.turn_order:
         ch = ctx.world.characters.get(entry["id"])
+        if place is not ... and ch is not None and _at(ctx, ch.id) != place:
+            continue
         if ch is not None and ch.status in PLAYABLE:
             a = ctx.world.actor(ch.id)
             if a.alive and a.hp.current > 0:
@@ -132,11 +229,7 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
         return notes
     limit = len(ctx.world.scene.turn_order) * 3 + 3
     for step in range(limit):
-        if not _hostiles_left(ctx):
-            await _stop(ctx, notes, "врагов не осталось")
-            return notes
-        if not _heroes_standing(ctx):
-            await _stop(ctx, notes, "все герои повержены")
+        if await close_fronts(ctx, notes):
             return notes
         cid = current_id(ctx)
         try:
@@ -166,6 +259,46 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
         await creature_turn(ctx, act, f"{key}:{step}", notes, ask)
         await _next(ctx, notes)
     return notes
+
+
+def _front_end(ctx: ToolContext, place: str | None) -> str | None:
+    """Почему бой в этом месте окончен; None — бой там идёт."""
+    if not _hostiles_left(ctx, place):
+        return "врагов не осталось"
+    if not _heroes_standing(ctx, place):
+        here = [x["id"] for x in ctx.world.scene.turn_order if x["id"] in ctx.world.characters]
+        if not any(_at(ctx, i) == place for i in here):
+            return "герои ушли"
+        return "все герои повержены"
+    return None
+
+
+def active_fronts(ctx: ToolContext) -> dict[str | None, str | None]:
+    """Места боя и причина конца боя в каждом (None — бой там идёт)."""
+    places = dict.fromkeys(_at(ctx, x["id"]) for x in ctx.world.scene.turn_order or [])
+    return {p: _front_end(ctx, p) for p in places}
+
+
+async def close_fronts(ctx: ToolContext, notes: list[str]) -> bool:
+    """Закрывает бой там, где он кончился. True — бой окончен везде (сцена в свободном режиме)."""
+    ends = active_fronts(ctx)
+    done = {p: why for p, why in ends.items() if why}
+    if not done:
+        return False
+    if len(done) == len(ends):
+        await _stop(ctx, notes, "; ".join(dict.fromkeys(done.values())))
+        return True
+    sc = ctx.world.scene
+    inverse = [
+        {"table": "scenes", "id": ctx.campaign.id, "field": f, "before": copy.deepcopy(getattr(sc, f))}
+        for f in ("turn_order", "state")
+    ]
+    for p, why in done.items():
+        drop(ctx, {x["id"] for x in sc.turn_order if _at(ctx, x["id"]) == p})
+        notes.append(f"бой в месте «{ctx.world._place_name(p)}» окончен: {why}")
+    closed = {str(p): why for p, why in done.items()}
+    await ctx.record("set_scene_mode", payload={"mode": "combat", "closed": closed}, inverse=inverse)
+    return False
 
 
 async def _stop(ctx: ToolContext, notes: list[str], why: str) -> None:
@@ -206,9 +339,10 @@ def _multiattack(ctx: ToolContext, act: Actor) -> list[str]:
     return []
 
 
-def _pick_target(ctx: ToolContext) -> Actor | None:
-    """Цель — стоящий на ногах герой с наименьшими хитами (добить слабого — поведение обоих профилей SRD-монстров)."""
-    heroes = _heroes_standing(ctx)
+def _pick_target(ctx: ToolContext, act: Actor) -> Actor | None:
+    """Цель — стоящий на ногах герой с наименьшими хитами (добить слабого — поведение обоих профилей SRD-монстров).
+    Только в месте существа: героев другой части отряда оно не достаёт."""
+    heroes = _heroes_standing(ctx, _at(ctx, act.id))
     return min(heroes, key=lambda a: (a.hp.current, a.id)) if heroes else None
 
 
@@ -229,7 +363,7 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
     if act.hp.maximum and act.hp.current / act.hp.maximum <= threshold:
         await _flee(ctx, act, key, notes, ask)
         return
-    target = _pick_target(ctx)
+    target = _pick_target(ctx, act)
     if target is None:
         return
     melee = [a for a in act.attacks if a["kind"] == "melee"]
@@ -252,7 +386,7 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
     else:
         return
     for n, k in enumerate(keys):
-        tgt = target if target.hp.current > 0 else _pick_target(ctx)
+        tgt = target if target.hp.current > 0 else _pick_target(ctx, act)
         if tgt is None:
             break
         r = await execute(
@@ -268,7 +402,7 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
 async def _flee(ctx: ToolContext, act: Actor, key: str, notes: list[str], ask: ReactionAsk | None) -> None:
     en = act.obj
     if en.zone == "melee" and ask is not None:
-        for hero in _heroes_standing(ctx):
+        for hero in _heroes_standing(ctx, _at(ctx, en.id)):
             ch = ctx.world.characters[hero.id]
             if not reaction_available(ctx, ch.id) or not _melee_attack(hero):
                 continue
@@ -333,13 +467,16 @@ def reaction_options(hero: Actor, creature: Actor) -> list[dict[str, str]]:
 
 def public_turn(world) -> dict[str, Any] | None:
     """Чей ход — для клиентов (событие turn.changed и снимок сцены)."""
-    sc = world.scene
+    return public_turn_of(world.scene, world.characters, world.entities)
+
+
+def public_turn_of(sc, characters: dict, entities: dict) -> dict[str, Any] | None:
     if sc.mode != "combat" or not sc.turn_order:
         return None
     st = dict(sc.state or {})
     cid = sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]["id"]
-    ch = world.characters.get(cid)
-    name = ch.name if ch else (world.entities[cid].name if cid in world.entities else cid)
+    ch = characters.get(cid)
+    name = ch.name if ch else (entities[cid].name if cid in entities else "существо")
     return {
         "round": sc.round,
         "actor_id": cid,
@@ -348,6 +485,20 @@ def public_turn(world) -> dict[str, Any] | None:
         "deadline": st.get("deadline"),
         "submitted": bool(st.get("submitted")),
     }
+
+
+def turn_views(world) -> list[tuple[list[str] | None, dict[str, Any] | None]]:
+    """Кому какой ход показать. Отряд разделён и бой не везде — героям вне боя хода нет, они играют свободно."""
+    turn = public_turn(world)
+    groups = world.groups()
+    if turn is None or len(groups) <= 1:
+        return [(None, turn)]
+    places = fronts(world)
+    calm = [h.seat_id for p, hs in groups.items() if p not in places for h in hs if h.seat_id]
+    if not calm:
+        return [(None, turn)]
+    rest = [x.id for x in world.campaign.seats if x.id not in calm]
+    return [(calm, None), (rest, turn)]
 
 
 def public_order(turn_order: list[dict], characters: dict[str, Character], entities: dict[str, Any]) -> list[dict]:
@@ -386,6 +537,8 @@ async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str 
         return "Мастер готовит вступление к кампании…"
     sc = await get_scene(session, viewer.campaign.id)
     in_combat = sc.mode == "combat" and bool(sc.turn_order)
+    if in_combat:  # отряд разделён: герой не в очереди — бой идёт в другом месте, он играет свободно
+        in_combat = await hero_fights(session, sc, await seat_hero(session, viewer.campaign.id, viewer.seat.id))
     if (
         not in_combat
         and kind in PENDING_KINDS
@@ -406,6 +559,15 @@ async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str 
         if mark:
             sc.state = {**st, "submitted": True}
     return None
+
+
+async def seat_hero(session, campaign_id: str, seat_id: str) -> Character | None:
+    from sqlalchemy import select
+
+    q = select(Character).where(
+        Character.campaign_id == campaign_id, Character.seat_id == seat_id, Character.status.in_(PLAYABLE)
+    )
+    return (await session.scalars(q)).first()
 
 
 async def unsubmit(session, viewer) -> None:

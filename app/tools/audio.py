@@ -49,7 +49,8 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
     _need(ctx)
     sc = ctx.world.scene
     lib = audio.library()
-    st = audio.mixer(sc)
+    place = audio.where(ctx)  # отряд разделён: звук только этой группы
+    st = audio.mixer(sc, place)
     before = copy.deepcopy(sc.state)
     wanted: dict[str, audio.Track | None] = {}
     for layer in audio.LOOPS:
@@ -98,7 +99,7 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
     for layer in audio.LOOPS:
         if layer in wanted or layer in levels:
             track = wanted[layer] if layer in wanted else current(layer)
-            audio.set_layer(sc, layer, track, levels.get(layer))
+            audio.set_layer(sc, layer, track, levels.get(layer), place)
     ctx.signals.add("audio")
     now_ = {k: (current(k).id if current(k) else "off") for k in audio.LOOPS}
     await ctx.record(

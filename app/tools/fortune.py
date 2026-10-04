@@ -373,7 +373,7 @@ def summary(res: dict) -> str:
 async def run_watch(ctx: ToolContext) -> str:
     """Пока шло игровое время, мир не стоял: раз в несколько часов сервер проверяет случайность по правилу места.
     Не больше одной случайности за ход, в бою — никогда. Возвращает подсказку мастеру для фазы решения."""
-    if random_events(ctx.campaign) != "auto" or ctx.world.scene.mode == "combat":
+    if random_events(ctx.campaign) != "auto" or ctx.world.in_fight():
         return ""
     if not (_candidates(ctx, "encounter") or _candidates(ctx, "event")):
         return ""

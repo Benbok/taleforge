@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import AudioSection from "../admin/AudioSection";
+import ModulesSection from "../admin/ModulesSection";
 import PacksSection from "../admin/PacksSection";
 import SpendSection from "../admin/SpendSection";
 import VoiceSection from "../admin/VoiceSection";
@@ -8,7 +9,7 @@ import ModelsSection from "../profile/ModelsSection";
 import UsersSection from "../profile/UsersSection";
 import { useSession } from "../stores/session";
 
-type Tab = "packs" | "models" | "voice" | "audio" | "spend" | "users";
+type Tab = "packs" | "modules" | "models" | "voice" | "audio" | "spend" | "users";
 
 interface TabItem {
   id: Tab;
@@ -42,6 +43,26 @@ export default function AdminPage() {
           <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
           <path d="m3.3 7 8.7 5 8.7-5" />
           <path d="M12 22V12" />
+        </svg>
+      ),
+    },
+    {
+      id: "modules",
+      label: "Готовые приключения",
+      icon: (active) => (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={active ? "var(--tf-accent)" : "currentColor"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z" />
+          <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" />
         </svg>
       ),
     },
@@ -257,6 +278,7 @@ export default function AdminPage() {
             {/* Tab Contents */}
             <div className="flex flex-col gap-6">
               {tab === "packs" && <PacksSection />}
+              {tab === "modules" && <ModulesSection />}
               {tab === "models" && <ModelsSection superAdmin={superAdmin} />}
               {tab === "voice" && <VoiceSection />}
               {tab === "audio" && <AudioSection />}

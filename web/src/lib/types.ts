@@ -85,8 +85,15 @@ export interface ChatMessage {
   content: string;
   whisper: boolean;
   // у реплики ИИ-игрока — { ai: true }; у голосовой — { voice }: запись автора, content — её расшифровка;
-  // у ответа мастера на шёпот — { whisper_reply: id шёпота }
-  data?: (RollCard & { ai?: boolean; voice?: VoiceData; voices?: VoiceData[]; voice_parts?: number; whisper_reply?: string }) | null;
+  // place — реплика или ответ одной части разделившегося отряда (id её места)
+  data?: (RollCard & {
+    ai?: boolean;
+    voice?: VoiceData;
+    voices?: VoiceData[];
+    voice_parts?: number;
+    whisper_reply?: string;
+    place?: string;
+  }) | null;
   created_at: string | null;
   state?: ReplyState | null;
   fresh?: boolean;
@@ -141,6 +148,8 @@ export interface OrderEntry {
 
 /** Часть разделившегося отряда: где стоят и кто (here — место зрителя). */
 export interface PartyPart {
+  /** id места: живой мастер отвечает этой части отряда (message.send с place). */
+  id: string | null;
   place: string | null;
   names: string[];
   here: boolean;

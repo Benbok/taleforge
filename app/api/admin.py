@@ -41,6 +41,8 @@ async def list_packs(user: UserDep, session: SessionDep) -> list[PackOut]:
     if not is_admin(user):
         raise AccessDenied("только Admin")
     rows = (await session.scalars(select(ContentPack).order_by(ContentPack.id, ContentPack.imported_at))).all()
+    # готовые приключения тоже пакеты, но выбираются в своём разделе, а не как мир
+    rows = [p for p in rows if (p.manifest or {}).get("kind") != "module"]
     return [
         PackOut(
             id=p.id,
