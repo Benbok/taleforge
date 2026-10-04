@@ -104,10 +104,11 @@ def public_entity(e: Entity) -> dict[str, Any]:
     return item
 
 
-def scene_public(world: World) -> dict[str, Any]:
-    """Сцена, как её видят игроки: имена, зоны и примерное состояние, без чисел существ (раздел 10)."""
-    loc = world.entities.get(world.scene.location_id or "")
-    ents = [public_entity(e) for e in world.in_scene_entities()]
+def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
+    """Сцена, как её видят игроки: имена, зоны и примерное состояние, без чисел существ (раздел 10). ``place`` —
+    место группы разделившегося отряда: её герои видят только своё окружение."""
+    loc = world.entities.get(place or world.home() or "")
+    ents = [public_entity(e) for e in world.in_scene_entities(place)]
     return {
         "mode": world.scene.mode,
         "round": world.scene.round,
@@ -117,6 +118,25 @@ def scene_public(world: World) -> dict[str, Any]:
         "order": combat.public_order(world.scene.turn_order, world.characters, world.entities),
         "turn": combat.public_turn(world),
     }
+
+
+def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
+    """Кому какую сцену отправить. Отряд вместе — одна сцена всем. Разделился — каждой группе своё место, а мастеру
+    и местам без героя на этом месте — все места сразу."""
+    groups = world.groups()
+    if len(groups) <= 1:
+        return [(None, scene_public(world))]
+    out: list[tuple[list[str] | None, dict[str, Any]]] = []
+    placed: set[str] = set()
+    for place, heroes in groups.items():
+        seats = [h.seat_id for h in heroes if h.seat_id]
+        placed.update(seats)
+        if seats:
+            out.append((seats, scene_public(world, place)))
+    rest = [s.id for s in world.campaign.seats if s.id not in placed]
+    if rest:
+        out.insert(0, (rest, scene_public(world)))
+    return out
 
 
 async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names: dict[str, str] | None = None):
@@ -139,7 +159,8 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
             level = (ev.payload or {}).get("level")
             info = {"entity_id": ev.target_id, "name": en.name if en else None, "level": level}
             await bus.publish(cid, envelope("knowledge.revealed", cid, info), [ch.seat_id])
-    await bus.publish(cid, envelope("scene.updated", cid, scene_public(w)), None)
+    for seats, view in scene_views(w):
+        await bus.publish(cid, envelope("scene.updated", cid, view), seats)
     for m in messages:
         await publish_message(bus, m, names)
     if "audio" in ctx.signals:

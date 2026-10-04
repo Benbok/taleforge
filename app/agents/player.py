@@ -190,12 +190,13 @@ class PlayerAgents:
                 x.seat_id: x.name for x in (await s.scalars(select(Character).where(Character.campaign_id == cid)))
             }
             ents = (await s.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
+            spot = ch.location_id or sc.location_id  # отряд мог разделиться: ИИ-игрок видит место своего героя
             here = [
                 public_entity(e)["name"]
                 for e in ents
-                if e.kind != "location" and (sc.location_id is None or e.location_id == sc.location_id)
+                if e.kind != "location" and (spot is None or e.location_id == spot)
             ]
-            place = next((e.name for e in ents if e.id == sc.location_id), None)
+            place = next((e.name for e in ents if e.id == spot), None)
             careful = cautious(seat)
             user_text = _render(ch, sheet, last, rows, chars, place, here, combat_turn)
             character = persona.render(ch.persona, await persona.notes_of(s, cid, ch.id))

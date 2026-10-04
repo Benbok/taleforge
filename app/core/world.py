@@ -346,12 +346,69 @@ class World:
         """Футы между участниками по их позициям в сцене (app/core/positions.py)."""
         from app.core.positions import distance, pos_of
 
+        if self.actor_place(a.id) != self.actor_place(b.id):
+            raise WorldError(f"{a.name} и {b.name} в разных местах: отряд разделён, отсюда не достать")
         both = a.kind == "creature" and b.kind == "creature"
         return distance(pos_of(self, a.id), pos_of(self, b.id), both_creatures=both)
 
-    def in_scene_entities(self) -> list[Entity]:
-        loc = self.scene.location_id
-        return [e for e in self.entities.values() if e.kind != "location" and (loc is None or e.location_id == loc)]
+    # --- места отряда (разделение отряда, design/party-split.md) ---
+
+    def place_of(self, ch: Character) -> str | None:
+        """Где стоит герой: своё место, если его переводили отдельно, иначе место сцены."""
+        return ch.location_id or self.scene.location_id
+
+    def actor_place(self, actor_id: str) -> str | None:
+        ch = self.characters.get(actor_id)
+        if ch is not None:
+            return self.place_of(ch)
+        en = self.entities.get(actor_id)
+        return en.location_id if en is not None else None
+
+    def groups(self) -> dict[str | None, list[Character]]:
+        """Герои отряда по местам. Одна запись — отряд вместе; несколько — отряд разделился."""
+        return party_groups(self.characters.values(), self.scene)
+
+    @property
+    def split(self) -> bool:
+        return len(self.groups()) > 1
+
+    def scene_places(self) -> list[str]:
+        """Места, которые сейчас в сцене: где стоят герои. Пока отряд вместе, это одно место сцены."""
+        places = [p for p in self.groups() if p]
+        if not places and self.scene.location_id:
+            places = [self.scene.location_id]
+        return places
+
+    def in_scene_entities(self, place: str | None = None) -> list[Entity]:
+        """Сущности рядом с героями: в месте ``place`` или во всех местах, где стоят герои отряда."""
+        places = [place] if place else self.scene_places()
+        if not places:
+            return [e for e in self.entities.values() if e.kind != "location"]
+        return [e for e in self.entities.values() if e.kind != "location" and e.location_id in places]
+
+    def home(self) -> str | None:
+        """Основное место сцены: место сцены, если там есть герои, иначе первое место, где они стоят."""
+        places = self.scene_places()
+        if self.scene.location_id in places or not places:
+            return self.scene.location_id
+        return places[0]
+
+    def place_arg(self, location_id: str | None, what: str = "это") -> str | None:
+        """Куда ставить новое в сцене. Пока отряд вместе — место сцены; разделился — нужно назвать место героев."""
+        places = self.scene_places()
+        if location_id:
+            if location_id not in places:
+                names = ", ".join(f"{p} {self._place_name(p)}" for p in places) or "нет"
+                raise WorldError(f"в месте {location_id} нет героев; места отряда: {names}")
+            return location_id
+        if len(places) > 1:
+            names = ", ".join(f"{p} {self._place_name(p)}" for p in places)
+            raise WorldError(f"отряд разделён: укажи location_id — в каком месте {what} ({names})")
+        return self.home()
+
+    def _place_name(self, place_id: str | None) -> str:
+        e = self.entities.get(place_id or "")
+        return e.name if e else "место не задано"
 
     def valid_ids(self) -> dict[str, list[str]]:
         """Допустимые значения полей на этот ход (раздел 7.1, «динамические схемы»)."""
@@ -363,6 +420,7 @@ class World:
             "entities": ents,
             "combatants": living,
             "locations": [e.id for e in self.entities.values() if e.kind == "location"],
+            "places": self.scene_places(),  # места, где стоят герои
             # о ком можно узнать факт: герои, места и все сущности мира
             "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
@@ -373,16 +431,46 @@ class World:
         }
 
     def scene_table(self) -> str:
-        """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1)."""
-        loc = self.entities.get(self.scene.location_id or "")
+        """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1). Разделившийся отряд
+        показан по местам: у каждого места свои герои, существа, предметы и области."""
+        groups = self.groups()
         mode = "бой" if self.scene.mode == "combat" else "свободный режим"
-        head = f"СЦЕНА: {loc.name if loc else 'локация не задана'} · {mode}"
+        if len(groups) > 1:
+            head = f"СЦЕНА: отряд разделён, мест: {len(groups)} · {mode}"
+        else:
+            loc = self.entities.get(self.scene_places()[0] if self.scene_places() else "")
+            head = f"СЦЕНА: {loc.name if loc else 'локация не задана'} · {mode}"
         if self.scene.mode == "combat":
             head += f" · раунд {self.scene.round}"
         lines = [head, f"Игровое время: {format_time(self.scene.game_time)}"]
-        for ch in self.characters.values():
-            if ch.status not in PLAYABLE and ch.status != "dead":
-                continue
+        shown = [ch for ch in self.characters.values() if ch.status in PLAYABLE or ch.status == "dead"]
+        if len(groups) <= 1:
+            lines += self._hero_lines(shown)
+            lines += self._place_lines(None)
+        else:
+            for place, heroes in groups.items():
+                lines.append("")
+                lines.append(f"МЕСТО {place} {self._place_name(place)}: здесь {', '.join(h.name for h in heroes)}")
+                lines += self._hero_lines([ch for ch in shown if self.place_of(ch) == place])
+                lines += self._place_lines(place)
+            fallen = [ch for ch in shown if ch.status == "dead" and self.place_of(ch) not in groups]
+            if fallen:
+                lines.append("")
+                lines += self._hero_lines(fallen)
+            lines.append("")
+            lines.append(
+                "Отряд разделён: существо, предмет или примету ставь с location_id нужного места; описывай каждому "
+                "месту только то, что видят стоящие там герои."
+            )
+        here = set(self.scene_places())
+        others = [e for e in self.entities.values() if e.kind == "location" and e.id not in here]
+        if others:
+            lines.append("Известные локации: " + ", ".join(f"{e.id} {e.name}" for e in others))
+        return "\n".join(lines)
+
+    def _hero_lines(self, chars: list[Character]) -> list[str]:
+        lines = []
+        for ch in chars:
             a = self.actor(ch.id)
             lines.append(f"{a.id}  {a.name} (герой)  {a.status()}  КД {a.ac}{_pos_note(self, a.id)}{_effects_note(a)}")
             items = self.inventory.get(ch.id, [])
@@ -394,7 +482,12 @@ class World:
                     for it in items
                 )
                 lines.append(f"    снаряжение: {inv}")
-        for en in self.in_scene_entities():
+        return lines
+
+    def _place_lines(self, place: str | None) -> list[str]:
+        """Существа, предметы, приметы и области места (``None`` — всех мест, где стоят герои)."""
+        lines = []
+        for en in self.in_scene_entities(place):
             if en.kind == "creature":
                 try:
                     a = self.actor(en.id)
@@ -416,11 +509,11 @@ class World:
                 lines.append(f"{en.id}  {en.name} ({en.kind})  {ZONE_NAMES.get(en.zone, en.zone)}")
         from app.core.positions import active_areas, inside
 
-        for ar in active_areas(self):
+        for ar in active_areas(self, place):
             data = ar.state["area"]
             who = [
                 x.name
-                for x in [*self.characters.values(), *self.in_scene_entities()]
+                for x in [*self.characters.values(), *self.in_scene_entities(ar.location_id)]
                 if (x.id in self.characters and x.status in PLAYABLE) or getattr(x, "kind", "") == "creature"
                 if inside(self, ar, x.id)
             ]
@@ -429,10 +522,29 @@ class World:
                 f"{ar.id}  область «{ar.name}» радиус {data['radius_ft']} фт, {ZONE_NAMES.get(ar.zone, ar.zone)}"
                 f"{tail}; внутри: {', '.join(who) or 'никого'}"
             )
-        others = [e for e in self.entities.values() if e.kind == "location" and e.id != self.scene.location_id]
-        if others:
-            lines.append("Известные локации: " + ", ".join(f"{e.id} {e.name}" for e in others))
-        return "\n".join(lines)
+        return lines
+
+
+def party_groups(chars, scene: Scene) -> dict[str | None, list[Character]]:
+    """Играбельные герои по местам: своё место героя или место сцены (design/party-split.md)."""
+    out: dict[str | None, list[Character]] = {}
+    for ch in chars:
+        if ch.status in PLAYABLE:
+            out.setdefault(ch.location_id or scene.location_id, []).append(ch)
+    return out
+
+
+def viewer_places(chars, scene: Scene, hero: Character | None) -> tuple[str | None, list[str]]:
+    """Что из сцены видит зритель: основное место и места, чьё окружение ему показывать. Герой разделившегося отряда
+    видит только своё место; мастер и зритель без героя — все места, где стоят герои."""
+    groups = party_groups(chars, scene)
+    places = [p for p in groups if p]
+    if hero is not None and hero.status in PLAYABLE:
+        here = hero.location_id or scene.location_id
+        return here, [here] if here else []
+    if not places:
+        return scene.location_id, [scene.location_id] if scene.location_id else []
+    return (scene.location_id if scene.location_id in places else places[0]), places
 
 
 def is_scene_item(e: Entity) -> bool:

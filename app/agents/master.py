@@ -731,7 +731,7 @@ class MasterService:
         if has_plot:
             # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
             extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.scene.location_id)
+            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.home())
             secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
@@ -782,7 +782,7 @@ class MasterService:
         text = memory.render_content(last.content) if last else ""
         if text:
             parts.append("Сводка кампании (без чисел: числа только в таблице сцены):\n" + text)
-        loc = ctx.world.entities.get(ctx.world.scene.location_id or "")
+        loc = ctx.world.entities.get(ctx.world.home() or "")
         query = " ".join(
             [m.content for m in new]
             + [intents.describe(m.intent) for m in new if m.intent]
