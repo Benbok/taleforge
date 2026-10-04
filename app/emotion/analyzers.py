@@ -42,6 +42,7 @@ class RuleBasedAnalyzer(IEmotionAnalyzer):
     """
     Эвристический анализатор: критические броски и теги игровой механики.
     """
+
     def __init__(self, persona_id: str = "tired_mentor"):
         self.persona = PERSONAS.get(persona_id, PERSONAS["tired_mentor"])
 
@@ -76,6 +77,7 @@ class LLMAnalyzer(IEmotionAnalyzer):
     """
     Анализатор семантики поведения игрока с использованием реального LLM-клиента.
     """
+
     def __init__(self, llm_client=None, persona_id: str = "tired_mentor", model: str = ""):
         self.llm_client = llm_client
         self.persona = PERSONAS.get(persona_id, PERSONAS["tired_mentor"])
@@ -144,6 +146,7 @@ class HybridAnalyzer(IEmotionAnalyzer):
     """
     Комбинирует эвристику (броски + теги) и семантический анализ LLM.
     """
+
     def __init__(self, llm_client=None, persona_id: str = "tired_mentor", model: str = ""):
         self.rule_based = RuleBasedAnalyzer(persona_id)
         self.llm_based = LLMAnalyzer(llm_client=llm_client, persona_id=persona_id, model=model)

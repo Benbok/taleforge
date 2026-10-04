@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 
@@ -7,6 +6,7 @@ class EmotionState(BaseModel):
     Вектор эмоционального состояния или дельты эмоций.
     Итоговое состояние в менеджере всегда нормализуется в диапазон [0.0, 10.0].
     """
+
     anger: float = Field(default=0.0, description="Гнев/Раздражение")
     joy: float = Field(default=0.0, description="Радость/Веселье")
     suspicion: float = Field(default=0.0, description="Подозрительность")
@@ -17,6 +17,7 @@ class GMPersona(BaseModel):
     """
     Характер Мастера. Определяет, как именно он реагирует на происходящее.
     """
+
     name: str
     description: str
 

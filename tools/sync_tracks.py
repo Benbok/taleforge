@@ -1,5 +1,6 @@
-import yaml
 from pathlib import Path
+
+import yaml
 
 p = Path("audio/tracks.yaml")
 content = p.read_text(encoding="utf-8")
@@ -15,8 +16,8 @@ for item in data:
     lines.append(f"- id: {item['id']}")
     lines.append(f"  file: {item['file']}")
     lines.append(f"  layer: {item['layer']}")
-    lines.append(f"  title: \"{item['title']}\"")
-    lines.append(f"  hint: \"{item['hint']}\"")
+    lines.append(f'  title: "{item["title"]}"')
+    lines.append(f'  hint: "{item["hint"]}"')
     lines.append(f"  moods: [{', '.join(item.get('moods', []))}]")
     lines.append(f"  places: [{', '.join(item.get('places', []))}]")
     bpm_val = item.get("bpm")

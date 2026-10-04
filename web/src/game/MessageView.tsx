@@ -64,7 +64,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
     return (
       <div className="tf-pop max-w-[70ch] rounded-lg border border-dashed border-line px-3 py-2">
         <p className="mb-1 text-xs text-muted">
-          {fromMaster ? "Шёпот мастера" : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
+          {fromMaster ? (m.data?.whisper_reply ? "Мастер отвечает на ваш шёпот" : "Шёпот мастера") : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}
         </p>
         {m.data?.voice && <VoiceClip clip={m.data.voice} autoPlay={m.fresh && fromMaster} />}
