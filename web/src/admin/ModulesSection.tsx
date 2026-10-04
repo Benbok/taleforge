@@ -5,10 +5,15 @@ import { api, getToken } from "../lib/api";
 import {
   STATUS_LABEL,
   anyBusy,
+  addRect,
+  cellAt,
+  inRoom,
   isBusy,
   placeMark,
+  toggleBlocked,
   unplaced,
   uploadRaw,
+  type MapGrid,
   type MapMark,
   type ModuleFull,
   type ModuleMap,
@@ -482,6 +487,108 @@ function useAuthedImage(url: string): string | null {
   return src;
 }
 
+type EditMode = "numbers" | "floor" | "blocked";
+
+const NO_GRID: MapGrid = {
+  cols: 20,
+  rows: 20,
+  left: 0,
+  top: 0,
+  right: 1,
+  bottom: 1,
+};
+
+/** Сетка, пол комнат и занятые клетки поверх картинки. viewBox в долях картинки. */
+function GridOverlay({
+  grid,
+  marks,
+  room,
+  corner,
+}: {
+  grid: MapGrid;
+  marks: MapMark[];
+  room: string | null;
+  corner: [number, number] | null;
+}) {
+  const w = (grid.right - grid.left) / grid.cols;
+  const h = (grid.bottom - grid.top) / grid.rows;
+  const x = (c: number) => grid.left + c * w;
+  const y = (r: number) => grid.top + r * h;
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 1 1"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      {Array.from({ length: grid.cols + 1 }, (_, i) => (
+        <line
+          key={`c${i}`}
+          x1={x(i)}
+          x2={x(i)}
+          y1={grid.top}
+          y2={grid.bottom}
+          stroke="var(--tf-accent)"
+          strokeOpacity="0.35"
+          strokeWidth="0.0015"
+        />
+      ))}
+      {Array.from({ length: grid.rows + 1 }, (_, i) => (
+        <line
+          key={`r${i}`}
+          y1={y(i)}
+          y2={y(i)}
+          x1={grid.left}
+          x2={grid.right}
+          stroke="var(--tf-accent)"
+          strokeOpacity="0.35"
+          strokeWidth="0.0015"
+        />
+      ))}
+      {marks.map((k) => {
+        const mine = k.number === room;
+        return (
+          <g key={k.number} opacity={mine ? 1 : 0.35}>
+            {(k.cells ?? []).map(([c0, r0, c1, r1], i) => (
+              <rect
+                key={i}
+                x={x(c0)}
+                y={y(r0)}
+                width={(c1 - c0 + 1) * w}
+                height={(r1 - r0 + 1) * h}
+                fill="var(--tf-accent)"
+                fillOpacity="0.18"
+              />
+            ))}
+            {(k.blocked ?? []).map(([c, r]) => (
+              <rect
+                key={`${c}-${r}`}
+                x={x(c)}
+                y={y(r)}
+                width={w}
+                height={h}
+                fill="var(--tf-ember)"
+                fillOpacity="0.45"
+              />
+            ))}
+          </g>
+        );
+      })}
+      {corner && (
+        <rect
+          x={x(corner[0])}
+          y={y(corner[1])}
+          width={w}
+          height={h}
+          fill="none"
+          stroke="var(--tf-accent)"
+          strokeWidth="0.004"
+        />
+      )}
+    </svg>
+  );
+}
+
 function MapEditor({
   module: m,
   map,
@@ -494,26 +601,90 @@ function MapEditor({
   const src = useAuthedImage(`/api/modules/${m.id}/maps/${map.id}`);
   const [loc, setLoc] = useState<string>(map.location_id ?? "");
   const [marks, setMarks] = useState<MapMark[]>(map.marks ?? []);
+  const [grid, setGrid] = useState<MapGrid | null>(map.grid ?? null);
+  const [mode, setMode] = useState<EditMode>("numbers");
+  const [corner, setCorner] = useState<[number, number] | null>(null);
   const numbers = m.room_numbers[loc] ?? [];
   const [pick, setPick] = useState<string | null>(null);
   const dirty =
     loc !== (map.location_id ?? "") ||
-    JSON.stringify(marks) !== JSON.stringify(map.marks ?? []);
+    JSON.stringify(marks) !== JSON.stringify(map.marks ?? []) ||
+    JSON.stringify(grid) !== JSON.stringify(map.grid ?? null);
 
   useEffect(() => {
     setLoc(map.location_id ?? "");
     setMarks(map.marks ?? []);
-  }, [map.location_id, map.marks]);
+    setGrid(map.grid ?? null);
+  }, [map.location_id, map.marks, map.grid]);
 
   const todo = unplaced(numbers, marks);
-  const current = pick ?? todo[0] ?? null;
+  const current = pick ?? (mode === "numbers" ? todo[0] : numbers[0]) ?? null;
+  const room = marks.find((k) => k.number === current) ?? null;
+
+  function click(fx: number, fy: number) {
+    if (!loc || !current) {
+      toast.info(loc ? "Выберите номер комнаты" : "Выберите место карты");
+      return;
+    }
+    if (mode === "numbers") {
+      setMarks(placeMark(marks, current, fx, fy));
+      setPick(null);
+      return;
+    }
+    if (!grid) {
+      toast.info("Сначала включите сетку");
+      return;
+    }
+    if (!room) {
+      toast.info(`Сначала поставьте номер ${current} на карту`);
+      return;
+    }
+    const cell = cellAt(grid, fx, fy);
+    if (!cell) {
+      toast.info("Щелчок вне сетки");
+      return;
+    }
+    const update = (next: MapMark) =>
+      setMarks(marks.map((k) => (k.number === current ? next : k)));
+    if (mode === "floor") {
+      if (!corner) {
+        setCorner(cell);
+        toast.info("Теперь щёлкните противоположный угол");
+      } else {
+        update(addRect(room, corner, cell));
+        setCorner(null);
+      }
+      return;
+    }
+    if (!inRoom(room, cell)) {
+      toast.info("Клетка вне пола комнаты: сначала отметьте пол");
+      return;
+    }
+    update(toggleBlocked(room, cell));
+  }
+
+  const modeBtn = (id: EditMode, label: string) => (
+    <button
+      type="button"
+      aria-pressed={mode === id}
+      className={`rounded border px-2 py-0.5 ${mode === id ? "border-accent bg-accent/20 text-accent" : "border-line text-ink-2"}`}
+      onClick={() => {
+        setMode(id);
+        setCorner(null);
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="rounded-[10px] border border-line p-3 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs text-ink">{map.name || map.id}</span>
         {map.status === "reading" && (
-          <span className="font-mono text-xs text-muted">ИИ ищет номера…</span>
+          <span className="font-mono text-xs text-muted">
+            ИИ ищет номера и клетки…
+          </span>
         )}
         {map.status === "pending" && (
           <span className="font-mono text-xs text-muted">
@@ -545,11 +716,32 @@ function MapEditor({
           </select>
         </label>
       )}
+      {loc && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-muted">Щелчок по карте:</span>
+          {modeBtn("numbers", "ставит номер")}
+          {modeBtn("floor", "отмечает пол комнаты")}
+          {modeBtn("blocked", "занята ⇄ свободна")}
+          {mode !== "numbers" && room && (room.cells ?? []).length > 0 && (
+            <button
+              type="button"
+              className="text-muted underline hover:text-ink"
+              onClick={() =>
+                setMarks(
+                  marks.map((k) =>
+                    k.number === current ? { ...k, cells: [], blocked: [] } : k,
+                  ),
+                )
+              }
+            >
+              очистить комнату {current}
+            </button>
+          )}
+        </div>
+      )}
       {loc && numbers.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-muted">
-            Щёлкните по карте, чтобы поставить номер:
-          </span>
+          <span className="text-muted">Комната:</span>
           {numbers.map((n) => (
             <button
               key={n}
@@ -562,34 +754,65 @@ function MapEditor({
                     ? "border-warn/50 text-warn"
                     : "border-line text-ink-2"
               }`}
-              onClick={() => setPick(n)}
+              onClick={() => {
+                setPick(n);
+                setCorner(null);
+              }}
             >
               {n}
             </button>
           ))}
         </div>
       )}
+      {loc && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={!!grid}
+              onChange={(e) =>
+                setGrid(e.target.checked ? (map.grid ?? NO_GRID) : null)
+              }
+            />
+            <span className="text-muted">Сетка</span>
+          </label>
+          {grid &&
+            (
+              [
+                ["cols", "столбцов", 1],
+                ["rows", "строк", 1],
+                ["left", "левый край %", 100],
+                ["top", "верх %", 100],
+                ["right", "правый край %", 100],
+                ["bottom", "низ %", 100],
+              ] as const
+            ).map(([key, label, scale]) => (
+              <label key={key} className="flex items-center gap-1">
+                <span className="text-muted">{label}</span>
+                <input
+                  type="number"
+                  className="field h-7 w-16 py-0 text-xs"
+                  step={scale === 1 ? 1 : 0.1}
+                  value={Math.round(grid[key] * scale * 10) / 10}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (!Number.isFinite(v)) return;
+                    setGrid({
+                      ...grid,
+                      [key]:
+                        scale === 1 ? Math.max(1, Math.round(v)) : v / scale,
+                    });
+                  }}
+                />
+              </label>
+            ))}
+        </div>
+      )}
       <div
         className="relative w-full max-w-2xl select-none"
         onClick={(e) => {
-          if (!loc || !current) {
-            toast.info(
-              loc
-                ? "Номера этого места уже расставлены: выберите номер, чтобы переставить"
-                : "Выберите место карты",
-            );
-            return;
-          }
           const r = e.currentTarget.getBoundingClientRect();
-          setMarks(
-            placeMark(
-              marks,
-              current,
-              (e.clientX - r.left) / r.width,
-              (e.clientY - r.top) / r.height,
-            ),
-          );
-          setPick(null);
+          click((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
         }}
       >
         {src ? (
@@ -601,6 +824,14 @@ function MapEditor({
           />
         ) : (
           <div className="h-40 rounded-[8px] bg-raised" />
+        )}
+        {grid && (
+          <GridOverlay
+            grid={grid}
+            marks={marks}
+            room={mode === "numbers" ? null : current}
+            corner={corner}
+          />
         )}
         {marks.map((k) => (
           <span
@@ -623,18 +854,23 @@ function MapEditor({
                   `/api/admin/modules/${m.id}/maps/${map.id}`,
                   {
                     method: "PUT",
-                    body: { location_id: loc, marks },
+                    body: { location_id: loc, grid, marks },
                   },
                 ),
               );
             }}
-            done="Отметки сохранены"
+            done="Карта сохранена"
           >
-            СОХРАНИТЬ ОТМЕТКИ
+            СОХРАНИТЬ КАРТУ
           </ActionButton>
         )}
         {m.draft && map.status !== "reading" && !isBusy(m.status) && (
           <ActionButton
+            confirm={
+              dirty
+                ? "Несохранённые правки карты пропадут. Искать заново?"
+                : undefined
+            }
             run={async () =>
               onChange(
                 await api<ModuleFull>(
@@ -643,9 +879,9 @@ function MapEditor({
                 ),
               )
             }
-            done="ИИ ищет номера на карте"
+            done="ИИ ищет номера и клетки на карте"
           >
-            НАЙТИ НОМЕРА ЗАНОВО
+            РАЗОБРАТЬ КАРТУ ЗАНОВО
           </ActionButton>
         )}
         <ActionButton

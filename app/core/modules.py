@@ -511,7 +511,13 @@ def adventure_record(raw: dict, plan: dict, maps: list[dict] | None = None, modu
     }
     if maps:
         rec["maps"] = [
-            {"id": m["id"], "file": m["file"], "location_ref": m["location_id"], "marks": m.get("marks") or []}
+            {
+                "id": m["id"],
+                "file": m["file"],
+                "location_ref": m["location_id"],
+                "grid": m.get("grid"),
+                "marks": m.get("marks") or [],
+            }
             for m in maps
             if m.get("location_id")
         ]
@@ -724,31 +730,56 @@ def room_numbers(draft: dict) -> dict[str, list[str]]:
 
 
 def map_tool_spec() -> dict:
+    cell = {"type": "array", "items": {"type": "integer"}, "description": "Клетка [столбец, строка], счёт с 0."}
     mark = _obj(
         {
             "number": {"type": "string", "description": "Номер комнаты, как он написан на карте."},
             "x": {"type": "number", "description": "Середина номера по горизонтали: доля ширины от 0 (лево) до 1."},
             "y": {"type": "number", "description": "Середина номера по вертикали: доля высоты от 0 (верх) до 1."},
+            "cells": _arr(
+                {"type": "array", "items": {"type": "integer"}},
+                "Пол комнаты прямоугольниками клеток сетки [столбец1, строка1, столбец2, строка2] включительно. "
+                "Круглую или неровную комнату покрой несколькими прямоугольниками.",
+            ),
+            "blocked": _arr(cell, "Клетки комнаты, где стоять нельзя: стены, колонны, гробы, статуи, алтарь."),
         },
         ["number", "x", "y"],
+    )
+    grid = _obj(
+        {
+            "cols": {"type": "integer", "description": "Сколько клеток сетки по ширине."},
+            "rows": {"type": "integer", "description": "Сколько клеток сетки по высоте."},
+            "left": {"type": "number", "description": "Левый край сетки: доля ширины картинки."},
+            "top": {"type": "number", "description": "Верхний край сетки: доля высоты."},
+            "right": {"type": "number", "description": "Правый край сетки: доля ширины."},
+            "bottom": {"type": "number", "description": "Нижний край сетки: доля высоты."},
+        },
+        ["cols", "rows", "left", "top", "right", "bottom"],
+        "Сетка карты. Если сетки нет, не передавай поле.",
     )
     schema = _obj(
         {
             "location_id": {"type": "string", "description": "id места модуля, которое нарисовано на карте."},
-            "marks": _arr(mark, "Где на карте стоят номера комнат."),
+            "grid": grid,
+            "marks": _arr(mark, "Номера комнат: где стоят, какие клетки занимает комната и какие из них заняты."),
         },
         ["location_id", "marks"],
     )
     return {
         "type": "function",
-        "function": {"name": MAP_TOOL, "description": "Сдать место карты и координаты номеров.", "parameters": schema},
+        "function": {"name": MAP_TOOL, "description": "Сдать место карты, сетку и комнаты.", "parameters": schema},
     }
 
 
-MAP_SYSTEM = """Ты смотришь на карту из приключения D&D. На ней нарисовано одно место, комнаты подписаны номерами.
-Определи, какое место модуля на карте, по совпадению номеров и планировки с описанием, и найди, где на картинке
-стоит каждый номер. Координаты — доли размера картинки: x от левого края, y от верхнего, середина цифры.
+MAP_SYSTEM = """Ты смотришь на карту из приключения D&D. На ней нарисовано одно место, комнаты подписаны номерами,
+поверх обычно лежит сетка клеток по 5 футов.
+1. Определи, какое место модуля на карте, по совпадению номеров и планировки с описанием.
+2. Найди, где стоит каждый номер: доли размера картинки, x от левого края, y от верхнего, середина цифры.
+3. Если есть сетка: сколько в ней столбцов и строк и где её края (доли размера картинки).
+4. Для каждой комнаты: какие клетки занимает её пол (прямоугольниками) и какие из них заняты — стены внутри,
+   колонны, гробы, статуи, алтарь, всё, на чём нельзя стоять. Там герои не будут показаны.
 Сдай ответ вызовом submit_map_marks."""
+MAX_GRID = 200
 
 
 def map_input(draft: dict, taken: dict[str, str] | None = None) -> str:
@@ -762,15 +793,64 @@ def map_input(draft: dict, taken: dict[str, str] | None = None) -> str:
     return text
 
 
+def _frac(v: Any) -> bool:
+    return isinstance(v, int | float) and not isinstance(v, bool) and 0 <= v <= 1
+
+
+def _grid(raw: Any, errors: list[str]) -> dict | None:
+    if raw in (None, {}):
+        return None
+    if not isinstance(raw, dict):
+        errors.append("grid — объект {cols, rows, left, top, right, bottom}")
+        return None
+    cols, rows = raw.get("cols"), raw.get("rows")
+    if not all(isinstance(v, int) and 1 <= v <= MAX_GRID for v in (cols, rows)):
+        errors.append(f"сетка: cols и rows — целые от 1 до {MAX_GRID}")
+        return None
+    edges = [raw.get(k) for k in ("left", "top", "right", "bottom")]
+    if not all(_frac(v) for v in edges) or not (edges[0] < edges[2] and edges[1] < edges[3]):
+        errors.append("сетка: края — доли от 0 до 1, left < right и top < bottom")
+        return None
+    return {"cols": cols, "rows": rows, **{k: round(float(raw[k]), 4) for k in ("left", "top", "right", "bottom")}}
+
+
+def _cells(m: dict, grid: dict | None, where: str, errors: list[str]) -> tuple[list, list]:
+    rects, blocked = m.get("cells") or [], m.get("blocked") or []
+    if not rects and not blocked:
+        return [], []
+    if grid is None:
+        errors.append(f"{where}: клетки без сетки — передай grid")
+        return [], []
+    out_rects = []
+    for r in rects:
+        ok = isinstance(r, list) and len(r) == 4 and all(isinstance(v, int) for v in r)
+        if not ok or not (0 <= r[0] <= r[2] < grid["cols"] and 0 <= r[1] <= r[3] < grid["rows"]):
+            errors.append(f"{where}: прямоугольник {r!r} — [столбец1, строка1, столбец2, строка2] внутри сетки")
+            continue
+        out_rects.append(list(r))
+    out_blocked = []
+    for c in blocked:
+        if not (isinstance(c, list) and len(c) == 2 and all(isinstance(v, int) for v in c)):
+            errors.append(f"{where}: занятая клетка {c!r} — [столбец, строка]")
+        elif not any(r[0] <= c[0] <= r[2] and r[1] <= c[1] <= r[3] for r in out_rects):
+            errors.append(f"{where}: занятая клетка {c} вне комнаты")
+        elif list(c) not in out_blocked:
+            out_blocked.append(list(c))
+    if out_rects and not free_cells({"cells": out_rects, "blocked": out_blocked}):
+        errors.append(f"{where}: в комнате не осталось свободных клеток")
+    return out_rects, out_blocked
+
+
 def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
-    """Место карты и координаты номеров. Номера, которых нет у места, — ошибка; ненайденные — не ошибка."""
+    """Место карты, сетка и комнаты. Номера, которых нет у места, — ошибка; ненайденные — не ошибка."""
     if not isinstance(raw, dict):
         return None, ["ответ должен быть объектом"]
     numbers = room_numbers(draft)
     lid = raw.get("location_id")
     if lid not in numbers:
         return None, [f"нет места {lid!r}; места модуля: {', '.join(numbers)}"]
-    errors = []
+    errors: list[str] = []
+    grid = _grid(raw.get("grid"), errors)
     marks, seen = [], set()
     for m in raw.get("marks") or []:
         if not isinstance(m, dict):
@@ -784,14 +864,61 @@ def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
         if n in seen:
             errors.append(f"номер {n} отмечен дважды")
             continue
-        if not all(isinstance(v, int | float) and 0 <= v <= 1 for v in (x, y)):
+        if not (_frac(x) and _frac(y)):
             errors.append(f"номер {n}: x и y — доли от 0 до 1")
             continue
         seen.add(n)
-        marks.append({"number": n, "x": round(float(x), 4), "y": round(float(y), 4)})
+        mark: dict[str, Any] = {"number": n, "x": round(float(x), 4), "y": round(float(y), 4)}
+        rects, blocked = _cells(m, grid, f"комната {n}", errors)
+        if rects:
+            mark["cells"], mark["blocked"] = rects, blocked
+        marks.append(mark)
     if errors:
         return None, errors
-    return {"location_id": lid, "marks": marks, "missing": [n for n in numbers[lid] if n not in seen]}, []
+    out = {"location_id": lid, "marks": marks, "missing": [n for n in numbers[lid] if n not in seen], "grid": grid}
+    return out, []
+
+
+# --- значки героев на карте ---
+
+
+def free_cells(mark: dict) -> list[tuple[int, int]]:
+    """Клетки комнаты, где можно стоять."""
+    blocked = {tuple(c) for c in mark.get("blocked") or []}
+    out: list[tuple[int, int]] = []
+    for c0, r0, c1, r1 in mark.get("cells") or []:
+        for col in range(c0, c1 + 1):
+            for row in range(r0, r1 + 1):
+                if (col, row) not in blocked and (col, row) not in out:
+                    out.append((col, row))
+    return out
+
+
+def cell_center(grid: dict, col: int, row: int) -> tuple[float, float]:
+    """Середина клетки в долях картинки: туда клиент ставит значок."""
+    w = (grid["right"] - grid["left"]) / grid["cols"]
+    h = (grid["bottom"] - grid["top"]) / grid["rows"]
+    return round(grid["left"] + (col + 0.5) * w, 4), round(grid["top"] + (row + 0.5) * h, 4)
+
+
+def place_tokens(grid: dict, mark: dict, tokens: list[tuple[str, float, float]]) -> dict[str, tuple[int, int]]:
+    """Клетки для значков в комнате. Токен — (id, сдвиг на восток в футах, сдвиг на север в футах) от середины
+    комнаты: так задаются позиции сцены (app/core/positions.py). Значок встаёт на ближайшую к своей точке свободную
+    клетку, которую ещё не занял другой значок; стены и колонны (blocked) пропускаются."""
+    free = free_cells(mark)
+    if not free:
+        return {}
+    cx = sum(c for c, _ in free) / len(free)
+    cy = sum(r for _, r in free) / len(free)
+    taken: set[tuple[int, int]] = set()
+    out: dict[str, tuple[int, int]] = {}
+    for tid, east_ft, north_ft in tokens:
+        tx, ty = cx + east_ft / 5, cy - north_ft / 5  # клетка — 5 футов, строки растут к югу
+        options = [c for c in free if c not in taken] or free
+        best = min(options, key=lambda c: ((c[0] - tx) ** 2 + (c[1] - ty) ** 2, c[1], c[0]))
+        taken.add(best)
+        out[tid] = best
+    return out
 
 
 # --- публикация ---

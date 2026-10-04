@@ -35,10 +35,22 @@ class Mark(BaseModel):
     number: str
     x: float
     y: float
+    cells: list[list[int]] = Field(default_factory=list)
+    blocked: list[list[int]] = Field(default_factory=list)
+
+
+class Grid(BaseModel):
+    cols: int
+    rows: int
+    left: float
+    top: float
+    right: float
+    bottom: float
 
 
 class MarksIn(BaseModel):
     location_id: str
+    grid: Grid | None = None
     marks: list[Mark] = Field(default_factory=list)
 
 
@@ -85,7 +97,7 @@ def _full(m: AdventureModule) -> dict[str, Any]:
         "draft": modules.summary(m.draft) if m.draft else None,
         "room_numbers": modules.room_numbers(m.draft) if m.draft else {},
         "map_list": [
-            {k: x.get(k) for k in ("id", "name", "location_id", "marks", "missing", "status", "error")}
+            {k: x.get(k) for k in ("id", "name", "location_id", "grid", "marks", "missing", "status", "error")}
             for x in m.maps or []
         ],
     }

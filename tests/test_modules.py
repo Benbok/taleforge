@@ -78,6 +78,40 @@ def test_map_marks_are_checked_against_rooms():
     assert "нет места" in modules.check_marks({"location_id": "location.x", "marks": []}, draft)[1][0]
 
 
+GRID = {"cols": 10, "rows": 8, "left": 0.0, "top": 0.0, "right": 1.0, "bottom": 1.0}
+
+
+def test_room_cells_and_obstacles_are_checked():
+    draft, _, _ = check(sample())
+    room = {"number": "1", "x": 0.2, "y": 0.2, "cells": [[0, 0, 3, 2]], "blocked": [[1, 1]]}
+    result, errors = modules.check_marks({"location_id": "location.davos_crypt", "grid": GRID, "marks": [room]}, draft)
+    assert errors == [] and result["grid"] == GRID and result["marks"][0]["blocked"] == [[1, 1]]
+
+    def errs(**mark):
+        raw = {"location_id": "location.davos_crypt", "grid": GRID, "marks": [{**room, **mark}]}
+        return " ".join(modules.check_marks(raw, draft)[1])
+
+    assert "внутри сетки" in errs(cells=[[0, 0, 12, 2]])
+    assert "вне комнаты" in errs(blocked=[[7, 7]])
+    assert "не осталось свободных клеток" in errs(cells=[[0, 0, 0, 0]], blocked=[[0, 0]])
+    no_grid = {"location_id": "location.davos_crypt", "marks": [room]}
+    assert "клетки без сетки" in modules.check_marks(no_grid, draft)[1][0]
+    bad_grid = {"location_id": "location.davos_crypt", "grid": {**GRID, "left": 0.9, "right": 0.1}, "marks": []}
+    assert "left < right" in modules.check_marks(bad_grid, draft)[1][0]
+
+
+def test_heroes_stand_on_free_cells_near_their_positions():
+    # комната 5×3 клетки, посередине колонна
+    mark = {"cells": [[0, 0, 4, 2]], "blocked": [[2, 1]]}
+    spots = modules.place_tokens(GRID, mark, [("a", 0, 0), ("b", 0, 0), ("c", 10, 0), ("d", 0, 10)])
+    assert (2, 1) not in spots.values()  # на колонну никто не встал
+    assert len(set(spots.values())) == 4  # двое в одной точке встали в разные клетки
+    assert spots["c"] == (4, 1)  # 10 футов на восток — две клетки вправо
+    assert spots["d"][1] == 0  # на север — вверх
+    assert modules.cell_center(GRID, 4, 1) == (0.45, 0.1875)
+    assert modules.place_tokens(GRID, {"cells": []}, [("a", 0, 0)]) == {}
+
+
 @pytest.fixture
 def mod_llm():
     return ScriptedLLM([])
@@ -108,16 +142,19 @@ def module_call(raw):
     return {"tool_calls": [(modules.TOOL, raw)]}
 
 
-def map_call(location_id, marks):
-    return {"tool_calls": [(modules.MAP_TOOL, {"location_id": location_id, "marks": marks})]}
+def map_call(location_id, marks, grid=None):
+    return {"tool_calls": [(modules.MAP_TOOL, {"location_id": location_id, "marks": marks, "grid": grid})]}
 
 
 def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod_llm, settings):
     client = mod_client
     bad = sample()
     bad["creatures"][0]["base_ref"] = "creature.nope"
-    marks = [{"number": "1", "x": 0.3, "y": 0.4}, {"number": "2", "x": 0.7, "y": 0.4}]
-    mod_llm.replies += [module_call(bad), module_call(sample()), map_call("location.davos_crypt", marks)]
+    marks = [
+        {"number": "1", "x": 0.3, "y": 0.4, "cells": [[0, 0, 4, 7]], "blocked": [[2, 3]]},
+        {"number": "2", "x": 0.7, "y": 0.4},
+    ]
+    mod_llm.replies += [module_call(bad), module_call(sample()), map_call("location.davos_crypt", marks, GRID)]
 
     m = ok(client.post("/api/admin/modules?name=the-unquiet-dead.pdf", content=b"%PDF-1.4 book", headers=admin_m), 201)
     assert m["title"] == "the-unquiet-dead" and m["status"] == "reading"
@@ -147,8 +184,9 @@ def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod
         headers=admin_m,
     )
     assert r.status_code == 409 and "нет комнаты с номером '9'" in r.json()["detail"]
-    fixed = [{"number": "1", "x": 0.25, "y": 0.4}, {"number": "2", "x": 0.7, "y": 0.4}]
-    ok(client.put(url, json={"location_id": "location.davos_crypt", "marks": fixed}, headers=admin_m))
+    assert m["map_list"][0]["grid"] == GRID and m["map_list"][0]["marks"][0]["blocked"] == [[2, 3]]
+    fixed = [{"number": "1", "x": 0.25, "y": 0.4, "cells": [[0, 0, 4, 7]]}, {"number": "2", "x": 0.7, "y": 0.4}]
+    ok(client.put(url, json={"location_id": "location.davos_crypt", "grid": GRID, "marks": fixed}, headers=admin_m))
 
     m = ok(client.post(f"/api/admin/modules/{m['id']}/publish", headers=admin_m))
     assert m["status"] == "published" and m["pack_id"] == "module-unquiet-dead" and m["pack_version"] == "1.0.0"
@@ -164,7 +202,8 @@ def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod
     statue, adv = run(settings, catalog)
     # существо модуля наследует числа SRD и меняет только то, что сказано в книге
     assert statue["hp"]["average"] == 30 and statue["ac"] == 17 and statue["actions"] and statue["cr"] == 1
-    assert adv["maps"][0]["marks"][0] == {"number": "1", "x": 0.25, "y": 0.4}
+    assert adv["maps"][0]["marks"][0] == {"number": "1", "x": 0.25, "y": 0.4, "cells": [[0, 0, 4, 7]], "blocked": []}
+    assert adv["maps"][0]["grid"] == GRID
     assert adv["module_id"] == m["id"] and adv["xp"] == "milestone" and adv["plot"]["title"] == "Неспокойные мертвецы"
 
     img = client.get(f"/api/modules/{m['id']}/maps/{m['map_list'][0]['id']}", headers=admin_m)

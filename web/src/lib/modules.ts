@@ -13,12 +13,24 @@ export interface MapMark {
   number: string;
   x: number;
   y: number;
+  cells?: number[][]; // пол комнаты прямоугольниками [столбец1, строка1, столбец2, строка2]
+  blocked?: number[][]; // клетки, где стоять нельзя: стены, колонны
+}
+
+export interface MapGrid {
+  cols: number;
+  rows: number;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
 export interface ModuleMap {
   id: string;
   name: string;
   location_id: string | null;
+  grid?: MapGrid | null;
   marks: MapMark[];
   missing?: string[];
   status: "pending" | "reading" | "ok" | "failed";
@@ -103,10 +115,66 @@ export function placeMark(
 ): MapMark[] {
   const clamp = (v: number) =>
     Math.round(Math.min(1, Math.max(0, v)) * 10000) / 10000;
+  const old = marks.find((m) => m.number === number);
   return [
     ...marks.filter((m) => m.number !== number),
-    { number, x: clamp(x), y: clamp(y) },
+    { ...old, number, x: clamp(x), y: clamp(y) },
   ];
+}
+
+/** Клетка сетки под точкой картинки (доли); null — вне сетки. */
+export function cellAt(
+  grid: MapGrid,
+  x: number,
+  y: number,
+): [number, number] | null {
+  const col = Math.floor(
+    ((x - grid.left) / (grid.right - grid.left)) * grid.cols,
+  );
+  const row = Math.floor(
+    ((y - grid.top) / (grid.bottom - grid.top)) * grid.rows,
+  );
+  if (col < 0 || row < 0 || col >= grid.cols || row >= grid.rows) return null;
+  return [col, row];
+}
+
+/** Клетка в комнате: в одном из её прямоугольников. */
+export function inRoom(mark: MapMark, [c, r]: [number, number]): boolean {
+  return (mark.cells ?? []).some(
+    ([c0, r0, c1, r1]) => c0 <= c && c <= c1 && r0 <= r && r <= r1,
+  );
+}
+
+/** Добавить к полу комнаты прямоугольник между двумя клетками (порядок углов любой). */
+export function addRect(
+  mark: MapMark,
+  a: [number, number],
+  b: [number, number],
+): MapMark {
+  const rect = [
+    Math.min(a[0], b[0]),
+    Math.min(a[1], b[1]),
+    Math.max(a[0], b[0]),
+    Math.max(a[1], b[1]),
+  ];
+  return {
+    ...mark,
+    cells: [...(mark.cells ?? []), rect],
+    blocked: mark.blocked ?? [],
+  };
+}
+
+/** Щелчок по клетке комнаты: занята ⇄ свободна. Вне комнаты — без изменений. */
+export function toggleBlocked(mark: MapMark, cell: [number, number]): MapMark {
+  if (!inRoom(mark, cell)) return mark;
+  const blocked = mark.blocked ?? [];
+  const has = blocked.some(([c, r]) => c === cell[0] && r === cell[1]);
+  return {
+    ...mark,
+    blocked: has
+      ? blocked.filter(([c, r]) => c !== cell[0] || r !== cell[1])
+      : [...blocked, cell],
+  };
 }
 
 /** Номера места, которых на карте ещё нет: их админ ставит щелчком. */
