@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import CampaignCardView from "../components/CampaignCardView";
+import Recap from "../components/Recap";
 import Header from "../components/Header";
 import LeviathanEchoArt from "../components/LeviathanEchoArt";
 import Avatar, { hue, initials } from "../components/Avatar";
@@ -389,9 +390,11 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
         </h1>
 
         {campaign.recap ? (
-          <p className="font-narration text-xl sm:text-2xl italic leading-relaxed text-ink-2 max-w-xl">
-            «{campaign.recap.replace(/^«|»$/g, "")}»
-          </p>
+          <Recap
+            text={campaign.recap}
+            clamp="line-clamp-4"
+            className="font-narration text-xl sm:text-2xl italic leading-relaxed text-ink-2 max-w-xl"
+          />
         ) : (
           <p className="font-narration text-lg italic text-muted">
             Герои готовятся к выходу в туман.

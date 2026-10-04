@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import plot
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
 from app.core.linker import link_text
 from app.db.models import Campaign, GameSession, MasterTurn, Message, now
@@ -127,12 +128,31 @@ async def history(session: AsyncSession, viewer: Viewer, after_seq: int | None, 
     return out if after_seq is not None else out[-limit:]
 
 
+def plan_not_ready(c: Campaign) -> str | None:
+    """Почему ИИ-мастеру рано начинать игру: сюжет запрошен, но ещё готовится или не получился. None — можно.
+
+    Каркас запрашивается при создании кампании. Без него ИИ-мастер ведёт игру вслепую, поэтому в игру не пускаем,
+    пока архитектор не закончит. Живой мастер ведёт и без каркаса.
+    """
+    if master_seat(c).occupant_type != "agent":
+        return None
+    state, error = plot.status(c.settings)
+    if state == "generating":
+        return "Сюжет ещё готовится: игра откроется, когда архитектор его закончит."
+    if state == "failed":
+        why = f": {error}" if error else ""
+        return f"Сюжет не подготовлен{why}. Запустите генерацию заново на вкладке «Сюжет» в управлении кампанией."
+    return None
+
+
 async def start_session(session: AsyncSession, viewer: Viewer) -> tuple[GameSession, Message]:
     if not viewer.can_control_session:
         raise AccessDenied("запускает сессию владелец или мастер")
     c = viewer.campaign
     if c.status == "ended":
         raise Conflict("кампания завершена")
+    if reason := plan_not_ready(c):
+        raise Conflict(reason)
     if await active_session(session, c.id) is not None:
         raise Conflict("сессия уже идёт")
     game = GameSession(campaign_id=c.id, started_by=viewer.user.id)
