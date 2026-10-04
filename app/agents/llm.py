@@ -55,6 +55,7 @@ class LLM(Protocol):
         max_tokens: int = 4096,
         temperature: float | None = None,
         api_base: str | None = None,
+        tool_choice: str = "auto",
     ) -> LLMReply: ...
 
 
@@ -95,7 +96,9 @@ class LiteLLMClient:
         max_tokens: int = 4096,
         temperature: float | None = None,
         api_base: str | None = None,
+        tool_choice: str = "auto",
     ) -> LLMReply:
+        """``tool_choice="required"`` — модель обязана ответить вызовом инструмента, а не текстом."""
         import litellm
 
         kwargs: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
@@ -103,7 +106,7 @@ class LiteLLMClient:
             kwargs["api_base"] = api_base
         if tools:
             kwargs["tools"] = tools
-            kwargs["tool_choice"] = "auto"
+            kwargs["tool_choice"] = tool_choice
         # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
         if temperature is not None and not model.startswith("anthropic/"):
             kwargs["temperature"] = temperature
@@ -151,9 +154,11 @@ class ScriptedLLM:
         self.parser_requests: list[dict[str, Any]] = []
 
     async def complete(
-        self, messages, *, model, tools=None, max_tokens=4096, temperature=None, api_base=None
+        self, messages, *, model, tools=None, max_tokens=4096, temperature=None, api_base=None, tool_choice="auto"
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
+        if tool_choice != "auto":
+            req["tool_choice"] = tool_choice
         auto = _auto_tool(tools)
         if auto and not self._next_is(auto):
             # Парсер намерений и сводки в тестах, где их ответ не задан: действие без разбора, пустая сводка.

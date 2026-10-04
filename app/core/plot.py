@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.core.brief import LENGTHS, PILLARS
@@ -593,6 +594,24 @@ class PlotError(Exception):
 
 def has_plan(plan: dict | None) -> bool:
     return bool(plan and plan.get("title"))
+
+
+# Генерация дольше этого считается прерванной (сервер перезапустили посреди работы): её можно запустить заново
+STALE = timedelta(minutes=15)
+
+
+def status(settings: dict | None) -> tuple[str, str | None]:
+    """(статус подготовки каркаса, ошибка) из settings кампании: none | generating | ready | failed."""
+    st = (settings or {}).get("plan") or {}
+    state, error = st.get("status") or "none", st.get("error")
+    if state == "generating":
+        try:
+            since = datetime.fromisoformat(st.get("updated_at") or "")
+        except ValueError:
+            since = None
+        if since is not None and datetime.now(UTC) - since > STALE:
+            return "failed", "генерация прервалась, запустите её заново"
+    return state, error
 
 
 def active_act(plan: dict) -> dict | None:

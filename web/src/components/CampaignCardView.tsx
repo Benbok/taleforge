@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { actionOf, STATUS_TEXT, statusOf } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import Avatar from "./Avatar";
+import Recap from "./Recap";
 
 const ROLE: Record<string, string> = { player: "Игрок", master: "Мастер" };
 
@@ -72,9 +73,7 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
         </div>
 
         {c.recap ? (
-          <p className="font-narration text-[17px] italic leading-relaxed text-ink-2 line-clamp-3">
-            «{c.recap.replace(/^«|»$/g, "")}»
-          </p>
+          <Recap text={c.recap} className="font-narration text-[17px] italic leading-relaxed text-ink-2" />
         ) : (
           <p className="font-narration text-sm italic text-muted">
             {isLive ? "Сессия в процессе..." : "Ожидание начала вахты..."}
