@@ -74,7 +74,7 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
         changing = (wanted["music"].id if wanted["music"] else None) != (cur["track"] if cur else None)
         last = (st["changed"] or {}).get("music") or {}
         ago = time.time() - float(last.get("at", 0))
-        if changing and ago < audio.MUSIC_COOLDOWN and last.get("mode") == sc.mode:
+        if changing and ago < audio.MUSIC_COOLDOWN and last.get("mode") == sc.mode and not last.get("auto"):
             raise ToolError(f"мелодия сменилась {int(ago)} с назад: оставь её, меняй только на повороте сцены")
 
     # мелодия и ритм должны совпадать по темпу, иначе получится каша

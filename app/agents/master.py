@@ -756,6 +756,7 @@ class MasterService:
             },
         ]
         done_calls = retries = 0
+        nudged = False
         for _ in range(MAX_STEPS):
             reply = await self._ask(
                 calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, decision_tools(ctx))
@@ -763,6 +764,21 @@ class MasterService:
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             if not reply.tool_calls:
                 open_ = required - ctx.closed
+                fails = _unsettled_fails(ctx, trace_calls)
+                if fails and not nudged:
+                    nudged = True  # критический провал словами не закрыть: последствие пишется в лист героя
+                    msgs.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Критический провал без последствия в листе героя: "
+                                + ", ".join(f"{i} ({ctx.world.characters[i].name})" for i in fails)
+                                + ". Закрепи его инструментом на этом герое (apply_effect с состоянием из шаблонов и "
+                                "длительностью, drop_item, apply_hazard или reposition), потом ответь «готово»."
+                            ),
+                        }
+                    )
+                    continue
                 if open_ and retries < 1:
                     retries += 1
                     names_open = ", ".join(f"{i} ({ctx.world.characters[i].name})" for i in sorted(open_))
@@ -825,6 +841,7 @@ class MasterService:
 
         party_notes, meet = await _party_change(s, ctx, before, crew, names)
         audio.regroup(ctx)  # сошлись — общий звук места встречи
+        audio.autopilot(ctx)  # мастер забыл про звук: мелодия под место или бой
         await self._status(cid, "describing")
         system += await self._mood(s, calls, cfg, c, seat.id, turn_id, ctx, new, char_by_seat)
 
@@ -962,9 +979,9 @@ class MasterService:
                     ),
                 },
             ]
-            if stream is not None:
-                await stream.reset()  # игроки уже видели первый вариант: начинаем черновик заново
-            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, stream_callback=push)
+            # без потока: стирать черновик и печатать его заново — то самое «текст исчез и появился снова».
+            # Игроки видят первый вариант, пока пишется исправленный; финальный текст заменит его на месте
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
             text = reply.text.strip()
 
         def strip(m: re.Match) -> str:
@@ -1864,6 +1881,31 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
         if m.kind == "action" and m.intent:
             out.append(f"  намерение (разбор парсера): {intents.describe(m.intent)}")
     return "\n".join(out)
+
+
+def _unsettled_fails(ctx: ToolContext, trace_calls: list[dict]) -> list[str]:
+    """Герои с критическим провалом (натуральная 1 в проверке или атаке), чьё последствие не закреплено
+    инструментом после броска."""
+    from app.tools.master import CONSEQUENCE_TOOLS
+
+    open_: list[str] = []
+    for t in trace_calls:
+        res = t.get("result") or {}
+        if not res.get("ok"):
+            continue
+        args, out = t.get("args") or {}, res.get("result") or {}
+        if t["tool"] == "roll_check" and out.get("critical") == "fail":
+            who = args.get("character_id")
+        elif t["tool"] == "resolve_attack" and out.get("fumble"):
+            who = args.get("attacker_id")
+        else:
+            who = None
+            if t["tool"] in CONSEQUENCE_TOOLS:
+                hit = {args.get(k) for k in ("target_id", "character_id", "actor_id")}
+                open_ = [i for i in open_ if i not in hit]
+        if who in ctx.world.characters and who not in open_:
+            open_.append(who)
+    return [i for i in open_ if ctx.world.actor(i).alive]
 
 
 def _check_only(ctx: ToolContext, notes=()) -> bool:

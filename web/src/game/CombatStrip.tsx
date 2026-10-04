@@ -5,6 +5,7 @@ import { useGame } from "../stores/game";
 import { byZone, myTurn, ringState, TONE_COLOR, useTurnClock, ZONES } from "./combat";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
+import { useMapWindow } from "./map";
 
 /** Кольцо таймера вокруг жетона того, кто ходит. */
 export function TurnRing({ left, total, size = 44 }: { left: number; total: number; size?: number }) {
@@ -118,8 +119,11 @@ export default function CombatStrip() {
         <span className={mine ? "font-semibold text-accent" : "text-muted"}>
           {turn ? (mine ? "Ваш ход" : `Ходит: ${turn.name}`) : ""}
         </span>
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-3">
           <NotifyButton />
+          <button className="text-xs text-accent underline" onClick={() => useMapWindow.getState().show("around")}>
+            ⌖ Схема боя
+          </button>
         </span>
       </div>
       <ol className="flex gap-1 overflow-x-auto pb-1" aria-label="Очередь инициативы">

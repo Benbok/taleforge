@@ -454,7 +454,10 @@ def public_state(campaign, scene, place: str | None = None) -> dict[str, Any]:
     return {"enabled": on, "v": st["v"], "now": time.time(), "layers": layers if on else dict.fromkeys(LOOPS)}
 
 
-def set_layer(scene, layer: str, track: Track | None, level: str | None = None, place: str | None = None) -> None:
+def set_layer(
+    scene, layer: str, track: Track | None, level: str | None = None, place: str | None = None, auto: bool = False
+) -> None:
+    """``auto`` — выбор движка, а не мастера: мастер может сменить такую дорожку сразу, без паузы в минуту."""
     st = mixer(scene, place)
     cur = st.get(layer)
     if track is None:
@@ -463,7 +466,10 @@ def set_layer(scene, layer: str, track: Track | None, level: str | None = None, 
         st[layer] = {**cur, "level": level or cur.get("level", "mid")}
     else:
         st[layer] = {"track": track.id, "level": level or "mid", "since": time.time()}
-    st["changed"] = {**st["changed"], layer: {"at": time.time(), "mode": scene.mode}}
+    st["changed"] = {
+        **st["changed"],
+        layer: {"at": time.time(), "mode": scene.mode, **({"auto": True} if auto else {})},
+    }
     _store(scene, st, place)
 
 
@@ -507,6 +513,85 @@ def on_mode(ctx, mode: str, victory: bool = False) -> None:
             ctx.signals.add("audio")
         if victory and (t := pick(ctx.campaign, "sfx", cue_="victory")):
             cue(ctx, t)
+
+
+AUTO_QUIET = 600.0  # секунд: столько движок уважает тишину, которую мастер выбрал сам (music: off)
+CALM = ("calm", "mystery", "wonder", "warm")
+MOVE_TOOLS = ("move", "make_current")
+
+
+def place_words(ctx, place: str | None) -> set[str]:
+    """Чем место описано для подбора дорожки: части id шаблона, теги шаблона и места (tavern, carcass, ruins…)."""
+    w = ctx.world
+    pid = place or (w.scene_places()[0] if w.scene_places() else None) or w.scene.location_id
+    out: set[str] = set()
+    seen: set[str] = set()
+    while pid and pid not in seen and len(seen) < 3:  # место и пара родителей: таверна в трущобах города
+        seen.add(pid)
+        e = w.entities.get(pid)
+        if e is None:
+            break
+        tid = e.template_id or ""
+        out |= {x for x in re.split(r"[._]", tid.lower()) if x and x != "location"}
+        rec = w.catalog.find(tid) if tid else None
+        out |= {str(t).lower() for t in ((rec.data.get("tags") if rec else None) or [])}
+        out |= {str(t).lower() for t in (e.state or {}).get("tags") or []}
+        pid = e.location_id
+    return out
+
+
+def _fit(t: Track, words: set[str], mood: str | None) -> float:
+    score = 3.0 * len(set(t.places) & words)
+    if mood:
+        score += 4.0 if mood in t.moods else -10.0
+    else:
+        score += 1.0 if set(t.moods) & set(CALM) else 0.0
+        score -= 5.0 if set(t.moods) & {"battle", "chase"} else 0.0
+    return score
+
+
+def best_music(campaign, words: set[str], mood: str | None) -> Track | None:
+    tracks = [t for t in library().for_pack(pack_of(campaign)) if t.layer == "music" and not t.cue]
+    if mood and not any(mood in t.moods for t in tracks):
+        mood = "tension" if mood == "battle" and any("tension" in t.moods for t in tracks) else None
+    if not tracks:
+        return None
+    # при равенстве — первая в каталоге: сначала дорожки мира
+    return max(tracks, key=lambda t: (_fit(t, words, mood), -tracks.index(t)))
+
+
+def autopilot(ctx) -> None:
+    """Страховка движка, когда мастер не ведёт звук сам (техническая модель решения часто забывает про
+    set_soundscape): при тишине включает мелодию под место или бой, при переходе в другое место подбирает
+    дорожку под него. Выбор мастера в этом ходе и его осознанная тишина не трогаются."""
+    if not enabled(ctx.campaign) or any(ev.tool == "set_soundscape" for ev in ctx.events):
+        return
+    sc = ctx.world.scene
+    place = where(ctx)
+    st = mixer(sc, place)
+    fight = ctx.world.fighting_here()
+    words = place_words(ctx, place)
+    last = (st.get("changed") or {}).get("music") or {}
+    ago = time.time() - float(last.get("at", 0))
+    lib = library()
+    cur = lib.get(st["music"]["track"]) if st.get("music") else None
+    if cur is None:
+        if last and not last.get("auto") and ago < AUTO_QUIET and last.get("mode") == sc.mode:
+            return  # мастер сам выбрал тишину
+        t = best_music(ctx.campaign, words, "battle" if fight else None)
+    elif any(ev.tool in MOVE_TOOLS for ev in ctx.events) and not fight and ago >= MUSIC_COOLDOWN:
+        t = best_music(ctx.campaign, words, None)
+        if t is None or _fit(t, words, None) <= _fit(cur, words, None):
+            return  # нынешняя дорожка подходит новому месту не хуже
+    else:
+        return
+    if t is None:
+        return
+    set_layer(sc, "music", t, place=place, auto=True)
+    rhythm = lib.get(st["rhythm"]["track"]) if st.get("rhythm") else None
+    if rhythm is not None and not tempo_fits(t, rhythm):
+        set_layer(sc, "rhythm", None, place=place, auto=True)  # ритм не ложится на новую мелодию: каша хуже тишины
+    ctx.signals.add("audio")
 
 
 def finalize(ctx) -> None:

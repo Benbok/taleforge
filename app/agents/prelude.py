@@ -50,6 +50,13 @@ def clean_story(text: str, keep=lambda _id: False) -> str:
     return ECHO.sub("", "\n".join(lines).strip(), count=1).strip()
 
 
+def _closed(raw: str) -> str:
+    """Текст без недописанной разметки в конце: «[[en_1|гобл» станет словом, только когда закроется, иначе
+    черновик пришлось бы стирать и печатать заново."""
+    i = raw.rfind("[[")
+    return raw[:i] if i >= 0 and "]]" not in raw[i:] else raw
+
+
 class StoryFeed:
     """Поток повествования в чат и в озвучку уже очищенным: служебный заголовок модели игроки не видят и в
     черновике. Первая строка ждёт, пока допишется (по ней видно, заголовок ли это)."""
@@ -64,7 +71,7 @@ class StoryFeed:
             self.job.feed(chunk)
         if self.stream is None or ("\n" not in self.raw and len(self.raw) < 200):
             return
-        view = self.clean(self.raw)
+        view = self.clean(_closed(self.raw))
         if view.startswith(self.sent):
             if len(view) > len(self.sent):
                 await self.stream.push(view[len(self.sent) :])

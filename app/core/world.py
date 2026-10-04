@@ -574,7 +574,32 @@ class World:
                     for it in items
                 )
                 lines.append(f"    снаряжение: {inv}")
+            magic = self._spell_line(ch)
+            if magic:
+                lines.append(f"    {magic}")
         return lines
+
+    def _spell_line(self, ch: Character) -> str | None:
+        """Что герой может сотворить: без этой строки мастер считает героя немагом и выдумывает эффекты."""
+        from app.core.spells import book_view
+
+        try:
+            b = book_view(ch.sheet or {}, ch.resources or {}, self.catalog)
+        except Exception:  # noqa: BLE001 — сломанный лист не должен ронять таблицу сцены
+            return None
+        if b is None:
+            return None
+        ready = [x for x in b["spells"] if x["prepared"]]
+        slots = ", ".join(f"{k}-й {v}/{b['slots'][int(k) - 1]}" for k, v in b["slots_left"].items() if v is not None)
+        if b.get("pact_slots"):
+            slots += f"{', ' if slots else ''}договор {b['pact_level']}-й {b['pact_left']}/{b['pact_slots']}"
+        head = f"заклинатель: Сл {b['save_dc']}, атака {b['attack']:+d}, ячейки: {slots or 'нет'}"
+        if (b.get("concentration") or {}).get("name"):
+            head += f", концентрация: {b['concentration']['name']}"
+        spells = "; ".join(
+            f"{x['id']} {x['name']} ({'заговор' if x['level'] == 0 else str(x['level']) + '-й'})" for x in ready
+        )
+        return f"{head}; заклинания (для cast_spell): {spells or 'не выбраны'}"
 
     def _place_lines(self, place: str | None) -> list[str]:
         """Существа, предметы, приметы и области места (``None`` — всех мест, где стоят герои)."""
