@@ -168,6 +168,9 @@ class DevelopArgs(BaseModel):
     )
     here: bool = Field(True, description="место — сделать текущей сценой; NPC — поставить в текущую сцену")
     attitude: Literal["hostile", "neutral", "friendly"] = Field("neutral", description="только для NPC")
+    location_id: str | None = Field(
+        None, description="для NPC при here: место, где стоят герои; нужно, только если отряд разделён"
+    )
 
 
 @tool(
@@ -175,7 +178,7 @@ class DevelopArgs(BaseModel):
     "Разворачивает набросок места или NPC каркаса, когда отряд до него дошёл: записывает детали и регистрирует "
     "сущность в реестре мира (после этого её можно размечать и с ней взаимодействовать).",
     DevelopArgs,
-    ids={"sketch_id": "plot:sketches"},
+    ids={"sketch_id": "plot:sketches", "location_id": "places"},
     closes=False,
 )
 async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
@@ -223,7 +226,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
             template_id=rec.id,
             description=sketch.get("look") or "",  # карточка для игроков; что он знает — в каркасе
             state={"hp": hp, "hp_max": hp, "attitude": a.attitude, "plot_id": sketch["id"]},
-            location_id=ctx.world.scene.location_id if a.here else home,
+            location_id=ctx.world.place_arg(a.location_id, "появляется NPC") if a.here else home,
             zone="near",
         )
         ctx.session.add(en)

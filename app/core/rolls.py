@@ -75,6 +75,15 @@ def _dmg(dice: list[dict]) -> list[dict[str, Any]]:
     return [{"expr": x.get("expr"), "rolls": x.get("rolls"), "total": x.get("total")} for x in dice if "expr" in x]
 
 
+def _attack_outcome(r: dict) -> str:
+    """Натуральная 20 — критическое попадание, натуральная 1 — критический промах."""
+    if r.get("critical"):
+        return "crit"
+    if r.get("hit"):
+        return "hit"
+    return "fumble" if r.get("fumble") else "miss"
+
+
 def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
     """Данные карточки для события или None, если карточки у события нет."""
     if ev.hidden or (not ev.dice and ev.tool != "cast_spell"):
@@ -92,11 +101,12 @@ def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
             "reason": p.get("reason"),
             "roll": _d20(dice),
             "against": {"label": "Сл", "value": p.get("dc")},
-            "outcome": "success" if p.get("success") else "fail",
+            "outcome": {"success": "crit_success", "fail": "crit_fail"}.get(p.get("critical"))
+            or ("success" if p.get("success") else "fail"),
             "notes": list(p.get("reasons") or []) + ([p["auto_fail"]] if p.get("auto_fail") else []),
         }
     if ev.tool == "resolve_attack":
-        outcome = "crit" if p.get("critical") else "hit" if p.get("hit") else "miss"
+        outcome = _attack_outcome(p)
         out: dict[str, Any] = {
             "tool": ev.tool,
             "title": f"Атака: {p.get('attack')}",
@@ -197,7 +207,7 @@ def _spell_card(ev: Event, p: dict, dice: list[dict], hero_ids: set[str]) -> dic
         a = attacks[0]
         out["target"] = a["target"]
         out["roll"] = _d20(dice)
-        out["outcome"] = "crit" if a.get("critical") else "hit" if a.get("hit") else "miss"
+        out["outcome"] = _attack_outcome(a)
         if a.get("target_id") in hero_ids:
             out["against"] = {"label": "КБ", "value": a.get("target_ac")}
     elif len(rows) == 1:
@@ -226,7 +236,16 @@ def line(c: dict[str, Any], names: dict[str, str] | None = None) -> str:
     if roll.get("total") is not None:
         against = c.get("against")
         parts.append(f"{roll['total']}" + (f" против {against['label']} {against['value']}" if against else ""))
-    word = {"success": "успех", "fail": "провал", "hit": "попадание", "miss": "промах", "crit": "критическое попадание"}
+    word = {
+        "success": "успех",
+        "fail": "провал",
+        "hit": "попадание",
+        "miss": "промах",
+        "crit": "критическое попадание",
+        "fumble": "критический промах",
+        "crit_success": "критический успех",
+        "crit_fail": "критический провал",
+    }
     if c.get("outcome") in word:
         parts.append(word[c["outcome"]])
     if c.get("damage"):

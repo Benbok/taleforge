@@ -32,20 +32,29 @@ async def _manager(session, user: User, campaign_id: str):
     return v
 
 
+async def can_generate(session, c) -> bool:
+    """Каркас целиком строится до первой сессии. Если игра началась без него (сбой генерации), его можно доделать."""
+    if not await architect.started(session, c.id):
+        return True
+    secret = await session.get(CampaignSecret, c.id)
+    return not plot.has_plan(secret.plot if secret else None)
+
+
 async def plan_out(session, v) -> dict:
     c = v.campaign
     st = c.settings or {}
     versions = await session.scalar(
         select(func.count()).select_from(CampaignPlan).where(CampaignPlan.campaign_id == c.id)
     )
+    status, error = plot.status(st)
     out = {
-        "status": (st.get("plan") or {}).get("status") or "none",
-        "error": (st.get("plan") or {}).get("error"),
+        "status": status,
+        "error": error,
         "version": (st.get("plan") or {}).get("version"),
         "versions": int(versions or 0),
         "poster": st.get("poster"),
         "public_intro": c.public_intro,
-        "can_generate": not await architect.started(session, c.id),
+        "can_generate": await can_generate(session, c),
     }
     if v.is_master:
         secret = await session.get(CampaignSecret, c.id)
@@ -95,12 +104,12 @@ async def plan_options(campaign_id: str, user: UserDep, session: SessionDep, str
 async def request_plan(
     campaign_id: str, body: PlanRequestIn, user: UserDep, session: SessionDep, request: Request
 ) -> dict:
-    """Построить каркас или новый вариант. Только до первой сессии: потом каркас меняется по ходу игры."""
+    """Построить каркас или новый вариант: до первой сессии или пока каркаса нет. Потом он меняется по ходу игры."""
     v = await _manager(session, user, campaign_id)
     c = v.campaign
-    if await architect.started(session, c.id):
+    if not await can_generate(session, c):
         raise Conflict("игра уже началась: каркас больше не перегенерируется целиком")
-    if ((c.settings or {}).get("plan") or {}).get("status") == "generating":
+    if plot.status(c.settings)[0] == "generating":
         raise Conflict("каркас уже готовится")
     if body.structure_id:
         catalog = await campaign_catalog(session, c)

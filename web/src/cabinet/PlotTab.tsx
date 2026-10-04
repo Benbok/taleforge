@@ -154,10 +154,22 @@ export default function PlotTab({ campaignId }: { campaignId: string }) {
           )}
         </div>
 
-        <p className={`text-sm ${p.status === "failed" ? "text-bad font-semibold" : "text-muted"}`} role="status">
-          {p.status === "ready" ? `Сюжет готов (редакция ${p.version}).` : STATUS_TEXT[p.status]}
-          {p.status === "failed" && p.error ? `: ${p.error}` : ""}
-        </p>
+        {p.status === "failed" ? (
+          <div className="rounded-[8px] border border-bad/40 bg-bad/5 p-3 text-sm" role="alert">
+            <p className="font-semibold text-bad">
+              {STATUS_TEXT.failed}
+              {p.error ? `: ${p.error}` : "."}
+            </p>
+            <p className="mt-1 text-muted">
+              Пока сюжета нет, ИИ-мастер не начнёт игру. Запустите генерацию заново: можно сменить архетип или добавить
+              пожелания.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted" role="status">
+            {p.status === "ready" ? `Сюжет готов (редакция ${p.version}).` : STATUS_TEXT[p.status]}
+          </p>
+        )}
 
         {p.revision?.status === "revising" && (
           <div className="rounded-[8px] border border-accent/40 bg-accent/10 p-3 font-mono text-xs text-accent">
@@ -225,7 +237,11 @@ export default function PlotTab({ campaignId }: { campaignId: string }) {
                   qc.setQueryData(["plan", campaignId], next);
                 }}
               >
-                {p.status === "ready" ? "СГЕНЕРИРОВАТЬ ДРУГОЙ ВАРИАНТ" : "ПОДГОТОВИТЬ СЮЖЕТНУЮ АРКУ"}
+                {p.status === "ready"
+                  ? "СГЕНЕРИРОВАТЬ ДРУГОЙ ВАРИАНТ"
+                  : p.status === "failed"
+                    ? "СГЕНЕРИРОВАТЬ ЗАНОВО"
+                    : "ПОДГОТОВИТЬ СЮЖЕТНУЮ АРКУ"}
               </ActionButton>
             </div>
           </div>

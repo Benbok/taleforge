@@ -163,6 +163,7 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                     msgs,
                     model=model,
                     tools=[plot.tool_spec()],
+                    tool_choice="required",  # иначе Gemini порой отвечает текстом и не сдаёт каркас
                     max_tokens=MAX_TOKENS,
                     temperature=min(max(temperature, 0.7), 1.0),
                     api_base=api_base,

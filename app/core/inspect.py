@@ -85,7 +85,8 @@ async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> int | N
         if row is not None:
             return row.level
     scene = await get_scene(session, viewer.campaign.id)
-    here = scene.location_id and (e.id == scene.location_id or e.location_id == scene.location_id)
+    spot = (hero.location_id if hero is not None else None) or scene.location_id  # своё место героя
+    here = spot and (e.id == spot or e.location_id == spot)
     if here or await _mentioned(session, viewer, e.id):
         return 0
     return None

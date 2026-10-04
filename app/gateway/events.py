@@ -26,13 +26,13 @@ class Stream:
     """Черновик сообщения мастера по кускам. Каждый кусок несёт поля сообщения, чтобы клиент показал его
     до message.new; само сообщение уходит в чат только после коммита."""
 
-    def __init__(self, bus, cid: str, msg: Message) -> None:
-        self.bus, self.cid = bus, cid
+    def __init__(self, bus, cid: str, msg: Message, to: list[str] | None = None) -> None:
+        self.bus, self.cid, self.to = bus, cid, to  # to: места, которым виден ответ (отряд разделён)
         self.head = {"id": msg.id, "seq": msg.seq, "seat_id": msg.seat_id, "kind": msg.kind}
 
     async def push(self, chunk: str) -> None:
-        await self.bus.publish(self.cid, envelope("message.chunk", self.cid, {**self.head, "chunk": chunk}), None)
+        await self.bus.publish(self.cid, envelope("message.chunk", self.cid, {**self.head, "chunk": chunk}), self.to)
 
     async def reset(self) -> None:
         payload = {**self.head, "chunk": "", "reset": True}
-        await self.bus.publish(self.cid, envelope("message.chunk", self.cid, payload), None)
+        await self.bus.publish(self.cid, envelope("message.chunk", self.cid, payload), self.to)

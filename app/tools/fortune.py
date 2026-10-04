@@ -43,7 +43,7 @@ def random_events(campaign) -> str:
 
 def _chain(ctx: ToolContext) -> list:
     """Шаблоны текущей локации и её родителей (район → туша → пояс): по ним выбираются таблицы."""
-    loc = ctx.world.entities.get(ctx.world.scene.location_id or "")
+    loc = ctx.world.entities.get(ctx.world.home() or "")
     out, rid = [], loc.template_id if loc else None
     while rid and len(out) < 4:
         rec = ctx.world.catalog.find(rid, "location_template")

@@ -26,7 +26,6 @@ from app.core.world import (
     lineage_features,
 )
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem, Knowledge, KnownFact
-from app.rules.base import RollMode
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.engine import Dnd5eEngine
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
@@ -37,10 +36,17 @@ engine = Dnd5eEngine()
 Zone = Literal["melee", "near", "far"]
 Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
 BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
+PLACE_HINT = "место, где стоят герои; нужно, только если отряд разделён (по умолчанию — место сцены)"
 Elevation = Literal["low", "ground", "high"]
 ELEVATION_HINT = "высота: low — внизу (яма, трюм), ground — на земле, high — на возвышении (балкон, гребень)"
 Cover = Literal["none", "half", "three_quarters", "total"]
 COVER_HINT = "укрытие по SRD: half +2 к КД, three_quarters +5, total — цель нельзя атаковать напрямую"
+Edge = Literal["none", "advantage", "disadvantage"]
+EDGE_HINT = (
+    "преимущество или помеха по обстоятельствам (SRD, решение мастера): advantage — замысел логичен и хорошо "
+    "подготовлен, выгодная позиция, помощь союзника; disadvantage — спешка, темнота, неудобная поза, действие на "
+    "грани возможного. Эффекты сервер учтёт сам, здесь только обстоятельства"
+)
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
 # Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
@@ -270,6 +276,8 @@ class CheckArgs(BaseModel):
     )
     reason: str = Field(description="что проверяется, для журнала")
     inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
+    edge: Edge = Field("none", description=EDGE_HINT)
+    edge_reason: str | None = Field(None, max_length=200, description="почему преимущество или помеха — увидят игроки")
 
 
 @tool(
@@ -290,11 +298,12 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     else:
         bonus, ability = act.ability_check_bonus(a.stat)
     mode, reasons = mod.roll_mode(act.modifiers, a.kind, ability, a.stat if a.stat in SKILLS else None)
+    mode, reasons = mod.with_circumstance(mode, reasons, a.edge, _edge_reason(a.edge, a.edge_reason))
     auto = mod.save_auto_fail(act.modifiers, ability) if a.kind == "save" else None
     spent = _inspire(ctx, act, a.inspiration, mode, reasons)
     if spent:
         mode, reasons, spent = spent
-    res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode)
+    res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode, critical_checks(ctx))
     success = res.success and auto is None
     hidden = a.kind == "check" and a.stat in _hidden_skills(ctx)
     result = {
@@ -302,11 +311,14 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         "stat": a.stat,
         "kind": a.kind,
         "dc": dc,
+        "natural": res.roll.natural,
         "total": res.roll.total,
         "success": success,
         "margin": res.margin,
         "hidden": hidden,
     }
+    if res.critical and not auto:
+        result["critical"] = res.critical
     if reasons:
         result["reasons"] = reasons
     if auto:
@@ -322,6 +334,22 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         inverse=spent or [],
     )
     return result
+
+
+def critical_checks(ctx: ToolContext) -> bool:
+    """Натуральные 20 и 1 в проверках и спасбросках вне атак — критический успех и провал. Домашнее правило,
+    включено по умолчанию; выключается настройкой кампании ``critical_checks: false``."""
+    return (ctx.campaign.settings or {}).get("critical_checks", True) is not False
+
+
+def _edge_reason(edge: str, why: str | None) -> str | None:
+    if edge == "none":
+        return None
+    why = (why or "").strip()
+    if not why:
+        word = "преимущество" if edge == "advantage" else "помеху"
+        raise ToolError(f"укажите в edge_reason, за что {word}: игрок увидит причину в карточке броска")
+    return why
 
 
 def _inspire(ctx: ToolContext, act: Actor, use: bool, mode, reasons: list) -> tuple | None:
@@ -363,6 +391,8 @@ class AttackArgs(BaseModel):
     target_id: str
     attack: str = Field(description="ключ атаки из листа: id предмета инвентаря, ключ оружия или действия существа")
     inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
+    edge: Edge = Field("none", description=EDGE_HINT)
+    edge_reason: str | None = Field(None, max_length=200, description="почему преимущество или помеха — увидят игроки")
 
 
 @tool(
@@ -412,7 +442,7 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальняя атака вплотную к врагу")
     target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
-    mode, am_reasons = am.mode, list(am.reasons)
+    mode, am_reasons = mod.with_circumstance(am.mode, list(am.reasons), a.edge, _edge_reason(a.edge, a.edge_reason))
     spent = _inspire(ctx, att, a.inspiration, mode, am_reasons)
     if spent:
         mode, am_reasons, spent = spent
@@ -429,6 +459,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         "critical": critical,
         "mode": str(mode),
     }
+    if roll.roll.natural == 1:
+        result["fumble"] = True  # натуральная 1: не просто промах, неудача оборачивается против атакующего
     if am_reasons:
         result["reasons"] = am_reasons
     if spent:
@@ -863,6 +895,7 @@ class PlaceItemArgs(BaseModel):
         "", max_length=500, description="где и как лежит, как его видят герои: текст карточки для игроков"
     )
     reason: str = Field(description="откуда предмет: выпал у врага, лежит в сундуке, тайник")
+    location_id: str | None = Field(None, description=PLACE_HINT)
 
 
 @tool(
@@ -870,12 +903,13 @@ class PlaceItemArgs(BaseModel):
     "Кладёт предмет из шаблона в текущую сцену: добыча у павшего врага, содержимое сундука, находка на полу. Герой "
     "подбирает его сам через pick_up_item, и тогда предмет остаётся в его инвентаре.",
     PlaceItemArgs,
-    ids={"item_template_id": "templates:item_template"},
+    ids={"item_template_id": "templates:item_template", "location_id": "places"},
     closes=False,
 )
 async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
-    en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description)
+    place = ctx.world.place_arg(a.location_id, "лежит предмет")
+    en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description, place)
     result = {"entity_id": en.id, "item": en.name, "qty": a.qty}
     await ctx.record(
         "place_item", target_id=en.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
@@ -884,12 +918,20 @@ async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
 
 
 async def _put_in_scene(
-    ctx: ToolContext, template_id: str, display_name: str | None, qty: int, zone: str, description: str = ""
+    ctx: ToolContext,
+    template_id: str,
+    display_name: str | None,
+    qty: int,
+    zone: str,
+    description: str = "",
+    place: str | None = None,
 ) -> tuple[Entity, list[dict]]:
-    """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит рядом, складывается в стопку."""
+    """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит рядом, складывается в стопку.
+    ``place`` — место, где он ляжет; по умолчанию основное место сцены."""
     rec = ctx.world.catalog.find(template_id)
     name = display_name or (rec.name if rec else template_id)
-    for en in ctx.world.in_scene_entities():
+    place = place or ctx.world.home()
+    for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
         same = en.template_id == template_id and st.get("display_name") == display_name and en.zone == zone
         if is_scene_item(en) and same:
@@ -902,7 +944,7 @@ async def _put_in_scene(
         template_id=template_id,
         description=description or ((rec.data.get("description") or "") if rec else ""),
         state={"item": True, "qty": qty, "display_name": display_name},
-        location_id=ctx.world.scene.location_id,
+        location_id=place,
         zone=zone,
     )
     ctx.session.add(en)
@@ -928,8 +970,8 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     ch = _character(ctx, a.character_id)
     _can_handle(ctx, ch)
     en = ctx.world.entities.get(a.entity_id)
-    if en is None or en not in ctx.world.in_scene_entities():
-        raise ToolError(f"предмета {a.entity_id} нет в этой сцене")
+    if en is None or en not in ctx.world.in_scene_entities(ctx.world.place_of(ch)):
+        raise ToolError(f"предмета {a.entity_id} нет рядом с {ch.name}")
     if not is_scene_item(en):
         raise ToolError(f"{en.name} — не предмет: его нельзя положить в инвентарь")
     st = dict(en.state or {})
@@ -985,7 +1027,7 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
     template, display = it.item_template_id, it.display_name
     name = ctx.world.item_name(it)
     inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee")
+    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch))
     inverse += inv
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
@@ -1062,15 +1104,17 @@ def _multiplier(count: int, party: int) -> float:
     return MULTIPLIERS[idx]
 
 
-def encounter_budget(ctx: ToolContext, adding: list[dict]) -> dict:
-    """Бюджет встречи SRD: опыт враждебных существ с множителем против порога отряда (раздел 8.1)."""
-    party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
+def encounter_budget(ctx: ToolContext, adding: list[dict], place: str | None = None) -> dict:
+    """Бюджет встречи SRD: опыт враждебных существ с множителем против порога отряда (раздел 8.1). Разделившийся
+    отряд считается по месту: встречу в трюме держат только те, кто в трюме."""
+    w = ctx.world
+    party = [c for c in w.characters.values() if c.status in PLAYABLE and (place is None or w.place_of(c) == place)]
     if not party:
         return {"ok": True, "note": "в игре нет героев"}
     cap_idx, factor = DIFFICULTY_CAP.get(ctx.campaign.difficulty, (2, 1.0))
     cap = sum(ENCOUNTER_XP[max(1, min(20, int((c.sheet or {}).get("level", 1))))][cap_idx] for c in party) * factor
     xp = [x for x in adding]
-    for en in ctx.world.in_scene_entities():
+    for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
         if en.kind == "creature" and not st.get("dead") and st.get("attitude", "hostile") == "hostile":
             rec = ctx.world.catalog.find(en.template_id or "")
@@ -1093,21 +1137,23 @@ class SpawnArgs(BaseModel):
         description="внешность и манера, как их видят герои: это текст карточки для игроков. Мотивы и тайны сюда "
         "не пиши",
     )
+    location_id: str | None = Field(None, description=PLACE_HINT)
 
 
 @tool(
     "spawn_entity",
     "Выставляет существо или NPC из шаблона в текущую локацию. Враждебные проверяются бюджетом встречи.",
     SpawnArgs,
-    ids={"creature_template_id": "templates:creature_template"},
+    ids={"creature_template_id": "templates:creature_template", "location_id": "places"},
 )
 async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     from app.core.world import creature_stats
 
     rec = ctx.world.catalog.get(a.creature_template_id, "creature_template")
     creature_stats(rec.data)  # без блока статов существо в сцену не выходит
+    place = ctx.world.place_arg(a.location_id, "появляется существо")
     if a.attitude == "hostile":
-        b = encounter_budget(ctx, [{"xp": int(rec.data.get("xp") or 0)} for _ in range(a.count)])
+        b = encounter_budget(ctx, [{"xp": int(rec.data.get("xp") or 0)} for _ in range(a.count)], place)
         if not b["ok"]:
             raise ToolError(
                 f"встреча превышает бюджет сложности кампании ({b['adjusted_xp']} > {b['cap']} опыта с поправкой на "
@@ -1124,7 +1170,7 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
             template_id=rec.id,
             description=a.description,
             state={"hp": hp, "hp_max": hp, "attitude": a.attitude, **({"bearing": a.bearing} if a.bearing else {})},
-            location_id=ctx.world.scene.location_id,
+            location_id=place,
             zone=a.zone,
         )
         ctx.session.add(en)
@@ -1311,6 +1357,7 @@ class AreaArgs(BaseModel):
     duration_rounds: int | None = Field(
         None, ge=1, le=600, description="сколько раундов держится; пусто — пока не уберут"
     )
+    location_id: str | None = Field(None, description=PLACE_HINT)
 
 
 @tool(
@@ -1318,13 +1365,18 @@ class AreaArgs(BaseModel):
     "Отмечает на схеме область: облако, огонь, туман, лужу масла. Опасность и эффект из шаблонов срабатывают на "
     "всех внутри сразу и на тех, кто войдёт потом.",
     AreaArgs,
-    ids={"hazard_template_id": "templates:hazard_template", "effect_template_id": "templates:effect_template"},
+    ids={
+        "hazard_template_id": "templates:hazard_template",
+        "effect_template_id": "templates:effect_template",
+        "location_id": "places",
+    },
     closes=False,
 )
 async def place_area(ctx: ToolContext, a: AreaArgs) -> dict:
     w = ctx.world
     if w.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = w.place_arg(a.location_id, "область")
     if a.hazard_template_id:
         rec = w.catalog.get(a.hazard_template_id, "hazard_template")
         if rec.data.get("params_schema"):
@@ -1342,7 +1394,7 @@ async def place_area(ctx: ToolContext, a: AreaArgs) -> dict:
         kind="object",
         name=a.name,
         state={"area": area, "landmark": True, **({"bearing": a.bearing} if a.bearing else {})},
-        location_id=w.scene.location_id,
+        location_id=place,
         zone=a.zone,
     )
     ctx.session.add(en)
@@ -1355,7 +1407,7 @@ async def place_area(ctx: ToolContext, a: AreaArgs) -> dict:
         inverse=[{"table": "entities", "op": "delete", "id": en.id}],
     )
     ids = [c.id for c in w.characters.values() if c.status in PLAYABLE] + [
-        e.id for e in w.in_scene_entities() if e.kind == "creature" and not (e.state or {}).get("dead")
+        e.id for e in w.in_scene_entities(place) if e.kind == "creature" and not (e.state or {}).get("dead")
     ]
     caught = [i for i in ids if inside(w, en, i)]
     hits = [await _area_hits(ctx, en, i) for i in caught]
@@ -1542,6 +1594,7 @@ class LandmarkArgs(BaseModel):
     description: str = Field("", max_length=1000, description="как это выглядит для героев, без тайн")
     zone: Zone = "near"
     bearing: Bearing | None = Field(None, description=BEARING_HINT)
+    location_id: str | None = Field(None, description=PLACE_HINT)
 
 
 @tool(
@@ -1549,18 +1602,20 @@ class LandmarkArgs(BaseModel):
     "Отмечает на схеме места заметную примету: дверь, статую, лавку, провал. Механики у приметы нет: для существ — "
     "spawn_entity, для отдельного места, куда можно войти, — create_location.",
     LandmarkArgs,
+    ids={"location_id": "places"},
     closes=False,
 )
 async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
     if ctx.world.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = ctx.world.place_arg(a.location_id, "примета")
     en = Entity(
         campaign_id=ctx.campaign.id,
         kind="object",
         name=a.name,
         description=a.description,
         state={"landmark": True, **({"bearing": a.bearing} if a.bearing else {})},
-        location_id=ctx.world.scene.location_id,
+        location_id=place,
         zone=a.zone,
     )
     ctx.session.add(en)
@@ -1731,20 +1786,28 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         return {"mode": "free"}
     ids = a.participants
     if not ids:
-        ids = [c.id for c in ctx.world.characters.values() if c.status in PLAYABLE]
-        ids += [
-            e.id
-            for e in ctx.world.in_scene_entities()
+        w = ctx.world
+        foes = [
+            e
+            for e in w.in_scene_entities()
             if e.kind == "creature" and (e.state or {}).get("attitude", "hostile") == "hostile"
         ]
+        # отряд разделён: в бой вступают герои того места, где враги
+        fronts = {e.location_id for e in foes} if w.split and foes else None
+        ids = [
+            c.id for c in w.characters.values() if c.status in PLAYABLE and (fronts is None or w.place_of(c) in fronts)
+        ]
+        ids += [e.id for e in foes]
     entries, dice = [], []
     for i in ids:
         act = ctx.world.actor(i)
         if not act.alive:
             continue
-        roll = engine.initiative(ctx.dice, act.mods["dex"], RollMode.NORMAL)
+        # инициатива — проверка Ловкости (SRD): эффекты с преимуществом или помехой на неё действуют
+        mode, reasons = mod.roll_mode(act.modifiers, "check", "dex")
+        roll = engine.initiative(ctx.dice, act.mods["dex"], mode)
         entries.append((act.id, roll, act.mods["dex"]))
-        dice.append({"who": act.id, **dice_json(roll)})
+        dice.append({"who": act.id, **dice_json(roll), **({"reasons": reasons} if reasons else {})})
     order = engine.initiative_order(entries)
     totals = {e[0]: e[1].total for e in entries}
     sc.mode, sc.round = "combat", 1

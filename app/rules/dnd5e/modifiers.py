@@ -128,6 +128,27 @@ def roll_mode(mods: Modifiers, on: str, stat: str | None = None, skill: str | No
     return RollMode.combine(adv, dis), reasons
 
 
+def sources(mode: RollMode, reasons: Iterable[str]) -> tuple[bool, bool]:
+    """Были ли у броска источники преимущества и помехи. Режим ``normal`` бывает и когда они погасили друг
+    друга, поэтому смотрим и на причины: каждая начинается со слова «преимущество» или «помеха»."""
+    rs = list(reasons)
+    adv = mode is RollMode.ADVANTAGE or any(r.startswith("преимущество") for r in rs)
+    dis = mode is RollMode.DISADVANTAGE or any(r.startswith("помеха") for r in rs)
+    return adv, dis
+
+
+def with_circumstance(mode: RollMode, reasons: list[str], edge: str, why: str | None) -> tuple[RollMode, list[str]]:
+    """Преимущество или помеха по обстоятельствам: решение ведущего по SRD (удачный замысел, выгодная позиция,
+    помеха от темноты или спешки). Складывается с эффектами по общему правилу: любая помеха гасит любое
+    преимущество, сколько бы их ни было."""
+    if edge not in ("advantage", "disadvantage"):
+        return mode, reasons
+    adv, dis = sources(mode, reasons)
+    word = "преимущество" if edge == "advantage" else "помеха"
+    out = [*reasons, f"{word}: {why}"]
+    return RollMode.combine(adv or edge == "advantage", dis or edge == "disadvantage"), out
+
+
 def save_auto_fail(mods: Modifiers, stat: str) -> str | None:
     for src, m in mods.own("set"):
         if m.get("target") == "save_result" and m.get("auto") == "fail" and m.get("stat") in (None, stat):

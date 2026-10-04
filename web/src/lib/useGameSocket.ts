@@ -10,7 +10,7 @@ import { sound } from "../game/sound";
 import { mapEvent } from "../game/map";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
-const REFRESH_ACTIONS = new Set(["turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
+const REFRESH_ACTIONS = new Set(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
@@ -27,6 +27,12 @@ export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (e.type === "error") {
     const p = e.payload as { code?: string; message?: string };
     if (p.code !== "unauthorized") toast.error(p.message ?? "сервер отклонил действие");
+  }
+  if (e.type === "campaign.plan") {
+    // сбой подготовки сюжета — сразу говорим тому, кто запускает игру: без сюжета ИИ-мастер её не начнёт
+    const plan = (e.payload as { plan?: { status?: string; error?: string | null } }).plan;
+    if (plan?.status === "failed" && useGame.getState().actions.includes("campaign.end"))
+      toast.error(`Сюжет не подготовлен${plan.error ? `: ${plan.error}` : ""}. Запустите генерацию заново на вкладке «Сюжет».`);
   }
   if (e.type === "knowledge.revealed") toast.info(`Вы узнали больше о: ${(e.payload as { name?: string }).name ?? "…"}`);
   if (REFRESH_ACTIONS.has(e.type) && e.type !== "state.snapshot") sock.send("actions.get");

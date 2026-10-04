@@ -100,7 +100,7 @@ export interface RollCard {
   reason?: string | null;
   roll?: { d20?: number[]; natural?: number; modifier?: number; mode?: string | null; total?: number } | null;
   against?: { label: string; value: number } | null;
-  outcome: "success" | "fail" | "hit" | "miss" | "crit" | "info";
+  outcome: "success" | "fail" | "hit" | "miss" | "crit" | "fumble" | "crit_success" | "crit_fail" | "info";
   damage?: { amount: number; type: string; dice: { expr: string; total: number }[] };
   dice?: { expr: string; total: number }[];
   order?: { id: string; name: string | null; initiative: number }[];
@@ -139,10 +139,19 @@ export interface OrderEntry {
   out: string | null;
 }
 
+/** Часть разделившегося отряда: где стоят и кто (here — место зрителя). */
+export interface PartyPart {
+  place: string | null;
+  names: string[];
+  here: boolean;
+}
+
 export interface Scene {
   mode: "free" | "combat";
   round: number;
   location: { id: string; name: string } | null;
+  /** Есть, только когда отряд разделился. */
+  party?: PartyPart[];
   entities: SceneEntity[];
   order?: OrderEntry[];
   turn: Turn | null;

@@ -2,12 +2,14 @@
 """Каркас кампании: выбор шаблона сюжета, проверки сервера, архитектор с повтором, версии, афиша и доступ."""
 
 import copy
+from datetime import UTC, datetime
 
 from app.core import plot
-from app.db.models import CampaignPlan, CampaignSecret, LlmCall
-from tests.game import ok
+from app.db.models import Campaign, CampaignPlan, CampaignSecret, LlmCall
+from tests.game import ok, run
 from tests.test_api import invite, make_campaign, register
 from tests.test_master import admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
+from tests.test_ws import connect
 
 
 def good_plan() -> dict:
@@ -331,3 +333,65 @@ def test_render_for_master():
     assert "Следующий шаг угрозы: Пропадает ещё корабль" in text
     assert "Акт act1 «Туман» [active]" in text and "узел n_rumors [sketch] Слухи @loc_tavern (npc_keeper)" in text
     assert "Тайна r_cult (не раскрыта) → n_light" in text and "Возможные финалы:" in text
+
+
+def test_ai_master_waits_for_plan_and_retry_after_failure(game_client, admin_g, llm, settings):
+    c = make_campaign(game_client, admin_g, brief={"length": "short"})
+    llm.replies += [{"text": "Вот каркас словами"}] * 3  # модель отвечает текстом, а не вызовом инструмента
+    ok(game_client.post(f"/api/campaigns/{c['id']}/plan", json={}, headers=admin_g), 202)
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    assert all(r.get("tool_choice") == "required" for r in llm.requests)  # архитектора просят сдать каркас вызовом
+    st = ok(game_client.get(f"/api/campaigns/{c['id']}/plan", headers=admin_g))
+    assert st["status"] == "failed" and "submit_campaign_plan" in st["error"] and st["can_generate"]
+
+    # без сюжета ИИ-мастер игру не начинает: владелец видит причину, кнопки «Начать» нет
+    r = game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g)
+    assert r.status_code == 409 and "Сюжет не подготовлен" in r.json()["detail"]
+    with connect(game_client, admin_g, c["id"]) as (_, snap):
+        assert "session.start" not in snap["payload"]["actions"]
+        assert "вкладке «Сюжет»" in snap["payload"]["blocked"]["session.start"]
+
+    # повторная генерация удалась — игру можно начинать
+    llm.replies += [plan_call(good_plan())]
+    ok(game_client.post(f"/api/campaigns/{c['id']}/plan", json={}, headers=admin_g), 202)
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    assert ok(game_client.get(f"/api/campaigns/{c['id']}/plan", headers=admin_g))["status"] == "ready"
+    with connect(game_client, admin_g, c["id"]) as (_, snap):
+        assert "session.start" in snap["payload"]["actions"] and "session.start" not in snap["payload"]["blocked"]
+    assert ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))["status"] == "active"
+
+
+def test_generation_in_progress_blocks_start_until_stale(game_client, admin_g, settings):
+    c = make_campaign(game_client, admin_g)
+    update(settings, c["id"], {"status": "generating", "updated_at": datetime.now(UTC).isoformat()})
+    r = game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g)
+    assert r.status_code == 409 and "Сюжет ещё готовится" in r.json()["detail"]
+
+    # сервер перезапустили посреди генерации: статус не висит вечно, её можно запустить заново
+    update(settings, c["id"], {"status": "generating", "updated_at": (datetime.now(UTC) - plot.STALE * 2).isoformat()})
+    st = ok(game_client.get(f"/api/campaigns/{c['id']}/plan", headers=admin_g))
+    assert st["status"] == "failed" and "прервалась" in st["error"] and st["can_generate"]
+
+
+def test_started_campaign_without_plan_can_still_get_one(game_client, admin_g, llm):
+    c = make_campaign(game_client, admin_g, brief={"length": "short"})
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))  # сюжет не запрашивали
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/pause", headers=admin_g))
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    assert ok(game_client.get(f"/api/campaigns/{c['id']}/plan", headers=admin_g))["can_generate"]
+    llm.replies += [plan_call(good_plan())]
+    ok(game_client.post(f"/api/campaigns/{c['id']}/plan", json={}, headers=admin_g), 202)
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
+    st = ok(game_client.get(f"/api/campaigns/{c['id']}/plan", headers=admin_g))
+    assert st["status"] == "ready" and not st["can_generate"]  # каркас есть — дальше он меняется по ходу игры
+
+
+def update(settings, cid: str, plan: dict) -> None:
+    """Подменить статус подготовки каркаса прямо в базе."""
+
+    async def go(s):
+        c = await s.get(Campaign, cid)
+        c.settings = {**(c.settings or {}), "plan": plan}
+        await s.commit()
+
+    run(settings, go)

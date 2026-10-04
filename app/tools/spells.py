@@ -280,6 +280,8 @@ async def resolve(
                     "hit": roll.hit,
                     "critical": roll.critical,
                 }
+                if roll.roll.natural == 1:
+                    row["fumble"] = True
                 if rays > 1:
                     row["ray"] = n + 1
                 if am.reasons:

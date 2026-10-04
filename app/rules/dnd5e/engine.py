@@ -73,16 +73,24 @@ class Dnd5eEngine:
         natural = max(a, b) if mode is RollMode.ADVANTAGE else min(a, b)
         return D20Roll((a, b), natural, modifier, mode)
 
-    def check(self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL) -> CheckResult:
-        """Проверка характеристики. В SRD натуральные 1 и 20 на проверках ничего особого не значат."""
+    def check(
+        self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL, crits: bool = False
+    ) -> CheckResult:
+        """Проверка характеристики. В SRD натуральные 1 и 20 на проверках ничего особого не значат; ``crits`` —
+        домашнее правило кампании: натуральная 20 — критический успех, натуральная 1 — критический провал,
+        какой бы ни была сложность."""
         self._require_dc(dc)
         roll = self.roll_d20(dice, modifier, mode)
+        if crits and roll.natural == 20:
+            return CheckResult(roll, dc, True, "success")
+        if crits and roll.natural == 1:
+            return CheckResult(roll, dc, False, "fail")
         return CheckResult(roll, dc, roll.total >= dc)
 
-    def saving_throw(self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL) -> CheckResult:
-        self._require_dc(dc)
-        roll = self.roll_d20(dice, modifier, mode)
-        return CheckResult(roll, dc, roll.total >= dc)
+    def saving_throw(
+        self, dice: Dice, modifier: int, dc: int, mode: RollMode = RollMode.NORMAL, crits: bool = False
+    ) -> CheckResult:
+        return self.check(dice, modifier, dc, mode, crits)
 
     def attack(self, dice: Dice, attack_bonus: int, target_ac: int, mode: RollMode = RollMode.NORMAL) -> AttackResult:
         """Натуральная 20 — всегда попадание и крит, натуральная 1 — всегда промах."""

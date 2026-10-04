@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import Viewer
-from app.core.chat import PENDING_REASON, active_session, pending_message
+from app.core.chat import PENDING_REASON, active_session, pending_message, plan_not_ready
 from app.core.world import get_scene
 from app.db.models import Character
 
@@ -30,8 +30,14 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     blocked: dict[str, str] = {}
     pending: dict[str, str] | None = None
 
+    not_ready = None if live or c.status == "ended" else plan_not_ready(c)
     if viewer.can_control_session and c.status != "ended":
-        actions += ["session.pause"] if live else ["session.start"]
+        if live:
+            actions.append("session.pause")
+        elif not_ready:
+            blocked["session.start"] = not_ready  # кнопки нет, но владелец видит, чего ждём и что делать
+        else:
+            actions.append("session.start")
         actions.append("campaign.end")
     if viewer.is_owner and c.status != "ended":
         actions.append("invite.create")
@@ -43,7 +49,11 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         return {"actions": actions, "blocked": blocked, "pending": pending}
 
     if not live:
-        reason = "Сессия не идёт: пока можно писать только вне игры (//)."
+        reason = (
+            "Мастер готовит сюжет: игра начнётся, когда он будет готов. Пока можно писать вне игры (//)."
+            if not_ready
+            else "Сессия не идёт: пока можно писать только вне игры (//)."
+        )
         if seat.role == "player":
             blocked["chat.play"] = reason
         elif seat.occupant_type == "human":

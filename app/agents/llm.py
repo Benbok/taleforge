@@ -125,6 +125,7 @@ class LiteLLMClient:
         api_base: str | None = None,
         stream_callback: Callable[[str], Any] | None = None,
     ) -> LLMReply:
+        """``tool_choice="required"`` — модель обязана ответить вызовом инструмента, а не текстом."""
         import litellm
 
         msgs = messages
@@ -247,6 +248,8 @@ class ScriptedLLM:
         stream_callback=None,
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
+        if tool_choice not in (None, "auto"):
+            req["tool_choice"] = tool_choice
         auto = _auto_tool(tools)
         if auto and not self._next_is(auto):
             # Парсер намерений и сводки в тестах, где их ответ не задан: действие без разбора, пустая сводка.
