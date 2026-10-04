@@ -1,6 +1,7 @@
 import { Spinner } from "../components/ActionButton";
 import { ABILITIES, ABILITY_ABBR, SKILLS, signed } from "../game/hero";
 import type { Preview } from "../lib/builder";
+import { StatDetailTrigger } from "./StatDetailPopover";
 
 /** Лист героя, пока его собирают: числа — от сервера, по тем же правилам, что и в игре. */
 export default function LiveSheet({
@@ -59,7 +60,9 @@ export default function LiveSheet({
             <BigStat label="КД" value={d.ac} />
             <BigStat label="Хиты" value={d.hp_max} tone="text-patina-hi" />
             <BigStat label="Скорость" value={`${d.speed} фт`} />
-            <BigStat label="Бонус МС" value={signed(d.pb)} tone="text-accent" />
+            <StatDetailTrigger type="mastery" className="cursor-help">
+              <BigStat label="Бонус МС" value={signed(d.pb)} tone="text-accent" />
+            </StatDetailTrigger>
           </div>
 
           {/* 6 Core Abilities */}
@@ -67,24 +70,23 @@ export default function LiveSheet({
             {ABILITIES.map((a) => {
               const mod = d.mods[a];
               return (
-                <div
-                  key={a}
-                  className="rounded-[8px] border border-line/80 bg-raised/60 p-2 transition hover:border-accent/40"
-                >
-                  <div className="font-mono text-[10px] text-muted tracking-wider uppercase">
-                    {ABILITY_ABBR[a]}
+                <StatDetailTrigger key={a} type="ability" id={a} className="cursor-help">
+                  <div className="rounded-[8px] border border-line/80 bg-raised/60 p-2 transition hover:border-accent/40">
+                    <div className="font-mono text-[10px] text-muted tracking-wider uppercase">
+                      {ABILITY_ABBR[a]}
+                    </div>
+                    <div className="font-heading text-lg font-bold text-ink tabular-nums">
+                      {d.abilities[a]}
+                    </div>
+                    <div
+                      className={`font-mono text-xs font-semibold tabular-nums ${
+                        mod > 0 ? "text-patina-hi" : mod < 0 ? "text-bad" : "text-muted"
+                      }`}
+                    >
+                      {signed(mod)}
+                    </div>
                   </div>
-                  <div className="font-heading text-lg font-bold text-ink tabular-nums">
-                    {d.abilities[a]}
-                  </div>
-                  <div
-                    className={`font-mono text-xs font-semibold tabular-nums ${
-                      mod > 0 ? "text-patina-hi" : mod < 0 ? "text-bad" : "text-muted"
-                    }`}
-                  >
-                    {signed(mod)}
-                  </div>
-                </div>
+                </StatDetailTrigger>
               );
             })}
           </div>
@@ -96,13 +98,14 @@ export default function LiveSheet({
             </h3>
             <div className="flex flex-wrap gap-1.5 text-xs font-mono">
               {ABILITIES.map((a) => (
-                <span
-                  key={a}
-                  className="rounded-[6px] border border-line bg-raised px-2 py-0.5 text-ink-2 tabular-nums"
-                >
-                  <span className="text-muted mr-1">{ABILITY_ABBR[a]}</span>
-                  <span className="font-semibold">{signed(d.saves[a])}</span>
-                </span>
+                <StatDetailTrigger key={a} type="ability" id={a} inline>
+                  <span
+                    className="rounded-[6px] border border-line bg-raised px-2 py-0.5 text-ink-2 tabular-nums cursor-help transition hover:border-accent/50"
+                  >
+                    <span className="text-muted mr-1">{ABILITY_ABBR[a]}</span>
+                    <span className="font-semibold">{signed(d.saves[a])}</span>
+                  </span>
+                </StatDetailTrigger>
               ))}
             </div>
           </div>
@@ -114,12 +117,14 @@ export default function LiveSheet({
             </h3>
             <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               {SKILLS.map(([id, ru]) => (
-                <li key={id} className="flex justify-between items-center py-0.5 border-b border-line/30">
-                  <span className="truncate text-ink-2">{ru}</span>
-                  <span className="font-mono tabular-nums text-accent font-semibold ml-1">
-                    {signed(d.skills[id])}
-                  </span>
-                </li>
+                <StatDetailTrigger key={id} type="skill" id={id} as="li" className="border-b border-line/30 py-0.5">
+                  <div className="flex w-full justify-between items-center px-1 rounded transition hover:bg-raised/60 cursor-help">
+                    <span className="truncate text-ink-2">{ru}</span>
+                    <span className="font-mono tabular-nums text-accent font-semibold ml-1">
+                      {signed(d.skills[id])}
+                    </span>
+                  </div>
+                </StatDetailTrigger>
               ))}
             </ul>
           </div>

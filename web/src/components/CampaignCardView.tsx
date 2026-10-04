@@ -39,13 +39,13 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
   return (
     <article
       className={`card flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
-        isLive ? "border-accent bg-[#17181c]" : "border-line bg-surface"
+        isLive ? "border-accent bg-surface shadow-sm" : "border-line bg-surface"
       }`}
     >
       {/* Шапка карточки 40px в моно */}
       <div
         className={`flex h-10 items-center justify-between px-5 font-mono text-[11px] tracking-[0.14em] border-b ${
-          isLive ? "bg-[#1d1813] border-[#2e2620]" : "bg-surface-2 border-line"
+          isLive ? "bg-accent/10 border-accent/30" : "bg-surface-2 border-line"
         }`}
       >
         <span className={isEcho ? "text-copper-hi" : "text-muted"}>

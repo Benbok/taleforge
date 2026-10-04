@@ -295,3 +295,61 @@ def routable_cast(intent: dict[str, Any] | None) -> dict[str, Any] | None:
     if a.get("ritual"):
         args["ritual"] = True
     return args
+
+
+SKILL_VERB_MAP: dict[str, tuple[str, str]] = {
+    "hide": ("stealth", "dc.medium"),
+    "search": ("perception", "dc.medium"),
+    "inspect": ("investigation", "dc.medium"),
+    "persuade": ("persuasion", "dc.medium"),
+    "deceive": ("deception", "dc.medium"),
+    "intimidate": ("intimidation", "dc.medium"),
+    "grapple": ("athletics", "dc.medium"),
+}
+
+
+def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, Any]] | None:
+    """Маршрутизация типовых действий и проверок без обращения к модели решения (раздел 7).
+    Возвращает (tool_name, args) или None.
+    """
+    if not intent or intent.get("confidence", 0) < ROUTE_CONFIDENCE:
+        return None
+    acts = [a for a in intent.get("actions") or [] if a["verb"] not in MOVE_VERBS]
+    if len(acts) != 1:
+        return None
+    a = acts[0]
+    char_id = intent.get("character_id")
+    if not char_id:
+        return None
+
+    verb = a.get("verb")
+    if verb == "use_item" and a.get("instrument_id") and not a.get("missing_item"):
+        args: dict[str, Any] = {
+            "character_id": char_id,
+            "inventory_id": a["instrument_id"],
+        }
+        if a.get("target_id"):
+            args["target_id"] = a["target_id"]
+        return "use_item", args
+
+    if verb == "rest":
+        manner = (a.get("manner") or "").lower()
+        kind = "long" if any(w in manner for w in ("длинн", "продолжит", "long", "ноч")) else "short"
+        return "rest", {"character_ids": [char_id], "kind": kind}
+
+    if verb in SKILL_VERB_MAP:
+        stat, dc = SKILL_VERB_MAP[verb]
+        from app.rules.dnd5e.tables import ABILITIES, SKILLS
+
+        if a.get("skill") and (a["skill"] in SKILLS or a["skill"] in ABILITIES):
+            stat = a["skill"]
+        reason = a.get("manner") or _verb_ru(a)
+        return "roll_check", {
+            "character_id": char_id,
+            "stat": stat,
+            "kind": "check",
+            "difficulty": dc,
+            "reason": reason,
+        }
+
+    return None

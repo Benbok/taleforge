@@ -7,9 +7,8 @@ import PersonaEditor from "../components/PersonaEditor";
 import { ABILITIES, ABILITY_ABBR } from "../game/hero";
 import { api } from "../lib/api";
 import type { BuilderOptions, CampaignHero } from "../lib/builder";
-import type { ModelProfile, Room, Seat } from "../lib/campaign";
+import type { Room, Seat } from "../lib/campaign";
 import { toast } from "../stores/toasts";
-import CustomSelect from "../components/CustomSelect";
 
 interface Invite {
   token: string;
@@ -275,33 +274,15 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
   );
 }
 
-/** ИИ-игрок на свободное место: модель — профиль из админки или профиль по умолчанию. */
+/** ИИ-игрок на свободное место. */
 function SeatAi({ campaignId, seat, onRoom }: { campaignId: string; seat: Seat; onRoom: (r: Room) => void }) {
-  const [profile, setProfile] = useState("");
-  const models = useQuery({
-    queryKey: ["models"],
-    queryFn: () => api<ModelProfile[]>("/api/admin/models"),
-    retry: false,
-  });
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      {!!models.data?.length && (
-        <CustomSelect
-          ariaLabel="Модель ИИ-игрока"
-          size="sm"
-          value={profile}
-          options={[
-            { value: "", label: "Модель по умолчанию" },
-            ...models.data.map((m) => ({ value: m.id, label: m.name })),
-          ]}
-          onChange={setProfile}
-        />
-      )}
       <ActionButton
         className="px-2 py-0.5 text-xs"
         run={async () =>
           onRoom(
-            await api<Room>(`/api/campaigns/${campaignId}/seats/${seat.id}/agent`, { body: { model_profile_id: profile || null } }),
+            await api<Room>(`/api/campaigns/${campaignId}/seats/${seat.id}/agent`, { body: {} }),
           )
         }
         done="ИИ-игрок сел за стол. Соберите ему героя"

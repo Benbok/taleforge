@@ -70,6 +70,17 @@ export default function UsersSection({ me }: { me: User }) {
     }
   }
 
+  async function deleteUser(u: User) {
+    setBusy(u.id);
+    try {
+      await api(`/api/admin/users/${u.id}`, { method: "DELETE" });
+      toast.ok(`${u.name}: учётная запись удалена`);
+    } finally {
+      setBusy(null);
+      await refresh();
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6" aria-label="Пользователи">
       {/* Intro info box */}
@@ -148,8 +159,9 @@ export default function UsersSection({ me }: { me: User }) {
                   </div>
                 </div>
 
-                <div className="w-full sm:w-64 sm:self-center">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:self-center">
                   <CustomSelect
+                    className="sm:w-64"
                     value={u.platform_role}
                     options={ROLE_OPTIONS}
                     onChange={(val) => void setRole(u, val)}
@@ -162,6 +174,17 @@ export default function UsersSection({ me }: { me: User }) {
                     ariaLabel={`Роль пользователя ${u.name}`}
                     size="sm"
                   />
+                  {!isMe && (
+                    <ActionButton
+                      danger
+                      className="shrink-0 text-xs font-mono tracking-wider"
+                      title={`Удалить учётную запись ${u.name}`}
+                      confirm={`Удалить учётную запись «${u.name}»? Это действие нельзя отменить.`}
+                      run={() => deleteUser(u)}
+                    >
+                      УДАЛИТЬ
+                    </ActionButton>
+                  )}
                 </div>
               </div>
             );

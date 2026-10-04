@@ -45,6 +45,8 @@ def admin_g(game_client):
 
 def act(client, head, cid, text):
     """Игрок пишет действие и ждёт повествования мастера."""
+    from app.db.models import Message
+
     with connect(client, head, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": text}})
         for _ in range(40):
@@ -58,7 +60,15 @@ def act(client, head, cid, text):
                     continue
                 # ход дописывает учёт вызовов модели уже после повествования: ждём, чтобы не спорить за SQLite
                 client.portal.call(client.app.state.master.wait_idle, cid)
-                return e["payload"]
+                msg_id = e["payload"]["id"]
+
+                async def get_msg(msg_id=msg_id):
+                    async with client.app.state.sessionmaker() as s:
+                        m = await s.get(Message, msg_id)
+                        return m.content if m else ""
+
+                content = client.portal.call(get_msg)
+                return {**e["payload"], "content": content}
     raise AssertionError("мастер не ответил")
 
 
@@ -104,7 +114,7 @@ def test_turn_with_tool_and_markup_audit(game_client, admin_g, llm, dice, settin
     (ev,) = rows(settings, Event, Event.tool == "roll_check")
     assert ev.turn_id == turn.id
     calls = rows(settings, LlmCall)
-    assert [x.purpose for x in calls] == ["parse", "decide", "decide", "narrate", "narrate"]
+    assert [x.purpose for x in calls] == ["parse", "decide", "decide", "emotion", "narrate", "narrate"]
 
 
 def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
@@ -224,7 +234,7 @@ def test_master_log_for_admins_with_secret_switch(game_client, admin_g, llm, dic
     assert athletics["args"]["reason"] == "дверь"
     assert perception["secret"] and perception["result"]["stat"] == "perception"
     assert whisper["secret"] and "шорох" in whisper["args"]["text"]
-    assert [x["purpose"] for x in turn["llm"]] == ["decide", "decide", "narrate"]
+    assert [x["purpose"] for x in turn["llm"]] == ["decide", "decide", "emotion", "narrate"]
     assert turn["audit"] == {"regenerated": False, "stripped": []}
     assert [x["purpose"] for x in log["service_llm"]] == ["parse"]
 

@@ -30,8 +30,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents import character, memory, rhythm
 from app.agents import intent as intents
-from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
+from app.agents.llm import LLM, LLMError, LLMReply, decide_model_for, model_for, parser_model_for
 from app.agents.providers import explain
+from app.config import settings as app_settings
 from app.core import audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
@@ -52,7 +53,10 @@ from app.db.models import (
     as_utc,
     now,
 )
-from app.gateway.events import envelope, publish_message
+from app.emotion import game as mood
+from app.emotion.analyzers import LLMAnalyzer
+from app.emotion.schemas import PlayerActionContext
+from app.gateway.events import Stream, envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
@@ -196,13 +200,26 @@ class MasterService:
         self._spawn(prelude.make_hook(self, campaign_id, character_id))
 
     def schedule_session_open(self, campaign_id: str, session_id: str | None) -> None:
-        """Старт сессии: вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
+        """Старт сессии: вступление ко всей кампании, представление новых героев, затем цель на вечер."""
         from app.agents import rhythm
 
         async def run() -> None:
-            await self.introduce(campaign_id)
-            if session_id:
-                await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+            await self._status(campaign_id, "describing")
+            try:
+                # 1. Интро всей кампании (только один раз в самом начале)
+                await self.introduce_campaign(campaign_id)
+                # 2. Вступление для непредставленных героев
+                await self.introduce(campaign_id)
+                # 3. Цель на вечер
+                if session_id:
+                    await self._safe(rhythm.session_goal(self, campaign_id, session_id), "цель на вечер")
+            finally:
+                async with self.maker() as s:
+                    c = await s.get(Campaign, campaign_id)
+                    if c and (c.settings or {}).get("intro_generating"):
+                        c.settings = {**(c.settings or {}), "intro_generating": False}
+                        await s.commit()
+                await self._status(campaign_id, "idle")
 
         self._spawn(run())
 
@@ -229,6 +246,17 @@ class MasterService:
         except Exception:  # noqa: BLE001 — ритм сессии не должен ронять сервер
             log.exception("%s не удалось", what)
             return None
+
+    async def introduce_campaign(self, campaign_id: str) -> str | None:
+        """Вступление ко всей кампании (2–4 абзаца о мире, ситуации и месте); одно на кампанию."""
+        from app.agents import prelude
+
+        async with self._intro_locks.setdefault(campaign_id, asyncio.Lock()):
+            try:
+                return await prelude.introduce_campaign(self, campaign_id)
+            except Exception:  # noqa: BLE001 — без вступления игра всё равно идёт
+                log.exception("вступление ко всей кампании %s не удалось", campaign_id)
+                return None
 
     async def introduce(self, campaign_id: str) -> str | None:
         """Вступление для ещё не представленных героев; одно на кампанию за раз."""
@@ -541,11 +569,12 @@ class MasterService:
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
         calls: list[LlmCall] = []
+        drafts: list[str] = []  # черновики повествования, которые игроки видели по кускам
         replan = False
         await self._status(cid, "listening")
         try:
             async with self.maker() as s:
-                published = await self._play(s, cid, turn_id, calls)
+                published = await self._play(s, cid, turn_id, calls, drafts)
             if published["skipped"]:
                 return turn_id
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
@@ -569,6 +598,8 @@ class MasterService:
                 if sc is not None and (sc.state or {}).get("submitted"):
                     sc.state = {**sc.state, "submitted": False}  # заявку можно повторить
                 await s.commit()
+            for draft in drafts:  # ход откатился: недописанный текст мастера убираем из чата
+                await self.bus.publish(cid, envelope("message.withdrawn", cid, {"id": draft}), None)
             await publish_message(self.bus, msg)
             await self._states(cid, ids, "failed")
         finally:
@@ -591,13 +622,16 @@ class MasterService:
         purpose: str,
         messages: list,
         tools: list | None,
+        override_model: str | None = None,
+        stream_callback=None,
     ) -> LLMReply:
-        model = model_for(cfg.provider, cfg.model)
+        model = override_model or (decide_model_for() if purpose == "decide" else model_for())
         try:
             reply = await self.llm.complete(
                 messages,
                 model=model,
                 tools=tools,
+                stream_callback=stream_callback,
                 max_tokens=8192,
                 temperature=0.2 if purpose == "decide" else cfg.temperature,
                 api_base=(cfg.settings or {}).get("api_base"),
@@ -624,7 +658,7 @@ class MasterService:
         )
         return reply
 
-    async def _play(self, s, cid: str, turn_id: str, calls: list) -> dict:
+    async def _play(self, s, cid: str, turn_id: str, calls: list, drafts: list[str] | None = None) -> dict:
         c = await s.get(Campaign, cid)
         turn = await s.get(MasterTurn, turn_id)
         seat = master_seat(c)
@@ -674,7 +708,16 @@ class MasterService:
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
-            actor = (args or {}).get("attacker_id") or (args or {}).get("caster_id")
+            if args is None and m.kind == "action":
+                routed_call = intents.routable_tool_call(m.intent)
+                if routed_call:
+                    name, args = routed_call
+            actor = (
+                (args or {}).get("attacker_id")
+                or (args or {}).get("caster_id")
+                or (args or {}).get("character_id")
+                or ((args or {}).get("character_ids") or [None])[0]
+            )
             if not args or actor not in required:
                 continue
             if hero_turn is not None and actor != hero_turn.id:
@@ -684,10 +727,8 @@ class MasterService:
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
-            elif name == "cast_spell":
-                routed.append(
-                    f"{actor}: cast_spell отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
-                )
+            else:
+                routed.append(f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании")
         route_note = ""
         if routed:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
@@ -782,50 +823,18 @@ class MasterService:
 
         party_notes, meet = await _party_change(s, ctx, before, crew, names)
         await self._status(cid, "describing")
-        voiced = bool(getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None))
-        narration, audit = await self._narrate(
-            calls,
-            cfg,
-            c,
-            seat.id,
-            turn_id,
-            system,
-            convo,
-            news,
-            ctx,
-            combat_notes,
-            plot_notes,
-            stalled=bool(stall),
-            voiced=voiced,
-            meet=meet,
-        )
+        system += await self._mood(s, calls, cfg, c, seat.id, turn_id, ctx, new, char_by_seat)
 
-        tts_task = None
-        if voiced:
-            # озвучивается краткая суть хода, подробности остаются текстом
-            spoken = audit.get("voice_text") or narration
-            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, spoken))
+        # реплика для озвучки и синтез идут параллельно с повествованием, а не перед ним
+        voice_task = None
+        if self._tts_ready(c):
+            voice_task = asyncio.create_task(self._voice(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes))
 
-        whispers = await flush_outbox(s, ctx)
+        whispers = await flush_outbox(s, ctx)  # карточки бросков и шёпоты встают в чат раньше повествования
         heard = _heard_by(ctx, crew)  # отряд разделён: ответ и броски видят герои этой группы
         for m in whispers:
             if m.kind == "roll" and heard is not None:
                 m.visible_to = heard
-        linked = await link_text(s, cid, narration)
-
-        voice_data = None
-        if tts_task is not None:
-            try:
-                voice_data = await tts_task
-            except Exception:
-                log.exception("ошибка генерации озвучки мастера")
-
-        msg_data: dict[str, Any] = {}
-        if voice_data:
-            msg_data["voice"] = voice_data
-        if heard is not None and place is not None:
-            msg_data["place"] = place
-
         msg = Message(
             campaign_id=cid,
             session_id=ctx.game_session_id,
@@ -833,16 +842,48 @@ class MasterService:
             seat_id=seat.id,
             kind="narration",
             visible_to=heard,
-            content=linked,
-            data=msg_data or None,
+            content="",
+            data={"place": place} if heard is not None and place is not None else None,
         )
         s.add(msg)
         await s.flush()
+        # черновик: игроки видят текст по кускам, а само сообщение уходит в чат только после коммита хода
+        stream = Stream(self.bus, cid, msg, to=heard)
+        if drafts is not None:
+            drafts.append(msg.id)
+
+        try:
+            narration, audit = await self._narrate(
+                calls,
+                cfg,
+                c,
+                seat.id,
+                turn_id,
+                system,
+                convo,
+                news,
+                ctx,
+                combat_notes,
+                plot_notes,
+                stream=stream,
+                stalled=bool(stall),
+                meet=meet,
+            )
+        except BaseException:
+            if voice_task is not None:
+                voice_task.cancel()
+            raise
+        voice_line_text, voice_data = await voice_task if voice_task is not None else (None, None)
+        if voice_data:
+            msg.data = {**(msg.data or {}), "voice": {**voice_data, "text": voice_line_text}}
+
+        msg.content = await link_text(s, cid, narration)
         party_msgs = [await system_message(s, c, text, None) for text in party_notes]
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             "calls": trace_calls,
             "audit": audit,
+            "voice_line": voice_line_text,
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
@@ -872,9 +913,9 @@ class MasterService:
         ctx: ToolContext,
         notes=(),
         plot_notes=(),
+        stream=None,
         *,
         stalled: bool = False,
-        voiced: bool = False,
         meet: str = "",
     ):
         results = _render_results(ctx)
@@ -889,7 +930,6 @@ class MasterService:
             plot_notes=list(plot_notes),
             next_turn=turn["name"] if turn else None,
             stalled=stalled,
-            voiced=voiced,
         )
         base = [
             {"role": "system", "content": system},
@@ -901,7 +941,8 @@ class MasterService:
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None)
+        push = stream.push if stream is not None else None
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
         if unknown:
@@ -918,7 +959,9 @@ class MasterService:
                     ),
                 },
             ]
-            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+            if stream is not None:
+                await stream.reset()  # игроки уже видели первый вариант: начинаем черновик заново
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, stream_callback=push)
             text = reply.text.strip()
 
         def strip(m: re.Match) -> str:
@@ -927,15 +970,99 @@ class MasterService:
             audit["stripped"].append(m.group(1))
             return m.group(2)
 
-        voice_text, text = _split_voice(text)
-        if voice_text:
-            audit["voice_text"] = MARKUP.sub(r"\2", voice_text)
         text = MARKUP.sub(strip, text)
         # Очистка от случайных вызовов инструментов в тексте мастера (например, set_soundscape {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
         return text or "…", audit
+
+    def _tts_ready(self, c: Campaign) -> bool:
+        st = c.settings or {}
+        tts = getattr(self, "tts", None)
+        if tts is None or not getattr(self, "media_dir", None) or not st.get("tts_enabled", True):
+            return False
+        engine = tts.get_engine(st.get("tts_provider")) if hasattr(tts, "get_engine") else tts
+        return bool(engine.enabled)
+
+    async def _voice(
+        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes
+    ) -> tuple[str | None, dict | None]:
+        """Короткая реплика мастера и её озвучка. Сбой не мешает ходу: остаётся текст без голоса."""
+        st = c.settings or {}
+        try:
+            line = await self._voice_line(calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes)
+            if not line:
+                return None, None
+            data = await self.tts.voice_for_narration(
+                self.media_dir, c.id, line, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+            )
+            return line, data
+        except Exception:  # noqa: BLE001
+            log.warning("реплика или озвучка мастера не удалась", exc_info=True)
+            return None, None
+
+    async def _mood(self, s, calls, cfg, c, seat_id, turn_id, ctx: ToolContext, new, char_by_seat) -> str:
+        """Эмоции мастера за ход (app/emotion): броски героев и оценка реплик технической моделью.
+        Состояние живёт в scene.state, итог — строка для системного промпта повествования и озвучки."""
+        persona_id = (cfg.settings or {}).get("emotion_persona") or "tired_mentor"
+        persona = mood.persona_of(persona_id)
+        heroes = {ch.id for ch in char_by_seat.values()}
+        hi, lo = mood.hero_naturals(ctx.events, heroes)
+        deltas = [mood.crit_delta(persona, hi, lo)]
+        text = "\n".join(m.content for m in new if m.kind in ("action", "speech") and m.content)
+        if text:
+            analyzer = LLMAnalyzer(persona_id=persona_id)
+            ask = PlayerActionContext(player_id="party", character_name="", action_text=text[:2000])
+            try:
+                reply = await self._ask(
+                    calls,
+                    cfg,
+                    c.id,
+                    seat_id,
+                    turn_id,
+                    "emotion",
+                    analyzer.messages(ask),
+                    None,
+                    override_model=parser_model_for(),
+                )
+                deltas.append(LLMAnalyzer.parse(reply.text))
+            except LLMError:
+                pass  # без оценки реплик настроение всё равно меняется от бросков и затухает
+        scene = await s.get(Scene, c.id)
+        state = mood.step(mood.load(scene.state if scene else None), persona, *deltas)
+        if scene is not None:
+            scene.state = {**(scene.state or {}), mood.MOOD_KEY: mood.dump(state)}
+        return mood.instruction(state)
+
+    async def _voice_line(
+        self,
+        calls: list,
+        cfg: AgentConfig,
+        c: Campaign,
+        seat_id: str,
+        turn_id: str | None,
+        system: str,
+        ctx: ToolContext,
+        combat_notes: list,
+    ) -> str:
+        results = _render_results(ctx)
+        prompt = render(
+            "voice_line.j2",
+            results=results,
+            combat_notes=list(combat_notes),
+        )
+        custom = (cfg.settings or {}).get("voice_line_model")
+        lite_model = model_for(None, custom) if custom else parser_model_for()  # короткая реплика — техническая модель
+
+        msgs = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model)
+        text = reply.text.strip().strip("\"'«»—–- ").strip()
+        text = MARKUP.sub(r"\2", text)
+        return text or "Вперёд!"
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)
@@ -1032,7 +1159,7 @@ class MasterService:
                 prompt = memory.summary_input(prev, rows, lambda m: _who(m, char_by_seat, names))
                 upto = rows[-1].seq
                 prev_version = prev.version if prev else 0
-                model = parser_model_for(cfg.provider, cfg.model)
+                model = parser_model_for()
                 master_seat_id = seat.id
                 api_base = (cfg.settings or {}).get("api_base")
                 await s.rollback()
@@ -1104,7 +1231,7 @@ class MasterService:
             last = next((m.content for m in reversed(rows) if m.kind == "narration"), None)
             master_seat_id, missed = seat.id, len(rows)
             api_base = (cfg.settings or {}).get("api_base") if cfg is not None else None
-            model = parser_model_for(cfg.provider, cfg.model) if cfg is not None else None
+            model = parser_model_for() if cfg is not None else None
             await s.rollback()
         text = None
         if model is not None:
@@ -1172,13 +1299,15 @@ class MasterService:
             if ch is None:
                 return intents.ParseResult()
             info, values = intents.context_for(ctx.world, ch)
-            ch_id, provider, cfg_model, master_seat_id = ch.id, cfg.provider, cfg.model, seat.id
+            ch_id, provider, master_seat_id = ch.id, cfg.provider, seat.id
             api_base = (cfg.settings or {}).get("api_base")
             await s.rollback()
-        model = parser_model_for(provider, cfg_model)
+        model = parser_model_for()
         call = LlmCall(campaign_id=cid, seat_id=master_seat_id, turn_id=None, purpose="parse", model=model)
         try:
-            reply = await asyncio.wait_for(self._parse_call(model, info, text, values, api_base), timeout=PARSE_TIMEOUT)
+            reply = await asyncio.wait_for(
+                self._parse_call(model, info, text, values, api_base, provider=provider), timeout=PARSE_TIMEOUT
+            )
         except TimeoutError:
             call.error = f"парсер не ответил за {PARSE_TIMEOUT} с"
             reply = None
@@ -1202,8 +1331,17 @@ class MasterService:
             return intents.check(raw, ctx.world, ch)
 
     async def _parse_call(
-        self, model: str, info: str, text: str, values: dict, api_base: str | None = None
+        self,
+        model: str,
+        info: str,
+        text: str,
+        values: dict,
+        api_base: str | None = None,
+        provider: str | None = None,
     ) -> LLMReply:
+        # провайдер кампании теперь «env»: смотрим на активного провайдера сервера
+        active = provider if provider not in (None, "env") else app_settings.llm_provider
+        tool_choice = {"type": "function", "function": {"name": "submit_intent"}} if active == "gemini" else None
         return await self.llm.complete(
             [
                 {"role": "system", "content": intents.PARSER_SYSTEM},
@@ -1211,7 +1349,8 @@ class MasterService:
             ],
             model=model,
             tools=[intents.tool_spec(values)],
-            max_tokens=1500,
+            tool_choice=tool_choice,
+            max_tokens=500,
             temperature=0.0,
             api_base=api_base,
         )
@@ -1692,17 +1831,6 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
         if m.kind == "action" and m.intent:
             out.append(f"  намерение (разбор парсера): {intents.describe(m.intent)}")
     return "\n".join(out)
-
-
-VOICE_LINE = re.compile(r"^\s*(?:\*\*)?Голос:(?:\*\*)?\s*(.+?)\s*(?:\n\s*\n|\n|$)", re.IGNORECASE)
-
-
-def _split_voice(text: str) -> tuple[str | None, str]:
-    """Первая строка «Голос: …» — краткая суть хода для озвучки; остальное — ответ в чат."""
-    m = VOICE_LINE.match(text)
-    if m is None:
-        return None, text
-    return m.group(1).strip() or None, text[m.end() :].strip()
 
 
 def _check_only(ctx: ToolContext, notes=()) -> bool:

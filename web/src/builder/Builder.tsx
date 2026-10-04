@@ -26,12 +26,14 @@ import {
   type Preview,
   type SavedHero,
 } from "../lib/builder";
-import { ABILITIES, ABILITY_RU, SKILLS } from "../game/hero";
+import { ABILITIES, ABILITY_ABBR, ABILITY_RU, SKILLS, signed } from "../game/hero";
+import { SKILL_DETAILS } from "../game/statDetails";
 import CustomSelect from "../components/CustomSelect";
 import ClassChoices from "./ClassChoices";
 import LiveSheet from "./LiveSheet";
 import OriginChoices from "./OriginChoices";
 import SpellChoices from "./SpellChoices";
+import { StatDetailTrigger } from "./StatDetailPopover";
 
 const SKILL_RU = Object.fromEntries(SKILLS.map(([id, ru]) => [id, ru]));
 
@@ -412,9 +414,18 @@ export default function Builder({
               {ABILITIES.map((a) => (
                 <div
                   key={a}
-                  className="rounded-[10px] border border-line bg-raised/60 p-3 flex flex-col justify-between gap-2"
+                  className="rounded-[10px] border border-line bg-raised/60 p-3 flex flex-col justify-between gap-2 transition hover:border-line/90"
                 >
-                  <span className="font-mono text-xs font-semibold text-ink">{ABILITY_RU[a]}</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <StatDetailTrigger type="ability" id={a} inline showIcon>
+                      <span className="font-mono text-xs font-semibold text-ink hover:text-accent transition cursor-help">
+                        {ABILITY_RU[a]}
+                      </span>
+                    </StatDetailTrigger>
+                    <span className="font-mono text-[10px] text-muted uppercase">
+                      {ABILITY_ABBR[a]}
+                    </span>
+                  </div>
                   {draft.ability_method === "point_buy" ? (
                     <PointStepper
                       value={draft.abilities[a] ?? 8}
@@ -485,7 +496,9 @@ export default function Builder({
                             set({ ability_picks: setPick(origin, draft.ability_picks, gi, toggle(picks, a)) })
                           }
                         />
-                        <span>{ABILITY_RU[a]}</span>
+                        <StatDetailTrigger type="ability" id={a} inline showIcon>
+                          <span className="hover:text-accent transition cursor-help">{ABILITY_RU[a]}</span>
+                        </StatDetailTrigger>
                       </label>
                     );
                   })}
@@ -508,29 +521,55 @@ export default function Builder({
           {!cls ? (
             <p className="text-sm text-muted">Сначала выберите класс: он определяет список доступных навыков.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {skillFrom.map((k) => {
-                const on = draft.skills.includes(k);
-                return (
-                  <label
-                    key={k}
-                    className={`flex items-center gap-2.5 rounded-[8px] border p-2.5 text-sm transition cursor-pointer ${
-                      on
-                        ? "border-accent bg-accent/10 text-ink font-medium"
-                        : "border-line bg-raised/50 text-ink-2 hover:border-line"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-[var(--tf-accent)] h-4 w-4 rounded"
-                      checked={on}
-                      disabled={!on && draft.skills.length >= skillNeed}
-                      onChange={() => set({ skills: toggle(draft.skills, k) })}
-                    />
-                    <span>{SKILL_RU[k] ?? k}</span>
-                  </label>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[8px] border border-line bg-raised/40 px-3.5 py-2 text-xs">
+                <div className="flex items-center gap-2 text-muted">
+                  <span className="text-accent font-semibold">Мастерство:</span>
+                  <span>
+                    выбранные навыки получают прибавку бонуса мастерства
+                    {preview.data?.derived ? ` (${signed(preview.data.derived.pb)})` : ""}.
+                  </span>
+                </div>
+                <StatDetailTrigger type="mastery" inline showIcon>
+                  <span className="font-mono text-xs font-semibold text-accent hover:underline cursor-help">
+                    Подробнее о мастерстве
+                  </span>
+                </StatDetailTrigger>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {skillFrom.map((k) => {
+                  const on = draft.skills.includes(k);
+                  const sk = SKILL_DETAILS[k];
+                  return (
+                    <StatDetailTrigger key={k} type="skill" id={k} className="w-full flex items-center gap-1.5" showIcon>
+                      <label
+                        className={`flex min-w-0 flex-1 items-center justify-between gap-2.5 rounded-[8px] border p-2.5 text-sm transition cursor-pointer ${
+                          on
+                            ? "border-accent bg-accent/10 text-ink font-medium shadow-xs"
+                            : "border-line bg-raised/50 text-ink-2 hover:border-line hover:text-ink"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            className="accent-[var(--tf-accent)] h-4 w-4 rounded"
+                            checked={on}
+                            disabled={!on && draft.skills.length >= skillNeed}
+                            onChange={() => set({ skills: toggle(draft.skills, k) })}
+                          />
+                          <span className="truncate">{SKILL_RU[k] ?? k}</span>
+                        </div>
+                        {sk && (
+                          <span className="shrink-0 rounded bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] text-muted border border-line/60 uppercase">
+                            {sk.abilityAbbr}
+                          </span>
+                        )}
+                      </label>
+                    </StatDetailTrigger>
+                  );
+                })}
+              </div>
             </div>
           )}
         </Step>

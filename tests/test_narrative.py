@@ -1,7 +1,6 @@
-"""Объём повествования мастера, краткая суть для озвучки и подталкивание отряда, который буксует."""
+"""Объём повествования мастера и подталкивание отряда, который буксует."""
 # ruff: noqa: F811 — фикстуры из test_master приходят в тесты параметрами
 
-from app.agents.master import _split_voice
 from app.agents.rhythm import _stalled, stall_note
 from app.db.models import GameSession, MasterTurn
 from tests.game import party, run
@@ -24,7 +23,6 @@ def test_check_only_turn_asks_for_short_outcome(game_client, admin_g, llm, dice)
     assert act(game_client, p1, c["id"], "Вышибаю дверь плечом")["content"] == "Дверь со скрипом поддаётся."
     prompt = llm.requests[-1]["messages"][1]["content"]
     assert "одно-два предложения" in prompt and "только проверки" in prompt
-    assert "Голос:" not in prompt  # озвучка выключена: краткая суть не нужна
 
 
 def test_ordinary_turn_is_one_short_paragraph(game_client, admin_g, llm):
@@ -71,12 +69,3 @@ def test_stall_counting():
     assert not _stalled({"calls": []})  # разговор без попыток — не буксование
     assert _stalled({"calls": [FAIL], "combat": ["гоблин бьёт"]}) is None
     assert stall_note(2) == "" and "буксует уже 3" in stall_note(3)
-
-
-def test_voice_line_split():
-    assert _split_voice("Голос: Мост выдержал.\n\nДоски скрипят под [[ch_1|Браном]].") == (
-        "Мост выдержал.",
-        "Доски скрипят под [[ch_1|Браном]].",
-    )
-    assert _split_voice("**Голос:** Тихо.\nДальше текст.") == ("Тихо.", "Дальше текст.")
-    assert _split_voice("Просто текст.") == (None, "Просто текст.")

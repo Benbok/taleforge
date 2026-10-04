@@ -60,6 +60,15 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             blocked["chat.narrate"] = reason
         return {"actions": actions, "blocked": blocked, "pending": pending}
 
+    if (c.settings or {}).get("intro_generating"):
+        reason = "Мастер готовит вступление к кампании…"
+        if seat.role == "player":
+            blocked["chat.play"] = reason
+            blocked["chat.whisper"] = reason
+        elif seat.occupant_type == "human":
+            blocked["chat.narrate"] = reason
+        return {"actions": actions, "blocked": blocked, "pending": pending}
+
     sc = await get_scene(session, c.id)
     in_combat = sc.mode == "combat" and bool(sc.turn_order)
     current = None

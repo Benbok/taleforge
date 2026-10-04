@@ -145,12 +145,12 @@ export default function GamePage() {
           <MapButton />
           <SoundControl />
         </div>
-        <div className="ml-auto hidden items-center gap-2 md:flex">
+        <div className="ml-auto hidden items-center gap-2 md:flex shrink-0">
           <MapButton />
           <SoundControl />
-          <SessionControls campaignId={id} />
+          <SessionControls campaignId={id} compact />
           {manage && (
-            <Link className="btn btn-outline-copper h-8 px-3 text-xs font-mono tracking-wider" to={`/c/${id}/manage`}>
+            <Link className="btn btn-outline-copper h-8 px-3 text-xs font-mono tracking-wider shrink-0" to={`/c/${id}/manage`}>
               КАБИНЕТ
             </Link>
           )}
@@ -200,7 +200,7 @@ export default function GamePage() {
         >
           <div className={`flex flex-col gap-4 lg:hidden ${tab === "scene" ? "hidden md:flex" : ""}`}>
             <div className="flex flex-wrap items-center gap-2 md:hidden">
-              <SessionControls campaignId={id} />
+              <SessionControls campaignId={id} className="flex-wrap" />
               {manage && (
                 <Link className="btn btn-outline-copper text-xs font-mono" to={`/c/${id}/manage`}>
                   Кабинет

@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from sqlalchemy import select
 
 from app.agents.stt import MAX_AUDIO_BYTES, SpeechToText
+from app.agents.tts import TTSManager
 from app.api.deps import SessionDep, UserDep
 from app.core import voice
 from app.core.campaigns import AccessDenied, NotFound, get_viewer, is_admin, stand_in_seats
@@ -55,6 +56,7 @@ async def get_voice(campaign_id: str, voice_id: str, request: Request, user: Use
     msg = (await session.scalars(q)).first()
     seats = [viewer.seat.id] if viewer.seat else []
     seats += stand_in_seats(viewer.campaign, user.id)
+    # запись отдаётся только вместе с видимым сообщением: голос мастера прикрепляется к тексту хода при коммите
     if msg is None or not any(visible(msg, s) for s in seats or [None]):
         raise NotFound("запись не найдена")
     meta, audio = voice.read(request.app.state.settings.media_dir, campaign_id, voice_id)
@@ -73,3 +75,39 @@ async def admin_voice_check(request: Request, user: UserDep) -> dict:
     if not is_admin(user):
         raise AccessDenied("настройка голосового ввода доступна Admin и Super Admin")
     return await stt(request).check()
+
+
+@router.get("/voice/tts-test")
+async def tts_test(request: Request, user: UserDep, provider: str = "gemini", voice: str = "Fenrir") -> Response:
+    """Генерация тестовой аудиозаписи для проверки настроек TTS."""
+    if not is_admin(user):
+        raise AccessDenied("проверка озвучки доступна Admin и Super Admin: синтез речи платный")
+    tts_manager: TTSManager = request.app.state.tts
+    engine = tts_manager.get_engine(provider)
+    if not engine.enabled:
+        raise HTTPException(400, "Провайдер выключен или не настроен в .env")
+
+    text_ru = f"Приветствую! Это проверка синтеза речи. Выбранный провайдер: {provider}. Надеюсь, звучит отлично!"
+    res = await engine.synthesize(text_ru, voice_name=voice if provider in ("gemini", "voicestudio") else None)
+    if not res:
+        raise HTTPException(500, "Ошибка синтеза речи")
+
+    audio_bytes, mime, dur = res
+    return Response(content=audio_bytes, media_type=mime)
+
+
+@router.get("/voice/vs-profiles")
+async def get_vs_profiles(user: UserDep):
+    import httpx
+
+    from app.config import settings
+
+    url = f"{settings.voicestudio_api_base.replace('/v1', '')}/profiles"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.get(url)
+            if res.status_code == 200:
+                return res.json()
+    except Exception:
+        pass
+    return []

@@ -219,6 +219,31 @@ export const useGame = create<GameState>((set, get) => ({
         });
         return;
       }
+      case "message.chunk": {
+        // черновик мастера по кускам: сообщение появляется до message.new, финальный текст его заменит
+        const id = String(p.id);
+        const chunk = String(p.chunk ?? "");
+        set((s) => {
+          if (!s.messages.some((m) => m.id === id)) {
+            const draft: ChatMessage = {
+              id,
+              seq: Number(p.seq),
+              kind: String(p.kind ?? "narration"),
+              seat_id: (p.seat_id as string | null) ?? null,
+              author: null,
+              content: chunk,
+              whisper: false,
+              created_at: null,
+              fresh: true,
+            };
+            return { messages: mergeMessages(s.messages, [draft]) };
+          }
+          return {
+            messages: s.messages.map((m) => (m.id === id ? { ...m, content: p.reset ? chunk : m.content + chunk } : m)),
+          };
+        });
+        return;
+      }
       case "message.rejected": {
         const clientId = p.client_id as string | undefined;
         set((s) => {

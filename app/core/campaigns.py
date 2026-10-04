@@ -32,6 +32,8 @@ DEFAULT_SETTINGS = {
     "turn_timeout_sec": 300,  # ход до 5 минут, игра вживую
     "collect_window_sec": 60,  # окно сбора реплик в свободном режиме
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
+    "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
+    "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
 }
 
 
@@ -222,8 +224,6 @@ async def apply_master_preset(
 async def agent_for_master(
     session: AsyncSession, master: dict, agent: AgentConfig | None = None, owner: User | None = None
 ) -> AgentConfig:
-    """Настройки ИИ-мастера: профиль модели из админки, явные провайдер и модель, профиль по умолчанию или пресет.
-    Кампания хранит копию: правка профиля потом не меняет идущие кампании без явной смены модели."""
     agent = agent or AgentConfig(settings={})
     preset_id = master.get("preset_id")
     if preset_id:
@@ -232,25 +232,11 @@ async def agent_for_master(
             await apply_master_preset(session, agent, preset, owner=owner)
 
     temperature = master.get("temperature")
-    profile_id = master.get("model_profile_id")
-    profile = None
-    if profile_id:
-        profile = await session.get(ModelProfile, profile_id)
-        if profile is None:
-            raise NotFound("профиль модели не найден")
-    elif not master.get("provider") and not agent.provider:
-        profile = await default_model_profile(session)
-    if profile is not None:
-        t = profile.temperature if temperature is None else float(temperature)
-        apply_model(agent, profile.provider, profile.model, t, profile.api_base, profile.id)
-    elif not agent.provider or master.get("provider"):
-        provider = master.get("provider") or "claude"
-        if provider not in PROVIDERS:
-            raise Conflict(f"провайдер один из: {', '.join(PROVIDERS)}")
-        if provider != "claude" and not master.get("model"):
-            raise Conflict("для этого провайдера укажите модель: имя модели, как оно записано у провайдера")
-        t = (agent.temperature if agent.temperature is not None else 0.8) if temperature is None else float(temperature)
-        apply_model(agent, provider, str(master.get("model") or ""), t, master.get("api_base"), None)
+    if temperature is not None:
+        agent.temperature = float(temperature)
+
+    agent.provider = "env"
+    agent.model = "env"
 
     if owner is not None and has_persona_choice(master):
         await apply_persona(session, owner, agent, master)

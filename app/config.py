@@ -54,10 +54,24 @@ class Settings:
     stt_model: str = "deepdml/faster-whisper-large-v3-turbo-ct2"
     stt_language: str = "ru"
     stt_concurrency: int = 1
-    # Озвучка текста мастера (Gemini TTS): генерация аудио для реплик мастера
-    tts_api_key: str | None = None
-    tts_model: str = "gemini-3.8-flash-tts"
-    tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
+    # Озвучка текста мастера
+    tts_provider: str = "gemini"  # gemini, silero, none
+    gemini_tts_api_key: str | None = None
+    gemini_tts_model: str = "gemini-3.8-flash-tts"
+    gemini_tts_voice: str = "Fenrir"  # Puck, Charon, Kore, Fenrir, Aoede
+    voicestudio_api_base: str = "http://host.docker.internal:3900/v1"
+    voicestudio_api_key: str | None = None
+    voicestudio_voice: str = "demo0001"
+
+    # Две модели на провайдера: основная пишет повествование, техническая — парсер, решение хода, сводки, эмоции
+    llm_provider: str = "gemini"
+    decide_model: str = "technical"  # фаза решения хода (выбор инструментов и бросков): technical или main
+    gemini_main_model: str = "gemini-2.5-flash"
+    gemini_technical_model: str = "gemini-2.5-flash-lite"
+    claude_main_model: str = "anthropic/claude-opus-5"
+    claude_technical_model: str = "anthropic/claude-haiku-4-5"
+    local_main_model: str = "qwen2.5-14b"
+    local_technical_model: str = "qwen2.5-7b"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -82,7 +96,52 @@ class Settings:
             stt_model=_env("STT_MODEL", cls.stt_model),
             stt_language=_env("STT_LANGUAGE", cls.stt_language),
             stt_concurrency=int(_env("STT_CONCURRENCY", str(cls.stt_concurrency))),
-            tts_api_key=_env("TTS_GEMINI_API_KEY") or _env("TTS_API_KEY"),
-            tts_model=_env("TTS_MODEL", cls.tts_model),
-            tts_voice=_env("TTS_VOICE", cls.tts_voice),
+            tts_provider=_env("TTS_PROVIDER", cls.tts_provider).lower(),
+            gemini_tts_api_key=_env("GEMINI_TTS_API_KEY") or _env("GEMINI_API_KEY"),
+            gemini_tts_model=_env("GEMINI_TTS_MODEL", cls.gemini_tts_model),
+            gemini_tts_voice=_env("GEMINI_TTS_VOICE", cls.gemini_tts_voice),
+            voicestudio_api_base=_env("VOICESTUDIO_API_BASE", cls.voicestudio_api_base),
+            voicestudio_api_key=_env("VOICESTUDIO_API_KEY", cls.voicestudio_api_key),
+            voicestudio_voice=_env("VOICESTUDIO_VOICE", cls.voicestudio_voice),
+            llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
+            decide_model=_env("DECIDE_MODEL", cls.decide_model).lower(),
+            gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
+            gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
+            claude_main_model=_env("CLAUDE_MAIN_MODEL", cls.claude_main_model),
+            claude_technical_model=_env("CLAUDE_TECHNICAL_MODEL", cls.claude_technical_model),
+            local_main_model=_env("LOCAL_MAIN_MODEL", cls.local_main_model),
+            local_technical_model=_env("LOCAL_TECHNICAL_MODEL", cls.local_technical_model),
         )
+
+
+LLM_FIELDS = ("llm_provider", "decide_model") + tuple(
+    f"{p}_{kind}_model" for p in ("gemini", "claude", "local") for kind in ("main", "technical")
+)
+
+
+def update_env(key: str, value: str) -> None:
+    """Меняет переменную в .env и сразу в работающем сервере (только настройки моделей).
+
+    Объект ``settings`` обновляется на месте: модули держат ссылку на него, новый объект они бы не увидели.
+    """
+    import re
+
+    if not re.fullmatch(r"[A-Z][A-Z0-9_]*", key) or not re.fullmatch(r"[\w./:-]+", value):
+        raise ValueError(f"недопустимое значение для {key}")
+    env_path = ROOT / ".env"
+    content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    if re.search(rf"^{key}=", content, flags=re.MULTILINE):
+        content = re.sub(rf"^{key}=.*$", f"{key}={value}", content, flags=re.MULTILINE)
+    else:
+        content += ("" if not content or content.endswith("\n") else "\n") + f"{key}={value}\n"
+    env_path.write_text(content, encoding="utf-8")
+    os.environ[key] = value  # переменные окружения важнее .env в _env: без этого docker вернул бы старое
+
+    global DOTENV
+    DOTENV = _load_env_file(env_path)
+    fresh = Settings.from_env()
+    for name in LLM_FIELDS:  # остальное (секрет JWT, база) на лету не меняем
+        object.__setattr__(settings, name, getattr(fresh, name))
+
+
+settings = Settings.from_env()

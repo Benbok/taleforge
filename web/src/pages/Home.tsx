@@ -96,7 +96,7 @@ export default function Home() {
                     onClick={() => setFilter("all")}
                     className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
                       filter === "all"
-                        ? "border border-accent bg-[#231a12] text-ink"
+                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
                         : "border border-line bg-transparent text-muted hover:text-ink"
                     }`}
                   >
@@ -107,7 +107,7 @@ export default function Home() {
                     onClick={() => setFilter("master")}
                     className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
                       filter === "master"
-                        ? "border border-accent bg-[#231a12] text-ink"
+                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
                         : "border border-line bg-transparent text-muted hover:text-ink"
                     }`}
                   >
@@ -118,7 +118,7 @@ export default function Home() {
                     onClick={() => setFilter("player")}
                     className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
                       filter === "player"
-                        ? "border border-accent bg-[#231a12] text-ink"
+                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
                         : "border border-line bg-transparent text-muted hover:text-ink"
                     }`}
                   >
@@ -148,7 +148,7 @@ export default function Home() {
                 {isAdmin && (
                   <Link
                     to="/new"
-                    className="card group flex min-h-[240px] flex-col items-center justify-center gap-3 border-dashed border-[#4a4035] bg-[#131417] p-6 text-center text-ink no-underline transition hover:border-accent hover:bg-[#16171b]"
+                    className="card group flex min-h-[240px] flex-col items-center justify-center gap-3 border-dashed border-line bg-surface p-6 text-center text-ink no-underline transition hover:border-accent hover:bg-surface-2"
                   >
                     <div className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-accent text-accent transition-transform group-hover:scale-110">
                       <svg
@@ -220,7 +220,7 @@ export default function Home() {
                     to="/heroes/new"
                     className="flex items-center gap-3.5 px-4 py-3 text-copper-hi no-underline transition hover:bg-raised font-medium text-sm"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-[#4a4035] text-lg text-copper">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-accent/40 text-lg text-copper">
                       +
                     </span>
                     <span>Новый герой</span>
@@ -233,7 +233,7 @@ export default function Home() {
                 <h3 className="font-heading text-2xl font-semibold text-ink">
                   Телеграф
                 </h3>
-                <div className="card divide-y divide-[#222328] overflow-hidden bg-[#141518] p-1 font-ui text-xs">
+                <div className="card divide-y divide-line-soft overflow-hidden bg-surface p-1 font-ui text-xs">
                   <div className="flex gap-3 px-4 py-3">
                     <span className="font-mono text-[11px] text-patina-hi shrink-0">
                       СЕЙЧАС
@@ -272,15 +272,15 @@ export default function Home() {
           </main>
 
           {/* БЕГУЩАЯ СТРОКА СВОДКИ МИРА */}
-          <div className="flex h-11 items-center gap-7 overflow-hidden whitespace-nowrap border-y border-[#2e2620] bg-ember-bg px-4 md:px-12 font-mono text-xs tracking-wider text-[#b98a5c]">
+          <div className="flex h-11 items-center gap-7 overflow-hidden whitespace-nowrap border-y border-line-soft bg-ember-bg px-4 md:px-12 font-mono text-xs tracking-wider text-copper">
             <span className="font-bold text-copper-hi">СВОДКА ПЕПЕЛЬНОЙ ЧЕРТЫ</span>
-            <span className="text-[#4a4035]">///</span>
+            <span className="text-muted/40">///</span>
             <span>КОРДОН: ВОЛНЫ У ХРЕБТА УЧАЩАЮТСЯ</span>
-            <span className="text-[#4a4035]">///</span>
+            <span className="text-muted/40">///</span>
             <span>СИНДИКАТЫ КРОВИ ПОДНЯЛИ ЦЕНУ НА ЛИКВОР</span>
-            <span className="text-[#4a4035]">///</span>
+            <span className="text-muted/40">///</span>
             <span>МАЯК В ГЛАЗНИЦЕ МОЛЧИТ ТРЕТЬИ СУТКИ</span>
-            <span className="text-[#4a4035]">///</span>
+            <span className="text-muted/40">///</span>
             <span>СЛУШАТЕЛИ ГИЛЬДИИ ФИКСИРУЮТ НОВЫЙ ОТКЛИК РЕЗОНАНСА</span>
           </div>
 
@@ -355,6 +355,8 @@ export default function Home() {
 
 /** Секция «Вахта продолжается» для активной кампании */
 function HeroSection({ campaign }: { campaign: CampaignCard }) {
+  const mode = useSession((s) => s.mode);
+  const isLight = mode === "light";
   const isLive = campaign.session_live;
   const action = actionOf(campaign);
   const lastDate = when(campaign.last_session_at);
@@ -373,12 +375,22 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
     : "вы ведёте этот стол";
 
   return (
-    <section className="relative overflow-hidden border-b border-line bg-[#0d0f12] px-4 py-12 md:px-12 lg:px-20 min-h-[460px] flex items-center">
+    <section
+      className={`relative overflow-hidden border-b border-line px-4 py-12 md:px-12 lg:px-20 min-h-[460px] flex items-center transition-colors duration-200 ${
+        isLight ? "bg-[#f5f0e6]" : "bg-[#0d0f12]"
+      }`}
+    >
       {/* Архивная навигационная векторная графика: Левиафан, Кормчие, Монолит и глифы */}
-      <LeviathanEchoArt />
+      <LeviathanEchoArt mode={mode} />
 
       {/* Мягкая подсветка/градиент под текстом слева для идеальной читаемости */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r from-[#0d0f12] via-[#0d0f12]/85 to-transparent z-0" />
+      <div
+        className={`pointer-events-none absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r ${
+          isLight
+            ? "from-[#f5f0e6] via-[#f5f0e6]/90 to-transparent"
+            : "from-[#0d0f12] via-[#0d0f12]/85 to-transparent"
+        } z-0`}
+      />
 
       <div className="relative z-10 flex max-w-2xl flex-col gap-4">
         <div className="font-mono text-xs tracking-[0.18em] text-patina-hi">
@@ -420,7 +432,7 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
           {campaign.is_owner && (
             <Link
               to={`/c/${campaign.id}/manage`}
-              className="btn h-12 px-5 rounded-[10px] text-sm text-ink border-line hover:border-accent"
+              className="btn h-12 px-5 rounded-[10px] text-sm text-ink border-line hover:border-accent bg-surface/80"
             >
               Кабинет стола
             </Link>
@@ -449,9 +461,9 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
 
       {/* Виджет «Сила Резонанса» (только для мира Эхо Левиафанов) */}
       {isEcho && (
-        <div className="hidden xl:flex absolute right-12 bottom-8 w-[280px] flex-col gap-2.5 rounded-[12px] border border-[#3a2a24] bg-ember-bg p-4 shadow-xl">
+        <div className="hidden xl:flex absolute right-12 bottom-8 w-[280px] flex-col gap-2.5 rounded-[12px] border border-line bg-surface/90 shadow-xl p-4 backdrop-blur-xs">
           <div className="flex justify-between font-mono text-[11px] tracking-[0.14em]">
-            <span className="text-ember-hi">СИЛА РЕЗОНАНСА</span>
+            <span className="text-ember-hi font-semibold">СИЛА РЕЗОНАНСА</span>
             <span className="text-muted">4 / 8</span>
           </div>
           <div className="grid grid-cols-8 gap-1">
@@ -459,12 +471,12 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
             <span className="h-2 rounded-[2px] bg-ember" />
             <span className="h-2 rounded-[2px] bg-ember" />
             <span className="h-2 rounded-[2px] bg-ember" />
-            <span className="h-2 rounded-[2px] bg-[#2c2320]" />
-            <span className="h-2 rounded-[2px] bg-[#2c2320]" />
-            <span className="h-2 rounded-[2px] bg-[#2c2320]" />
-            <span className="h-2 rounded-[2px] bg-[#2c2320]" />
+            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
+            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
+            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
+            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
           </div>
-          <div className="text-xs text-ink">Волны у Хребта учащаются</div>
+          <div className="text-xs text-ink font-medium">Волны у Хребта учащаются</div>
         </div>
       )}
     </section>
@@ -474,12 +486,12 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
 /** Заглушка, когда нет ни одной кампании */
 function EmptyHeroSection({ isAdmin }: { isAdmin: boolean }) {
   return (
-    <section className="relative overflow-hidden border-b border-line bg-[#111215] px-4 py-16 text-center md:px-12">
+    <section className="relative overflow-hidden border-b border-line bg-surface-2 px-4 py-16 text-center md:px-12">
       <div className="mx-auto flex max-w-xl flex-col items-center gap-4">
         <div className="font-mono text-xs tracking-[0.18em] text-patina-hi">
           ВАХТА ЖДЁТ ПЕРВЫЙ ОТРЯД
         </div>
-        <h1 className="font-heading text-4xl font-semibold sm:text-5xl">
+        <h1 className="font-heading text-4xl font-semibold sm:text-5xl text-ink">
           Добро пожаловать в Taleforge
         </h1>
         <p className="font-narration text-lg italic text-muted max-w-md">
@@ -605,7 +617,7 @@ function WorldsSection({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <article className="card flex flex-col justify-between overflow-hidden border-accent bg-[#17181c] p-6">
+        <article className="card flex flex-col justify-between overflow-hidden border-accent bg-surface p-6">
           <div className="flex flex-col gap-3">
             <div className="font-mono text-xs tracking-widest text-copper-hi">
               ОСНОВНОЙ СЕТТИНГ · БИОПАНК / ДИЗЕЛЬПАНК

@@ -10,7 +10,7 @@ import { sound } from "../game/sound";
 import { mapEvent } from "../game/map";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
-const REFRESH_ACTIONS = new Set(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn"]);
+const REFRESH_ACTIONS = new Set(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;

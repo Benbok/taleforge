@@ -42,7 +42,7 @@ export default function ActionButton({
   }
 
   return (
-    <span className="inline-flex flex-col gap-1">
+    <span className="inline-flex flex-col gap-1 shrink-0">
       <button
         className={`btn ${primary ? "btn-primary" : ""} ${danger ? "border-bad text-bad" : ""} ${className}`}
         onClick={click}

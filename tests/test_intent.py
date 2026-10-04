@@ -168,6 +168,14 @@ def test_parser_garbage_passes_through(game_client, admin_g, llm, settings):
 
 
 def test_describe_and_route_helpers():
+    from app.agents.llm import parser_model_for
+    from app.config import settings as app_settings
+
+    # пара моделей задаётся в .env: техническая модель провайдера, явная модель только получает префикс
+    assert parser_model_for("gemini") == "gemini/" + app_settings.gemini_technical_model
+    assert parser_model_for("claude") == app_settings.claude_technical_model
+    assert parser_model_for("gemini", "gemini-2.5-flash") == "gemini/gemini-2.5-flash"
+
     it = {
         "character_id": "ch1",
         "confidence": 0.9,
@@ -179,3 +187,86 @@ def test_describe_and_route_helpers():
     spec = intents.tool_spec({"target_id": ["en1"], "instrument_id": []})
     act_props = spec["function"]["parameters"]["properties"]["actions"]["items"]["properties"]
     assert act_props["target_id"]["anyOf"][0]["enum"] == ["en1"] and "$ref" not in str(spec)
+
+    # routable_tool_call: use_item
+    item_it = {
+        "character_id": "ch1",
+        "confidence": 0.9,
+        "actions": [{"verb": "use_item", "instrument_id": "pot1", "manner": ""}],
+    }
+    assert intents.routable_tool_call(item_it) == ("use_item", {"character_id": "ch1", "inventory_id": "pot1"})
+
+    # routable_tool_call: rest
+    rest_short = {
+        "character_id": "ch1",
+        "confidence": 0.9,
+        "actions": [{"verb": "rest", "manner": "короткий отдых"}],
+    }
+    assert intents.routable_tool_call(rest_short) == ("rest", {"character_ids": ["ch1"], "kind": "short"})
+    rest_long = {
+        "character_id": "ch1",
+        "confidence": 0.9,
+        "actions": [{"verb": "rest", "manner": "длинный отдых на ночь"}],
+    }
+    assert intents.routable_tool_call(rest_long) == ("rest", {"character_ids": ["ch1"], "kind": "long"})
+
+    # routable_tool_call: skill checks
+    hide_it = {
+        "character_id": "ch1",
+        "confidence": 0.9,
+        "actions": [{"verb": "hide", "manner": "в тени"}],
+    }
+    assert intents.routable_tool_call(hide_it) == (
+        "roll_check",
+        {"character_id": "ch1", "stat": "stealth", "kind": "check", "difficulty": "dc.medium", "reason": "в тени"},
+    )
+    search_it = {
+        "character_id": "ch1",
+        "confidence": 0.9,
+        "actions": [{"verb": "search", "skill": "investigation", "manner": "ищу тайник"}],
+    }
+    assert intents.routable_tool_call(search_it) == (
+        "roll_check",
+        {
+            "character_id": "ch1",
+            "stat": "investigation",
+            "kind": "check",
+            "difficulty": "dc.medium",
+            "reason": "ищу тайник",
+        },
+    )
+
+
+def test_litellm_prompt_caching_injection(monkeypatch):
+    import litellm
+
+    from app.agents.llm import LiteLLMClient
+
+    captured_kwargs = {}
+
+    async def mock_acompletion(**kwargs):
+        captured_kwargs.update(kwargs)
+        from unittest.mock import MagicMock
+
+        resp = MagicMock()
+        resp.choices = [MagicMock()]
+        resp.choices[0].message = MagicMock(content="ok", tool_calls=[])
+        resp.usage = MagicMock(prompt_tokens=10, completion_tokens=5)
+        return resp
+
+    monkeypatch.setattr(litellm, "acompletion", mock_acompletion)
+
+    client = LiteLLMClient()
+    import asyncio
+
+    # Для gemini с длинным system prompt добавляется cache_control
+    long_sys = "Правила мира. " * 100
+    msgs = [{"role": "system", "content": long_sys}, {"role": "user", "content": "Привет"}]
+    asyncio.run(client.complete(msgs, model="gemini/gemini-2.5-flash"))
+    sys_content = captured_kwargs["messages"][0]["content"]
+    assert isinstance(sys_content, list)
+    assert sys_content[0]["cache_control"] == {"type": "ephemeral"}
+
+    # Для локальной модели — не трогаем (остаётся строкой)
+    asyncio.run(client.complete(msgs, model="lm_studio/qwen2.5"))
+    assert captured_kwargs["messages"][0]["content"] == long_sys

@@ -143,6 +143,9 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
             "leveling": body.leveling,
+            "tts_provider": body.tts_provider,
+            "tts_enabled": body.tts_enabled,
+            "tts_voice": body.tts_voice,
         },
         owner_plays=body.owner_plays,
         brief=body.brief.model_dump(exclude_defaults=True),
@@ -184,6 +187,9 @@ async def patch_campaign(
         "collect_window_sec",
         "excluded_themes",
         "audio_enabled",
+        "tts_provider",
+        "tts_enabled",
+        "tts_voice",
         "leveling",
         "random_events",
     ):
@@ -218,7 +224,7 @@ async def master_model_out(session, agent: AgentConfig) -> MasterModelOut:
     extra = agent.settings or {}
     profile = await session.get(ModelProfile, extra["model_profile_id"]) if extra.get("model_profile_id") else None
     try:
-        resolved = model_for(agent.provider, agent.model)
+        resolved = model_for()
     except LLMError:
         resolved = None
     return MasterModelOut(

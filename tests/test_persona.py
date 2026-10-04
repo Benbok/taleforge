@@ -102,7 +102,6 @@ def test_chronicle_notes_edit_revert_and_reach_the_agent(game_client, admin_g, s
     assert edited["notes"][0]["text"] == "стал осторожнее" and edited["notes"][0]["edited"]
 
     # агент видит анкету и летопись в системной подсказке
-    # ИИ-игрок заявляет действие до хода мастера, мастер отвечает на весь пакет
     llm.replies += [{"text": "Торин молча кивает."}, DONE, DONE, {"text": "Тихо."}]
     with connect(game_client, p1, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран слушает"}})
@@ -110,16 +109,14 @@ def test_chronicle_notes_edit_revert_and_reach_the_agent(game_client, admin_g, s
             m = next_of(ws, "message.new")["payload"]
             if m["seat_id"] == seat:
                 break
-        narration(ws)
+        assert narration(ws).endswith("Тихо.")
         game_client.portal.call(game_client.app.state.master.wait_idle, cid)
     system = next(r for r in llm.requests if r["messages"][0]["content"].startswith("Ты — игрок"))["messages"][0][
         "content"
     ]
     assert "Весельчак" in system and "стал осторожнее" in system
-    master_system = next(r for r in llm.requests if r["messages"][0]["content"].startswith("Ты — мастер"))["messages"][
-        0
-    ]["content"]
-    assert "Характеры героев" in master_system and "Весельчак" in master_system
+    master_req = next(r for r in llm.requests if "Характеры героев" in r["messages"][0]["content"])
+    assert "Весельчак" in master_req["messages"][0]["content"]
 
     # откат: запись остаётся в летописи, но в подсказку не идёт
     back = ok(game_client.patch(url + f"/notes/{nid}?as_seat={seat}", json={"reverted": True}, headers=admin_g))

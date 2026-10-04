@@ -114,10 +114,7 @@ def convert_file(
         actual_fade = min(fade, actual_dur / 4)
         head_dur = actual_dur - actual_fade
 
-        print(
-            f"    Режим БЕСШОВНОГО ЛУПА: полная длина ({actual_dur:.1f}с), "
-            f"кроссфейд конца в начало ({actual_fade:.1f}с)"
-        )
+        print(f"    Режим БЕСШОВНОГО ЛУПА: длина ({actual_dur:.1f}с), кроссфейд конца в начало ({actual_fade:.1f}с)")
 
         filter_complex = (
             f"[0:a]asplit=2[a1][a2];"

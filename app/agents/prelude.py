@@ -20,7 +20,7 @@ from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
 from app.core.linker import link_text
 from app.db.models import AgentConfig, Campaign, CampaignSecret, Character, LlmCall, Message, Scene
-from app.gateway.events import envelope, publish_message
+from app.gateway.events import Stream, envelope, publish_message
 
 log = logging.getLogger(__name__)
 
@@ -302,9 +302,187 @@ async def _open_first_place(svc, cid: str, where: dict) -> None:
     await publish_changes(svc.bus, ctx, messages)
 
 
+INTRO_KEY = "campaign_intro"  # в тайнах кампании: готовое вступление {text, voice, version} до старта
+INTRO_TASK = (
+    "Напиши масштабное и атмосферное художественное вступление к всей кампании (2–4 абзаца). "
+    "Опиши общую ситуацию в мире и регионе, где именно сейчас оказались герои и почему/при каких "
+    "обстоятельствах они здесь очутились, передай живую атмосферу и настроение места. "
+    "Не управляй действиями и репликами персонажей игроков. Закончи описанием того, что герои видят прямо перед собой."
+)
+
+
+def _first_scene(p: dict) -> tuple[dict | None, dict | None]:
+    act = plot.active_act(p) or {}
+    node = next((n for n in act.get("nodes") or [] if n.get("status") not in plot.CLOSED), None)
+    where = next((x for x in p.get("locations") or [] if node and x["id"] == node.get("location_id")), None)
+    return node, where
+
+
+def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
+    node, where = _first_scene(p)
+    scene_hint = ""
+    if node:
+        scene_hint = (
+            f"Первая сцена (тайно, покажи только то, что видят герои): {node.get('title')} — {node.get('summary')}"
+        )
+        if where:
+            scene_hint += f" Место: {where.get('name')}, {where.get('mood')}"
+    title = p.get("title") or c.name
+    intro = f"Кампания «{title}». Завязка: {p.get('public_intro') or c.public_intro}"
+    system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {cfg.persona or ''}"
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": "\n\n".join(x for x in (intro, scene_hint, INTRO_TASK) if x)},
+    ]
+
+
+async def _intro_text(svc, c: Campaign, cfg: AgentConfig, p: dict, seat_id: str, stream: Stream | None = None) -> str:
+    """Текст вступления на основной модели; вызов пишется в расходы. Пустая строка — модель не ответила."""
+    from app.agents.architect import model_of
+
+    async with svc.maker() as s:
+        _, model, api_base, temperature = await model_of(s, await s.get(Campaign, c.id))
+    call = LlmCall(campaign_id=c.id, seat_id=seat_id, turn_id=None, purpose="campaign_intro", model=model)
+    text = ""
+    try:
+        reply = await svc.llm.complete(
+            _intro_messages(c, cfg, p),
+            model=model,
+            tools=None,
+            max_tokens=1500,
+            temperature=temperature,
+            api_base=api_base,
+            stream_callback=stream.push if stream is not None else None,
+        )
+        call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+        call.cost, call.latency_ms = reply.cost, reply.latency_ms
+        text = MARKUP.sub(r"\2", reply.text.strip())  # во вступлении ещё нет сущностей: разметку снимаем
+    except LLMError as e:
+        call.error = str(e)[:2000]
+    async with svc.maker() as s:
+        s.add(call)
+        await s.commit()
+    return text
+
+
+async def _intro_voice(svc, c: Campaign, text: str) -> dict | None:
+    """Голос вступления тем же голосом, что и реплики мастера. Без озвучки кампании — None."""
+    ready = getattr(svc, "_tts_ready", None)
+    if not text or ready is None or not ready(c):
+        return None
+    st = c.settings or {}
+    try:
+        return await svc.tts.voice_for_narration(
+            svc.media_dir, c.id, text, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+        )
+    except Exception:  # noqa: BLE001 — без голоса вступление всё равно выходит текстом
+        log.warning("озвучка вступления кампании %s не удалась", c.id, exc_info=True)
+        return None
+
+
+async def prepare_campaign_intro(svc, cid: str) -> bool:
+    """Готовит вступление ко всей кампании один раз, когда каркас готов: текст и голос ждут старта в тайнах,
+    и игрокам не приходится ждать модель на первом ходу. Новый вариант каркаса готовит вступление заново."""
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        if c is None or (c.settings or {}).get("campaign_intro_played"):
+            return False
+        cfg, p = await _ai_plan(s, c)
+        if cfg is None:
+            return False
+        seat_id = master_seat(c).id
+    text = await _intro_text(svc, c, cfg, p, seat_id)
+    if not text:
+        return False
+    voice = await _intro_voice(svc, c, text)
+    async with svc.maker() as s:
+        secret = await s.get(CampaignSecret, cid)
+        if secret is None:
+            return False
+        ready = {"text": text, "voice": voice, "version": p.get("version")}
+        secret.setting = {**(secret.setting or {}), INTRO_KEY: ready}
+        await s.commit()
+    return True
+
+
+async def _set_flag(svc, cid: str, on: bool) -> None:
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        if c is not None:
+            c.settings = {**(c.settings or {}), "intro_generating": on}
+            await s.commit()
+
+
+async def introduce_campaign(svc, cid: str) -> str | None:
+    """Вступление ко всей кампании при старте первой сессии, одно на кампанию, у всех игроков сразу.
+    Берёт заготовленное (prepare_campaign_intro); если его нет — пишет сейчас со стримингом, а игроки ждут:
+    реплики до конца вступления сервер отклоняет с причиной."""
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        if c is None or (c.settings or {}).get("campaign_intro_played"):
+            return None
+        cfg, p = await _ai_plan(s, c)
+        game = await active_session(s, cid)
+        if cfg is None or game is None:
+            return None
+        seat_id = master_seat(c).id
+        secret = await s.get(CampaignSecret, cid)
+        ready = ((secret.setting if secret else None) or {}).get(INTRO_KEY) or {}
+        if ready.get("version") != p.get("version"):
+            ready = {}  # заготовка к старому варианту каркаса
+        # без rollback: закрытая сессия оставляет загруженные поля кампании и сессии читаемыми
+
+    await _set_flag(svc, cid, True)
+    try:
+        _, where = _first_scene(p)
+        if where and not where.get("entity_id"):
+            try:
+                await _open_first_place(svc, cid, where)
+            except Exception:
+                log.exception("не удалось открыть первое место до вступления кампании")
+
+        async with svc.maker() as s:
+            msg = Message(
+                campaign_id=cid,
+                session_id=game.id,
+                seq=await next_seq(s, cid),
+                seat_id=seat_id,
+                kind="narration",
+                content="",
+            )
+            s.add(msg)
+            await s.commit()
+            msg_id = msg.id
+        text, voice = ready.get("text") or "", ready.get("voice")
+        if not text:
+            text = await _intro_text(svc, c, cfg, p, seat_id, stream=Stream(svc.bus, cid, msg))
+            voice = await _intro_voice(svc, c, text)
+
+        async with svc.maker() as s:
+            msg = await s.get(Message, msg_id)
+            if not text:
+                await s.delete(msg)
+                await s.commit()
+                await svc.bus.publish(cid, envelope("message.withdrawn", cid, {"id": msg_id}), None)
+                return None
+            msg.content = await link_text(s, cid, text)
+            if voice:
+                msg.data = {"voice": {**voice, "text": text}}
+            c = await s.get(Campaign, cid)
+            c.settings = {**(c.settings or {}), "campaign_intro_played": True}
+            secret = await s.get(CampaignSecret, cid)
+            if secret is not None and INTRO_KEY in (secret.setting or {}):
+                secret.setting = {k: v for k, v in secret.setting.items() if k != INTRO_KEY}
+            await s.commit()
+            await publish_message(svc.bus, msg)
+            return msg_id
+    finally:
+        await _set_flag(svc, cid, False)
+
+
 async def introduce(svc, cid: str) -> str | None:
     """Вступление: как герои встретились (120–200 слов) или, если отряд уже в игре, короткое появление новичков.
-    Возвращает id сообщения или None."""
+    Транслируется со стримингом. Возвращает id сообщения или None."""
     async with svc.maker() as s:
         c = await s.get(Campaign, cid)
         if c is None:
@@ -326,7 +504,10 @@ async def introduce(svc, cid: str) -> str | None:
     node = next((n for n in act.get("nodes") or [] if n.get("status") not in plot.CLOSED), None)
     where = next((x for x in p.get("locations") or [] if node and x["id"] == node.get("location_id")), None)
     if first and where and not where.get("entity_id"):
-        await _open_first_place(svc, cid, where)
+        try:
+            await _open_first_place(svc, cid, where)
+        except Exception:
+            log.exception("не удалось открыть первое место до вступления героев")
     scene_hint = ""
     if node:
         scene_hint = (
@@ -369,11 +550,32 @@ async def introduce(svc, cid: str) -> str | None:
 
     async with svc.maker() as s:
         _, model, api_base, temperature = await model_of(s, await s.get(Campaign, cid))
+        game = await active_session(s, cid)
+        msg = Message(
+            campaign_id=cid,
+            session_id=game.id if game else None,
+            seq=await next_seq(s, cid),
+            seat_id=seat_id,
+            kind="narration",
+            content="",
+        )
+        s.add(msg)
+        await s.flush()
+        msg_id = msg.id
+        await s.commit()
+
+    stream = Stream(svc.bus, cid, msg)  # сообщение уйдёт в чат целиком, когда текст готов
     call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="intro", model=model)
     text = ""
     try:
         reply = await svc.llm.complete(
-            msgs, model=model, tools=None, max_tokens=1200, temperature=temperature, api_base=api_base
+            msgs,
+            model=model,
+            tools=None,
+            max_tokens=1200,
+            temperature=temperature,
+            api_base=api_base,
+            stream_callback=stream.push,
         )
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
@@ -381,26 +583,23 @@ async def introduce(svc, cid: str) -> str | None:
         text = MARKUP.sub(lambda m: m.group(0) if m.group(1) in known else m.group(2), reply.text.strip())
     except LLMError as e:
         call.error = str(e)[:2000]
+
     async with svc.maker() as s:
         s.add(call)
         c = await s.get(Campaign, cid)
         scene = await s.get(Scene, cid)
-        msg = None
-        if text:
-            game = await active_session(s, cid)
-            msg = Message(
-                campaign_id=cid,
-                session_id=game.id if game else None,
-                seq=await next_seq(s, cid),
-                seat_id=seat_id,
-                kind="narration",
-                content=await link_text(s, cid, text),
-            )
-            s.add(msg)
+        msg_db = await s.get(Message, msg_id)
+        if text and msg_db:
+            msg_db.content = await link_text(s, cid, text)
             # представленными считаем только после удачного вступления: при сбое мастер попробует на следующем ходу
-            scene.state = {**(scene.state or {}), "introduced": _introduced(scene) + [ch.id for ch in newcomers]}
-        await s.commit()
-        if msg is not None:
-            await publish_message(svc.bus, msg)
-            return msg.id
-    return None
+            if scene:
+                scene.state = {**(scene.state or {}), "introduced": _introduced(scene) + [ch.id for ch in newcomers]}
+            await s.commit()
+            await publish_message(svc.bus, msg_db)
+            return msg_id
+        else:
+            if msg_db:
+                await s.delete(msg_db)
+            await s.commit()
+            await svc.bus.publish(cid, envelope("message.withdrawn", cid, {"id": msg_id}), None)
+            return None

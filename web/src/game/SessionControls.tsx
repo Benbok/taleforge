@@ -6,7 +6,15 @@ import { useGame } from "../stores/game";
 
 /** Управление сессией. Кнопки — только из списка сервера: до старта «Начать», во время — «Пауза» и «Завершить»,
  *  на паузе — «Продолжить». После нажатия сервер пришлёт новое состояние, и кнопки сменятся сами. */
-export default function SessionControls({ campaignId }: { campaignId: string }) {
+export default function SessionControls({
+  campaignId,
+  compact = false,
+  className = "",
+}: {
+  campaignId: string;
+  compact?: boolean;
+  className?: string;
+}) {
   const actions = useGame((s) => s.actions);
   const status = useGame((s) => s.snapshot?.campaign.status);
   const notReady = useGame((s) => s.blocked["session.start"]);
@@ -24,8 +32,10 @@ export default function SessionControls({ campaignId }: { campaignId: string }) 
     }
   }
 
+  const btnClass = compact ? "h-8 px-2.5 text-xs font-mono tracking-wider shrink-0" : "";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={`flex items-center gap-2 shrink-0 ${className}`}>
       {notReady && (
         <p className="flex flex-wrap items-center gap-2 text-xs text-warn" role="status">
           {notReady}
@@ -35,23 +45,24 @@ export default function SessionControls({ campaignId }: { campaignId: string }) 
         </p>
       )}
       {has("session.start") && (
-        <ActionButton primary run={() => session("start")} done={status === "paused" ? "Сессия продолжается" : "Сессия началась"}>
+        <ActionButton className={btnClass} primary run={() => session("start")} done={status === "paused" ? "Сессия продолжается" : "Сессия началась"}>
           {status === "paused" ? "Продолжить сессию" : "Начать сессию"}
         </ActionButton>
       )}
       {has("session.pause") && (
-        <ActionButton run={() => session("pause")} done="Сессия на паузе: мастер подведёт итог">
+        <ActionButton className={btnClass} run={() => session("pause")} done="Сессия на паузе: мастер подведёт итог">
           Пауза
         </ActionButton>
       )}
       {has("invite.create") && (
-        <ActionButton run={invite}>
+        <ActionButton className={btnClass} run={invite}>
           Пригласить
         </ActionButton>
       )}
       {has("campaign.end") && (
         <ActionButton
           danger
+          className={btnClass}
           run={() => session("end")}
           done="Кампания завершена"
           confirm="Завершить кампанию насовсем? Мастер напишет эпилог, играть дальше будет нельзя."
