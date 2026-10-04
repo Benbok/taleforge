@@ -35,7 +35,7 @@ from app.agents.providers import explain
 from app.core import audio, bonds, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
-from app.core.chat import active_session, next_seq, system_message
+from app.core.chat import TURN_KINDS, active_session, next_seq, system_message, visible
 from app.core.linker import link_text
 from app.db.models import (
     AgentConfig,
@@ -68,7 +68,8 @@ MAX_CALLS = 8  # вызовов инструментов за ход (разде
 PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит мастеру без разбора
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
-PLAYER_KINDS = ("action", "speech", "whisper")
+PLAYER_KINDS = TURN_KINDS  # шёпот мастеру ход не берёт: на него отвечает answer_whispers
+WHISPER_HISTORY = 12  # сообщений, видимых шепчущему, в контексте ответа на шёпот
 CATCH_UP_SYSTEM = (
     "Игрок текстовой ролевой игры ненадолго выпал из сети. Тебе дают сообщения, которые он пропустил. "
     "Перескажи ему по-русски в 2–4 предложениях, что произошло и на чём остановились, обращаясь на «вы». "
@@ -162,11 +163,14 @@ class MasterService:
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
         self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
         self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
+        self._whisper_locks: dict[str, asyncio.Lock] = {}
 
     # --- очередь ---
 
     def notify(self, campaign_id: str) -> None:
-        """Пришла реплика игрока: запустить сбор пакета или отметить, что после текущего хода нужен ещё один."""
+        """Пришла реплика игрока: запустить сбор пакета или отметить, что после текущего хода нужен ещё один.
+        Шёпоты мастеру ход не ждут: на них мастер отвечает сразу и отдельно."""
+        self._spawn(self.answer_whispers(campaign_id))
         task = self._tasks.get(campaign_id)
         if task is not None and not task.done():
             self._pending.add(campaign_id)
@@ -331,6 +335,130 @@ class MasterService:
             window = float((c.settings or {}).get("collect_window_sec", 60))
             waited = (datetime.now(UTC) - as_utc(new[0].created_at)).total_seconds()
             return max(0.0, window - waited)
+
+    # --- шёпот мастеру ---
+
+    async def answer_whispers(self, cid: str) -> list[str]:
+        """Шёпот мастеру — вопрос вне хода. ИИ-мастер отвечает сразу и только автору: коротко, строго на вопрос,
+        без повествования для стола и без изменений мира. Ход мастера шёпоты не берёт. Возвращает id ответов."""
+        out: list[str] = []
+        async with self._whisper_locks.setdefault(cid, asyncio.Lock()):
+            while (mid := await self._next_whisper(cid)) is not None:
+                if answer := await self._answer_whisper(cid, mid):
+                    out.append(answer)
+        return out
+
+    async def _next_whisper(self, cid: str) -> str | None:
+        async with self.maker() as s:
+            c = await s.get(Campaign, cid)
+            if c is None or master_seat(c).occupant_type != "agent":
+                return None
+            game = await active_session(s, cid)
+            if game is None:
+                return None
+            players = {x.id for x in c.seats if x.role == "player"}
+            q = (
+                select(Message)
+                .where(Message.campaign_id == cid, Message.session_id == game.id, Message.kind == "whisper")
+                .order_by(Message.seq)
+            )
+            for m in await s.scalars(q):
+                if m.seat_id in players and (m.data or {}).get("answer") == "pending":
+                    m.data = {**m.data, "answer": "processing"}  # второй вызов этот шёпот уже не возьмёт
+                    await s.commit()
+                    return m.id
+        return None
+
+    async def _answer_whisper(self, cid: str, mid: str) -> str | None:
+        calls: list[LlmCall] = []
+        await self._states(cid, [mid], "processing")
+        reply_msg = error = None
+        try:
+            async with self.maker() as s:
+                c = await s.get(Campaign, cid)
+                m = await s.get(Message, mid)
+                if c is None or m is None:
+                    return None  # игрок отменил шёпот
+                seat = master_seat(c)
+                limit = (c.settings or {}).get("spend_limit_usd")
+                if limit is not None:
+                    spent = (await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == cid))) or 0.0
+                    if spent >= float(limit):
+                        raise LLMError("лимит расходов на модели в настройках кампании исчерпан")
+                cfg = await s.get(AgentConfig, seat.agent_config_id)
+                ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+                char_by_seat = {ch.seat_id: ch for ch in ctx.world.characters.values() if ch.seat_id}
+                names = await _names(s, c)
+                rows = await s.scalars(
+                    select(Message)
+                    .where(Message.campaign_id == cid, Message.seq < m.seq, Message.kind.notin_(("ooc", "roll")))
+                    .order_by(Message.seq.desc())
+                    .limit(WHISPER_HISTORY * 4)
+                )
+                seen = [x for x in rows if visible(x, m.seat_id)][:WHISPER_HISTORY]
+                system = await self._system_prompt(s, c, cfg, ctx)
+                prompt = render(
+                    "whisper.j2",
+                    who=_who(m, char_by_seat, names),
+                    scene=ctx.world.scene_table(),
+                    convo=_render_history(list(reversed(seen)), char_by_seat, names),
+                    question=m.content,
+                )
+                known = set(ctx.world.characters) | set(ctx.world.entities)
+                seat_id, author, session_id = seat.id, m.seat_id, m.session_id
+                s.expunge(cfg)
+                await s.rollback()  # база не держится, пока думает модель
+            reply = await self._ask(
+                calls,
+                cfg,
+                cid,
+                seat_id,
+                None,
+                "whisper",
+                [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                None,
+            )
+            text = MARKUP.sub(lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or "").strip()
+            text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
+            if not text:
+                raise LLMError("модель вернула пустой ответ")
+        except LLMError as e:
+            error = explain(str(e))
+        except Exception as e:  # noqa: BLE001 — сбой ответа на шёпот не должен ронять очередь
+            log.exception("ответ на шёпот %s не удался", mid)
+            error = f"{type(e).__name__}: {e}"
+        async with self.maker() as s:
+            s.add_all(calls)
+            m = await s.get(Message, mid)
+            if m is None:
+                await s.commit()
+                return None
+            m.data = {**(m.data or {}), "answer": "failed" if error else "answered"}
+            if error:
+                reply_msg = Message(
+                    campaign_id=cid,
+                    session_id=m.session_id,
+                    seq=await next_seq(s, cid),
+                    kind="system",
+                    visible_to=[m.seat_id],
+                    content=f"Мастер не ответил на шёпот: {error}. Спросите ещё раз.",
+                )
+            else:
+                reply_msg = Message(
+                    campaign_id=cid,
+                    session_id=session_id,
+                    seq=await next_seq(s, cid),
+                    seat_id=seat_id,
+                    kind="narration",
+                    visible_to=[author, seat_id],
+                    content=await link_text(s, cid, text),
+                    data={"whisper_reply": mid},
+                )
+            s.add(reply_msg)
+            await s.commit()
+        await publish_message(self.bus, reply_msg)
+        await self._states(cid, [mid], "failed" if error else "answered")
+        return None if error else reply_msg.id
 
     # --- ход ---
 
@@ -540,12 +668,16 @@ class MasterService:
         memory_note = await self._memory_block(s, c, ctx, new)
         # мир не ждёт: созревшие ответы на поступки героев и случайности, выпавшие, пока шло игровое время
         world_note = await standing_tools.run_standing(ctx) + await fortune_tools.run_watch(ctx)
+        # отряд буксует на одном препятствии: мир подбрасывает новую возможность (в бою не нужно)
+        stall = (
+            "" if hero_turn is not None else rhythm.stall_note(await rhythm.stalled_turns(s, cid, ctx.game_session_id))
+        )
         msgs: list[dict] = [
             {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": (
-                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}"
+                    f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -621,13 +753,28 @@ class MasterService:
         plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
 
         await self._status(cid, "describing")
+        voiced = bool(getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None))
         narration, audit = await self._narrate(
-            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes
+            calls,
+            cfg,
+            c,
+            seat.id,
+            turn_id,
+            system,
+            convo,
+            news,
+            ctx,
+            combat_notes,
+            plot_notes,
+            stalled=bool(stall),
+            voiced=voiced,
         )
 
         tts_task = None
-        if getattr(self, "tts", None) and self.tts.enabled and getattr(self, "media_dir", None):
-            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, narration))
+        if voiced:
+            # озвучивается краткая суть хода, подробности остаются текстом
+            spoken = audit.get("voice_text") or narration
+            tts_task = asyncio.create_task(self.tts.voice_for_narration(self.media_dir, cid, spoken))
 
         whispers = await flush_outbox(s, ctx)
         linked = await link_text(s, cid, narration)
@@ -663,12 +810,27 @@ class MasterService:
             "combat": combat_notes,
             "plot_clock": plot_notes,
             "world": world_note,
+            "stalled": bool(stall),
         }
         await s.commit()
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _narrate(
-        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=()
+        self,
+        calls,
+        cfg,
+        c,
+        seat_id,
+        turn_id,
+        system,
+        convo,
+        news,
+        ctx: ToolContext,
+        notes=(),
+        plot_notes=(),
+        *,
+        stalled: bool = False,
+        voiced: bool = False,
     ):
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
@@ -676,10 +838,13 @@ class MasterService:
             "narrate.j2",
             results=results,
             scene=ctx.world.scene_table(),
-            length="от одного до четырёх абзацев",
+            length=_narration_length(ctx, notes),
+            check_only=_check_only(ctx, notes),
             combat_notes=list(notes),
             plot_notes=list(plot_notes),
             next_turn=turn["name"] if turn else None,
+            stalled=stalled,
+            voiced=voiced,
         )
         base = [
             {"role": "system", "content": system},
@@ -717,6 +882,9 @@ class MasterService:
             audit["stripped"].append(m.group(1))
             return m.group(2)
 
+        voice_text, text = _split_voice(text)
+        if voice_text:
+            audit["voice_text"] = MARKUP.sub(r"\2", voice_text)
         text = MARKUP.sub(strip, text)
         # Очистка от случайных вызовов инструментов в тексте мастера (например, set_soundscape {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
@@ -1389,7 +1557,9 @@ def _who(m: Message, char_by_seat: dict, names: dict) -> str:
 def _render_history(rows: list[Message], char_by_seat: dict, names: dict) -> str:
     out = []
     for m in rows:
-        if m.kind in ("narration",):
+        if m.kind == "narration" and m.visible_to is not None:
+            out.append(f"[мастер шёпотом, видит только адресат] {m.content}")
+        elif m.kind == "narration":
             out.append(f"[мастер] {m.content}")
         elif m.kind == "system":
             out.append(f"[система] {m.content}")
@@ -1406,6 +1576,34 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
         if m.kind == "action" and m.intent:
             out.append(f"  намерение (разбор парсера): {intents.describe(m.intent)}")
     return "\n".join(out)
+
+
+VOICE_LINE = re.compile(r"^\s*(?:\*\*)?Голос:(?:\*\*)?\s*(.+?)\s*(?:\n\s*\n|\n|$)", re.IGNORECASE)
+
+
+def _split_voice(text: str) -> tuple[str | None, str]:
+    """Первая строка «Голос: …» — краткая суть хода для озвучки; остальное — ответ в чат."""
+    m = VOICE_LINE.match(text)
+    if m is None:
+        return None, text
+    return m.group(1).strip() or None, text[m.end() :].strip()
+
+
+def _check_only(ctx: ToolContext, notes=()) -> bool:
+    """Ход вне боя, в котором были только проверки: ответ — короткое литературное описание исхода."""
+    tools = [ev.tool for ev in ctx.events if ev.tool not in AUDIO_TOOLS]
+    return not notes and not combat.in_combat(ctx) and bool(tools) and set(tools) == {"roll_check"}
+
+
+def _narration_length(ctx: ToolContext, notes=()) -> str:
+    if _check_only(ctx, notes):
+        return "одно-два предложения"
+    if notes or combat.in_combat(ctx):
+        return "от одного до четырёх абзацев"
+    return (
+        "один короткий абзац, два-четыре предложения; второй абзац — только если герои попали в новое место или "
+        "случилось что-то важное для сюжета"
+    )
 
 
 def _render_results(ctx: ToolContext) -> str:

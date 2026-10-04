@@ -249,7 +249,7 @@ class PlayerAgents:
                 return None
             m = await chat.post_message(s, viewer, kind, text, 1000)
             m.author_user_id = None  # автор — ИИ, не владелец
-            m.data = {"ai": True}
+            m.data = {**(m.data or {}), "ai": True}
             if parsed.intent and m.kind == "action":
                 m.intent = parsed.intent
             await s.commit()
