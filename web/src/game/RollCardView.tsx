@@ -7,7 +7,12 @@ const OUTCOME: Record<string, { text: string; cls: string }> = {
   hit: { text: "Попадание", cls: "text-ok" },
   crit: { text: "Критическое попадание", cls: "text-ok" },
   miss: { text: "Промах", cls: "text-bad" },
+  fumble: { text: "Критический промах", cls: "text-bad" },
+  crit_success: { text: "Критический успех", cls: "text-ok" },
+  crit_fail: { text: "Критический провал", cls: "text-bad" },
 };
+const BAD = new Set(["fail", "miss", "fumble", "crit_fail"]);
+const CRIT = new Set(["crit", "fumble", "crit_success", "crit_fail"]);
 const MODE: Record<string, string> = { advantage: "с преимуществом", disadvantage: "с помехой" };
 
 /** Карточка броска: что проверялось, кубик, итог против сложности, успех или провал цветом; по нажатию — разбор. */
@@ -26,8 +31,8 @@ export default function RollCardView({ card }: { card: RollCard }) {
         {roll?.total != null ? (
           <span
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 text-lg font-semibold ${
-              card.outcome === "fail" || card.outcome === "miss" ? "border-bad" : card.outcome === "info" ? "border-line" : "border-ok"
-            }`}
+              BAD.has(card.outcome) ? "border-bad" : card.outcome === "info" ? "border-line" : "border-ok"
+            } ${CRIT.has(card.outcome) ? "border-4" : ""}`}
             aria-label={`итог ${roll.total}`}
           >
             {roll.total}
@@ -60,6 +65,9 @@ export default function RollCardView({ card }: { card: RollCard }) {
               {roll.modifier ? ` ${roll.modifier > 0 ? "+" : "−"} ${Math.abs(roll.modifier)}` : ""} = {roll.total}
               {roll.mode && MODE[roll.mode] ? ` (${MODE[roll.mode]})` : ""}
             </p>
+          )}
+          {CRIT.has(card.outcome) && (
+            <p>{roll?.natural === 1 ? "Натуральная 1 — неудача оборачивается против бросающего." : "Натуральная 20 — исход сильнее обычного."}</p>
           )}
           {card.damage && (
             <p>

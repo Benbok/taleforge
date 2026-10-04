@@ -147,6 +147,8 @@ export const FIELD_RU: Record<string, string> = {
   here: "Отряд уже здесь",
   antagonist_id: "Антагонист",
   inspiration: "Потратить вдохновение",
+  edge: "Обстоятельства",
+  edge_reason: "За что преимущество или помеха",
   effect: "Помогли или навредили",
   weight: "Вес поступка",
   secret: "Никто не видел",
@@ -203,6 +205,9 @@ export const VALUE_RU: Record<string, string> = {
   event: "событие",
   find: "находка",
   any: "пусть решит кубик",
+  none: "нет",
+  advantage: "преимущество",
+  disadvantage: "помеха",
 };
 
 export type Values = Record<string, string | string[] | boolean>;

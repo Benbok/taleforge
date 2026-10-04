@@ -68,6 +68,7 @@ MAX_CALLS = 8  # вызовов инструментов за ход (разде
 PARSE_TIMEOUT = 30  # секунд: дольше — реплика уходит мастеру без разбора
 MAX_STEPS = 12  # обращений к модели в фазе решения
 HISTORY = 20  # последних сообщений в контексте (раздел 9)
+COMBAT_LENGTH = "один короткий абзац, два-четыре предложения"  # в бою — только исход бросков, без пересказа сцены
 PLAYER_KINDS = ("action", "speech", "whisper")
 CATCH_UP_SYSTEM = (
     "Игрок текстовой ролевой игры ненадолго выпал из сети. Тебе дают сообщения, которые он пропустил. "
@@ -676,7 +677,7 @@ class MasterService:
             "narrate.j2",
             results=results,
             scene=ctx.world.scene_table(),
-            length="от одного до четырёх абзацев",
+            length=COMBAT_LENGTH if turn else "от одного до четырёх абзацев",
             combat_notes=list(notes),
             plot_notes=list(plot_notes),
             next_turn=turn["name"] if turn else None,
@@ -770,6 +771,7 @@ class MasterService:
             max_calls=MAX_CALLS,
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
+            critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
             audio=audio.prompt_block(c, ctx.world.scene),
         )
 

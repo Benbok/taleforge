@@ -26,7 +26,6 @@ from app.core.world import (
     lineage_features,
 )
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem, Knowledge, KnownFact
-from app.rules.base import RollMode
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.engine import Dnd5eEngine
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
@@ -41,6 +40,12 @@ Elevation = Literal["low", "ground", "high"]
 ELEVATION_HINT = "высота: low — внизу (яма, трюм), ground — на земле, high — на возвышении (балкон, гребень)"
 Cover = Literal["none", "half", "three_quarters", "total"]
 COVER_HINT = "укрытие по SRD: half +2 к КД, three_quarters +5, total — цель нельзя атаковать напрямую"
+Edge = Literal["none", "advantage", "disadvantage"]
+EDGE_HINT = (
+    "преимущество или помеха по обстоятельствам (SRD, решение мастера): advantage — замысел логичен и хорошо "
+    "подготовлен, выгодная позиция, помощь союзника; disadvantage — спешка, темнота, неудобная поза, действие на "
+    "грани возможного. Эффекты сервер учтёт сам, здесь только обстоятельства"
+)
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
 MAX_LEVEL_DEFAULT = 20
 # Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
@@ -270,6 +275,8 @@ class CheckArgs(BaseModel):
     )
     reason: str = Field(description="что проверяется, для журнала")
     inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
+    edge: Edge = Field("none", description=EDGE_HINT)
+    edge_reason: str | None = Field(None, max_length=200, description="почему преимущество или помеха — увидят игроки")
 
 
 @tool(
@@ -290,11 +297,12 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     else:
         bonus, ability = act.ability_check_bonus(a.stat)
     mode, reasons = mod.roll_mode(act.modifiers, a.kind, ability, a.stat if a.stat in SKILLS else None)
+    mode, reasons = mod.with_circumstance(mode, reasons, a.edge, _edge_reason(a.edge, a.edge_reason))
     auto = mod.save_auto_fail(act.modifiers, ability) if a.kind == "save" else None
     spent = _inspire(ctx, act, a.inspiration, mode, reasons)
     if spent:
         mode, reasons, spent = spent
-    res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode)
+    res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode, critical_checks(ctx))
     success = res.success and auto is None
     hidden = a.kind == "check" and a.stat in _hidden_skills(ctx)
     result = {
@@ -302,11 +310,14 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         "stat": a.stat,
         "kind": a.kind,
         "dc": dc,
+        "natural": res.roll.natural,
         "total": res.roll.total,
         "success": success,
         "margin": res.margin,
         "hidden": hidden,
     }
+    if res.critical and not auto:
+        result["critical"] = res.critical
     if reasons:
         result["reasons"] = reasons
     if auto:
@@ -322,6 +333,22 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         inverse=spent or [],
     )
     return result
+
+
+def critical_checks(ctx: ToolContext) -> bool:
+    """Натуральные 20 и 1 в проверках и спасбросках вне атак — критический успех и провал. Домашнее правило,
+    включено по умолчанию; выключается настройкой кампании ``critical_checks: false``."""
+    return (ctx.campaign.settings or {}).get("critical_checks", True) is not False
+
+
+def _edge_reason(edge: str, why: str | None) -> str | None:
+    if edge == "none":
+        return None
+    why = (why or "").strip()
+    if not why:
+        word = "преимущество" if edge == "advantage" else "помеху"
+        raise ToolError(f"укажите в edge_reason, за что {word}: игрок увидит причину в карточке броска")
+    return why
 
 
 def _inspire(ctx: ToolContext, act: Actor, use: bool, mode, reasons: list) -> tuple | None:
@@ -363,6 +390,8 @@ class AttackArgs(BaseModel):
     target_id: str
     attack: str = Field(description="ключ атаки из листа: id предмета инвентаря, ключ оружия или действия существа")
     inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
+    edge: Edge = Field("none", description=EDGE_HINT)
+    edge_reason: str | None = Field(None, max_length=200, description="почему преимущество или помеха — увидят игроки")
 
 
 @tool(
@@ -412,7 +441,7 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальняя атака вплотную к врагу")
     target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
-    mode, am_reasons = am.mode, list(am.reasons)
+    mode, am_reasons = mod.with_circumstance(am.mode, list(am.reasons), a.edge, _edge_reason(a.edge, a.edge_reason))
     spent = _inspire(ctx, att, a.inspiration, mode, am_reasons)
     if spent:
         mode, am_reasons, spent = spent
@@ -429,6 +458,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         "critical": critical,
         "mode": str(mode),
     }
+    if roll.roll.natural == 1:
+        result["fumble"] = True  # натуральная 1: не просто промах, неудача оборачивается против атакующего
     if am_reasons:
         result["reasons"] = am_reasons
     if spent:
@@ -1742,9 +1773,11 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
         act = ctx.world.actor(i)
         if not act.alive:
             continue
-        roll = engine.initiative(ctx.dice, act.mods["dex"], RollMode.NORMAL)
+        # инициатива — проверка Ловкости (SRD): эффекты с преимуществом или помехой на неё действуют
+        mode, reasons = mod.roll_mode(act.modifiers, "check", "dex")
+        roll = engine.initiative(ctx.dice, act.mods["dex"], mode)
         entries.append((act.id, roll, act.mods["dex"]))
-        dice.append({"who": act.id, **dice_json(roll)})
+        dice.append({"who": act.id, **dice_json(roll), **({"reasons": reasons} if reasons else {})})
     order = engine.initiative_order(entries)
     totals = {e[0]: e[1].total for e in entries}
     sc.mode, sc.round = "combat", 1
