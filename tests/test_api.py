@@ -40,7 +40,9 @@ def test_create_campaign_seats_and_party_size(client, admin):
     c = make_campaign(client, admin)
     assert c["party_size_recommended"] == 4
     assert [s["role"] for s in c["seats"]] == ["master"] + ["player"] * 4
-    assert c["seats"][0]["occupant_type"] == "agent" and c["seats"][0]["agent_provider"] == "claude"
+    assert (
+        c["seats"][0]["occupant_type"] == "agent" and c["seats"][0]["agent_provider"] == "env"
+    )  # провайдер и модели — из .env сервера
     assert c["settings"]["turn_timeout_sec"] == 300 and c["settings"]["spend_limit_usd"] is None
     c2 = make_campaign(client, admin, players=6, master={"type": "owner"})
     assert len(c2["seats"]) == 7 and c2["my_role"] == "master"

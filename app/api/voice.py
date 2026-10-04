@@ -56,18 +56,9 @@ async def get_voice(campaign_id: str, voice_id: str, request: Request, user: Use
     msg = (await session.scalars(q)).first()
     seats = [viewer.seat.id] if viewer.seat else []
     seats += stand_in_seats(viewer.campaign, user.id)
-    if msg is not None:
-        if not any(visible(msg, s) for s in seats or [None]):
-            raise NotFound("запись не найдена")
-    else:
-        # Если сообщение ещё не закоммичено в БД (например, идёт стримминг от мастера),
-        # разрешаем доступ, если файл записан мастером (нарация для всех) или самим пользователем.
-        try:
-            m = voice.meta(request.app.state.settings.media_dir, campaign_id, voice_id)
-            if m.get("user_id") != "master" and m.get("user_id") != user.id:
-                raise NotFound("запись не найдена")
-        except NotFound:
-            raise NotFound("запись не найдена") from None
+    # запись отдаётся только вместе с видимым сообщением: голос мастера прикрепляется к тексту хода при коммите
+    if msg is None or not any(visible(msg, s) for s in seats or [None]):
+        raise NotFound("запись не найдена")
     meta, audio = voice.read(request.app.state.settings.media_dir, campaign_id, voice_id)
     return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})
 
@@ -89,6 +80,8 @@ async def admin_voice_check(request: Request, user: UserDep) -> dict:
 @router.get("/voice/tts-test")
 async def tts_test(request: Request, user: UserDep, provider: str = "gemini", voice: str = "Fenrir") -> Response:
     """Генерация тестовой аудиозаписи для проверки настроек TTS."""
+    if not is_admin(user):
+        raise AccessDenied("проверка озвучки доступна Admin и Super Admin: синтез речи платный")
     tts_manager: TTSManager = request.app.state.tts
     engine = tts_manager.get_engine(provider)
     if not engine.enabled:

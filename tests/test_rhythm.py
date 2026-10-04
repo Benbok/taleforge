@@ -59,7 +59,7 @@ def test_session_rhythm_and_epilogue(game_client, admin_g, llm, settings):
     (camp,) = rows(settings, Campaign, Campaign.id == cid)
     assert camp.status == "ended" and camp.settings["epilogue"]["fates"] == {hero["id"]: "Бран стал смотрителем маяка."}
     purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle")]
-    assert purposes == ["session_hook", "intro", "session_goal", "epilogue", "epilogue"]
+    assert purposes == ["session_hook", "campaign_intro", "intro", "session_goal", "epilogue", "epilogue"]
 
 
 def test_no_rhythm_without_plan(game_client, admin_g, llm, settings):

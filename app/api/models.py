@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from app.agents.providers import check_model, list_local_models, provider_status
+from app.agents.providers import PROVIDER_INFO, check_model, list_local_models, provider_status
 from app.api.deps import UserDep
 from app.api.schemas import ProviderOut
 from app.config import update_env
@@ -37,6 +37,8 @@ class ProviderActivePatch(BaseModel):
 @router.patch("/providers/active")
 async def set_active_provider(body: ProviderActivePatch, user: UserDep):
     require_admin(user)
+    if body.provider not in PROVIDER_INFO:
+        raise Conflict(f"провайдер один из: {', '.join(PROVIDER_INFO)}")
     update_env("LLM_PROVIDER", body.provider)
     return {"ok": True}
 

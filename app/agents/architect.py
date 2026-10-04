@@ -235,7 +235,14 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 await set_status(s, c, status="failed", error="; ".join(errors)[:1000])
             await s.commit()
             await publish(svc, cid, c)
-            return version_id
+        if version_id is not None:
+            from app.agents import prelude
+
+            try:  # вступление с голосом готовится сразу, чтобы старт кампании не ждал модель
+                await prelude.prepare_campaign_intro(svc, cid)
+            except Exception:  # noqa: BLE001 — без заготовки вступление напишется при старте
+                log.exception("вступление кампании %s не подготовлено", cid)
+        return version_id
     except Exception as e:  # noqa: BLE001 — сбой генерации не должен ронять сервер
         log.exception("каркас кампании %s не построен", cid)
         async with svc.maker() as s:

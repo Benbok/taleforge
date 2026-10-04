@@ -5,7 +5,6 @@ import ActionButton from "../components/ActionButton";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field, Segmented } from "../components/Form";
 import Header from "../components/Header";
-import WorldIntroPlayer from "../components/WorldIntroPlayer";
 import BriefForm from "../cabinet/BriefForm";
 import PersonaPicker from "../cabinet/PersonaPicker";
 import { api } from "../lib/api";
@@ -509,13 +508,6 @@ export default function NewCampaignPage() {
                 Финальная проверка параметров перед созданием кампании
               </p>
             </div>
-
-            {(!draft.pack_id || draft.pack_id === "echo-leviathans") && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-ink">Аудиовводная вселенной</span>
-                <WorldIntroPlayer />
-              </div>
-            )}
 
             <Field
               label="Публичное вступление (афиша стола)"

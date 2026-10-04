@@ -96,10 +96,11 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     secret = game_client.portal.call(_plot, game_client, cid)
     assert secret["hooks"][hero["id"]]["ref"] == "npc_warden"
 
-    # новая сессия: мастер выдаёт интро кампании, затем представляет отряд; личные ответы в текст для всех не попадают
+    # новая сессия: вступление ко всей кампании, затем мастер представляет отряд; каркас и личные ответы
+    # в текст для всех не попадают
     llm.replies += [
         {"tool_calls": [(rhythm.NEXT_TOOL, {"hook": "Туман зовёт."})]},
-        {"text": "Древний туман окутал побережье Солёной бухты. Здесь начинаются забытые тропы."},
+        {"text": "Древний туман окутал побережье Солёной бухты.", "campaign_intro": True},
         {"text": "**Бран** стоит у причала Солёной бухты, рядом [[en_x|незнакомец]]."},
         {"tool_calls": [(rhythm.GOAL_TOOL, {"goal": "Найти корабль."})]},
     ]
@@ -107,17 +108,15 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     game_client.portal.call(game_client.app.state.master.wait_idle, cid)
     ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    camp_intro_req = llm.requests[4]
-    camp_text = camp_intro_req["messages"][1]["content"]
-    assert "2–4 абзаца" in camp_text
-    hero_intro_req = llm.requests[5]
-    text = hero_intro_req["messages"][1]["content"]
-    assert "120–200 слов" in text and "Бран" in text and "ты играешь" not in text
-    assert "Связи героев (ответы игроков)" in text and "Характеры героев:" in text
-    msgs = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")
-    camp_msg = msgs[-3]
-    msg = msgs[-2]
-    assert "Древний туман" in camp_msg.content
+    (camp_req,) = llm.intro_requests  # вступление ко всей кампании — одно, при первом старте с каркасом
+    assert "2–4 абзаца" in camp_req["messages"][1]["content"]
+    assert "Брата" not in camp_req["messages"][1]["content"]  # ответы о связях — не для общего вступления
+    intro_req = llm.requests[4]
+    text = intro_req["messages"][1]["content"]
+    assert "120–200 слов" in text and "Брата" in text and "Капитану Марте" not in text
+    assert "Первая сцена (тайно" in text and "Бертольд сдал брата" in text
+    *_, camp_msg, msg, _goal = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")
+    assert "Древний туман" in camp_msg.content and camp_msg.seq < msg.seq
     # место первой сцены вошло в мир до вступления, имена стали ссылками сами, жирный шрифт модели снят
     (bay,) = rows(settings, Entity, Entity.campaign_id == cid, Entity.kind == "location")
     assert bay.name == "Солёная бухта" and bay.description == "Сырость и тревога"
@@ -134,15 +133,24 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     llm.replies += [{"text": "Гимли выходит из тумана."}, DONE, DONE, {"text": "Причал пуст."}]
     first = act(game_client, p1, cid, "Жду")
     assert first["content"] == f"[[{ch2['id']}|Гимли]] выходит из тумана."
-    assert "50–100 слов" in llm.requests[7]["messages"][1]["content"]
+    assert "50–100 слов" in llm.requests[6]["messages"][1]["content"]
     assert (
-        "Гимли" in llm.requests[7]["messages"][1]["content"]
-        and "Бран (" not in llm.requests[7]["messages"][1]["content"]
+        "Гимли" in llm.requests[6]["messages"][1]["content"]
+        and "Бран (" not in llm.requests[6]["messages"][1]["content"]
     )
     purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle")]
-    assert purposes[:8] == ["bonds", "hook", "hook", "session_hook", "campaign_intro", "intro", "session_goal", "intro"]
+    assert purposes[:8] == [
+        "bonds",
+        "hook",
+        "hook",
+        "session_hook",
+        "campaign_intro",
+        "intro",
+        "session_goal",
+        "intro",
+    ]
     # ответы о связях видит мастер в ходе
-    assert "Связи героев (ответы игроков)" in llm.requests[8]["messages"][0]["content"]
+    assert "Связи героев (ответы игроков)" in llm.requests[7]["messages"][0]["content"]
 
 
 async def _plot(client, cid):
