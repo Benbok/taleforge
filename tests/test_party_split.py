@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.agents import memory
 from app.agents.llm import ScriptedLLM
 from app.db.models import Campaign, Message
 from app.main import create_app
@@ -152,6 +153,9 @@ def test_split_party_has_own_chat_and_meets_again(game_client, admin_g, llm, set
     theirs = {m["content"] for m in _seen(game_client, p1, cid)}
     assert {"Осматриваю доки", "В доках пахнет тиной."} <= mine
     assert not {"Осматриваю доки", "В доках пахнет тиной."} & theirs
+    # сводка кампании для памяти мастера помнит и то, что было порознь
+    remembered = run(settings, lambda s: memory.public_messages(s, cid, 0))
+    assert "В доках пахнет тиной." in {m.content for m in remembered}
 
     # Бран приходит в доки: встреча видна обоим, мастер пересказывает, что было с Гимли
     llm.replies += [

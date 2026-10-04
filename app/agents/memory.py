@@ -85,14 +85,15 @@ async def latest(s, campaign_id: str) -> Summary | None:
 
 async def public_messages(s, campaign_id: str, after_seq: int) -> list[Message]:
     """Публичные сообщения после ``after_seq``: без шёпотов (JSON null в SQLite не равен SQL NULL, поэтому
-    видимость проверяется в Python)."""
+    видимость проверяется в Python). Сообщения части разделившегося отряда (``data.place``) входят: иначе
+    мастер забудет всё, что было порознь."""
     q = (
         select(Message)
         .where(Message.campaign_id == campaign_id, Message.seq > after_seq, Message.kind.in_(PUBLIC_KINDS))
         .order_by(Message.seq.desc())
         .limit(SUMMARY_INPUT_LIMIT)
     )
-    return [m for m in reversed((await s.scalars(q)).all()) if not m.visible_to]
+    return [m for m in reversed((await s.scalars(q)).all()) if not m.visible_to or (m.data or {}).get("place")]
 
 
 def render_content(c: dict[str, Any] | None) -> str:
