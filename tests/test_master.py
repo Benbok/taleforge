@@ -62,7 +62,7 @@ def act(client, head, cid, text):
                 client.portal.call(client.app.state.master.wait_idle, cid)
                 msg_id = e["payload"]["id"]
 
-                async def get_msg():
+                async def get_msg(msg_id=msg_id):
                     async with client.app.state.sessionmaker() as s:
                         m = await s.get(Message, msg_id)
                         return m.content if m else ""

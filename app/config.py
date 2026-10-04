@@ -62,8 +62,6 @@ class Settings:
     voicestudio_api_base: str = "http://host.docker.internal:3900/v1"
     voicestudio_api_key: str | None = None
     voicestudio_voice: str = "demo0001"
-    
-    
 
     llm_provider: str = "claude"
     gemini_main_model: str = "gemini-2.5-pro"
@@ -103,8 +101,6 @@ class Settings:
             voicestudio_api_base=_env("VOICESTUDIO_API_BASE", cls.voicestudio_api_base),
             voicestudio_api_key=_env("VOICESTUDIO_API_KEY", cls.voicestudio_api_key),
             voicestudio_voice=_env("VOICESTUDIO_VOICE", cls.voicestudio_voice),
-            
-            
             llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
             gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
             gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
@@ -114,8 +110,10 @@ class Settings:
             local_technical_model=_env("LOCAL_TECHNICAL_MODEL", cls.local_technical_model),
         )
 
+
 def update_env(key: str, value: str):
     import re
+
     env_path = ROOT / ".env"
     if not env_path.exists():
         env_path.write_text(f"{key}={value}\n", encoding="utf-8")
@@ -128,12 +126,11 @@ def update_env(key: str, value: str):
                 content += "\n"
             content += f"{key}={value}\n"
         env_path.write_text(content, encoding="utf-8")
-    
+
     # Reload DOTENV and settings dynamically
     global DOTENV, settings
     DOTENV = _load_env_file(ROOT / ".env")
     settings = Settings.from_env()
 
+
 settings = Settings.from_env()
-
-

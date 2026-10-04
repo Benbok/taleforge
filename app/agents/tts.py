@@ -129,11 +129,7 @@ class GeminiTTS(TTSEngine):
             "contents": [{"parts": [{"text": clean}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
-                "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {"voiceName": resolved_voice}
-                    }
-                },
+                "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": resolved_voice}}},
             },
         }
         if not self.model.endswith("-tts"):
@@ -175,7 +171,6 @@ class GeminiTTS(TTSEngine):
             return None
 
 
-
 class VoiceStudioTTS(TTSEngine):
     """OpenAI-compatible TTS engine for Voice Studio with dynamic profile resolution."""
 
@@ -202,6 +197,7 @@ class VoiceStudioTTS(TTSEngine):
     async def _get_profile(self, voice_id: str) -> dict[str, Any] | None:
         """Fetch and cache profile metadata from Voice Studio to dynamically apply language, seed, etc."""
         import time
+
         now = time.time()
         if not self._profiles_cache or (now - self._profiles_cache_time) > 60.0:
             profiles_url = f"{self.api_base.rsplit('/v1', 1)[0]}/profiles"
@@ -215,9 +211,7 @@ class VoiceStudioTTS(TTSEngine):
                         data = resp.json()
                         if isinstance(data, list):
                             self._profiles_cache = {
-                                str(p.get("id")): p
-                                for p in data
-                                if isinstance(p, dict) and p.get("id")
+                                str(p.get("id")): p for p in data if isinstance(p, dict) and p.get("id")
                             }
                             self._profiles_cache_time = now
             except Exception as e:
@@ -231,7 +225,7 @@ class VoiceStudioTTS(TTSEngine):
 
         resolved_voice = voice_name or self.voice
         url = f"{self.api_base}/audio/speech"
-        
+
         payload: dict[str, Any] = {
             "model": "tts-1",
             "input": clean,
@@ -263,7 +257,7 @@ class VoiceStudioTTS(TTSEngine):
                 if res.status_code != 200:
                     log.warning("Voice Studio TTS error %s: %s", res.status_code, res.text[:500])
                     return None
-                
+
                 duration = max(0.1, len(res.content) / 32000.0)
                 return res.content, "audio/wav", duration
         except Exception as e:
@@ -275,17 +269,22 @@ class DisabledTTS(TTSEngine):
     @property
     def enabled(self) -> bool:
         return False
-        
+
     async def synthesize(self, text: str, voice_name: str | None = None) -> tuple[bytes, str, float] | None:
         return None
-
 
 
 class TTSManager:
     def __init__(self, settings):
         self.engines = {
-            "gemini": GeminiTTS(api_key=settings.gemini_tts_api_key, model=settings.gemini_tts_model, voice=settings.gemini_tts_voice),
-            "voicestudio": VoiceStudioTTS(api_base=settings.voicestudio_api_base, api_key=settings.voicestudio_api_key, voice=settings.voicestudio_voice),
+            "gemini": GeminiTTS(
+                api_key=settings.gemini_tts_api_key, model=settings.gemini_tts_model, voice=settings.gemini_tts_voice
+            ),
+            "voicestudio": VoiceStudioTTS(
+                api_base=settings.voicestudio_api_base,
+                api_key=settings.voicestudio_api_key,
+                voice=settings.voicestudio_voice,
+            ),
         }
         self.default_provider = settings.tts_provider
 
@@ -294,7 +293,12 @@ class TTSManager:
         return self.engines.get(p) or self.engines["gemini"]
 
     async def voice_for_narration(
-        self, media_dir, campaign_id: str, narration_text: str, provider: str | None = None, voice_name: str | None = None
+        self,
+        media_dir,
+        campaign_id: str,
+        narration_text: str,
+        provider: str | None = None,
+        voice_name: str | None = None,
     ):
         engine = self.get_engine(provider)
         if not engine.enabled:
@@ -302,4 +306,3 @@ class TTSManager:
         if provider and provider not in ("gemini", "voicestudio"):
             voice_name = None
         return await engine.voice_for_narration(media_dir, campaign_id, narration_text, voice_name)
-

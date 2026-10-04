@@ -45,6 +45,7 @@ def explain(error: str) -> str:
 
 def local_api_base(api_base: str | None = None) -> str:
     from app.config import _env
+
     return (api_base or _env("LM_STUDIO_API_BASE") or LM_STUDIO_DEFAULT_BASE).rstrip("/")
 
 
@@ -53,7 +54,7 @@ def provider_status() -> list[dict[str, Any]]:
     active = settings.llm_provider
     for pid, info in PROVIDER_INFO.items():
         keys = info["key_env"]
-        
+
         main_model = None
         technical_model = None
         if pid == "claude":

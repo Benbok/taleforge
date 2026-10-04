@@ -236,6 +236,7 @@ def test_describe_and_route_helpers():
 
 def test_litellm_prompt_caching_injection(monkeypatch):
     import litellm
+
     from app.agents.llm import LiteLLMClient
 
     captured_kwargs = {}
@@ -266,5 +267,3 @@ def test_litellm_prompt_caching_injection(monkeypatch):
     # Для локальной модели — не трогаем (остаётся строкой)
     asyncio.run(client.complete(msgs, model="lm_studio/qwen2.5"))
     assert captured_kwargs["messages"][0]["content"] == long_sys
-
-

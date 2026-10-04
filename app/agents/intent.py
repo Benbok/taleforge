@@ -353,4 +353,3 @@ def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, An
         }
 
     return None
-

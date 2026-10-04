@@ -535,5 +535,3 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
         # Проверяем, что в TTS ушла короткая реплика, а не длинный нарратив
         assert synthesized_texts == ["Отличный прыжок, храбрец!"]
         assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
-
-

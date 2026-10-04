@@ -15,6 +15,7 @@ from typing import Any, Protocol
 
 from app.config import settings
 
+
 class LLMError(Exception):
     pass
 
@@ -57,6 +58,7 @@ class LLM(Protocol):
 def _get_provider() -> str:
     return settings.llm_provider
 
+
 def _ensure_prefix(p: str, m: str) -> str:
     prefixes = {"claude": "anthropic/", "gemini": "gemini/", "local": "lm_studio/"}
     prefix = prefixes.get(p, "")
@@ -64,12 +66,13 @@ def _ensure_prefix(p: str, m: str) -> str:
         return prefix + m
     return m
 
+
 def model_for(provider: str | None = None, model: str | None = None) -> str:
     """Gets the main model for a provider from settings."""
     p = provider or _get_provider()
     if model:
         return _ensure_prefix(p, model)
-        
+
     if p == "gemini":
         return _ensure_prefix(p, settings.gemini_main_model)
     elif p == "claude":
@@ -84,7 +87,7 @@ def parser_model_for(provider: str | None = None, model: str | None = None) -> s
     p = provider or _get_provider()
     if model:
         return _ensure_prefix(p, model)
-        
+
     if p == "gemini":
         return _ensure_prefix(p, settings.gemini_technical_model)
     elif p == "claude":
@@ -127,9 +130,7 @@ class LiteLLMClient:
                     cached_messages.append(
                         {
                             **m,
-                            "content": [
-                                {"type": "text", "text": m["content"], "cache_control": {"type": "ephemeral"}}
-                            ],
+                            "content": [{"type": "text", "text": m["content"], "cache_control": {"type": "ephemeral"}}],
                         }
                     )
                 else:
@@ -153,7 +154,7 @@ class LiteLLMClient:
         except Exception as e:  # noqa: BLE001 — любая ошибка провайдера останавливает ход, а не сервер
             raise LLMError(f"{type(e).__name__}: {e}") from e
         latency = int((time.monotonic() - started) * 1000)
-        
+
         if stream_callback:
             chunks = []
             async for chunk in resp:
@@ -212,7 +213,16 @@ class ScriptedLLM:
         self.voice_requests: list[dict[str, Any]] = []
 
     async def complete(
-        self, messages, *, model, tools=None, tool_choice=None, max_tokens=4096, temperature=None, api_base=None, stream_callback=None
+        self,
+        messages,
+        *,
+        model,
+        tools=None,
+        tool_choice=None,
+        max_tokens=4096,
+        temperature=None,
+        api_base=None,
+        stream_callback=None,
     ) -> LLMReply:
         req = {"messages": [dict(m) for m in messages], "tools": tools, "model": model, "api_base": api_base}
         auto = _auto_tool(tools)
@@ -227,7 +237,12 @@ class ScriptedLLM:
             self.voice_requests.append(req)
             return LLMReply(text="Осторожнее на выступе!", model=model, tokens_in=10, tokens_out=5)
         if _is_emotion(messages):
-            return LLMReply(text='{"anger": 0.0, "joy": 0.0, "suspicion": 0.0, "boredom": 0.0}', model=model, tokens_in=10, tokens_out=5)
+            return LLMReply(
+                text='{"anger": 0.0, "joy": 0.0, "suspicion": 0.0, "boredom": 0.0}',
+                model=model,
+                tokens_in=10,
+                tokens_out=5,
+            )
         self.requests.append(req)
         if not self.replies:
             raise LLMError("ScriptedLLM: ответы закончились")
@@ -237,6 +252,7 @@ class ScriptedLLM:
         text_val = r.text if isinstance(r, LLMReply) else r.get("text", "")
         if stream_callback and text_val:
             import inspect
+
             if inspect.iscoroutinefunction(stream_callback):
                 await stream_callback(text_val)
             else:
@@ -255,9 +271,7 @@ class ScriptedLLM:
                 {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.raw_arguments}}
                 for c in calls
             ]
-        return LLMReply(
-            text=text_val, tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5
-        )
+        return LLMReply(text=text_val, tool_calls=calls, message=message, model=model, tokens_in=10, tokens_out=5)
 
     def _next_is(self, tool: str) -> bool:
         r = self.replies[0] if self.replies else None

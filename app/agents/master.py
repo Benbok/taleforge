@@ -31,7 +31,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.agents import character, memory, rhythm
 from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, model_for, parser_model_for
-from app.emotion import EmotionEngine, PlayerActionContext
 from app.agents.providers import explain
 from app.core import audio, bonds, combat, persona, plot
 from app.core.brief import brief_text
@@ -191,7 +190,8 @@ class MasterService:
         self._spawn(prelude.make_hook(self, campaign_id, character_id))
 
     def schedule_session_open(self, campaign_id: str, session_id: str | None) -> None:
-        """Старт сессии: интро всей кампании, вступление для новых героев, затем цель на вечер (ИИ-мастер с каркасом)."""
+        """Старт сессии: интро всей кампании, вступление для новых героев, затем цель на вечер
+        (ИИ-мастер с каркасом)."""
         from app.agents import rhythm
 
         async def run() -> None:
@@ -565,9 +565,7 @@ class MasterService:
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
             else:
-                routed.append(
-                    f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании"
-                )
+                routed.append(f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании")
         route_note = ""
         if routed:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
@@ -660,7 +658,12 @@ class MasterService:
         tts_on = bool((c.settings or {}).get("tts_enabled", True))
         tts_voice = (c.settings or {}).get("tts_voice")
         tts_provider = (c.settings or {}).get("tts_provider")
-        tts_ready = getattr(self, "tts", None) and getattr(self.tts, "get_engine", lambda p: self.tts)(tts_provider).enabled and getattr(self, "media_dir", None) and tts_on
+        tts_ready = (
+            getattr(self, "tts", None)
+            and getattr(self.tts, "get_engine", lambda p: self.tts)(tts_provider).enabled
+            and getattr(self, "media_dir", None)
+            and tts_on
+        )
 
         voice_line_text: str | None = None
         voice_data = None
@@ -670,7 +673,9 @@ class MasterService:
                 voice_line_text = await self._voice_line(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes)
                 if voice_line_text:
                     tts_provider = (c.settings or {}).get("tts_provider")
-                    voice_data = await self.tts.voice_for_narration(self.media_dir, cid, voice_line_text, provider=tts_provider, voice_name=tts_voice)
+                    voice_data = await self.tts.voice_for_narration(
+                        self.media_dir, cid, voice_line_text, provider=tts_provider, voice_name=tts_voice
+                    )
             except Exception:
                 log.warning("ошибка генерации/озвучки voice_line", exc_info=True)
                 voice_line_text = None
@@ -693,22 +698,32 @@ class MasterService:
         )
         s.add(msg)
         await s.flush()
-        
+
         await publish_message(self.bus, msg)
 
         async def stream_chunk(chunk: str):
             await self.bus.publish(cid, envelope("message.chunk", cid, {"id": msg.id, "chunk": chunk}), None)
 
         narration, audit = await self._narrate(
-            calls, cfg, c, seat.id, turn_id, system, convo, news, ctx, combat_notes, plot_notes,
-            stream_callback=stream_chunk
+            calls,
+            cfg,
+            c,
+            seat.id,
+            turn_id,
+            system,
+            convo,
+            news,
+            ctx,
+            combat_notes,
+            plot_notes,
+            stream_callback=stream_chunk,
         )
 
         whispers = await flush_outbox(s, ctx)
         linked = await link_text(s, cid, narration)
-        
+
         msg.content = linked
-        
+
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             "calls": trace_calls,
@@ -724,7 +739,19 @@ class MasterService:
         return {"ctx": ctx, "messages": [*whispers, msg], "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _narrate(
-        self, calls, cfg, c, seat_id, turn_id, system, convo, news, ctx: ToolContext, notes=(), plot_notes=(), stream_callback=None
+        self,
+        calls,
+        cfg,
+        c,
+        seat_id,
+        turn_id,
+        system,
+        convo,
+        news,
+        ctx: ToolContext,
+        notes=(),
+        plot_notes=(),
+        stream_callback=None,
     ):
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
@@ -747,7 +774,9 @@ class MasterService:
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=stream_callback)
+        reply = await self._ask(
+            calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=stream_callback
+        )
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
         if unknown:
@@ -820,9 +849,7 @@ class MasterService:
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ]
-        reply = await self._ask(
-            calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model
-        )
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model)
         text = reply.text.strip().strip("\"'«»—–- ").strip()
         text = MARKUP.sub(r"\2", text)
         return text or "Вперёд!"
@@ -1061,7 +1088,7 @@ class MasterService:
             if ch is None:
                 return intents.ParseResult()
             info, values = intents.context_for(ctx.world, ch)
-            ch_id, provider, cfg_model, master_seat_id = ch.id, cfg.provider, cfg.model, seat.id
+            ch_id, provider, master_seat_id = ch.id, cfg.provider, seat.id
             api_base = (cfg.settings or {}).get("api_base")
             await s.rollback()
         model = parser_model_for()

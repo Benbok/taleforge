@@ -67,7 +67,7 @@ async def get_voice(campaign_id: str, voice_id: str, request: Request, user: Use
             if m.get("user_id") != "master" and m.get("user_id") != user.id:
                 raise NotFound("запись не найдена")
         except NotFound:
-            raise NotFound("запись не найдена")
+            raise NotFound("запись не найдена") from None
     meta, audio = voice.read(request.app.state.settings.media_dir, campaign_id, voice_id)
     return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})
 
@@ -93,12 +93,12 @@ async def tts_test(request: Request, user: UserDep, provider: str = "gemini", vo
     engine = tts_manager.get_engine(provider)
     if not engine.enabled:
         raise HTTPException(400, "Провайдер выключен или не настроен в .env")
-    
+
     text_ru = f"Приветствую! Это проверка синтеза речи. Выбранный провайдер: {provider}. Надеюсь, звучит отлично!"
     res = await engine.synthesize(text_ru, voice_name=voice if provider in ("gemini", "voicestudio") else None)
     if not res:
         raise HTTPException(500, "Ошибка синтеза речи")
-    
+
     audio_bytes, mime, dur = res
     return Response(content=audio_bytes, media_type=mime)
 
@@ -106,7 +106,9 @@ async def tts_test(request: Request, user: UserDep, provider: str = "gemini", vo
 @router.get("/voice/vs-profiles")
 async def get_vs_profiles(user: UserDep):
     import httpx
+
     from app.config import settings
+
     url = f"{settings.voicestudio_api_base.replace('/v1', '')}/profiles"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
