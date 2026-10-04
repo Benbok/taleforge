@@ -31,6 +31,7 @@ STALL_TURNS = 3  # ходов подряд без продвижения: мас
 # Вызовы, после которых история сдвинулась: новое место, находка, новый участник, событие мира, шаг сюжета
 PROGRESS_TOOLS = {
     "move",
+    "enter_room",
     "make_current",
     "create_location",
     "link_locations",

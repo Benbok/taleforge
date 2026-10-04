@@ -352,7 +352,7 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
         # move в бою: герой вошёл в бой или ушёл из него — очередь сдвинулась
-        if name == "set_scene_mode" or (name == "move" and combat.in_combat(ctx)):
+        if name == "set_scene_mode" or (name in ("move", "enter_room") and combat.in_combat(ctx)):
             if combat.in_combat(ctx):
                 _background(app.state.master.advance(conn.campaign_id, "sync"))  # первыми могут ходить существа
             else:

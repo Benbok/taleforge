@@ -1,4 +1,5 @@
 import { useEffect, type MouseEvent } from "react";
+import BookMap from "./BookMap";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
 import { GridLines, roomForLabel, Token } from "./GridBoard";
@@ -351,6 +352,7 @@ export default function MapWindow() {
           {(
             [
               ["around", "Вокруг"],
+              ...(data?.book ? ([["book", "Карта книги"]] as const) : []),
               ["places", "Места"],
             ] as const
           ).map(([t, name]) => (
@@ -366,7 +368,9 @@ export default function MapWindow() {
         <div className="overflow-y-auto p-4">
           {!data ? (
             <p className="text-center font-mono text-xs text-muted">{error ?? "Загружаю карту…"}</p>
-          ) : tab === "around" ? (
+          ) : tab === "book" && data.book ? (
+            <BookMap book={data.book} />
+          ) : tab === "around" || tab === "book" ? (
             data.here ? (
               <Around m={data} />
             ) : (

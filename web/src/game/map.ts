@@ -67,7 +67,19 @@ export interface MapPlace {
   status: "here" | "visited" | "known";
 }
 
+/** Карта места готового приключения: картинка из книги, комнаты отряда и герои на клетках (доли картинки). */
+export interface MapBook {
+  module_id: string;
+  map_id: string;
+  name: string;
+  grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
+  here: string | null;
+  rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean }[];
+}
+
 export interface MapState {
+  book?: MapBook | null;
   here: { id: string; name: string; description: string | null } | null;
   around: MapThing[];
   party?: MapHero[];
@@ -79,7 +91,7 @@ export interface MapState {
   bearings: Record<Bearing, string>;
 }
 
-type Tab = "around" | "places";
+type Tab = "around" | "places" | "book";
 
 interface MapWindowState {
   open: boolean;

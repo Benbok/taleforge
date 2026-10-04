@@ -24,6 +24,7 @@ import {
   type Pack,
   type Persona,
   type PersonaPick,
+  type PublishedModule,
   type Room,
 } from "../lib/campaign";
 import { useSession } from "../stores/session";
@@ -42,6 +43,11 @@ export default function NewCampaignPage() {
   const admin = user.platform_role !== "player";
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options"), enabled: admin });
   const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs"), enabled: admin });
+  const modules = useQuery({
+    queryKey: ["published-modules"],
+    queryFn: () => api<PublishedModule[]>("/api/modules"),
+    enabled: admin,
+  });
   const personas = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas"), enabled: admin });
   const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets"), enabled: admin });
   const size = useQuery({
@@ -57,6 +63,8 @@ export default function NewCampaignPage() {
   const go = (step: number) => set({ step: Math.max(0, Math.min(WIZARD_STEPS.length - 1, step)) });
   const problems = stepProblems(draft, draft.step);
   const owner = draft.master === "owner";
+  const fromBook = draft.source === "module";
+  const book = fromBook ? modules.data?.find((m) => m.id === draft.module_id) : undefined;
 
   async function create() {
     const bad = WIZARD_STEPS.map((_, i) => stepProblems(draft, i)).flat();
@@ -64,7 +72,7 @@ export default function NewCampaignPage() {
     const c = await api<Room>("/api/campaigns", { body: createBody(draft) });
     saveDraft(user.id, null);
     await qc.invalidateQueries({ queryKey: ["my-campaigns"] });
-    if (draft.plan_now && !owner) {
+    if (draft.plan_now && !owner && !fromBook) {
       await api(`/api/campaigns/${c.id}/plan`, { body: {} }).catch((e: Error) =>
         toast.error(`Сюжет не запущен: ${e.message}`),
       );
@@ -216,17 +224,47 @@ export default function NewCampaignPage() {
               />
             </Field>
 
-            <Field
-              label="Мир и сеттинг"
-              hint="Пакет мира определяет лор, классы, чудовищ и оформление. При выборе базовых правил действует SRD 5.1."
-            >
-              <CustomSelect
-                value={draft.pack_id}
-                options={packOptions}
-                onChange={(val) => set({ pack_id: val, players: null })}
-                ariaLabel="Мир кампании"
+            {(modules.data?.length ?? 0) > 0 && (
+              <Field
+                label="Сюжет"
+                hint={
+                  fromBook
+                    ? "Мастер ведёт по книге: комнаты, проверки и сокровища берутся из приключения."
+                    : "Сюжетную арку построит ИИ-архитектор по вашей анкете."
+                }
+              >
+                <Segmented
+                  label="Сюжет"
+                  value={draft.source}
+                  options={[
+                    ["plot", "Свой сюжет"],
+                    ["module", "Готовое приключение"],
+                  ]}
+                  onChange={(v) => set({ source: v as CampaignDraft["source"] })}
+                />
+              </Field>
+            )}
+
+            {fromBook ? (
+              <ModulePick
+                modules={modules.data ?? []}
+                moduleId={draft.module_id}
+                hookId={draft.module_hook}
+                onChange={(patch) => set(patch)}
               />
-            </Field>
+            ) : (
+              <Field
+                label="Мир и сеттинг"
+                hint="Пакет мира определяет лор, классы, чудовищ и оформление. При выборе базовых правил действует SRD 5.1."
+              >
+                <CustomSelect
+                  value={draft.pack_id}
+                  options={packOptions}
+                  onChange={(val) => set({ pack_id: val, players: null })}
+                  ariaLabel="Мир кампании"
+                />
+              </Field>
+            )}
 
             <Field label="Уровень сложности вызовов">
               <Segmented
@@ -237,21 +275,29 @@ export default function NewCampaignPage() {
               />
             </Field>
 
-            <Field label="Рост уровней" hint={LEVELING_HINT[draft.leveling]}>
-              <Segmented
-                label="Рост уровней"
-                value={draft.leveling}
-                options={Object.entries(LEVELING_RU)}
-                onChange={(v) => set({ leveling: v as CampaignDraft["leveling"] })}
-              />
-            </Field>
+            {fromBook ? (
+              <p className="text-xs text-muted">
+                Рост уровней — по вехам книги: мастер поднимает уровень героям, когда отряд проходит этап приключения.
+              </p>
+            ) : (
+              <Field label="Рост уровней" hint={LEVELING_HINT[draft.leveling]}>
+                <Segmented
+                  label="Рост уровней"
+                  value={draft.leveling}
+                  options={Object.entries(LEVELING_RU)}
+                  onChange={(v) => set({ leveling: v as CampaignDraft["leveling"] })}
+                />
+              </Field>
+            )}
 
             <Field
               label="Количество игроков за столом"
               hint={
-                size.data
-                  ? `Для выбранной сложности рекомендуется ${size.data.recommended} игроков (допустимо от ${size.data.min} до ${size.data.max}).`
-                  : undefined
+                book?.party_size
+                  ? `Приключение рассчитано на отряд из ${book.party_size}.`
+                  : size.data
+                    ? `Для выбранной сложности рекомендуется ${size.data.recommended} игроков (допустимо от ${size.data.min} до ${size.data.max}).`
+                    : undefined
               }
             >
               <input
@@ -487,7 +533,14 @@ export default function NewCampaignPage() {
               </p>
             </div>
 
-            <BriefForm brief={draft.brief} opts={opts.data.brief} onChange={(brief) => set({ brief })} />
+            {fromBook ? (
+              <p className="rounded-[10px] border border-line bg-raised/50 p-3.5 text-sm text-muted">
+                Сюжет, места и противники берутся из приключения «{book?.title ?? "…"}», анкета архитектору не нужна.
+                Запретные темы мастер всё равно обойдёт.
+              </p>
+            ) : (
+              <BriefForm brief={draft.brief} opts={opts.data.brief} onChange={(brief) => set({ brief })} />
+            )}
 
             <Field label="Запретные темы и триггеры" hint="Укажите через запятую: мастер и генератор сюжета гарантированно обойдут их стороной.">
               <input
@@ -511,7 +564,13 @@ export default function NewCampaignPage() {
 
             <Field
               label="Публичное вступление (афиша стола)"
-              hint={owner ? "Её увидят приглашённые игроки." : "Можно оставить пустым: вводную подготовит ИИ-архитектор сюжета."}
+              hint={
+                fromBook
+                  ? "Можно оставить пустым: возьмём завязку из книги."
+                  : owner
+                    ? "Её увидят приглашённые игроки."
+                    : "Можно оставить пустым: вводную подготовит ИИ-архитектор сюжета."
+              }
             >
               <textarea
                 className="field min-h-24 text-sm"
@@ -522,7 +581,7 @@ export default function NewCampaignPage() {
               />
             </Field>
 
-            {!owner && (
+            {!owner && !fromBook && (
               <label className="flex items-start gap-2.5 rounded-[10px] border border-accent/40 bg-accent/10 p-3.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -541,7 +600,7 @@ export default function NewCampaignPage() {
 
             <div>
               <h3 className="font-heading text-base font-bold text-ink mb-2">Формуляр создаваемой кампании:</h3>
-              <Summary draft={draft} opts={opts.data} packs={packs.data ?? []} />
+              <Summary draft={draft} opts={opts.data} packs={packs.data ?? []} book={book} />
             </div>
           </>
         )}
@@ -630,10 +689,12 @@ function Summary({
   draft,
   opts,
   packs,
+  book,
 }: {
   draft: CampaignDraft;
   opts: CampaignOptions;
   packs: Pack[];
+  book?: PublishedModule;
 }) {
   const master =
     draft.master === "owner"
@@ -645,14 +706,21 @@ function Summary({
       ? "Своя персона"
       : null;
   const b = draft.brief;
+  const hook = book?.hooks.find((h) => h.id === draft.module_hook)?.title ?? book?.hooks[0]?.title;
   const rows: [string, string][] = [
     ["Название стола", draft.name || "—"],
-    ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
+    book
+      ? ["Готовое приключение", `«${book.title}»` + (hook ? `, зацепка «${hook}»` : "")]
+      : ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
     ["Сложность", DIFFICULTY_RU[draft.difficulty] ?? draft.difficulty],
-    ["Рост уровней", LEVELING_RU[draft.leveling] ?? draft.leveling],
+    ["Рост уровней", book ? "По вехам книги" : (LEVELING_RU[draft.leveling] ?? draft.leveling)],
     ["Ведущий", master + (persona && draft.master !== "owner" ? ` (${persona})` : "")],
-    ["Длительность", b.length ? opts.brief.length[b.length] : "На усмотрение архитектора"],
-    ["Атмосфера", b.emotions?.length ? b.emotions.map((e) => opts.brief.emotions[e]).join(", ") : "Стандартная"],
+    ...((book
+      ? []
+      : [
+          ["Длительность", b.length ? opts.brief.length[b.length] : "На усмотрение архитектора"],
+          ["Атмосфера", b.emotions?.length ? b.emotions.map((e) => opts.brief.emotions[e]).join(", ") : "Стандартная"],
+        ]) as [string, string][]),
   ];
 
   return (
@@ -664,5 +732,64 @@ function Summary({
         </div>
       ))}
     </dl>
+  );
+}
+
+/** Выбор приключения из библиотеки и зацепки, с которой герои войдут в историю. */
+function ModulePick({
+  modules,
+  moduleId,
+  hookId,
+  onChange,
+}: {
+  modules: PublishedModule[];
+  moduleId: string;
+  hookId: string;
+  onChange: (patch: Partial<CampaignDraft>) => void;
+}) {
+  const book = modules.find((m) => m.id === moduleId);
+  const options: SelectOption[] = modules.map((m) => {
+    const lv = m.levels?.start ? `уровни ${m.levels.start}–${m.levels.end ?? m.levels.start}` : "";
+    const maps = m.maps ? `карт: ${m.maps}` : "без карт";
+    return { value: m.id, label: m.title, sublabel: [lv, maps].filter(Boolean).join(" · "), badge: "КНИГА", badgeTone: "accent" as const };
+  });
+  const chosen = book?.hooks.find((h) => h.id === hookId) ?? book?.hooks[0];
+  return (
+    <>
+      <Field label="Приключение" hint={book?.summary || "Опубликованные приключения из админки, вкладка «Готовые приключения»."}>
+        <CustomSelect
+          value={moduleId}
+          options={[{ value: "", label: "Выберите приключение" }, ...options]}
+          onChange={(val) => onChange({ module_id: val, module_hook: "", players: null })}
+          ariaLabel="Готовое приключение"
+        />
+      </Field>
+      {book && book.hooks.length > 0 && (
+        <Field label="Как герои вступают в историю" hint="Зацепка из книги: с неё начнётся вступление.">
+          <div className="flex flex-col gap-2" role="radiogroup" aria-label="Зацепка">
+            {book.hooks.map((h) => (
+              <label
+                key={h.id}
+                className={`flex cursor-pointer items-start gap-2.5 rounded-[10px] border p-3 text-sm transition ${
+                  chosen?.id === h.id ? "border-accent bg-accent/10" : "border-line bg-raised/50 hover:border-accent/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="module-hook"
+                  className="mt-1 accent-[var(--tf-accent)]"
+                  checked={chosen?.id === h.id}
+                  onChange={() => onChange({ module_hook: h.id })}
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-medium text-ink">{h.title}</span>
+                  <span className="text-xs text-muted leading-relaxed">{h.text}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Field>
+      )}
+    </>
   );
 }

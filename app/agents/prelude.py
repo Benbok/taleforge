@@ -17,7 +17,7 @@ from sqlalchemy import select
 from app.agents import voiceover
 from app.agents.llm import LLMError
 from app.content.catalog import campaign_catalog
-from app.core import bonds, plot
+from app.core import adventure, bonds, plot
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
 from app.core.linker import link_text
@@ -390,7 +390,10 @@ def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
     system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {cfg.persona or ''}"
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": "\n\n".join(x for x in (intro, scene_hint, INTRO_TASK) if x)},
+        {
+            "role": "user",
+            "content": "\n\n".join(x for x in (intro, adventure.hook_line(p), scene_hint, INTRO_TASK) if x),
+        },
     ]
 
 
@@ -611,6 +614,7 @@ async def introduce(svc, cid: str) -> str | None:
         x
         for x in (
             f"Кампания «{p.get('title')}». Завязка для игроков: {p.get('public_intro')}",
+            adventure.hook_line(p) if first else "",
             scene_hint,
             "Герои:\n" + heroes,
             ("Личные крючки (тайно, не раскрывай, можно намекнуть):\n" + hints) if hints else "",

@@ -278,6 +278,32 @@ async def delete_module(module_id: str, request: Request, user: UserDep, session
     shutil.rmtree(translator.folder(_settings(request).media_dir, module_id), ignore_errors=True)
 
 
+@router.get("/modules")
+async def published_modules(user: UserDep, session: SessionDep) -> list[dict]:
+    """Опубликованные приключения для мастера создания кампании (кампании создаёт Admin)."""
+    _admin(user)
+    q = select(AdventureModule).where(AdventureModule.pack_id.is_not(None)).order_by(AdventureModule.title)
+    out = []
+    for m in (await session.scalars(q)).all():
+        d = m.draft or {}
+        out.append(
+            {
+                "id": m.id,
+                "title": m.title,
+                "summary": d.get("summary") or "",
+                "levels": d.get("levels"),
+                "party_size": d.get("party_size"),
+                "hooks": [
+                    {"id": h.get("id"), "title": h.get("title"), "text": h.get("text")}
+                    for h in d.get("hooks") or []
+                    if isinstance(h, dict) and h.get("id")
+                ],
+                "maps": len([x for x in m.maps or [] if x.get("location_id")]),
+            }
+        )
+    return out
+
+
 @router.get("/modules/{module_id}/maps/{map_id}")
 async def map_image(module_id: str, map_id: str, request: Request, user: UserDep, session: SessionDep):
     """Картинка карты. Тайн на ней нет — номера комнат и планировка, поэтому её видит любой вошедший."""
