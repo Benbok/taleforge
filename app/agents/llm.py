@@ -112,6 +112,26 @@ def _parse_args(raw: Any) -> dict[str, Any]:
     return v if isinstance(v, dict) else {"__invalid_json__": str(raw)[:500]}
 
 
+def _should_cache_prompt(model: str, content: str) -> bool:
+    """Кэширование промпта (cache_control: ephemeral) для Gemini и Claude.
+
+    Gemini строго требует минимум 1024 токена (иначе 400 BadRequestError: Cached content is too small).
+    Claude Opus требует минимум 2048 токенов (Haiku/Sonnet — 1024).
+    litellm.token_counter использует токенизатор tiktoken, который для кириллицы насчитывает
+    в 1.5–1.6 раза больше токенов, чем нативный токенизатор Gemini (например, 1393 против 878 токенов).
+    Порог 2048 токенов гарантирует, что на стороне Gemini всегда будет >= 1024 токенов, а также
+    полностью удовлетворяет порогу Claude Opus (2048).
+    """
+    if len(content) < 1500:
+        return False
+    try:
+        import litellm
+
+        return litellm.token_counter(model=model, text=content) >= 2048
+    except Exception:
+        return len(content) >= 6000
+
+
 class LiteLLMClient:
     async def complete(
         self,
@@ -132,7 +152,11 @@ class LiteLLMClient:
         if model.startswith("gemini/") or model.startswith("anthropic/"):
             cached_messages = []
             for m in messages:
-                if m.get("role") == "system" and isinstance(m.get("content"), str) and len(m["content"]) > 1000:
+                if (
+                    m.get("role") == "system"
+                    and isinstance(m.get("content"), str)
+                    and _should_cache_prompt(model, m["content"])
+                ):
                     cached_messages.append(
                         {
                             **m,

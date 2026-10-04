@@ -259,13 +259,19 @@ def test_litellm_prompt_caching_injection(monkeypatch):
     client = LiteLLMClient()
     import asyncio
 
-    # Для gemini с длинным system prompt добавляется cache_control
-    long_sys = "Правила мира. " * 100
+    # Для gemini с длинным system prompt (>2048 токенов) добавляется cache_control
+    long_sys = "Правила мира. " * 300
     msgs = [{"role": "system", "content": long_sys}, {"role": "user", "content": "Привет"}]
     asyncio.run(client.complete(msgs, model="gemini/gemini-2.5-flash"))
     sys_content = captured_kwargs["messages"][0]["content"]
     assert isinstance(sys_content, list)
     assert sys_content[0]["cache_control"] == {"type": "ephemeral"}
+
+    # Для gemini с коротким system prompt (<2048 токенов) cache_control НЕ добавляется во избежание 400 BadRequestError
+    short_sys = "Правила мира. " * 50
+    msgs_short = [{"role": "system", "content": short_sys}, {"role": "user", "content": "Привет"}]
+    asyncio.run(client.complete(msgs_short, model="gemini/gemini-2.5-flash"))
+    assert captured_kwargs["messages"][0]["content"] == short_sys
 
     # Для локальной модели — не трогаем (остаётся строкой)
     asyncio.run(client.complete(msgs, model="lm_studio/qwen2.5"))
