@@ -86,7 +86,7 @@ export interface ChatMessage {
   whisper: boolean;
   // у реплики ИИ-игрока — { ai: true }; у голосовой — { voice }: запись автора, content — её расшифровка;
   // у ответа мастера на шёпот — { whisper_reply: id шёпота }
-  data?: (RollCard & { ai?: boolean; voice?: VoiceData; whisper_reply?: string }) | null;
+  data?: (RollCard & { ai?: boolean; voice?: VoiceData; voices?: VoiceData[]; voice_parts?: number; whisper_reply?: string }) | null;
   created_at: string | null;
   state?: ReplyState | null;
   fresh?: boolean;

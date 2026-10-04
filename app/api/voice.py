@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 
 from app.agents.stt import MAX_AUDIO_BYTES, SpeechToText
 from app.agents.tts import TTSManager
@@ -54,6 +54,17 @@ async def get_voice(campaign_id: str, voice_id: str, request: Request, user: Use
     viewer = await get_viewer(session, user, campaign_id)
     q = select(Message).where(Message.campaign_id == campaign_id, Message.data["voice"]["id"].as_string() == voice_id)
     msg = (await session.scalars(q)).first()
+    if msg is None:
+        # длинное повествование озвучено частями (data.voices): ищем по тексту данных и сверяем id точно
+        q = select(Message).where(Message.campaign_id == campaign_id, cast(Message.data, String).contains(voice_id))
+        msg = next(
+            (
+                m
+                for m in (await session.scalars(q)).all()
+                if any(isinstance(v, dict) and v.get("id") == voice_id for v in (m.data or {}).get("voices") or [])
+            ),
+            None,
+        )
     seats = [viewer.seat.id] if viewer.seat else []
     seats += stand_in_seats(viewer.campaign, user.id)
     # запись отдаётся только вместе с видимым сообщением: голос мастера прикрепляется к тексту хода при коммите
