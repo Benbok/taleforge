@@ -101,6 +101,8 @@ export class GameSocket {
   }
 
   private handle(ws: SocketLike, raw: string): void {
+    // закрытое соединение ещё может дослать событие: после ухода из кампании оно попало бы в чужой экран
+    if (this.ws !== ws) return;
     let e: Envelope;
     try {
       e = JSON.parse(raw);

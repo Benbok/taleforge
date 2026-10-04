@@ -76,7 +76,9 @@ export function useGameSocket(campaignId: string): void {
     return () => {
       sound.stop();
       sock.stop();
-      useGame.getState().setSocket(null);
+      // экран следующей кампании не должен даже на один кадр увидеть чат этой: иначе свежая озвучка отсюда
+      // заиграет там, пока не придёт новый снимок
+      useGame.getState().reset();
     };
   }, [campaignId]);
 }
