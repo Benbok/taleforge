@@ -89,8 +89,7 @@ export default function VoiceClip({ clips, expected, autoPlay }: { clips: VoiceD
     if (i >= list.length) {
       if (i < want) {
         waitingFor.current = i;
-        setState("waiting");
-        duck(false);
+        setState("waiting"); // музыка остаётся тише: следующая часть вот-вот прозвучит
         if (waitTimer.current) clearTimeout(waitTimer.current);
         waitTimer.current = setTimeout(finish, WAIT_PART_MS);
       } else finish();

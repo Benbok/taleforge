@@ -61,8 +61,10 @@ CUES = (
     "death",
     "victory",
     "combat",
+    "act",
     "secret",
     "levelup",
+    "place",
     "crit",
     "fumble",
     "kill",
@@ -76,6 +78,8 @@ CUE_NAMES = {
     "death": "гибель героя",
     "victory": "победа в бою",
     "combat": "начало боя",
+    "act": "новый акт сюжета",
+    "place": "новое место",
     "secret": "раскрыта тайна",
     "levelup": "новый уровень",
     "crit": "критический успех",
@@ -90,6 +94,7 @@ CUE_NAMES = {
 LEVEL = 0.6  # громкость музыки до настроек игрока
 EXT = {".ogg": "audio/ogg", ".opus": "audio/ogg", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}
 MAX_BYTES = 20 * 1024 * 1024
+RECENT = 3  # столько последних треков движок старается не повторять
 MUSIC_COOLDOWN = 60.0  # секунд реального времени между сменами музыки, кроме начала и конца боя
 MAX_SFX = 2  # эффектов за ход: больше — каша
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -440,6 +445,8 @@ def mixer(scene, place: str | None = None) -> dict[str, Any]:
     st.setdefault("v", 0)
     st.setdefault("changed", {})
     st.setdefault("mourned", [])
+    st.setdefault("recent", [])
+    st.setdefault("seen", [])
     return st
 
 
@@ -516,6 +523,8 @@ def set_music(
         st["music"] = {**cur, "mood": mood or cur.get("mood")}
     else:
         st["music"] = {"track": track.id, "since": time.time(), "mood": mood}
+    if cur and (track is None or cur["track"] != track.id):  # ушедший трек — в недавние: не повторять подряд
+        st["recent"] = [cur["track"], *[x for x in st["recent"] if x != cur["track"]]][:RECENT]
     st["changed"] = {
         **st["changed"],
         "music": {"at": time.time(), "mode": scene.mode, **({"auto": True} if auto else {})},
@@ -582,22 +591,32 @@ def _fit(t: Track, words: set[str], mood: str | None) -> float:
     return score
 
 
-def best_music(campaign, words: set[str], mood: str | None) -> Track | None:
-    """Самый подходящий трек: настроение важнее места; при равенстве — первый в каталоге (сначала треки мира)."""
+def best_music(campaign, words: set[str], mood: str | None, avoid: frozenset[str] = frozenset()) -> Track | None:
+    """Самый подходящий трек: настроение важнее места, треки мира чуть выше общих, недавно звучавшие — ниже. Из
+    равных — случайный: одно и то же настроение звучит разными треками."""
+    pack = pack_of(campaign)
     tracks = music_tracks(campaign)
     if mood and not any(mood in t.moods for t in tracks):
         mood = "tension" if mood == "battle" and any("tension" in t.moods for t in tracks) else None
     if not tracks:
         return None
-    return max(tracks, key=lambda t: (_fit(t, words, mood), -tracks.index(t)))
+
+    def score(t: Track) -> float:
+        own = 0.5 if pack and pack in t.packs else 0.0
+        return _fit(t, words, mood) + own - (0.75 if t.id in avoid else 0.0)  # повтор уступает равному, не лучшему
+
+    top = max(score(t) for t in tracks)
+    return random.choice([t for t in tracks if score(t) == top])
 
 
 def choose(ctx, mood: str | None, place: str | None = None) -> Track | None:
     """Трек под настроение и место. Если нынешний трек этого настроения подходит не хуже — остаётся он: музыка не
     дёргается без нужды."""
     words = place_words(ctx, place)
-    t = best_music(ctx.campaign, words, mood)
+    st = mixer(ctx.world.scene, place)
     cur = current(ctx.world.scene, place)
+    avoid = frozenset([*st["recent"], *([cur.id] if cur else [])])
+    t = best_music(ctx.campaign, words, mood, avoid)
     if (
         cur is not None
         and t is not None
@@ -605,6 +624,21 @@ def choose(ctx, mood: str | None, place: str | None = None) -> Track | None:
         and _fit(cur, words, mood) >= _fit(t, words, mood)
     ):
         return cur
+    return t
+
+
+def another(campaign, scene, place: str | None = None) -> Track:
+    """Другой трек того же настроения: владелец нажал «Сменить трек», потому что музыка не легла на сцену."""
+    st = mixer(scene, place)
+    cur = current(scene, place)
+    mood = (st.get("music") or {}).get("mood") or (cur.moods[0] if cur and cur.moods else None)
+    pool = [t for t in music_tracks(campaign) if (cur is None or t.id != cur.id) and (not mood or mood in t.moods)]
+    if not pool:
+        what = f"с настроением «{MOOD_NAMES.get(mood, mood)}»" if mood else ""
+        raise Conflict(f"в библиотеке нет другой музыки {what}: добавьте треки в админке «Звук»".replace("  ", " "))
+    fresh = [t for t in pool if t.id not in st["recent"]]
+    t = random.choice(fresh or pool)
+    set_music(scene, t, mood, place)
     return t
 
 
@@ -666,10 +700,11 @@ def autopilot(ctx) -> None:
 
 
 def _events(ctx) -> list[str]:
-    """Какие события случились за ход: по записанным действиям, без скрытых бросков (звук не выдаёт тайну)."""
+    """Какие события случились за ход: по записанным действиям, без скрытых бросков (звук не выдаёт их исход).
+    Сюжетные события мастера скрыты от игроков текстом, но звучат: это поворот, который они и так увидят."""
     out: list[str] = []
     for ev in ctx.events:
-        if ev.hidden:
+        if ev.hidden and ev.tool in ("resolve_attack", "roll_check"):
             continue
         p = ev.payload or {}
         p = p.get("result", p) if isinstance(p.get("result"), dict) else p
@@ -688,6 +723,8 @@ def _events(ctx) -> list[str]:
             out.append("levelup")
         elif ev.tool == "plot_reveal":
             out.append("secret")
+        elif ev.tool == "end_act":
+            out.append("act")
         elif ev.tool == "rest":
             out.append("rest")
     return out
@@ -711,6 +748,12 @@ def finalize(ctx) -> None:
         st["mourned"] = [*st["mourned"], *fallen]
         _store(ctx.world.scene, st)
         happened.append("death")
+    places = [p for p in ctx.world.scene_places() if p]
+    if any(p not in st["seen"] for p in places):  # отряд впервые пришёл в это место
+        st = mixer(ctx.world.scene)
+        st["seen"] = [*st["seen"], *[p for p in places if p not in st["seen"]]]
+        _store(ctx.world.scene, st)
+        happened.append("place")
     for event in sorted(set(happened), key=CUES.index):
         if len(ctx.audio) >= MAX_SFX:
             break

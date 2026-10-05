@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import ActionButton from "../components/ActionButton";
+import { api } from "../lib/api";
 import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
 import { CHANNEL_LABELS, CHANNELS, useSound } from "./sound";
@@ -8,6 +10,8 @@ import { CHANNEL_LABELS, CHANNELS, useSound } from "./sound";
 export default function SoundControl() {
   const s = useSound();
   const audio = useGame((g) => g.audio);
+  const campaignId = useGame((g) => g.snapshot?.campaign.id);
+  const canSwap = useGame((g) => g.actions.includes("audio.next"));
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement | null>(null);
@@ -90,6 +94,17 @@ export default function SoundControl() {
               onChange={(v) => s.setPrefs({ [ch]: v })}
             />
           ))}
+          {canSwap && campaignId && (
+            <ActionButton
+              className="px-2 py-1 text-xs"
+              run={async () => {
+                const r = await api<{ title: string }>(`/api/campaigns/${campaignId}/audio/next`, { method: "POST" });
+                toast.ok(`Музыка сменилась: ${r.title}`);
+              }}
+            >
+              Сменить трек
+            </ActionButton>
+          )}
           {s.error && <p className="text-xs text-bad">{s.error}</p>}
           <p className="text-[11px] text-muted">Громкость хранится в этом браузере и не меняет звук у других игроков.</p>
         </div>

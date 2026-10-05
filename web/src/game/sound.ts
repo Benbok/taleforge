@@ -9,7 +9,7 @@ export type Channel = "music" | "sfx";
 export const CHANNELS: Channel[] = ["music", "sfx"];
 export const CHANNEL_LABELS: Record<Channel, string> = { music: "Музыка", sfx: "Эффекты" };
 const FADE = 3.5; // секунд на смену музыки
-const DUCK = 0.3; // во время голосового сообщения музыка тише
+const DUCK = 0.22; // пока звучит голос мастера или игрока, музыка уходит на задний план
 const PREFS_KEY = "tf_sound";
 
 export interface Prefs {
@@ -146,7 +146,8 @@ class SoundMixer {
     this.master.gain.setTargetAtTime(this.prefs.muted ? 0 : this.prefs.master, t, 0.1);
     for (const ch of CHANNELS) {
       const duck = this.ducked && ch === "music" ? DUCK : 1;
-      this.buses[ch]?.gain.setTargetAtTime(this.prefs[ch] * duck, t, 0.25);
+      // приглушение быстрое, возврат медленный: слово мастера слышно сразу, музыка возвращается незаметно
+      this.buses[ch]?.gain.setTargetAtTime(this.prefs[ch] * duck, t, this.ducked ? 0.15 : 0.6);
     }
   }
 

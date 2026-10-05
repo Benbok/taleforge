@@ -55,6 +55,8 @@ const CUE_LABELS: Record<string, string> = {
   death: "гибель героя",
   victory: "победа в бою",
   combat: "начало боя",
+  act: "новый акт сюжета",
+  place: "новое место",
   secret: "раскрыта тайна",
   levelup: "новый уровень",
   crit: "критический успех",
