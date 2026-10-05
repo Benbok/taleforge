@@ -129,4 +129,18 @@ describe("эскиз места", () => {
     for (const x of [...g.things, ...g.exits]) expect(f.allowed(x.col, x.row)).toBe(true);
     expect(g.exits.map((x) => x.item.id)).toEqual(["loc_yard"]);
   });
+
+  it("бой на сетке: стоящий на клетке встаёт ровно туда, остальные обходят его клетку", () => {
+    const hero: MapHero = { id: "h1", name: "Воин", mine: true, zone: null, bearing: null, elevation: "ground", cover: "none", down: false };
+    const g = layoutGrid({
+      ...empty,
+      sketch: sk,
+      party: [hero, { ...hero, id: "h2", name: "Маг", mine: false, zone: "melee", cell: [0, 0] }],
+      around: [{ id: "en_rat", name: "Крыса", type: "creature", zone: "melee", zone_name: "вплотную", bearing: "e", cell: [3, -1] }],
+    });
+    const at = (id: string) => [...g.heroes, ...g.things].find((x) => x.item.id === id)!;
+    expect([at("h2").col, at("h2").row]).toEqual([0, 0]);
+    expect([at("en_rat").col, at("en_rat").row]).toEqual([3, -1]);
+    expect([at("h1").col, at("h1").row]).not.toEqual([0, 0]); // строй уступил клетку тому, кто на ней стоит
+  });
 });

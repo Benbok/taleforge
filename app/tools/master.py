@@ -7,12 +7,13 @@
 from __future__ import annotations
 
 import copy
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core import adventure, audio, combat, sketch
+from app.core import positions as grid
 from app.core.campaigns import master_seat
 from app.core.features import uses_view
 from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
@@ -38,6 +39,11 @@ Zone = Literal["melee", "near", "far"]
 Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
 BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
 PLACE_HINT = "место, где стоят герои; нужно, только если отряд разделён (по умолчанию — место сцены)"
+CELL_HINT = (
+    "клетка 5×5 футов [столбец, строка]: в месте с эскизом — от его северо-западного угла, как в эскизе; без эскиза — "
+    "от строя отряда (0, 0), восток и юг положительные. С клеткой зона и сторона выводятся сами"
+)
+Cell = Annotated[list[int], Field(min_length=2, max_length=2)]
 Elevation = Literal["low", "ground", "high"]
 ELEVATION_HINT = "высота: low — внизу (яма, трюм), ground — на земле, high — на возвышении (балкон, гребень)"
 Cover = Literal["none", "half", "three_quarters", "total"]
@@ -1157,6 +1163,7 @@ class SpawnArgs(BaseModel):
     count: int = Field(1, ge=1, le=12)
     zone: Zone = "near"
     bearing: Bearing | None = Field(None, description=BEARING_HINT)
+    cell: Cell | None = Field(None, description=CELL_HINT + "; несколько существ встают на свободные клетки вокруг")
     attitude: Literal["hostile", "neutral", "friendly"] = "hostile"
     description: str = Field(
         "",
@@ -1187,6 +1194,15 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
                 f"число существ, героев: {b['party']}). Выставьте меньше или слабее"
             )
     hp = int((rec.data.get("hp") or {}).get("average", 1))
+    cells: list = [None] * a.count
+    if a.cell is not None:
+        start = grid.to_rel(ctx.world, place, a.cell)
+        problem = grid.cell_problem(ctx.world, place, start)
+        if problem:
+            raise ToolError(problem)
+        cells = grid.free_cells_near(ctx.world, place, start, a.count)
+        if len(cells) < a.count:
+            raise ToolError(f"рядом с клеткой {a.cell} нет места для {a.count} существ")
     created = []
     for i in range(a.count):
         name = a.name if a.count == 1 else f"{a.name} {i + 1}"
@@ -1203,6 +1219,8 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
         ctx.session.add(en)
         await ctx.session.flush()
         ctx.world.entities[en.id] = en
+        if cells[i] is not None:
+            grid.set_cell(ctx.world, en.id, cells[i])
         created.append({"id": en.id, "name": name})
         await ctx.record(
             "spawn_entity",
@@ -1218,7 +1236,9 @@ class UpdateEntityArgs(BaseModel):
     attitude: Literal["hostile", "neutral", "friendly"] | None = None
     mood: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500, description="нарративная пометка: мотив, что пообещал")
-    zone: Zone | None = Field(None, description="сблизился или отошёл: вплотную, близко, далеко")
+    zone: Zone | None = Field(
+        None, description="сблизился или отошёл: вплотную, близко, далеко; снимает с клетки, точнее — reposition с cell"
+    )
     bearing: Bearing | None = Field(None, description=BEARING_HINT)
     elevation: Elevation | None = Field(None, description=ELEVATION_HINT)
     cover: Cover | None = Field(None, description=COVER_HINT)
@@ -1253,6 +1273,8 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     if a.zone is not None:
         en.zone = a.zone
         changes["zone"] = a.zone
+    if a.zone is not None or a.bearing is not None:
+        st.pop("cell", None)  # зона и сторона заменяют точную клетку
     if a.fled:
         en.location_id = None
         changes["fled"] = True
@@ -1307,14 +1329,16 @@ class RepositionArgs(BaseModel):
         None, description="где от центра отряда: center — в строю отряда, melee — вплотную, near — близко, far — далеко"
     )
     bearing: Bearing | None = Field(None, description="в какой стороне; n — север (вверх схемы)")
+    cell: Cell | None = Field(None, description=CELL_HINT + ". В бою все стоят на клетках: двигай клеткой")
     elevation: Elevation | None = Field(None, description=ELEVATION_HINT)
     cover: Cover | None = Field(None, description=COVER_HINT)
 
 
 @tool(
     "reposition",
-    "Перемещает героя или существо внутри сцены: зона от центра отряда, сторона, высота, укрытие. В бою движение "
-    "дальше скорости — рывок (тратит действие), дальше двух скоростей — нельзя.",
+    "Перемещает героя или существо внутри сцены: клетка (точно, в бою — так), или зона от центра отряда и сторона; "
+    "высота, укрытие. В бою движение дальше скорости — рывок (тратит действие), дальше двух скоростей — нельзя. "
+    "Занятую клетку, стену и предмет эскиза сервер не даст.",
     RepositionArgs,
     ids={"actor_id": "combatants"},
     closes=False,
@@ -1324,13 +1348,23 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
     act = w.actor(a.actor_id)
     before = pos_of(w, act.id)
     was = {x.id for x in areas_at(w, act.id)}
-    after = Pos(before.zone, before.bearing, before.elevation, before.cover)
-    if a.zone is not None:
-        after.zone = None if a.zone == "center" else a.zone
-        if a.zone == "center":
-            after.bearing = None
-    if a.bearing is not None:
-        after.bearing = a.bearing
+    after = Pos(before.zone, before.bearing, before.elevation, before.cover, before.cell)
+    if a.cell is not None:
+        place = w.actor_place(act.id)
+        rel = grid.to_rel(w, place, a.cell)
+        problem = grid.cell_problem(w, place, rel, act.id)
+        if problem:
+            raise ToolError(problem)
+        after.cell, after.zone, after.bearing = rel, grid.zone_of_cell(rel), grid.bearing_of_cell(rel)
+    else:
+        if a.zone is not None or a.bearing is not None:
+            after.cell = None  # зона и сторона заменяют точную клетку
+        if a.zone is not None:
+            after.zone = None if a.zone == "center" else a.zone
+            if a.zone == "center":
+                after.bearing = None
+        if a.bearing is not None:
+            after.bearing = a.bearing
     if a.elevation is not None:
         after.elevation = a.elevation
     if a.cover is not None:
@@ -1338,7 +1372,12 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
     if act.kind == "creature" and after.zone is None:
         raise ToolError("существо не встаёт в строй отряда: укажите melee, near или far")
     moved = 0
-    if (after.zone, after.bearing, after.elevation) != (before.zone, before.bearing, before.elevation):
+    if (after.cell, after.zone, after.bearing, after.elevation) != (
+        before.cell,
+        before.zone,
+        before.bearing,
+        before.elevation,
+    ):
         moved = distance(before, after)
     out: dict = {"who": act.name, "position": after.public(), "moved_ft": moved}
     if combat.in_combat(ctx) and ctx.world.in_fight(act.id) and moved:
@@ -1365,6 +1404,10 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
         st = {**(en.state or {}), "elevation": after.elevation, "cover": after.cover}
         if after.bearing:
             st["bearing"] = after.bearing
+        if after.cell is not None:
+            st["cell"] = list(after.cell)
+        else:
+            st.pop("cell", None)
         en.state = st
     w.invalidate(act.id)
     await ctx.record("reposition", actor_id=act.id, target_id=act.id, payload=out, inverse=inverse)
@@ -2027,6 +2070,7 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     entries, dice = roll_initiative(ctx, ids)
     if joining:
         combat.insert(ctx, entries)
+        _deploy(ctx, [e["id"] for e in entries], inverse)
         names = [f"{w.actor(e['id']).name} ({e['initiative']})" for e in entries]
         await ctx.record("set_scene_mode", payload={"mode": "combat", "joined": names}, dice=dice, inverse=inverse)
         return {"mode": "combat", "round": sc.round, "joined": names}
@@ -2034,21 +2078,25 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     sc.turn_order = entries
     combat.start_combat(ctx)
     audio.on_mode(ctx, "combat")
-    placed = _deploy(ctx, [e["id"] for e in entries], inverse)
+    placed, gridded = _deploy(ctx, [e["id"] for e in entries], inverse)
     names = [f"{w.actor(e['id']).name} ({e['initiative']})" for e in entries]
     await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
     out = {"mode": "combat", "round": 1, "initiative": names}
+    notes = []
     if placed:
-        out["placed"] = (
-            f"на схеме боя враги без стороны встали с одной стороны ({', '.join(placed)}); "
-            "если по сцене они стоят иначе, поправь reposition"
-        )
+        notes.append(f"враги без стороны встали с одной стороны ({', '.join(placed)})")
+    if gridded:
+        notes.append("все участники встали на клетки (они в таблице сцены)")
+    if notes:
+        tail = "; если по сцене они стоят иначе, поправь reposition с cell"
+        out["placed"] = "на схеме боя " + "; ".join(notes) + tail
     return out
 
 
-def _deploy(ctx: ToolContext, ids: list[str], inverse: list[dict]) -> list[str]:
+def _deploy(ctx: ToolContext, ids: list[str], inverse: list[dict]) -> tuple[list[str], bool]:
     """Начало боя: враг без стороны света встаёт туда же, где уже стоят его товарищи (или на север), чтобы схема
-    боя сразу показывала, кто где, а не разбрасывала врагов по кругу случайно."""
+    боя сразу показывала, кто где, а не разбрасывала врагов по кругу случайно. Затем все без клетки встают на
+    свободные клетки сетки."""
     w = ctx.world
     foes = [
         w.entities[i]
@@ -2057,17 +2105,27 @@ def _deploy(ctx: ToolContext, ids: list[str], inverse: list[dict]) -> list[str]:
         and w.entities[i].kind == "creature"
         and (w.entities[i].state or {}).get("attitude", "hostile") == "hostile"
     ]
+    for i in ids:
+        if i in w.entities:
+            en = w.entities[i]
+            inverse.append({"table": "entities", "id": i, "field": "state", "before": copy.deepcopy(en.state)})
+            inverse.append({"table": "entities", "id": i, "field": "zone", "before": en.zone})
     side = next((e.state["bearing"] for e in foes if (e.state or {}).get("bearing")), "n")
     placed = []
     for e in foes:
         if (e.state or {}).get("bearing"):
             continue
-        inverse.append({"table": "entities", "id": e.id, "field": "state", "before": copy.deepcopy(e.state)})
         e.state = {**(e.state or {}), "bearing": side}
         w.invalidate(e.id)
         ctx.changed.add(e.id)
         placed.append(e.name)
-    return placed
+    # бой на сетке (решение Arty 2026-10-05): каждый участник встаёт на свою клетку возле своей зоны и стороны
+    gridded = False
+    for place in dict.fromkeys(w.actor_place(i) for i in ids):
+        for aid, _ in grid.grid_deploy(w, place, [i for i in ids if w.actor_place(i) == place]):
+            ctx.changed.add(aid)
+            gridded = True
+    return placed, gridded
 
 
 def roll_initiative(ctx: ToolContext, ids: list[str]) -> tuple[list[dict], list[dict]]:

@@ -1,7 +1,13 @@
 """Позиции в сцене (просьба Arty, 2026-09-29): где стоит каждый участник, на какой высоте и за каким укрытием.
 
-Сетки нет. Позиция — зона дальности от центра отряда (вплотную 5, близко 30, далеко 120 футов), сторона света и
-высота. Расстояние между двумя участниками — по прямой между такими точками, округлённое до 5 футов (минимум 5).
+Позиция — клетка по 5 футов (решение Arty 2026-10-05: бой на сетке) или, пока мастер клетку не назначил, зона
+дальности от центра отряда (вплотную 5, близко 30, далеко 120 футов) со стороной света. Расстояние между двумя
+клетками — по правилам сетки SRD: каждая клетка, и по диагонали тоже, — 5 футов. Между клеткой и зоной или двумя
+зонами — по прямой между точками, округлённое до 5 футов (минимум 5).
+
+- Клетка хранится относительно строя отряда: (0, 0) — где стоит строй, восток и юг положительные. Мастер называет
+  клетки так же, а в месте с эскизом — от северо-западного угла эскиза (app/core/sketch.py); перевод — ``to_rel``
+  и ``to_master``. Зона у участника с клеткой выводится из расстояния до строя.
 
 - Герой без позиции стоит в центре отряда; тогда до существа ровно его зона, как было до позиций. Позиции героев
   лежат в ``scenes.state["positions"]`` и сбрасываются, когда сцена переходит в другое место.
@@ -19,7 +25,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from app.core.world import ZONE_FT
+from app.core.world import PLAYABLE, ZONE_FT
 
 BEARING_DEG = {"n": 0, "ne": 45, "e": 90, "se": 135, "s": 180, "sw": 225, "w": 270, "nw": 315}
 ELEVATION_FT = {"low": -10, "ground": 0, "high": 15}
@@ -35,8 +41,11 @@ class Pos:
     bearing: str | None = None
     elevation: str = "ground"
     cover: str = "none"
+    cell: tuple[int, int] | None = None  # клетка от строя отряда: восток и юг положительные
 
     def xy(self, fallback_bearing: str | None) -> tuple[float, float]:
+        if self.cell is not None:
+            return self.cell[0] * 5.0, -self.cell[1] * 5.0
         if self.zone is None:
             return 0.0, 0.0
         r = ZONE_FT.get(self.zone, 30)
@@ -44,7 +53,164 @@ class Pos:
         return r * math.sin(math.radians(deg)), r * math.cos(math.radians(deg))
 
     def public(self) -> dict[str, Any]:
-        return {"zone": self.zone, "bearing": self.bearing, "elevation": self.elevation, "cover": self.cover}
+        out = {"zone": self.zone, "bearing": self.bearing, "elevation": self.elevation, "cover": self.cover}
+        if self.cell is not None:
+            out["cell"] = list(self.cell)
+        return out
+
+
+def _cell(v: Any) -> tuple[int, int] | None:
+    return (int(v[0]), int(v[1])) if isinstance(v, list | tuple) and len(v) == 2 else None
+
+
+def zone_of_cell(cell: tuple[int, int]) -> str:
+    """Зона для участника на клетке: по расстоянию сетки до строя отряда."""
+    ft = max(abs(cell[0]), abs(cell[1])) * 5
+    return "melee" if ft <= 5 else "near" if ft <= 30 else "far"
+
+
+def bearing_of_cell(cell: tuple[int, int]) -> str | None:
+    """Сторона света клетки от строя: для текстов и старых раскладок, где клетки нет."""
+    c, r = cell
+    if c == 0 and r == 0:
+        return None
+    deg = math.degrees(math.atan2(c, -r)) % 360
+    return min(BEARING_DEG, key=lambda b: min(abs(BEARING_DEG[b] - deg), 360 - abs(BEARING_DEG[b] - deg)))
+
+
+def _sketch(world, place: str | None) -> dict | None:
+    from app.core import sketch
+
+    return sketch.of_place(world.entities.get(place or ""), world.catalog, world.entities)
+
+
+def anchor(world, place: str | None, sk: dict | None = None) -> tuple[int, int]:
+    """Где строй отряда в координатах мастера: клетка ``party`` эскиза места или (0, 0) без эскиза."""
+    sk = sk if sk is not None else _sketch(world, place)
+    return (int(sk["party"][0]), int(sk["party"][1])) if sk else (0, 0)
+
+
+def to_rel(world, place: str | None, cell: list[int] | tuple[int, int]) -> tuple[int, int]:
+    ax, ay = anchor(world, place)
+    return int(cell[0]) - ax, int(cell[1]) - ay
+
+
+def to_master(world, place: str | None, cell: tuple[int, int]) -> tuple[int, int]:
+    ax, ay = anchor(world, place)
+    return cell[0] + ax, cell[1] + ay
+
+
+def cell_problem(
+    world, place: str | None, cell: tuple[int, int], actor_id: str | None = None, sk: dict | None = None
+) -> str | None:
+    """Почему на клетку (от строя) нельзя встать: за краем места, стена или предмет эскиза, там уже кто-то стоит."""
+    sk = sk if sk is not None else _sketch(world, place)
+    ax, ay = anchor(world, place, sk)
+    c, r = cell[0] + ax, cell[1] + ay
+    shown = [c, r]
+    if sk is not None:
+        if not (0 <= c < sk["cols"] and 0 <= r < sk["rows"]):
+            return f"клетка {shown} за краем места {sk['cols']}×{sk['rows']}"
+        if [c, r] in (sk.get("walls") or []):
+            return f"клетка {shown} — стена"
+        for f in sk.get("features") or []:
+            if any(c0 <= c <= c1 and r0 <= r <= r1 for c0, r0, c1, r1 in f["cells"]):
+                return f"на клетке {shown} стоит «{f['name']}»"
+    for aid, name in _standing(world, place):
+        if aid == actor_id:
+            continue
+        here = pos_of(world, aid).cell
+        if (here if here is not None else ((0, 0) if aid in world.characters else None)) == cell:
+            return f"клетка {shown} занята: там {name}"
+    return None
+
+
+def _standing(world, place: str | None) -> list[tuple[str, str]]:
+    """Кто стоит в месте: герои в игре и живые существа. Герой без клетки — в строю отряда, на (0, 0)."""
+    out = [
+        (h.id, h.name) for h in world.characters.values() if h.status in PLAYABLE and world.actor_place(h.id) == place
+    ]
+    out += [
+        (e.id, e.name)
+        for e in world.entities.values()
+        if e.kind == "creature" and e.location_id == place and not (e.state or {}).get("dead")
+    ]
+    return out
+
+
+def free_cells_near(
+    world, place: str | None, cell: tuple[int, int], n: int, actor_id: str | None = None
+) -> list[tuple[int, int]]:
+    """``n`` свободных клеток (от строя), начиная с ``cell`` и дальше кольцами вокруг неё. В месте с эскизом
+    начало сперва сдвигается внутрь места."""
+    sk = _sketch(world, place)
+    if sk is not None:
+        ax, ay = anchor(world, place, sk)
+        cell = (min(max(cell[0] + ax, 0), sk["cols"] - 1) - ax, min(max(cell[1] + ay, 0), sk["rows"] - 1) - ay)
+    out: list[tuple[int, int]] = []
+    for d in range(0, 31):
+        for dr in range(-d, d + 1):
+            for dc in range(-d, d + 1):
+                c = (cell[0] + dc, cell[1] + dr)
+                if max(abs(dc), abs(dr)) != d or c in out:
+                    continue
+                if cell_problem(world, place, c, actor_id, sk) is None:
+                    out.append(c)
+                    if len(out) == n:
+                        return out
+    return out
+
+
+def cell_from_zone(p: Pos) -> tuple[int, int]:
+    """Клетка, ближайшая к точке зоны и стороны: так старые позиции переходят на сетку."""
+    x, y = p.xy(None)
+    return round(x / 5), round(-y / 5)
+
+
+def set_cell(world, actor_id: str, cell: tuple[int, int] | None) -> None:
+    """Ставит участника на клетку (от строя) или снимает с неё; зона и сторона выводятся из клетки. Обратную запись
+    для отмены делает вызывающий."""
+    if actor_id in world.characters:
+        sc = world.scene
+        positions = hero_positions(sc)
+        p = dict(positions.get(actor_id) or {})
+        if cell is None:
+            p.pop("cell", None)
+        else:
+            p.update(cell=list(cell), zone=zone_of_cell(cell), bearing=bearing_of_cell(cell))
+        positions[actor_id] = p
+        sc.state = {**(sc.state or {}), "positions": positions}
+    else:
+        en = world.entities[actor_id]
+        st = dict(en.state or {})
+        if cell is None:
+            st.pop("cell", None)
+        else:
+            st["cell"] = list(cell)
+            en.zone = zone_of_cell(cell)
+            b = bearing_of_cell(cell)
+            if b:
+                st["bearing"] = b
+        en.state = st
+    world.invalidate(actor_id)
+
+
+def grid_deploy(world, place: str | None, ids: list[str]) -> list[tuple[str, tuple[int, int]]]:
+    """Начало боя: каждый участник без клетки встаёт на свою. Герои — у строя отряда, существа — у точки своей зоны
+    и стороны. Возвращает, кто куда встал (клетки от строя)."""
+    placed = []
+    heroes = [i for i in ids if i in world.characters and world.actor_place(i) == place]
+    foes = [i for i in ids if i in world.entities and world.entities[i].location_id == place]
+    for aid in heroes + foes:
+        p = pos_of(world, aid)
+        if p.cell is not None:
+            continue
+        start = (0, 0) if aid in world.characters and p.zone is None else cell_from_zone(p)
+        got = free_cells_near(world, place, start, 1, aid)
+        if got:
+            set_cell(world, aid, got[0])
+            placed.append((aid, got[0]))
+    return placed
 
 
 def hero_positions(scene) -> dict[str, dict]:
@@ -54,19 +220,38 @@ def hero_positions(scene) -> dict[str, dict]:
 def pos_of(world, actor_id: str) -> Pos:
     if actor_id in world.characters:
         p = hero_positions(world.scene).get(actor_id) or {}
-        return Pos(p.get("zone"), p.get("bearing"), p.get("elevation") or "ground", p.get("cover") or "none")
+        return Pos(
+            p.get("zone"),
+            p.get("bearing"),
+            p.get("elevation") or "ground",
+            p.get("cover") or "none",
+            _cell(p.get("cell")),
+        )
     en = world.entities[actor_id]
     st = en.state or {}
-    return Pos(en.zone, st.get("bearing"), st.get("elevation") or "ground", st.get("cover") or "none")
+    return Pos(
+        en.zone, st.get("bearing"), st.get("elevation") or "ground", st.get("cover") or "none", _cell(st.get("cell"))
+    )
 
 
 def _round5(ft: float) -> int:
     return max(5, int(5 * round(ft / 5)))
 
 
+def _grid_cell(p: Pos) -> tuple[int, int] | None:
+    """Клетка для счёта по сетке: своя или, у стоящего в строю отряда, клетка строя (0, 0)."""
+    return p.cell if p.cell is not None else (0, 0) if p.zone is None else None
+
+
 def distance(a: Pos, b: Pos, *, both_creatures: bool = False) -> int:
     """Футы между двумя позициями."""
     dz = ELEVATION_FT.get(a.elevation, 0) - ELEVATION_FT.get(b.elevation, 0)
+    ac, bc = _grid_cell(a), _grid_cell(b)
+    if ac is not None and bc is not None and (a.cell is not None or b.cell is not None):
+        flat = max(abs(ac[0] - bc[0]), abs(ac[1] - bc[1])) * 5.0  # сетка SRD: диагональ тоже 5 футов
+        if flat >= abs(dz):
+            return max(5, int(flat))
+        return _round5(math.hypot(flat, dz))
     if both_creatures and not (a.bearing and b.bearing):
         flat = 30.0  # двух существ без сторон мастер не расставил: прежнее «где-то рядом»
     elif a.zone is None and b.zone is None:

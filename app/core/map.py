@@ -170,6 +170,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 "bearing": st.get("bearing"),
                 "elevation": st.get("elevation") or "ground",
                 "cover": st.get("cover") or "none",
+                "cell": st.get("cell"),  # клетка от строя отряда, если мастер поставил точно
             }
             if e.kind == "creature":
                 item["condition"] = _condition(st)
@@ -190,6 +191,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "bearing": pos.get("bearing"),
                     "elevation": pos.get("elevation") or "ground",
                     "cover": pos.get("cover") or "none",
+                    "cell": pos.get("cell"),
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )

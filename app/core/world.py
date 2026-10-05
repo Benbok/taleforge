@@ -685,13 +685,16 @@ def is_scene_item(e: Entity) -> bool:
 
 def _pos_note(w: World, actor_id: str, zone: bool = True) -> str:
     """Позиция для таблицы мастера: только то, что отличается от «в строю, на земле, без укрытия»."""
-    from app.core.positions import COVER_NAMES, ELEVATION_NAMES, pos_of
+    from app.core.positions import COVER_NAMES, ELEVATION_NAMES, pos_of, to_master
 
     p = pos_of(w, actor_id)
     parts = []
-    if zone and p.zone:
+    if p.cell is not None:
+        c, r = to_master(w, w.actor_place(actor_id), p.cell)
+        parts.append(f"клетка ({c}, {r})")
+    elif zone and p.zone:
         parts.append(ZONE_NAMES.get(p.zone, p.zone) + " от отряда")
-    if p.bearing:
+    if p.bearing and p.cell is None:
         parts.append(f"сторона {p.bearing}")
     if p.elevation != "ground":
         parts.append(ELEVATION_NAMES.get(p.elevation, p.elevation))
