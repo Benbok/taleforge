@@ -124,8 +124,9 @@ def _routable_cast(ctx: ToolContext, intent: dict | None) -> dict | None:
     args = intents.routable_cast(intent)
     if args is None:
         return None
+    chosen = args.pop("area_chosen", False)  # окно сотворения: кого накрывает область, игрок отметил сам
     spell = spell_catalog(ctx.world.catalog).spells.get(args["spell_id"])
-    if spell is None or target_kind(spell) == "area":
+    if spell is None or (target_kind(spell) == "area" and not chosen):
         return None
     if target_kind(spell) == "enemy" and not args.get("target_ids"):
         return None
