@@ -169,7 +169,7 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 export function mapEvent(type: string, payload: unknown): void {
   const w = useMapWindow.getState();
   if (type === "map.state") w.receive(payload as MapState);
-  else if (w.open && (type === "scene.updated" || type === "state.snapshot" || type === "knowledge.revealed")) w.request();
+  else if (w.open && (type === "scene.updated" || type === "state.snapshot" || type === "knowledge.revealed" || type === "map.changed")) w.request();
 }
 
 const BEARINGS: Bearing[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];

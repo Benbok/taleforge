@@ -1528,7 +1528,7 @@ def _link(a: Entity, b_id: str, label: str | None = None, bearing: str | None = 
     return True
 
 
-def _linked(ctx: ToolContext, a: Entity, b: Entity) -> bool:
+def _linked(ctx: ToolContext | None, a: Entity, b: Entity) -> bool:
     """Места уже связаны на карте: путь в любую сторону или одно внутри другого."""
     return (
         a.location_id == b.id
@@ -1734,6 +1734,26 @@ class SketchArgs(BaseModel):
     location_id: str | None = Field(None, description=PLACE_HINT)
 
 
+def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
+    """Эскиз из аргументов и ошибки для того, кто его нарисовал (мастер или техническая модель)."""
+    for f in a.features:
+        if any(len(c) != 4 for c in f.cells):
+            return {}, [f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]"]
+    if any(len(c) != 2 for c in a.walls):
+        return {}, ["стена — клетка [c, r]"]
+    data = a.model_dump(exclude={"location_id"})
+    data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
+    return data, sketch.check(data, places)
+
+
+def link_exits(place: Entity, data: dict, entities: dict) -> None:
+    """Выход в известное место — путь и на карте мест."""
+    for x in data["exits"]:
+        other = entities.get(x["to"] or "")
+        if other is not None and other.id != place.id and not _linked(None, place, other):
+            _link(place, other.id, x["name"])
+
+
 @tool(
     "sketch_place",
     "Эскиз места для схемы игроков: форма и размер в клетках по 5 футов, где стоит отряд, входы и выходы (дверь, "
@@ -1748,21 +1768,12 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     if w.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
-    for f in a.features:
-        if any(len(c) != 4 for c in f.cells):
-            raise ToolError(f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]")
-    if any(len(c) != 2 for c in a.walls):
-        raise ToolError("стена — клетка [c, r]")
-    data = a.model_dump(exclude={"location_id"})
-    data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
-    places = {e.id for e in w.entities.values() if e.kind == "location"}
-    errors = sketch.check(data, places)
+    data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"})
     if errors:
         raise ToolError("; ".join(errors[:8]))
     before = copy.deepcopy(place.state)
-    for x in data["exits"]:
-        if x["to"] and x["to"] != place.id and not _linked(ctx, place, w.entities[x["to"]]):
-            _link(place, x["to"], x["name"])  # выход в известное место — путь и на карте мест
+    link_exits(place, data, w.entities)
+    data["rev"] = int((place.state or {}).get("layout_rev") or 0)  # нарисован после этого описания: фон не заменит
     place.state = {**(place.state or {}), "sketch": data}
     await ctx.record(
         "sketch_place",
@@ -1771,6 +1782,47 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
         inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
     )
     return {"place": place.name, "sketch": sketch.describe(data)}
+
+
+class DescribePlaceArgs(BaseModel):
+    layout: str = Field(
+        min_length=40,
+        max_length=3000,
+        description="закрытое описание для схемы (игроки его не видят): форма и размер в футах, откуда вошёл отряд, "
+        "каждый вход и выход (дверь, решётка, окно, лестница) — на какой стене, открыт ли, что за ним; крупные "
+        "предметы и где стоят; тайное (тайник, скрытая дверь)",
+    )
+    location_id: str | None = Field(None, description=PLACE_HINT)
+
+
+@tool(
+    "describe_place",
+    "Закрытое описание места, куда пришли герои: по нему техническая модель сама построит эскиз для схемы игроков "
+    "(форма, выходы, крупные предметы). Описывай одно место — то, где отряд сейчас. Описание видишь только ты, в "
+    "таблице сцены; эскиз появится там же, поправить его — sketch_place.",
+    DescribePlaceArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def describe_place(ctx: ToolContext, a: DescribePlaceArgs) -> dict:
+    w = ctx.world
+    if w.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = w.entities[w.place_arg(a.location_id, "описание места")]
+    before = copy.deepcopy(place.state)
+    st = dict(place.state or {})
+    st["layout"] = a.layout.strip()
+    st["layout_rev"] = int(st.get("layout_rev") or 0) + 1
+    place.state = st
+    ctx.signals.add(f"sketch:{place.id}")  # эскиз строится после хода, в фоне (app/agents/surveyor.py)
+    await ctx.record(
+        "describe_place",
+        target_id=place.id,
+        payload={"place": place.name},
+        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+        hidden=True,
+    )
+    return {"place": place.name, "note": "эскиз строится по описанию; появится в таблице сцены"}
 
 
 class MoveArgs(BaseModel):

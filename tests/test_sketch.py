@@ -41,11 +41,11 @@ def test_master_sketches_a_cell_and_players_see_it(client, admin, settings):
         return cell, before, bad, done, ctx.world.scene_table()
 
     cell, before, bad, done, table = _play(settings, cid, build)
-    assert "нет эскиза" in before and "sketch_place" in before  # мастеру напоминают нарисовать место
+    assert "нет закрытого описания и эскиза" in before and "describe_place" in before  # напоминание описать место
     assert not bad["ok"] and "«Стол» выходит за пределы места 6×4" in bad["error"]
     assert "отряд (5, 0) стоит на стене" in bad["error"]
     assert "помещение 6×4 клеток" in done["sketch"] and "за ним коридор" in done["sketch"]
-    assert "нет эскиза" not in table and "Лаз под нарами" in table  # тайное мастер видит
+    assert "нет закрытого описания" not in table and "Лаз под нарами" in table  # тайное мастер видит
 
     m = _map(client, p1, cid)
     sk = m["sketch"]
