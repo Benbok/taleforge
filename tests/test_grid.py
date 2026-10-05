@@ -98,3 +98,33 @@ def test_combat_start_puts_everyone_on_a_cell(client, admin, settings):
     assert len(set(cells.values())) == len(cells)  # никто не делит клетку
     assert cells[hid] == (0, 0)
     assert "встали на клетки" in r["placed"]
+
+
+def test_items_and_landmarks_lie_on_exact_cells(client, admin, settings):
+    import_base(settings)
+    c, (p1,), hero = party(client, admin)
+    cid, hid = c["id"], hero["id"]
+    potion = {"item_template_id": "item.potion_of_healing", "reason": "спрятано в соломе"}
+
+    async def lay(ctx):
+        await _ok(ctx, "create_location", {"name": "Камера", "make_current": True})
+        await _ok(ctx, "sketch_place", CELL)  # 6×4, отряд в (1, 2), стена (5, 0), нары (0..1, 0)
+        on_bunk = await _ok(ctx, "place_item", {**potion, "cell": [0, 0]})  # на нарах можно
+        again = await _ok(ctx, "place_item", {**potion, "cell": [0, 0]})  # та же клетка — стопка
+        other = await _ok(ctx, "place_item", {**potion, "cell": [3, 3]})  # другая клетка — отдельно
+        wall = await execute(ctx, "place_item", {**potion, "cell": [5, 0]})
+        mark = await _ok(ctx, "add_landmark", {"name": "Сток в полу", "cell": [4, 2]})
+        inv = next(i.id for i in ctx.world.inventory[hid])
+        positions.set_cell(ctx.world, hid, (2, 0))  # герой на (3, 2) по эскизу
+        dropped = await _ok(ctx, "drop_item", {"character_id": hid, "inventory_id": inv})
+        cells = {e: positions.pos_of(ctx.world, e).cell for e in (on_bunk["entity_id"], other["entity_id"])}
+        return on_bunk, again, wall, mark, dropped, cells
+
+    on_bunk, again, wall, mark, dropped, cells = _play(settings, cid, lay)
+    assert again["entity_id"] == on_bunk["entity_id"]
+    assert cells[on_bunk["entity_id"]] == (-1, -2)  # от строя отряда
+    assert not wall["ok"] and "стена" in wall["error"]
+    around = {x["id"]: x for x in _map(client, p1, cid)["around"]}
+    assert around[on_bunk["entity_id"]]["cell"] == [-1, -2]
+    assert around[mark["landmark_id"]]["cell"] == [3, 0]
+    assert around[dropped["entity_id"]]["cell"] == [2, 0]  # брошенное — у ног героя

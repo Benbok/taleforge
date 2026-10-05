@@ -8,10 +8,21 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core import economy
+from app.core import positions as grid
 from app.core.world import is_scene_item
 from app.db.models import Character, Entity, InventoryItem
 from app.tools import effects as fx
-from app.tools.master.base import FOUND_ITEM, IMPROVISED_WEAPON, PLACE_HINT, Zone, _alive, _character, snapshot
+from app.tools.master.base import (
+    CELL_HINT,
+    FOUND_ITEM,
+    IMPROVISED_WEAPON,
+    PLACE_HINT,
+    Cell,
+    Zone,
+    _alive,
+    _character,
+    snapshot,
+)
 from app.tools.registry import ToolContext, ToolError, tool
 
 # --- предметы ---
@@ -283,6 +294,7 @@ class PlaceItemArgs(BaseModel):
     qty: int = Field(1, ge=1, le=100)
     display_name: str | None = Field(None, max_length=128, description="имя предмета в мире; свойства — из шаблона")
     zone: Zone = "near"
+    cell: Cell | None = Field(None, description=CELL_HINT + "; можно на предмет эскиза (в сене, на столе), не в стену")
     description: str = Field(
         "", max_length=500, description="где и как лежит, как его видят герои: текст карточки для игроков"
     )
@@ -301,8 +313,11 @@ class PlaceItemArgs(BaseModel):
 async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
     place = ctx.world.place_arg(a.location_id, "лежит предмет")
-    en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description, place)
+    cell = _floor(ctx, place or ctx.world.home(), a.cell)
+    en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description, place, cell)
     result = {"entity_id": en.id, "item": en.name, "qty": a.qty}
+    if a.cell is not None:
+        result["cell"] = list(a.cell)
     await ctx.record(
         "place_item", target_id=en.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
     )
@@ -317,15 +332,17 @@ async def _put_in_scene(
     zone: str,
     description: str = "",
     place: str | None = None,
+    cell: tuple[int, int] | None = None,
 ) -> tuple[Entity, list[dict]]:
-    """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит рядом, складывается в стопку.
-    ``place`` — место, где он ляжет; по умолчанию основное место сцены."""
+    """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит там же, складывается в стопку.
+    ``place`` — место, где он ляжет; по умолчанию основное место сцены. ``cell`` — точная клетка (от строя)."""
     rec = ctx.world.catalog.find(template_id)
     name = display_name or (rec.name if rec else template_id)
     place = place or ctx.world.home()
     for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
-        same = en.template_id == template_id and st.get("display_name") == display_name and en.zone == zone
+        here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
+        same = en.template_id == template_id and st.get("display_name") == display_name and here
         if is_scene_item(en) and same:
             en.state = {**st, "qty": int(st.get("qty") or 1) + qty}
             return en, [{"table": "entities", "id": en.id, "field": "state", "before": st}]
@@ -342,7 +359,20 @@ async def _put_in_scene(
     ctx.session.add(en)
     await ctx.session.flush()
     ctx.world.entities[en.id] = en
+    if cell is not None:
+        grid.set_cell(ctx.world, en.id, cell)
     return en, [{"table": "entities", "op": "delete", "id": en.id}]
+
+
+def _floor(ctx: ToolContext, place: str | None, cell: list[int] | None) -> tuple[int, int] | None:
+    """Клетка мастера → клетка от строя, с проверкой, что вещь там может лежать."""
+    if cell is None:
+        return None
+    rel = grid.to_rel(ctx.world, place, cell)
+    problem = grid.floor_problem(ctx.world, place, rel)
+    if problem:
+        raise ToolError(problem)
+    return rel
 
 
 class PickUpArgs(BaseModel):
@@ -419,7 +449,8 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
     template, display = it.item_template_id, it.display_name
     name = ctx.world.item_name(it)
     inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch))
+    where = grid.pos_of(ctx.world, ch.id).cell  # герой на клетке — вещь ложится у его ног
+    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where)
     inverse += inv
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)

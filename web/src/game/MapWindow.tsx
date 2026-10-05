@@ -9,6 +9,7 @@ import {
   COVER_NAME,
   ELEVATION_NAME,
   GRID_R,
+  interactText,
   layoutGrid,
   layoutPlaces,
   useMapWindow,
@@ -487,35 +488,26 @@ function Around({ m }: { m: MapState }) {
   );
 }
 
-/** Выбранная цель на схеме: подойти и готовые фразы в поле ввода. */
+/** Выбранная цель на схеме: подойти к ней или начать фразу о ней в поле ввода (решение Arty: что именно делать,
+ * игрок дописывает сам, а мастер решает). */
 function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void; go: (r: StepRequest) => void }) {
   const insert = useDraft((s) => s.insert);
   if (!pick) return null;
-  const x = pick.exit;
-  const shut = x && (x.state === "closed" || x.state === "locked");
-  const say = (text: string) => () => {
-    insert(text);
-    onClose();
-  };
   return (
     <div className="flex flex-wrap items-center gap-2 rounded border border-line px-3 py-2 text-sm">
       <span className="font-heading text-ink">{pick.name}</span>
       <button className="btn px-2 py-0.5 text-xs" onClick={() => go({ near: pick.near })}>
         Подойти
       </button>
-      <button className="btn px-2 py-0.5 text-xs" onClick={say(`Осматриваю: ${pick.name}`)}>
-        Осмотреть
+      <button
+        className="btn px-2 py-0.5 text-xs"
+        onClick={() => {
+          insert(interactText(pick.name));
+          onClose();
+        }}
+      >
+        Взаимодействовать
       </button>
-      {shut && (
-        <button className="btn px-2 py-0.5 text-xs" onClick={say(x.state === "locked" ? `Пробую отпереть: ${pick.name}` : `Открываю: ${pick.name}`)}>
-          {x.state === "locked" ? "Отпереть" : "Открыть"}
-        </button>
-      )}
-      {x && x.kind !== "window" && (
-        <button className="btn px-2 py-0.5 text-xs" onClick={say(`Прохожу: ${pick.name}`)}>
-          Пройти
-        </button>
-      )}
       <button className="ml-auto text-muted hover:text-ink" onClick={onClose} aria-label="Снять выбор">
         ×
       </button>
