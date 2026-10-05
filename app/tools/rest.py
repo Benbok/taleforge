@@ -32,16 +32,9 @@ from app.db.models import Character
 from app.rules.dnd5e import rest as rules
 from app.tools import effects as fx
 from app.tools import fortune
-from app.tools.master import (
-    SceneModeArgs,
-    SpawnArgs,
-    encounter_budget,
-    engine,
-    expire_effects,
-    set_scene_mode,
-    snapshot,
-    spawn_entity,
-)
+from app.tools.master.base import engine, snapshot
+from app.tools.master.entities import SpawnArgs, encounter_budget, spawn_entity
+from app.tools.master.scene import SceneModeArgs, expire_effects, set_scene_mode
 from app.tools.registry import ToolContext, ToolError, dice_json, tool
 
 VOTE_SEC = 120.0  # сколько ждать голосов; кто не ответил — отдыхает со всеми

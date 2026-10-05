@@ -211,7 +211,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         ctx.session.add(en)
         await ctx.session.flush()
         if a.here:
-            from app.tools.master import relocate_scene
+            from app.tools.master.places import relocate_scene
 
             relocate_scene(ctx, en, inverse)
     else:
