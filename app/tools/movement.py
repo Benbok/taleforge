@@ -6,17 +6,10 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from app.core import combat, steps
+from app.core import combat, economy, steps
 from app.core import positions as grid
 from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolContext, ToolError, execute
-
-
-def _used(ctx: ToolContext, hero_id: str) -> int:
-    """Сколько футов герой уже прошёл за этот ход боя."""
-    st = (ctx.world.scene.state or {}).get("moved") or {}
-    mine = st.get(hero_id) or {}
-    return int(mine.get("ft") or 0) if mine.get("turn") == combat.turn_marker(ctx.world.scene) else 0
 
 
 def _melee_key(act) -> str | None:
@@ -46,8 +39,12 @@ async def hero_step(
         raise ToolError("в бою ходят по очереди: дождись своего хода")
     start = steps.cell_of(w, hero_id)
     speed = int(hero.speed or 0)
-    used = _used(ctx, hero_id) if fighting else 0
-    left = max(0, 2 * speed - used) // 5 if fighting else None
+    led = economy.ledger(w, hero_id) if fighting else None
+    used = economy.moved_ft(w, hero_id) if fighting else 0
+    base = speed * (1 + led["dash"]) if led else 0  # шаги этого хода без нового рывка
+    can_dash = bool(led) and led["actions"] < 1 + led["extra"]
+    cap = base + (speed if can_dash else 0)
+    left = max(0, cap - used) // 5 if fighting else None
     if near:
         route = steps.beside(w, place, start, near, hero_id, left)
         if route is None:
@@ -62,16 +59,18 @@ async def hero_step(
         if problem:
             raise ToolError(problem)
         if fighting:
-            raise ToolError(f"не дойти: за этот ход осталось {max(0, 2 * speed - used)} футов с рывком")
+            dash_note = " с рывком" if can_dash else ""
+            raise ToolError(f"не дойти: за этот ход осталось {max(0, cap - used)} футов{dash_note}")
         raise ToolError("туда не пройти: путь закрыт")
     if not route:
         return {"who": hero.name, "moved_ft": 0}
     ft = len(route) * 5
     warn: list[str] = []
-    dash = fighting and used <= speed < used + ft
+    dash = fighting and used + ft > base
     if dash:
-        warn.append(f"рывок: дальше {speed} футов за ход — потратит действие")
-    foes = steps.provokers(w, place, start, route) if fighting else []
+        warn.append(f"рывок: дальше {base} футов за ход — потратит действие")
+    disengaged = bool(led) and led["disengage"]
+    foes = steps.provokers(w, place, start, route) if fighting and not disengaged else []
     foes = [e for e in foes if combat.reaction_available(ctx, e.id) and _melee_key(w.actor(e.id))]
     if foes:
         warn.append("уход провоцирует атаку по возможности: " + ", ".join(e.name for e in foes))
@@ -81,6 +80,8 @@ async def hero_step(
     sc = w.scene
     inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)}]
     notes: list[str] = []
+    if dash:
+        economy.charge(ctx, hero_id, "dash")  # откат покрывает снимок выше
     for e in foes:  # атаки по возможности — до шага из досягаемости
         atk = w.actor(e.id)
         if not atk.alive or mod.can_act(atk.modifiers):
@@ -112,6 +113,6 @@ async def hero_step(
         out["notes"] = notes
         ctx.outbox.append({"kind": "system", "content": "; ".join(notes)})
     if fighting:
-        out["left_ft"] = (speed if used + ft <= speed else 2 * speed) - used - ft
+        out["left_ft"] = base + (speed if dash else 0) - used - ft
     await ctx.record("step", actor_id=hero_id, target_id=hero_id, payload=out, inverse=inverse)
     return out

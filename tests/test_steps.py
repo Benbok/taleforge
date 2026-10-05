@@ -94,3 +94,18 @@ def test_combat_step_speed_dash_and_opportunity_attack(client, admin, settings):
         return await _err(hero_step(ctx, hid, (-9, 0)))
 
     assert "дождись своего хода" in play(settings, cid, [], not_mine)
+
+
+def test_no_squeeze_between_corner_walls(client, admin, settings):
+    import_base(settings)
+    c, _, hero = party(client, admin)
+    cid, hid = c["id"], hero["id"]
+    room = {"shape": "room", "cols": 4, "rows": 4, "party": [1, 1], "walls": [[2, 1], [1, 2]]}
+
+    async def walk(ctx):
+        await _ok(ctx, "create_location", {"name": "Стык", "make_current": True})
+        await _ok(ctx, "sketch_place", room)
+        return await hero_step(ctx, hid, (1, 1))  # (2, 2) по диагонали между стенами — только в обход
+
+    out = _play(settings, cid, walk)
+    assert out["cell"] == [2, 2] and out["moved_ft"] > 5

@@ -510,7 +510,14 @@ def reaction_options(hero: Actor, creature: Actor) -> list[dict[str, str]]:
 
 def public_turn(world) -> dict[str, Any] | None:
     """Чей ход — для клиентов (событие turn.changed и снимок сцены)."""
-    return public_turn_of(world.scene, world.characters, world.entities)
+    turn = public_turn_of(world.scene, world.characters, world.entities)
+    if turn is not None:
+        from app.core import economy
+
+        left = economy.view(world, turn["actor_id"])
+        if left is not None:
+            turn["economy"] = left
+    return turn
 
 
 def public_turn_of(sc, characters: dict, entities: dict) -> dict[str, Any] | None:

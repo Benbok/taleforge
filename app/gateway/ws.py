@@ -373,6 +373,8 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
                 _background(app.state.master.advance(conn.campaign_id, "sync"))  # первыми могут ходить существа
             else:
                 await app.state.master.after_turn(ctx)
+        else:
+            await _publish_turn(app, ctx)
 
 
 async def _send(app, user: User, conn: Connection, payload: dict) -> None:
@@ -651,6 +653,16 @@ async def _step(app, user: User, conn: Connection, payload: dict) -> None:
         return
     await publish_changes(app.state.bus, ctx, messages)
     await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
+    await _publish_turn(app, ctx)
+
+
+async def _publish_turn(app, ctx) -> None:
+    """В бою — свежий остаток хода героя (действие, бонусное действие, шаги) всем, кто видит этот ход."""
+    if not combat.in_combat(ctx):
+        return
+    cid = ctx.campaign.id
+    for seats, view in combat.turn_views(ctx.world):
+        await app.state.bus.publish(cid, envelope("turn.changed", cid, {"turn": view}), seats)
 
 
 async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:

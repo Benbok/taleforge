@@ -527,6 +527,13 @@ class World:
         if fight:
             head += f" · раунд {self.scene.round}"
         lines = [head, f"Игровое время: {format_time(self.scene.game_time)}"]
+        if fight:
+            from app.core import economy
+
+            for ch in self.characters.values():
+                turn = economy.line(self, ch.id)
+                if turn:
+                    lines.append(f"{ch.name}, {turn}")
         shown = [ch for ch in self.characters.values() if ch.status in PLAYABLE or ch.status == "dead"]
         if apart:
             shown = [ch for ch in shown if self.place_of(ch) in groups]

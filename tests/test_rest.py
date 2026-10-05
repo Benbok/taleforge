@@ -87,6 +87,8 @@ def test_slots_spent_whatever_the_outcome(battle_wizard):
         assert (await call(ctx, "set_scene_mode", {"mode": "combat", "participants": [*heroes, gob]}))["ok"]
         # в бою спасся снова: вторая ячейка тоже ушла
         inb = await call(ctx, "cast_spell", {"caster_id": wiz, "spell_id": "spell.burning_hands", "target_ids": [gob]})
+        sc = ctx.world.scene
+        sc.state = {**sc.state, "spent": {}}  # следующий ход волшебницы: действие снова есть, ячеек нет
         empty = await call(
             ctx, "cast_spell", {"caster_id": wiz, "spell_id": "spell.magic_missile", "target_ids": [gob]}
         )

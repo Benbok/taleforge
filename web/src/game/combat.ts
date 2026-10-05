@@ -1,6 +1,6 @@
 // Бой на экране: таймер хода, зоны и оповещения «Ваш ход». Числа и очередь присылает сервер, клиент только рисует.
 import { useEffect, useRef, useState } from "react";
-import type { SceneEntity, Turn } from "../lib/types";
+import type { SceneEntity, Turn, TurnEconomy } from "../lib/types";
 import { useGame } from "../stores/game";
 
 export const WARN_SEC = 60;
@@ -53,6 +53,17 @@ export function useTurnClock(turn: Turn | null): { left: number; total: number }
   const key = turnKey(turn)!;
   if (!totals.current.has(key)) totals.current.set(key, Math.max(left, 1));
   return { left, total: totals.current.get(key)! };
+}
+
+/** Что осталось у героя в этот ход: подписи для полосы боя, ``spent`` — уже потрачено. */
+export function turnLeft(e: TurnEconomy): { label: string; spent: boolean }[] {
+  const action = e.attacks_left > 0 ? `Атака: ещё ${e.attacks_left}` : "Действие";
+  return [
+    { label: action, spent: !e.action && e.attacks_left === 0 },
+    { label: "Бонусное", spent: !e.bonus },
+    { label: `Шаги ${e.move_left_ft} фт`, spent: e.move_left_ft === 0 },
+    ...(e.disengage ? [{ label: "Отход", spent: false }] : []),
+  ];
 }
 
 export function myTurn(turn: Turn | null, seatId: string | null | undefined): boolean {

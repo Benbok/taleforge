@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Envelope, SceneEntity } from "../lib/types";
 import { useGame } from "../stores/game";
-import { byZone, myTurn, ringState } from "./combat";
+import { byZone, myTurn, ringState, turnLeft } from "./combat";
 
 const env = (type: string, payload: object): Envelope => ({
   type,
@@ -54,5 +54,23 @@ describe("экран боя", () => {
     const { apply } = useGame.getState();
     apply(env("session.summary", { recap: "Отряд дошёл до моста.", events: ["бой у моста"], quests: [] }));
     expect(useGame.getState().summary?.recap).toBe("Отряд дошёл до моста.");
+  });
+});
+
+describe("turnLeft", () => {
+  it("shows what is left of the hero's turn", () => {
+    const fresh = turnLeft({ action: true, attacks_left: 0, bonus: true, move_left_ft: 30, disengage: false });
+    expect(fresh.map((x) => [x.label, x.spent])).toEqual([
+      ["Действие", false],
+      ["Бонусное", false],
+      ["Шаги 30 фт", false],
+    ]);
+    const used = turnLeft({ action: false, attacks_left: 1, bonus: false, move_left_ft: 0, disengage: true });
+    expect(used.map((x) => [x.label, x.spent])).toEqual([
+      ["Атака: ещё 1", false],
+      ["Бонусное", true],
+      ["Шаги 0 фт", true],
+      ["Отход", false],
+    ]);
   });
 });

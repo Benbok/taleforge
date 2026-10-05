@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import adventure, audio, combat, sketch
+from app.core import adventure, audio, combat, economy, sketch
 from app.core import positions as grid
 from app.core.campaigns import master_seat
 from app.core.features import uses_view
@@ -424,6 +424,11 @@ class AttackArgs(BaseModel):
     inspiration: bool = Field(False, description="герой тратит вдохновение на преимущество (если игрок попросил)")
     edge: Edge = Field("none", description=EDGE_HINT)
     edge_reason: str | None = Field(None, max_length=200, description="почему преимущество или помеха — увидят игроки")
+    as_bonus: bool = Field(
+        False,
+        description="удар бонусным действием героя (вторая рука, особенность класса); "
+        "иначе удар идёт из действия «Атака» в его ход",
+    )
 
 
 @tool(
@@ -471,6 +476,7 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальше обычной дистанции")
         if dist <= 5:
             extra.append("помеха: дальняя атака вплотную к врагу")
+    turn_inv = economy.charge_attack(ctx, att.id, a.as_bonus)
     target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
     mode, am_reasons = mod.with_circumstance(am.mode, list(am.reasons), a.edge, _edge_reason(a.edge, a.edge_reason))
@@ -501,7 +507,7 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     if COVER_AC.get(cover):
         result["cover"] = f"+{COVER_AC[cover]} к КД за укрытие"
     dice = [dice_json(roll.roll)]
-    inverse = [snapshot(tgt), *(spent or [])]
+    inverse = [snapshot(tgt), *(spent or []), *turn_inv]
     if roll.hit:
         o, droll = fx.damage_to(tgt, weapon["damage"], weapon["damage_type"], critical, ctx.dice)
         dice.append(droll)
@@ -526,6 +532,46 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     await ctx.record("resolve_attack", actor_id=att.id, target_id=tgt.id, payload=result, dice=dice, inverse=inverse)
     w.invalidate(tgt.id)
     return result
+
+
+class TakeActionArgs(BaseModel):
+    character_id: str
+    action: Literal["dash", "disengage", "dodge", "help", "hide", "ready", "search", "grapple", "other"] = Field(
+        description="dash — рывок (ещё скорость шагов), disengage — отход (без атак по возможности до конца хода), "
+        "dodge — уклонение, help — помощь, hide — спрятаться, ready — подготовить действие, search — поиск, "
+        "grapple — захват или толчок (вместо одного удара атаки), other — другое действие хода"
+    )
+    bonus: bool = Field(False, description="бонусным действием: Хитрое действие плута, особенность класса")
+    note: str | None = Field(None, max_length=200, description="что именно, если other или ready")
+
+
+@tool(
+    "take_action",
+    "Герой в свой ход в бою тратит действие (или бонусное действие) на рывок, отход, уклонение, помощь, засаду, "
+    "подготовку, поиск, захват. Атака, заклинание и предмет тратят действие сами — для них этот вызов не нужен. "
+    "Сервер откажет, если действие этого хода уже потрачено.",
+    TakeActionArgs,
+    ids={"character_id": "characters"},
+    closes=False,
+)
+async def take_action(ctx: ToolContext, a: TakeActionArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    if not economy.active(ctx.world, ch.id):
+        raise ToolError(f"{ch.name}: действия хода считаются только в бою и только в ход героя")
+    if a.action == "grapple":
+        inverse = economy.charge_attack(ctx, ch.id, a.bonus)
+    else:
+        inverse = economy.charge(ctx, ch.id, a.action, a.bonus)
+    out = {"character": ch.name, "action": economy.ACTIONS_RU.get(a.action, a.action), "bonus": a.bonus}
+    if a.note:
+        out["note"] = a.note
+    if a.action == "dodge":
+        out["effect"] = (
+            "до начала его следующего хода атаки по нему с помехой (edge), спасброски Ловкости с преимуществом"
+        )
+    out["left"] = economy.line(ctx.world, ch.id)
+    await ctx.record("take_action", actor_id=ch.id, payload=out, inverse=inverse)
+    return out
 
 
 class DeathSaveArgs(BaseModel):
@@ -690,6 +736,7 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     tgt = ctx.world.actor(a.target_id or ch.id)
     _alive(tgt, "Цель")
     inv = [snapshot(tgt), {"table": "inventory", "id": it.id, "field": "qty", "before": it.qty}]
+    inv += economy.charge(ctx, ch.id, "use_object")
     out = await fx.run_ops(ctx, rec.id, ops, tgt, {})
     consumed = rec.data.get("category") == "consumable" or bool(rec.data.get("consumable"))
     if consumed:

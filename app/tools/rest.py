@@ -25,7 +25,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.content.catalog import CatalogError
-from app.core import chat
+from app.core import chat, economy
 from app.core import features as feats
 from app.core.world import PLAYABLE, WorldError, format_time
 from app.db.models import Character
@@ -632,6 +632,8 @@ async def use_feature(ctx: ToolContext, a: UseFeatureArgs) -> dict:
     except rules.RestError as e:
         raise ToolError(f"{ch.name}: {e}") from e
     inverse = [snapshot(act)]
+    if pool.key == "action_surge":
+        inverse += economy.surge(ctx, ch.id)
     ch.resources = {**(ch.resources or {}), "uses_spent": spent}
     ctx.world.invalidate(ch.id)
     left = pool.max - spent[pool.key]

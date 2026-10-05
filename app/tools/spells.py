@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.core import economy
 from app.core import spells as book
 from app.core.positions import COVER_AC, pos_of
 from app.core.world import Actor, format_time
@@ -136,6 +137,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
         raise ToolError(f"в бою «{spell['name']}» не успеть: {took}. Можно после боя")
 
     level = int(spell.get("level", 0))
+    turn_inv = economy.charge_spell(ctx, ch.id, ct, level)
     res_before = copy.deepcopy(ch.resources or {})
     slot_kind, slot = None, level
     if level > 0 and not a.ritual:
@@ -156,7 +158,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
         char_level=caster.level,
         targets=a.target_ids,
         ritual=a.ritual,
-        inverse=[{"table": "characters", "id": ch.id, "field": "resources", "before": res_before}],
+        inverse=[{"table": "characters", "id": ch.id, "field": "resources", "before": res_before}, *turn_inv],
         extra={"slot": {"kind": slot_kind, "level": slot}} if slot_kind else {},
         class_tags=_class_tags(w, ch),
     )
@@ -397,6 +399,7 @@ async def read_scroll(ctx: ToolContext, ch: Character, it: Any, rec: Any, target
     dc, bonus = rules.SCROLL_STATS.get(slot, rules.SCROLL_STATS[9])
     dc, bonus = int(spec.get("dc") or dc), int(spec.get("attack_bonus") or bonus)
     inverse: list[dict] = [{"table": "inventory", "id": it.id, "field": "qty", "before": it.qty}]
+    inverse += economy.charge_spell(ctx, ch.id, ct, level)
     item_name = w.item_name(it)
 
     async def consume() -> None:

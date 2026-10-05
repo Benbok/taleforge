@@ -59,6 +59,12 @@ def search(
             free[c] = _inside(sk, ax, ay, c) and grid.cell_problem(world, place, c, actor_id, sk) is None
         return free[c]
 
+    walls = {tuple(x) for x in (sk or {}).get("walls") or []}
+
+    def squeeze(a: tuple[int, int], dc: int, dr: int) -> bool:
+        """Диагональ между двумя стенами, сходящимися углом: сквозь такой стык не пройти."""
+        return bool(dc and dr) and (a[0] + dc + ax, a[1] + ay) in walls and (a[0] + ax, a[1] + dr + ay) in walls
+
     prev: dict[tuple[int, int], tuple[int, int]] = {start: start}
     q = deque([(start, 0)])
     while q:
@@ -67,7 +73,7 @@ def search(
             continue
         for dc, dr in DIRS:
             nxt = (cur[0] + dc, cur[1] + dr)
-            if nxt in prev or not ok(nxt):
+            if nxt in prev or squeeze(cur, dc, dr) or not ok(nxt):
                 continue
             prev[nxt] = cur
             if done(nxt):
