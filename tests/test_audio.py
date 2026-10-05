@@ -244,3 +244,36 @@ def test_snapshot_and_broadcast(client, admin, game, llm):
         ok(client.patch(f"/api/campaigns/{cid}", json={"audio_enabled": False}, headers=admin))
         e = next_of(ws, "audio.state")
         assert not e["payload"]["enabled"] and e["payload"]["layers"]["music"] is None
+
+
+def test_autopilot_starts_music_for_place_and_respects_master(game):
+    """Мастер забыл про звук: движок включает мелодию под место; свой выбор мастера и его тишину не трогает."""
+    settings, cid, _, _ = game
+
+    async def fn(ctx):
+        r = await execute(
+            ctx, "create_location", {"name": "Кабак", "template_id": "location.tavern", "make_current": True}
+        )
+        assert r["ok"], r
+        words = audio.place_words(ctx, None)
+        audio.autopilot(ctx)
+        first = audio.mixer(ctx.world.scene)["music"]
+        await execute(ctx, "set_soundscape", {"music": "off", "reason": "тишина перед бурей"})
+        audio.autopilot(ctx)  # в этом ходе мастер звук вёл сам
+        ctx.events.clear()
+        audio.autopilot(ctx)  # и следующий ход: тишина выбрана им недавно
+        return words, first, audio.mixer(ctx.world.scene)["music"], "audio" in ctx.signals
+
+    words, first, after, signal = play(settings, cid, fn)
+    assert "tavern" in words and first["track"] == "mel_rest" and after is None and signal
+
+
+def test_autopilot_off_when_sound_disabled(client, admin, game):
+    settings, cid, _, _ = game
+    ok(client.patch(f"/api/campaigns/{cid}", json={"audio_enabled": False}, headers=admin))
+
+    async def fn(ctx):
+        audio.autopilot(ctx)
+        return audio.mixer(ctx.world.scene)["music"]
+
+    assert play(settings, cid, fn) is None

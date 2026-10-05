@@ -319,6 +319,8 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     }
     if res.critical and not auto:
         result["critical"] = res.critical
+        if isinstance(act.obj, Character):
+            result["critical_note"] = CRIT_NOTES[res.critical]
     if reasons:
         result["reasons"] = reasons
     if auto:
@@ -334,6 +336,24 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         inverse=spent or [],
     )
     return result
+
+
+# Что мастер обязан сделать с критическим исходом героя (просьба Arty 2026-10-04): успех — исполнить заявку,
+# провал — закрепить последствие в листе героя, а не оставить его словами в повествовании.
+CRIT_NOTES = {
+    "success": (
+        "критический успех: исполни заявку игрока так близко к задуманному, как только возможно в мире, даже дерзкую "
+        "(«стащить штаны со стражника» — штаны у героя). Добытое закрепи инструментом: keep_found_item, give_item, "
+        "learn_fact, record_deed"
+    ),
+    "fail": (
+        "критический провал: последствие бьёт по самому герою и должно остаться в его листе. Закрепи его сейчас "
+        "инструментом на этого героя: apply_effect с состоянием из шаблонов (condition.prone, condition.poisoned, "
+        "condition.frightened, condition.deafened, condition.blinded; укажи длительность), drop_item, apply_hazard "
+        "или reposition. Одних слов в повествовании мало"
+    ),
+}
+CONSEQUENCE_TOOLS = ("apply_effect", "drop_item", "apply_hazard", "reposition", "pass_item")
 
 
 def critical_checks(ctx: ToolContext) -> bool:
@@ -464,6 +484,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     }
     if roll.roll.natural == 1:
         result["fumble"] = True  # натуральная 1: не просто промах, неудача оборачивается против атакующего
+        if isinstance(att.obj, Character):
+            result["critical_note"] = CRIT_NOTES["fail"]
     if am_reasons:
         result["reasons"] = am_reasons
     if spent:
@@ -1937,9 +1959,40 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     sc.turn_order = entries
     combat.start_combat(ctx)
     audio.on_mode(ctx, "combat")
+    placed = _deploy(ctx, [e["id"] for e in entries], inverse)
     names = [f"{w.actor(e['id']).name} ({e['initiative']})" for e in entries]
     await ctx.record("set_scene_mode", payload={"mode": "combat", "order": sc.turn_order}, dice=dice, inverse=inverse)
-    return {"mode": "combat", "round": 1, "initiative": names}
+    out = {"mode": "combat", "round": 1, "initiative": names}
+    if placed:
+        out["placed"] = (
+            f"на схеме боя враги без стороны встали с одной стороны ({', '.join(placed)}); "
+            "если по сцене они стоят иначе, поправь reposition"
+        )
+    return out
+
+
+def _deploy(ctx: ToolContext, ids: list[str], inverse: list[dict]) -> list[str]:
+    """Начало боя: враг без стороны света встаёт туда же, где уже стоят его товарищи (или на север), чтобы схема
+    боя сразу показывала, кто где, а не разбрасывала врагов по кругу случайно."""
+    w = ctx.world
+    foes = [
+        w.entities[i]
+        for i in ids
+        if i in w.entities
+        and w.entities[i].kind == "creature"
+        and (w.entities[i].state or {}).get("attitude", "hostile") == "hostile"
+    ]
+    side = next((e.state["bearing"] for e in foes if (e.state or {}).get("bearing")), "n")
+    placed = []
+    for e in foes:
+        if (e.state or {}).get("bearing"):
+            continue
+        inverse.append({"table": "entities", "id": e.id, "field": "state", "before": copy.deepcopy(e.state)})
+        e.state = {**(e.state or {}), "bearing": side}
+        w.invalidate(e.id)
+        ctx.changed.add(e.id)
+        placed.append(e.name)
+    return placed
 
 
 def roll_initiative(ctx: ToolContext, ids: list[str]) -> tuple[list[dict], list[dict]]:

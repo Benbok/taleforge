@@ -7,14 +7,23 @@ import { voteQuestion } from "../game/VotePanel";
 import { toast } from "../stores/toasts";
 import { resolveToolResult } from "../master/tools";
 import { sound } from "../game/sound";
-import { mapEvent } from "../game/map";
+import { mapEvent, useMapWindow } from "../game/map";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
 const REFRESH_ACTIONS = new Set(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
 
+let lastMode: string | null = null; // режим сцены до события: начало боя открывает схему
+
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
   mapEvent(e.type, e.payload);
+  if (e.type === "state.snapshot" || e.type === "scene.updated") {
+    const mode = useGame.getState().scene?.mode ?? null;
+    // бой начался: сразу показываем, кто где стоит (просьба Arty); закрыть схему можно как обычно
+    if (e.type === "scene.updated" && mode === "combat" && lastMode !== null && lastMode !== "combat")
+      useMapWindow.getState().show("around");
+    lastMode = mode;
+  }
   if (e.type === "state.snapshot") {
     const a = (e.payload as unknown as Snapshot).audio;
     if (a) void sound.apply(a);
