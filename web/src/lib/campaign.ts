@@ -199,9 +199,25 @@ export function personaBody(pick: PersonaPick): { persona_id?: string; preset?: 
 
 // --- черновик новой кампании: живёт в браузере, пока кампания не создана ---
 
+/** Опубликованное готовое приключение для мастера создания кампании (GET /api/modules). */
+export interface PublishedModule {
+  id: string;
+  title: string;
+  summary: string;
+  levels: { start?: number | null; end?: number | null } | null;
+  party_size: number | null;
+  hooks: { id: string; title: string; text: string }[];
+  maps: number;
+}
+
 export interface CampaignDraft {
   step: number;
   name: string;
+  /** Откуда сюжет: своя анкета для архитектора или готовое приключение из библиотеки. */
+  source: "plot" | "module";
+  module_id: string;
+  /** Зацепка книги для вступления; пусто — первая из книги. */
+  module_hook: string;
   pack_id: string;
   difficulty: string;
   /** Рост уровней: по опыту SRD или по вехам сюжета. */
@@ -224,6 +240,9 @@ export interface CampaignDraft {
 export const EMPTY_DRAFT: CampaignDraft = {
   step: 0,
   name: "",
+  source: "plot",
+  module_id: "",
+  module_hook: "",
   pack_id: "",
   difficulty: "normal",
   leveling: "xp",
@@ -298,11 +317,14 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
         ...(d.master_character ? { character: d.master_character } : {}),
         ...(d.master_preset_id ? { preset_id: d.master_preset_id } : {}),
       };
+  const module = d.source === "module" && d.module_id;
   return {
     name: d.name.trim(),
-    pack_id: d.pack_id || null,
+    ...(module
+      ? { module_id: d.module_id, ...(d.module_hook ? { module_hook: d.module_hook } : {}), pack_id: null }
+      : { pack_id: d.pack_id || null }),
     difficulty: d.difficulty,
-    leveling: d.leveling,
+    leveling: module ? "milestone" : d.leveling,
     ...(d.players ? { players: d.players } : {}),
     master,
     public_intro: d.public_intro,
@@ -316,5 +338,6 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
 /** Что мешает перейти дальше с шага: пустой список — можно. */
 export function stepProblems(d: CampaignDraft, step: number): string[] {
   if (step === 0 && !d.name.trim()) return ["Назовите кампанию"];
+  if (step === 0 && d.source === "module" && !d.module_id) return ["Выберите приключение"];
   return [];
 }

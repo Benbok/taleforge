@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
-import { api, getToken } from "../lib/api";
+import { api } from "../lib/api";
+import { useAuthedImage } from "../lib/authedImage";
 import {
   STATUS_LABEL,
   anyBusy,
@@ -463,28 +464,6 @@ function MapsBlock({
       </div>
     </div>
   );
-}
-
-/** Картинка с сервера по токену: тегу img заголовок авторизации не передать. */
-function useAuthedImage(url: string): string | null {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    let made: string | null = null;
-    fetch(url, { headers: { Authorization: `Bearer ${getToken() ?? ""}` } })
-      .then((r) => (r.ok ? r.blob() : null))
-      .then((b) => {
-        if (!alive || !b) return;
-        made = URL.createObjectURL(b);
-        setSrc(made);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [url]);
-  return src;
 }
 
 type EditMode = "numbers" | "floor" | "blocked";

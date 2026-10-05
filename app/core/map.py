@@ -22,6 +22,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.content.catalog import campaign_catalog
+from app.core import adventure
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
@@ -122,7 +124,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     out_places = [
         {
             "id": p.id,
-            "name": p.name,
+            "name": p.name if master else adventure.public_name(p, p.id in visited),
             "parent_id": p.location_id if p.location_id in shown else None,
             "status": status(p.id),
         }
@@ -214,7 +216,19 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "visited": p["status"] != "known",
                 }
             )
+    book = None
+    if here is not None and (here.template_id or adventure.room_of(here)):  # карта книги — только у мест модуля
+        catalog = await campaign_catalog(session, viewer.campaign)
+        positions = (scene.state or {}).get("positions") or {}
+        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
+        heroes_at = [
+            (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
+        ]
+        book = adventure.book_map(
+            catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None
+        )
     return {
+        "book": book,
         "here": {"id": here.id, "name": here.name, "description": here.description or None} if here else None,
         "around": around,
         "party": party,

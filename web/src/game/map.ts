@@ -67,7 +67,19 @@ export interface MapPlace {
   status: "here" | "visited" | "known";
 }
 
+/** Карта места готового приключения: картинка из книги, комнаты отряда и герои на клетках (доли картинки). */
+export interface MapBook {
+  module_id: string;
+  map_id: string;
+  name: string;
+  grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
+  here: string | null;
+  rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean }[];
+}
+
 export interface MapState {
+  book?: MapBook | null;
   here: { id: string; name: string; description: string | null } | null;
   around: MapThing[];
   party?: MapHero[];
@@ -79,7 +91,7 @@ export interface MapState {
   bearings: Record<Bearing, string>;
 }
 
-type Tab = "around" | "places";
+type Tab = "around" | "places" | "book";
 
 interface MapWindowState {
   open: boolean;
@@ -126,10 +138,6 @@ export function mapEvent(type: string, payload: unknown): void {
   else if (w.open && (type === "scene.updated" || type === "state.snapshot" || type === "knowledge.revealed")) w.request();
 }
 
-// --- раскладка «Вокруг» ---
-
-export const RING: Record<Zone, number> = { melee: 55, near: 105, far: 155 };
-export const EDGE = 188;
 const BEARINGS: Bearing[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 
 /** Устойчивый угол для того, у кого мастер не указал сторону: по id, чтобы маркер не прыгал между ходами. */
@@ -144,78 +152,72 @@ function baseAngle(id: string, bearing: Bearing | null): number {
   return i >= 0 ? (i * Math.PI) / 4 : hashAngle(id);
 }
 
-export interface Placed<T> {
+// --- раскладка «Вокруг» на клетках ---
+
+/** Клетка — 5 футов. Вплотную — соседняя клетка, близко — 30 футов (6 клеток). «Далеко» (120 футов по правилам)
+ *  рисуется на 12 клетках, у края схемы: иначе схема станет в 49 клеток и значки не разглядеть. */
+export const CELL_FT = 5;
+export const ZONE_CELLS: Record<Zone, number> = { melee: 1, near: 6, far: 12 };
+export const GRID_R = 13; // схема — квадрат (2·13+1) клеток, центр отряда в клетке (0, 0)
+
+export interface Cell<T> {
   item: T;
-  x: number;
-  y: number;
+  col: number; // от −GRID_R до GRID_R, восток вправо
+  row: number; // от −GRID_R до GRID_R, юг вниз
 }
 
-export interface AroundLayout {
-  areas: Placed<MapArea>[];
-  things: Placed<MapThing>[];
-  heroes: Placed<MapHero>[];
-  exits: Placed<MapExit>[];
+export interface GridLayout {
+  areas: Cell<MapArea>[];
+  things: Cell<MapThing>[];
+  heroes: Cell<MapHero>[];
+  exits: Cell<MapExit>[];
 }
 
-/** Точки на кольцах: север вверху, по часовой стрелке. Соседи в одной стороне и зоне расходятся веером. */
-export function placeAround<T extends { id: string; bearing: Bearing | null }>(
-  items: T[],
-  radius: (item: T) => number,
-  cx = 200,
-  cy = 200,
-  taken: Map<string, number> = new Map<string, number>(),
-): Placed<T>[] {
-  return items.map((item) => {
-    const r = radius(item);
-    const a0 = baseAngle(item.id, item.bearing);
-    const sector = Math.round((a0 * 8) / (2 * Math.PI)) % 8;
-    const key = `${r}:${sector}`;
-    const n = taken.get(key) ?? 0;
-    taken.set(key, n + 1);
-    // 0, +1, −1, +2, −2… шагом, который на этом кольце даёт ~60px между центрами: подписи не налезают
-    const step = 60 / r;
-    const a = a0 + (n === 0 ? 0 : (n % 2 === 1 ? 1 : -1) * Math.ceil(n / 2) * step);
-    return { item, x: cx + r * Math.sin(a), y: cy - r * Math.cos(a) };
-  });
+/** Ближайшая к точке свободная клетка: сначала сама, потом по кольцам вокруг неё в устойчивом порядке. */
+export function freeCell(col: number, row: number, taken: Set<string>, limit = GRID_R): [number, number] {
+  const ok = (c: number, r: number) => Math.abs(c) <= limit && Math.abs(r) <= limit && !taken.has(`${c},${r}`);
+  for (let d = 0; d <= 2 * limit; d++) {
+    const ring: [number, number][] = [];
+    for (let dc = -d; dc <= d; dc++)
+      for (let dr = -d; dr <= d; dr++) if (Math.max(Math.abs(dc), Math.abs(dr)) === d) ring.push([col + dc, row + dr]);
+    // ближе по прямой — раньше; при равенстве — по строке, затем по столбцу, чтобы раскладка не прыгала
+    ring.sort((a, b) => Math.hypot(a[0] - col, a[1] - row) - Math.hypot(b[0] - col, b[1] - row) || a[1] - b[1] || a[0] - b[0]);
+    const hit = ring.find(([c, r]) => ok(c, r));
+    if (hit) return hit;
+  }
+  return [col, row];
 }
 
-/** Радиус области на схеме: кольца не в масштабе, поэтому берём масштаб кольца «близко» и ограничиваем. */
-export function areaPx(ft: number): number {
-  return Math.min(90, Math.max(14, ft * 3.5));
+function target(id: string, bearing: Bearing | null, cells: number): [number, number] {
+  const a = baseAngle(id, bearing);
+  return [Math.round(cells * Math.sin(a)) || 0, Math.round(-cells * Math.cos(a)) || 0]; // без −0
 }
 
-/** Герои в строю отряда стоят кучкой вокруг центра, чтобы подписи не слипались. */
-export function placeParty(
-  heroes: MapHero[],
-  cx = 200,
-  cy = 200,
-  taken: Map<string, number> = new Map<string, number>(),
-): Placed<MapHero>[] {
-  const inRank = heroes.filter((h) => !h.zone);
-  const out: Placed<MapHero>[] = inRank.map((item, i) => {
-    if (inRank.length === 1) return { item, x: cx, y: cy };
-    const a = (i / inRank.length) * 2 * Math.PI;
-    return { item, x: cx + 22 * Math.sin(a), y: cy - 22 * Math.cos(a) };
-  });
-  const out2 = placeAround(
-    heroes.filter((h) => h.zone),
-    (h) => RING[h.zone as Zone],
-    cx,
-    cy,
-    taken,
-  );
-  return [...out, ...out2];
-}
-
-/** Единая раскладка схемы «Вокруг»: общий пул занятых секторов гарантирует, что герои, монстры и зоны не слипаются. */
-export function layoutAround(m: MapState, cx = 200, cy = 200): AroundLayout {
-  const taken = new Map<string, number>();
-  return {
-    areas: placeAround(m.areas ?? [], (a) => RING[a.zone] ?? RING.near, cx, cy, taken),
-    things: placeAround(m.around, (t) => RING[t.zone] ?? RING.near, cx, cy, taken),
-    heroes: placeParty(m.party ?? [], cx, cy, taken),
-    exits: placeAround(m.exits, () => EDGE, cx, cy, taken),
+/** Раскладка «Вокруг» по клеткам: каждый в клетке по своей зоне и стороне, двое в одной точке — в соседних. */
+export function layoutGrid(m: MapState): GridLayout {
+  const taken = new Set<string>();
+  const put = <T>(item: T, at: [number, number], limit = GRID_R): Cell<T> => {
+    const [col, row] = freeCell(at[0], at[1], taken, limit);
+    taken.add(`${col},${row}`);
+    return { item, col, row };
   };
+  const party = m.party ?? [];
+  // сначала герои в строю — вокруг центра, потом все остальные по зонам; выходы — по краю схемы
+  const heroes = [
+    ...party.filter((h) => !h.zone).map((h) => put(h, [0, 0])),
+    ...party.filter((h) => h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
+  ];
+  const things = m.around.map((t) => put(t, target(t.id, t.bearing, ZONE_CELLS[t.zone] ?? ZONE_CELLS.near)));
+  const exits = m.exits.map((x) => {
+    const [c, r] = target(x.id, x.bearing, GRID_R);
+    return put(x, [Math.max(-GRID_R, Math.min(GRID_R, c)), Math.max(-GRID_R, Math.min(GRID_R, r))]);
+  });
+  // область не занимает клетку: она лежит под значками
+  const areas = (m.areas ?? []).map((a) => {
+    const [col, row] = target(a.id, a.bearing, ZONE_CELLS[a.zone] ?? ZONE_CELLS.near);
+    return { item: a, col, row };
+  });
+  return { heroes, things, exits, areas };
 }
 
 // --- раскладка «Места» ---

@@ -33,7 +33,7 @@ from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, decide_model_for, model_for, parser_model_for
 from app.agents.providers import explain
 from app.config import settings as app_settings
-from app.core import audio, bonds, chat, combat, persona, plot
+from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import TURN_KINDS, active_session, next_seq, system_message, visible
@@ -98,6 +98,8 @@ def decision_tools(ctx: ToolContext) -> list[str]:
     """Инструменты фазы решения. Инструменты сюжета — только когда у кампании есть каркас, звука — когда владелец
     включил его и библиотека не пуста."""
     off = set() if plot.has_plan(ctx.world.plot) else set(plot_tools.PLOT_TOOLS)
+    if not adventure.is_module(ctx.campaign):
+        off.add("enter_room")
     if not audio.enabled(ctx.campaign):
         off |= set(AUDIO_TOOLS)
     return [n for n in DECISION_TOOLS if n not in off]
@@ -1074,8 +1076,14 @@ class MasterService:
         if has_plot:
             # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
             extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.home())
+            home = ctx.world.entities.get(ctx.world.home() or "")
+            if adventure.room_of(home) is not None:  # комната готового приключения: место каркаса — место модуля
+                home = ctx.world.entities.get(home.location_id or "")
+            now_ = plot.now_block(secret.plot, location_entity_id=home.id if home else None)
             secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
+            book = adventure.master_block(ctx.world)
+            if book:
+                secrets += "\n\nПо книге:\n" + book[:12000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
         ties = [

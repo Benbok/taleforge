@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import audio, combat
+from app.core import adventure, audio, combat
 from app.core.campaigns import master_seat
 from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import (
@@ -372,6 +372,9 @@ def _difficulty(ctx: ToolContext, ref: str) -> int:
     scale = {e.id: int(e.data["value"]) for e in ctx.world.catalog.dc_scale()}
     if ref in scale:
         return scale[ref]
+    book = adventure.book_dc(ref, ctx.world.entities, ctx.world.catalog)
+    if book is not None:
+        return book
     en = ctx.world.entities.get(ref)
     if en is not None:
         dc = (en.state or {}).get("dc")
@@ -1647,10 +1650,96 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     if loc is None or loc.kind != "location":
         raise ToolError(f"нет локации {a.location_id}; сначала create_location")
     inverse: list = []
+    dice: list = []
+    joined = await move_heroes(ctx, [_character(ctx, cid) for cid in a.character_ids], loc, inverse, dice)
+    await ctx.record(
+        "move",
+        target_id=loc.id,
+        payload={"characters": a.character_ids, "location": loc.name, **joined},
+        dice=dice or None,
+        inverse=inverse,
+    )
+    return {"moved": a.character_ids, "location": loc.name, "scene_location": ctx.world.scene.location_id, **joined}
+
+
+class EnterRoomArgs(BaseModel):
+    room: str = Field(min_length=1, max_length=40, description="номер комнаты на карте книги или её id")
+    character_ids: list[str] = Field(
+        default_factory=list, description="кто входит; пусто — все герои, что стоят там же, где сцена"
+    )
+    location_id: str | None = Field(
+        None, description="место модуля или комната в нём, откуда идут; нужно, только если отряд разделён"
+    )
+
+
+@tool(
+    "enter_room",
+    "Готовое приключение: герои входят в комнату места по номеру из книги. Комната и соседние с ней появляются в "
+    "реестре и на карте; в ответе — комната целиком по книге (текст вслух, проверки, существа, сокровища, тайное).",
+    EnterRoomArgs,
+    ids={"character_ids": "characters", "location_id": "places"},
+)
+async def enter_room(ctx: ToolContext, a: EnterRoomArgs) -> dict:
+    w = ctx.world
+    start = w.place_arg(a.location_id, "отряд входит в комнату")
+    found = adventure.module_place(w.entities.get(start or ""), w.catalog, w.entities)
+    if found is None:
+        raise ToolError("герои не в месте готового приключения: сначала разверни место каркаса через develop")
+    place, rec = found
+    room = adventure.find_room(rec, a.room)
+    if room is None:
+        listed = "; ".join(adventure.room_title(r) for r in adventure.rooms(rec))
+        raise ToolError(f"в месте «{rec.name}» нет комнаты {a.room}. Комнаты: {listed}")
+    inverse: list = []
+
+    async def ensure(r: dict) -> Entity:
+        en = adventure.room_entity(w.entities, place, r["id"])
+        if en is None:
+            en = adventure.new_room(ctx.campaign.id, place, rec, r)
+            ctx.session.add(en)
+            await ctx.session.flush()
+            w.entities[en.id] = en
+            inverse.insert(0, {"table": "entities", "op": "delete", "id": en.id})
+        return en
+
+    target = await ensure(room)
+    for rid in room.get("exits") or []:
+        other = adventure.find_room(rec, rid)
+        if other is not None:
+            nxt = await ensure(other)
+            if not _linked(ctx, target, nxt):
+                inverse.append(
+                    {"table": "entities", "id": target.id, "field": "state", "before": copy.deepcopy(target.state)}
+                )
+                _link(target, nxt.id)
+    if a.character_ids:
+        heroes = [_character(ctx, cid) for cid in a.character_ids]
+    else:
+        heroes = [c for c in w.characters.values() if c.status in PLAYABLE and w.place_of(c) == start]
+    if not heroes:
+        raise ToolError("некому входить: назови героев в character_ids")
+    dice: list = []
+    joined = await move_heroes(ctx, heroes, target, inverse, dice)
+    await ctx.record(
+        "enter_room",
+        target_id=target.id,
+        payload={"characters": [h.id for h in heroes], "location": target.name, "room": room.get("number"), **joined},
+        dice=dice or None,
+        inverse=inverse,
+    )
+    return {
+        "room_id": target.id,
+        "moved": [h.id for h in heroes],
+        "book": adventure.room_text(rec, room, target, w.catalog, w.entities),
+        **joined,
+    }
+
+
+async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, inverse: list, dice: list) -> dict:
+    """Герои переходят в место ``loc``: посещения и пути на карте, вход в бой и выход из него, сцена — за отрядом."""
     scene_loc = ctx.world.scene.location_id
     moved = []
-    for cid in a.character_ids:
-        ch = _character(ctx, cid)
+    for ch in heroes:
         was = ctx.world.entities.get(ch.location_id or scene_loc or "")
         if was is not None and was.id != loc.id:
             _visit(ctx, was, [ch], inverse)
@@ -1659,7 +1748,6 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
         ch.location_id = loc.id
         moved.append(ch)
     _visit(ctx, loc, moved, inverse)
-    dice: list = []
     joined = await _move_in_combat(ctx, moved, inverse, dice)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if all(c.location_id == loc.id for c in party):
@@ -1669,14 +1757,7 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
         if ctx.world.scene.location_id != loc.id:
             _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
-    await ctx.record(
-        "move",
-        target_id=loc.id,
-        payload={"characters": a.character_ids, "location": loc.name, **joined},
-        dice=dice or None,
-        inverse=inverse,
-    )
-    return {"moved": a.character_ids, "location": loc.name, "scene_location": ctx.world.scene.location_id, **joined}
+    return joined
 
 
 async def _move_in_combat(ctx: ToolContext, moved: list, inverse: list, dice: list) -> dict:
