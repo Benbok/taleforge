@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import adventure, audio, combat
+from app.core import adventure, audio, combat, sketch
 from app.core.campaigns import master_seat
 from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import (
@@ -1653,6 +1653,79 @@ async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
         inverse=[{"table": "entities", "op": "delete", "id": en.id}],
     )
     return {"landmark_id": en.id, "name": a.name}
+
+
+class SketchExit(BaseModel):
+    name: str = Field(min_length=1, max_length=60, description="как его видят герои: «Дверь решётки», «Узкое окно»")
+    side: Literal["n", "e", "s", "w"] = Field(description="край места: n — северный (верх схемы)")
+    at: int = Field(ge=0, description="клетка на этом краю: для n и s — столбец, для e и w — строка, с нуля")
+    kind: Literal["door", "bars", "window", "arch", "stairs", "hatch", "gap", "passage"] = "door"
+    state: Literal["open", "closed", "locked"] = "open"
+    to: str | None = Field(None, description="место реестра, куда ведёт, если оно уже есть")
+    beyond: str | None = Field(None, max_length=60, description="что видно или известно за ним: «тёмный коридор»")
+    hidden: bool = Field(False, description="тайный выход: игроки не видят, пока не найдут")
+
+
+class SketchFeature(BaseModel):
+    name: str = Field(min_length=1, max_length=60, description="«Каменный стол», «Колонна», «Жаровня»")
+    kind: Literal["furniture", "cover", "hazard", "light", "object", "nature"] = "object"
+    cells: list[list[int]] = Field(
+        min_length=1, max_length=4, description="прямоугольники [c0, r0, c1, r1] от северо-западной клетки"
+    )
+    cover: Literal["none", "half", "three_quarters", "total"] = "none"
+    hidden: bool = Field(False, description="игроки не видят, пока не найдут")
+
+
+class SketchArgs(BaseModel):
+    shape: Literal["room", "corridor", "cave", "street", "open"] = "room"
+    cols: int = Field(ge=1, le=sketch.MAX_SIDE, description="ширина с запада на восток, клеток по 5 футов")
+    rows: int = Field(ge=1, le=sketch.MAX_SIDE, description="длина с севера на юг, клеток по 5 футов")
+    party: list[int] = Field(min_length=2, max_length=2, description="клетка [c, r], где сейчас стоит отряд")
+    walls: list[list[int]] = Field(
+        default_factory=list, max_length=sketch.MAX_WALLS, description="непроходимые клетки [c, r]: колонны, обвал"
+    )
+    exits: list[SketchExit] = Field(default_factory=list, max_length=sketch.MAX_EXITS)
+    features: list[SketchFeature] = Field(default_factory=list, max_length=sketch.MAX_FEATURES)
+    location_id: str | None = Field(None, description=PLACE_HINT)
+
+
+@tool(
+    "sketch_place",
+    "Эскиз места для схемы игроков: форма и размер в клетках по 5 футов, где стоит отряд, входы и выходы (дверь, "
+    "решётка, окно, лестница) и что за ними, крупные предметы в поле зрения. Клетка (0, 0) — северо-западный угол. "
+    "Новый вызов заменяет эскиз целиком. Существ сюда не клади — для них spawn_entity.",
+    SketchArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
+    w = ctx.world
+    if w.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    for f in a.features:
+        if any(len(c) != 4 for c in f.cells):
+            raise ToolError(f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]")
+    if any(len(c) != 2 for c in a.walls):
+        raise ToolError("стена — клетка [c, r]")
+    data = a.model_dump(exclude={"location_id"})
+    data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
+    places = {e.id for e in w.entities.values() if e.kind == "location"}
+    errors = sketch.check(data, places)
+    if errors:
+        raise ToolError("; ".join(errors[:8]))
+    before = copy.deepcopy(place.state)
+    for x in data["exits"]:
+        if x["to"] and x["to"] != place.id and not _linked(ctx, place, w.entities[x["to"]]):
+            _link(place, x["to"], x["name"])  # выход в известное место — путь и на карте мест
+    place.state = {**(place.state or {}), "sketch": data}
+    await ctx.record(
+        "sketch_place",
+        target_id=place.id,
+        payload={"place": place.name, "size": [a.cols, a.rows], "exits": len(a.exits), "features": len(a.features)},
+        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+    )
+    return {"place": place.name, "sketch": sketch.describe(data)}
 
 
 class MoveArgs(BaseModel):

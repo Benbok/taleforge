@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
-from app.core import adventure
+from app.core import adventure, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
@@ -216,7 +216,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "visited": p["status"] != "known",
                 }
             )
-    book = None
+    book = sk = None
     if here is not None and (here.template_id or adventure.room_of(here)):  # карта книги — только у мест модуля
         catalog = await campaign_catalog(session, viewer.campaign)
         positions = (scene.state or {}).get("positions") or {}
@@ -227,8 +227,12 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         book = adventure.book_map(
             catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None
         )
+        sk = sketch.of_place(here, catalog, places)
+    else:
+        sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
     return {
         "book": book,
+        "sketch": sketch.for_viewer(sk, master, shown) if sk else None,
         "here": {"id": here.id, "name": here.name, "description": here.description or None} if here else None,
         "around": around,
         "party": party,

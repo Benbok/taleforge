@@ -601,9 +601,23 @@ class World:
         )
         return f"{head}; заклинания (для cast_spell): {spells or 'не выбраны'}"
 
+    def _sketch_line(self, place: str) -> str:
+        """Эскиз места для схемы игроков (app/core/sketch.py) или напоминание нарисовать его."""
+        from app.core import sketch
+
+        e = self.entities.get(place)
+        sk = sketch.of_place(e, self.catalog, self.entities)
+        name = e.name if e is not None else place
+        if sk is None:
+            return (
+                f"У места {place} «{name}» нет эскиза: игроки не видят, что вокруг. Нарисуй его sketch_place — "
+                "форма и размер, где стоит отряд, выходы и что за ними, крупные предметы."
+            )
+        return f"{place} «{name}», {sketch.describe(sk)}" + (" (по карте книги)" if sk.get("book") else "")
+
     def _place_lines(self, place: str | None) -> list[str]:
         """Существа, предметы, приметы и области места (``None`` — всех мест, где стоят герои)."""
-        lines = []
+        lines = [self._sketch_line(p) for p in ([place] if place else self.scene_places()) if p]
         for en in self.in_scene_entities(place):
             if en.kind == "creature":
                 try:
