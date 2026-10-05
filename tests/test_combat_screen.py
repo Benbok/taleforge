@@ -2,8 +2,6 @@
 """Экран боя (этап 7, часть 4): полоса инициативы, открытые спасброски от смерти, кнопка реакции после
 переподключения, итог сессии на паузе."""
 
-import asyncio
-
 from app.db.models import Character
 from tests.game import party, run
 from tests.test_combat import _setup
@@ -42,15 +40,15 @@ def test_reaction_button_survives_reconnect(game_client, admin_g, llm, settings)
     payload = {"prompt_id": "rx_test", "character_id": hero["id"], "trigger": "«Волк» выходит из ближнего боя"}
 
     async def open_prompt():
-        fut = asyncio.get_running_loop().create_future()
-        master._reactions["rx_test"] = (c["id"], hero["seat_id"], fut, payload)
+        master.coordination.open_prompt("rx_test", c["id"], hero["seat_id"])
+        master.coordination.describe_prompt("rx_test", payload)
 
     game_client.portal.call(open_prompt)
     with connect(game_client, p1, c["id"]) as (_, snap):
         assert snap["payload"]["reaction"] == payload
     with connect(game_client, admin_g, c["id"]) as (_, snap):
         assert snap["payload"]["reaction"] is None  # чужая кнопка не видна
-    master._reactions.pop("rx_test")
+    master.coordination.close_prompt("rx_test")
 
 
 def test_session_summary_on_pause(game_client, admin_g, llm, settings):

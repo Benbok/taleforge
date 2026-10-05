@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 
@@ -31,7 +30,7 @@ class WhisperMixin:
         """Шёпот мастеру — вопрос вне хода. ИИ-мастер отвечает сразу и только автору: коротко, строго на вопрос,
         без повествования для стола и без изменений мира. Ход мастера шёпоты не берёт. Возвращает id ответов."""
         out: list[str] = []
-        async with self._whisper_locks.setdefault(cid, asyncio.Lock()):
+        async with self.coordination.whisper_lock(cid):
             while (mid := await self._next_whisper(cid)) is not None:
                 if answer := await self._answer_whisper(cid, mid):
                     out.append(answer)

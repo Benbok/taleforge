@@ -35,6 +35,7 @@ from app.agents.master.whispers import WhisperMixin
 from app.core.campaigns import master_seat
 from app.core.chat import active_session
 from app.db.models import Campaign, Character, Scene, as_utc
+from app.gateway.coordination import Coordination, InMemoryCoordination
 from app.rules.dice import Dice
 from app.tools.registry import ToolContext
 
@@ -53,6 +54,7 @@ class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, Parsin
         dice_factory=Dice,
         media_dir: Path | None = None,
         tts: Any = None,
+        coordination: Coordination | None = None,
     ):
         self.maker = sessionmaker
         self.bus = bus
@@ -60,28 +62,26 @@ class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, Parsin
         self.dice_factory = dice_factory
         self.media_dir = media_dir
         self.tts = tts
+        # замки кампаний и открытые кнопки реакций: единственное место, которое меняется, когда серверов станет
+        # больше одного (app/gateway/coordination.py)
+        self.coordination = coordination or InMemoryCoordination()
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
-        self._locks: dict[str, asyncio.Lock] = {}
         self._background: set[asyncio.Task] = set()
         self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
-        # prompt_id → (кампания, место, ответ, кнопка): открытую кнопку снимок отдаёт и после переподключения
-        self._reactions: dict[str, tuple[str, str, asyncio.Future, dict]] = {}
         self._summarizing: set[str] = set()
-        self._intro_locks: dict[str, asyncio.Lock] = {}
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)
         self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
         self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
         self._audience: dict[str, list[str]] = {}  # кто видит идущий ход, если отряд разделён
-        self._whisper_locks: dict[str, asyncio.Lock] = {}
 
     def turn_lock(self, cid: str) -> asyncio.Lock:
         """Замок хода кампании: под ним идут ход мастера, ходы существ и запись итогов озвучки."""
-        return self._locks.setdefault(cid, asyncio.Lock())
+        return self.coordination.turn_lock(cid)
 
     def intro_lock(self, cid: str) -> asyncio.Lock:
         """Замок вступления: мастер представляет новичка и кампанию под ним."""
-        return self._intro_locks.setdefault(cid, asyncio.Lock())
+        return self.coordination.intro_lock(cid)
 
     # --- очередь ---
 

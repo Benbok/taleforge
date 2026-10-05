@@ -217,8 +217,7 @@ class StepwiseMixin:
         cid = ctx.campaign.id
         wait = float((ctx.campaign.settings or {}).get("reaction_sec") or combat.REACTION_SEC)
         prompt_id = "rx_" + uuid.uuid4().hex[:12]
-        fut: asyncio.Future = asyncio.get_running_loop().create_future()
-        self._reactions[prompt_id] = (cid, ch.seat_id, fut, None)
+        fut = self.coordination.open_prompt(prompt_id, cid, ch.seat_id)
         hero = ctx.world.actor(ch.id)
         payload = {
             "prompt_id": prompt_id,
@@ -227,29 +226,22 @@ class StepwiseMixin:
             "options": combat.reaction_options(hero, creature),
             "expires_at": time.time() + wait,
         }
-        self._reactions[prompt_id] = (cid, ch.seat_id, fut, payload)
+        self.coordination.describe_prompt(prompt_id, payload)
         await self.bus.publish(cid, envelope("reaction.prompt", cid, payload), [ch.seat_id])
         try:
             choice = await asyncio.wait_for(fut, timeout=wait)
         except TimeoutError:
             choice = "skip"
         finally:
-            self._reactions.pop(prompt_id, None)
+            self.coordination.close_prompt(prompt_id)
         await self.bus.publish(
             cid, envelope("reaction.closed", cid, {"prompt_id": prompt_id, "choice": choice}), [ch.seat_id]
         )
         return choice == "opportunity_attack"
 
     def resolve_reaction(self, prompt_id: str, seat_id: str | None, option: str) -> bool:
-        entry = self._reactions.get(prompt_id)
-        if entry is None or entry[1] != seat_id or entry[2].done():
-            return False
-        entry[2].set_result(option)
-        return True
+        return self.coordination.answer_prompt(prompt_id, seat_id, option)
 
     def pending_reaction(self, cid: str, seat_id: str | None) -> dict | None:
         """Открытая кнопка реакции этого места, если есть."""
-        for c, seat, fut, payload in self._reactions.values():
-            if c == cid and seat == seat_id and payload is not None and not fut.done():
-                return payload
-        return None
+        return self.coordination.pending_prompt(cid, seat_id)
