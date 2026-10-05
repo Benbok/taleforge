@@ -370,6 +370,7 @@ class LandmarkArgs(BaseModel):
     description: str = Field("", max_length=1000, description="как это выглядит для героев, без тайн")
     zone: Zone = "near"
     bearing: Bearing | None = Field(None, description=BEARING_HINT)
+    cell: Cell | None = Field(None, description=CELL_HINT + "; не в стену")
     location_id: str | None = Field(None, description=PLACE_HINT)
 
 
@@ -385,6 +386,12 @@ async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
     if ctx.world.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
     place = ctx.world.place_arg(a.location_id, "примета")
+    rel = None
+    if a.cell is not None:
+        rel = grid.to_rel(ctx.world, place, a.cell)
+        problem = grid.floor_problem(ctx.world, place, rel)
+        if problem:
+            raise ToolError(problem)
     en = Entity(
         campaign_id=ctx.campaign.id,
         kind="object",
@@ -397,6 +404,8 @@ async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
     ctx.session.add(en)
     await ctx.session.flush()
     ctx.world.entities[en.id] = en
+    if rel is not None:
+        grid.set_cell(ctx.world, en.id, rel)
     await ctx.record(
         "add_landmark",
         target_id=en.id,

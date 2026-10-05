@@ -435,3 +435,8 @@ export function layoutPlaces(m: Pick<MapState, "places" | "links" | "here">): Pl
     return { place, col, row };
   });
 }
+
+/** Начало фразы для кнопки «Взаимодействовать»: цель названа, действие игрок дописывает сам. */
+export function interactText(name: string): string {
+  return `«${name}»: `;
+}

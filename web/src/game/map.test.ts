@@ -3,6 +3,7 @@ import { useGame } from "../stores/game";
 import {
   exitCell,
   freeCell,
+  interactText,
   sketchFrame,
   stepNote,
   type Sketch,
@@ -165,5 +166,11 @@ describe("шаг по клеткам", () => {
     expect(useMapWindow.getState().step.pending).toEqual({ cell: [-2, 0] });
     w.stepResult({ ok: false, error: "клетка [5, 0] — стена" });
     expect(useMapWindow.getState().step.error).toBe("клетка [5, 0] — стена");
+  });
+});
+
+describe("interactText", () => {
+  it("names the target and leaves the action to the player", () => {
+    expect(interactText("Колодец")).toBe("«Колодец»: ");
   });
 });
