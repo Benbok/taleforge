@@ -80,7 +80,7 @@ class PlayerAgents:
             sc = await get_scene(s, cid) if c is not None else None
             if c is None or sc is None:
                 return []
-            from app.agents.master import _batches, _in_fight
+            from app.agents.master.helpers import _batches, _in_fight
 
             batches, groups = await _batches(s, c)
             if not batches:

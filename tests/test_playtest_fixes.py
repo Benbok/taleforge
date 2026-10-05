@@ -50,7 +50,7 @@ def test_crit_success_note_and_no_nudge(client, admin, settings):
     args = {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.nearly_impossible", "reason": "x"}
 
     async def fn(ctx):
-        from app.agents.master import _unsettled_fails
+        from app.agents.master.helpers import _unsettled_fails
 
         r = await call(ctx, "roll_check", args)
         return r, _unsettled_fails(ctx, [{"tool": "roll_check", "args": args, "result": r}])
@@ -81,7 +81,7 @@ def test_combat_start_puts_foes_on_one_side(client, admin, settings):
 
 def test_cast_window_routes_area_targets_and_leaves_free_target_to_master(wizard_game):  # noqa: F811
     from app.agents import intent as intents
-    from app.agents.master import _routable_cast
+    from app.agents.master.common import _routable_cast
 
     settings, cid, wiz, _, _ = wizard_game
 

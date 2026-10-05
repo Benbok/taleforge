@@ -108,8 +108,8 @@ async def _save(svc, msg: Message, data: dict) -> None:
     """Итог пишется одной записью без чтения и под замками хода и вступления той же кампании: в SQLite две
     сессии «чтение, потом запись» блокируют друг друга, и проигравшей оказалась бы чужая запись."""
     cid = msg.campaign_id
-    turn = getattr(svc, "_locks", {}).setdefault(cid, asyncio.Lock())
-    intro = getattr(svc, "_intro_locks", {}).setdefault(cid, asyncio.Lock())
+    turn = svc.turn_lock(cid)
+    intro = svc.intro_lock(cid)
     async with turn, intro:  # порядок как у хода: ход представляет новичка под своим замком
         for attempt in range(5):
             try:

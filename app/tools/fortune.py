@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from app.core import standing as sd
 from app.core.world import PLAYABLE
 from app.rules.dice import DiceError
-from app.tools.master import _put_in_scene
+from app.tools.master.items import _put_in_scene
 from app.tools.registry import ToolContext, ToolError, tool
 
 FORTUNE_TOOLS = ("roll_fortune",)

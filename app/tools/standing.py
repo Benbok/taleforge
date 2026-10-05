@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from app.core import standing as sd
 from app.core.plot import DAY
 from app.db.models import Entity
-from app.tools.master import _character
+from app.tools.master.base import _character
 from app.tools.registry import ToolContext, ToolError, tool
 
 STANDING_TOOLS = ("record_deed", "expose_deed", "resolve_response", "get_standing", "grant_inspiration")

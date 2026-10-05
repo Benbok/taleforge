@@ -85,7 +85,7 @@ def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
 
 async def _next(ctx: ToolContext, notes: list[str]) -> None:
     """Передаёт ход следующему. Новый раунд — плюс 6 секунд игрового времени и снятие истёкших эффектов."""
-    from app.tools.master import expire_effects
+    from app.tools.master.scene import expire_effects
 
     sc = ctx.world.scene
     i = int(state(ctx).get("turn", 0)) + 1

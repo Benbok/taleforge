@@ -20,7 +20,8 @@ from pydantic import BaseModel, Field
 from app.core.world import PLAYABLE
 from app.db.models import Character, ContentPack
 from app.rules.dnd5e.advancement import XP_FOR_LEVEL, level_of, next_level_xp, progress_view, xp_of
-from app.tools.master import ENCOUNTER_XP, MAX_LEVEL_DEFAULT, _character, engine, snapshot
+from app.tools.master.base import MAX_LEVEL_DEFAULT, _character, engine, snapshot
+from app.tools.master.entities import ENCOUNTER_XP
 from app.tools.registry import AFTER_CALL, ToolContext, ToolError, tool
 
 LEVELING = ("xp", "milestone")

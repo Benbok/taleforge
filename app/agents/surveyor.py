@@ -23,7 +23,7 @@ from app.core import sketch
 from app.core.campaigns import Conflict
 from app.db.models import Campaign, Entity, LlmCall
 from app.gateway.events import envelope
-from app.tools.master import SketchArgs, link_exits, sketch_data
+from app.tools.master.places import SketchArgs, link_exits, sketch_data
 
 log = logging.getLogger(__name__)
 
