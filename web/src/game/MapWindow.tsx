@@ -16,6 +16,11 @@ import {
   type Cover,
   type Elevation,
   type MapState,
+  type Sketch,
+  type SketchExit,
+  type SketchFeature,
+  exitCell,
+  sketchFrame,
 } from "./map";
 
 const ZONES: [Zone, string][] = [
@@ -42,13 +47,55 @@ function badge(elevation?: Elevation, cover?: Cover): string | undefined {
   return marks.join("") || undefined;
 }
 
-// Схема «Вокруг» — квадрат клеток по 5 футов, центр отряда в средней клетке
+// Схема «Вокруг» — клетки по 5 футов, отряд в клетке (0, 0). Без эскиза — квадрат 27×27 с кругами дальности,
+// с эскизом — само место и клетка запаса по краям для выходов.
 const CELL = 15;
 const SIDE = 2 * GRID_R + 1;
-const BOARD = SIDE * CELL;
-const MID = GRID_R * CELL + CELL / 2;
 const PAD = 14;
-const px = (c: number) => MID + c * CELL;
+
+interface View {
+  c0: number;
+  r0: number;
+  cols: number;
+  rows: number;
+}
+
+function viewOf(sk: Sketch | null | undefined): View {
+  if (!sk) return { c0: -GRID_R, r0: -GRID_R, cols: SIDE, rows: SIDE };
+  const f = sketchFrame(sk);
+  const m = 2; // выход и подпись того, что за ним
+  return { c0: f.minCol - m, r0: f.minRow - m, cols: f.maxCol - f.minCol + 1 + 2 * m, rows: f.maxRow - f.minRow + 1 + 2 * m };
+}
+
+const EXIT_ICON: Record<SketchExit["kind"], string> = {
+  door: "▯",
+  bars: "#",
+  window: "◫",
+  arch: "∩",
+  stairs: "≡",
+  hatch: "⊡",
+  gap: "⌇",
+  passage: "→",
+};
+const EXIT_KIND: Record<SketchExit["kind"], string> = {
+  door: "дверь",
+  bars: "решётка",
+  window: "окно",
+  arch: "арка",
+  stairs: "лестница",
+  hatch: "люк",
+  gap: "пролом",
+  passage: "проход",
+};
+const EXIT_STATE: Record<string, string> = { open: "открыто", closed: "закрыто", locked: "заперто" };
+const FEATURE_COLOR: Record<SketchFeature["kind"], string> = {
+  furniture: "var(--color-copper, #b07a4a)",
+  cover: "var(--color-muted, #a8a296)",
+  hazard: "var(--tf-ember, #c0563a)",
+  light: "var(--tf-accent, #c98a4b)",
+  object: "var(--tf-patina, #5f9e8f)",
+  nature: "var(--tf-patina, #5f9e8f)",
+};
 
 function posNote(elevation?: Elevation, cover?: Cover): string | null {
   const parts = [elevation && elevation !== "ground" ? ELEVATION_NAME[elevation] : null, cover && cover !== "none" ? COVER_NAME[cover] : null];
@@ -61,25 +108,165 @@ function useOpen() {
   return (id: string, name: string) => (e: MouseEvent<Element>) => open(id, name, e.currentTarget as unknown as HTMLElement);
 }
 
+/** Эскиз места: пол и стены, крупные предметы и выходы по краю с тем, что за ними. */
+function SketchLayer({
+  sk,
+  px,
+  py,
+  onOpen,
+}: {
+  sk: Sketch;
+  px: (c: number) => number;
+  py: (r: number) => number;
+  onOpen: (id: string, name: string) => (e: MouseEvent<Element>) => void;
+}) {
+  const f = sketchFrame(sk);
+  const cells: [number, number][] = [];
+  for (let c = f.minCol; c <= f.maxCol; c++) for (let r = f.minRow; r <= f.maxRow; r++) cells.push([c, r]);
+  const at = (c: number, r: number) => ({ x: px(c) - CELL / 2, y: py(r) - CELL / 2 });
+  const rounded = sk.shape === "cave";
+  return (
+    <g aria-hidden="false">
+      {cells.map(([c, r]) => {
+        const p = at(c, r);
+        const wall = f.walls.has(`${c},${r}`);
+        return (
+          <rect
+            key={`${c},${r}`}
+            x={p.x}
+            y={p.y}
+            width={CELL}
+            height={CELL}
+            rx={rounded && wall ? 4 : 0}
+            fill={wall ? "var(--color-line, #2a2b31)" : "var(--color-raised, #202127)"}
+            stroke="var(--color-line, #2a2b31)"
+            strokeWidth={0.6}
+          />
+        );
+      })}
+      <rect
+        x={px(f.minCol) - CELL / 2}
+        y={py(f.minRow) - CELL / 2}
+        width={(f.maxCol - f.minCol + 1) * CELL}
+        height={(f.maxRow - f.minRow + 1) * CELL}
+        rx={rounded ? 10 : 0}
+        fill="none"
+        stroke="var(--color-ink-2, #cfc8bb)"
+        strokeWidth={sk.shape === "open" ? 0.8 : 2}
+        strokeDasharray={sk.shape === "open" || sk.shape === "street" ? "4 3" : undefined}
+      />
+      {sk.features.map((ft, i) =>
+        ft.cells.map(([c0, r0, c1, r1], j) => {
+          const p = at(c0 - f.dc, r0 - f.dr);
+          const w = (c1 - c0 + 1) * CELL;
+          const h = (r1 - r0 + 1) * CELL;
+          return (
+            <g key={`${i}-${j}`}>
+              <title>{ft.name}</title>
+              <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_COLOR[ft.kind]} fillOpacity={0.35} stroke={FEATURE_COLOR[ft.kind]} strokeWidth={1} />
+              {j === 0 && (
+                <text x={p.x + w / 2} y={p.y + h / 2 + 2.5} textAnchor="middle" fontSize={6.5} fill="var(--color-ink, #ddd)">
+                  {short(ft.name, Math.max(4, Math.floor(w / 4)))}
+                </text>
+              )}
+            </g>
+          );
+        }),
+      )}
+      {sk.exits.map((x, i) => {
+        const [c, r] = exitCell(sk, x);
+        const cx = px(c);
+        const cy = py(r);
+        const shut = x.state === "locked" || x.state === "closed";
+        const out = x.side === "n" ? [0, -1] : x.side === "s" ? [0, 1] : x.side === "w" ? [-1, 0] : [1, 0];
+        const label = `${x.name}: ${EXIT_KIND[x.kind]}${x.state ? `, ${EXIT_STATE[x.state]}` : ""}${x.beyond ? `, за ним ${x.beyond}` : ""}`;
+        return (
+          <g key={i} className={x.to ? "cursor-pointer" : undefined} onClick={x.to ? onOpen(x.to, x.name) : undefined} role={x.to ? "button" : undefined} aria-label={label}>
+            <title>{label}</title>
+            <rect x={cx - CELL / 2 + 1} y={cy - CELL / 2 + 1} width={CELL - 2} height={CELL - 2} rx={3} fill="var(--color-surface, #17181c)" stroke={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location} strokeWidth={1.2} />
+            <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={10} fill={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location}>
+              {EXIT_ICON[x.kind]}
+            </text>
+            {x.beyond && (
+              <text
+                x={cx + out[0] * CELL * 0.9}
+                y={cy + out[1] * CELL * 0.9 + 2.5}
+                textAnchor={x.side === "w" ? "end" : x.side === "e" ? "start" : "middle"}
+                fontSize={6.5}
+                fontStyle="italic"
+                fill="var(--color-muted, #a8a296)"
+              >
+                {short(x.beyond, 16)}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+const SHAPE_NAME: Record<Sketch["shape"], string> = {
+  room: "помещение",
+  corridor: "коридор",
+  cave: "пещера",
+  street: "улица",
+  open: "открытое место",
+};
+
+/** Под эскизом словами: форма и размер, выходы и что за ними, крупные предметы. */
+function SketchLegend({ sk }: { sk: Sketch }) {
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      <li>
+        <span className="font-mono text-xs uppercase text-muted">место: </span>
+        {SHAPE_NAME[sk.shape]} {sk.cols * 5}×{sk.rows * 5} футов
+      </li>
+      {sk.exits.length > 0 && (
+        <li>
+          <span className="font-mono text-xs uppercase text-muted">выходы: </span>
+          {sk.exits
+            .map((x) => `${x.name} (${[EXIT_KIND[x.kind], x.state && x.state !== "open" ? EXIT_STATE[x.state] : null, x.beyond ? `за ним ${x.beyond}` : null].filter(Boolean).join(", ")})`)
+            .join("; ")}
+        </li>
+      )}
+      {sk.features.length > 0 && (
+        <li>
+          <span className="font-mono text-xs uppercase text-muted">видно: </span>
+          {sk.features.map((f) => f.name).join(", ")}
+        </li>
+      )}
+    </ul>
+  );
+}
+
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
   const { things, exits, heroes, areas } = layoutGrid(m);
   const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
   const name = (s: string, col: number, row: number) => (roomForLabel(occupied, col, row) ? s : undefined);
   const combat = m.mode === "combat";
+  const sk = m.sketch ?? null;
+  const v = viewOf(sk);
+  const W = v.cols * CELL;
+  const H = v.rows * CELL;
+  const px = (c: number) => (c - v.c0) * CELL + CELL / 2;
+  const py = (r: number) => (r - v.r0) * CELL + CELL / 2;
+  const MX = px(0);
+  const MY = py(0);
 
   return (
     <div className="flex flex-col gap-3">
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
-      <svg viewBox={`${-PAD} ${-PAD} ${BOARD + 2 * PAD} ${BOARD + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
-        <rect x={0} y={0} width={BOARD} height={BOARD} fill="var(--color-surface, #17181c)" />
-        <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />
+      <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
+        <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
+        {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
 
-        {/* Дальности: 5 фт, 30 фт, «далеко» у края */}
-        {ZONES.map(([z]) => (
+        {/* Дальности: 5 фт, 30 фт, «далеко» у края; у места с эскизом их заменяет само место */}
+        {!sk && ZONES.map(([z]) => (
           <g key={z} aria-hidden="true">
-            <circle cx={MID} cy={MID} r={(ZONE_CELLS[z] + 0.5) * CELL} fill="none" stroke="var(--tf-accent, #c98a4b)" strokeWidth={0.8} strokeOpacity={0.35} strokeDasharray="3 4" />
-            <text x={MID - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} y={MID - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} textAnchor="end" fontSize={7} fontFamily="var(--tf-font-mono, monospace)" fill="var(--color-muted, #a8a296)">
+            <circle cx={MX} cy={MY} r={(ZONE_CELLS[z] + 0.5) * CELL} fill="none" stroke="var(--tf-accent, #c98a4b)" strokeWidth={0.8} strokeOpacity={0.35} strokeDasharray="3 4" />
+            <text x={MX - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} y={MY - (ZONE_CELLS[z] + 0.5) * CELL * 0.71 - 2} textAnchor="end" fontSize={7} fontFamily="var(--tf-font-mono, monospace)" fill="var(--color-muted, #a8a296)">
               {ZONE_LABELS[z]}
             </text>
           </g>
@@ -87,38 +274,38 @@ function Around({ m }: { m: MapState }) {
 
         {/* Стороны света */}
         <g className="font-mono select-none" aria-hidden="true">
-          <text x={MID} y={-4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
+          <text x={W / 2} y={-4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
             С
           </text>
-          <text x={MID} y={BOARD + 11} textAnchor="middle" fontSize={9} fill="var(--color-muted, #888)">
+          <text x={W / 2} y={H + 11} textAnchor="middle" fontSize={9} fill="var(--color-muted, #888)">
             Ю
           </text>
-          <text x={BOARD + 3} y={MID + 3} fontSize={9} fill="var(--color-muted, #888)">
+          <text x={W + 3} y={H / 2 + 3} fontSize={9} fill="var(--color-muted, #888)">
             В
           </text>
-          <text x={-3} y={MID + 3} textAnchor="end" fontSize={9} fill="var(--color-muted, #888)">
+          <text x={-3} y={H / 2 + 3} textAnchor="end" fontSize={9} fill="var(--color-muted, #888)">
             З
           </text>
         </g>
 
         {areas.map(({ item: a, col, row }) => (
           <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}`}>
-            <circle cx={px(col)} cy={px(row)} r={Math.max(0.5, a.radius_ft / CELL_FT) * CELL} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
-            <text x={px(col)} y={px(row) - Math.max(0.5, a.radius_ft / CELL_FT) * CELL + 9} textAnchor="middle" fontSize={8} fill="var(--tf-ember, #c0563a)">
+            <circle cx={px(col)} cy={py(row)} r={Math.max(0.5, a.radius_ft / CELL_FT) * CELL} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
+            <text x={px(col)} y={py(row) - Math.max(0.5, a.radius_ft / CELL_FT) * CELL + 9} textAnchor="middle" fontSize={8} fill="var(--tf-ember, #c0563a)">
               {short(a.name, 20)} · {a.radius_ft} фт
             </text>
           </g>
         ))}
 
-        {heroes.length === 0 && <Token cx={MID} cy={MID} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
+        {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row }) => (
-          <Token key={x.id} cx={px(col)} cy={px(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={open(x.id, x.name)} ariaLabel={`Выход: ${x.name}`} />
+          <Token key={x.id} cx={px(col)} cy={py(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={open(x.id, x.name)} ariaLabel={`Выход: ${x.name}`} />
         ))}
         {things.map(({ item: t, col, row }) => (
           <Token
             key={t.id}
             cx={px(col)}
-            cy={px(row)}
+            cy={py(row)}
             size={CELL}
             color={TYPE_COLOR[t.type]}
             icon={TYPE_ICON[t.type]}
@@ -133,7 +320,7 @@ function Around({ m }: { m: MapState }) {
           <Token
             key={h.id}
             cx={px(col)}
-            cy={px(row)}
+            cy={py(row)}
             size={CELL}
             color="var(--tf-accent)"
             icon="★"
@@ -152,7 +339,8 @@ function Around({ m }: { m: MapState }) {
         </p>
       )}
 
-      {m.around.length === 0 && m.exits.length === 0 && (
+      {sk && <SketchLegend sk={sk} />}
+      {m.around.length === 0 && m.exits.length === 0 && !sk && (
         <p className="text-center font-mono text-xs text-muted">Мастер ещё не отметил, что здесь есть.</p>
       )}
       <ul className="flex flex-col gap-1 text-sm">
