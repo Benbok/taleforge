@@ -3,6 +3,7 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.config import Settings
 from app.db.models import Base
@@ -11,6 +12,7 @@ from app.db.session import make_engine
 # По умолчанию — SQLite в файле. В CI и локально можно проверить на PostgreSQL:
 # TEST_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/taleforge_test pytest
 PG_URL = os.environ.get("TEST_DATABASE_URL")
+WORKER = os.environ.get("PYTEST_XDIST_WORKER")  # gw0, gw1… при запуске с -n
 
 
 async def _reset(url: str) -> None:
@@ -21,9 +23,32 @@ async def _reset(url: str) -> None:
     await engine.dispose()
 
 
+async def _create_database(url: str) -> None:
+    """Своя база для каждого рабочего процесса pytest: тесты чистят схему целиком и мешали бы друг другу."""
+    base, _, name = url.rpartition("/")
+    engine = make_engine(f"{base}/postgres")
+    try:
+        async with engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT")
+            if not await conn.scalar(text("select 1 from pg_database where datname = :n"), {"n": name}):
+                await conn.execute(text(f'create database "{name}"'))
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def database_url(tmp_path_factory) -> str | None:
+    """Адрес PostgreSQL для этого процесса: у каждого рабочего своя база. Без PostgreSQL — None (SQLite)."""
+    if not PG_URL:
+        return None
+    url = f"{PG_URL}_{WORKER}" if WORKER else PG_URL
+    asyncio.run(_create_database(url))
+    return url
+
+
 @pytest.fixture
-def settings(tmp_path):
-    url = PG_URL or f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
+def settings(tmp_path, database_url):
+    url = database_url or f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
     asyncio.run(_reset(url))
     return Settings(
         database_url=url,

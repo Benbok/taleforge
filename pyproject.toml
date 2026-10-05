@@ -24,6 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-xdist>=3.6",
     "ruff>=0.5",
     "httpx>=0.27",
 ]
@@ -42,6 +43,8 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# -n auto: тесты идут в несколько процессов, у каждого своя база
+addopts = "-n auto"
 filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using `httpx`"]
 
 [tool.ruff]
