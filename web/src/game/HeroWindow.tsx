@@ -217,6 +217,20 @@ function State({ h }: { h: HeroSheet }) {
         {r.temp_hp ? ` · временные ${r.temp_hp}` : ""}
       </p>
       <p>Кости хитов: {r.hit_dice ?? 0} — тратятся на коротком отдыхе.</p>
+      {h.features && h.features.length > 0 && (
+        <div>
+          <h3 className="mb-1 text-sm text-muted">Умения до отдыха</h3>
+          <ul className="flex flex-col gap-1">
+            {h.features.map((f) => (
+              <li key={f.key} className={f.left === 0 ? "text-muted" : ""}>
+                {f.name}: {f.left} из {f.max}
+                {f.unit !== "раз" ? ` ${f.unit}` : ""}
+                <span className="text-xs text-muted"> · вернётся: {f.per_ru}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p>
         Спасброски от смерти: успехи {s}/3, провалы {f}/3
       </p>

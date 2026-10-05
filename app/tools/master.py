@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from app.core import adventure, audio, combat
 from app.core.campaigns import master_seat
+from app.core.features import uses_view
 from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import (
     PLAYABLE,
@@ -137,6 +138,7 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         ],
         "personality": ch.personality,
         "public_bio": ch.public_bio,
+        "features": uses_view(ch, ctx.world.catalog, act.mods, act.pb),
         **_spellbook(ctx, ch),
     }
 
@@ -2071,78 +2073,6 @@ async def expire_effects(ctx: ToolContext, inverse: list) -> list[str]:
             ctx.changed.add(ch.id)
     await ctx.session.flush()
     return out
-
-
-class RestArgs(BaseModel):
-    character_ids: list[str] = Field(min_length=1)
-    kind: Literal["short", "long"]
-    spend_hit_dice: int = Field(0, ge=0, le=20, description="короткий отдых: сколько костей хитов тратит каждый")
-
-
-@tool(
-    "rest",
-    "Короткий (1 час) или продолжительный (8 часов) отдых по SRD: время, хиты, кости хитов, ячейки заклинаний.",
-    RestArgs,
-    ids={"character_ids": "characters"},
-)
-async def rest(ctx: ToolContext, a: RestArgs) -> dict:
-    if any(ctx.world.in_fight(i) for i in a.character_ids):
-        raise ToolError("в бою не отдыхают: сначала set_scene_mode free")
-    hours = 1 if a.kind == "short" else 8
-    last_long = int((ctx.world.scene.state or {}).get("last_long_rest", -(10**9)))
-    if a.kind == "long" and ctx.world.scene.game_time - last_long < 24 * 3600 and last_long >= 0:
-        raise ToolError("продолжительный отдых — не чаще раза в 24 часа игрового времени")
-    sc = ctx.world.scene
-    inverse = [
-        {"table": "scenes", "id": ctx.campaign.id, "field": "game_time", "before": sc.game_time},
-        {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)},
-    ]
-    results, dice = [], []
-    for cid in a.character_ids:
-        ch = _character(ctx, cid)
-        act = ctx.world.actor(ch.id)
-        inverse.append(snapshot(act))
-        res = dict(ch.resources or {})
-        level = int((ch.sheet or {}).get("level", 1))
-        hd_left = int(res.get("hit_dice", level))
-        if act.hp.dead:
-            continue
-        if a.kind == "long":
-            act.hp.current, act.hp.temp = act.hp.maximum, 0
-            act.hp.death_saves = type(act.hp.death_saves)()
-            hd_left = min(level, hd_left + max(1, level // 2))
-            act.save_hp()
-            # ячейки заклинаний возвращаются, заклинатели снова готовят заклинания на день (SRD)
-            rest_res = {k: v for k, v in ch.resources.items() if k not in ("slots_used", "pact_used", "concentration")}
-            ch.resources = {**rest_res, "hit_dice": hd_left, "can_prepare": True}
-            results.append({"character": ch.name, "hp": act.hp.current, "hit_dice": hd_left})
-            ctx.world.invalidate(ch.id)
-            continue
-        cls = ctx.world.catalog.find((ch.sheet or {}).get("class_id", ""), "class")
-        die = int(str((cls.data if cls else {}).get("hit_die", "d8")).lstrip("d"))
-        healed = 0
-        for _ in range(min(a.spend_hit_dice, hd_left)):
-            if act.hp.current >= act.hp.maximum:
-                break
-            r = ctx.dice.roll(f"1d{die}")
-            dice.append({"who": ch.id, **dice_json(r)})
-            gain = max(0, r.total + act.mods["con"])
-            engine.heal(act.hp, gain)
-            healed += gain
-            hd_left -= 1
-        act.save_hp()
-        # ячейки договора колдуна возвращаются на коротком отдыхе
-        ch.resources = {**{k: v for k, v in ch.resources.items() if k != "pact_used"}, "hit_dice": hd_left}
-        results.append({"character": ch.name, "healed": healed, "hp": act.hp.current, "hit_dice": hd_left})
-        ctx.world.invalidate(ch.id)
-    ctx.world.scene.game_time += hours * 3600
-    if a.kind == "long":
-        sc.state = {**(sc.state or {}), "last_long_rest": sc.game_time}
-    expired = await expire_effects(ctx, inverse)
-    await ctx.record(
-        "rest", payload={"kind": a.kind, "results": results, "expired": expired}, dice=dice, inverse=inverse
-    )
-    return {"kind": a.kind, "results": results, "time": format_time(ctx.world.scene.game_time), "expired": expired}
 
 
 # --- общение и контракт намерения ---

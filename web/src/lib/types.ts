@@ -249,6 +249,8 @@ export interface HeroSheet extends HeroPublic {
     /** Вдохновение SRD: награда мастера, тратится на преимущество в одном броске. */
     inspiration?: boolean;
   };
+  /** Умения с ограниченным числом использований и сколько осталось до отдыха (SRD). */
+  features?: FeatureUses[];
   private_backstory?: string | null;
   /** Анкета характера {text, fields, core}; у старых героев — плоский словарь «поле: текст». */
   personality?: Record<string, unknown> | null;
@@ -316,6 +318,44 @@ export interface Vote {
   deadline: number;
 }
 
+/** Умение с перезарядкой: ярость, второе дыхание, ци… */
+export interface FeatureUses {
+  key: string;
+  name: string;
+  max: number;
+  left: number;
+  per: "short_rest" | "long_rest";
+  per_ru: string;
+  unit: string;
+}
+
+export type RestChoice = "sleep" | "watch" | "no";
+
+/** Голосование группы за отдых: отдыхают только все вместе, в ненадёжном месте — со стражей. */
+export interface RestVote {
+  vote_id: string;
+  kind: "short" | "long";
+  kind_ru: string;
+  place: string | null;
+  place_name: string;
+  safety: "safe" | "risky" | "dangerous";
+  safety_ru: string;
+  warning: string | null;
+  safer: string[];
+  proposer: string | null;
+  heroes: {
+    id: string;
+    name: string;
+    seat_id: string | null;
+    voter: boolean;
+    choice: RestChoice | null;
+    hit_dice: number | null;
+    hit_dice_left: number;
+  }[];
+  choices: RestChoice[];
+  deadline: number;
+}
+
 /** Дорожка, которая звучит в слое (design/audio-mixer.md). */
 export interface AudioTrack {
   id: string;
@@ -346,6 +386,7 @@ export interface Snapshot {
   me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean; stand_in_for?: string[] };
   seats: SeatState[];
   votes?: Vote[];
+  rest_votes?: RestVote[];
   turn: Turn | null;
   reaction?: ReactionPrompt | null;
   summary?: SessionSummary | null;

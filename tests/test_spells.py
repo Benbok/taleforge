@@ -4,6 +4,7 @@ import pytest
 
 from app.rules.dnd5e import spells as rules
 from app.rules.dnd5e.spells import Choice
+from app.tools import rest as rest_tools
 from tests.game import import_base, ok, party
 from tests.test_tools import call, play
 
@@ -134,9 +135,15 @@ def test_cast_in_combat_and_out(wizard_game):
     assert not empty["ok"] and "потрачены" in empty["error"]
 
     async def rest(ctx):
-        return await call(ctx, "rest", {"character_ids": [wiz], "kind": "long"})
+        for e in ctx.world.entities.values():
+            if e.kind == "creature":
+                e.state = {**e.state, "fled": True}  # при врагах рядом не отдыхают
+        r = await call(ctx, "rest", {"character_ids": [wiz], "kind": "long"})
+        assert r["ok"], r
+        for hid in ctx.world.characters:  # отдыхает вся группа: решают оба героя
+            await rest_tools.ballot(ctx, r["result"]["vote_id"], hid, "sleep", None)
 
-    assert play(settings, cid, [], rest)["ok"]
+    play(settings, cid, [], rest)
     sheet = ok(client.get(f"/api/campaigns/{cid}/characters/{wiz}", headers=head))
     assert sheet["spellbook"]["slots_left"] == {"1": 2}
 

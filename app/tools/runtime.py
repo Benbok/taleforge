@@ -23,8 +23,12 @@ from app.tools import audio as _audio_tools  # noqa: F401 — звук сцен�
 from app.tools import master as _tools  # noqa: F401 — регистрирует инструменты в реестре
 from app.tools import plot as _plot_tools  # noqa: F401 — инструменты ведения по каркасу
 from app.tools import progress as _progress_tools  # noqa: F401 — опыт и уровни
+from app.tools import rest as _rest_tools  # noqa: F401 — отдых и умения с перезарядкой
 from app.tools import spells as _spell_tools  # noqa: F401 — сотворение заклинаний
 from app.tools.registry import ToolContext
+
+# Кто ещё слушает события хода в этом процессе: например, таймер голосования за отдых (app/gateway/rest.py)
+NOTICE_HOOKS: dict[str, Any] = {}
 
 
 async def open_context(
@@ -206,6 +210,11 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
         await bus.publish(cid, envelope("scene.updated", cid, view), seats)
     for m in messages:
         await publish_message(bus, m, names)
+    for kind, payload, seats in ctx.notices:
+        await bus.publish(cid, envelope(kind, cid, payload), seats)
+        if NOTICE_HOOKS.get(kind):
+            NOTICE_HOOKS[kind](cid, payload)
+    ctx.notices.clear()
     if "audio" in ctx.signals:
         # после сообщений: эффект звучит, когда игроки уже видят текст хода
         # отряд разделён: каждой группе свой звук, эффекты хода слышит только группа, ради которой он шёл

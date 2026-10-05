@@ -58,6 +58,8 @@ GROUPS: dict[str, list[str]] = {
         "apply_effect",
         "remove_effect",
         "rest",
+        "use_feature",
+        "set_rest_place",
         "award_xp",
         "grant_inspiration",
         "grant_level",
