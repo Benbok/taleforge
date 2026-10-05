@@ -440,3 +440,33 @@ export function layoutPlaces(m: Pick<MapState, "places" | "links" | "here">): Pl
 export function interactText(name: string): string {
   return `«${name}»: `;
 }
+
+/** Вещи на одной клетке — одной стопкой: несколько предметов на обысканном столе, добыча под павшим врагом.
+ * ``under`` — на клетке стоит герой, и стопка рисуется маленькой меткой у края клетки, чтобы её было видно. */
+export interface CellStack {
+  col: number;
+  row: number;
+  items: MapThing[];
+  under: boolean;
+}
+
+export function stackCells(things: { item: MapThing; col: number; row: number }[], heroes: { col: number; row: number }[]): CellStack[] {
+  const byCell = new Map<string, CellStack>();
+  for (const { item, col, row } of things) {
+    const key = `${col},${row}`;
+    const s = byCell.get(key) ?? { col, row, items: [], under: false };
+    s.items.push(item);
+    byCell.set(key, s);
+  }
+  for (const h of heroes) {
+    const s = byCell.get(`${h.col},${h.row}`);
+    if (s) s.under = true;
+  }
+  return [...byCell.values()];
+}
+
+/** Подпись стопки: «Кинжал, Ключ» или «Кинжал и ещё 3». */
+export function stackTitle(items: { name: string }[]): string {
+  if (items.length <= 2) return items.map((t) => t.name).join(", ");
+  return `${items[0].name} и ещё ${items.length - 1}`;
+}

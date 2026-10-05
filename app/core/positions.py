@@ -125,9 +125,9 @@ def cell_problem(
     return None
 
 
-def floor_problem(world, place: str | None, cell: tuple[int, int]) -> str | None:
+def floor_problem(world, place: str | None, cell: tuple[int, int], wall_ok: bool = False) -> str | None:
     """Почему на клетку (от строя) нельзя положить вещь: за краем места или стена. Вещь может лежать на предмете
-    эскиза (в сене на телеге) и под ногами участника."""
+    эскиза (в сене на телеге) и под ногами участника; примета (``wall_ok``) может и висеть на стене."""
     sk = _sketch(world, place)
     if sk is None:
         return None
@@ -135,7 +135,7 @@ def floor_problem(world, place: str | None, cell: tuple[int, int]) -> str | None
     c, r = cell[0] + ax, cell[1] + ay
     if not (0 <= c < sk["cols"] and 0 <= r < sk["rows"]):
         return f"клетка {[c, r]} за краем места {sk['cols']}×{sk['rows']}"
-    if [c, r] in (sk.get("walls") or []):
+    if not wall_ok and [c, r] in (sk.get("walls") or []):
         return f"клетка {[c, r]} — стена"
     return None
 

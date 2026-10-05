@@ -634,7 +634,8 @@ class World:
             if sk.get("auto")
             else ""
         )
-        return f"{head}, {sketch.describe(sk)}{tag}{secret}"
+        hint = " Нашли тайное, отперли, заметили новую деталь — edit_sketch, эскиз целиком не перерисовывай."
+        return f"{head}, {sketch.describe(sk)}{tag}.{hint}{secret}"
 
     def _place_lines(self, place: str | None) -> list[str]:
         """Существа, предметы, приметы и области места (``None`` — всех мест, где стоят герои)."""
