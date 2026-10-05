@@ -994,7 +994,7 @@ class MasterService:
             return m.group(2)
 
         text = MARKUP.sub(strip, text)
-        # Очистка от случайных вызовов инструментов в тексте мастера (например, set_soundscape {...})
+        # Очистка от случайных вызовов инструментов в тексте мастера (например, set_music {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()

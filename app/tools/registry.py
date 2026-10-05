@@ -131,9 +131,8 @@ def _enum_values(world: World, key: str) -> list[str]:
     if key.startswith("audio:"):
         from app.core import audio
 
-        layer = key.split(":", 1)[1]
-        ids = audio.choices(world.campaign, layer)
-        return [*ids, "off"] if layer in audio.LOOPS else ids
+        what = key.split(":", 1)[1]
+        return [*audio.moods(world.campaign), "off"] if what == "moods" else audio.choices(world.campaign, what)
     if key == "seats":
         return [s.id for s in world.campaign.seats if s.role == "player" and s.occupant_type != "empty"]
     return world.valid_ids().get(key, [])

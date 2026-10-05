@@ -356,26 +356,23 @@ export interface RestVote {
   deadline: number;
 }
 
-/** Дорожка, которая звучит в слое (design/audio-mixer.md). */
+/** Трек библиотеки звука: музыка сцены или эффект (design/audio-mixer.md). */
 export interface AudioTrack {
   id: string;
   title: string;
-  layer: string;
+  layer: string; // music | sfx
   url: string;
-  bpm: number | null;
-  bars: number | null;
   gain_db: number;
-  level?: number; // громкость слоя от мастера, 0..1
+  level?: number; // громкость музыки до настроек игрока, 0..1
   since?: number; // с какого момента по часам сервера звучит петля
+  mood?: string | null; // настроение сцены, под которое подобрана музыка
 }
-
-export type LoopLayer = "music" | "rhythm" | "ambience";
 
 export interface AudioState {
   enabled: boolean;
   v: number;
   now: number; // часы сервера в момент отправки
-  layers: Record<LoopLayer, AudioTrack | null>;
+  music: AudioTrack | null;
   cues?: AudioTrack[]; // эффекты: звучат один раз с этим событием
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
-import { CHANNEL_LABELS, LOOPS, useSound, type Channel } from "./sound";
+import { CHANNEL_LABELS, CHANNELS, useSound } from "./sound";
 
-/** Динамик в шапке игры: включить звук (браузер требует нажатия), громкость слоёв и что сейчас звучит.
+/** Динамик в шапке игры: включить звук (браузер требует нажатия), громкость музыки и эффектов, что сейчас звучит.
  *  Виден, только когда владелец включил звук в кампании. */
 export default function SoundControl() {
   const s = useSound();
@@ -22,13 +22,13 @@ export default function SoundControl() {
   }, [open]);
 
   if (!audio?.enabled) return null;
-  const music = audio.layers.music;
+  const music = audio.music;
 
   async function unlock() {
     setBusy(true);
     try {
       await s.unlock();
-      toast.ok(music ? `Звук включён: ${music.title}` : "Звук включён: мастер пока держит тишину");
+      toast.ok(music ? `Звук включён: ${music.title}` : "Звук включён: музыка начнётся со следующего хода");
     } catch (e) {
       toast.error(`Звук не включился: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -44,7 +44,7 @@ export default function SoundControl() {
         onClick={unlock}
         disabled={busy}
         aria-busy={busy}
-        title="Мастер ведёт звук сцены. Браузер играет его только после нажатия."
+        title="Музыка сцены и эффекты. Браузер играет их только после нажатия."
       >
         {busy ? "…" : "♪ Включить звук"}
       </button>
@@ -81,11 +81,11 @@ export default function SoundControl() {
             </button>
           </div>
           <Slider label="Общая" value={s.prefs.master} onChange={(v) => s.setPrefs({ master: v })} />
-          {([...LOOPS, "sfx"] as Channel[]).map((ch) => (
+          {CHANNELS.map((ch) => (
             <Slider
               key={ch}
               label={CHANNEL_LABELS[ch]}
-              note={ch === "sfx" ? undefined : (audio.layers[ch]?.title ?? "тишина")}
+              note={ch === "music" ? (music?.title ?? "тишина") : undefined}
               value={s.prefs[ch]}
               onChange={(v) => s.setPrefs({ [ch]: v })}
             />

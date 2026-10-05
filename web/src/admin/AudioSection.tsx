@@ -13,11 +13,9 @@ export interface TrackCard {
   hint?: string;
   moods?: string[];
   places?: string[];
-  bpm?: number | null;
-  bars?: number | null;
   gain_db?: number;
   packs?: string[];
-  cue?: string | null;
+  cue?: string | string[] | null;
   off?: boolean;
   url?: string;
   size?: number;
@@ -34,17 +32,10 @@ interface Library {
   packs: { id: string; name: string }[];
 }
 
-export const LAYER_LABELS: Record<string, string> = {
-  music: "Мелодия",
-  rhythm: "Ритм",
-  ambience: "Атмосфера",
-  sfx: "Эффекты",
-};
+export const LAYER_LABELS: Record<string, string> = { music: "Музыка", sfx: "Эффекты" };
 const LAYER_HINTS: Record<string, string> = {
-  music: "чувство сцены, без ударных",
-  rhythm: "только перкуссия: бой, погоня",
-  ambience: "шум места, без музыки",
-  sfx: "один раз, 1–6 секунд",
+  music: "фон сцены: звучит, пока не сменится настроение или место",
+  sfx: "короткий звук один раз: на событие игры",
 };
 const MOOD_LABELS: Record<string, string> = {
   calm: "покой",
@@ -60,7 +51,55 @@ const MOOD_LABELS: Record<string, string> = {
   heroic: "героика",
   triumph: "триумф",
 };
-const CUE_LABELS: Record<string, string> = { victory: "победа в бою", death: "гибель героя", secret: "раскрыта тайна" };
+const CUE_LABELS: Record<string, string> = {
+  death: "гибель героя",
+  victory: "победа в бою",
+  combat: "начало боя",
+  secret: "раскрыта тайна",
+  levelup: "новый уровень",
+  crit: "критический успех",
+  fumble: "критический провал",
+  kill: "враг повержен",
+  spell: "заклинание",
+  hazard: "опасность",
+  effect: "наложено состояние",
+  hit: "попадание",
+  rest: "отдых",
+};
+const SHORT = 10; // секунд: файл короче — скорее эффект, чем музыка
+
+export function cueList(cue: TrackCard["cue"]): string[] {
+  return cue ? (Array.isArray(cue) ? cue : [cue]) : [];
+}
+
+/** Длина файла в секундах: по ней новый файл сразу получает вид. Не прочиталась — null. */
+async function durationOf(path: string): Promise<number | null> {
+  try {
+    const blob = await (await authed(path)).blob();
+    const url = URL.createObjectURL(blob);
+    return await new Promise((resolve) => {
+      const a = new Audio();
+      a.preload = "metadata";
+      a.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve(Number.isFinite(a.duration) ? a.duration : null);
+      };
+      a.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      a.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Название из имени файла: «rolling_war_drums.mp3» → «Rolling war drums». */
+export function titleOf(file: string): string {
+  const t = file.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : file;
+}
 
 async function authed(path: string, init: RequestInit = {}): Promise<Response> {
   const res = await fetch(path, { ...init, headers: { ...init.headers, Authorization: `Bearer ${getToken() ?? ""}` } });
@@ -156,7 +195,7 @@ function Chips({
   );
 }
 
-/** Карточка трека: слой, настроения, места, темп, миры. Сохраняется в tracks.yaml. */
+/** Карточка трека: музыка или эффект, настроения или события, миры. Сохраняется в tracks.yaml. */
 function CardForm({
   lib,
   initial,
@@ -172,19 +211,21 @@ function CardForm({
   const [c, setC] = useState<TrackCard>(initial);
   const [places, setPlaces] = useState((initial.places ?? []).join(", "));
   const set = (patch: Partial<TrackCard>) => setC((x) => ({ ...x, ...patch }));
-  const loop = c.layer !== "sfx";
-  const tempo = c.layer === "music" || c.layer === "rhythm";
+  const music = c.layer === "music";
 
   async function save() {
+    if (!c.title.trim()) throw new Error("впишите название: его видят игроки");
+    if (music && !(c.moods ?? []).length) throw new Error("отметьте хотя бы одно настроение: по нему движок выбирает музыку");
     const body: TrackCard = {
       ...c,
-      places: places
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean),
-      bpm: tempo && c.bpm ? Number(c.bpm) : null,
-      bars: tempo && c.bars ? Number(c.bars) : null,
-      cue: loop ? null : c.cue || null,
+      moods: music ? c.moods : [],
+      places: music
+        ? places
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean)
+        : [],
+      cue: music ? null : cueList(c.cue),
     };
     await api(`/api/admin/audio/tracks/${encodeURIComponent(c.id)}`, { method: "PUT", body });
     await qc.invalidateQueries({ queryKey: ["admin-audio"] });
@@ -194,80 +235,41 @@ function CardForm({
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-line bg-raised/40 p-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          id (латиница)
-          <input className="field" value={c.id} disabled={!isNew} onChange={(e) => set({ id: e.target.value })} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Название для игроков
-          <input className="field" value={c.title} maxLength={80} onChange={(e) => set({ title: e.target.value })} />
-        </label>
-      </div>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        Слой
-        <div className="flex flex-wrap gap-2">
-          {lib.layers.map((l) => (
-            <button
-              key={l}
-              type="button"
-              aria-pressed={c.layer === l}
-              onClick={() => set({ layer: l })}
-              className={`rounded-lg border px-3 py-1.5 text-left text-xs ${c.layer === l ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
-            >
-              <span className="block font-semibold">{LAYER_LABELS[l] ?? l}</span>
-              <span className="block text-[11px]">{LAYER_HINTS[l]}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {lib.layers.map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={c.layer === l}
+            onClick={() => set({ layer: l })}
+            className={`rounded-lg border px-3 py-1.5 text-left text-xs ${c.layer === l ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
+          >
+            <span className="block font-semibold">{LAYER_LABELS[l] ?? l}</span>
+            <span className="block text-[11px]">{LAYER_HINTS[l]}</span>
+          </button>
+        ))}
       </div>
       <label className="flex flex-col gap-1 text-xs text-muted">
-        Подсказка мастеру (одна строка: когда звучит)
-        <input
-          className="field"
-          value={c.hint ?? ""}
-          maxLength={160}
-          placeholder="тёплый покой: отдых, лагерь, таверна"
-          onChange={(e) => set({ hint: e.target.value })}
-        />
+        Название для игроков
+        <input className="field" value={c.title} maxLength={80} onChange={(e) => set({ title: e.target.value })} />
       </label>
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        Настроения
-        <Chips all={lib.moods} labels={MOOD_LABELS} value={c.moods ?? []} onChange={(moods) => set({ moods })} />
-      </div>
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        Места, через запятую
-        <input className="field" value={places} placeholder="tavern, carcass, sea" onChange={(e) => setPlaces(e.target.value)} />
-      </label>
-      {tempo && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {music ? (
+        <>
+          <div className="flex flex-col gap-1 text-xs text-muted">
+            Настроение: под какие сцены подходит
+            <Chips all={lib.moods} labels={MOOD_LABELS} value={c.moods ?? []} onChange={(moods) => set({ moods })} />
+          </div>
           <label className="flex flex-col gap-1 text-xs text-muted">
-            Темп, BPM
-            <input className="field" type="number" min={30} max={240} value={c.bpm ?? ""} onChange={(e) => set({ bpm: e.target.value ? Number(e.target.value) : null })} />
+            Места, через запятую (необязательно: такой трек движок предпочтёт там)
+            <input className="field" value={places} placeholder="tavern, carcass, mine" onChange={(e) => setPlaces(e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Тактов в петле
-            <input className="field" type="number" min={1} max={256} value={c.bars ?? ""} onChange={(e) => set({ bars: e.target.value ? Number(e.target.value) : null })} />
-          </label>
+        </>
+      ) : (
+        <div className="flex flex-col gap-1 text-xs text-muted">
+          Когда звучит (ничего не отмечено — включает мастер по сюжету)
+          <Chips all={lib.cues} labels={CUE_LABELS} value={cueList(c.cue)} onChange={(cue) => set({ cue })} />
         </div>
       )}
-      {!loop && (
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Играет движок сам
-          <CustomSelect
-            value={c.cue ?? ""}
-            options={[
-              { value: "", label: "нет, эффект выбирает мастер" },
-              ...lib.cues.map((x) => ({ value: x, label: CUE_LABELS[x] ?? x })),
-            ]}
-            onChange={(v) => set({ cue: v || null })}
-          />
-        </label>
-      )}
-      <label className="flex flex-col gap-1 text-xs text-muted">
-        Громкость, дБ (выравнивание: −6 тише, +3 громче)
-        <input className="field w-32" type="number" min={-30} max={12} step={1} value={c.gain_db ?? 0} onChange={(e) => set({ gain_db: Number(e.target.value) })} />
-      </label>
       <div className="flex flex-col gap-1 text-xs text-muted">
         Миры (пусто — общий трек для всех миров)
         <Chips
@@ -279,7 +281,7 @@ function CardForm({
       </div>
       <label className="flex items-center gap-2 text-xs text-muted">
         <input type="checkbox" checked={!!c.off} onChange={(e) => set({ off: e.target.checked })} />
-        Выключен: мастер его не видит
+        Выключен: в игре не звучит
       </label>
       <div className="flex flex-wrap gap-2">
         <ActionButton primary run={save}>
@@ -290,6 +292,29 @@ function CardForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Новый файл: вид угадывается по длине (короткий — эффект), название — из имени файла. */
+function NewCard({ lib, name, taken, world, onDone }: { lib: Library; name: string; taken: string[]; world: string; onDone: () => void }) {
+  const [layer, setLayer] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void durationOf(`/api/admin/audio/files/${encodeURIComponent(name)}`).then((d) => {
+      if (live) setLayer(d !== null && d < SHORT ? "sfx" : "music");
+    });
+    return () => {
+      live = false;
+    };
+  }, [name]);
+  if (!layer) return <p className="text-xs text-muted">Слушаю файл, чтобы понять, музыка это или эффект…</p>;
+  return (
+    <CardForm
+      lib={lib}
+      isNew
+      initial={{ id: suggestId(name, taken), file: name, layer, title: titleOf(name), packs: world ? [world] : [] }}
+      onDone={onDone}
+    />
   );
 }
 
@@ -317,7 +342,7 @@ export default function AudioSection() {
         });
         n++;
       }
-      toast.ok(n === 1 ? "Файл загружен: заполните его карточку" : `Загружено файлов: ${n}. Заполните их карточки`);
+      toast.ok(n === 1 ? "Файл загружен: разберите его ниже" : `Загружено файлов: ${n}. Разберите их ниже`);
     } catch (e) {
       setUploadError(`Загружено ${n} из ${files.length}. ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -341,9 +366,9 @@ export default function AudioSection() {
       <div>
         <h2 className="font-heading text-xl font-bold tracking-wide text-ink sm:text-2xl">Звук</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-          Дорожки, из которых ИИ-мастер собирает звук сцены: мелодия, ритм, атмосфера и эффекты, по одной дорожке в
-          слое. Треки без привязки к миру — общие. Мастер берёт сначала треки своего мира, а если их нет или они не
-          подходят к сцене — общие. Звук включает владелец кампании в её настройках.
+          Музыка и эффекты игры. Музыку движок выбирает сам по настроению сцены и месту, эффекты играет на события из
+          карточки: начало боя, крит, заклинание, победа. Треки без привязки к миру — общие; сначала берутся треки мира
+          кампании. Звук включает владелец кампании в её настройках.
         </p>
         {lib && <p className="mt-1 font-mono text-xs text-muted">Папка: {lib.dir}</p>}
       </div>
@@ -365,7 +390,7 @@ export default function AudioSection() {
         </label>
         {uploading && <span className="text-xs text-muted">{uploading}</span>}
         {uploadError && <span className="text-xs text-bad">{uploadError}</span>}
-        <span className="text-xs text-muted">OGG — лучше всего: у MP3 на стыке петли бывает щелчок. До 20 МБ.</span>
+        <span className="text-xs text-muted">OGG, MP3, WAV или M4A, до 20 МБ.</span>
       </div>
 
       {lib && lib.errors.length > 0 && (
@@ -382,14 +407,14 @@ export default function AudioSection() {
       {lib && lib.unsorted.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="font-heading text-lg text-ink">Неразобранные ({lib.unsorted.length})</h3>
-          <p className="text-xs text-muted">Файлы без карточки: мастер их не слышит, пока вы не назначите слой.</p>
+          <p className="text-xs text-muted">Файлы без карточки в игре не звучат: отметьте настроение музыки или события эффекта.</p>
           {lib.unsorted.map((name) => (
             <div key={name} className="flex flex-col gap-2 rounded-lg border border-line p-3">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-mono text-sm">{name}</span>
                 <Listen path={`/api/admin/audio/files/${encodeURIComponent(name)}`} />
                 <button type="button" className="btn btn-outline-copper px-2 py-0.5 text-xs" onClick={() => setEditing(`new:${name}`)}>
-                  Заполнить карточку
+                  Разобрать
                 </button>
                 <ActionButton
                   danger
@@ -404,20 +429,7 @@ export default function AudioSection() {
                   Удалить
                 </ActionButton>
               </div>
-              {editing === `new:${name}` && (
-                <CardForm
-                  lib={lib}
-                  isNew
-                  initial={{
-                    id: suggestId(name, taken),
-                    file: name,
-                    layer: "music",
-                    title: name.replace(/\.[^.]+$/, ""),
-                    packs: world ? [world] : [],
-                  }}
-                  onDone={() => setEditing(null)}
-                />
-              )}
+              {editing === `new:${name}` && <NewCard lib={lib} name={name} taken={taken} world={world} onDone={() => setEditing(null)} />}
             </div>
           ))}
         </div>
@@ -465,9 +477,14 @@ export default function AudioSection() {
                         />
                       )}
                       <span className="font-semibold text-ink">{t.title}</span>
-                      <span className="font-mono text-xs text-muted">{t.id}</span>
-                      {t.bpm ? <span className="font-mono text-xs text-muted">{t.bpm} bpm</span> : null}
-                      {t.cue && <span className="rounded bg-accent/15 px-1.5 text-[11px] text-accent">{CUE_LABELS[t.cue]}</span>}
+                      {(t.moods ?? []).length > 0 && (
+                        <span className="text-xs text-muted">{(t.moods ?? []).map((m) => MOOD_LABELS[m] ?? m).join(", ")}</span>
+                      )}
+                      {cueList(t.cue).map((x) => (
+                        <span key={x} className="rounded bg-accent/15 px-1.5 text-[11px] text-accent">
+                          {CUE_LABELS[x] ?? x}
+                        </span>
+                      ))}
                       <span className="text-xs text-muted">
                         {(t.packs ?? []).length
                           ? (t.packs ?? []).map((p) => lib.packs.find((x) => x.id === p)?.name ?? p).join(", ")
