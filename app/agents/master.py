@@ -278,6 +278,14 @@ class MasterService:
 
         self._spawn(architect.revise(self, campaign_id))
 
+    def schedule_sketches(self, ctx: ToolContext) -> None:
+        """Мастер описал место (``describe_place``): техническая модель строит эскиз в фоне, ход его не ждёт."""
+        from app.agents import surveyor
+
+        for sig in sorted(x for x in ctx.signals if x.startswith("sketch:")):
+            ctx.signals.discard(sig)
+            self._spawn(self._safe(surveyor.draw(self, ctx.campaign.id, sig.split(":", 1)[1]), "эскиз места"))
+
     def _spawn(self, coro) -> None:
         t = asyncio.create_task(coro)
         self._background.add(t)
@@ -1387,8 +1395,9 @@ class MasterService:
     # --- пошаговый режим: ход, таймаут, реакции (раздел 5, 7.2) ---
 
     async def after_turn(self, ctx: ToolContext) -> None:
-        """После фиксации хода: всем — чей ход, и таймер хода героя."""
+        """После фиксации хода: всем — чей ход, и таймер хода героя; эскизы мест по новым описаниям."""
         cid = ctx.campaign.id
+        self.schedule_sketches(ctx)
         turn = combat.public_turn(ctx.world)
         for seats, view in combat.turn_views(ctx.world):  # отряд разделён: ход видят только те, у кого бой
             await self.bus.publish(cid, envelope("turn.changed", cid, {"turn": view}), seats)

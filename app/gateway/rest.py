@@ -102,6 +102,8 @@ class RestVotes:
             messages = await flush_outbox(session, ctx)
             await session.commit()
         await publish_changes(self.bus, ctx, messages)
+        if self.master is not None:
+            self.master.schedule_sketches(ctx)
         if "combat_started" in ctx.signals and self.master is not None:
             # засада: первыми могут ходить существа, а игроки увидят, чей ход
             self.master._spawn(self.master.advance(cid, "sync"))

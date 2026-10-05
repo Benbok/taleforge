@@ -602,18 +602,32 @@ class World:
         return f"{head}; заклинания (для cast_spell): {spells or 'не выбраны'}"
 
     def _sketch_line(self, place: str) -> str:
-        """Эскиз места для схемы игроков (app/core/sketch.py) или напоминание нарисовать его."""
+        """Закрытое описание места и эскиз для схемы игроков (app/core/sketch.py) или напоминание описать место."""
         from app.core import sketch
 
         e = self.entities.get(place)
+        st = (e.state or {}) if e is not None else {}
         sk = sketch.of_place(e, self.catalog, self.entities)
         name = e.name if e is not None else place
+        layout = str(st.get("layout") or "")
+        head = f"{place} «{name}»"
+        secret = f"\n  закрытое описание (видишь только ты): {layout[:1500]}" if layout else ""
         if sk is None:
+            if layout:
+                return f"{head}: эскиз строится по закрытому описанию.{secret}"
             return (
-                f"У места {place} «{name}» нет эскиза: игроки не видят, что вокруг. Нарисуй его sketch_place — "
-                "форма и размер, где стоит отряд, выходы и что за ними, крупные предметы."
+                f"У места {place} «{name}» нет закрытого описания и эскиза: игроки не видят, что вокруг. Опиши его "
+                "describe_place — планировка и размер в футах, где вошёл отряд, выходы и что за ними, крупные "
+                "предметы, тайное; схема построится по описанию. Или нарисуй её сам sketch_place."
             )
-        return f"{place} «{name}», {sketch.describe(sk)}" + (" (по карте книги)" if sk.get("book") else "")
+        tag = (
+            " (по карте книги)"
+            if sk.get("book")
+            else " (построен по описанию, поправить — sketch_place)"
+            if sk.get("auto")
+            else ""
+        )
+        return f"{head}, {sketch.describe(sk)}{tag}{secret}"
 
     def _place_lines(self, place: str | None) -> list[str]:
         """Существа, предметы, приметы и области места (``None`` — всех мест, где стоят герои)."""

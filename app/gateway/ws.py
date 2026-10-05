@@ -361,6 +361,7 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
     await conn.send(envelope("master.tool.result", conn.campaign_id, {"request_id": request_id, **result}))
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
+        app.state.master.schedule_sketches(ctx)  # describe_place с панели: эскиз строится в фоне
         # move в бою: герой вошёл в бой или ушёл из него — очередь сдвинулась
         if name == "set_scene_mode" or (name in ("move", "enter_room") and combat.in_combat(ctx)):
             if combat.in_combat(ctx):
