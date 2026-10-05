@@ -65,6 +65,14 @@ class IntentAction(BaseModel):
     target_id: str | None = Field(None, description="id цели из перечня сущностей сцены или героев")
     instrument_id: str | None = Field(None, description="id предмета из снаряжения героя")
     spell_id: str | None = Field(None, description="id заклинания из книги героя, если он творит заклинание")
+    target_ids: list[str] = Field(
+        default_factory=list, max_length=12, description="площадное заклинание: все, кого игрок накрывает областью"
+    )
+    free_target: str = Field(
+        "",
+        max_length=300,
+        description="цель словами игрока, если её нет в сцене: «факел на стене», «иллюзорный ящик у двери»",
+    )
     slot_level: int | None = Field(None, ge=1, le=9, description="круг ячейки, если игрок назвал его явно")
     ritual: bool = Field(False, description="заклинание творится ритуалом (игрок так сказал)")
     zone: Literal["melee", "near", "far"] | None = Field(None, description="куда перемещается: вплотную/близко/далеко")
@@ -183,6 +191,11 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
         if d["target_id"] and d["target_id"] not in valid_targets:
             notes.append(f"неизвестная цель {d['target_id']} убрана")
             d["target_id"] = None
+        if d.get("target_ids"):
+            bad = [t for t in d["target_ids"] if t not in valid_targets]
+            if bad:
+                notes.append(f"неизвестные цели {', '.join(bad)} убраны")
+            d["target_ids"] = [t for t in dict.fromkeys(d["target_ids"]) if t in valid_targets]
         if d["instrument_id"] and d["instrument_id"] not in own:
             d["missing_item"] = True  # предмета нет: мастер обыграет («рука нащупывает пустые ножны»)
         if d["spell_id"] and d["spell_id"] not in known:
@@ -190,6 +203,8 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
         if d["verb"] != "cast":
             d.pop("slot_level", None)
             d.pop("ritual", None)
+            d.pop("target_ids", None)
+            d.pop("free_target", None)
         acts.append(d)
 
     notice = None
@@ -250,6 +265,10 @@ def describe(intent: dict[str, Any] | None) -> str:
         for k in ("target_id", "instrument_id", "spell_id", "slot_level", "zone", "skill"):
             if a.get(k):
                 bits.append(f"{k}={a[k]}")
+        if a.get("target_ids"):
+            bits.append(f"target_ids={','.join(a['target_ids'])}")
+        if a.get("free_target"):
+            bits.append(f"цель вне реестра: «{a['free_target']}» — заведи её инструментом, если нужно, потом действуй")
         if a.get("missing_item"):
             bits.append("ПРЕДМЕТА НЕТ В СНАРЯЖЕНИИ")
         if a.get("unknown_spell"):
@@ -287,8 +306,13 @@ def routable_cast(intent: dict[str, Any] | None) -> dict[str, Any] | None:
     a = acts[0]
     if a["verb"] != "cast" or not a.get("spell_id") or a.get("unknown_spell"):
         return None
+    if a.get("free_target"):
+        return None  # цели нет в реестре: её сначала заводит мастер
     args: dict[str, Any] = {"caster_id": intent["character_id"], "spell_id": a["spell_id"]}
-    if a.get("target_id"):
+    if a.get("target_ids"):
+        args["target_ids"] = list(a["target_ids"])
+        args["area_chosen"] = True  # кого накрыть, игрок выбрал сам
+    elif a.get("target_id"):
         args["target_ids"] = [a["target_id"]]
     if a.get("slot_level"):
         args["slot_level"] = int(a["slot_level"])

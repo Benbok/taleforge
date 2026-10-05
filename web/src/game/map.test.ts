@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
 import {
+  exitCell,
   freeCell,
+  sketchFrame,
+  type Sketch,
   GRID_R,
   layoutGrid,
   layoutPlaces,
@@ -83,5 +86,47 @@ describe("карта", () => {
     const taken = new Set(["0,0", "1,0", "0,1"]);
     expect(freeCell(0, 0, taken)).toEqual([0, -1]);
     expect(freeCell(GRID_R + 5, 0, new Set())).toEqual([GRID_R, 0]);
+  });
+});
+
+describe("эскиз места", () => {
+  const sk: Sketch = {
+    shape: "room",
+    cols: 6,
+    rows: 4,
+    party: [1, 2],
+    walls: [[5, 0]],
+    exits: [{ name: "Дверь", side: "s", at: 1, kind: "bars", state: "locked", to: "loc_hall", beyond: "коридор" }],
+    features: [{ name: "Нары", kind: "furniture", cells: [[0, 0, 1, 0]] }],
+  };
+
+  it("пол без стен и предметов; координаты от отряда", () => {
+    const f = sketchFrame(sk);
+    expect([f.minCol, f.minRow, f.maxCol, f.maxRow]).toEqual([-1, -2, 4, 1]);
+    expect(f.allowed(0, 0)).toBe(true);
+    expect(f.allowed(4, -2)).toBe(false); // стена (5, 0)
+    expect(f.allowed(-1, -2)).toBe(false); // нары
+    expect(f.allowed(5, 0)).toBe(false); // за краем
+    expect(exitCell(sk, sk.exits[0])).toEqual([0, 2]); // под южным краем, столбец 1
+  });
+
+  it("значки встают только на пол, выход из эскиза не дублируется", () => {
+    const m: MapState = {
+      here: { id: "loc_cell", name: "Камера", description: null },
+      around: [{ id: "en_rat", name: "Крыса", type: "creature", zone: "far", zone_name: "далеко", bearing: "n", elevation: "ground", cover: "none" }],
+      party: [],
+      exits: [
+        { id: "loc_hall", name: "Коридор", via: "решётка", bearing: "s", visited: false },
+        { id: "loc_yard", name: "Двор", via: null, bearing: "n", visited: false },
+      ],
+      places: [],
+      links: [],
+      bearings: {} as MapState["bearings"],
+      sketch: sk,
+    };
+    const f = sketchFrame(sk);
+    const g = layoutGrid(m);
+    for (const x of [...g.things, ...g.exits]) expect(f.allowed(x.col, x.row)).toBe(true);
+    expect(g.exits.map((x) => x.item.id)).toEqual(["loc_yard"]);
   });
 });

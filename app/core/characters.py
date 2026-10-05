@@ -16,6 +16,7 @@ from app.content.catalog import CatalogView
 from app.core import bonds
 from app.core import spells as spellbook
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
+from app.core.features import uses_view
 from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
@@ -549,6 +550,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
                 "attacks": a.attacks,
                 "effects": [{"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks} for e, r in a.effects],
             }
+            out["features"] = uses_view(ch, cat, a.mods, a.pb)
         except Exception:  # noqa: BLE001 — незаконченный черновик: производных ещё нет
             pass
     lin, caste, feats = lineage_features(ch.sheet or {}, cat)

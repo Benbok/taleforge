@@ -11,6 +11,11 @@ export interface QuickAction {
   spell_id?: string | null;
   slot_level?: number | null;
   ritual?: boolean;
+  /** Площадное заклинание: кого накрывает область. */
+  target_ids?: string[];
+  /** Цель, которой нет в списке сцены, словами игрока: её заводит мастер. */
+  free_target?: string;
+  manner?: string;
 }
 
 let n = 0;
@@ -37,23 +42,27 @@ export function attack(targetId: string, targetName: string, a: HeroAttack): str
   ]);
 }
 
-/** Строка заклинания в чате: что, в кого, какой ячейкой. */
-export function castText(spell: string, target: string | null, slot: number | null, ritual: boolean): string {
-  const parts = [`Творю «${spell}»`];
-  if (target) parts.push(`на ${target}`);
-  if (ritual) parts.push("ритуалом");
-  else if (slot) parts.push(`ячейкой ${slot}-го круга`);
-  return parts.join(" ");
-}
-
-export function cast(
-  spellId: string,
-  spellName: string,
-  target: { id: string; name: string } | null,
-  slot: number | null,
-  ritual: boolean,
-): string | null {
-  return sendQuick(castText(spellName, target?.name ?? null, slot, ritual), [
-    { verb: "cast", spell_id: spellId, target_id: target?.id ?? null, slot_level: slot, ritual },
+/** Заклинание из окна сотворения: цели, ячейка и «как именно» уже выбраны игроком. */
+export function cast(plan: {
+  spellId: string;
+  text: string;
+  targets: string[];
+  other: string | null;
+  area: boolean;
+  slot: number | null;
+  ritual: boolean;
+  manner: string;
+}): string | null {
+  return sendQuick(plan.text, [
+    {
+      verb: "cast",
+      spell_id: plan.spellId,
+      target_id: plan.area || plan.other !== null ? null : (plan.targets[0] ?? null),
+      target_ids: plan.area ? plan.targets : [],
+      free_target: plan.other?.trim().slice(0, 300) ?? "",
+      slot_level: plan.slot,
+      ritual: plan.ritual,
+      manner: plan.manner.trim().slice(0, 300),
+    },
   ]);
 }

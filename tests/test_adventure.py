@@ -115,6 +115,10 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     (tok,) = book["tokens"]
     assert tok["id"] == hero["id"] and tok["mine"] and tok["room"] == "1"
     assert 0 < tok["x"] < 0.4 and 0 < tok["y"] < 0.6  # внутри клеток комнаты 1
+    # схема «Вокруг» комнаты построена по клеткам книги: колонна — стена, выход на восток в комнату 2
+    sk = m["sketch"]
+    assert (sk["cols"], sk["rows"]) == (4, 6) and [1, 2] in sk["walls"]
+    assert [(x["side"], x["name"]) for x in sk["exits"]] == [("e", "Комната 2")]
 
     async def next_room(ctx):
         r2 = await _ok(ctx, "enter_room", {"room": "2"})

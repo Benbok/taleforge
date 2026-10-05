@@ -30,6 +30,7 @@ from app.core.actions import available
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer, stand_in_seats
 from app.core.security import read_token
 from app.db.models import Campaign, Character, Entity, User
+from app.gateway import rest as rest_votes
 from app.gateway.events import PROTOCOL_VERSION, envelope, publish_message
 from app.gateway.hub import Connection
 
@@ -90,6 +91,9 @@ async def _snapshot(
                 for s in c.seats
             ],
             "votes": presence.votes(c.id) if presence else [],
+            "rest_votes": await rest_votes.snapshot_votes(
+                session, c, seat_id, set(stand_in_seats(c, viewer.user.id)), viewer.is_master
+            ),
             "turn": scene["turn"],
             # открытая кнопка реакции переживает переподключение; между сессиями — итог прошлой
             "reaction": master.pending_reaction(c.id, seat_id) if master is not None and seat_id else None,
@@ -292,6 +296,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 reason = await presence.cast(conn, str(payload.get("vote_id") or ""), str(payload.get("option") or ""))
                 if reason:
                     await conn.send(_error("vote_rejected", reason, conn.campaign_id))
+                continue
+
+            if kind == "rest.ballot":
+                reason = await app.state.rest.cast(user, conn, payload)
+                if reason:
+                    await conn.send(_error("rest_rejected", reason, conn.campaign_id))
                 continue
 
             if kind == "entity.inspect":

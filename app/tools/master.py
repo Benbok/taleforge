@@ -12,8 +12,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import adventure, audio, combat
+from app.core import adventure, audio, combat, sketch
 from app.core.campaigns import master_seat
+from app.core.features import uses_view
 from app.core.positions import COVER_AC, Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import (
     PLAYABLE,
@@ -137,6 +138,7 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         ],
         "personality": ch.personality,
         "public_bio": ch.public_bio,
+        "features": uses_view(ch, ctx.world.catalog, act.mods, act.pb),
         **_spellbook(ctx, ch),
     }
 
@@ -1655,6 +1657,79 @@ async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
     return {"landmark_id": en.id, "name": a.name}
 
 
+class SketchExit(BaseModel):
+    name: str = Field(min_length=1, max_length=60, description="как его видят герои: «Дверь решётки», «Узкое окно»")
+    side: Literal["n", "e", "s", "w"] = Field(description="край места: n — северный (верх схемы)")
+    at: int = Field(ge=0, description="клетка на этом краю: для n и s — столбец, для e и w — строка, с нуля")
+    kind: Literal["door", "bars", "window", "arch", "stairs", "hatch", "gap", "passage"] = "door"
+    state: Literal["open", "closed", "locked"] = "open"
+    to: str | None = Field(None, description="место реестра, куда ведёт, если оно уже есть")
+    beyond: str | None = Field(None, max_length=60, description="что видно или известно за ним: «тёмный коридор»")
+    hidden: bool = Field(False, description="тайный выход: игроки не видят, пока не найдут")
+
+
+class SketchFeature(BaseModel):
+    name: str = Field(min_length=1, max_length=60, description="«Каменный стол», «Колонна», «Жаровня»")
+    kind: Literal["furniture", "cover", "hazard", "light", "object", "nature"] = "object"
+    cells: list[list[int]] = Field(
+        min_length=1, max_length=4, description="прямоугольники [c0, r0, c1, r1] от северо-западной клетки"
+    )
+    cover: Literal["none", "half", "three_quarters", "total"] = "none"
+    hidden: bool = Field(False, description="игроки не видят, пока не найдут")
+
+
+class SketchArgs(BaseModel):
+    shape: Literal["room", "corridor", "cave", "street", "open"] = "room"
+    cols: int = Field(ge=1, le=sketch.MAX_SIDE, description="ширина с запада на восток, клеток по 5 футов")
+    rows: int = Field(ge=1, le=sketch.MAX_SIDE, description="длина с севера на юг, клеток по 5 футов")
+    party: list[int] = Field(min_length=2, max_length=2, description="клетка [c, r], где сейчас стоит отряд")
+    walls: list[list[int]] = Field(
+        default_factory=list, max_length=sketch.MAX_WALLS, description="непроходимые клетки [c, r]: колонны, обвал"
+    )
+    exits: list[SketchExit] = Field(default_factory=list, max_length=sketch.MAX_EXITS)
+    features: list[SketchFeature] = Field(default_factory=list, max_length=sketch.MAX_FEATURES)
+    location_id: str | None = Field(None, description=PLACE_HINT)
+
+
+@tool(
+    "sketch_place",
+    "Эскиз места для схемы игроков: форма и размер в клетках по 5 футов, где стоит отряд, входы и выходы (дверь, "
+    "решётка, окно, лестница) и что за ними, крупные предметы в поле зрения. Клетка (0, 0) — северо-западный угол. "
+    "Новый вызов заменяет эскиз целиком. Существ сюда не клади — для них spawn_entity.",
+    SketchArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
+    w = ctx.world
+    if w.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    for f in a.features:
+        if any(len(c) != 4 for c in f.cells):
+            raise ToolError(f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]")
+    if any(len(c) != 2 for c in a.walls):
+        raise ToolError("стена — клетка [c, r]")
+    data = a.model_dump(exclude={"location_id"})
+    data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
+    places = {e.id for e in w.entities.values() if e.kind == "location"}
+    errors = sketch.check(data, places)
+    if errors:
+        raise ToolError("; ".join(errors[:8]))
+    before = copy.deepcopy(place.state)
+    for x in data["exits"]:
+        if x["to"] and x["to"] != place.id and not _linked(ctx, place, w.entities[x["to"]]):
+            _link(place, x["to"], x["name"])  # выход в известное место — путь и на карте мест
+    place.state = {**(place.state or {}), "sketch": data}
+    await ctx.record(
+        "sketch_place",
+        target_id=place.id,
+        payload={"place": place.name, "size": [a.cols, a.rows], "exits": len(a.exits), "features": len(a.features)},
+        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+    )
+    return {"place": place.name, "sketch": sketch.describe(data)}
+
+
 class MoveArgs(BaseModel):
     character_ids: list[str] = Field(min_length=1)
     location_id: str
@@ -2071,78 +2146,6 @@ async def expire_effects(ctx: ToolContext, inverse: list) -> list[str]:
             ctx.changed.add(ch.id)
     await ctx.session.flush()
     return out
-
-
-class RestArgs(BaseModel):
-    character_ids: list[str] = Field(min_length=1)
-    kind: Literal["short", "long"]
-    spend_hit_dice: int = Field(0, ge=0, le=20, description="короткий отдых: сколько костей хитов тратит каждый")
-
-
-@tool(
-    "rest",
-    "Короткий (1 час) или продолжительный (8 часов) отдых по SRD: время, хиты, кости хитов, ячейки заклинаний.",
-    RestArgs,
-    ids={"character_ids": "characters"},
-)
-async def rest(ctx: ToolContext, a: RestArgs) -> dict:
-    if any(ctx.world.in_fight(i) for i in a.character_ids):
-        raise ToolError("в бою не отдыхают: сначала set_scene_mode free")
-    hours = 1 if a.kind == "short" else 8
-    last_long = int((ctx.world.scene.state or {}).get("last_long_rest", -(10**9)))
-    if a.kind == "long" and ctx.world.scene.game_time - last_long < 24 * 3600 and last_long >= 0:
-        raise ToolError("продолжительный отдых — не чаще раза в 24 часа игрового времени")
-    sc = ctx.world.scene
-    inverse = [
-        {"table": "scenes", "id": ctx.campaign.id, "field": "game_time", "before": sc.game_time},
-        {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)},
-    ]
-    results, dice = [], []
-    for cid in a.character_ids:
-        ch = _character(ctx, cid)
-        act = ctx.world.actor(ch.id)
-        inverse.append(snapshot(act))
-        res = dict(ch.resources or {})
-        level = int((ch.sheet or {}).get("level", 1))
-        hd_left = int(res.get("hit_dice", level))
-        if act.hp.dead:
-            continue
-        if a.kind == "long":
-            act.hp.current, act.hp.temp = act.hp.maximum, 0
-            act.hp.death_saves = type(act.hp.death_saves)()
-            hd_left = min(level, hd_left + max(1, level // 2))
-            act.save_hp()
-            # ячейки заклинаний возвращаются, заклинатели снова готовят заклинания на день (SRD)
-            rest_res = {k: v for k, v in ch.resources.items() if k not in ("slots_used", "pact_used", "concentration")}
-            ch.resources = {**rest_res, "hit_dice": hd_left, "can_prepare": True}
-            results.append({"character": ch.name, "hp": act.hp.current, "hit_dice": hd_left})
-            ctx.world.invalidate(ch.id)
-            continue
-        cls = ctx.world.catalog.find((ch.sheet or {}).get("class_id", ""), "class")
-        die = int(str((cls.data if cls else {}).get("hit_die", "d8")).lstrip("d"))
-        healed = 0
-        for _ in range(min(a.spend_hit_dice, hd_left)):
-            if act.hp.current >= act.hp.maximum:
-                break
-            r = ctx.dice.roll(f"1d{die}")
-            dice.append({"who": ch.id, **dice_json(r)})
-            gain = max(0, r.total + act.mods["con"])
-            engine.heal(act.hp, gain)
-            healed += gain
-            hd_left -= 1
-        act.save_hp()
-        # ячейки договора колдуна возвращаются на коротком отдыхе
-        ch.resources = {**{k: v for k, v in ch.resources.items() if k != "pact_used"}, "hit_dice": hd_left}
-        results.append({"character": ch.name, "healed": healed, "hp": act.hp.current, "hit_dice": hd_left})
-        ctx.world.invalidate(ch.id)
-    ctx.world.scene.game_time += hours * 3600
-    if a.kind == "long":
-        sc.state = {**(sc.state or {}), "last_long_rest": sc.game_time}
-    expired = await expire_effects(ctx, inverse)
-    await ctx.record(
-        "rest", payload={"kind": a.kind, "results": results, "expired": expired}, dice=dice, inverse=inverse
-    )
-    return {"kind": a.kind, "results": results, "time": format_time(ctx.world.scene.game_time), "expired": expired}
 
 
 # --- общение и контракт намерения ---

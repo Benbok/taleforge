@@ -145,9 +145,11 @@ def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
             "order": [{"id": x.get("id"), "initiative": x.get("initiative")} for x in p.get("order") or []],
             "outcome": "info",
         }
-    title = {"apply_hazard": f"Опасность: {p.get('hazard')}", "use_item": f"Предмет: {p.get('item')}"}.get(
-        ev.tool, "Бросок"
-    )
+    title = {
+        "apply_hazard": f"Опасность: {p.get('hazard')}",
+        "use_item": f"Предмет: {p.get('item')}",
+        "rest": "Отдых: засада и кости хитов",
+    }.get(ev.tool, "Бросок")
     return {
         "tool": ev.tool,
         "title": title,

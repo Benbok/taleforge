@@ -78,8 +78,39 @@ export interface MapBook {
   tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean }[];
 }
 
+/** Эскиз места, нарисованный мастером (app/core/sketch.py): клетки по 5 футов, (0, 0) — северо-западный угол. */
+export interface SketchExit {
+  name: string;
+  side: "n" | "e" | "s" | "w";
+  at: number;
+  kind: "door" | "bars" | "window" | "arch" | "stairs" | "hatch" | "gap" | "passage";
+  state?: "open" | "closed" | "locked";
+  to?: string | null;
+  beyond?: string | null;
+  hidden?: boolean;
+}
+
+export interface SketchFeature {
+  name: string;
+  kind: "furniture" | "cover" | "hazard" | "light" | "object" | "nature";
+  cells: number[][];
+  cover?: Cover;
+  hidden?: boolean;
+}
+
+export interface Sketch {
+  shape: "room" | "corridor" | "cave" | "street" | "open";
+  cols: number;
+  rows: number;
+  party: [number, number];
+  walls: number[][];
+  exits: SketchExit[];
+  features: SketchFeature[];
+}
+
 export interface MapState {
   book?: MapBook | null;
+  sketch?: Sketch | null;
   here: { id: string; name: string; description: string | null } | null;
   around: MapThing[];
   party?: MapHero[];
@@ -173,9 +204,13 @@ export interface GridLayout {
   exits: Cell<MapExit>[];
 }
 
-/** Ближайшая к точке свободная клетка: сначала сама, потом по кольцам вокруг неё в устойчивом порядке. */
-export function freeCell(col: number, row: number, taken: Set<string>, limit = GRID_R): [number, number] {
-  const ok = (c: number, r: number) => Math.abs(c) <= limit && Math.abs(r) <= limit && !taken.has(`${c},${r}`);
+type Allowed = (col: number, row: number) => boolean;
+
+/** Ближайшая к точке свободная клетка: сначала сама, потом по кольцам вокруг неё в устойчивом порядке.
+ *  ``allowed`` — где вообще можно стоять (пол эскиза без стен и предметов). */
+export function freeCell(col: number, row: number, taken: Set<string>, limit = GRID_R, allowed?: Allowed): [number, number] {
+  const ok = (c: number, r: number) =>
+    Math.abs(c) <= limit && Math.abs(r) <= limit && !taken.has(`${c},${r}`) && (!allowed || allowed(c, r));
   for (let d = 0; d <= 2 * limit; d++) {
     const ring: [number, number][] = [];
     for (let dc = -d; dc <= d; dc++)
@@ -193,11 +228,20 @@ function target(id: string, bearing: Bearing | null, cells: number): [number, nu
   return [Math.round(cells * Math.sin(a)) || 0, Math.round(-cells * Math.cos(a)) || 0]; // без −0
 }
 
-/** Раскладка «Вокруг» по клеткам: каждый в клетке по своей зоне и стороне, двое в одной точке — в соседних. */
+/** Раскладка «Вокруг» по клеткам: каждый в клетке по своей зоне и стороне, двое в одной точке — в соседних.
+ *  С эскизом места значки встают только на его пол, а выходы, нарисованные в эскизе, не дублируются. */
 export function layoutGrid(m: MapState): GridLayout {
+  const frame = m.sketch ? sketchFrame(m.sketch) : null;
+  const allowed = frame?.allowed;
+  const reach = frame ? frame.reach : GRID_R;
+  const drawn = new Set((m.sketch?.exits ?? []).map((x) => x.to).filter(Boolean) as string[]);
   const taken = new Set<string>();
-  const put = <T>(item: T, at: [number, number], limit = GRID_R): Cell<T> => {
-    const [col, row] = freeCell(at[0], at[1], taken, limit);
+  const put = <T>(item: T, at: [number, number], limit = reach): Cell<T> => {
+    if (frame) {
+      // «далеко» за стеной маленькой комнаты — у её края в ту же сторону
+      at = [Math.max(frame.minCol, Math.min(frame.maxCol, at[0])), Math.max(frame.minRow, Math.min(frame.maxRow, at[1]))];
+    }
+    const [col, row] = freeCell(at[0], at[1], taken, limit, allowed);
     taken.add(`${col},${row}`);
     return { item, col, row };
   };
@@ -208,16 +252,61 @@ export function layoutGrid(m: MapState): GridLayout {
     ...party.filter((h) => h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
   ];
   const things = m.around.map((t) => put(t, target(t.id, t.bearing, ZONE_CELLS[t.zone] ?? ZONE_CELLS.near)));
-  const exits = m.exits.map((x) => {
-    const [c, r] = target(x.id, x.bearing, GRID_R);
-    return put(x, [Math.max(-GRID_R, Math.min(GRID_R, c)), Math.max(-GRID_R, Math.min(GRID_R, r))]);
-  });
+  const exits = m.exits
+    .filter((x) => !drawn.has(x.id))
+    .map((x) => {
+      const [c, r] = target(x.id, x.bearing, reach);
+      return put(x, [Math.max(-reach, Math.min(reach, c)), Math.max(-reach, Math.min(reach, r))]);
+    });
   // область не занимает клетку: она лежит под значками
   const areas = (m.areas ?? []).map((a) => {
     const [col, row] = target(a.id, a.bearing, ZONE_CELLS[a.zone] ?? ZONE_CELLS.near);
     return { item: a, col, row };
   });
   return { heroes, things, exits, areas };
+}
+
+/** Эскиз в координатах схемы: отряд в клетке (0, 0), как в раскладке по зонам. */
+export interface SketchFrame {
+  /** Сдвиг: клетка эскиза (c, r) рисуется в клетке схемы (c − dc, r − dr). */
+  dc: number;
+  dr: number;
+  minCol: number;
+  minRow: number;
+  maxCol: number;
+  maxRow: number;
+  walls: Set<string>;
+  /** Клетки предметов эскиза: туда значки не ставятся. */
+  solid: Set<string>;
+  allowed: (col: number, row: number) => boolean;
+  /** Сколько клеток от отряда до дальнего края места: предел поиска свободной клетки. */
+  reach: number;
+}
+
+export function sketchFrame(sk: Sketch): SketchFrame {
+  const [dc, dr] = sk.party;
+  const walls = new Set(sk.walls.map(([c, r]) => `${c - dc},${r - dr}`));
+  const solid = new Set<string>();
+  for (const f of sk.features)
+    for (const [c0, r0, c1, r1] of f.cells)
+      for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) solid.add(`${c - dc},${r - dr}`);
+  const minCol = -dc;
+  const minRow = -dr;
+  const maxCol = sk.cols - 1 - dc;
+  const maxRow = sk.rows - 1 - dr;
+  const allowed = (c: number, r: number) =>
+    c >= minCol && c <= maxCol && r >= minRow && r <= maxRow && !walls.has(`${c},${r}`) && !solid.has(`${c},${r}`);
+  const reach = Math.max(-minCol, maxCol, -minRow, maxRow, 1);
+  return { dc, dr, minCol, minRow, maxCol, maxRow, walls, solid, allowed, reach };
+}
+
+/** Клетка снаружи края, где рисуется выход эскиза, в координатах схемы. */
+export function exitCell(sk: Sketch, x: SketchExit): [number, number] {
+  const [dc, dr] = sk.party;
+  if (x.side === "n") return [x.at - dc, -1 - dr];
+  if (x.side === "s") return [x.at - dc, sk.rows - dr];
+  if (x.side === "w") return [-1 - dc, x.at - dr];
+  return [sk.cols - dc, x.at - dr];
 }
 
 // --- раскладка «Места» ---
