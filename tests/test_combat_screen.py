@@ -37,7 +37,13 @@ def test_death_saves_are_open_to_the_table(game_client, admin_g, llm, settings):
 def test_reaction_button_survives_reconnect(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     master = game_client.app.state.master
-    payload = {"prompt_id": "rx_test", "character_id": hero["id"], "trigger": "«Волк» выходит из ближнего боя"}
+    payload = {
+        "prompt_id": "rx_test",
+        "character_id": hero["id"],
+        "trigger": "«Волк» выходит из ближнего боя",
+        "options": [{"id": "opportunity_attack", "label": "Ударить вслед"}, {"id": "skip", "label": "Пропустить"}],
+        "expires_at": 4102444800.0,
+    }
 
     async def open_prompt():
         master.coordination.open_prompt("rx_test", c["id"], hero["seat_id"])

@@ -8,6 +8,18 @@ from sqlalchemy import text
 from app.config import Settings
 from app.db.models import Base
 from app.db.session import make_engine
+from app.gateway import protocol
+
+# Каждое событие WebSocket, которое сервер отправляет в тестах, сверяется с контрактом (app/gateway/protocol.py)
+protocol.STRICT = True
+
+
+@pytest.fixture(autouse=True)
+def _contract():
+    protocol.VIOLATIONS.clear()
+    yield
+    assert not protocol.VIOLATIONS, "события не сходятся с app/gateway/protocol.py:\n" + "\n".join(protocol.VIOLATIONS)
+
 
 # По умолчанию — SQLite в файле. В CI и локально можно проверить на PostgreSQL:
 # TEST_DATABASE_URL=postgresql+asyncpg://user:pass@localhost/taleforge_test pytest

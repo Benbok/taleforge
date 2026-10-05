@@ -6,11 +6,15 @@ from typing import Any
 
 from app.core.chat import message_payload
 from app.db.models import Message
+from app.gateway import protocol
 
 PROTOCOL_VERSION = 1
 
 
 def envelope(type_: str, campaign_id: str | None, payload: dict[str, Any], seq: int | None = None) -> dict[str, Any]:
+    """Событие для клиента. Тип и поля описаны в app/gateway/protocol.py; в тестах событие сверяется с ним."""
+    if protocol.STRICT:
+        protocol.check(type_, payload)
     return {"type": type_, "campaign_id": campaign_id, "seq": seq, "payload": payload}
 
 

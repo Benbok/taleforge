@@ -2,7 +2,7 @@
 // (app/core/map.py): запрос сокетом map.get, ответ событием map.state. Пока окно открыто, карта обновляется
 // после каждого хода мастера (scene.updated).
 import { create } from "zustand";
-import type { EntityType } from "../lib/types";
+import type { EntityType, Envelope } from "../lib/types";
 import { useGame } from "../stores/game";
 
 export type Zone = "melee" | "near" | "far";
@@ -135,7 +135,7 @@ export interface StepRequest {
 
 /** Ответ сервера на шаг (map.step.result). */
 export interface StepResult {
-  request_id?: string;
+  request_id?: string | null;
   ok: boolean;
   error?: string;
   who?: string;
@@ -227,11 +227,12 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 }));
 
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
-export function mapEvent(type: string, payload: unknown): void {
+export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
-  if (type === "map.state") w.receive(payload as MapState);
-  else if (type === "map.step.result") w.stepResult(payload as StepResult);
-  else if (w.open && (type === "scene.updated" || type === "state.snapshot" || type === "knowledge.revealed" || type === "map.changed")) w.request();
+  // схему места сервер пока не описывает в контракте (MapState в app/gateway/protocol.py открыт): форма — здесь
+  if (e.type === "map.state") w.receive(e.payload as unknown as MapState);
+  else if (e.type === "map.step.result") w.stepResult(e.payload);
+  else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
 
 const BEARINGS: Bearing[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];

@@ -8,7 +8,7 @@ export type Connection = "connecting" | "open" | "reconnecting" | "closed";
 export const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 10000];
 const PING_MS = 25000;
 // после этих событий состояние проще запросить заново: сменились места или сессия
-const REJOIN = new Set(["seat.changed", "session.started", "session.paused", "session.ended"]);
+const REJOIN = new Set<Envelope["type"]>(["seat.changed", "session.started", "session.paused", "session.ended"]);
 
 export interface SocketLike {
   readyState: number;
@@ -111,9 +111,11 @@ export class GameSocket {
     }
     if (!e || typeof e.type !== "string") return;
     if (e.type === "auth.ok") return this.join(ws);
-    if (e.type === "error" && (e.payload as { code?: string }).code === "unauthorized") {
+    // вход устарел или кампанию удалили: переподключаться некуда
+    const end = e.type === "error" && e.payload.code === "unauthorized" ? "unauthorized" : e.type === "campaign.deleted" ? "deleted" : null;
+    if (end) {
       this.stopped = true;
-      this.o.onStatus("closed", "unauthorized");
+      this.o.onStatus("closed", end);
       ws.close();
       return;
     }

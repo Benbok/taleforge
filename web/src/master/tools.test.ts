@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Envelope } from "../lib/types";
 import { buildArgs, initialValues, problems, resolveToolResult, type ToolField, type ToolSpec } from "./tools";
 
 const f = (x: Partial<ToolField> & { name: string }): ToolField => ({
@@ -62,7 +63,7 @@ describe("формы инструментов мастера", () => {
   });
 
   it("чужие ответы и другие события не перехватываются", () => {
-    expect(resolveToolResult({ type: "master.tool.result", campaign_id: "c", seq: null, payload: { request_id: "nope" } })).toBe(false);
-    expect(resolveToolResult({ type: "message.new", campaign_id: "c", seq: 1, payload: {} })).toBe(false);
+    expect(resolveToolResult({ type: "master.tool.result", campaign_id: "c", seq: null, payload: { request_id: "nope", ok: true } })).toBe(false);
+    expect(resolveToolResult({ type: "message.new", campaign_id: "c", seq: 1, payload: {} } as unknown as Envelope)).toBe(false);
   });
 });

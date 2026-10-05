@@ -75,6 +75,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: Типы контракта не устарели
+        run: npm run gen:api && git diff --exit-code src/lib/api.gen.ts
       - name: Тесты клиента
         run: npm test
       - name: Проверка типов и сборка

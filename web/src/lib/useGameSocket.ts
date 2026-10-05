@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { getToken } from "./api";
 import { GameSocket, socketUrl } from "./socket";
-import type { AudioState, Envelope, Snapshot } from "./types";
+import type { AudioState, Envelope } from "./types";
 import { standInFor, useGame } from "../stores/game";
 import { voteQuestion } from "../game/VotePanel";
 import { toast } from "../stores/toasts";
@@ -10,13 +10,13 @@ import { sound } from "../game/sound";
 import { mapEvent, useMapWindow } from "../game/map";
 
 // после этих событий доступные действия могли измениться: спрашиваем сервер, какие кнопки показать
-const REFRESH_ACTIONS = new Set(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
+const REFRESH_ACTIONS = new Set<Envelope["type"]>(["campaign.plan", "turn.changed", "scene.updated", "character.updated", "state.snapshot", "message.state", "message.withdrawn", "master.status"]);
 
 let lastMode: string | null = null; // режим сцены до события: начало боя открывает схему
 
 export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
-  mapEvent(e.type, e.payload);
+  mapEvent(e);
   if (e.type === "state.snapshot" || e.type === "scene.updated") {
     const mode = useGame.getState().scene?.mode ?? null;
     // бой начался: сразу показываем, кто где стоит (просьба Arty); закрыть схему можно как обычно
@@ -25,42 +25,42 @@ export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
     lastMode = mode;
   }
   if (e.type === "state.snapshot") {
-    const a = (e.payload as unknown as Snapshot).audio;
+    const a = e.payload.audio;
     if (a) void sound.apply(a);
   }
   if (e.type === "audio.state") {
-    const a = e.payload as unknown as AudioState;
+    const a: AudioState = e.payload;
     void sound.apply(a);
     if (a.cues?.length) void sound.cue(a.cues); // эффект — сразу, не дожидаясь загрузки новых петель
   }
   if (e.type === "error") {
-    const p = e.payload as { code?: string; message?: string };
-    if (p.code !== "unauthorized") toast.error(p.message ?? "сервер отклонил действие");
+    const p = e.payload;
+    if (p.code !== "unauthorized") toast.error(p.message || "сервер отклонил действие");
   }
   if (e.type === "campaign.plan") {
     // сбой подготовки сюжета — сразу говорим тому, кто запускает игру: без сюжета ИИ-мастер её не начнёт
-    const plan = (e.payload as { plan?: { status?: string; error?: string | null } }).plan;
+    const plan = e.payload.plan as { status?: string; error?: string | null };
     if (plan?.status === "failed" && useGame.getState().actions.includes("campaign.end"))
       toast.error(`Сюжет не подготовлен${plan.error ? `: ${plan.error}` : ""}. Запустите генерацию заново на вкладке «Сюжет».`);
   }
-  if (e.type === "knowledge.revealed") toast.info(`Вы узнали больше о: ${(e.payload as { name?: string }).name ?? "…"}`);
+  if (e.type === "knowledge.revealed") toast.info(`Вы узнали больше о: ${e.payload.name ?? "…"}`);
   if (REFRESH_ACTIONS.has(e.type) && e.type !== "state.snapshot") sock.send("actions.get");
   // героя ушедшего этот игрок ведёт сам: и для него спрашиваем, что можно сейчас
   if (REFRESH_ACTIONS.has(e.type) || e.type === "stand_in.changed")
     for (const seat of standInFor(useGame.getState())) sock.send("actions.get", { as_seat: seat });
   if (e.type === "vote.ended") {
-    const v = e.payload as { outcome: string; label: string | null; subject: "player" | "master"; who: string; hero: string | null };
+    const v = e.payload;
     if (v.outcome === "canceled") toast.info(`${v.who} вернулся: голосование отменено.`);
     else if (v.outcome !== "stopped") toast.info(`${voteQuestion(v)} Решили: ${v.label ?? "пауза"}.`);
   }
   if (e.type === "stand_in.changed") {
-    const x = e.payload as { seat_id: string; stand_in: { user_id?: string } | null };
+    const x = e.payload;
     const me = useGame.getState().snapshot?.me.user_id;
     if (x.stand_in?.user_id && x.stand_in.user_id === me)
       toast.info("Вам передали героя ушедшего игрока: переключитесь на него над полем ввода.");
   }
   if (e.type === "message.new") {
-    const m = e.payload as { seat_id?: string | null; state?: string | null };
+    const m = e.payload;
     if (m.state === "pending" && m.seat_id && m.seat_id === useGame.getState().snapshot?.me.seat_id) sock.send("actions.get");
   }
 }
