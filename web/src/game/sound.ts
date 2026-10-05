@@ -1,19 +1,14 @@
-// Звук сцены (design/audio-mixer.md): сервер говорит, какая дорожка звучит в каждом слое и с какого момента,
-// браузер сводит слои сам. Петли стартуют с одной позиции у всех игроков; ритм вступает по такту мелодии.
-// Громкость каждого слоя игрок настраивает у себя, это хранится в браузере и на других не влияет.
+// Звук сцены (design/audio-mixer.md): сервер говорит, какая музыка звучит и с какого момента, и присылает эффекты
+// хода. Музыка стартует с одной позиции у всех игроков и сменяется плавно. Громкость музыки и эффектов игрок
+// настраивает у себя, это хранится в браузере и на других не влияет.
 import { useSyncExternalStore } from "react";
 import { getToken } from "../lib/api";
-import type { AudioState, AudioTrack, LoopLayer } from "../lib/types";
+import type { AudioState, AudioTrack } from "../lib/types";
 
-export const LOOPS: LoopLayer[] = ["music", "rhythm", "ambience"];
-export type Channel = LoopLayer | "sfx";
-export const CHANNEL_LABELS: Record<Channel, string> = {
-  music: "Мелодия",
-  rhythm: "Ритм",
-  ambience: "Атмосфера",
-  sfx: "Эффекты",
-};
-const FADE = { music: 3.5, rhythm: 1.5, ambience: 5 } as const;
+export type Channel = "music" | "sfx";
+export const CHANNELS: Channel[] = ["music", "sfx"];
+export const CHANNEL_LABELS: Record<Channel, string> = { music: "Музыка", sfx: "Эффекты" };
+const FADE = 3.5; // секунд на смену музыки
 const DUCK = 0.3; // во время голосового сообщения музыка тише
 const PREFS_KEY = "tf_sound";
 
@@ -21,12 +16,10 @@ export interface Prefs {
   muted: boolean;
   master: number;
   music: number;
-  rhythm: number;
-  ambience: number;
   sfx: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { muted: false, master: 0.8, music: 1, rhythm: 1, ambience: 1, sfx: 1 };
+export const DEFAULT_PREFS: Prefs = { muted: false, master: 0.8, music: 1, sfx: 1 };
 
 function clamp01(v: unknown, fallback: number): number {
   const n = typeof v === "number" ? v : Number.NaN;
@@ -44,8 +37,6 @@ export function parsePrefs(raw: string | null): Prefs {
     muted: o.muted === true,
     master: clamp01(o.master, DEFAULT_PREFS.master),
     music: clamp01(o.music, 1),
-    rhythm: clamp01(o.rhythm, 1),
-    ambience: clamp01(o.ambience, 1),
     sfx: clamp01(o.sfx, 1),
   };
 }
@@ -55,13 +46,6 @@ export function loopOffset(elapsed: number, duration: number): number {
   if (!(duration > 0)) return 0;
   const x = elapsed % duration;
   return x < 0 ? x + duration : x;
-}
-
-/** Сколько ждать до начала следующего такта 4/4 при позиции ``pos`` в петле с темпом ``bpm``. */
-export function untilBar(pos: number, bpm: number): number {
-  const bar = (4 * 60) / bpm;
-  const r = pos % bar;
-  return r < 1e-3 || bar - r < 1e-3 ? 0 : bar - r;
 }
 
 export function dbToGain(db: number | undefined): number {
@@ -84,7 +68,7 @@ class SoundMixer {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Partial<Record<Channel, GainNode>> = {};
-  private voices: Partial<Record<LoopLayer, Voice>> = {};
+  private voice: Voice | null = null;
   private buffers = new Map<string, Promise<AudioBuffer>>();
   private state: AudioState | null = null;
   private skew = 0; // часы сервера минус часы браузера, секунды
@@ -127,7 +111,7 @@ class SoundMixer {
       this.ctx = new Ctx();
       this.master = this.ctx.createGain();
       this.master.connect(this.ctx.destination);
-      for (const ch of [...LOOPS, "sfx"] as Channel[]) {
+      for (const ch of CHANNELS) {
         const g = this.ctx.createGain();
         g.connect(this.master);
         this.buses[ch] = g;
@@ -150,7 +134,7 @@ class SoundMixer {
     this.changed();
   }
 
-  /** Голосовое сообщение играет — музыка и ритм тише, пока оно не кончится. */
+  /** Голосовое сообщение играет — музыка тише, пока оно не кончится. */
   duck(on: boolean) {
     this.ducked = Math.max(0, this.ducked + (on ? 1 : -1));
     this.applyVolumes();
@@ -160,14 +144,14 @@ class SoundMixer {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.prefs.muted ? 0 : this.prefs.master, t, 0.1);
-    for (const ch of [...LOOPS, "sfx"] as Channel[]) {
-      const duck = this.ducked && (ch === "music" || ch === "rhythm") ? DUCK : 1;
+    for (const ch of CHANNELS) {
+      const duck = this.ducked && ch === "music" ? DUCK : 1;
       this.buses[ch]?.gain.setTargetAtTime(this.prefs[ch] * duck, t, 0.25);
     }
   }
 
-  current(layer: LoopLayer): AudioTrack | null {
-    return this.state?.layers[layer] ?? null;
+  get music(): AudioTrack | null {
+    return this.state?.music ?? null;
   }
 
   get enabled(): boolean {
@@ -180,32 +164,24 @@ class SoundMixer {
     this.state = state;
     this.changed();
     if (!this.ctx || this.ctx.state !== "running") return;
-    if (!state.enabled) {
-      for (const layer of LOOPS) this.fadeOut(layer, 1.5);
+    const want = state.enabled ? state.music : null;
+    const have = this.voice;
+    if (!want) {
+      this.fadeOut(state.enabled ? FADE : 1.5);
       return;
     }
-    // мелодия раньше ритма: ритм выравнивается по её такту
-    for (const layer of LOOPS) {
-      const want = state.layers[layer];
-      const have = this.voices[layer];
-      if (!want) {
-        this.fadeOut(layer, FADE[layer]);
-        continue;
-      }
-      if (have && have.track.id === want.id) {
-        have.track = want;
-        have.gain.gain.setTargetAtTime((want.level ?? 0.6) * dbToGain(want.gain_db), this.ctx.currentTime, 0.8);
-        continue;
-      }
-      try {
-        await this.start(layer, want);
-      } catch (e) {
-        this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
-      }
+    if (have && have.track.id === want.id) {
+      have.track = want;
+      return;
+    }
+    try {
+      await this.start(want);
+    } catch (e) {
+      this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
-  /** Эффекты хода: один раз, поверх петель. */
+  /** Эффекты хода: один раз, поверх музыки. */
   async cue(tracks: AudioTrack[]): Promise<void> {
     if (!this.ctx || this.ctx.state !== "running" || !this.state?.enabled) return;
     for (const t of tracks) {
@@ -246,37 +222,29 @@ class SoundMixer {
     return p;
   }
 
-  private async start(layer: LoopLayer, track: AudioTrack) {
+  private async start(track: AudioTrack) {
     const ctx = this.ctx!;
     const buf = await this.load(track.url);
-    if (this.state?.layers[layer]?.id !== track.id) return; // пока грузили, мастер сменил дорожку
+    if (this.state?.music?.id !== track.id) return; // пока грузили, музыка сменилась
     const now = ctx.currentTime;
-    let when = now + 0.05;
-    let offset = loopOffset(Date.now() / 1000 + this.skew - (track.since ?? 0), buf.duration);
-    const music = this.voices.music;
-    if (layer === "rhythm" && music && music.track.bpm) {
-      // ритм входит на начале такта мелодии и с той же фазой: оба начинаются с такта
-      const pos = loopOffset(when - music.startedAt + music.offset, music.duration);
-      const wait = untilBar(pos, music.track.bpm);
-      when += wait;
-      offset = loopOffset(pos + wait, buf.duration);
-    }
+    const when = now + 0.05;
+    const offset = loopOffset(Date.now() / 1000 + this.skew - (track.since ?? 0), buf.duration);
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, now);
-    g.gain.setTargetAtTime((track.level ?? 0.6) * dbToGain(track.gain_db), when, FADE[layer] / 3);
-    src.connect(g).connect(this.buses[layer]!);
+    g.gain.setTargetAtTime((track.level ?? 0.6) * dbToGain(track.gain_db), when, FADE / 3);
+    src.connect(g).connect(this.buses.music!);
     src.start(when, offset);
-    this.fadeOut(layer, FADE[layer]);
-    this.voices[layer] = { track, source: src, gain: g, startedAt: when, offset, duration: buf.duration };
+    this.fadeOut(FADE);
+    this.voice = { track, source: src, gain: g, startedAt: when, offset, duration: buf.duration };
   }
 
-  private fadeOut(layer: LoopLayer, sec: number) {
-    const v = this.voices[layer];
+  private fadeOut(sec: number) {
+    const v = this.voice;
     if (!v || !this.ctx) return;
-    delete this.voices[layer];
+    this.voice = null;
     const t = this.ctx.currentTime;
     v.gain.gain.cancelScheduledValues(t);
     v.gain.gain.setTargetAtTime(0, t, sec / 3);
@@ -285,7 +253,7 @@ class SoundMixer {
 
   /** Уход с экрана игры: всё смолкает, контекст закрывается. */
   stop() {
-    for (const layer of LOOPS) this.fadeOut(layer, 0.3);
+    this.fadeOut(0.3);
     this.state = null;
     const ctx = this.ctx;
     this.ctx = null;

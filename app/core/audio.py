@@ -1,17 +1,19 @@
-"""Звуковое сопровождение (проект design/audio-mixer.md): библиотека треков и состояние микшера сцены.
+"""Звуковое сопровождение (design/audio-mixer.md, упрощено 2026-10-05): библиотека треков и музыка сцены.
 
 Треки лежат в одной папке ``AUDIO_DIR`` (в проекте — ``audio/``): файлы и ``tracks.yaml`` с карточками. Карточка —
-источник правды: слой, настроения, места, темп, привязка к мирам. Админка пишет в ту же папку. Файл без карточки —
-«неразобранный»: мастер его не видит.
+источник правды: музыка это или эффект, настроения, места, события, миры. Админка пишет в ту же папку. Файл без
+карточки — «неразобранный»: в игре он не звучит.
 
-Слои: ``music``, ``rhythm``, ``ambience`` — петли, в каждом не больше одной дорожки; ``sfx`` — один раз.
-Мастер выбирает дорожки инструментами (app/tools/audio.py), сервер хранит выбор в ``scenes.state["audio"]`` и
-рассылает его событием ``audio.state``; браузеры сводят слои сами.
+Два вида треков. ``music`` — фоновая музыка, звучит петлёй, одна на сцену: движок сам выбирает трек из библиотеки по
+настроению сцены и месту, мастер только называет настроение. ``sfx`` — короткий эффект один раз: движок играет его
+сам, когда в игре случается событие из карточки (начало боя, крит, заклинание…), а эффекты без события мастер
+включает сам. Сервер хранит выбор в ``scenes.state["audio"]`` и рассылает событием ``audio.state``.
 """
 
 from __future__ import annotations
 
 import hashlib
+import random
 import re
 import time
 from dataclasses import dataclass, field
@@ -22,9 +24,10 @@ import yaml
 
 from app.core.campaigns import Conflict, NotFound
 
-LOOPS = ("music", "rhythm", "ambience")
-LAYERS = (*LOOPS, "sfx")
-LAYER_NAMES = {"music": "мелодия", "rhythm": "ритм", "ambience": "атмосфера", "sfx": "эффекты"}
+LOOPS = ("music",)
+LAYERS = ("music", "sfx")
+LEGACY = {"rhythm": "music", "ambience": "music"}  # слои старого микшера: их треки теперь просто музыка
+LAYER_NAMES = {"music": "музыка", "sfx": "эффекты"}
 MOODS = (
     "calm",
     "warm",
@@ -39,12 +42,56 @@ MOODS = (
     "heroic",
     "triumph",
 )
-LEVELS = {"low": 0.35, "mid": 0.6, "high": 0.85}
-CUES = ("victory", "death", "secret")  # короткие фразы, которые движок играет сам
+MOOD_NAMES = {
+    "calm": "покой",
+    "warm": "тепло",
+    "mystery": "тайна",
+    "wonder": "чудо",
+    "dread": "тревога",
+    "horror": "ужас",
+    "sorrow": "печаль",
+    "tension": "напряжение",
+    "chase": "погоня",
+    "battle": "бой",
+    "heroic": "героика",
+    "triumph": "триумф",
+}
+# События игры, на которые движок сам играет эффект. Порядок — важность: за ход звучит не больше MAX_SFX.
+CUES = (
+    "death",
+    "victory",
+    "combat",
+    "secret",
+    "levelup",
+    "crit",
+    "fumble",
+    "kill",
+    "spell",
+    "hazard",
+    "effect",
+    "hit",
+    "rest",
+)
+CUE_NAMES = {
+    "death": "гибель героя",
+    "victory": "победа в бою",
+    "combat": "начало боя",
+    "secret": "раскрыта тайна",
+    "levelup": "новый уровень",
+    "crit": "критический успех",
+    "fumble": "критический провал",
+    "kill": "враг повержен",
+    "spell": "заклинание",
+    "hazard": "опасность",
+    "effect": "наложено состояние",
+    "hit": "попадание",
+    "rest": "отдых",
+}
+LEVEL = 0.6  # громкость музыки до настроек игрока
 EXT = {".ogg": "audio/ogg", ".opus": "audio/ogg", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}
 MAX_BYTES = 20 * 1024 * 1024
-MUSIC_COOLDOWN = 60.0  # секунд реального времени между сменами мелодии, кроме начала и конца боя
-MAX_SFX = 2  # эффектов мастера за ход
+MUSIC_COOLDOWN = 60.0  # секунд реального времени между сменами музыки, кроме начала и конца боя
+MAX_SFX = 2  # эффектов за ход: больше — каша
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 CARDS = "tracks.yaml"
 
@@ -58,11 +105,9 @@ class Track:
     hint: str = ""
     moods: list[str] = field(default_factory=list)
     places: list[str] = field(default_factory=list)
-    bpm: float | None = None
-    bars: int | None = None
     gain_db: float = 0.0
     packs: list[str] = field(default_factory=list)
-    cue: str | None = None
+    cues: list[str] = field(default_factory=list)
     off: bool = False
     version: str = ""  # меняется вместе с файлом: адрес с ним кэшируется браузером навсегда
 
@@ -73,9 +118,8 @@ class Track:
         for k in ("moods", "places", "packs"):
             if getattr(self, k):
                 out[k] = list(getattr(self, k))
-        for k in ("bpm", "bars", "cue"):
-            if getattr(self, k) is not None:
-                out[k] = getattr(self, k)
+        if self.cues:
+            out["cue"] = self.cues[0] if len(self.cues) == 1 else list(self.cues)
         if self.gain_db:
             out["gain_db"] = self.gain_db
         if self.off:
@@ -83,25 +127,19 @@ class Track:
         return out
 
     def public(self) -> dict[str, Any]:
-        """Что нужно плееру: адрес, громкость и сетка петли."""
+        """Что нужно плееру: адрес и громкость."""
         return {
             "id": self.id,
             "title": self.title,
             "layer": self.layer,
             "url": f"/api/audio/{self.id}?v={self.version}",
-            "bpm": self.bpm,
-            "bars": self.bars,
             "gain_db": self.gain_db,
         }
 
     def line(self, world: bool) -> str:
-        """Строка каталога для мастера: коротко, чтобы не тратить токены."""
-        tags = ", ".join(self.moods)
-        if self.places:
-            tags += ("; " if tags else "") + ", ".join(self.places)
+        """Строка каталога эффектов для мастера: коротко, чтобы не тратить токены."""
         mark = "[мир] " if world else ""
-        bpm = f" {int(self.bpm)} bpm" if self.bpm and self.layer in ("music", "rhythm") else ""
-        return f"{self.id} — {mark}{self.hint or self.title}{f' [{tags}]' if tags else ''}{bpm}"
+        return f"{self.id} — {mark}{self.hint or self.title}"
 
 
 def _num(v: Any, what: str, tid: str) -> float | None:
@@ -114,15 +152,17 @@ def _num(v: Any, what: str, tid: str) -> float | None:
 
 
 def parse_card(raw: Any) -> Track:
-    """Карточка из tracks.yaml или из админки. Ошибка называет трек и поле."""
+    """Карточка из tracks.yaml или из админки. Ошибка называет трек и поле. Поля старого микшера (bpm, bars,
+    слои rhythm и ambience) читаются без ошибки: такие треки становятся музыкой."""
     if not isinstance(raw, dict):
         raise Conflict("карточка трека должна быть словарём с полями id, file, layer, title")
     tid = str(raw.get("id") or "").strip()
     if not ID_RE.fullmatch(tid):
         raise Conflict(f"id трека «{tid}»: только латиница в нижнем регистре, цифры, _ и -, до 64 символов")
     layer = str(raw.get("layer") or "")
+    layer = LEGACY.get(layer, layer)
     if layer not in LAYERS:
-        raise Conflict(f"трек {tid}: слой «{layer}» неизвестен; допустимо: {', '.join(LAYERS)}")
+        raise Conflict(f"трек {tid}: вид «{layer}» неизвестен; допустимо: music (музыка) или sfx (эффект)")
     file = str(raw.get("file") or "").strip()
     if not file or "/" in file or "\\" in file or file.startswith("."):
         raise Conflict(f"трек {tid}: file — имя файла в папке звука, без папок")
@@ -130,10 +170,13 @@ def parse_card(raw: Any) -> Track:
     bad = [m for m in moods if m not in MOODS]
     if bad:
         raise Conflict(f"трек {tid}: неизвестные настроения {', '.join(bad)}; допустимо: {', '.join(MOODS)}")
-    cue = raw.get("cue") or None
-    if cue is not None and (cue not in CUES or layer != "sfx"):
-        raise Conflict(f"трек {tid}: cue бывает только у эффектов и только {', '.join(CUES)}")
-    bars = _num(raw.get("bars"), "bars", tid)
+    cue = raw.get("cue") or []
+    cues = [str(x) for x in (cue if isinstance(cue, list) else [cue]) if x]
+    bad = [x for x in cues if x not in CUES]
+    if bad:
+        raise Conflict(f"трек {tid}: неизвестные события {', '.join(bad)}; допустимо: {', '.join(CUES)}")
+    if cues and layer != "sfx":
+        raise Conflict(f"трек {tid}: события (cue) бывают только у эффектов")
     return Track(
         id=tid,
         file=file,
@@ -142,21 +185,21 @@ def parse_card(raw: Any) -> Track:
         hint=str(raw.get("hint") or "").strip()[:160],
         moods=moods,
         places=[str(p).strip().lower() for p in raw.get("places") or [] if str(p).strip()],
-        bpm=_num(raw.get("bpm"), "bpm", tid),
-        bars=int(bars) if bars else None,
         gain_db=_num(raw.get("gain_db"), "gain_db", tid) or 0.0,
         packs=[str(p) for p in raw.get("packs") or []],
-        cue=cue,
+        cues=list(dict.fromkeys(cues)),
         off=bool(raw.get("off")),
     )
 
 
-def tempo_fits(a: Track | None, b: Track | None) -> bool:
-    """Мелодия и ритм сочетаются, если у обоих темп совпадает или отличается ровно вдвое. Без темпа — с любым."""
-    if a is None or b is None or not a.bpm or not b.bpm:
-        return True
-    r = max(a.bpm, b.bpm) / min(a.bpm, b.bpm)
-    return abs(r - 1) < 0.02 or abs(r - 2) < 0.04
+def id_for(file: str, taken: set[str]) -> str:
+    """id карточки из имени файла: латиница, цифры, _ и -; занятый id — с номером."""
+    base = re.sub(r"[^a-z0-9_-]+", "_", Path(file).stem.lower()).strip("_")[:48] or "track"
+    tid, n = base, 1
+    while tid in taken:
+        n += 1
+        tid = f"{base}_{n}"
+    return tid
 
 
 class Library:
@@ -361,14 +404,25 @@ def pack_of(campaign) -> str | None:
 
 
 def enabled(campaign) -> bool:
-    """Звук в кампании: владелец включил его, и в библиотеке есть хоть одна петля."""
+    """Звук в кампании: владелец включил его, и в библиотеке есть хоть один трек музыки."""
     if not (campaign.settings or {}).get("audio_enabled"):
         return False
-    return any(t.layer in LOOPS for t in library().for_pack(pack_of(campaign)))
+    return any(t.layer == "music" for t in library().for_pack(pack_of(campaign)))
+
+
+def music_tracks(campaign) -> list[Track]:
+    return [t for t in library().for_pack(pack_of(campaign)) if t.layer == "music"]
+
+
+def moods(campaign) -> list[str]:
+    """Настроения, для которых в библиотеке кампании есть музыка: из них мастер и выбирает."""
+    have = {m for t in music_tracks(campaign) for m in t.moods}
+    return [m for m in MOODS if m in have]
 
 
 def choices(campaign, layer: str) -> list[str]:
-    return [t.id for t in library().for_pack(pack_of(campaign)) if t.layer == layer and not t.cue]
+    """Эффекты, которые мастер включает сам: без события в карточке (такие движок играет без него)."""
+    return [t.id for t in library().for_pack(pack_of(campaign)) if t.layer == layer and not t.cues]
 
 
 def where(ctx) -> str | None:
@@ -378,12 +432,11 @@ def where(ctx) -> str | None:
 
 
 def mixer(scene, place: str | None = None) -> dict[str, Any]:
-    """Микшер сцены. ``place`` — место группы разделившегося отряда: у неё свой звук, сначала — копия общего."""
+    """Звук сцены. ``place`` — место группы разделившегося отряда: у неё свой звук, сначала — копия общего."""
     state = scene.state or {}
     own = (state.get("audio_at") or {}).get(place) if place else None
     st = dict(own if own is not None else state.get("audio") or {})
-    for k in LOOPS:
-        st.setdefault(k, None)
+    st.setdefault("music", None)
     st.setdefault("v", 0)
     st.setdefault("changed", {})
     st.setdefault("mourned", [])
@@ -441,36 +494,38 @@ def views(campaign, scene, groups: dict) -> list[tuple[list[str] | None, dict[st
 
 
 def public_state(campaign, scene, place: str | None = None) -> dict[str, Any]:
-    """Состояние для игроков: включён ли звук, что звучит в каждом слое и с какого момента (для совпадения петель
-    у всех). ``now`` — часы сервера: по ним клиент поправляет свои. ``place`` — звук группы этого места."""
+    """Состояние для игроков: включён ли звук, какая музыка звучит и с какого момента (чтобы у всех совпадала).
+    ``now`` — часы сервера: по ним клиент поправляет свои. ``place`` — звук группы этого места."""
     st = mixer(scene, place)
-    lib = library()
-    layers: dict[str, Any] = {}
-    for k in LOOPS:
-        cur = st.get(k)
-        t = lib.get(cur["track"]) if cur else None
-        layers[k] = {**t.public(), "level": LEVELS[cur.get("level", "mid")], "since": cur["since"]} if t else None
+    cur = st.get("music")
+    t = library().get(cur["track"]) if cur else None
     on = bool((campaign.settings or {}).get("audio_enabled"))
-    return {"enabled": on, "v": st["v"], "now": time.time(), "layers": layers if on else dict.fromkeys(LOOPS)}
+    music = {**t.public(), "level": LEVEL, "since": cur["since"], "mood": cur.get("mood")} if t and on else None
+    return {"enabled": on, "v": st["v"], "now": time.time(), "music": music}
 
 
-def set_layer(
-    scene, layer: str, track: Track | None, level: str | None = None, place: str | None = None, auto: bool = False
+def set_music(
+    scene, track: Track | None, mood: str | None = None, place: str | None = None, auto: bool = False
 ) -> None:
-    """``auto`` — выбор движка, а не мастера: мастер может сменить такую дорожку сразу, без паузы в минуту."""
+    """``auto`` — выбор движка, а не мастера: мастер может сменить такую музыку сразу, без паузы в минуту."""
     st = mixer(scene, place)
-    cur = st.get(layer)
+    cur = st.get("music")
     if track is None:
-        st[layer] = None
+        st["music"] = None
     elif cur and cur["track"] == track.id:
-        st[layer] = {**cur, "level": level or cur.get("level", "mid")}
+        st["music"] = {**cur, "mood": mood or cur.get("mood")}
     else:
-        st[layer] = {"track": track.id, "level": level or "mid", "since": time.time()}
+        st["music"] = {"track": track.id, "since": time.time(), "mood": mood}
     st["changed"] = {
         **st["changed"],
-        layer: {"at": time.time(), "mode": scene.mode, **({"auto": True} if auto else {})},
+        "music": {"at": time.time(), "mode": scene.mode, **({"auto": True} if auto else {})},
     }
     _store(scene, st, place)
+
+
+def current(scene, place: str | None = None) -> Track | None:
+    cur = mixer(scene, place).get("music")
+    return library().get(cur["track"]) if cur else None
 
 
 def cue(ctx, track: Track) -> None:
@@ -480,48 +535,25 @@ def cue(ctx, track: Track) -> None:
     ctx.signals.add("audio")
 
 
-def pick(campaign, layer: str, *, mood: str | None = None, cue_: str | None = None, fits: Track | None = None):
-    """Первый подходящий трек: сначала мира, потом общий."""
-    for t in library().for_pack(pack_of(campaign)):
-        if t.layer != layer or (cue_ and t.cue != cue_) or (mood and mood not in t.moods):
-            continue
-        if not cue_ and t.cue:
-            continue
-        if fits is not None and not tempo_fits(fits, t):
-            continue
-        return t
-    return None
+def for_event(campaign, event: str) -> Track | None:
+    """Эффект на событие игры: случайный из подходящих, сначала — треки мира, потом общие."""
+    pack = pack_of(campaign)
+    found = [t for t in library().for_pack(pack) if t.layer == "sfx" and event in t.cues]
+    own = [t for t in found if pack and pack in t.packs]
+    pool = own or found
+    return random.choice(pool) if pool else None
 
 
-def on_mode(ctx, mode: str, victory: bool = False) -> None:
-    """Страховка движка: начался бой, а ритма нет — включаем боевой; бой окончен — ритм гаснет."""
-    if not enabled(ctx.campaign):
-        return
-    sc = ctx.world.scene
-    place = where(ctx)
-    st = mixer(sc, place)
-    lib = library()
-    if mode == "combat" and st.get("rhythm") is None:
-        music = lib.get(st["music"]["track"]) if st.get("music") else None
-        t = pick(ctx.campaign, "rhythm", mood="battle", fits=music)
-        if t is not None:
-            set_layer(sc, "rhythm", t, place=place)
-            ctx.signals.add("audio")
-    elif mode == "free":
-        if st.get("rhythm") is not None:
-            set_layer(sc, "rhythm", None, place=place)
-            ctx.signals.add("audio")
-        if victory and (t := pick(ctx.campaign, "sfx", cue_="victory")):
-            cue(ctx, t)
+# --- выбор музыки ---
 
-
-AUTO_QUIET = 600.0  # секунд: столько движок уважает тишину, которую мастер выбрал сам (music: off)
+AUTO_QUIET = 600.0  # секунд: столько движок уважает тишину, которую мастер выбрал сам
 CALM = ("calm", "mystery", "wonder", "warm")
+FIGHT = ("battle", "chase")
 MOVE_TOOLS = ("move", "make_current")
 
 
 def place_words(ctx, place: str | None) -> set[str]:
-    """Чем место описано для подбора дорожки: части id шаблона, теги шаблона и места (tavern, carcass, ruins…)."""
+    """Чем место описано для подбора музыки: части id шаблона, теги шаблона и места (tavern, carcass, ruins…)."""
     w = ctx.world
     pid = place or (w.scene_places()[0] if w.scene_places() else None) or w.scene.location_id
     out: set[str] = set()
@@ -546,60 +578,130 @@ def _fit(t: Track, words: set[str], mood: str | None) -> float:
         score += 4.0 if mood in t.moods else -10.0
     else:
         score += 1.0 if set(t.moods) & set(CALM) else 0.0
-        score -= 5.0 if set(t.moods) & {"battle", "chase"} else 0.0
+        score -= 5.0 if set(t.moods) & set(FIGHT) else 0.0
     return score
 
 
 def best_music(campaign, words: set[str], mood: str | None) -> Track | None:
-    tracks = [t for t in library().for_pack(pack_of(campaign)) if t.layer == "music" and not t.cue]
+    """Самый подходящий трек: настроение важнее места; при равенстве — первый в каталоге (сначала треки мира)."""
+    tracks = music_tracks(campaign)
     if mood and not any(mood in t.moods for t in tracks):
         mood = "tension" if mood == "battle" and any("tension" in t.moods for t in tracks) else None
     if not tracks:
         return None
-    # при равенстве — первая в каталоге: сначала дорожки мира
     return max(tracks, key=lambda t: (_fit(t, words, mood), -tracks.index(t)))
 
 
+def choose(ctx, mood: str | None, place: str | None = None) -> Track | None:
+    """Трек под настроение и место. Если нынешний трек этого настроения подходит не хуже — остаётся он: музыка не
+    дёргается без нужды."""
+    words = place_words(ctx, place)
+    t = best_music(ctx.campaign, words, mood)
+    cur = current(ctx.world.scene, place)
+    if (
+        cur is not None
+        and t is not None
+        and (not mood or mood in cur.moods)
+        and _fit(cur, words, mood) >= _fit(t, words, mood)
+    ):
+        return cur
+    return t
+
+
+def on_mode(ctx, mode: str, victory: bool = False) -> None:
+    """Начался бой — эффект начала и боевая музыка; бой окончен — музыка места и эффект победы."""
+    if not enabled(ctx.campaign):
+        return
+    sc = ctx.world.scene
+    place = where(ctx)
+    cur = current(sc, place)
+    if mode == "combat":
+        ctx.signals.add("cue:combat")
+        if cur is None or not set(cur.moods) & set(FIGHT):
+            if t := choose(ctx, "battle", place):
+                set_music(sc, t, "battle", place, auto=True)
+                ctx.signals.add("audio")
+    elif mode == "free":
+        if victory:
+            ctx.signals.add("cue:victory")
+        if cur is not None and set(cur.moods) & set(FIGHT):
+            t = choose(ctx, None, place)
+            if t is not None and t.id != cur.id:
+                set_music(sc, t, None, place, auto=True)
+                ctx.signals.add("audio")
+
+
 def autopilot(ctx) -> None:
-    """Страховка движка, когда мастер не ведёт звук сам (техническая модель решения часто забывает про
-    set_soundscape): при тишине включает мелодию под место или бой, при переходе в другое место подбирает
-    дорожку под него. Выбор мастера в этом ходе и его осознанная тишина не трогаются."""
-    if not enabled(ctx.campaign) or any(ev.tool == "set_soundscape" for ev in ctx.events):
+    """Музыку ведёт движок, когда мастер её не трогает (техническая модель решения часто забывает): при тишине
+    включает трек под место или бой, при переходе в другое место подбирает трек под него, сохраняя настроение,
+    которое назвал мастер. Выбор мастера в этом ходе и его осознанная тишина не трогаются."""
+    if not enabled(ctx.campaign) or any(ev.tool == "set_music" for ev in ctx.events):
         return
     sc = ctx.world.scene
     place = where(ctx)
     st = mixer(sc, place)
     fight = ctx.world.fighting_here()
-    words = place_words(ctx, place)
     last = (st.get("changed") or {}).get("music") or {}
     ago = time.time() - float(last.get("at", 0))
-    lib = library()
-    cur = lib.get(st["music"]["track"]) if st.get("music") else None
+    cur = current(sc, place)
+    mood = "battle" if fight else None
     if cur is None:
         if last and not last.get("auto") and ago < AUTO_QUIET and last.get("mode") == sc.mode:
             return  # мастер сам выбрал тишину
-        t = best_music(ctx.campaign, words, "battle" if fight else None)
-    elif any(ev.tool in MOVE_TOOLS for ev in ctx.events) and not fight and ago >= MUSIC_COOLDOWN:
-        t = best_music(ctx.campaign, words, None)
-        if t is None or _fit(t, words, None) <= _fit(cur, words, None):
-            return  # нынешняя дорожка подходит новому месту не хуже
+    elif fight:
+        if set(cur.moods) & set(FIGHT):
+            return
+    elif any(ev.tool in MOVE_TOOLS for ev in ctx.events) and ago >= MUSIC_COOLDOWN:
+        mood = (st.get("music") or {}).get("mood") if not last.get("auto") else None
     else:
         return
-    if t is None:
+    t = choose(ctx, mood, place)
+    if t is None or (cur is not None and t.id == cur.id):
         return
-    set_layer(sc, "music", t, place=place, auto=True)
-    rhythm = lib.get(st["rhythm"]["track"]) if st.get("rhythm") else None
-    if rhythm is not None and not tempo_fits(t, rhythm):
-        set_layer(sc, "rhythm", None, place=place, auto=True)  # ритм не ложится на новую мелодию: каша хуже тишины
+    set_music(sc, t, mood, place, auto=True)
     ctx.signals.add("audio")
 
 
+# --- эффекты на события ---
+
+
+def _events(ctx) -> list[str]:
+    """Какие события случились за ход: по записанным действиям, без скрытых бросков (звук не выдаёт тайну)."""
+    out: list[str] = []
+    for ev in ctx.events:
+        if ev.hidden:
+            continue
+        p = ev.payload or {}
+        p = p.get("result", p) if isinstance(p.get("result"), dict) else p
+        if ev.tool == "resolve_attack":
+            out += ["crit"] * bool(p.get("critical")) + ["fumble"] * bool(p.get("fumble"))
+            out += ["kill"] * bool(p.get("killed")) + ["hit"] * bool(p.get("hit"))
+        elif ev.tool == "roll_check":
+            out += {"success": ["crit"], "fail": ["fumble"]}.get(p.get("critical"), [])
+        elif ev.tool == "cast_spell":
+            out.append("spell")
+        elif ev.tool == "apply_hazard":
+            out.append("hazard")
+        elif ev.tool == "apply_effect":
+            out.append("effect")
+        elif ev.tool in ("level_up", "grant_level"):
+            out.append("levelup")
+        elif ev.tool == "plot_reveal":
+            out.append("secret")
+        elif ev.tool == "rest":
+            out.append("rest")
+    return out
+
+
 def finalize(ctx) -> None:
-    """Конец хода, до фиксации: короткие фразы на гибель героя и раскрытую тайну."""
+    """Конец хода, до фиксации: эффекты на события хода — самые важные, не больше MAX_SFX вместе с эффектами
+    мастера."""
+    signaled = [s for s in ctx.signals if s.startswith("cue:")]
+    ctx.signals.difference_update(signaled)
     if not enabled(ctx.campaign):
         return
-    sc = ctx.world.scene
-    st = mixer(sc)
+    happened = [s[4:] for s in signaled] + _events(ctx)
+    st = mixer(ctx.world.scene)
     fallen = [
         ch.id
         for ch in ctx.world.characters.values()
@@ -607,30 +709,28 @@ def finalize(ctx) -> None:
     ]
     if fallen:
         st["mourned"] = [*st["mourned"], *fallen]
-        _store(sc, st)
-        if t := pick(ctx.campaign, "sfx", cue_="death"):
+        _store(ctx.world.scene, st)
+        happened.append("death")
+    for event in sorted(set(happened), key=CUES.index):
+        if len(ctx.audio) >= MAX_SFX:
+            break
+        if t := for_event(ctx.campaign, event):
             cue(ctx, t)
-    if any(ev.tool == "plot_reveal" for ev in ctx.events) and (t := pick(ctx.campaign, "sfx", cue_="secret")):
-        cue(ctx, t)
 
 
 def prompt_block(campaign, scene, place: str | None = None) -> str:
-    """Блок «Звук» для системной инструкции мастера: что звучит и каталог дорожек."""
+    """Блок «Звук» для системной инструкции мастера: что звучит, какие настроения есть и эффекты мастера."""
     if not enabled(campaign):
         return ""
     pack = pack_of(campaign)
-    st = mixer(scene, place)
-    lib = library()
-    now_ = []
-    for k in LOOPS:
-        cur = st.get(k)
-        t = lib.get(cur["track"]) if cur else None
-        playing = f"{t.id} ({cur.get('level', 'mid')})" if t else "тишина"
-        now_.append(f"{LAYER_NAMES[k]}: {playing}")
-    lines = []
-    for k in LAYERS:
-        items = [t for t in lib.for_pack(pack) if t.layer == k and not t.cue]
-        if items:
-            lines.append(f"{LAYER_NAMES[k].capitalize()}:")
-            lines += [f"- {t.line(bool(pack and pack in t.packs))}" for t in items]
-    return "Сейчас звучит — " + "; ".join(now_) + ".\nДорожки:\n" + "\n".join(lines)
+    cur = mixer(scene, place).get("music")
+    t = library().get(cur["track"]) if cur else None
+    mood = cur.get("mood") if cur else None
+    playing = f"«{t.title}»" + (f" ({mood})" if mood else "") if t else "тишина"
+    names = ", ".join(f"{m} — {MOOD_NAMES[m]}" for m in moods(campaign))
+    out = [f"Сейчас звучит: {playing}.", f"Настроения музыки: {names}."]
+    sfx = [x for x in library().for_pack(pack) if x.layer == "sfx" and not x.cues]
+    if sfx:
+        out.append("Эффекты:")
+        out += [f"- {x.line(bool(pack and pack in x.packs))}" for x in sfx]
+    return "\n".join(out)

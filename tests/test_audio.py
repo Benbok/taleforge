@@ -1,4 +1,4 @@
-"""Звук сцены (design/audio-mixer.md): библиотека в папке, выбор мастера инструментами, страховка боя, рассылка."""
+"""Звук сцены (design/audio-mixer.md): библиотека в папке, музыка по настроению, эффекты на события, рассылка."""
 
 import dataclasses
 
@@ -27,15 +27,22 @@ CARDS = [
         "hint": "покой",
         "moods": ["calm", "warm"],
         "places": ["tavern"],
-        "bpm": 100,
-        "bars": 16,
+        "bpm": 100,  # поле старого микшера: читается без ошибки
     },
-    {"id": "mel_fast", "file": "mel_fast.ogg", "layer": "music", "title": "Спешка", "moods": ["tension"], "bpm": 130},
-    {"id": "rhy_war", "file": "rhy_war.ogg", "layer": "rhythm", "title": "Барабаны", "moods": ["battle"], "bpm": 100},
-    {"id": "amb_tavern", "file": "amb_tavern.ogg", "layer": "ambience", "title": "Таверна", "places": ["tavern"]},
-    {"id": "amb_hold", "file": "amb_hold.ogg", "layer": "ambience", "title": "Трюм", "packs": ["echo-leviathans"]},
+    {"id": "mel_fast", "file": "mel_fast.ogg", "layer": "music", "title": "Спешка", "moods": ["tension"]},
+    {"id": "rhy_war", "file": "rhy_war.ogg", "layer": "rhythm", "title": "Барабаны", "moods": ["battle"]},
+    {
+        "id": "mel_hold",
+        "file": "mel_hold.ogg",
+        "layer": "music",
+        "title": "Трюм",
+        "moods": ["dread"],
+        "packs": ["echo-leviathans"],
+    },
     {"id": "sfx_thunder", "file": "sfx_thunder.ogg", "layer": "sfx", "title": "Гром"},
     {"id": "stg_victory", "file": "stg_victory.ogg", "layer": "sfx", "title": "Победа", "cue": "victory"},
+    {"id": "sfx_bell", "file": "sfx_bell.ogg", "layer": "sfx", "title": "Набат", "cue": ["combat", "death"]},
+    {"id": "sfx_crit", "file": "sfx_crit.ogg", "layer": "sfx", "title": "Хруст", "cue": "crit"},
 ]
 
 
@@ -99,18 +106,18 @@ def test_library_reads_cards_and_unsorted(tmp_path):
     assert {t.id for t in lib.all()} == {c["id"] for c in CARDS}
     assert lib.unsorted() == ["new_loop.ogg"]
     assert any("noise" in e for e in lib.errors())
+    assert lib.get("rhy_war").layer == "music"  # ритм старого микшера — просто музыка
+    assert lib.get("sfx_bell").cues == ["combat", "death"]
     # мир кампании: сначала его треки, потом общие; треки чужих миров не видны
-    assert [t.id for t in lib.for_pack("echo-leviathans") if t.layer == "ambience"] == ["amb_hold", "amb_tavern"]
-    assert [t.id for t in lib.for_pack("other") if t.layer == "ambience"] == ["amb_tavern"]
+    assert [t.id for t in lib.for_pack("echo-leviathans") if t.layer == "music"][0] == "mel_hold"
+    assert "mel_hold" not in [t.id for t in lib.for_pack("other")]
 
 
-def test_tempo_fits():
-    a, b = audio.parse_card(CARDS[0]), audio.parse_card(CARDS[2])
-    fast = audio.parse_card(CARDS[1])
-    free = audio.parse_card({"id": "x", "file": "x.ogg", "layer": "rhythm", "title": "x"})
-    half = audio.parse_card({**CARDS[2], "id": "h", "bpm": 50})
-    assert audio.tempo_fits(a, b) and audio.tempo_fits(a, half) and audio.tempo_fits(fast, free)
-    assert not audio.tempo_fits(fast, b)
+def test_cue_only_for_effects():
+    with pytest.raises(Exception, match="только у эффектов"):
+        audio.parse_card({"id": "x", "file": "x.ogg", "layer": "music", "title": "x", "cue": "crit"})
+    with pytest.raises(Exception, match="неизвестные события"):
+        audio.parse_card({"id": "x", "file": "x.ogg", "layer": "sfx", "title": "x", "cue": "boom"})
 
 
 def test_admin_uploads_into_folder(client, admin, tmp_path):
@@ -121,11 +128,11 @@ def test_admin_uploads_into_folder(client, admin, tmp_path):
     assert (tmp_path / "audio" / name).is_file()
     assert name in ok(client.get("/api/admin/audio", headers=admin))["unsorted"]
     bad = client.put("/api/admin/audio/tracks/storm", json={"file": name, "layer": "noise"}, headers=admin)
-    assert bad.status_code == 409 and "слой" in bad.json()["detail"]
-    card = {"file": name, "layer": "ambience", "title": "Гроза", "packs": ["echo-leviathans"]}
+    assert bad.status_code == 409 and "вид" in bad.json()["detail"]
+    card = {"file": name, "layer": "sfx", "title": "Гроза", "cue": ["hazard"], "packs": ["echo-leviathans"]}
     ok(client.put("/api/admin/audio/tracks/storm", json=card, headers=admin))
     saved = yaml.safe_load((tmp_path / "audio" / "tracks.yaml").read_text(encoding="utf-8"))
-    assert saved[-1]["id"] == "storm" and saved[-1]["packs"] == ["echo-leviathans"]
+    assert saved[-1]["id"] == "storm" and saved[-1]["packs"] == ["echo-leviathans"] and saved[-1]["cue"] == "hazard"
     assert client.get("/api/audio/storm", headers=admin).content == b"OggS-new"
     assert client.delete("/api/admin/audio/tracks/storm?delete_file=true", headers=admin).status_code == 204
     assert not (tmp_path / "audio" / name).exists()
@@ -142,50 +149,61 @@ def test_player_cannot_manage_library(client, admin, game):
 # --- инструменты мастера ---
 
 
-def test_soundscape_tool(game):
+def test_music_tool_picks_track_by_mood(game):
     settings, cid, hero, _ = game
 
     async def fn(ctx):
-        r1 = await execute(ctx, "set_soundscape", {"music": "mel_rest", "ambience": "amb_tavern", "reason": "отдых"})
-        r2 = await execute(ctx, "set_soundscape", {"rhythm": "rhy_war", "reason": "драка"})
-        r3 = await execute(ctx, "set_soundscape", {"music": "mel_fast", "rhythm": "off", "reason": "спешка"})
-        r4 = await execute(ctx, "set_soundscape", {"ambience": "amb_hold", "reason": "чужой мир"})
+        r1 = await execute(ctx, "set_music", {"mood": "calm", "reason": "отдых"})
+        r2 = await execute(ctx, "set_music", {"mood": "warm", "reason": "тот же трек"})  # трек подходит — не меняется
+        r3 = await execute(ctx, "set_music", {"mood": "tension", "reason": "спешка"})
+        r4 = await execute(ctx, "set_music", {"mood": "dread", "reason": "чужой мир"})
         r5 = await execute(ctx, "play_sfx", {"sfx": "sfx_thunder"})
-        return r1, r2, r3, r4, r5, audio.public_state(ctx.campaign, ctx.world.scene), list(ctx.audio)
+        r6 = await execute(ctx, "play_sfx", {"sfx": "sfx_crit"})  # эффект события играет движок
+        return r1, r2, r3, r4, r5, r6, audio.public_state(ctx.campaign, ctx.world.scene), list(ctx.audio)
 
-    r1, r2, r3, r4, r5, state, cues = play(settings, cid, fn)
-    assert r1["ok"] and r1["result"]["playing"] == {"music": "mel_rest", "rhythm": "off", "ambience": "amb_tavern"}
+    r1, r2, r3, r4, r5, r6, state, cues = play(settings, cid, fn)
+    assert r1["ok"] and r1["result"]["playing"] == "Тёплый отсек"
     assert r2["ok"]
-    assert not r3["ok"] and "сменилась" in r3["error"]  # мелодия не дёргается чаще раза в минуту
-    assert not r4["ok"]  # трек другого мира кампании недоступен
+    assert not r3["ok"] and "сменилась" in r3["error"]  # музыка не дёргается чаще раза в минуту
+    assert not r4["ok"] and "dread" in r4["error"]  # музыка другого мира кампании недоступна
     assert r5["ok"] and cues[0]["id"] == "sfx_thunder"
-    assert state["enabled"] and state["layers"]["music"]["id"] == "mel_rest"
-    assert state["layers"]["rhythm"]["url"].startswith("/api/audio/rhy_war?v=")
+    assert not r6["ok"]
+    assert state["enabled"] and state["music"]["id"] == "mel_rest" and state["music"]["mood"] == "warm"
+    assert state["music"]["url"].startswith("/api/audio/mel_rest?v=")
 
 
-def test_tempo_mismatch_refused(game):
-    settings, cid, _, _ = game
-
-    async def fn(ctx):
-        return await execute(ctx, "set_soundscape", {"music": "mel_fast", "rhythm": "rhy_war", "reason": "бой"})
-
-    r = play(settings, cid, fn)
-    assert not r["ok"] and "не ложится" in r["error"]
-
-
-def test_combat_safety_net_and_victory(game):
+def test_combat_music_and_cues(game):
     settings, cid, hero, _ = game
 
     async def fn(ctx):
-        await execute(ctx, "set_soundscape", {"music": "mel_rest", "reason": "отдых"})
+        await execute(ctx, "set_music", {"mood": "calm", "reason": "отдых"})
         await execute(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero]})
-        on = audio.mixer(ctx.world.scene)["rhythm"]
+        fight = audio.mixer(ctx.world.scene)["music"]
+        audio.finalize(ctx)
+        start = [c["id"] for c in ctx.audio]
+        ctx.audio.clear()
         await execute(ctx, "set_scene_mode", {"mode": "free"})
-        return on, audio.mixer(ctx.world.scene)["rhythm"], list(ctx.audio)
+        audio.finalize(ctx)
+        return fight, start, audio.mixer(ctx.world.scene)["music"], [c["id"] for c in ctx.audio]
 
-    on, off, cues = play(settings, cid, fn)
-    assert on["track"] == "rhy_war" and off is None
-    assert [c["id"] for c in cues] == ["stg_victory"]
+    fight, start, after, end = play(settings, cid, fn)
+    assert fight["track"] == "rhy_war" and fight["mood"] == "battle"
+    assert start == ["sfx_bell"]  # начало боя
+    assert after["track"] == "mel_rest"  # бой кончился — музыка места
+    assert end == ["stg_victory"]
+
+
+def test_event_cues_by_priority(game):
+    """Эффекты на события хода: важные первыми, не больше двух; скрытые броски не звучат."""
+    settings, cid, hero, _ = game
+
+    async def fn(ctx):
+        await ctx.record("resolve_attack", payload={"hit": True, "critical": True})
+        await ctx.record("roll_check", payload={"critical": "success"}, hidden=True)
+        audio.finalize(ctx)
+        return [c["id"] for c in ctx.audio]
+
+    assert play(settings, cid, fn) == ["sfx_crit"]
 
 
 def test_disabled_campaign_hides_tools(client, admin, game):
@@ -196,25 +214,25 @@ def test_disabled_campaign_hides_tools(client, admin, game):
         from app.agents.master import decision_tools
 
         names = decision_tools(ctx)
-        r = await execute(ctx, "set_soundscape", {"music": "mel_rest", "reason": "x"})
+        r = await execute(ctx, "set_music", {"mood": "calm", "reason": "x"})
         return names, r, audio.prompt_block(ctx.campaign, ctx.world.scene)
 
     names, r, block = play(settings, cid, fn)
-    assert "set_soundscape" not in names and "play_sfx" not in names
+    assert "set_music" not in names and "play_sfx" not in names
     assert not r["ok"] and block == ""
 
 
-def test_specs_list_tracks(game):
+def test_specs_list_moods_and_sfx(game):
     settings, cid, _, _ = game
 
     async def fn(ctx):
-        return tool_specs(ctx.world, ["set_soundscape", "play_sfx"]), audio.prompt_block(ctx.campaign, ctx.world.scene)
+        return tool_specs(ctx.world, ["set_music", "play_sfx"]), audio.prompt_block(ctx.campaign, ctx.world.scene)
 
     specs, block = play(settings, cid, fn)
-    music = specs[0]["function"]["parameters"]["properties"]["music"]
-    assert music["enum"] == ["mel_rest", "mel_fast", "off"]
-    assert specs[1]["function"]["parameters"]["properties"]["sfx"]["enum"] == ["sfx_thunder"]  # фразы — не мастеру
-    assert "mel_rest — покой [calm, warm; tavern] 100 bpm" in block and "amb_hold" not in block
+    mood = specs[0]["function"]["parameters"]["properties"]["mood"]
+    assert mood["enum"] == ["calm", "warm", "tension", "battle", "off"]  # dread — только у музыки чужого мира
+    assert specs[1]["function"]["parameters"]["properties"]["sfx"]["enum"] == ["sfx_thunder"]  # события — не мастеру
+    assert "calm — покой" in block and "sfx_thunder — Гром" in block and "mel_hold" not in block
 
 
 # --- сокет и ход ИИ-мастера ---
@@ -225,7 +243,7 @@ def test_snapshot_and_broadcast(client, admin, game, llm):
     llm.replies += [
         {
             "tool_calls": [
-                ("set_soundscape", {"music": "mel_rest", "reason": "отдых"}),
+                ("set_music", {"mood": "calm", "reason": "отдых"}),
                 ("play_sfx", {"sfx": "sfx_thunder"}),
             ]
         },
@@ -234,16 +252,16 @@ def test_snapshot_and_broadcast(client, admin, game, llm):
         {"text": "За окном гремит гром."},
     ]
     with connect(client, p1, cid) as (ws, snap):
-        assert snap["payload"]["audio"]["enabled"] and snap["payload"]["audio"]["layers"]["music"] is None
+        assert snap["payload"]["audio"]["enabled"] and snap["payload"]["audio"]["music"] is None
     n = act(client, p1, cid, "Сажусь у огня")
     assert n["kind"] == "narration"
     decide = llm.requests[0]
-    assert "Звук." in decide["messages"][0]["content"] and "mel_rest" in decide["messages"][0]["content"]
+    assert "Звук." in decide["messages"][0]["content"] and "calm — покой" in decide["messages"][0]["content"]
     with connect(client, p1, cid) as (ws, snap):
-        assert snap["payload"]["audio"]["layers"]["music"]["id"] == "mel_rest"
+        assert snap["payload"]["audio"]["music"]["id"] == "mel_rest"
         ok(client.patch(f"/api/campaigns/{cid}", json={"audio_enabled": False}, headers=admin))
         e = next_of(ws, "audio.state")
-        assert not e["payload"]["enabled"] and e["payload"]["layers"]["music"] is None
+        assert not e["payload"]["enabled"] and e["payload"]["music"] is None
 
 
 def test_autopilot_starts_music_for_place_and_respects_master(game):
@@ -258,7 +276,7 @@ def test_autopilot_starts_music_for_place_and_respects_master(game):
         words = audio.place_words(ctx, None)
         audio.autopilot(ctx)
         first = audio.mixer(ctx.world.scene)["music"]
-        await execute(ctx, "set_soundscape", {"music": "off", "reason": "тишина перед бурей"})
+        await execute(ctx, "set_music", {"mood": "off", "reason": "тишина перед бурей"})
         audio.autopilot(ctx)  # в этом ходе мастер звук вёл сам
         ctx.events.clear()
         audio.autopilot(ctx)  # и следующий ход: тишина выбрана им недавно
