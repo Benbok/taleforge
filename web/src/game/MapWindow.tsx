@@ -11,6 +11,8 @@ import {
   GRID_R,
   interactText,
   layoutGrid,
+  stackCells,
+  stackTitle,
   layoutPlaces,
   useMapWindow,
   ZONE_CELLS,
@@ -22,6 +24,7 @@ import {
   type SketchExit,
   type SketchFeature,
   type StepRequest,
+  type CellStack,
   exitCell,
   sketchFrame,
 } from "./map";
@@ -110,6 +113,8 @@ interface Pick {
   name: string;
   near: [number, number][];
   exit?: SketchExit;
+  /** несколько вещей на одной клетке: у каждой своя кнопка «Взаимодействовать» */
+  items?: { id: string; name: string }[];
 }
 
 /** Открыть карточку по маркеру: для SVG якорь — сам маркер, у него есть рамка на экране. */
@@ -289,6 +294,15 @@ function Around({ m }: { m: MapState }) {
     setPick({ name, near: [[col, row]] });
     open(id, name)(e);
   };
+  const stacks = stackCells(things, heroes);
+  const pickStack = (st: CellStack) => () => {
+    if (st.items.length === 1) {
+      const t = st.items[0];
+      setPick({ name: t.name, near: [[st.col, st.row]], items: [{ id: t.id, name: t.name }] });
+      return;
+    }
+    setPick({ name: stackTitle(st.items), near: [[st.col, st.row]], items: st.items.map((t) => ({ id: t.id, name: t.name })) });
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -352,21 +366,42 @@ function Around({ m }: { m: MapState }) {
         {exits.map(({ item: x, col, row }) => (
           <Token key={x.id} cx={px(col)} cy={py(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={pickThing(x.id, x.name, col, row)} ariaLabel={`Выход: ${x.name}`} />
         ))}
-        {things.map(({ item: t, col, row }) => (
-          <Token
-            key={t.id}
-            cx={px(col)}
-            cy={py(row)}
-            size={CELL}
-            color={TYPE_COLOR[t.type]}
-            icon={TYPE_ICON[t.type]}
-            label={name(t.name, col, row)}
-            faded={t.condition === "мёртв"}
-            badge={badge(t.elevation, t.cover)}
-            onClick={pickThing(t.id, t.name, col, row)}
-            ariaLabel={t.name}
-          />
-        ))}
+        {stacks
+          .filter((st) => !st.under)
+          .map((st) => {
+            const t = st.items[0];
+            if (st.items.length === 1)
+              return (
+                <Token
+                  key={t.id}
+                  cx={px(st.col)}
+                  cy={py(st.row)}
+                  size={CELL}
+                  color={TYPE_COLOR[t.type]}
+                  icon={TYPE_ICON[t.type]}
+                  label={name(t.name, st.col, st.row)}
+                  faded={t.condition === "мёртв"}
+                  badge={badge(t.elevation, t.cover)}
+                  onClick={pickThing(t.id, t.name, st.col, st.row)}
+                  ariaLabel={t.name}
+                />
+              );
+            const title = stackTitle(st.items);
+            return (
+              <Token
+                key={`stack:${st.col},${st.row}`}
+                cx={px(st.col)}
+                cy={py(st.row)}
+                size={CELL}
+                color={TYPE_COLOR[t.type]}
+                icon={TYPE_ICON[t.type]}
+                label={name(title, st.col, st.row)}
+                badge={`×${st.items.length}`}
+                onClick={pickStack(st)}
+                ariaLabel={title}
+              />
+            );
+          })}
         {heroes.map(({ item: h, col, row }) => (
           <Token
             key={h.id}
@@ -383,6 +418,18 @@ function Around({ m }: { m: MapState }) {
             ariaLabel={h.name}
           />
         ))}
+        {/* вещи под ногами героя: метка в углу клетки, иначе значок героя их закроет */}
+        {stacks
+          .filter((st) => st.under)
+          .map((st) => (
+            <g key={`under:${st.col},${st.row}`} className="cursor-pointer" role="button" aria-label={stackTitle(st.items)} onClick={pickStack(st)}>
+              <title>{stackTitle(st.items)}</title>
+              <circle cx={px(st.col) + CELL * 0.36} cy={py(st.row) + CELL * 0.36} r={CELL * 0.17} fill={TYPE_COLOR[st.items[0].type]} stroke="var(--color-bg, #111)" strokeWidth={1} />
+              <text x={px(st.col) + CELL * 0.36} y={py(st.row) + CELL * 0.36 + 2.5} textAnchor="middle" fontSize={7} fill="var(--color-bg, #111)">
+                {st.items.length}
+              </text>
+            </g>
+          ))}
       </svg>
       <StepBar pick={canWalk || step.busy ? pick : null} onClose={() => setPick(null)} go={go} />
       {(step.note || step.error || step.warnings) && (
@@ -401,7 +448,7 @@ function Around({ m }: { m: MapState }) {
         </div>
       )}
       {heroes.some((h) => h.item.mine) && !step.note && !step.error && !step.warnings && (
-        <p className="text-center font-mono text-[11px] text-muted">Нажми свободную клетку — герой пойдёт туда. Нажми предмет или выход — подойти или осмотреть.</p>
+        <p className="text-center font-mono text-[11px] text-muted">Нажми свободную клетку — герой пойдёт туда. Нажми предмет или выход — подойти или взаимодействовать. Цифра — сколько вещей лежит на клетке.</p>
       )}
       {combat && (
         <p className="text-center font-mono text-[11px] text-muted">
@@ -492,6 +539,7 @@ function Around({ m }: { m: MapState }) {
  * игрок дописывает сам, а мастер решает). */
 function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void; go: (r: StepRequest) => void }) {
   const insert = useDraft((s) => s.insert);
+  const openCard = useOpen();
   if (!pick) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 rounded border border-line px-3 py-2 text-sm">
@@ -499,15 +547,36 @@ function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void
       <button className="btn px-2 py-0.5 text-xs" onClick={() => go({ near: pick.near })}>
         Подойти
       </button>
-      <button
-        className="btn px-2 py-0.5 text-xs"
-        onClick={() => {
-          insert(interactText(pick.name));
-          onClose();
-        }}
-      >
-        Взаимодействовать
-      </button>
+      {pick.items && pick.items.length > 1 ? (
+        <ul className="flex w-full flex-col gap-1" aria-label="Что здесь лежит">
+          {pick.items.map((t) => (
+            <li key={t.id} className="flex items-center gap-2">
+              <button className="text-ink underline decoration-dotted underline-offset-4" onClick={(e) => openCard(t.id, t.name)(e)}>
+                {t.name}
+              </button>
+              <button
+                className="btn px-2 py-0.5 text-xs"
+                onClick={() => {
+                  insert(interactText(t.name));
+                  onClose();
+                }}
+              >
+                Взаимодействовать
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <button
+          className="btn px-2 py-0.5 text-xs"
+          onClick={() => {
+            insert(interactText(pick.name));
+            onClose();
+          }}
+        >
+          Взаимодействовать
+        </button>
+      )}
       <button className="ml-auto text-muted hover:text-ink" onClick={onClose} aria-label="Снять выбор">
         ×
       </button>

@@ -4,6 +4,8 @@ import {
   exitCell,
   freeCell,
   interactText,
+  stackCells,
+  stackTitle,
   sketchFrame,
   stepNote,
   type Sketch,
@@ -172,5 +174,24 @@ describe("шаг по клеткам", () => {
 describe("interactText", () => {
   it("names the target and leaves the action to the player", () => {
     expect(interactText("Колодец")).toBe("«Колодец»: ");
+  });
+});
+
+describe("stackCells", () => {
+  const thing = (id: string, name: string) => ({ id, name, type: "item", zone: "near", zone_name: "близко" }) as never;
+  it("puts several things on one cell into one stack and marks the ones under a hero", () => {
+    const things = [
+      { item: thing("a", "Кинжал"), col: 2, row: 1 },
+      { item: thing("b", "Ключ"), col: 2, row: 1 },
+      { item: thing("c", "Свеча"), col: 2, row: 1 },
+      { item: thing("d", "Монета"), col: 4, row: 4 },
+    ];
+    const stacks = stackCells(things, [{ col: 4, row: 4 }]);
+    expect(stacks.map((s) => [s.col, s.row, s.items.length, s.under])).toEqual([
+      [2, 1, 3, false],
+      [4, 4, 1, true],
+    ]);
+    expect(stackTitle(stacks[0].items)).toBe("Кинжал и ещё 2");
+    expect(stackTitle(stacks[0].items.slice(0, 2))).toBe("Кинжал, Ключ");
   });
 });
