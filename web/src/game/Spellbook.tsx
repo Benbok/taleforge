@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
 import SpellDetails from "../builder/SpellDetails";
 import { ChoiceCard } from "../builder/ChoiceDetails";
@@ -8,12 +8,7 @@ import type { HeroSheet } from "../lib/types";
 import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
 import { ABILITY_RU, signed } from "./hero";
-import { cast } from "./quick";
-
-interface Target {
-  id: string;
-  name: string;
-}
+import CastWizard from "./CastWizard";
 
 /** Книга заклинаний в игре: числа, ячейки, концентрация и сотворение — в бою и вне боя. */
 export default function Spellbook({ h, onCast }: { h: HeroSheet; onCast: () => void }) {
@@ -141,53 +136,25 @@ function SpellRow({
   onCast: () => void;
 }) {
   const scene = useGame((st) => st.scene);
-  const heroes = useGame((st) => st.heroes);
   const canAct = useGame((st) => st.actions.includes("chat.play"));
   const blocked = useGame((st) => st.blocked["chat.play"]);
+  const [wizard, setWizard] = useState(false);
   const combat = scene?.mode === "combat";
   const slots = s.level > 0 ? slotOptions(b, s.level) : [];
-  const [slot, setSlot] = useState<number | null>(null);
-  const [ritual, setRitual] = useState(false);
-  const [target, setTarget] = useState<string>("");
-
-  const targets: Target[] = useMemo(() => {
-    const foes = (scene?.entities ?? [])
-      .filter((e) => e.kind === "creature" && e.condition !== "мёртв")
-      .map((e) => ({ id: e.id, name: e.name, hostile: e.attitude === "hostile" }));
-    const allies = Object.values(heroes)
-      .filter((x) => !x.dead)
-      .map((x) => ({ id: x.id, name: x.id === (useGame.getState().sheet?.id ?? "") ? `${x.name} (вы)` : x.name }));
-    if (s.targets === "enemy" || s.targets === "area")
-      return [...foes.filter((f) => f.hostile), ...foes.filter((f) => !f.hostile)];
-    if (s.targets === "ally") return allies;
-    if (s.targets === "any") return [...allies, ...foes];
-    return [];
-  }, [scene, heroes, s.targets]);
-
-  useEffect(() => {
-    if (slot == null && slots.length) setSlot(slots[0][0]);
-  }, [slot, slots]);
-
   const canRitual = s.ritual && !!b.ritual && !combat;
   const usable = s.prepared !== false || (canRitual && b.ritual === "book");
 
-  function go() {
+  /** Что заведомо не даст сотворить — до открытия окна, с конкретной причиной. */
+  function start() {
     if (!canAct) return toast.error(blocked ?? "Сейчас действовать нельзя.");
     if (!usable) return toast.error(`«${s.name}» не подготовлено: подготовленные меняют после продолжительного отдыха.`);
     if (combat && !s.combat)
       return toast.error(`«${s.name}» творится ${s.casting_time}: в бою не успеть. Можно после боя.`);
-    const asRitual = ritual && canRitual;
-    if (s.level > 0 && !asRitual && !slots.length)
+    if (s.level > 0 && !slots.length && !canRitual)
       return toast.error(
         `Ячейки ${s.level}-го круга и выше потрачены: они вернутся после ${b.pact_slots ? "отдыха" : "продолжительного отдыха"}.`,
       );
-    if (s.targets === "enemy" && !target) return toast.error("Выберите цель заклинания.");
-    const t = targets.find((x) => x.id === target) ?? null;
-    const lvl = s.level > 0 && !asRitual ? (slot ?? slots[0]?.[0] ?? s.level) : null;
-    const err = cast(s.id, s.name, t, lvl && lvl > s.level ? lvl : null, asRitual);
-    if (err) return toast.error(err);
-    toast.ok(`«${s.name}»: заявлено мастеру`);
-    onCast();
+    setWizard(true);
   }
 
   return (
@@ -201,45 +168,14 @@ function SpellRow({
       </button>
       {s.flavor && <p className="font-serif italic text-xs text-accent/90 line-clamp-2 leading-relaxed -mt-1">{s.flavor}</p>}
       {open && <SpellDetails s={s} />}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        {targets.length > 0 && (
-          <select
-            className="field py-1 text-xs"
-            aria-label="Цель"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-          >
-            <option value="">{s.targets === "enemy" ? "— цель —" : s.targets === "area" ? "— куда направить —" : "— на себя —"}</option>
-            {targets.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {slots.length > 1 && !ritual && (
-          <select
-            className="field py-1 text-xs"
-            aria-label="Ячейка"
-            value={slot ?? ""}
-            onChange={(e) => setSlot(Number(e.target.value))}
-          >
-            {slots.map(([lvl, label]) => (
-              <option key={lvl} value={lvl}>
-                {label}
-              </option>
-            ))}
-          </select>
-        )}
-        {canRitual && (
-          <label className="flex items-center gap-1" title="Без ячейки, на 10 минут дольше">
-            <input type="checkbox" checked={ritual} onChange={(e) => setRitual(e.target.checked)} /> ритуалом
-          </label>
-        )}
-        <button className="btn btn-primary px-3 py-1 text-xs" onClick={go}>
-          Сотворить
+      <div className="flex justify-end">
+        <button className="btn btn-primary px-3 py-1 text-xs" onClick={start}>
+          Сотворить…
         </button>
       </div>
+      {wizard && (
+        <CastWizard s={s} b={b} slots={slots} canRitual={canRitual} onClose={() => setWizard(false)} onCast={onCast} />
+      )}
     </li>
   );
 }

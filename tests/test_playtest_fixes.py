@@ -77,3 +77,27 @@ def test_combat_start_puts_foes_on_one_side(client, admin, settings):
     r, bearings = play(settings, c["id"], [], fn)
     assert r["ok"], r
     assert bearings == ["e", "e"] and "placed" in r["result"]
+
+
+def test_cast_window_routes_area_targets_and_leaves_free_target_to_master(wizard_game):  # noqa: F811
+    from app.agents import intent as intents
+    from app.agents.master import _routable_cast
+
+    settings, cid, wiz, _, _ = wizard_game
+
+    async def fn(ctx):
+        a = await call(ctx, "spawn_entity", {"creature_template_id": "creature.baboon", "name": "Бабуин"})
+        foe = a["result"]["spawned"][0]["id"]
+        ch = ctx.world.characters[wiz]
+        area = {"verb": "cast", "spell_id": "spell.fog_cloud", "target_ids": [foe, "en_nope"]}
+        free = {"verb": "cast", "spell_id": "spell.light", "free_target": "факел на стене"}
+        out = []
+        for one in (area, free):
+            parsed = intents.check({"kind": "action", "actions": [one], "confidence": 1.0}, ctx.world, ch)
+            out.append((parsed, _routable_cast(ctx, {**parsed.intent, "character_id": wiz})))
+        return foe, out
+
+    foe, [(area, routed), (free, none)] = play(settings, cid, [], fn)
+    assert area.intent["actions"][0]["target_ids"] == [foe]  # чужой id убран
+    assert routed["target_ids"] == [foe] and "area_chosen" not in routed
+    assert none is None and "факел на стене" in intents.describe(free.intent)
