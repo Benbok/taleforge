@@ -21,6 +21,8 @@ export interface MapThing {
   elevation?: Elevation;
   cover?: Cover;
   condition?: string | null;
+  /** Клетка от строя отряда, если мастер поставил точно (в бою — всегда). */
+  cell?: [number, number] | null;
 }
 
 /** Герой в этом месте. zone = null — в строю отряда, в центре схемы. */
@@ -33,6 +35,7 @@ export interface MapHero {
   elevation: Elevation;
   cover: Cover;
   down: boolean;
+  cell?: [number, number] | null;
 }
 
 /** Область на площадь: облако, огонь, туман. */
@@ -245,13 +248,28 @@ export function layoutGrid(m: MapState): GridLayout {
     taken.add(`${col},${row}`);
     return { item, col, row };
   };
+  // стоящие на клетке (бой на сетке) — ровно там, их клетки заняты раньше всех; без эскиза — в пределах схемы
+  const exact = <T>(item: T, [c, r]: [number, number]): Cell<T> => {
+    const col = frame ? c : Math.max(-GRID_R, Math.min(GRID_R, c));
+    const row = frame ? r : Math.max(-GRID_R, Math.min(GRID_R, r));
+    taken.add(`${col},${row}`);
+    return { item, col, row };
+  };
   const party = m.party ?? [];
-  // сначала герои в строю — вокруг центра, потом все остальные по зонам; выходы — по краю схемы
+  const placed = new Map<string, Cell<MapHero> | Cell<MapThing>>();
+  for (const h of party) if (h.cell) placed.set(h.id, exact(h, h.cell));
+  for (const t of m.around) if (t.cell) placed.set(t.id, exact(t, t.cell));
+  // потом герои в строю — вокруг центра, потом все остальные по зонам; выходы — по краю схемы
   const heroes = [
-    ...party.filter((h) => !h.zone).map((h) => put(h, [0, 0])),
-    ...party.filter((h) => h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
+    ...party.filter((h) => !h.cell && !h.zone).map((h) => put(h, [0, 0])),
+    ...party.filter((h) => !h.cell && h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
+    ...party.filter((h) => h.cell).map((h) => placed.get(h.id) as Cell<MapHero>),
   ];
-  const things = m.around.map((t) => put(t, target(t.id, t.bearing, ZONE_CELLS[t.zone] ?? ZONE_CELLS.near)));
+  const things = m.around.map(
+    (t) =>
+      (placed.get(t.id) as Cell<MapThing> | undefined) ??
+      put(t, target(t.id, t.bearing, ZONE_CELLS[t.zone] ?? ZONE_CELLS.near)),
+  );
   const exits = m.exits
     .filter((x) => !drawn.has(x.id))
     .map((x) => {
