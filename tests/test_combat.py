@@ -38,12 +38,13 @@ def test_aggressive_creature_closes_in_then_attacks(game):
     async def fn(ctx):
         gob = await _fight(ctx, hero, "creature.goblin", zone="far")
         notes = await combat.run_until_hero(ctx, "k1")
-        assert ctx.world.entities[gob].zone == "near" and not attacks(ctx, gob)
+        # на сетке гоблин проходит 30 футов и ещё стреляет из лука: движение и атака в одном ходу (SRD)
+        assert ctx.world.entities[gob].zone == "near" and len(attacks(ctx, gob)) == 1
         assert combat.current_id(ctx) == hero and combat.state(ctx)["deadline"]
-        assert any("сближается" in n for n in notes)
+        assert any("подходит" in n for n in notes)  # бой на сетке: шесть клеток за ход
         await combat.finish_turn(ctx, notes)
         notes += await combat.run_until_hero(ctx, "k2")
-        assert ctx.world.entities[gob].zone == "melee" and len(attacks(ctx, gob)) == 1
+        assert ctx.world.entities[gob].zone == "melee" and len(attacks(ctx, gob)) == 2
         return ctx.world.scene.round, ctx.world.scene.game_time, notes
 
     rnd, _, notes = play(settings, cid, [], fn)

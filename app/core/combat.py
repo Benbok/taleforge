@@ -13,12 +13,15 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from app.core import positions as grid
+from app.core import steps
 from app.core.world import PLAYABLE, Actor, WorldError
 from app.db.models import Character
 from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolContext, execute
 
 ROUND_SECONDS = 6
+REACH_FT = 5  # досягаемость рукопашной: соседняя клетка
 DEFAULT_TURN_SEC = 300
 REACTION_SEC = 15
 FLEE_DEFAULT = {"aggressive": 0.25, "cowardly": 0.5}
@@ -368,6 +371,36 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
         return
     melee = [a for a in act.attacks if a["kind"] == "melee"]
     ranged = [a for a in act.attacks if a["kind"] == "ranged" or a.get("normal_ft")]
+    if _on_grid(ctx, en.id):
+        # бой на сетке: бьёт того, кто рядом; иначе идёт к соседней с целью клетке в пределах скорости
+        near = [h for h in _heroes_standing(ctx, _at(ctx, en.id)) if ctx.world.distance_ft(act, h) <= REACH_FT]
+        if near:
+            target = min(near, key=lambda a: (a.hp.current, a.id))
+        close = ctx.world.distance_ft(act, target) <= REACH_FT
+        seen = not grid.wall_between(ctx.world, en.id, target.id)  # за стеной не выстрелить: сперва обойти
+        if not close and ((melee and (not ranged or profile == "aggressive")) or not seen):
+            route = steps.toward(ctx.world, _at(ctx, en.id), en.id, target.id, max(1, act.speed // 5))
+            if route:
+                cell = grid.to_master(ctx.world, _at(ctx, en.id), route[-1])
+                r = await execute(ctx, "reposition", {"actor_id": en.id, "cell": list(cell)}, key=f"{key}:move")
+                if r.get("ok"):
+                    notes.append(f"{act.name} подходит к {target.name} ({len(route) * 5} фт)")
+            act = ctx.world.actor(en.id)
+            close = ctx.world.distance_ft(act, target) <= REACH_FT
+            seen = not grid.wall_between(ctx.world, en.id, target.id)
+            if not close and (not ranged or not seen):
+                return
+        if close and melee:
+            keys = _multiattack(ctx, act) or [melee[0]["key"]]
+            keys = [k for k in keys if any(a["key"] == k and a["kind"] == "melee" for a in act.attacks)] or [
+                melee[0]["key"]
+            ]
+        elif ranged:
+            keys = [ranged[0]["key"]]
+        else:
+            return
+        await _strike(ctx, act, target, keys, key, notes)
+        return
     if en.zone != "melee" and melee and (not ranged or profile == "aggressive"):
         before = en.zone
         new_zone = "melee" if en.zone == "near" else "near"
@@ -385,6 +418,15 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
         keys = [ranged[0]["key"]]
     else:
         return
+    await _strike(ctx, act, target, keys, key, notes)
+
+
+def _on_grid(ctx: ToolContext, actor_id: str) -> bool:
+    return grid.pos_of(ctx.world, actor_id).cell is not None
+
+
+async def _strike(ctx: ToolContext, act: Actor, target: Actor, keys: list[str], key: str, notes: list[str]) -> None:
+    en = act.obj
     for n, k in enumerate(keys):
         tgt = target if target.hp.current > 0 else _pick_target(ctx, act)
         if tgt is None:
@@ -401,8 +443,11 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
 
 async def _flee(ctx: ToolContext, act: Actor, key: str, notes: list[str], ask: ReactionAsk | None) -> None:
     en = act.obj
-    if en.zone == "melee" and ask is not None:
+    grid_mode = _on_grid(ctx, en.id)
+    if (grid_mode or en.zone == "melee") and ask is not None:
         for hero in _heroes_standing(ctx, _at(ctx, en.id)):
+            if grid_mode and ctx.world.distance_ft(hero, act) > REACH_FT:
+                continue  # на сетке бьёт вдогонку только тот, кто стоит рядом
             ch = ctx.world.characters[hero.id]
             if not reaction_available(ctx, ch.id) or not _melee_attack(hero):
                 continue
@@ -467,7 +512,14 @@ def reaction_options(hero: Actor, creature: Actor) -> list[dict[str, str]]:
 
 def public_turn(world) -> dict[str, Any] | None:
     """Чей ход — для клиентов (событие turn.changed и снимок сцены)."""
-    return public_turn_of(world.scene, world.characters, world.entities)
+    turn = public_turn_of(world.scene, world.characters, world.entities)
+    if turn is not None:
+        from app.core import economy
+
+        left = economy.view(world, turn["actor_id"])
+        if left is not None:
+            turn["economy"] = left
+    return turn
 
 
 def public_turn_of(sc, characters: dict, entities: dict) -> dict[str, Any] | None:

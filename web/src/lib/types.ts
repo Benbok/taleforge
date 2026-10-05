@@ -122,6 +122,16 @@ export interface Turn {
   seat_id: string | null;
   deadline: number | null;
   submitted: boolean;
+  /** Остаток хода героя в бою (сервер считает по SRD); нет — ход не героя или не бой. */
+  economy?: TurnEconomy;
+}
+
+export interface TurnEconomy {
+  action: boolean;
+  attacks_left: number;
+  bonus: boolean;
+  move_left_ft: number;
+  disengage: boolean;
 }
 
 export interface SceneEntity {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { initials } from "../components/Avatar";
 import type { OrderEntry, SceneEntity } from "../lib/types";
 import { useGame } from "../stores/game";
-import { byZone, myTurn, ringState, TONE_COLOR, useTurnClock, ZONES } from "./combat";
+import { byZone, myTurn, ringState, TONE_COLOR, turnLeft, useTurnClock, ZONES } from "./combat";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
 import { useMapWindow } from "./map";
@@ -119,6 +119,19 @@ export default function CombatStrip() {
         <span className={mine ? "font-semibold text-accent" : "text-muted"}>
           {turn ? (mine ? "Ваш ход" : `Ходит: ${turn.name}`) : ""}
         </span>
+        {turn?.economy && (
+          <span className="flex flex-wrap gap-1" aria-label="Остаток хода">
+            {turnLeft(turn.economy).map((x) => (
+              <span
+                key={x.label}
+                className={`rounded px-1.5 py-0.5 ${x.spent ? "bg-raised text-muted line-through" : "bg-accent/15 text-accent"}`}
+                title={x.spent ? "потрачено в этот ход" : "ещё можно в этот ход"}
+              >
+                {x.label}
+              </span>
+            ))}
+          </span>
+        )}
         <span className="ml-auto flex items-center gap-3">
           <NotifyButton />
           <button className="text-xs text-accent underline" onClick={() => useMapWindow.getState().show("around")}>

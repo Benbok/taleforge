@@ -5,11 +5,12 @@
 Офлайн и голосование (этап 8, app/gateway/presence.py): обрыв связи во время сессии — «переподключается», через
 60 секунд «офлайн» и ``vote.started``; ``vote.cast`` — голос. Игрок, которому отдали героя ушедшего, действует за
 него, передавая ``as_seat`` (место героя) в ``message.send``, ``message.withdraw``, ``turn.pass``,
-``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get`` и ``stat.explain``.
+``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get``, ``map.step`` и ``stat.explain``.
 ``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``map.get`` — схема места и карта открытых мест для героя зрителя (``map.state``, app/core/map.py).
+``map.step`` — герой зрителя идёт на нажатую клетку схемы (``map.step.result``, app/tools/movement.py).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
 игрок, чей ход; ``turn.pass`` — пропустить ход (мастер так закрывает ход героя), ``reaction.choose`` — ответ на
 кнопку реакции.
@@ -312,6 +313,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _map(maker, user, conn, payload)
                 continue
 
+            if kind == "map.step":
+                await _step(app, user, conn, payload)
+                continue
+
             if kind == "stat.explain":
                 await _explain(maker, user, conn, payload)
                 continue
@@ -368,6 +373,8 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
                 _background(app.state.master.advance(conn.campaign_id, "sync"))  # первыми могут ходить существа
             else:
                 await app.state.master.after_turn(ctx)
+        else:
+            await _publish_turn(app, ctx)
 
 
 async def _send(app, user: User, conn: Connection, payload: dict) -> None:
@@ -590,6 +597,72 @@ async def _map(maker, user: User, conn: Connection, payload: dict) -> None:
             await conn.send(_error("not_found", str(e), conn.campaign_id))
             return
     await conn.send(envelope("map.state", conn.campaign_id, out))
+
+
+async def _step(app, user: User, conn: Connection, payload: dict) -> None:
+    """Игрок нажал клетку схемы: его герой идёт туда (app/tools/movement.py). Ответ ``map.step.result`` — только
+    этому сокету; схема у всех обновляется по ``map.changed``."""
+    from app.core.inspect import viewer_hero
+    from app.tools.movement import hero_step
+    from app.tools.registry import ToolError
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    request_id = payload.get("request_id")
+    cell = payload.get("cell")
+
+    async def answer(body: dict) -> None:
+        await conn.send(envelope("map.step.result", conn.campaign_id, {"request_id": request_id, **body}))
+
+    def cell_ok(c) -> bool:
+        return isinstance(c, list) and len(c) == 2 and all(isinstance(x, int) for x in c)
+
+    near = payload.get("near")
+    if near is not None and not (isinstance(near, list) and 0 < len(near) <= 64 and all(cell_ok(c) for c in near)):
+        await answer({"ok": False, "error": "near — список клеток [столбец, строка]"})
+        return
+    if near is None and not cell_ok(cell):
+        await answer({"ok": False, "error": "клетка — [столбец, строка]"})
+        return
+    async with app.state.sessionmaker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+        except NotFound as e:
+            await answer({"ok": False, "error": str(e)})
+            return
+        hero = await viewer_hero(session, viewer)
+        if hero is None:
+            await answer({"ok": False, "error": "у тебя нет героя в этой кампании"})
+            return
+        ctx = await open_context(session, viewer.campaign, app.state.dice_factory(), turn_id=None, seat_id=None)
+        try:
+            out = await hero_step(
+                ctx,
+                hero.id,
+                (cell[0], cell[1]) if cell_ok(cell) else None,
+                bool(payload.get("confirm")),
+                [(c[0], c[1]) for c in near] if near else None,
+            )
+        except ToolError as e:
+            await session.rollback()
+            await answer({"ok": False, "error": str(e)})
+            return
+        messages = await flush_outbox(session, ctx)
+        await session.commit()
+    await answer({"ok": True, **out})
+    if out.get("confirm_needed"):
+        return
+    await publish_changes(app.state.bus, ctx, messages)
+    await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
+    await _publish_turn(app, ctx)
+
+
+async def _publish_turn(app, ctx) -> None:
+    """В бою — свежий остаток хода героя (действие, бонусное действие, шаги) всем, кто видит этот ход."""
+    if not combat.in_combat(ctx):
+        return
+    cid = ctx.campaign.id
+    for seats, view in combat.turn_views(ctx.world):
+        await app.state.bus.publish(cid, envelope("turn.changed", cid, {"turn": view}), seats)
 
 
 async def _inspect(maker, user: User, conn: Connection, payload: dict) -> None:

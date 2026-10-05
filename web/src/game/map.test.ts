@@ -4,6 +4,7 @@ import {
   exitCell,
   freeCell,
   sketchFrame,
+  stepNote,
   type Sketch,
   GRID_R,
   layoutGrid,
@@ -142,5 +143,27 @@ describe("эскиз места", () => {
     expect([at("h2").col, at("h2").row]).toEqual([0, 0]);
     expect([at("en_rat").col, at("en_rat").row]).toEqual([3, -1]);
     expect([at("h1").col, at("h1").row]).not.toEqual([0, 0]); // строй уступил клетку тому, кто на ней стоит
+  });
+});
+
+describe("шаг по клеткам", () => {
+  it("строка о шаге: сколько прошёл, рывок, остаток и атака вдогонку", () => {
+    expect(stepNote({ ok: true, who: "Бран", moved_ft: 10, left_ft: 20 })).toBe("Бран прошёл 10 фт, осталось 20 фт");
+    expect(stepNote({ ok: true, who: "Бран", moved_ft: 35, left_ft: 25, dash: true, notes: ["Гоблин бьёт вдогонку: промах"] })).toBe(
+      "Бран прошёл 35 фт, рывок: действие потрачено, осталось 25 фт. Гоблин бьёт вдогонку: промах",
+    );
+    expect(stepNote({ ok: true, who: "Бран", moved_ft: 0 })).toBe("Бран уже здесь");
+  });
+
+  it("предупреждение держит запрос до подтверждения, ошибка — с причиной", () => {
+    const send = vi.fn(() => true);
+    useGame.setState({ socket: { send } as never });
+    const w = useMapWindow.getState();
+    w.stepTo({ cell: [-2, 0] });
+    expect(send).toHaveBeenCalledWith("map.step", expect.objectContaining({ cell: [-2, 0], confirm: false }));
+    w.stepResult({ ok: true, confirm_needed: true, warnings: ["уход провоцирует атаку по возможности: Гоблин"] });
+    expect(useMapWindow.getState().step.pending).toEqual({ cell: [-2, 0] });
+    w.stepResult({ ok: false, error: "клетка [5, 0] — стена" });
+    expect(useMapWindow.getState().step.error).toBe("клетка [5, 0] — стена");
   });
 });

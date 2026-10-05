@@ -127,6 +127,45 @@ export interface MapState {
 
 type Tab = "around" | "places" | "book";
 
+/** Куда идёт герой: на клетку или к ближайшей свободной клетке рядом с целью (клетки от строя отряда). */
+export interface StepRequest {
+  cell?: [number, number];
+  near?: [number, number][];
+}
+
+/** Ответ сервера на шаг (map.step.result). */
+export interface StepResult {
+  request_id?: string;
+  ok: boolean;
+  error?: string;
+  who?: string;
+  moved_ft?: number;
+  left_ft?: number;
+  dash?: boolean;
+  notes?: string[];
+  confirm_needed?: boolean;
+  warnings?: string[];
+}
+
+export interface StepState {
+  busy: boolean;
+  note: string | null;
+  error: string | null;
+  warnings: string[] | null;
+  pending: StepRequest | null; // ждёт подтверждения игрока
+}
+
+const NO_STEP: StepState = { busy: false, note: null, error: null, warnings: null, pending: null };
+
+/** Строка о шаге для игрока: сколько прошёл, сколько осталось в бою, что случилось по дороге. */
+export function stepNote(r: StepResult): string {
+  if (!r.moved_ft) return `${r.who ?? "Герой"} уже здесь`;
+  const parts = [`${r.who ?? "Герой"} прошёл ${r.moved_ft} фт`];
+  if (r.dash) parts.push("рывок: действие потрачено");
+  if (r.left_ft != null) parts.push(`осталось ${r.left_ft} фт`);
+  return [parts.join(", "), ...(r.notes ?? [])].join(". ");
+}
+
 interface MapWindowState {
   open: boolean;
   tab: Tab;
@@ -138,7 +177,13 @@ interface MapWindowState {
   setTab(tab: Tab): void;
   request(): void;
   receive(data: MapState): void;
+  step: StepState;
+  stepTo(req: StepRequest, confirm?: boolean): void;
+  stepResult(r: StepResult): void;
+  cancelStep(): void;
 }
+
+let stepSeq = 0;
 
 export const useMapWindow = create<MapWindowState>((set, get) => ({
   open: false,
@@ -163,12 +208,29 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
   receive(data) {
     set({ data, loading: false, error: null });
   },
+  step: NO_STEP,
+  stepTo(req, confirm = false) {
+    const sent = useGame.getState().socket?.send("map.step", { ...req, confirm, request_id: `s${++stepSeq}` }) ?? false;
+    set({ step: sent ? { ...NO_STEP, busy: true, note: "Иду…", pending: req } : { ...NO_STEP, error: "нет связи с сервером: шаг не отправлен" } });
+  },
+  stepResult(r) {
+    if (!r.ok) set({ step: { ...NO_STEP, error: r.error ?? "шаг не удался" } });
+    else if (r.confirm_needed) set({ step: { ...NO_STEP, warnings: r.warnings ?? [], pending: get().step.pending } });
+    else {
+      set({ step: { ...NO_STEP, note: stepNote(r) } });
+      get().request();
+    }
+  },
+  cancelStep() {
+    set({ step: NO_STEP });
+  },
 }));
 
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
 export function mapEvent(type: string, payload: unknown): void {
   const w = useMapWindow.getState();
   if (type === "map.state") w.receive(payload as MapState);
+  else if (type === "map.step.result") w.stepResult(payload as StepResult);
   else if (w.open && (type === "scene.updated" || type === "state.snapshot" || type === "knowledge.revealed" || type === "map.changed")) w.request();
 }
 
