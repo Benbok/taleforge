@@ -62,8 +62,8 @@ def search(
     walls = {tuple(x) for x in (sk or {}).get("walls") or []}
 
     def squeeze(a: tuple[int, int], dc: int, dr: int) -> bool:
-        """Диагональ между двумя стенами, сходящимися углом: сквозь такой стык не пройти."""
-        return bool(dc and dr) and (a[0] + dc + ax, a[1] + ay) in walls and (a[0] + ax, a[1] + dr + ay) in walls
+        """Стена — полная преграда: по диагонали сквозь стык двух стен, сходящихся углом, не пройти."""
+        return grid.corner_wall((a[0] + ax, a[1] + ay), dc, dr, walls)
 
     prev: dict[tuple[int, int], tuple[int, int]] = {start: start}
     q = deque([(start, 0)])

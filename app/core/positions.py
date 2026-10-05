@@ -249,6 +249,40 @@ def _grid_cell(p: Pos) -> tuple[int, int] | None:
     return p.cell if p.cell is not None else (0, 0) if p.zone is None else None
 
 
+def wall_between(world, a_id: str, b_id: str) -> bool:
+    """Стоит ли стена эскиза на прямой между двумя участниками на сетке одного места: атаке и заклинанию
+    нужна прямая видимость. Луч идёт от центра клетки к центру; клетки самих участников не считаются.
+    Без эскиза, без клеток или в разных местах — стен не знаем, не мешают."""
+    place = world.actor_place(a_id)
+    if place is None or place != world.actor_place(b_id):
+        return False
+    sk = _sketch(world, place)
+    walls = {tuple(x) for x in (sk or {}).get("walls") or []}
+    if not walls:
+        return False
+    ac, bc = _grid_cell(pos_of(world, a_id)), _grid_cell(pos_of(world, b_id))
+    if ac is None or bc is None:
+        return False
+    ax, ay = anchor(world, place, sk)
+    (x0, y0), (x1, y1) = (ac[0] + ax, ac[1] + ay), (bc[0] + ax, bc[1] + ay)
+    n = 4 * max(abs(x1 - x0), abs(y1 - y0))
+    prev = (x0, y0)
+    for i in range(1, n + 1):
+        t = i / n
+        cell = (math.floor(x0 + (x1 - x0) * t + 0.5), math.floor(y0 + (y1 - y0) * t + 0.5))
+        if cell not in ((x0, y0), (x1, y1)) and cell in walls:
+            return True
+        if corner_wall(prev, cell[0] - prev[0], cell[1] - prev[1], walls):
+            return True
+        prev = cell
+    return False
+
+
+def corner_wall(at: tuple[int, int], dc: int, dr: int, walls: set) -> bool:
+    """Шаг по диагонали из клетки ``at`` (координаты мастера) упирается в стык двух стен, сходящихся углом."""
+    return bool(dc and dr) and (at[0] + dc, at[1]) in walls and (at[0], at[1] + dr) in walls
+
+
 def distance(a: Pos, b: Pos, *, both_creatures: bool = False) -> int:
     """Футы между двумя позициями."""
     dz = ELEVATION_FT.get(a.elevation, 0) - ELEVATION_FT.get(b.elevation, 0)

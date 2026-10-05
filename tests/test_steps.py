@@ -8,7 +8,7 @@ from app.tools.registry import ToolError
 from tests.game import import_base, party
 from tests.test_map import _map, _ok, _play
 from tests.test_sketch import CELL
-from tests.test_tools import play
+from tests.test_tools import call, play
 from tests.test_ws import connect, next_of
 
 
@@ -96,16 +96,25 @@ def test_combat_step_speed_dash_and_opportunity_attack(client, admin, settings):
     assert "дождись своего хода" in play(settings, cid, [], not_mine)
 
 
-def test_no_squeeze_between_corner_walls(client, admin, settings):
+def test_walls_are_full_barrier_for_steps_and_attacks(client, admin, settings):
     import_base(settings)
     c, _, hero = party(client, admin)
     cid, hid = c["id"], hero["id"]
-    room = {"shape": "room", "cols": 4, "rows": 4, "party": [1, 1], "walls": [[2, 1], [1, 2]]}
+    room = {"shape": "room", "cols": 6, "rows": 4, "party": [1, 1], "walls": [[2, 1], [1, 2], [3, 0], [3, 1], [3, 2]]}
 
     async def walk(ctx):
         await _ok(ctx, "create_location", {"name": "Стык", "make_current": True})
         await _ok(ctx, "sketch_place", room)
-        return await hero_step(ctx, hid, (1, 1))  # (2, 2) по диагонали между стенами — только в обход
+        step = await hero_step(ctx, hid, (1, 1))  # (2, 2): сквозь стык стен по диагонали нельзя, только в обход
+        diag = await hero_step(ctx, hid, (2, 2))  # на (3, 3) по диагонали мимо угла одной стены — можно
+        spawn = {"creature_template_id": "creature.goblin", "name": "Гоблин", "cell": [4, 1], "attitude": "neutral"}
+        gob = (await _ok(ctx, "spawn_entity", spawn))["spawned"][0]["id"]
+        bow = {"attacker_id": gob, "target_id": hid, "attack": "shortbow"}
+        weapon = next(x for x in ctx.world.actor(gob).attacks if x["kind"] == "ranged")["key"]
+        shot = await call(ctx, "resolve_attack", {**bow, "attack": weapon})
+        return step, diag, shot
 
-    out = _play(settings, cid, walk)
-    assert out["cell"] == [2, 2] and out["moved_ft"] > 5
+    step, diag, shot = _play(settings, cid, walk)
+    assert step["cell"] == [2, 2] and step["moved_ft"] > 5  # стена — полная преграда (решение Arty)
+    assert diag["cell"] == [3, 3] and diag["moved_ft"] == 5
+    assert not shot["ok"] and "стена" in shot["error"], shot

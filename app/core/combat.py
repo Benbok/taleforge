@@ -377,7 +377,8 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
         if near:
             target = min(near, key=lambda a: (a.hp.current, a.id))
         close = ctx.world.distance_ft(act, target) <= REACH_FT
-        if not close and melee and (not ranged or profile == "aggressive"):
+        seen = not grid.wall_between(ctx.world, en.id, target.id)  # за стеной не выстрелить: сперва обойти
+        if not close and ((melee and (not ranged or profile == "aggressive")) or not seen):
             route = steps.toward(ctx.world, _at(ctx, en.id), en.id, target.id, max(1, act.speed // 5))
             if route:
                 cell = grid.to_master(ctx.world, _at(ctx, en.id), route[-1])
@@ -386,7 +387,8 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
                     notes.append(f"{act.name} подходит к {target.name} ({len(route) * 5} фт)")
             act = ctx.world.actor(en.id)
             close = ctx.world.distance_ft(act, target) <= REACH_FT
-            if not close and not ranged:
+            seen = not grid.wall_between(ctx.world, en.id, target.id)
+            if not close and (not ranged or not seen):
                 return
         if close and melee:
             keys = _multiattack(ctx, act) or [melee[0]["key"]]

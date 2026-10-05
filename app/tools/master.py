@@ -457,6 +457,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     cover = pos_of(w, tgt.id).cover
     if cover == "total":
         raise ToolError(f"{tgt.name} за полным укрытием: напрямую не атаковать, сначала выманить или обойти")
+    if grid.wall_between(w, att.id, tgt.id):
+        raise ToolError(f"между {att.name} и {tgt.name} стена: прямой линии для атаки нет, сначала обойти")
     dist = w.distance_ft(att, tgt)
     extra = []
     if weapon["kind"] == "melee" and dist > int(weapon.get("reach_ft") or 5) and weapon.get("normal_ft"):

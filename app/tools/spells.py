@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.core import economy
 from app.core import spells as book
-from app.core.positions import COVER_AC, pos_of
+from app.core.positions import COVER_AC, pos_of, wall_between
 from app.core.world import Actor, format_time
 from app.db.models import Character
 from app.rules.dnd5e import modifiers as mod
@@ -216,6 +216,8 @@ async def resolve(
                 raise ToolError(f"{t.name} дальше {reach} фт ({dist} фт): «{spell['name']}» не достанет")
         if kind == "enemy" and pos_of(w, t.id).cover == "total":
             raise ToolError(f"{t.name} за полным укрытием: заклинанию нужна видимая цель")
+        if t.id != act.id and wall_between(w, act.id, t.id):
+            raise ToolError(f"между {act.name} и {t.name} стена: «{spell['name']}» нужна прямая линия до цели")
         tgts.append(t)
 
     result: dict[str, Any] = {
