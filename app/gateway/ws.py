@@ -63,6 +63,7 @@ async def _snapshot(
     game = await chat.active_session(session, c.id)
     seat_id = viewer.seat.id if viewer.seat else None
     last = None if game else await memory.latest(session, c.id)
+    scene = await _scene(session, c, viewer)
     return envelope(
         "state.snapshot",
         c.id,
@@ -93,13 +94,13 @@ async def _snapshot(
             "rest_votes": await rest_votes.snapshot_votes(
                 session, c, seat_id, set(stand_in_seats(c, viewer.user.id)), viewer.is_master
             ),
-            "turn": await _turn(session, c.id),
+            "turn": scene["turn"],
             # открытая кнопка реакции переживает переподключение; между сессиями — итог прошлой
             "reaction": master.pending_reaction(c.id, seat_id) if master is not None and seat_id else None,
             "summary": memory.public_summary(last.content) if last is not None else None,
             "heroes": await _heroes(session, c.id),
-            "scene": await _scene(session, c, viewer),
-            "audio": await _audio(session, c),
+            "scene": scene,
+            "audio": await _audio(session, c, viewer),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
             "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
             "replay": last_seq is not None,
@@ -138,7 +139,7 @@ async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
 
     from app.core.inspect import viewer_hero
     from app.core.world import get_scene, party_groups, viewer_places
-    from app.tools.runtime import party_public, public_entity
+    from app.tools.runtime import combat_public, party_public, public_entity
 
     sc = await get_scene(session, c.id)
     ents = (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()
@@ -146,45 +147,32 @@ async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     here, places = viewer_places(chars.values(), sc, await viewer_hero(session, viewer))
     loc = next((e for e in ents if e.id == here), None)
     out = [public_entity(e) for e in ents if e.kind != "location" and (not places or e.location_id in places)]
-    split = party_public(party_groups(chars.values(), sc), {e.id: e for e in ents}, here if len(places) == 1 else None)
+    groups = party_groups(chars.values(), sc)
+    mine = here if len(places) == 1 else None
+    split = party_public(groups, {e.id: e for e in ents}, mine)
     return {
         **({"party": split} if split else {}),
-        "mode": sc.mode,
-        "round": sc.round,
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": out,
-        "turn_order": sc.turn_order,
-        "order": combat.public_order(sc.turn_order, chars, {e.id: e for e in ents}),
-        "turn": await _turn(session, c.id),
+        **combat_public(sc, chars, {e.id: e for e in ents}, mine, len(groups) > 1),
     }
 
 
-async def _audio(session: AsyncSession, c: Campaign) -> dict:
-    """Что звучит сейчас: вошедший позже слышит то же, что остальные."""
+async def _audio(session: AsyncSession, c: Campaign, viewer) -> dict:
+    """Что звучит сейчас: вошедший позже слышит то же, что остальные. Отряд разделён — звук места своего героя."""
+    from sqlalchemy import select
+
     from app.core import audio
-    from app.core.world import get_scene
+    from app.core.inspect import viewer_hero
+    from app.core.world import get_scene, party_groups
 
-    return audio.public_state(c, await get_scene(session, c.id))
-
-
-async def _turn(session: AsyncSession, campaign_id: str) -> dict | None:
-    from app.core.world import get_scene
-
-    sc = await get_scene(session, campaign_id)
-    if sc.mode != "combat" or not sc.turn_order:
-        return None
-    st = sc.state or {}
-    entry = sc.turn_order[int(st.get("turn", 0)) % len(sc.turn_order)]
-    ch = await session.get(Character, entry["id"])
-    en = None if ch else await session.get(Entity, entry["id"])
-    return {
-        "round": sc.round,
-        "actor_id": entry["id"],
-        "name": ch.name if ch else (en.name if en else "существо"),
-        "seat_id": ch.seat_id if ch else None,
-        "deadline": st.get("deadline"),
-        "submitted": bool(st.get("submitted")),
-    }
+    sc = await get_scene(session, c.id)
+    hero = await viewer_hero(session, viewer)
+    if hero is not None:
+        chars = (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()
+        if len(party_groups(chars, sc)) > 1:
+            return audio.public_state(c, sc, hero.location_id or sc.location_id)
+    return audio.public_state(c, sc)
 
 
 @router.websocket("/ws")
@@ -365,12 +353,16 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
             notes = await run_clock(ctx)  # часы угроз каркаса идут и у живого мастера
             if notes:
                 result["plot_clock"] = notes
+            late = ctx.world.catch_up()  # части отряда сошлись: отставшие по времени догоняют остальных
+            if late:
+                result["caught_up"] = [{"names": names, "seconds": sec} for names, sec in late]
         messages = await flush_outbox(session, ctx)
         await session.commit()
     await conn.send(envelope("master.tool.result", conn.campaign_id, {"request_id": request_id, **result}))
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
-        if name == "set_scene_mode":
+        # move в бою: герой вошёл в бой или ушёл из него — очередь сдвинулась
+        if name == "set_scene_mode" or (name in ("move", "enter_room") and combat.in_combat(ctx)):
             if combat.in_combat(ctx):
                 _background(app.state.master.advance(conn.campaign_id, "sync"))  # первыми могут ходить существа
             else:
@@ -454,7 +446,8 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
             reason = await combat.gate_message(session, viewer, kind)
             if reason:
                 raise Conflict(reason)
-            m = await chat.post_message(session, viewer, kind, text, settings.message_max_len)
+            place = payload.get("place") if isinstance(payload.get("place"), str) else None
+            m = await chat.post_message(session, viewer, kind, text, settings.message_max_len, place)
             if parsed is not None and parsed.intent and m.kind == "action":
                 m.intent = parsed.intent
             if voice_meta is not None:

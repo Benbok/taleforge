@@ -33,7 +33,7 @@ from app.agents import intent as intents
 from app.agents.llm import LLM, LLMError, LLMReply, decide_model_for, model_for, parser_model_for
 from app.agents.providers import explain
 from app.config import settings as app_settings
-from app.core import audio, bonds, chat, combat, persona, plot
+from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import TURN_KINDS, active_session, next_seq, system_message, visible
@@ -98,6 +98,8 @@ def decision_tools(ctx: ToolContext) -> list[str]:
     """Инструменты фазы решения. Инструменты сюжета — только когда у кампании есть каркас, звука — когда владелец
     включил его и библиотека не пуста."""
     off = set() if plot.has_plan(ctx.world.plot) else set(plot_tools.PLOT_TOOLS)
+    if not adventure.is_module(ctx.campaign):
+        off.add("enter_room")
     if not audio.enabled(ctx.campaign):
         off |= set(AUDIO_TOOLS)
     return [n for n in DECISION_TOOLS if n not in off]
@@ -671,6 +673,7 @@ class MasterService:
             turn.status, turn.finished_at = "skipped", now()
             await s.commit()
             return {"ctx": ctx, "messages": [], "names": names, "ids": [], "skipped": True}
+        t0 = ctx.world.enter_clock()  # отряд разделён: ход идёт по часам этой группы
         before = {p: [h.id for h in hs] for p, hs in ctx.world.groups().items()}  # как стоял отряд до хода
         crew = ctx.world.crew or {h for hs in before.values() for h in hs}
         seats = {ch.seat_id for ch in ctx.world.characters.values() if ch.id in crew and ch.seat_id}
@@ -755,6 +758,7 @@ class MasterService:
             },
         ]
         done_calls = retries = 0
+        nudged = False
         for _ in range(MAX_STEPS):
             reply = await self._ask(
                 calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, decision_tools(ctx))
@@ -762,6 +766,21 @@ class MasterService:
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             if not reply.tool_calls:
                 open_ = required - ctx.closed
+                fails = _unsettled_fails(ctx, trace_calls)
+                if fails and not nudged:
+                    nudged = True  # критический провал словами не закрыть: последствие пишется в лист героя
+                    msgs.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Критический провал без последствия в листе героя: "
+                                + ", ".join(f"{i} ({ctx.world.characters[i].name})" for i in fails)
+                                + ". Закрепи его инструментом на этом герое (apply_effect с состоянием из шаблонов и "
+                                "длительностью, drop_item, apply_hazard или reposition), потом ответь «готово»."
+                            ),
+                        }
+                    )
+                    continue
                 if open_ and retries < 1:
                     retries += 1
                     names_open = ", ".join(f"{i} ({ctx.world.characters[i].name})" for i in sorted(open_))
@@ -819,9 +838,12 @@ class MasterService:
             await self._status(cid, "rolling")
             combat_notes += await combat.run_until_hero(ctx, f"{turn_id}:combat", self._ask_reaction)
 
+        ctx.world.settle_clock(t0)  # часы кампании — наибольшие из часов групп
         plot_notes = await plot_tools.run_clock(ctx)  # злодеи не ждут: шаги угрозы по игровым дням
 
         party_notes, meet = await _party_change(s, ctx, before, crew, names)
+        audio.regroup(ctx)  # сошлись — общий звук места встречи
+        audio.autopilot(ctx)  # мастер забыл про звук: мелодия под место или бой
         await self._status(cid, "describing")
         system += await self._mood(s, calls, cfg, c, seat.id, turn_id, ctx, new, char_by_seat)
 
@@ -959,9 +981,9 @@ class MasterService:
                     ),
                 },
             ]
-            if stream is not None:
-                await stream.reset()  # игроки уже видели первый вариант: начинаем черновик заново
-            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, stream_callback=push)
+            # без потока: стирать черновик и печатать его заново — то самое «текст исчез и появился снова».
+            # Игроки видят первый вариант, пока пишется исправленный; финальный текст заменит его на месте
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
             text = reply.text.strip()
 
         def strip(m: re.Match) -> str:
@@ -1005,7 +1027,7 @@ class MasterService:
     async def _mood(self, s, calls, cfg, c, seat_id, turn_id, ctx: ToolContext, new, char_by_seat) -> str:
         """Эмоции мастера за ход (app/emotion): броски героев и оценка реплик технической моделью.
         Состояние живёт в scene.state, итог — строка для системного промпта повествования и озвучки."""
-        persona_id = (cfg.settings or {}).get("emotion_persona") or "tired_mentor"
+        persona_id = (cfg.settings or {}).get("emotion_persona") or mood.DEFAULT_PERSONA
         persona = mood.persona_of(persona_id)
         heroes = {ch.id for ch in char_by_seat.values()}
         hi, lo = mood.hero_naturals(ctx.events, heroes)
@@ -1071,8 +1093,14 @@ class MasterService:
         if has_plot:
             # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
             extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            now_ = plot.now_block(secret.plot, location_entity_id=ctx.world.home())
+            home = ctx.world.entities.get(ctx.world.home() or "")
+            if adventure.room_of(home) is not None:  # комната готового приключения: место каркаса — место модуля
+                home = ctx.world.entities.get(home.location_id or "")
+            now_ = plot.now_block(secret.plot, location_entity_id=home.id if home else None)
             secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
+            book = adventure.master_block(ctx.world)
+            if book:
+                secrets += "\n\nПо книге:\n" + book[:12000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
         ties = [
@@ -1111,7 +1139,7 @@ class MasterService:
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
             critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
-            audio=audio.prompt_block(c, ctx.world.scene),
+            audio=audio.prompt_block(c, ctx.world.scene, audio.where(ctx)),
         )
 
     # --- память (раздел 9) ---
@@ -1361,7 +1389,8 @@ class MasterService:
         """После фиксации хода: всем — чей ход, и таймер хода героя."""
         cid = ctx.campaign.id
         turn = combat.public_turn(ctx.world)
-        await self.bus.publish(cid, envelope("turn.changed", cid, {"turn": turn}), None)
+        for seats, view in combat.turn_views(ctx.world):  # отряд разделён: ход видят только те, у кого бой
+            await self.bus.publish(cid, envelope("turn.changed", cid, {"turn": view}), seats)
         old = self._timers.pop(cid, None)
         if old is not None and old is not asyncio.current_task():
             old.cancel()
@@ -1463,6 +1492,13 @@ class MasterService:
                         await s.rollback()
                         return None  # игрок успел вернуться, или героя уже ведёт другой
                     notes: list[str] = []
+                    # отряд разделён: ходы боя видят только те, кто в нём (и мастер)
+                    places = combat.fronts(ctx.world)
+                    crew = {h.id for p, hs in ctx.world.groups().items() if p in places for h in hs}
+                    everyone = {h.id for hs in ctx.world.groups().values() for h in hs}
+                    if ctx.world.split and crew != everyone:  # раунды боя идут по часам тех, кто сражается
+                        ctx.world.crew = crew
+                    t0 = ctx.world.enter_clock()
                     if hero is not None and reason != "sync":
                         what = {
                             "timeout": "выжидает",
@@ -1480,8 +1516,13 @@ class MasterService:
                         await combat.finish_turn(ctx, notes)
                     await self._status(cid, "rolling")
                     notes += await combat.run_until_hero(ctx, f"{turn.id}:combat", self._ask_reaction)
+                    ctx.world.settle_clock(t0)
                     names = await _names(s, c)
                     messages = await flush_outbox(s, ctx)
+                    heard = _heard_by(ctx, crew) if ctx.world.split and crew else None
+                    for m in messages:
+                        if m.kind == "roll" and heard is not None:
+                            m.visible_to = heard
                     acted = [e for e in ctx.events if e.tool != "turn_end"]
                     msg = None
                     if seat.occupant_type == "agent" and acted:
@@ -1504,6 +1545,8 @@ class MasterService:
                             seat_id=seat.id if kind == "narration" else None,
                             kind=kind,
                             content=text,
+                            visible_to=heard,
+                            data={"place": next(iter(places))} if heard is not None and len(places) == 1 else None,
                         )
                         s.add(msg)
                         await s.flush()
@@ -1758,6 +1801,7 @@ async def _party_change(s, ctx: ToolContext, before: dict, crew: set[str], names
     after = w.groups()
     ends = {w.place_of(w.characters[i]) for i in crew if i in w.characters}
     met = [h for p in ends for h in after.get(p, []) if h.id not in crew]
+    late = w.catch_up()  # сошлись части отряда с разным временем: отставшие догоняют
     notes: list[str] = []
     if len(before) <= 1 and len(after) > 1:
         notes.append("Отряд разделился: " + _where(w, after) + ".")
@@ -1767,8 +1811,13 @@ async def _party_change(s, ctx: ToolContext, before: dict, crew: set[str], names
         frozenset(h.id for h in hs) for hs in after.values()
     }:
         notes.append("Отряд: " + _where(w, after) + ".")
+    clock = "".join(
+        f"\nПока отряд был порознь, у {', '.join(names)} прошло на {span(sec)} меньше: часы догнали остальных, "
+        "одной фразой скажи, чем они были заняты это время."
+        for names, sec in late
+    )
     if not met:
-        return notes, ""
+        return notes, clock.strip()
     seats = {h.seat_id for h in met if h.seat_id}
     q = select(Message).where(Message.campaign_id == ctx.campaign.id, Message.kind == "narration")
     rows = (await s.scalars(q.order_by(Message.seq.desc()).limit(30))).all()
@@ -1777,9 +1826,18 @@ async def _party_change(s, ctx: ToolContext, before: dict, crew: set[str], names
     meet = (
         f"Встреча: к героям присоединились {', '.join(h.name for h in met)}. Пока отряд был порознь, игроки не "
         "видели ответов друг друга. Одной-двумя фразами, без новых фактов, передай, что было с пришедшими, — "
-        f"по последним ответам им:\n{told}"
+        f"по последним ответам им:\n{told}{clock}"
     )
     return notes, meet
+
+
+def span(sec: int) -> str:
+    """Отрезок игрового времени словами: «8 ч», «20 мин»."""
+    if sec >= 3600:
+        return f"{round(sec / 3600)} ч"
+    if sec >= 60:
+        return f"{round(sec / 60)} мин"
+    return f"{sec} с"
 
 
 def _where(w, groups: dict) -> str:
@@ -1833,16 +1891,41 @@ def _render_new(rows: list[Message], char_by_seat: dict, names: dict) -> str:
     return "\n".join(out)
 
 
+def _unsettled_fails(ctx: ToolContext, trace_calls: list[dict]) -> list[str]:
+    """Герои с критическим провалом (натуральная 1 в проверке или атаке), чьё последствие не закреплено
+    инструментом после броска."""
+    from app.tools.master import CONSEQUENCE_TOOLS
+
+    open_: list[str] = []
+    for t in trace_calls:
+        res = t.get("result") or {}
+        if not res.get("ok"):
+            continue
+        args, out = t.get("args") or {}, res.get("result") or {}
+        if t["tool"] == "roll_check" and out.get("critical") == "fail":
+            who = args.get("character_id")
+        elif t["tool"] == "resolve_attack" and out.get("fumble"):
+            who = args.get("attacker_id")
+        else:
+            who = None
+            if t["tool"] in CONSEQUENCE_TOOLS:
+                hit = {args.get(k) for k in ("target_id", "character_id", "actor_id")}
+                open_ = [i for i in open_ if i not in hit]
+        if who in ctx.world.characters and who not in open_:
+            open_.append(who)
+    return [i for i in open_ if ctx.world.actor(i).alive]
+
+
 def _check_only(ctx: ToolContext, notes=()) -> bool:
     """Ход вне боя, в котором были только проверки: ответ — короткое литературное описание исхода."""
     tools = [ev.tool for ev in ctx.events if ev.tool not in AUDIO_TOOLS]
-    return not notes and not combat.in_combat(ctx) and bool(tools) and set(tools) == {"roll_check"}
+    return not notes and not ctx.world.in_fight() and bool(tools) and set(tools) == {"roll_check"}
 
 
 def _narration_length(ctx: ToolContext, notes=()) -> str:
     if _check_only(ctx, notes):
         return "одно-два предложения"
-    if notes or combat.in_combat(ctx):
+    if notes or (combat.in_combat(ctx) and ctx.world.in_fight()):
         return COMBAT_LENGTH
     return (
         "один короткий абзац, два-четыре предложения; второй абзац — только если герои попали в новое место или "

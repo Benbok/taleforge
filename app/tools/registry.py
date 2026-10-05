@@ -119,7 +119,9 @@ def tool(name: str, description: str, args: type[BaseModel], *, mutating: bool =
 
 def _enum_values(world: World, key: str) -> list[str]:
     if key == "dc":
-        return [e.id for e in world.catalog.dc_scale()]
+        from app.core.adventure import book_refs
+
+        return [e.id for e in world.catalog.dc_scale()] + book_refs(world)
     if key.startswith("templates:"):
         return [e.id for e in world.catalog.by_kind(key.split(":", 1)[1])]
     if key.startswith("plot:"):

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.agents import memory
+from app.agents.architect import now_iso
 from app.agents.llm import LLMError, model_for
 from app.api.deps import SessionDep, SettingsDep, UserDep
 from app.api.schemas import (
@@ -26,13 +27,25 @@ from app.api.schemas import (
     SeatOut,
     SecretsIn,
 )
-from app.content.catalog import CatalogError, resolve_chain
+from app.content.catalog import CatalogError, load_catalog, resolve_chain
 from app.content.importer import latest_version
-from app.core import audio, chat, master_log
+from app.core import adventure, audio, chat, master_log, plot
 from app.core import campaigns as svc
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
-from app.core.world import get_scene
-from app.db.models import AgentConfig, Campaign, CampaignSecret, ContentPack, Invite, MasterPreset, ModelProfile, User
+from app.core.world import get_scene, party_groups
+from app.db.models import (
+    AdventureModule,
+    AgentConfig,
+    Campaign,
+    CampaignPlan,
+    CampaignSecret,
+    Character,
+    ContentPack,
+    Invite,
+    MasterPreset,
+    ModelProfile,
+    User,
+)
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -113,9 +126,19 @@ async def recommend_party(
 
 
 @router.post("/campaigns", status_code=201)
-async def create_campaign(body: CampaignCreateIn, user: UserDep, session: SessionDep) -> CampaignOut:
+async def create_campaign(body: CampaignCreateIn, user: UserDep, session: SessionDep, request: Request) -> CampaignOut:
     pack = None
-    if body.pack_id:
+    module = None
+    if body.module_id:
+        if body.pack_id:
+            raise Conflict("готовое приключение идёт на своём пакете: пакет мира не выбирают")
+        module = await session.get(AdventureModule, body.module_id)
+        if module is None or not module.pack_id:
+            raise NotFound("готовое приключение не найдено или не опубликовано")
+        pack = await session.get(ContentPack, (module.pack_id, module.pack_version))
+        if pack is None:
+            raise NotFound("пакет приключения не импортирован")
+    elif body.pack_id:
         pack = (
             await session.get(ContentPack, (body.pack_id, body.pack_version))
             if body.pack_version
@@ -156,8 +179,50 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
         if pack is not None:
             raise Conflict(str(e)) from None
         # без пакета мира цепочка — базовый пакет правил; если он ещё не импортирован, её найдут при первой игре
+    if module is not None:
+        await _start_module(session, campaign, module, body.module_hook)
     await session.commit()
+    if module is not None:
+        from app.agents import prelude
+
+        master = request.app.state.master
+        master._spawn(prelude.prepare_campaign_intro(master, campaign.id))  # вступление с голосом заранее
     return await campaign_out(session, campaign, user)
+
+
+async def _start_module(session, campaign: Campaign, module: AdventureModule, hook_id: str | None) -> None:
+    """Кампания по готовому приключению: каркас книги сразу готов (архитектор не нужен), опыт по вехам книги,
+    пересмотр актов выключен — мастер ведёт по книге."""
+    catalog = (await load_catalog(session, campaign.content_chain)).view(False)
+    adv = adventure.adventure_of(catalog)
+    if adv is None:
+        raise Conflict("в пакете приключения нет записи adventure: опубликуйте его заново")
+    if hook_id and not any(h["id"] == hook_id for h in adventure.hooks(adv)):
+        raise NotFound("такой зацепки в приключении нет")
+    plan, hook = adventure.start_plan(adv, hook_id)
+    plan["version"] = 1
+    session.add(CampaignPlan(campaign_id=campaign.id, version=1, content=plan, note="готовое приключение"))
+    secret = await session.get(CampaignSecret, campaign.id)
+    secret.plot = plan
+    settings = dict(campaign.settings or {})
+    settings["module"] = {
+        "id": module.id,
+        "title": module.title,
+        "adventure_id": adv.id,
+        "hook_id": hook["id"] if hook else None,
+    }
+    settings["leveling"] = "milestone"
+    settings["replan"] = False
+    settings["poster"] = plot.poster(plan)
+    start = (adv.data.get("levels") or {}).get("start")
+    rules = dict(settings.get("creation_rules") or {})
+    if isinstance(start, int) and 1 <= start <= 20 and int(rules.get("start_level") or 1) == 1:
+        settings["creation_rules"] = {**rules, "start_level": start}  # уровень книги, если владелец не задал свой
+    if not (campaign.public_intro or "").strip():
+        campaign.public_intro = plan.get("public_intro") or adv.data.get("description") or ""
+        settings["intro_from_plan"] = True
+    settings["plan"] = {"status": "ready", "version": 1, "error": None, "updated_at": now_iso()}
+    campaign.settings = settings
 
 
 @router.get("/campaigns/{campaign_id}")
@@ -204,8 +269,9 @@ async def patch_campaign(
     await session.commit()
     if sound:  # звук включили или выключили посреди игры: у игроков он заиграет или смолкнет сразу
         sc = await get_scene(session, c.id)
-        env = envelope("audio.state", c.id, {**audio.public_state(c, sc), "cues": []})
-        await request.app.state.bus.publish(c.id, env, None)
+        chars = (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()
+        for seats, state in audio.views(c, sc, party_groups(chars, sc)):  # отряд разделён: у групп свой звук
+            await request.app.state.bus.publish(c.id, envelope("audio.state", c.id, {**state, "cues": []}), seats)
     return await campaign_out(session, c, user)
 
 
@@ -279,6 +345,40 @@ async def put_master_persona(
     await svc.apply_persona(session, user, agent, body.model_dump())
     await session.commit()
     return persona_out(agent)
+
+
+class MasterTemperIn(BaseModel):
+    value: str
+
+
+def _temper_out(agent: AgentConfig) -> dict:
+    from app.emotion import game as mood
+    from app.emotion.analyzers import PERSONAS
+
+    cur = (agent.settings or {}).get("emotion_persona")
+    return {
+        "value": cur if cur in PERSONAS else mood.DEFAULT_PERSONA,
+        "options": [{"id": k, "name": p.name, "description": p.description} for k, p in PERSONAS.items()],
+    }
+
+
+@router.get("/campaigns/{campaign_id}/master-temper")
+async def get_master_temper(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
+    """Нрав ИИ-мастера: как он эмоционально отзывается на поступки и броски героев."""
+    return _temper_out(await _master_agent(session, user, campaign_id, "характер мастера"))
+
+
+@router.put("/campaigns/{campaign_id}/master-temper")
+async def put_master_temper(campaign_id: str, body: MasterTemperIn, user: UserDep, session: SessionDep) -> dict:
+    """Сменить нрав ИИ-мастера: со следующего хода мастер реагирует по-новому."""
+    from app.emotion.analyzers import PERSONAS
+
+    agent = await _master_agent(session, user, campaign_id, "характер мастера")
+    if body.value not in PERSONAS:
+        raise Conflict(f"нет такого нрава мастера: {body.value}")
+    agent.settings = {**(agent.settings or {}), "emotion_persona": body.value}
+    await session.commit()
+    return _temper_out(agent)
 
 
 # --- характер ИИ-мастера (этап 9б): анкета, помощник, проверка, летопись ---

@@ -295,6 +295,8 @@ class CampaignCreateIn(BaseModel):
         default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
     )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
+    module_id: str | None = Field(default=None, description="готовое приключение вместо анкеты и пакета мира")
+    module_hook: str | None = Field(default=None, max_length=32, description="зацепка книги для вступления")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
     tts_provider: str = Field(default="gemini", description="TTS Provider")
     tts_enabled: bool = Field(default=True, description="TTS Enabled")

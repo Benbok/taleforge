@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -13,9 +14,10 @@ from typing import Any
 
 from sqlalchemy import select
 
+from app.agents import voiceover
 from app.agents.llm import LLMError
 from app.content.catalog import campaign_catalog
-from app.core import bonds, plot
+from app.core import adventure, bonds, plot
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
 from app.core.linker import link_text
@@ -29,6 +31,68 @@ QUESTIONS_TOOL = "submit_bond_questions"
 HOOK_TOOL = "submit_hook"
 PLAYING = ("approved", "active")
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
+# служебные строки, которые модель иногда ставит перед текстом: заголовок, «Вступление:», повтор задания
+HEADING = re.compile(r"^\s*(#.*|[*_]{1,3}[^\n]{1,150}?[*_]{1,3}:?|[^\n]{0,150}:|[^\n.!?…»]{1,60})\s*$")
+ECHO = re.compile(r"^\s*Кампания\s+«[^»\n]*»\.?\s*(Завязка[^:\n]*:\s*)?")
+STORY_RULES = (
+    "Сразу начни сам художественный текст: без заголовка, пояснений и вводных фраз вроде «Вот вступление», "
+    "не повторяй название кампании и слова задания."
+)
+
+
+def clean_story(text: str, keep=lambda _id: False) -> str:
+    """Текст повествования для игроков: без чужой разметки, служебного заголовка и повтора завязки из подсказки.
+    Строка в начале считается заголовком, только если за ней есть текст: в потоке первая строка ещё пишется."""
+    text = MARKUP.sub(lambda m: m.group(0) if keep(m.group(1)) else m.group(2), text.strip())
+    lines = text.split("\n")
+    while len(lines) > 1 and (not lines[0].strip() or HEADING.match(lines[0])):
+        lines.pop(0)
+    return ECHO.sub("", "\n".join(lines).strip(), count=1).strip()
+
+
+def _closed(raw: str) -> str:
+    """Текст без недописанной разметки в конце: «[[en_1|гобл» станет словом, только когда закроется, иначе
+    черновик пришлось бы стирать и печатать заново."""
+    i = raw.rfind("[[")
+    return raw[:i] if i >= 0 and "]]" not in raw[i:] else raw
+
+
+class StoryFeed:
+    """Поток повествования в чат и в озвучку уже очищенным: служебный заголовок модели игроки не видят и в
+    черновике. Первая строка ждёт, пока допишется (по ней видно, заголовок ли это)."""
+
+    def __init__(self, stream: Stream | None, job: voiceover.VoiceJob | None, clean=clean_story) -> None:
+        self.stream, self.job, self.clean = stream, job, clean
+        self.raw, self.sent = "", ""
+
+    async def push(self, chunk: str) -> None:
+        self.raw += chunk
+        if self.job is not None:
+            self.job.feed(chunk)
+        if self.stream is None or ("\n" not in self.raw and len(self.raw) < 200):
+            return
+        view = self.clean(_closed(self.raw))
+        if view.startswith(self.sent):
+            if len(view) > len(self.sent):
+                await self.stream.push(view[len(self.sent) :])
+        else:
+            await self.stream.reset()
+            await self.stream.push(view)
+        self.sent = view
+
+
+def _tts_on(svc, c: Campaign) -> bool:
+    ready = getattr(svc, "_tts_ready", None)
+    return ready is not None and ready(c)
+
+
+def _spawn(svc, coro) -> None:
+    """Досинтез частей идёт в фоне: игра не ждёт голос, текст уже в чате."""
+    spawn = getattr(svc, "_spawn", None)
+    if spawn is not None:
+        spawn(coro)
+    else:
+        asyncio.get_running_loop().create_task(coro)
 
 
 async def _ai_plan(s, c: Campaign) -> tuple[AgentConfig | None, dict]:
@@ -302,12 +366,13 @@ async def _open_first_place(svc, cid: str, where: dict) -> None:
     await publish_changes(svc.bus, ctx, messages)
 
 
-INTRO_KEY = "campaign_intro"  # в тайнах кампании: готовое вступление {text, voice, version} до старта
+INTRO_KEY = "campaign_intro"  # в тайнах кампании: готовое вступление {text, voices, version} до старта
 INTRO_TASK = (
-    "Напиши масштабное и атмосферное художественное вступление к всей кампании (2–4 абзаца). "
+    "Напиши художественное вступление ко всей кампании (2–4 абзаца), масштабное и атмосферное. "
     "Опиши общую ситуацию в мире и регионе, где именно сейчас оказались герои и почему/при каких "
-    "обстоятельствах они здесь очутились, передай живую атмосферу и настроение места. "
-    "Не управляй действиями и репликами персонажей игроков. Закончи описанием того, что герои видят прямо перед собой."
+    "обстоятельствах они здесь очутились, передай живую атмосферу и настроение места. Завязку перескажи "
+    "своими словами, целиком и связно. Не управляй действиями и репликами персонажей игроков. "
+    "Закончи описанием того, что герои видят прямо перед собой. " + STORY_RULES
 )
 
 
@@ -332,12 +397,26 @@ def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
     system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {cfg.persona or ''}"
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": "\n\n".join(x for x in (intro, scene_hint, INTRO_TASK) if x)},
+        {
+            "role": "user",
+            "content": "\n\n".join(x for x in (intro, adventure.hook_line(p), scene_hint, INTRO_TASK) if x),
+        },
     ]
 
 
-async def _intro_text(svc, c: Campaign, cfg: AgentConfig, p: dict, seat_id: str, stream: Stream | None = None) -> str:
-    """Текст вступления на основной модели; вызов пишется в расходы. Пустая строка — модель не ответила."""
+async def _intro_text(
+    svc,
+    c: Campaign,
+    cfg: AgentConfig,
+    p: dict,
+    seat_id: str,
+    stream: Stream | None = None,
+    job: voiceover.VoiceJob | None = None,
+) -> str:
+    """Текст вступления на основной модели без скрытых рассуждений (они съедают лимит и обрывают текст);
+    вызов пишется в расходы. Куски потока идут в чат и в озвучку. Пустая строка — модель не ответила."""
+    feed = StoryFeed(stream, job)
+
     from app.agents.architect import model_of
 
     async with svc.maker() as s:
@@ -349,14 +428,15 @@ async def _intro_text(svc, c: Campaign, cfg: AgentConfig, p: dict, seat_id: str,
             _intro_messages(c, cfg, p),
             model=model,
             tools=None,
-            max_tokens=1500,
+            max_tokens=4000,
             temperature=temperature,
             api_base=api_base,
-            stream_callback=stream.push if stream is not None else None,
+            stream_callback=feed.push if stream is not None or job is not None else None,
+            thinking=False,
         )
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
-        text = MARKUP.sub(r"\2", reply.text.strip())  # во вступлении ещё нет сущностей: разметку снимаем
+        text = clean_story(reply.text)  # во вступлении ещё нет сущностей: разметку снимаем
     except LLMError as e:
         call.error = str(e)[:2000]
     async with svc.maker() as s:
@@ -365,19 +445,18 @@ async def _intro_text(svc, c: Campaign, cfg: AgentConfig, p: dict, seat_id: str,
     return text
 
 
-async def _intro_voice(svc, c: Campaign, text: str) -> dict | None:
-    """Голос вступления тем же голосом, что и реплики мастера. Без озвучки кампании — None."""
-    ready = getattr(svc, "_tts_ready", None)
-    if not text or ready is None or not ready(c):
+def _voice_job(svc, c: Campaign, clean=clean_story) -> voiceover.VoiceJob | None:
+    """Озвучка вступления по частям тем же голосом, что и реплики мастера. Без озвучки кампании — None."""
+    if not _tts_on(svc, c):
         return None
     st = c.settings or {}
-    try:
+
+    async def synth(part: str) -> dict | None:
         return await svc.tts.voice_for_narration(
-            svc.media_dir, c.id, text, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+            svc.media_dir, c.id, part, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
         )
-    except Exception:  # noqa: BLE001 — без голоса вступление всё равно выходит текстом
-        log.warning("озвучка вступления кампании %s не удалась", c.id, exc_info=True)
-        return None
+
+    return voiceover.VoiceJob(synth, clean)
 
 
 async def prepare_campaign_intro(svc, cid: str) -> bool:
@@ -391,15 +470,18 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
         if cfg is None:
             return False
         seat_id = master_seat(c).id
-    text = await _intro_text(svc, c, cfg, p, seat_id)
+    job = _voice_job(svc, c)
+    text = await _intro_text(svc, c, cfg, p, seat_id, job=job)
     if not text:
+        if job is not None:
+            job.cancel()
         return False
-    voice = await _intro_voice(svc, c, text)
+    voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
     async with svc.maker() as s:
         secret = await s.get(CampaignSecret, cid)
         if secret is None:
             return False
-        ready = {"text": text, "voice": voice, "version": p.get("version")}
+        ready = {"text": text, "voices": voices, "version": p.get("version")}
         secret.setting = {**(secret.setting or {}), INTRO_KEY: ready}
         await s.commit()
     return True
@@ -453,10 +535,16 @@ async def introduce_campaign(svc, cid: str) -> str | None:
             s.add(msg)
             await s.commit()
             msg_id = msg.id
-        text, voice = ready.get("text") or "", ready.get("voice")
+        text = ready.get("text") or ""
+        voices = ready.get("voices") or ([ready["voice"]] if ready.get("voice") else [])
+        tasks: list[asyncio.Task] = []
         if not text:
-            text = await _intro_text(svc, c, cfg, p, seat_id, stream=Stream(svc.bus, cid, msg))
-            voice = await _intro_voice(svc, c, text)
+            job = _voice_job(svc, c)  # части озвучиваются, пока модель ещё пишет: первая готова раньше всех
+            text = await _intro_text(svc, c, cfg, p, seat_id, stream=Stream(svc.bus, cid, msg), job=job)
+            if job is not None:
+                tasks = job.finish(text) if text else []
+                if not text:
+                    job.cancel()
 
         async with svc.maker() as s:
             msg = await s.get(Message, msg_id)
@@ -466,8 +554,8 @@ async def introduce_campaign(svc, cid: str) -> str | None:
                 await svc.bus.publish(cid, envelope("message.withdrawn", cid, {"id": msg_id}), None)
                 return None
             msg.content = await link_text(s, cid, text)
-            if voice:
-                msg.data = {"voice": {**voice, "text": text}}
+            if voices or tasks:
+                msg.data = voiceover.data_of(voices, len(voices) or len(tasks))
             c = await s.get(Campaign, cid)
             c.settings = {**(c.settings or {}), "campaign_intro_played": True}
             secret = await s.get(CampaignSecret, cid)
@@ -475,7 +563,9 @@ async def introduce_campaign(svc, cid: str) -> str | None:
                 secret.setting = {k: v for k, v in secret.setting.items() if k != INTRO_KEY}
             await s.commit()
             await publish_message(svc.bus, msg)
-            return msg_id
+        if tasks:
+            _spawn(svc, voiceover.attach(svc, msg, tasks))
+        return msg_id
     finally:
         await _set_flag(svc, cid, False)
 
@@ -517,9 +607,10 @@ async def introduce(svc, cid: str) -> str | None:
             scene_hint += f" Место: {where.get('name')}, {where.get('mood')}"
     if first:
         task = (
-            "Напиши вступление кампании: как эти герои встретились. 120–200 слов. У каждого героя — одна яркая деталь "
+            "Напиши, как эти герои встретились. 120–200 слов. У каждого героя — одна яркая деталь "
             "из его класса, происхождения, характера или ответов о связях. Общий повод сводит их вместе, затем "
-            "переход прямо в первую сцену. Коротко и харизматично."
+            "переход прямо в первую сцену. Коротко и харизматично. Общее вступление к кампании игроки уже "
+            "слышали: завязку не пересказывай."
         )
     else:
         task = (
@@ -530,12 +621,13 @@ async def introduce(svc, cid: str) -> str | None:
         x
         for x in (
             f"Кампания «{p.get('title')}». Завязка для игроков: {p.get('public_intro')}",
+            adventure.hook_line(p) if first else "",
             scene_hint,
             "Герои:\n" + heroes,
             ("Личные крючки (тайно, не раскрывай, можно намекнуть):\n" + hints) if hints else "",
             task
             + " Имена героев размечай как [[id|Имя]], других разметок не добавляй. Не решай за игроков, что делают "
-            "их герои дальше, закончи тем, что они видят.",
+            "их герои дальше, закончи тем, что они видят. " + STORY_RULES,
         )
         if x
     )
@@ -565,6 +657,16 @@ async def introduce(svc, cid: str) -> str | None:
         await s.commit()
 
     stream = Stream(svc.bus, cid, msg)  # сообщение уйдёт в чат целиком, когда текст готов
+    known = {ch.id for ch in newcomers}
+
+    def clean(raw: str) -> str:
+        return clean_story(raw, keep=lambda ref: ref in known)
+
+    # знакомство отряда — часть вводной: озвучивается так же, по частям; появление новичка — без голоса
+    job = _voice_job(svc, c, clean) if first else None
+
+    feed = StoryFeed(stream, job, clean)
+
     call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="intro", model=model)
     text = ""
     try:
@@ -572,17 +674,20 @@ async def introduce(svc, cid: str) -> str | None:
             msgs,
             model=model,
             tools=None,
-            max_tokens=1200,
+            max_tokens=2500,
             temperature=temperature,
             api_base=api_base,
-            stream_callback=stream.push,
+            stream_callback=feed.push,
+            thinking=False,
         )
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
-        known = {ch.id for ch in newcomers}
-        text = MARKUP.sub(lambda m: m.group(0) if m.group(1) in known else m.group(2), reply.text.strip())
+        text = clean(reply.text)
     except LLMError as e:
         call.error = str(e)[:2000]
+    tasks = job.finish(text) if job is not None and text else []
+    if job is not None and not tasks:
+        job.cancel()
 
     async with svc.maker() as s:
         s.add(call)
@@ -591,13 +696,19 @@ async def introduce(svc, cid: str) -> str | None:
         msg_db = await s.get(Message, msg_id)
         if text and msg_db:
             msg_db.content = await link_text(s, cid, text)
+            if tasks:
+                msg_db.data = voiceover.data_of([], len(tasks))
             # представленными считаем только после удачного вступления: при сбое мастер попробует на следующем ходу
             if scene:
                 scene.state = {**(scene.state or {}), "introduced": _introduced(scene) + [ch.id for ch in newcomers]}
             await s.commit()
             await publish_message(svc.bus, msg_db)
+            if tasks:
+                _spawn(svc, voiceover.attach(svc, msg_db, tasks))
             return msg_id
         else:
+            for t in tasks:
+                t.cancel()
             if msg_db:
                 await s.delete(msg_db)
             await s.commit()

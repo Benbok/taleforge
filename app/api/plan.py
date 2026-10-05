@@ -12,8 +12,8 @@ from sqlalchemy import func, select
 from app.agents import architect
 from app.api.deps import SessionDep, UserDep
 from app.content.catalog import campaign_catalog
+from app.core import adventure, plot
 from app.core import campaigns as svc
-from app.core import plot
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.db.models import CampaignPlan, CampaignSecret, User
 
@@ -33,7 +33,10 @@ async def _manager(session, user: User, campaign_id: str):
 
 
 async def can_generate(session, c) -> bool:
-    """Каркас целиком строится до первой сессии. Если игра началась без него (сбой генерации), его можно доделать."""
+    """Каркас целиком строится до первой сессии. Если игра началась без него (сбой генерации), его можно доделать.
+    У готового приключения каркас — из книги, архитектор его не перестраивает."""
+    if adventure.is_module(c):
+        return False
     if not await architect.started(session, c.id):
         return True
     secret = await session.get(CampaignSecret, c.id)
@@ -107,6 +110,8 @@ async def request_plan(
     """Построить каркас или новый вариант: до первой сессии или пока каркаса нет. Потом он меняется по ходу игры."""
     v = await _manager(session, user, campaign_id)
     c = v.campaign
+    if adventure.is_module(c):
+        raise Conflict("каркас готового приключения взят из книги и не перестраивается")
     if not await can_generate(session, c):
         raise Conflict("игра уже началась: каркас больше не перегенерируется целиком")
     if plot.status(c.settings)[0] == "generating":

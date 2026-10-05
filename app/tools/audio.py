@@ -49,7 +49,8 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
     _need(ctx)
     sc = ctx.world.scene
     lib = audio.library()
-    st = audio.mixer(sc)
+    place = audio.where(ctx)  # отряд разделён: звук только этой группы
+    st = audio.mixer(sc, place)
     before = copy.deepcopy(sc.state)
     wanted: dict[str, audio.Track | None] = {}
     for layer in audio.LOOPS:
@@ -73,7 +74,7 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
         changing = (wanted["music"].id if wanted["music"] else None) != (cur["track"] if cur else None)
         last = (st["changed"] or {}).get("music") or {}
         ago = time.time() - float(last.get("at", 0))
-        if changing and ago < audio.MUSIC_COOLDOWN and last.get("mode") == sc.mode:
+        if changing and ago < audio.MUSIC_COOLDOWN and last.get("mode") == sc.mode and not last.get("auto"):
             raise ToolError(f"мелодия сменилась {int(ago)} с назад: оставь её, меняй только на повороте сцены")
 
     # мелодия и ритм должны совпадать по темпу, иначе получится каша
@@ -98,7 +99,7 @@ async def set_soundscape(ctx: ToolContext, a: SoundscapeArgs) -> dict:
     for layer in audio.LOOPS:
         if layer in wanted or layer in levels:
             track = wanted[layer] if layer in wanted else current(layer)
-            audio.set_layer(sc, layer, track, levels.get(layer))
+            audio.set_layer(sc, layer, track, levels.get(layer), place)
     ctx.signals.add("audio")
     now_ = {k: (current(k).id if current(k) else "off") for k in audio.LOOPS}
     await ctx.record(

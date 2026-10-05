@@ -65,6 +65,15 @@ describe("создание кампании", () => {
     });
   });
 
+  it("готовое приключение: свой пакет и рост по вехам книги", () => {
+    const d = { ...EMPTY_DRAFT, name: "Склеп", source: "module" as const, pack_id: "echo", leveling: "xp" as const };
+    expect(stepProblems(d, 0)).toEqual(["Выберите приключение"]);
+    const body = createBody({ ...d, module_id: "mod1", module_hook: "board" });
+    expect(body).toMatchObject({ module_id: "mod1", module_hook: "board", pack_id: null, leveling: "milestone" });
+    // выбрали приключение, а потом вернулись к своему сюжету: модуль в запрос не уходит
+    expect(createBody({ ...d, source: "plot", module_id: "mod1" })).not.toHaveProperty("module_id");
+  });
+
   it("мелочи", () => {
     expect(personaBody("my:p1")).toEqual({ persona_id: "p1" });
     expect(personaBody("")).toEqual({});

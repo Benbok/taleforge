@@ -206,8 +206,7 @@ def _ai_ballots(ctx: ToolContext, v: dict, heroes: list[Character]) -> None:
 async def propose(ctx: ToolContext, kind: str, ids: list[str], proposer: str | None = None) -> dict:
     w = ctx.world
     place, heroes = _group(ctx, ids)
-    order = {x.get("id") for x in w.scene.turn_order or []}
-    if w.scene.mode == "combat" and any(h.id in order for h in heroes):
+    if any(w.in_fight(h.id) for h in heroes):
         raise ToolError("в бою не отдыхают: сначала закончите бой")
     votes = _votes(ctx)
     if any(x["place"] == place for x in votes.values()):
@@ -573,8 +572,8 @@ async def _start_fight(ctx: ToolContext, v: dict, ambush: dict, *, surprised: bo
             if hid in w.characters:
                 await fx.add_effect(ctx, w.actor(hid), rec, fx.UNIT_SECONDS["round"])
                 ctx.changed.add(hid)
-    if ctx.world.scene.mode != "combat":
-        await set_scene_mode(ctx, SceneModeArgs(mode="combat", participants=[*v["heroes"], *ambush["ids"]]))
+    # бой другой группы уже идёт — засада встаёт в ту же очередь
+    await set_scene_mode(ctx, SceneModeArgs(mode="combat", participants=[*v["heroes"], *ambush["ids"]]))
     ctx.signals.add("combat_started")
 
 

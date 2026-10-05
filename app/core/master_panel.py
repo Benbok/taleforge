@@ -35,6 +35,7 @@ GROUPS: dict[str, list[str]] = {
         "link_locations",
         "add_landmark",
         "move",
+        "enter_room",
         "reposition",
         "place_area",
         "remove_area",
