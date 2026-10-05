@@ -161,10 +161,16 @@ def free_cells_near(
     return out
 
 
+DEPLOY_CELLS = {"melee": 1, "near": 6, "far": 12}  # как рисует схема (web/src/game/map.ts ZONE_CELLS)
+
+
 def cell_from_zone(p: Pos) -> tuple[int, int]:
-    """Клетка, ближайшая к точке зоны и стороны: так старые позиции переходят на сетку."""
-    x, y = p.xy(None)
-    return round(x / 5), round(-y / 5)
+    """Клетка по зоне и стороне — там, где схема рисовала участника до сетки: «далеко» у края схемы, в 60 футах."""
+    if p.zone is None:
+        return 0, 0
+    n = DEPLOY_CELLS.get(p.zone, 6)
+    deg = math.radians(BEARING_DEG.get(p.bearing or "n", 0))
+    return round(n * math.sin(deg)), round(-n * math.cos(deg))
 
 
 def set_cell(world, actor_id: str, cell: tuple[int, int] | None) -> None:

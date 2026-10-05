@@ -1,5 +1,6 @@
-import { useEffect, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
+import { useDraft } from "./draft";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
 import { GridLines, roomForLabel, Token } from "./GridBoard";
@@ -19,6 +20,7 @@ import {
   type Sketch,
   type SketchExit,
   type SketchFeature,
+  type StepRequest,
   exitCell,
   sketchFrame,
 } from "./map";
@@ -102,6 +104,13 @@ function posNote(elevation?: Elevation, cover?: Cover): string | null {
   return parts.filter(Boolean).join(", ") || null;
 }
 
+/** Что игрок выбрал на схеме: предмет эскиза, выход или значок. ``near`` — клетки цели от строя отряда. */
+interface Pick {
+  name: string;
+  near: [number, number][];
+  exit?: SketchExit;
+}
+
 /** Открыть карточку по маркеру: для SVG якорь — сам маркер, у него есть рамка на экране. */
 function useOpen() {
   const open = useInspector((s) => s.open);
@@ -114,11 +123,13 @@ function SketchLayer({
   px,
   py,
   onOpen,
+  onPick,
 }: {
   sk: Sketch;
   px: (c: number) => number;
   py: (r: number) => number;
   onOpen: (id: string, name: string) => (e: MouseEvent<Element>) => void;
+  onPick: (p: Pick) => void;
 }) {
   const f = sketchFrame(sk);
   const cells: [number, number][] = [];
@@ -160,8 +171,10 @@ function SketchLayer({
           const p = at(c0 - f.dc, r0 - f.dr);
           const w = (c1 - c0 + 1) * CELL;
           const h = (r1 - r0 + 1) * CELL;
+          const cells: [number, number][] = [];
+          for (const [a0, b0, a1, b1] of ft.cells) for (let c = a0; c <= a1; c++) for (let r = b0; r <= b1; r++) cells.push([c - f.dc, r - f.dr]);
           return (
-            <g key={`${i}-${j}`}>
+            <g key={`${i}-${j}`} className="cursor-pointer" role="button" aria-label={ft.name} onClick={() => onPick({ name: ft.name, near: cells })}>
               <title>{ft.name}</title>
               <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_COLOR[ft.kind]} fillOpacity={0.35} stroke={FEATURE_COLOR[ft.kind]} strokeWidth={1} />
               {j === 0 && (
@@ -181,7 +194,16 @@ function SketchLayer({
         const out = x.side === "n" ? [0, -1] : x.side === "s" ? [0, 1] : x.side === "w" ? [-1, 0] : [1, 0];
         const label = `${x.name}: ${EXIT_KIND[x.kind]}${x.state ? `, ${EXIT_STATE[x.state]}` : ""}${x.beyond ? `, за ним ${x.beyond}` : ""}`;
         return (
-          <g key={i} className={x.to ? "cursor-pointer" : undefined} onClick={x.to ? onOpen(x.to, x.name) : undefined} role={x.to ? "button" : undefined} aria-label={label}>
+          <g
+            key={i}
+            className="cursor-pointer"
+            onClick={(e) => {
+              onPick({ name: x.name, near: [[c, r]], exit: x });
+              if (x.to) onOpen(x.to, x.name)(e);
+            }}
+            role="button"
+            aria-label={label}
+          >
             <title>{label}</title>
             <rect x={cx - CELL / 2 + 1} y={cy - CELL / 2 + 1} width={CELL - 2} height={CELL - 2} rx={3} fill="var(--color-surface, #17181c)" stroke={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location} strokeWidth={1.2} />
             <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={10} fill={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location}>
@@ -243,6 +265,10 @@ function SketchLegend({ sk }: { sk: Sketch }) {
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
   const { things, exits, heroes, areas } = layoutGrid(m);
+  const [pick, setPick] = useState<Pick | null>(null);
+  const { step, stepTo, cancelStep } = useMapWindow();
+  const go = (req: StepRequest) => stepTo(req);
+  const canWalk = heroes.some((h) => h.item.mine) && !step.busy;
   const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
   const name = (s: string, col: number, row: number) => (roomForLabel(occupied, col, row) ? s : undefined);
   const combat = m.mode === "combat";
@@ -254,13 +280,37 @@ function Around({ m }: { m: MapState }) {
   const py = (r: number) => (r - v.r0) * CELL + CELL / 2;
   const MX = px(0);
   const MY = py(0);
+  const frame = sk ? sketchFrame(sk) : null;
+  const floor: [number, number][] = [];
+  for (let c = v.c0; c < v.c0 + v.cols; c++)
+    for (let r = v.r0; r < v.r0 + v.rows; r++) if ((!frame || frame.allowed(c, r)) && !occupied.has(`${c},${r}`)) floor.push([c, r]);
+  const pickThing = (id: string, name: string, col: number, row: number) => (e: MouseEvent<Element>) => {
+    setPick({ name, near: [[col, row]] });
+    open(id, name)(e);
+  };
 
   return (
     <div className="flex flex-col gap-3">
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
       <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
-        {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
+        {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} onPick={setPick} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
+
+        {/* Свободные клетки: нажатие ведёт туда героя игрока */}
+        {canWalk &&
+          floor.map(([c, r]) => (
+            <rect
+              key={`step-${c},${r}`}
+              className="tf-step cursor-pointer"
+              x={px(c) - CELL / 2}
+              y={py(r) - CELL / 2}
+              width={CELL}
+              height={CELL}
+              fill="var(--tf-accent, #c98a4b)"
+              onClick={() => go({ cell: [c, r] })}
+              aria-label={`Идти в клетку ${c}, ${r}`}
+            />
+          ))}
 
         {/* Дальности: 5 фт, 30 фт, «далеко» у края; у места с эскизом их заменяет само место */}
         {!sk && ZONES.map(([z]) => (
@@ -299,7 +349,7 @@ function Around({ m }: { m: MapState }) {
 
         {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row }) => (
-          <Token key={x.id} cx={px(col)} cy={py(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={open(x.id, x.name)} ariaLabel={`Выход: ${x.name}`} />
+          <Token key={x.id} cx={px(col)} cy={py(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={pickThing(x.id, x.name, col, row)} ariaLabel={`Выход: ${x.name}`} />
         ))}
         {things.map(({ item: t, col, row }) => (
           <Token
@@ -312,7 +362,7 @@ function Around({ m }: { m: MapState }) {
             label={name(t.name, col, row)}
             faded={t.condition === "мёртв"}
             badge={badge(t.elevation, t.cover)}
-            onClick={open(t.id, t.name)}
+            onClick={pickThing(t.id, t.name, col, row)}
             ariaLabel={t.name}
           />
         ))}
@@ -333,6 +383,25 @@ function Around({ m }: { m: MapState }) {
           />
         ))}
       </svg>
+      <StepBar pick={canWalk || step.busy ? pick : null} onClose={() => setPick(null)} go={go} />
+      {(step.note || step.error || step.warnings) && (
+        <div role="status" className={`rounded border px-3 py-2 text-sm ${step.error ? "border-ember text-ember" : "border-line text-ink-2"}`}>
+          {step.error ?? (step.warnings ? step.warnings.join("; ") : step.note)}
+          {step.warnings && step.pending && (
+            <span className="ml-2 inline-flex gap-2">
+              <button className="btn px-2 py-0.5 text-xs" onClick={() => stepTo(step.pending as StepRequest, true)}>
+                Всё равно идти
+              </button>
+              <button className="btn px-2 py-0.5 text-xs" onClick={cancelStep}>
+                Отмена
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+      {heroes.some((h) => h.item.mine) && !step.note && !step.error && !step.warnings && (
+        <p className="text-center font-mono text-[11px] text-muted">Нажми свободную клетку — герой пойдёт туда. Нажми предмет или выход — подойти или осмотреть.</p>
+      )}
       {combat && (
         <p className="text-center font-mono text-[11px] text-muted">
           Бой: ▲ на возвышении, ▼ внизу, ◧ за укрытием (+2 или +5 к КД), ■ полное укрытие. Клетка — 5 футов; «далеко» нарисовано у края схемы.
@@ -414,6 +483,42 @@ function Around({ m }: { m: MapState }) {
           </li>
         )}
       </ul>
+    </div>
+  );
+}
+
+/** Выбранная цель на схеме: подойти и готовые фразы в поле ввода. */
+function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void; go: (r: StepRequest) => void }) {
+  const insert = useDraft((s) => s.insert);
+  if (!pick) return null;
+  const x = pick.exit;
+  const shut = x && (x.state === "closed" || x.state === "locked");
+  const say = (text: string) => () => {
+    insert(text);
+    onClose();
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded border border-line px-3 py-2 text-sm">
+      <span className="font-heading text-ink">{pick.name}</span>
+      <button className="btn px-2 py-0.5 text-xs" onClick={() => go({ near: pick.near })}>
+        Подойти
+      </button>
+      <button className="btn px-2 py-0.5 text-xs" onClick={say(`Осматриваю: ${pick.name}`)}>
+        Осмотреть
+      </button>
+      {shut && (
+        <button className="btn px-2 py-0.5 text-xs" onClick={say(x.state === "locked" ? `Пробую отпереть: ${pick.name}` : `Открываю: ${pick.name}`)}>
+          {x.state === "locked" ? "Отпереть" : "Открыть"}
+        </button>
+      )}
+      {x && x.kind !== "window" && (
+        <button className="btn px-2 py-0.5 text-xs" onClick={say(`Прохожу: ${pick.name}`)}>
+          Пройти
+        </button>
+      )}
+      <button className="ml-auto text-muted hover:text-ink" onClick={onClose} aria-label="Снять выбор">
+        ×
+      </button>
     </div>
   );
 }

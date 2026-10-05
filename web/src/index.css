@@ -284,3 +284,12 @@ input[type="checkbox"]:disabled {
     animation: none;
   }
 }
+
+/* Схема «Вокруг»: свободная клетка, куда может пойти герой игрока */
+.tf-step {
+  fill-opacity: 0;
+}
+.tf-step:hover,
+.tf-step:focus-visible {
+  fill-opacity: 0.18;
+}
