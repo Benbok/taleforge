@@ -30,6 +30,7 @@ CARDS = [
         "bpm": 100,  # поле старого микшера: читается без ошибки
     },
     {"id": "mel_fast", "file": "mel_fast.ogg", "layer": "music", "title": "Спешка", "moods": ["tension"]},
+    {"id": "mel_fast2", "file": "mel_fast2.ogg", "layer": "music", "title": "Бег", "moods": ["tension"]},
     {"id": "rhy_war", "file": "rhy_war.ogg", "layer": "rhythm", "title": "Барабаны", "moods": ["battle"]},
     {
         "id": "mel_hold",
@@ -43,6 +44,8 @@ CARDS = [
     {"id": "stg_victory", "file": "stg_victory.ogg", "layer": "sfx", "title": "Победа", "cue": "victory"},
     {"id": "sfx_bell", "file": "sfx_bell.ogg", "layer": "sfx", "title": "Набат", "cue": ["combat", "death"]},
     {"id": "sfx_crit", "file": "sfx_crit.ogg", "layer": "sfx", "title": "Хруст", "cue": "crit"},
+    {"id": "stg_act", "file": "stg_act.ogg", "layer": "sfx", "title": "Заставка", "cue": ["act", "place"]},
+    {"id": "sfx_secret", "file": "sfx_secret.ogg", "layer": "sfx", "title": "Тайна", "cue": "secret"},
 ]
 
 
@@ -204,6 +207,58 @@ def test_event_cues_by_priority(game):
         return [c["id"] for c in ctx.audio]
 
     assert play(settings, cid, fn) == ["sfx_crit"]
+
+
+def test_story_cues_and_new_place(game):
+    """Сюжетные события скрыты от игроков текстом, но звучат; заставка — на первый приход в место."""
+    settings, cid, hero, _ = game
+
+    async def fn(ctx):
+        await ctx.record("end_act", payload={}, hidden=True)
+        await ctx.record("plot_reveal", payload={}, hidden=True)
+        audio.finalize(ctx)
+        first = [c["id"] for c in ctx.audio]
+        ctx.audio.clear()
+        ctx.events.clear()
+        audio.finalize(ctx)  # то же место второй раз — без заставки
+        again = [c["id"] for c in ctx.audio]
+        ctx.audio.clear()
+        r = await execute(
+            ctx, "create_location", {"name": "Кабак", "template_id": "location.tavern", "make_current": True}
+        )
+        assert r["ok"], r
+        audio.finalize(ctx)
+        return first, again, [c["id"] for c in ctx.audio]
+
+    first, again, moved = play(settings, cid, fn)
+    assert first == ["stg_act", "sfx_secret"] and again == [] and moved == ["stg_act"]
+
+
+def test_no_repeat_and_owner_swaps_track(client, admin, game):
+    """Музыка одного настроения не повторяется подряд; «Сменить трек» берёт другую того же настроения."""
+    settings, cid, _, (p1,) = game
+
+    async def fn(ctx):
+        await execute(ctx, "set_music", {"mood": "tension", "reason": "спешка"})
+        cur = audio.current(ctx.world.scene)
+        audio.set_music(ctx.world.scene, None)
+        return cur.id, audio.choose(ctx, "tension").id  # только что звучавший трек — не подряд
+
+    first, nxt = play(settings, cid, fn)
+    assert {first, nxt} == {"mel_fast", "mel_fast2"}
+
+    async def put(ctx):
+        audio.set_music(ctx.world.scene, audio.library().get("mel_fast"), "tension")
+        ctx.signals.add("audio")
+
+    play(settings, cid, put)
+    assert client.post(f"/api/campaigns/{cid}/audio/next", headers=p1).status_code == 403
+    with connect(client, p1, cid) as (ws, snap):
+        was = snap["payload"]["audio"]["music"]["title"]
+        r = ok(client.post(f"/api/campaigns/{cid}/audio/next", headers=admin))
+        e = next_of(ws, "audio.state")
+    assert e["payload"]["music"]["title"] == r["title"]
+    assert {was, r["title"]} == {"Спешка", "Бег"}  # другой трек того же настроения
 
 
 def test_disabled_campaign_hides_tools(client, admin, game):

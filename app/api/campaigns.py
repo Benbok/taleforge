@@ -275,6 +275,29 @@ async def patch_campaign(
     return await campaign_out(session, c, user)
 
 
+@router.post("/campaigns/{campaign_id}/audio/next")
+async def next_track(campaign_id: str, user: UserDep, session: SessionDep, request: Request) -> dict:
+    """«Сменить трек»: владелец просит другую музыку того же настроения, если эта не легла на сцену."""
+    from app.core.inspect import viewer_hero
+
+    v = await _viewer(session, user, campaign_id)
+    if not v.is_owner:
+        raise AccessDenied("сменить музыку может только владелец кампании")
+    c = v.campaign
+    if not audio.enabled(c):
+        raise Conflict("звук в кампании выключен: включите его в настройках кампании")
+    sc = await get_scene(session, c.id)
+    chars = (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()
+    groups = party_groups(chars, sc)
+    hero = await viewer_hero(session, v)
+    place = (hero.location_id or sc.location_id) if hero is not None and len(groups) > 1 else None
+    t = audio.another(c, sc, place)  # отряд разделён: музыка группы владельца
+    await session.commit()
+    for seats, state in audio.views(c, sc, groups):
+        await request.app.state.bus.publish(c.id, envelope("audio.state", c.id, {**state, "cues": []}), seats)
+    return {"title": t.title}
+
+
 async def _master_agent(session, user: User, campaign_id: str, what: str = "модель мастера") -> AgentConfig:
     v = await _viewer(session, user, campaign_id)
     if not v.is_owner:

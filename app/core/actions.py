@@ -20,7 +20,7 @@ from app.db.models import Character
 # session.start — начать сессию (на паузе — продолжить); session.pause; campaign.end — завершить кампанию;
 # chat.ooc — писать вне игры; chat.play — действие и речь героя; chat.whisper — шёпот мастеру;
 # chat.narrate — повествование живого мастера; turn.pass — пропустить ход; invite.create — пригласить;
-# chat.withdraw — отменить ожидающую реплику.
+# chat.withdraw — отменить ожидающую реплику; audio.next — владелец меняет музыку сцены.
 
 
 async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
@@ -41,6 +41,8 @@ async def available(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         actions.append("campaign.end")
     if viewer.is_owner and c.status != "ended":
         actions.append("invite.create")
+        if (c.settings or {}).get("audio_enabled"):
+            actions.append("audio.next")
 
     if viewer.seat is not None or viewer.is_owner:
         actions.append("chat.ooc")
