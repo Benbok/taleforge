@@ -370,7 +370,7 @@ class LandmarkArgs(BaseModel):
     description: str = Field("", max_length=1000, description="как это выглядит для героев, без тайн")
     zone: Zone = "near"
     bearing: Bearing | None = Field(None, description=BEARING_HINT)
-    cell: Cell | None = Field(None, description=CELL_HINT + "; не в стену")
+    cell: Cell | None = Field(None, description=CELL_HINT + "; на стене можно: картина, факел, крюк")
     location_id: str | None = Field(None, description=PLACE_HINT)
 
 
@@ -389,7 +389,7 @@ async def add_landmark(ctx: ToolContext, a: LandmarkArgs) -> dict:
     rel = None
     if a.cell is not None:
         rel = grid.to_rel(ctx.world, place, a.cell)
-        problem = grid.floor_problem(ctx.world, place, rel)
+        problem = grid.floor_problem(ctx.world, place, rel, wall_ok=True)
         if problem:
             raise ToolError(problem)
     en = Entity(
@@ -494,6 +494,116 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
         "sketch_place",
         target_id=place.id,
         payload={"place": place.name, "size": [a.cols, a.rows], "exits": len(a.exits), "features": len(a.features)},
+        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+    )
+    return {"place": place.name, "sketch": sketch.describe(data)}
+
+
+class EditSketchArgs(BaseModel):
+    action: Literal[
+        "reveal", "hide", "open", "close", "lock", "unlock", "to_exit", "remove", "add_feature", "add_exit"
+    ] = Field(
+        description="reveal — герои нашли тайное (выход или предмет эскиза); hide — спрятать; open, close, lock, "
+        "unlock — состояние выхода (unlock — отперт, но закрыт); to_exit — предмет эскиза оказался выходом "
+        "(«камень» — дверь в форме камня), нужен exit; remove — убрать деталь; add_feature, add_exit — новая "
+        "деталь, замеченная при осмотре"
+    )
+    target: str | None = Field(
+        None, max_length=60, description="название выхода или предмета эскиза, как в таблице сцены (не для add_*)"
+    )
+    rename: str | None = Field(None, max_length=60, description="новое имя, если герои увидели, что это на самом деле")
+    feature: SketchFeature | None = Field(None, description="для add_feature")
+    exit: SketchExit | None = Field(None, description="для add_exit и to_exit: выход на краю места")
+    location_id: str | None = Field(None, description=PLACE_HINT)
+
+
+def _find(items: list[dict], name: str, what: str) -> int:
+    want = name.strip().lower()
+    for i, x in enumerate(items):
+        if x["name"].strip().lower() == want:
+            return i
+    have = ", ".join(f"«{x['name']}»" for x in items) or "нет"
+    raise ToolError(f"в эскизе нет {what} «{name}»; есть: {have}")
+
+
+@tool(
+    "edit_sketch",
+    "Правит одну деталь эскиза места, не перерисовывая его: герои нашли тайную дверь, отперли решётку, заметили "
+    "картину на стене, «камень» оказался дверью. Остальной эскиз остаётся как был.",
+    EditSketchArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
+    w = ctx.world
+    if w.scene.location_id is None:
+        raise ToolError("у сцены нет места; сначала create_location с make_current")
+    place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    current = sketch.of_place(place, w.catalog, w.entities)
+    if current is None:
+        raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
+    data = copy.deepcopy(current)
+    exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
+    note = ""
+    if a.action in ("add_feature", "add_exit"):
+        part = a.feature if a.action == "add_feature" else a.exit
+        if part is None:
+            raise ToolError(f"{a.action}: нужен {'feature' if a.action == 'add_feature' else 'exit'}")
+        (feats if a.action == "add_feature" else exits).append(part.model_dump())
+        note = part.name
+    else:
+        if not a.target:
+            raise ToolError("укажи target — название детали из эскиза")
+        names = [x["name"].strip().lower() for x in exits]
+        is_exit = a.target.strip().lower() in names
+        if a.action in ("open", "close", "lock", "unlock") and not is_exit:
+            _find(exits, a.target, "выхода")
+        if a.action == "to_exit":
+            i = _find(feats, a.target, "предмета")
+            if a.exit is None:
+                raise ToolError("to_exit: нужен exit — на каком краю и какой это выход")
+            feats.pop(i)
+            exits.append({**a.exit.model_dump(), **({"name": a.rename} if a.rename else {})})
+        elif is_exit:
+            i = _find(exits, a.target, "выхода")
+            x = dict(exits[i])
+            if a.action == "remove":
+                exits.pop(i)
+            else:
+                state = {"open": "open", "close": "closed", "lock": "locked", "unlock": "closed"}.get(a.action)
+                if state:
+                    x["state"] = state
+                if a.action in ("reveal", "hide"):
+                    x["hidden"] = a.action == "hide"
+                if a.rename:
+                    x["name"] = a.rename
+                exits[i] = x
+        else:
+            i = _find(feats + exits, a.target, "выхода или предмета")
+            f = dict(feats[i])
+            if a.action == "remove":
+                feats.pop(i)
+            elif a.action in ("reveal", "hide"):
+                f["hidden"] = a.action == "hide"
+                if a.rename:
+                    f["name"] = a.rename
+                feats[i] = f
+            else:
+                raise ToolError(f"«{f['name']}» — предмет эскиза: для него reveal, hide, remove или to_exit")
+        note = a.rename or a.target
+    data["exits"], data["features"] = exits, feats
+    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"})
+    if errors:
+        raise ToolError("; ".join(errors[:8]))
+    before = copy.deepcopy(place.state)
+    link_exits(place, data, w.entities)
+    data["auto"] = False  # правка мастера: фоновая перерисовка по старому описанию её не заменит
+    data["rev"] = int((place.state or {}).get("layout_rev") or 0)
+    place.state = {**(place.state or {}), "sketch": data}
+    await ctx.record(
+        "edit_sketch",
+        target_id=place.id,
+        payload={"place": place.name, "action": a.action, "target": note},
         inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
     )
     return {"place": place.name, "sketch": sketch.describe(data)}

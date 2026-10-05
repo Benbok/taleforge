@@ -80,3 +80,35 @@ def test_book_room_gets_a_sketch_from_its_cells():
         {"side": "e", "at": 1, "kind": "passage", "state": "open", "name": "Комната 2", "to": "en_2"}
     ]
     assert sketch.check(sk, {"en_2"}) == []
+
+
+def test_master_edits_one_detail_of_the_sketch(client, admin, settings):
+    import_base(settings)
+    c, (p1,), _ = party(client, admin)
+    cid = c["id"]
+
+    async def explore(ctx):
+        await _ok(ctx, "create_location", {"name": "Камера", "make_current": True})
+        await _ok(ctx, "sketch_place", CELL)
+        await _ok(ctx, "edit_sketch", {"action": "unlock", "target": "Дверь решётки"})
+        await _ok(ctx, "edit_sketch", {"action": "reveal", "target": "Лаз под нарами"})
+        await _ok(ctx, "edit_sketch", {"action": "add_feature", "feature": {"name": "Валун", "cells": [[3, 3, 3, 3]]}})
+        stone = {"name": "Дверь", "side": "e", "at": 3, "kind": "door", "state": "closed"}
+        await _ok(
+            ctx, "edit_sketch", {"action": "to_exit", "target": "валун", "rename": "Дверь в форме камня", "exit": stone}
+        )
+        await _ok(ctx, "add_landmark", {"name": "Картина", "cell": [5, 0]})  # висит на стене
+        bad = await execute(ctx, "edit_sketch", {"action": "open", "target": "Нары"})
+        missing = await execute(ctx, "edit_sketch", {"action": "reveal", "target": "Люк"})
+        return bad, missing, ctx.world.scene_table()
+
+    bad, missing, table = _play(settings, cid, explore)
+    assert not bad["ok"] and "нет выхода «Нары»" in bad["error"]
+    assert not missing["ok"] and "Лаз под нарами" in missing["error"]
+    assert "edit_sketch" in table
+    sk = _map(client, p1, cid)["sketch"]
+    exits = {x["name"]: x for x in sk["exits"]}
+    assert exits["Дверь решётки"]["state"] == "closed"
+    assert "Лаз под нарами" in exits  # найден: игроки видят
+    assert exits["Дверь в форме камня"]["side"] == "e"
+    assert [f["name"] for f in sk["features"]] == ["Нары"]  # валун стал дверью, тайник по-прежнему скрыт
