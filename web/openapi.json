@@ -1375,6 +1375,13 @@
       "title": "Bonds",
       "type": "array"
      },
+     "class_features": {
+      "items": {
+       "$ref": "#/components/schemas/ClassFeature"
+      },
+      "title": "Class Features",
+      "type": "array"
+     },
      "class_id": {
       "anyOf": [
        {
@@ -1584,6 +1591,13 @@
      "status": {
       "title": "Status",
       "type": "string"
+     },
+     "wild_shape_forms": {
+      "items": {
+       "$ref": "#/components/schemas/WildShapeForm"
+      },
+      "title": "Wild Shape Forms",
+      "type": "array"
      }
     },
     "required": [
@@ -1704,6 +1718,102 @@
      "state"
     ],
     "title": "ChatMessage",
+    "type": "object"
+   },
+   "ClassFeature": {
+    "additionalProperties": false,
+    "description": "Умение класса в листе игрока: что даёт, как применить и кто его исполняет (``mode``): сервер сам,\nигрок заявляет в ходе фразой ``say`` или мастер по описанию.",
+    "properties": {
+     "detail": {
+      "default": null,
+      "title": "Detail",
+      "type": "string"
+     },
+     "how": {
+      "default": null,
+      "title": "How",
+      "type": "string"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "level": {
+      "title": "Level",
+      "type": "integer"
+     },
+     "mode": {
+      "enum": [
+       "auto",
+       "declare",
+       "master"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "say": {
+      "default": null,
+      "title": "Say",
+      "type": "string"
+     },
+     "skills": {
+      "default": null,
+      "items": {
+       "type": "string"
+      },
+      "title": "Skills",
+      "type": "array"
+     },
+     "text_ru": {
+      "default": null,
+      "title": "Text Ru",
+      "type": "string"
+     },
+     "uses": {
+      "$ref": "#/components/schemas/ClassFeatureUses",
+      "default": null
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "level",
+     "mode"
+    ],
+    "title": "ClassFeature",
+    "type": "object"
+   },
+   "ClassFeatureUses": {
+    "additionalProperties": false,
+    "properties": {
+     "left": {
+      "title": "Left",
+      "type": "integer"
+     },
+     "max": {
+      "title": "Max",
+      "type": "integer"
+     },
+     "per_ru": {
+      "title": "Per Ru",
+      "type": "string"
+     },
+     "unit": {
+      "title": "Unit",
+      "type": "string"
+     }
+    },
+    "required": [
+     "left",
+     "max",
+     "per_ru",
+     "unit"
+    ],
+    "title": "ClassFeatureUses",
     "type": "object"
    },
    "CreationRulesIn": {
@@ -4106,6 +4216,14 @@
       "title": "Bonds",
       "type": "array"
      },
+     "class_features": {
+      "default": null,
+      "items": {
+       "$ref": "#/components/schemas/ClassFeature"
+      },
+      "title": "Class Features",
+      "type": "array"
+     },
      "class_id": {
       "anyOf": [
        {
@@ -4326,6 +4444,14 @@
      "status": {
       "title": "Status",
       "type": "string"
+     },
+     "wild_shape_forms": {
+      "default": null,
+      "items": {
+       "$ref": "#/components/schemas/WildShapeForm"
+      },
+      "title": "Wild Shape Forms",
+      "type": "array"
      }
     },
     "required": [
@@ -8949,6 +9075,29 @@
      "label"
     ],
     "title": "VoteEnded",
+    "type": "object"
+   },
+   "WildShapeForm": {
+    "additionalProperties": false,
+    "properties": {
+     "cr": {
+      "title": "Cr"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "cr"
+    ],
+    "title": "WildShapeForm",
     "type": "object"
    }
   },

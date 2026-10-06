@@ -10,104 +10,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Имена умений по-русски. Ключ — начало ключа умения в данных SRD: «extra_attack_2» и «monk_extra_attack» найдут
-# свою запись. Порядок важен: более точный ключ раньше общего.
-RU_NAMES: tuple[tuple[str, str], ...] = (
-    ("barbarian_unarmored_defense", "Защита без доспехов"),
-    ("monk_unarmored_defense", "Защита без доспехов"),
-    ("rage", "Ярость"),
-    ("danger_sense", "Чувство опасности"),
-    ("reckless_attack", "Безрассудная атака"),
-    ("fast_movement", "Быстрое передвижение"),
-    ("feral_instinct", "Дикий инстинкт"),
-    ("brutal_critical", "Сильный критический удар"),
-    ("relentless_rage", "Непреклонная ярость"),
-    ("persistent_rage", "Непрерывная ярость"),
-    ("indomitable_might", "Неукротимая мощь"),
-    ("primal_champion", "Первобытный чемпион"),
-    ("barbarian_extra_attack", "Дополнительная атака"),
-    ("monk_extra_attack", "Дополнительная атака"),
-    ("paladin_extra_attack", "Дополнительная атака"),
-    ("ranger_extra_attack", "Дополнительная атака"),
-    ("extra_attack", "Дополнительная атака"),
-    ("bardic_inspiration", "Вдохновение барда"),
-    ("jack_of_all_trades", "Мастер на все руки"),
-    ("song_of_rest", "Песнь отдыха"),
-    ("font_of_inspiration", "Источник вдохновения"),
-    ("countercharm", "Контрочарование"),
-    ("magical_secrets", "Тайны магии"),
-    ("superior_inspiration", "Превосходное вдохновение"),
-    ("channel_divinity_turn_undead", "Божественный канал: изгнание нежити"),
-    ("channel_divinity", "Божественный канал"),
-    ("destroy_undead", "Уничтожение нежити"),
-    ("divine_intervention_improvement", "Божественное вмешательство (улучшенное)"),
-    ("divine_intervention", "Божественное вмешательство"),
-    ("supreme_healing", "Высшее исцеление"),
-    ("druidic", "Друидический язык"),
-    ("wild_shape", "Дикий облик"),
-    ("beast_spells", "Звериные заклинания"),
-    ("druid_timeless_body", "Безвременное тело"),
-    ("monk_timeless_body", "Безвременное тело"),
-    ("archdruid", "Архидруид"),
-    ("second_wind", "Второе дыхание"),
-    ("action_surge", "Всплеск действий"),
-    ("indomitable", "Упорный"),
-    ("martial_arts", "Боевые искусства"),
-    ("ki_empowered_strikes", "Удары, усиленные ци"),
-    ("ki", "Ци"),
-    ("flurry_of_blows", "Шквал ударов"),
-    ("patient_defense", "Терпеливая оборона"),
-    ("step_of_the_wind", "Поступь ветра"),
-    ("unarmored_movement", "Движение без доспехов"),
-    ("deflect_missiles", "Отражение снарядов"),
-    ("slow_fall", "Замедленное падение"),
-    ("stunning_strike", "Оглушающий удар"),
-    ("monk_evasion", "Увёртливость"),
-    ("rogue_evasion", "Увёртливость"),
-    ("stillness_of_mind", "Спокойствие разума"),
-    ("purity_of_body", "Чистота тела"),
-    ("tongue_of_the_sun_and_moon", "Язык солнца и луны"),
-    ("diamond_soul", "Алмазная душа"),
-    ("empty_body", "Пустое тело"),
-    ("perfect_self", "Совершенство"),
-    ("divine_sense", "Божественное чувство"),
-    ("lay_on_hands", "Наложение рук"),
-    ("improved_divine_smite", "Улучшенная божественная кара"),
-    ("divine_smite", "Божественная кара"),
-    ("divine_health", "Божественное здоровье"),
-    ("aura_of_protection", "Аура защиты"),
-    ("aura_of_courage", "Аура отваги"),
-    ("aura_improvements", "Улучшенные ауры"),
-    ("cleansing_touch", "Очищающее касание"),
-    ("favored_enemy", "Избранный враг"),
-    ("natural_explorer", "Исследователь природы"),
-    ("primeval_awareness", "Первозданная осведомлённость"),
-    ("ranger_lands_stride", "Тропы земли"),
-    ("hide_in_plain_sight", "Маскировка на виду"),
-    ("vanish", "Исчезновение"),
-    ("feral_senses", "Дикие чувства"),
-    ("foe_slayer", "Убийца врагов"),
-    ("sneak_attack", "Скрытая атака"),
-    ("thieves_cant", "Воровской жаргон"),
-    ("cunning_action", "Хитрое действие"),
-    ("uncanny_dodge", "Невероятное уклонение"),
-    ("reliable_talent", "Надёжный талант"),
-    ("blindsense", "Слепое зрение"),
-    ("slippery_mind", "Скользкий разум"),
-    ("elusive", "Неуловимость"),
-    ("stroke_of_luck", "Удача"),
-    ("flexible_casting", "Гибкое колдовство"),
-    ("font_of_magic", "Источник магии"),
-    ("metamagic", "Метамагия"),
-    ("sorcerous_restoration", "Чародейское восстановление"),
-    ("eldritch_invocations", "Таинственные воззвания"),
-    ("mystic_arcanum", "Таинственный арканум"),
-    ("eldritch_master", "Таинственный мастер"),
-    ("arcane_recovery", "Магическое восстановление"),
-    ("spell_mastery", "Мастерство заклинаний"),
-    ("signature_spell", "Фирменное заклинание"),
-)
-
 # Не умения, а выбор или заголовки: заклинательство показано строкой книги заклинаний, подклассы героям пока не
 # выбираются, увеличение характеристик ещё не делается при росте уровня, стиль боя и компетентность — своими полями.
 SKIP = re.compile(
@@ -156,13 +58,6 @@ def numbers(class_data: dict, level: int) -> dict[str, Any]:
 
 def has(keys: set[str] | frozenset[str], *prefixes: str) -> bool:
     return any(k.startswith(p) for k in keys for p in prefixes)
-
-
-def ru_name(key: str, fallback: str = "") -> str:
-    for prefix, name in RU_NAMES:
-        if key.startswith(prefix):
-            return name
-    return fallback or key
 
 
 def times(n: int) -> str:
@@ -216,11 +111,11 @@ def class_features(class_data: dict, level: int, sheet: dict | None = None) -> l
         if SKIP.search(key):
             continue
         f = by_key.get(key) or {}
-        name = ru_name(key, str(f.get("name") or key))
+        name = str(f.get("name_ru") or f.get("name") or key)
         text = str(f.get("description") or "").strip()
         if len(text) > SEE_DESCRIPTION:
             text = text[:SEE_DESCRIPTION].rsplit(" ", 1)[0] + "…"
-        row = {"key": key, "name": name, "level": int(f.get("level") or 1), "text": text}
+        row = {"key": key, "name": name, "level": int(f.get("level") or 1), "text": text, **player_texts(f, name)}
         detail = _detail(key, nums, level)
         if detail:
             row["detail"] = detail
@@ -232,10 +127,21 @@ def class_features(class_data: dict, level: int, sheet: dict | None = None) -> l
         pick = sheet.get("fighting_style")
         if pick in style:
             name, text = FIGHTING_STYLES[pick]
-            rows.append({"key": f"fighting_style_{pick}", "name": f"Боевой стиль: {name}", "level": 1, "text": text})
+            rows.append(
+                {"key": f"fighting_style_{pick}", "name": f"Боевой стиль: {name}", "level": 1, "text": text,
+                 "text_ru": text, "mode": "master" if pick in ("great_weapon_fighting", "protection") else "auto"}
+            )  # fmt: skip
         else:
             rows.append(
-                {"key": "fighting_style", "name": "Боевой стиль", "level": 1, "text": "", "detail": "не выбран"}
+                {
+                    "key": "fighting_style",
+                    "name": "Боевой стиль",
+                    "level": 1,
+                    "text": "",
+                    "detail": "не выбран",
+                    "text_ru": "Стиль ещё не выбран: назовите мастеру один из стилей класса.",
+                    "mode": "master",
+                }
             )
     need = expertise_count(class_data, level)
     if need:
@@ -246,12 +152,33 @@ def class_features(class_data: dict, level: int, sheet: dict | None = None) -> l
                 "name": "Компетентность",
                 "level": 1,
                 "text": "Удвоенный бонус мастерства к проверкам выбранных навыков.",
+                "text_ru": "Удвоенный бонус мастерства к проверкам выбранных навыков.",
+                "mode": "auto",
+                "skills": got,
                 "detail": ", ".join(got) + ("" if len(got) == need else f" (не выбрано: {need - len(got)})")
                 if got
                 else f"не выбрано: {need}",
             }
         )
     return rows
+
+
+def player_texts(f: dict, name: str) -> dict[str, str]:
+    """Тексты умения для игрока: что даёт, как применить, кто исполняет и фраза для заявки. Умения пакетов мира
+    без этих полей пишут описание по-русски — оно и идёт игроку; заявляются те, у которых есть действие."""
+    mode = f.get("mode")
+    if mode not in ("auto", "declare", "master"):
+        mode = "declare" if f.get("action") else "master"
+    out = {"mode": mode}
+    desc = str(f.get("description") or "")
+    text = f.get("text_ru") or (desc if re.search("[а-яё]", desc, re.I) else "")
+    if text:
+        out["text_ru"] = str(text)
+    if f.get("how_ru"):
+        out["how"] = str(f["how_ru"])
+    if mode == "declare":
+        out["say"] = str(f.get("say") or name)
+    return out
 
 
 def fighting_style_options(class_data: dict, level: int) -> list[str]:

@@ -28,7 +28,12 @@ export interface CampaignCard {
   waiting_players: number;
   my_role: "master" | "player" | null;
   is_owner: boolean;
-  hero: { id: string; name: string; status: string; level: number | null } | null;
+  hero: {
+    id: string;
+    name: string;
+    status: string;
+    level: number | null;
+  } | null;
   party: PartyMember[];
   recap: string | null;
   last_session_at: string | null;
@@ -56,7 +61,10 @@ export interface Theme {
 
 /** Событие сервера. Тип и поля каждого события — из контракта сервера (app/gateway/protocol.py → lib/api.gen.ts). */
 export type Envelope = ServerEvent;
-export type EventOf<T extends Envelope["type"]> = Extract<Envelope, { type: T }>;
+export type EventOf<T extends Envelope["type"]> = Extract<
+  Envelope,
+  { type: T }
+>;
 
 /** Статус реплики игрока при ИИ-мастере: ждёт хода, мастер отвечает, отвечено, не обработано. */
 export type ReplyState = "pending" | "processing" | "answered" | "failed";
@@ -84,14 +92,16 @@ export interface ChatMessage {
   whisper: boolean;
   // у реплики ИИ-игрока — { ai: true }; у голосовой — { voice }: запись автора, content — её расшифровка;
   // place — реплика или ответ одной части разделившегося отряда (id её места)
-  data?: (RollCard & {
-    ai?: boolean;
-    voice?: VoiceData;
-    voices?: VoiceData[];
-    voice_parts?: number;
-    whisper_reply?: string;
-    place?: string;
-  }) | null;
+  data?:
+    | (RollCard & {
+        ai?: boolean;
+        voice?: VoiceData;
+        voices?: VoiceData[];
+        voice_parts?: number;
+        whisper_reply?: string;
+        place?: string;
+      })
+    | null;
   created_at: string | null;
   state?: ReplyState | null;
   fresh?: boolean;
@@ -103,10 +113,29 @@ export interface RollCard {
   who?: string | null;
   target?: string | null;
   reason?: string | null;
-  roll?: { d20?: number[]; natural?: number; modifier?: number; mode?: string | null; total?: number } | null;
+  roll?: {
+    d20?: number[];
+    natural?: number;
+    modifier?: number;
+    mode?: string | null;
+    total?: number;
+  } | null;
   against?: { label: string; value: number } | null;
-  outcome: "success" | "fail" | "hit" | "miss" | "crit" | "fumble" | "crit_success" | "crit_fail" | "info";
-  damage?: { amount: number; type: string; dice: { expr: string; total: number }[] };
+  outcome:
+    | "success"
+    | "fail"
+    | "hit"
+    | "miss"
+    | "crit"
+    | "fumble"
+    | "crit_success"
+    | "crit_fail"
+    | "info";
+  damage?: {
+    amount: number;
+    type: string;
+    dice: { expr: string; total: number }[];
+  };
   dice?: { expr: string; total: number }[];
   order?: { id: string; name: string | null; initiative: number }[];
   track?: { successes: number; failures: number };
@@ -207,7 +236,14 @@ export interface HeroPublic {
   bonds?: { question: string; answer: string }[];
 }
 
-export type EntityType = "creature" | "npc" | "item" | "location" | "landmark" | "lore" | "hero";
+export type EntityType =
+  | "creature"
+  | "npc"
+  | "item"
+  | "location"
+  | "landmark"
+  | "lore"
+  | "hero";
 
 export interface EntityCard {
   id: string;
@@ -245,7 +281,12 @@ export interface HeroSheet extends HeroPublic {
   class_name?: string | null;
   origin_name?: string | null;
   /** Вторая раса после Порога и её каста. */
-  lineage?: { id: string; name: string; caste: string | null; features: string[] } | null;
+  lineage?: {
+    id: string;
+    name: string;
+    caste: string | null;
+    features: string[];
+  } | null;
   sheet: Record<string, unknown> & { level?: number; skills?: string[] };
   resources: {
     hp?: number;
@@ -259,6 +300,10 @@ export interface HeroSheet extends HeroPublic {
   };
   /** Умения с ограниченным числом использований и сколько осталось до отдыха (SRD). */
   features?: FeatureUses[];
+  /** Умения класса на уровне героя: что даёт, как применить и кто исполняет. */
+  class_features?: ClassFeature[];
+  /** Звери, в которых друид может обернуться на своём уровне. */
+  wild_shape_forms?: { id: string; name: string; cr: unknown }[];
   private_backstory?: string | null;
   /** Анкета характера {text, fields, core}; у старых героев — плоский словарь «поле: текст». */
   personality?: Record<string, unknown> | null;
@@ -274,7 +319,13 @@ export interface HeroSheet extends HeroPublic {
     attacks: HeroAttack[];
     effects: { id: string; template: string; name: string; stacks: number }[];
   };
-  inventory: { id: string; item: string; name: string; qty: number; equipped: boolean }[];
+  inventory: {
+    id: string;
+    item: string;
+    name: string;
+    qty: number;
+    equipped: boolean;
+  }[];
   /** Опыт: сколько есть, порог текущего уровня и следующего (null — выше расти некуда). */
   progress?: { xp: number; level_xp: number; next_xp: number | null };
   /** Книга заклинаний: у заклинателей. */
@@ -337,6 +388,21 @@ export interface FeatureUses {
   unit: string;
 }
 
+/** Умение класса в листе: ``auto`` — сервер учтёт сам, ``declare`` — игрок заявляет в ходе фразой ``say``,
+ *  ``master`` — мастер применит по описанию. */
+export interface ClassFeature {
+  key: string;
+  name: string;
+  level: number;
+  mode: "auto" | "declare" | "master";
+  text_ru?: string;
+  how?: string;
+  say?: string;
+  detail?: string;
+  skills?: string[];
+  uses?: { left: number; max: number; per_ru: string; unit: string };
+}
+
 export type RestChoice = "sleep" | "watch" | "no";
 
 /** Голосование группы за отдых: отдыхают только все вместе, в ненадёжном месте — со стражей. */
@@ -386,9 +452,20 @@ export interface AudioState {
 
 export interface Snapshot {
   protocol: number;
-  campaign: { id: string; name: string; status: CampaignStatus; public_intro: string };
+  campaign: {
+    id: string;
+    name: string;
+    status: CampaignStatus;
+    public_intro: string;
+  };
   session: { id: string; started_at: string } | null;
-  me: { user_id: string; seat_id: string | null; role: string | null; is_owner: boolean; stand_in_for?: string[] };
+  me: {
+    user_id: string;
+    seat_id: string | null;
+    role: string | null;
+    is_owner: boolean;
+    stand_in_for?: string[];
+  };
   seats: SeatState[];
   votes?: Vote[];
   rest_votes?: RestVote[];

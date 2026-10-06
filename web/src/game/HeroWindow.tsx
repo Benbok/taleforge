@@ -3,14 +3,32 @@ import { create } from "zustand";
 import type { HeroAttack, HeroSheet } from "../lib/types";
 import { useGame } from "../stores/game";
 import { toast } from "../stores/toasts";
-import { ABILITIES, ABILITY_ABBR, ABILITY_RU, DAMAGE_RU, signed, SKILLS, useExplain } from "./hero";
+import {
+  ABILITIES,
+  ABILITY_ABBR,
+  ABILITY_RU,
+  DAMAGE_RU,
+  signed,
+  SKILLS,
+  useExplain,
+} from "./hero";
 import { attack } from "./quick";
+import Features from "./Features";
 import Spellbook from "./Spellbook";
 
-type Tab = "stats" | "combat" | "spells" | "gear" | "state" | "persona" | "log";
+type Tab =
+  | "stats"
+  | "combat"
+  | "features"
+  | "spells"
+  | "gear"
+  | "state"
+  | "persona"
+  | "log";
 const TABS: [Tab, string][] = [
   ["stats", "Характеристики"],
   ["combat", "Бой"],
+  ["features", "Умения"],
   ["spells", "Заклинания"],
   ["gear", "Снаряжение"],
   ["state", "Состояние"],
@@ -41,7 +59,15 @@ export const useHeroWindow = create<WindowState>((set) => ({
 }));
 
 /** Число с разбором по клику. */
-function Num({ stat, children, className = "" }: { stat: string; children: ReactNode; className?: string }) {
+function Num({
+  stat,
+  children,
+  className = "",
+}: {
+  stat: string;
+  children: ReactNode;
+  className?: string;
+}) {
   const explain = useExplain((s) => s.open);
   return (
     <button
@@ -78,7 +104,8 @@ function Stats({ h }: { h: HeroSheet }) {
           Инициатива <Num stat="initiative">{signed(d.mods.dex)}</Num>
         </span>
         <span>
-          Пассивная внимательность <Num stat="passive_perception">{10 + d.skills.perception}</Num>
+          Пассивная внимательность{" "}
+          <Num stat="passive_perception">{10 + d.skills.perception}</Num>
         </span>
         <span>
           Скорость <Num stat="speed">{d.speed ?? 30} фт</Num>
@@ -100,7 +127,10 @@ function Stats({ h }: { h: HeroSheet }) {
           {SKILLS.map(([key, name, a]) => (
             <span key={key} className="flex justify-between">
               <span>
-                <span className={skills.has(key) ? "text-accent" : "text-line"}>●</span> {name}{" "}
+                <span className={skills.has(key) ? "text-accent" : "text-line"}>
+                  ●
+                </span>{" "}
+                {name}{" "}
                 <span className="text-xs text-muted">{ABILITY_ABBR[a]}</span>
               </span>
               <Num stat={`skill:${key}`}>{signed(d.skills[key])}</Num>
@@ -117,7 +147,9 @@ function Combat({ h }: { h: HeroSheet }) {
   const canAct = useGame((s) => s.actions.includes("chat.play"));
   const reason = useGame((s) => s.blocked["chat.play"]);
   const hide = useHeroWindow((s) => s.hide);
-  const targets = (scene?.entities ?? []).filter((e) => e.attitude === "hostile" && e.condition !== "мёртв");
+  const targets = (scene?.entities ?? []).filter(
+    (e) => e.attitude === "hostile" && e.condition !== "мёртв",
+  );
   const d = h.derived!;
 
   function hit(t: { id: string; name: string }, a: HeroAttack) {
@@ -133,7 +165,8 @@ function Combat({ h }: { h: HeroSheet }) {
           КД <Num stat="ac">{d.ac}</Num>
         </span>
         <span>
-          Хиты <Num stat="hp">{h.resources.hp}</Num>/<Num stat="hp_max">{h.resources.hp_max}</Num>
+          Хиты <Num stat="hp">{h.resources.hp}</Num>/
+          <Num stat="hp_max">{h.resources.hp_max}</Num>
         </span>
       </p>
       {!canAct && reason && <p className="text-xs text-warn">{reason}</p>}
@@ -143,14 +176,20 @@ function Combat({ h }: { h: HeroSheet }) {
             <p className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-semibold">{a.name}</span>
               <span className="text-sm">
-                попадание <Num stat={`attack:${a.key}`}>{signed(a.attack_bonus)}</Num> · урон {a.damage}{" "}
-                {DAMAGE_RU[a.damage_type] ?? a.damage_type} · {a.kind === "ranged" ? "дальний бой" : "ближний бой"}
+                попадание{" "}
+                <Num stat={`attack:${a.key}`}>{signed(a.attack_bonus)}</Num> ·
+                урон {a.damage} {DAMAGE_RU[a.damage_type] ?? a.damage_type} ·{" "}
+                {a.kind === "ranged" ? "дальний бой" : "ближний бой"}
               </span>
             </p>
             {canAct && targets.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {targets.map((t) => (
-                  <button key={t.id} className="btn px-2 py-1 text-xs" onClick={() => hit(t, a)}>
+                  <button
+                    key={t.id}
+                    className="btn px-2 py-1 text-xs"
+                    onClick={() => hit(t, a)}
+                  >
                     Атаковать: {t.name}
                   </button>
                 ))}
@@ -159,7 +198,11 @@ function Combat({ h }: { h: HeroSheet }) {
           </li>
         ))}
       </ul>
-      {canAct && targets.length === 0 && <p className="text-xs text-muted">Рядом нет врагов: атаковать некого.</p>}
+      {canAct && targets.length === 0 && (
+        <p className="text-xs text-muted">
+          Рядом нет врагов: атаковать некого.
+        </p>
+      )}
     </div>
   );
 }
@@ -169,7 +212,10 @@ function Gear({ h }: { h: HeroSheet }) {
   return (
     <ul className="flex flex-col gap-1">
       {h.inventory.map((i) => (
-        <li key={i.id} className="flex justify-between gap-2 border-b border-line py-1">
+        <li
+          key={i.id}
+          className="flex justify-between gap-2 border-b border-line py-1"
+        >
           <span>
             {i.name}
             {i.qty > 1 ? ` ×${i.qty}` : ""}
@@ -185,10 +231,17 @@ function Gear({ h }: { h: HeroSheet }) {
 function Xp({ h }: { h: HeroSheet }) {
   const p = h.progress;
   if (!p) return null;
-  if (p.next_xp == null) return <p className="text-xs text-muted">Опыт {p.xp} · высший уровень</p>;
-  const pct = Math.max(0, Math.min(100, ((p.xp - p.level_xp) / (p.next_xp - p.level_xp)) * 100));
+  if (p.next_xp == null)
+    return <p className="text-xs text-muted">Опыт {p.xp} · высший уровень</p>;
+  const pct = Math.max(
+    0,
+    Math.min(100, ((p.xp - p.level_xp) / (p.next_xp - p.level_xp)) * 100),
+  );
   return (
-    <div className="mt-1 flex items-center gap-2 text-xs text-muted" title="Опыт делится поровну между героями отряда">
+    <div
+      className="mt-1 flex items-center gap-2 text-xs text-muted"
+      title="Опыт делится поровну между героями отряда"
+    >
       <div
         className="h-1.5 w-32 overflow-hidden rounded bg-line"
         role="progressbar"
@@ -225,7 +278,10 @@ function State({ h }: { h: HeroSheet }) {
               <li key={f.key} className={f.left === 0 ? "text-muted" : ""}>
                 {f.name}: {f.left} из {f.max}
                 {f.unit !== "раз" ? ` ${f.unit}` : ""}
-                <span className="text-xs text-muted"> · вернётся: {f.per_ru}</span>
+                <span className="text-xs text-muted">
+                  {" "}
+                  · вернётся: {f.per_ru}
+                </span>
               </li>
             ))}
           </ul>
@@ -266,12 +322,17 @@ const PERSONA_LABEL: Record<string, string> = {
 };
 
 /** Анкета характера строками. Это словарь, а не текст: отданный React как есть, он роняет всё окно игры. */
-function personaLines(p: Record<string, unknown> | null | undefined): { label: string | null; text: string }[] {
+function personaLines(
+  p: Record<string, unknown> | null | undefined,
+): { label: string | null; text: string }[] {
   if (!p || typeof p !== "object") return [];
   const isSheet = "fields" in p || "text" in p;
-  const fields = (isSheet ? p.fields : p) as Record<string, unknown> | undefined;
+  const fields = (isSheet ? p.fields : p) as
+    | Record<string, unknown>
+    | undefined;
   const out: { label: string | null; text: string }[] = [];
-  if (isSheet && typeof p.text === "string" && p.text.trim()) out.push({ label: null, text: p.text });
+  if (isSheet && typeof p.text === "string" && p.text.trim())
+    out.push({ label: null, text: p.text });
   for (const [k, v] of Object.entries(fields ?? {})) {
     if (k === "bonds" || typeof v !== "string" || !v.trim()) continue;
     out.push({ label: PERSONA_LABEL[k] ?? k, text: v });
@@ -294,7 +355,9 @@ function Persona({ h }: { h: HeroSheet }) {
           <h3 className="font-ui text-sm text-muted">Характер</h3>
           {traits.map((t, i) => (
             <p key={i}>
-              {t.label && <span className="font-ui text-sm text-muted">{t.label}: </span>}
+              {t.label && (
+                <span className="font-ui text-sm text-muted">{t.label}: </span>
+              )}
               {t.text}
             </p>
           ))}
@@ -302,13 +365,17 @@ function Persona({ h }: { h: HeroSheet }) {
       )}
       {h.private_backstory && (
         <section>
-          <h3 className="font-ui text-sm text-muted">Тайная история (видите только вы и мастер)</h3>
+          <h3 className="font-ui text-sm text-muted">
+            Тайная история (видите только вы и мастер)
+          </h3>
           <p>{h.private_backstory}</p>
         </section>
       )}
       {h.bonds && h.bonds.length > 0 && (
         <section>
-          <h3 className="font-ui text-sm text-muted">Связи, известные отряду</h3>
+          <h3 className="font-ui text-sm text-muted">
+            Связи, известные отряду
+          </h3>
           <ul>
             {h.bonds.map((b) => (
               <li key={b.question}>
@@ -327,7 +394,8 @@ function Log() {
   const g = useGame();
   const x = g.explained.hp;
   useEffect(() => {
-    if (g.sheet && !x) g.socket?.send("stat.explain", { character_id: g.sheet.id, stat: "hp" });
+    if (g.sheet && !x)
+      g.socket?.send("stat.explain", { character_id: g.sheet.id, stat: "hp" });
   }, [g.sheet, g.socket, x]);
   if (!x) return <p className="text-muted">Загружаем журнал…</p>;
   if (x.error) return <p className="text-bad">{x.error}</p>;
@@ -351,7 +419,10 @@ export default function HeroWindow() {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector('[aria-label="Почему такое число"]') && hide();
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" &&
+      !document.querySelector('[aria-label="Почему такое число"]') &&
+      hide();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, hide]);
@@ -359,17 +430,29 @@ export default function HeroWindow() {
   if (!open || !sheet) return null;
   const ready = !!sheet.derived;
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 md:items-center" onMouseDown={(e) => e.target === e.currentTarget && hide()}>
-      <div role="dialog" aria-label="Лист героя" className="tf-pop flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-line bg-surface md:rounded-xl">
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 md:items-center"
+      onMouseDown={(e) => e.target === e.currentTarget && hide()}
+    >
+      <div
+        role="dialog"
+        aria-label="Лист героя"
+        className="tf-pop flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-line bg-surface md:rounded-xl"
+      >
         <header className="flex items-start justify-between gap-3 border-b border-line p-4">
           <div>
             <h2 className="text-xl font-semibold">{sheet.name}</h2>
             <p className="text-muted">
-              {[sheet.origin_name, sheet.class_name, `${sheet.level} уровень`].filter(Boolean).join(" · ")}
+              {[sheet.origin_name, sheet.class_name, `${sheet.level} уровень`]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
             <Xp h={sheet} />
             {sheet.resources.inspiration && (
-              <p className="text-xs text-accent" title="Награда мастера за яркую игру. Попроси мастера потратить её, и следующий бросок атаки, проверки или спасброска будет с преимуществом.">
+              <p
+                className="text-xs text-accent"
+                title="Награда мастера за яркую игру. Попроси мастера потратить её, и следующий бросок атаки, проверки или спасброска будет с преимуществом."
+              >
                 ✦ Вдохновение: преимущество на один бросок
               </p>
             )}
@@ -380,12 +463,23 @@ export default function HeroWindow() {
               </p>
             )}
           </div>
-          <button className="text-2xl leading-none text-muted hover:text-ink" onClick={hide} aria-label="Закрыть">
+          <button
+            className="text-2xl leading-none text-muted hover:text-ink"
+            onClick={hide}
+            aria-label="Закрыть"
+          >
             ×
           </button>
         </header>
-        <nav className="flex gap-1 overflow-x-auto border-b border-line px-2" aria-label="Разделы листа">
-          {TABS.filter(([t]) => t !== "spells" || sheet.spellbook).map(([t, name]) => (
+        <nav
+          className="flex gap-1 overflow-x-auto border-b border-line px-2"
+          aria-label="Разделы листа"
+        >
+          {TABS.filter(
+            ([t]) =>
+              (t !== "spells" || sheet.spellbook) &&
+              (t !== "features" || sheet.class_features?.length),
+          ).map(([t, name]) => (
             <button
               key={t}
               className={`shrink-0 border-b-2 px-3 py-2 text-sm ${tab === t ? "border-accent text-ink" : "border-transparent text-muted"}`}
@@ -397,11 +491,15 @@ export default function HeroWindow() {
         </nav>
         <div className="overflow-y-auto p-4">
           {!ready && tab !== "persona" ? (
-            <p className="text-muted">Лист ещё не собран: закончите героя в конструкторе.</p>
+            <p className="text-muted">
+              Лист ещё не собран: закончите героя в конструкторе.
+            </p>
           ) : tab === "stats" ? (
             <Stats h={sheet} />
           ) : tab === "combat" ? (
             <Combat h={sheet} />
+          ) : tab === "features" ? (
+            <Features h={sheet} onDeclare={hide} />
           ) : tab === "spells" ? (
             <Spellbook h={sheet} onCast={hide} />
           ) : tab === "gear" ? (

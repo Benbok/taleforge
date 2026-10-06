@@ -92,6 +92,35 @@ class FeatureUses(Strict):
     unit: str
 
 
+class ClassFeatureUses(Strict):
+    left: int
+    max: int
+    per_ru: str
+    unit: str
+
+
+class ClassFeature(Strict):
+    """Умение класса в листе игрока: что даёт, как применить и кто его исполняет (``mode``): сервер сам,
+    игрок заявляет в ходе фразой ``say`` или мастер по описанию."""
+
+    key: str
+    name: str
+    level: int
+    mode: Literal["auto", "declare", "master"]
+    text_ru: str = absent()
+    how: str = absent()
+    say: str = absent()
+    detail: str = absent()
+    skills: list[str] = absent()
+    uses: ClassFeatureUses = absent()
+
+
+class WildShapeForm(Strict):
+    id: str
+    name: str
+    cr: Any
+
+
 class Lineage(Strict):
     id: str
     name: str
@@ -124,6 +153,8 @@ class SheetParts(BaseModel):
     review_comment: str | None
     derived: Derived = absent()
     features: list[FeatureUses] = absent()
+    class_features: list[ClassFeature] = absent()
+    wild_shape_forms: list[WildShapeForm] = absent()
     lineage: Lineage = absent()
     progress: Progress
     # книга заклинаний у заклинателей; её форма описана в клиенте (web/src/lib/spells.ts)
@@ -153,6 +184,8 @@ class CharacterView(HeroPublic):
     review_comment: str | None = absent()
     derived: Derived = absent()
     features: list[FeatureUses] = absent()
+    class_features: list[ClassFeature] = absent()
+    wild_shape_forms: list[WildShapeForm] = absent()
     lineage: Lineage = absent()
     progress: Progress = absent()
     spellbook: dict[str, Any] = absent()

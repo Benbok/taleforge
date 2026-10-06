@@ -6,6 +6,8 @@
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
 # martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
+# name_ru, text_ru, how_ru — русские имя, что даёт и как применить; mode — кто исполняет (auto — сервер, declare —
+# игрок заявляет фразой say, master — мастер по описанию) — tools/srd_feature_texts.py.
 # epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 # This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the
 # Coast LLC, licensed under CC BY 4.0. Данные: 5e-bits/5e-database, коммит bce51b3958573819e3b842fbc0cd9524fe4bc2e1.
@@ -147,6 +149,9 @@ items:
       name: Unarmored Defense
       level: 1
       description: While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit.
+      name_ru: Защита без доспехов
+      text_ru: Без доспеха КД равен 10 + Ловкость + Телосложение. Щит можно держать.
+      mode: auto
     - key: rage
       name: Rage
       level: 1
@@ -158,14 +163,27 @@ items:
         If you are able to cast Spells, you can't cast them or concentrate on them while raging.
         Your rage lasts for 1 minute. It ends early if you are knocked Unconscious or if Your Turn ends and you haven't attacked a hostile creature since your last turn or taken damage since then. You can also end your rage on Your Turn as a Bonus Action.
         Once you have raged the maximum number of times for your barbarian level, you must finish a Long Rest before you can rage again. You may rage 2 times at 1st level, 3 at 3rd, 4 at 6th, 5 at 12th, and 6 at 17th.
+      name_ru: Ярость
+      text_ru: 'На минуту: прибавка к урону рукопашных ударов Силой, сопротивление дробящему, колющему и рубящему урону, преимущество на проверки и спасброски Силы. В ярости нельзя творить заклинания.'
+      mode: declare
+      how_ru: Бонусное действие в начале боя. Число раз до долгого отдыха — в счётчике.
+      say: Впадаю в ярость
     - key: danger_sense
       name: Danger Sense
       level: 2
       description: At 2nd level, you gain an uncanny sense of when things nearby aren't as they should be, giving you an edge when you dodge away from danger. You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells. To gain this benefit, you can't be blinded, deafened, or incapacitated.
+      name_ru: Чувство опасности
+      text_ru: 'Преимущество на спасброски Ловкости от того, что герой видит: ловушки, взрывы, заклинания.'
+      mode: auto
     - key: reckless_attack
       name: Reckless Attack
       level: 2
       description: Starting at 2nd level, you can throw aside all concern for defense to attack with fierce desperation. When you make your first attack on your turn, you can decide to attack recklessly. Doing so gives you advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn.
+      name_ru: Безрассудная атака
+      text_ru: Удары Силой в этот ход с преимуществом, но до вашего следующего хода враги тоже бьют вас с преимуществом.
+      mode: declare
+      how_ru: Заявите перед первым ударом хода.
+      say: Бью безрассудно, не думая о защите
     - key: primal_path
       name: Primal Path
       level: 3
@@ -178,10 +196,16 @@ items:
       name: Extra Attack
       level: 5
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn.
+      name_ru: Дополнительная атака
+      text_ru: Действие «Атака» даёт два удара.
+      mode: auto
     - key: fast_movement
       name: Fast Movement
       level: 5
       description: Starting at 5th level, your speed increases by 10 feet while you aren't wearing heavy armor.
+      name_ru: Быстрое передвижение
+      text_ru: Скорость +10 футов, если на герое нет тяжёлого доспеха.
+      mode: auto
     - key: primal_path_improvement_1
       name: Path feature
       level: 6
@@ -192,6 +216,9 @@ items:
       description: |-
         By 7th level, your instincts are so honed that you have advantage on initiative rolls.
         Additionally, if you are surprised at the beginning of combat and aren't incapacitated, you can act normally on your first turn, but only if you enter your rage before doing anything else on that turn.
+      name_ru: Дикий инстинкт
+      text_ru: 'Инициатива с преимуществом: варвар реже оказывается последним.'
+      mode: auto
     - key: barbarian_ability_score_improvement_2
       name: Ability Score Improvement
       level: 8
@@ -200,6 +227,9 @@ items:
       name: Brutal Critical (1 die)
       level: 9
       description: Beginning at 9th level, you can roll one additional weapon damage die when determining the extra damage for a critical hit with a melee attack. This increases to two additional dice at 13th level and three additional dice at 17th level.
+      name_ru: Сильный критический удар
+      text_ru: При критическом попадании в ближнем бою — ещё кости урона оружия.
+      mode: auto
     - key: primal_path_improvement_2
       name: Path feature
       level: 10
@@ -210,6 +240,9 @@ items:
       description: |-
         Starting at 11th level, your rage can keep you fighting despite grievous wounds. If you drop to 0 hit points while you're raging and don't die outright, you can make a DC 10 Constitution saving throw. If you succeed, you drop to 1 hit point instead.
         Each time you use this feature after the first, the DC increases by 5. When you finish a short or long rest, the DC resets to 10.
+      name_ru: Непреклонная ярость
+      text_ru: Упав до 0 хитов в ярости, можно спасброском Телосложения остаться на ногах с 1 хитом.
+      mode: master
     - key: barbarian_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -218,6 +251,9 @@ items:
       name: Brutal Critical (2 dice)
       level: 13
       description: Beginning at 9th level, you can roll one additional weapon damage die when determining the extra damage for a critical hit with a melee attack. This increases to two additional dice at 13th level and three additional dice at 17th level.
+      name_ru: Сильный критический удар
+      text_ru: При критическом попадании в ближнем бою — ещё кости урона оружия.
+      mode: auto
     - key: primal_path_improvement_3
       name: Path feature
       level: 14
@@ -226,6 +262,9 @@ items:
       name: Persistent Rage
       level: 15
       description: Beginning at 15th level, your rage is so fierce that it ends early only if you fall unconscious or if you choose to end it.
+      name_ru: Непрерывная ярость
+      text_ru: Ярость не гаснет раньше срока, даже если вы никого не бьёте.
+      mode: master
     - key: barbarian_ability_score_improvement_4
       name: Ability Score Improvement
       level: 16
@@ -234,10 +273,16 @@ items:
       name: Brutal Critical (3 dice)
       level: 17
       description: Beginning at 9th level, you can roll one additional weapon damage die when determining the extra damage for a critical hit with a melee attack. This increases to two additional dice at 13th level and three additional dice at 17th level.
+      name_ru: Сильный критический удар
+      text_ru: При критическом попадании в ближнем бою — ещё кости урона оружия.
+      mode: auto
     - key: indomitable_might
       name: Indomitable Might
       level: 18
       description: Beginning at 18th level, if your total for a Strength check is less than your Strength score, you can use that score in place of the total.
+      name_ru: Неукротимая мощь
+      text_ru: Проверка Силы не может дать меньше значения Силы.
+      mode: master
     - key: barbarian_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -246,6 +291,9 @@ items:
       name: Primal Champion
       level: 20
       description: At 20th level, you embody the power of the wilds. Your Strength and Constitution scores increase by 4. Your maximum for those scores is now 24.
+      name_ru: Первобытный чемпион
+      text_ru: Сила и Телосложение растут на 4, их предел — 24.
+      mode: master
   - id: class.bard
     name: Бард
     epithet: Магия слова и песни
@@ -564,6 +612,11 @@ items:
       name: Bardic Inspiration (d6)
       level: 1
       description: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6. Once within the next 10 minutes, the creature can roll the die and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the Bardic Inspiration die is rolled, it is lost. A creature can have only one Bardic Inspiration die at a time.\nYou can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest. \nYour Bardic Inspiration die changes when you reach certain levels in this class. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
+      name_ru: Вдохновение барда
+      text_ru: Союзник в 60 футах получает кость вдохновения и добавит её к проверке, атаке или спасброску.
+      mode: declare
+      how_ru: 'Бонусное действие: назовите, кого вдохновляете.'
+      say: 'Вдохновляю союзника:'
     - key: spellcasting_bard
       name: 'Spellcasting: Bard'
       level: 1
@@ -572,10 +625,16 @@ items:
       name: Jack of All Trades
       level: 2
       description: Starting at 2nd level, you can add half your proficiency bonus, rounded down, to any ability check you make that doesn't already include your proficiency bonus.
+      name_ru: Мастер на все руки
+      text_ru: Половина бонуса мастерства ко всем проверкам навыков без владения.
+      mode: auto
     - key: song_of_rest_d6
       name: Song of Rest (d6)
       level: 2
       description: "Beginning at 2nd level, you can use soothing music or oration to help revitalize your wounded allies during a short rest. If you or any friendly creatures who can hear your performance regain hit points at the end of the short rest by spending one or more Hit Dice, each of those creatures regains an extra 1d6 hit points. \nThe extra hit points increase when you reach certain levels in this class: to 1d8 at 9th level, to 1d10 at 13th level, and to 1d12 at 17th level."
+      name_ru: Песнь отдыха
+      text_ru: На коротком отдыхе союзники, тратящие кости хитов, восстанавливают ещё немного хитов.
+      mode: master
     - key: bard_college
       name: Bard College
       level: 3
@@ -592,10 +651,18 @@ items:
       name: Bardic Inspiration (d8)
       level: 5
       description: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6. Once within the next 10 minutes, the creature can roll the die and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the Bardic Inspiration die is rolled, it is lost. A creature can have only one Bardic Inspiration die at a time.\nYou can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest. \nYour Bardic Inspiration die changes when you reach certain levels in this class. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
+      name_ru: Вдохновение барда
+      text_ru: Союзник в 60 футах получает кость вдохновения и добавит её к проверке, атаке или спасброску.
+      mode: declare
+      how_ru: 'Бонусное действие: назовите, кого вдохновляете.'
+      say: 'Вдохновляю союзника:'
     - key: font_of_inspiration
       name: Font of Inspiration
       level: 5
       description: Beginning when you reach 5th level, you regain all of your expended uses of Bardic Inspiration when you finish a short or long rest.
+      name_ru: Источник вдохновения
+      text_ru: Вдохновение барда возвращается и после короткого отдыха.
+      mode: auto
     - key: bard_college_improvement_1
       name: Bard College feature
       level: 6
@@ -604,6 +671,10 @@ items:
       name: Countercharm
       level: 6
       description: At 6th level, you gain the ability to use musical notes or words of power to disrupt mind-influencing effects. As an action, you can start a performance that lasts until the end of your next turn. During that time, you and any friendly creatures within 30 feet of you have advantage on saving throws against being frightened or charmed. A creature must be able to hear you to gain this benefit. The performance ends early if you are incapacitated or silenced or if you voluntarily end it (no action required).
+      name_ru: Контрочарование
+      text_ru: Песней до конца следующего хода даёт союзникам рядом преимущество против испуга и очарования.
+      mode: declare
+      say: Пою контрочарование
     - key: bard_ability_score_improvement_2
       name: Ability Score Improvement
       level: 8
@@ -612,6 +683,9 @@ items:
       name: Song of Rest (d8)
       level: 9
       description: "Beginning at 2nd level, you can use soothing music or oration to help revitalize your wounded allies during a short rest. If you or any friendly creatures who can hear your performance regain hit points at the end of the short rest by spending one or more Hit Dice, each of those creatures regains an extra 1d6 hit points. \nThe extra hit points increase when you reach certain levels in this class: to 1d8 at 9th level, to 1d10 at 13th level, and to 1d12 at 17th level."
+      name_ru: Песнь отдыха
+      text_ru: На коротком отдыхе союзники, тратящие кости хитов, восстанавливают ещё немного хитов.
+      mode: master
     - key: bard_expertise_2
       name: Expertise
       level: 10
@@ -620,10 +694,18 @@ items:
       name: Bardic Inspiration (d10)
       level: 10
       description: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6. Once within the next 10 minutes, the creature can roll the die and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the Bardic Inspiration die is rolled, it is lost. A creature can have only one Bardic Inspiration die at a time.\nYou can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest. \nYour Bardic Inspiration die changes when you reach certain levels in this class. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
+      name_ru: Вдохновение барда
+      text_ru: Союзник в 60 футах получает кость вдохновения и добавит её к проверке, атаке или спасброску.
+      mode: declare
+      how_ru: 'Бонусное действие: назовите, кого вдохновляете.'
+      say: 'Вдохновляю союзника:'
     - key: magical_secrets_1
       name: Magical Secrets
       level: 10
       description: "By 10th level, you have plundered magical knowledge from a wide spectrum of disciplines. Choose two spells from any class, including this one. A spell you choose must be of a level you can cast, as shown on the Bard table, or a cantrip. \nThe chosen spells count as bard spells for you and are included in the number in the Spells Known column of the Bard table. \nYou learn two additional spells from any class at 14th level and again at 18th level."
+      name_ru: Тайны магии
+      text_ru: Бард выучивает заклинания из списков любых классов.
+      mode: master
     - key: bard_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -632,6 +714,9 @@ items:
       name: Song of Rest (d10)
       level: 13
       description: "Beginning at 2nd level, you can use soothing music or oration to help revitalize your wounded allies during a short rest. If you or any friendly creatures who can hear your performance regain hit points at the end of the short rest by spending one or more Hit Dice, each of those creatures regains an extra 1d6 hit points. \nThe extra hit points increase when you reach certain levels in this class: to 1d8 at 9th level, to 1d10 at 13th level, and to 1d12 at 17th level."
+      name_ru: Песнь отдыха
+      text_ru: На коротком отдыхе союзники, тратящие кости хитов, восстанавливают ещё немного хитов.
+      mode: master
     - key: bard_college_improvement_2
       name: Bard College feature
       level: 14
@@ -640,10 +725,18 @@ items:
       name: Magical Secrets
       level: 14
       description: "By 10th level, you have plundered magical knowledge from a wide spectrum of disciplines. Choose two spells from any class, including this one. A spell you choose must be of a level you can cast, as shown on the Bard table, or a cantrip. \nThe chosen spells count as bard spells for you and are included in the number in the Spells Known column of the Bard table. \nYou learn two additional spells from any class at 14th level and again at 18th level."
+      name_ru: Тайны магии
+      text_ru: Бард выучивает заклинания из списков любых классов.
+      mode: master
     - key: bardic_inspiration_d12
       name: Bardic Inspiration (d12)
       level: 15
       description: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6. Once within the next 10 minutes, the creature can roll the die and add the number rolled to one ability check, attack roll, or saving throw it makes. The creature can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before the GM says whether the roll succeeds or fails. Once the Bardic Inspiration die is rolled, it is lost. A creature can have only one Bardic Inspiration die at a time.\nYou can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest. \nYour Bardic Inspiration die changes when you reach certain levels in this class. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
+      name_ru: Вдохновение барда
+      text_ru: Союзник в 60 футах получает кость вдохновения и добавит её к проверке, атаке или спасброску.
+      mode: declare
+      how_ru: 'Бонусное действие: назовите, кого вдохновляете.'
+      say: 'Вдохновляю союзника:'
     - key: bard_ability_score_improvement_4
       name: Ability Score Improvement
       level: 16
@@ -652,10 +745,16 @@ items:
       name: Song of Rest (d12)
       level: 17
       description: "Beginning at 2nd level, you can use soothing music or oration to help revitalize your wounded allies during a short rest. If you or any friendly creatures who can hear your performance regain hit points at the end of the short rest by spending one or more Hit Dice, each of those creatures regains an extra 1d6 hit points. \nThe extra hit points increase when you reach certain levels in this class: to 1d8 at 9th level, to 1d10 at 13th level, and to 1d12 at 17th level."
+      name_ru: Песнь отдыха
+      text_ru: На коротком отдыхе союзники, тратящие кости хитов, восстанавливают ещё немного хитов.
+      mode: master
     - key: magical_secrets_3
       name: Magical Secrets
       level: 18
       description: "By 10th level, you have plundered magical knowledge from a wide spectrum of disciplines. Choose two spells from any class, including this one. A spell you choose must be of a level you can cast, as shown on the Bard table, or a cantrip. \nThe chosen spells count as bard spells for you and are included in the number in the Spells Known column of the Bard table. \nYou learn two additional spells from any class at 14th level and again at 18th level."
+      name_ru: Тайны магии
+      text_ru: Бард выучивает заклинания из списков любых классов.
+      mode: master
     - key: bard_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -664,6 +763,9 @@ items:
       name: Superior Inspiration
       level: 20
       description: At 20th level, when you roll initiative and have no uses of Bardic Inspiration left, you regain one use.
+      name_ru: Превосходное вдохновение
+      text_ru: Если к началу боя вдохновение кончилось, одно возвращается.
+      mode: master
   - id: class.cleric
     name: Жрец
     epithet: Проводник божественной силы
@@ -867,12 +969,20 @@ items:
         When you use your Channel Divinity, you choose which effect to create. You must then finish a short or long rest to use your Channel Divinity again.
         Some Channel Divinity effects require saving throws. When you use such an effect from this class, the DC equals your cleric spell save DC.
         Beginning at 6th level, you can use your Channel Divinity twice between rests, and beginning at 18th level, you can use it three times between rests. When you finish a short or long rest, you regain your expended uses.
+      name_ru: Божественный канал
+      text_ru: Заряды божественной силы для особых приёмов класса. Возвращаются на отдыхе.
+      mode: master
     - key: channel_divinity_turn_undead
       name: 'Channel Divinity: Turn Undead'
       level: 2
       description: |-
         As an action, you present your holy symbol and speak a prayer censuring the undead. Each undead that can see or hear you within 30 feet of you must make a Wisdom saving throw. If the creature fails its saving throw, it is turned for 1 minute or until it takes any damage.
         A turned creature must spend its turns trying to move as far away from you as it can, and it can't willingly move to a space within 30 feet of you. It also can't take reactions. For its action, it can use only the Dash action or try to escape from an effect that prevents it from moving. If there's nowhere to move, the creature can use the Dodge action.
+      name_ru: 'Божественный канал: изгнание нежити'
+      text_ru: Нежить в 30 футах делает спасбросок Мудрости, иначе бежит от жреца минуту.
+      mode: declare
+      how_ru: Действие, тратит заряд Божественного канала.
+      say: Изгоняю нежить силой веры
     - key: divine_domain_improvement_1
       name: Divine Domain feature
       level: 2
@@ -893,6 +1003,9 @@ items:
       name: Destroy Undead (CR 1/2 or below)
       level: 5
       description: Starting at 5th level, when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold.
+      name_ru: Уничтожение нежити
+      text_ru: Слабая нежить, проваливая спасбросок от изгнания, сразу уничтожается.
+      mode: master
     - key: domain_spells_3
       name: Domain Spells
       level: 5
@@ -903,6 +1016,9 @@ items:
       name: Channel Divinity (2/rest)
       level: 6
       description: Beginning at 6th level, you can use your Channel Divinity twice between rests, and beginning at 18th level, you can use it three times between rests. When you finish a short or long rest, you regain your expended uses.
+      name_ru: Божественный канал
+      text_ru: Заряды божественной силы для особых приёмов класса. Возвращаются на отдыхе.
+      mode: master
     - key: divine_domain_improvement_2
       name: Divine Domain feature
       level: 6
@@ -923,6 +1039,9 @@ items:
       name: Destroy Undead (CR 1 or below)
       level: 8
       description: Starting at 5th level, when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold.
+      name_ru: Уничтожение нежити
+      text_ru: Слабая нежить, проваливая спасбросок от изгнания, сразу уничтожается.
+      mode: master
     - key: divine_domain_improvement_3
       name: Divine Domain feature
       level: 8
@@ -943,10 +1062,17 @@ items:
         Imploring your deity's aid requires you to use your action. Describe the assistance you seek, and roll percentile dice. If you roll a number equal to or lower than your cleric level, your deity intervenes. The GM chooses the nature of the intervention; the effect of any cleric spell or cleric domain spell would be appropriate.
         If your deity intervenes, you can't use this feature again for 7 days. Otherwise, you can use it again after you finish a long rest.
         At 20th level, your call for intervention succeeds automatically, no roll required.
+      name_ru: Божественное вмешательство
+      text_ru: Раз в неделю можно воззвать к божеству о чуде; оно откликается с небольшим шансом.
+      mode: declare
+      say: Взываю к своему божеству о помощи
     - key: destroy_undead_cr_2_or_below
       name: Destroy Undead (CR 2 or below)
       level: 11
       description: Starting at 5th level, when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold.
+      name_ru: Уничтожение нежити
+      text_ru: Слабая нежить, проваливая спасбросок от изгнания, сразу уничтожается.
+      mode: master
     - key: cleric_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -955,6 +1081,9 @@ items:
       name: Destroy Undead (CR 3 or below)
       level: 14
       description: Starting at 5th level, when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold.
+      name_ru: Уничтожение нежити
+      text_ru: Слабая нежить, проваливая спасбросок от изгнания, сразу уничтожается.
+      mode: master
     - key: cleric_ability_score_improvement_4
       name: Ability Score Improvement
       level: 16
@@ -963,6 +1092,9 @@ items:
       name: Destroy Undead (CR 4 or below)
       level: 17
       description: Starting at 5th level, when an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below a certain threshold.
+      name_ru: Уничтожение нежити
+      text_ru: Слабая нежить, проваливая спасбросок от изгнания, сразу уничтожается.
+      mode: master
     - key: divine_domain_improvement_4
       name: Divine Domain feature
       level: 17
@@ -973,10 +1105,16 @@ items:
       name: Supreme Healing
       level: 17
       description: Starting at 17th level, when you would normally roll one or more dice to restore hit points with a spell, you instead use the highest number possible for each die. For example, instead of restoring 2d6 hit points to a creature, you restore 12.
+      name_ru: Высшее исцеление
+      text_ru: Лечащие заклинания восстанавливают максимум по костям.
+      mode: master
     - key: channel_divinity_3_rest
       name: Channel Divinity (3/rest)
       level: 18
       description: Beginning at 6th level, you can use your Channel Divinity twice between rests, and beginning at 18th level, you can use it three times between rests. When you finish a short or long rest, you regain your expended uses.
+      name_ru: Божественный канал
+      text_ru: Заряды божественной силы для особых приёмов класса. Возвращаются на отдыхе.
+      mode: master
     - key: cleric_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -985,6 +1123,9 @@ items:
       name: Divine Intervention Improvement
       level: 20
       description: At 20th level, your call for intervention succeeds automatically, no roll required.
+      name_ru: Божественное вмешательство (улучшенное)
+      text_ru: Просьба к божеству о помощи исполняется всегда.
+      mode: master
   - id: class.druid
     name: Друид
     epithet: Хранитель природы
@@ -1173,6 +1314,9 @@ items:
       name: Druidic
       level: 1
       description: You know Druidic, the secret language of druids. You can speak the language and use it to leave hidden messages. You and others who know this language automatically spot such a message. Others spot the message's presence with a successful DC 15 Wisdom (Perception) check but can't decipher it without magic.
+      name_ru: Друидический язык
+      text_ru: 'Тайный язык друидов: можно оставлять знаки, понятные только своим.'
+      mode: master
     - key: spellcasting_druid
       name: 'Spellcasting: Druid'
       level: 1
@@ -1194,6 +1338,11 @@ items:
         - You can't cast spells, and your ability to speak or take any action that requires hands is limited to the capabilities of your beast form. Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.
         - You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so. However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.
         - You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it. Equipment that merges with the form has no effect until you leave the form.
+      name_ru: Дикий облик
+      text_ru: 'Друид оборачивается зверем, которого видел: берёт его тело и хиты, а разум оставляет свой.'
+      mode: declare
+      how_ru: Действие, два раза до короткого отдыха. Назовите зверя из списка форм.
+      say: 'Оборачиваюсь зверем:'
     - key: druid_ability_score_improvement_1
       name: Ability Score Improvement
       level: 4
@@ -1211,6 +1360,11 @@ items:
         - You can't cast spells, and your ability to speak or take any action that requires hands is limited to the capabilities of your beast form. Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.
         - You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so. However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.
         - You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it. Equipment that merges with the form has no effect until you leave the form.
+      name_ru: Дикий облик
+      text_ru: 'Друид оборачивается зверем, которого видел: берёт его тело и хиты, а разум оставляет свой.'
+      mode: declare
+      how_ru: Действие, два раза до короткого отдыха. Назовите зверя из списка форм.
+      say: 'Оборачиваюсь зверем:'
     - key: druid_circle_improvement_1
       name: Druid Circle feature
       level: 6
@@ -1232,6 +1386,11 @@ items:
         - You can't cast spells, and your ability to speak or take any action that requires hands is limited to the capabilities of your beast form. Transforming doesn't break your concentration on a spell you've already cast, however, or prevent you from taking actions that are part of a spell, such as call lightning, that you've already cast.
         - You retain the benefit of any features from your class, race, or other source and can use them if the new form is physically capable of doing so. However, you can't use any of your special senses, such as darkvision, unless your new form also has that sense.
         - You choose whether your equipment falls to the ground in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the GM decides whether it is practical for the new form to wear a piece of equipment, based on the creature's shape and size. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with it. Equipment that merges with the form has no effect until you leave the form.
+      name_ru: Дикий облик
+      text_ru: 'Друид оборачивается зверем, которого видел: берёт его тело и хиты, а разум оставляет свой.'
+      mode: declare
+      how_ru: Действие, два раза до короткого отдыха. Назовите зверя из списка форм.
+      say: 'Оборачиваюсь зверем:'
     - key: druid_circle_improvement_2
       name: Druid Circle feature
       level: 10
@@ -1252,10 +1411,16 @@ items:
       name: Beast Spells
       level: 18
       description: Beginning at 18th level, you can cast many of your druid spells in any shape you assume using Wild Shape. You can perform the somatic and verbal components of a druid spell while in a beast shape, but you aren't able to provide material components.
+      name_ru: Звериные заклинания
+      text_ru: Можно творить заклинания и в зверином облике.
+      mode: master
     - key: druid_timeless_body
       name: Timeless Body
       level: 18
       description: Starting at 18th level, the primal magic that you wield causes you to age more slowly. For every 10 years that pass, your body ages only 1 year.
+      name_ru: Безвременное тело
+      text_ru: Друид стареет в десять раз медленнее.
+      mode: master
     - key: druid_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -1266,6 +1431,9 @@ items:
       description: |-
         At 20th level, you can use your Wild Shape an unlimited number of times.
         Additionally, you can ignore the verbal and somatic components of your druid spells, as well as any material components that lack a cost and aren't consumed by a spell. You gain this benefit in both your normal shape and your beast shape from Wild Shape.
+      name_ru: Архидруид
+      text_ru: Дикий облик без ограничений.
+      mode: master
   - id: class.fighter
     name: Воин
     epithet: Мастер оружия
@@ -1410,6 +1578,11 @@ items:
       name: Second Wind
       level: 1
       description: You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level. Once you use this feature, you must finish a short or long rest before you can use it again.
+      name_ru: Второе дыхание
+      text_ru: Восстанавливает 1d10 + уровень хитов.
+      mode: declare
+      how_ru: Бонусное действие, раз до короткого отдыха.
+      say: Перевожу дыхание (второе дыхание)
     - key: fighter_fighting_style_archery
       name: 'Fighting Style: Archery'
       level: 1
@@ -1446,6 +1619,11 @@ items:
       description: |-
         Starting at 2nd level, you can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action on top of your regular action and a possible bonus action.
         Once you use this feature, you must finish a short or long rest before you can use it again. Starting at 17th level, you can use it twice before a rest, but only once on the same turn.
+      name_ru: Всплеск действий
+      text_ru: 'Ещё одно действие в этот ход: вторая атака, рывок или что угодно.'
+      mode: declare
+      how_ru: В своём ходу, раз до короткого отдыха.
+      say: 'Всплеск действий:'
     - key: martial_archetype
       name: Martial Archetype
       level: 3
@@ -1458,6 +1636,9 @@ items:
       name: Extra Attack
       level: 5
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn. The number of attacks increases to three when you reach 11th level in this class and to four when you reach 20th level in this class.
+      name_ru: Дополнительная атака
+      text_ru: 'Действие «Атака» даёт несколько ударов: можно бить одну цель или разных.'
+      mode: auto
     - key: fighter_ability_score_improvement_2
       name: Ability Score Improvement
       level: 6
@@ -1474,6 +1655,11 @@ items:
       name: Indomitable (1 use)
       level: 9
       description: Beginning at 9th level, you can reroll a saving throw that you fail. If you do so, you must use the new roll, and you can't use this feature again until you finish a long rest. You can use this feature twice between long rests starting at 13th level and three times between long rests starting at 17th level.
+      name_ru: Упорный
+      text_ru: Проваленный спасбросок можно перебросить.
+      mode: declare
+      how_ru: Скажите мастеру сразу после провала.
+      say: Перебрасываю спасбросок (Упорный)
     - key: martial_archetype_improvement_2
       name: Martial Archetype feature
       level: 10
@@ -1482,6 +1668,9 @@ items:
       name: Extra Attack (2)
       level: 11
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn. The number of attacks increases to three when you reach 11th level in this class and to four when you reach 20th level in this class.
+      name_ru: Дополнительная атака
+      text_ru: 'Действие «Атака» даёт несколько ударов: можно бить одну цель или разных.'
+      mode: auto
     - key: fighter_ability_score_improvement_4
       name: Ability Score Improvement
       level: 12
@@ -1490,6 +1679,11 @@ items:
       name: Indomitable (2 uses)
       level: 13
       description: Beginning at 9th level, you can reroll a saving throw that you fail. If you do so, you must use the new roll, and you can't use this feature again until you finish a long rest. You can use this feature twice between long rests starting at 13th level and three times between long rests starting at 17th level.
+      name_ru: Упорный
+      text_ru: Проваленный спасбросок можно перебросить.
+      mode: declare
+      how_ru: Скажите мастеру сразу после провала.
+      say: Перебрасываю спасбросок (Упорный)
     - key: fighter_ability_score_improvement_5
       name: Ability Score Improvement
       level: 14
@@ -1508,10 +1702,20 @@ items:
       description: |-
         Starting at 2nd level, you can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action on top of your regular action and a possible bonus action.
         Once you use this feature, you must finish a short or long rest before you can use it again. Starting at 17th level, you can use it twice before a rest, but only once on the same turn.
+      name_ru: Всплеск действий
+      text_ru: 'Ещё одно действие в этот ход: вторая атака, рывок или что угодно.'
+      mode: declare
+      how_ru: В своём ходу, раз до короткого отдыха.
+      say: 'Всплеск действий:'
     - key: indomitable_3_uses
       name: Indomitable (3 uses)
       level: 17
       description: Beginning at 9th level, you can reroll a saving throw that you fail. If you do so, you must use the new roll, and you can't use this feature again until you finish a long rest. You can use this feature twice between long rests starting at 13th level and three times between long rests starting at 17th level.
+      name_ru: Упорный
+      text_ru: Проваленный спасбросок можно перебросить.
+      mode: declare
+      how_ru: Скажите мастеру сразу после провала.
+      say: Перебрасываю спасбросок (Упорный)
     - key: martial_archetype_improvement_4
       name: Martial Archetype feature
       level: 18
@@ -1524,6 +1728,9 @@ items:
       name: Extra Attack (3)
       level: 20
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn. The number of attacks increases to three when you reach 11th level in this class and to four when you reach 20th level in this class.
+      name_ru: Дополнительная атака
+      text_ru: 'Действие «Атака» даёт несколько ударов: можно бить одну цель или разных.'
+      mode: auto
   - id: class.monk
     name: Монах
     epithet: Боец без оружия
@@ -1664,14 +1871,24 @@ items:
         - You can roll a d4 in place of the normal damage of your unarmed strike or monk weapon. This die changes as you gain monk levels, as shown in the Martial Arts column of Table: The Monk.
         - When you use the Attack action with an unarmed strike or a monk weapon on your turn, you can make one unarmed strike as a bonus action. For example, if you take the Attack action and attack with a quarterstaff, you can also make an unarmed strike as a bonus action, assuming you haven't already taken a bonus action this turn.
         Certain monasteries use specialized forms of the monk weapons. For example, you might use a club that is two lengths of wood connected by a short chain (called a nunchaku) or a sickle with a shorter, straighter blade (called a kama). Whatever name you use for a monk weapon, you can use the game statistics provided for the weapon.
+      name_ru: Боевые искусства
+      text_ru: Безоружный удар и оружие монаха бьют Ловкостью и своей костью урона. После атаки — ещё безоружный удар бонусным действием.
+      mode: auto
     - key: monk_unarmored_defense
       name: Unarmored Defense
       level: 1
       description: Beginning at 1st level, while you are wearing no armor and not wielding a shield, your AC equals 10 + your Dexterity modifier + your Wisdom modifier.
+      name_ru: Защита без доспехов
+      text_ru: Без доспеха и щита КД равен 10 + Ловкость + Мудрость.
+      mode: auto
     - key: flurry_of_blows
       name: Flurry of Blows
       level: 2
       description: Immediately after you take the Attack action on your turn, you can spend 1 ki point to make two unarmed strikes as a bonus action.
+      name_ru: Шквал ударов
+      text_ru: После действия «Атака» — два безоружных удара бонусным действием за 1 ци.
+      mode: declare
+      say: 'Шквал ударов: бью дважды'
     - key: ki
       name: Ki
       level: 2
@@ -1681,26 +1898,44 @@ items:
         When you spend a ki point, it is unavailable until you finish a short or long rest, at the end of which you draw all of your expended ki back into yourself. You must spend at least 30 minutes of the rest meditating to regain your ki points.
         Some of your ki features require your target to make a saving throw to resist the feature's effects. The saving throw DC is calculated as follows:
         Ki save DC = 8 + your proficiency bonus + your Wisdom modifier
+      name_ru: Ци
+      text_ru: 'Запас очков для приёмов монаха: шквал ударов, терпеливая оборона, поступь ветра, оглушающий удар. Возвращается на коротком отдыхе.'
+      mode: auto
     - key: patient_defense
       name: Patient Defense
       level: 2
       description: You can spend 1 ki point to take the Dodge action as a bonus action on your turn.
+      name_ru: Терпеливая оборона
+      text_ru: 'Уклонение бонусным действием за 1 ци: атаки по вам с помехой.'
+      mode: declare
+      say: Ухожу в терпеливую оборону
     - key: step_of_the_wind
       name: Step of the Wind
       level: 2
       description: You can spend 1 ki point to take the Disengage or Dash action as a bonus action on your turn, and your jump distance is doubled for the turn.
+      name_ru: Поступь ветра
+      text_ru: Рывок или отход бонусным действием за 1 ци, прыжки вдвое дальше.
+      mode: declare
+      say: 'Поступь ветра: отхожу'
     - key: unarmored_movement_1
       name: Unarmored Movement
       level: 2
       description: |-
         Starting at 2nd level, your speed increases by 10 feet while you are not wearing armor or wielding a shield. This bonus increases when you reach certain monk levels, as shown in Table: The Monk.
         At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.
+      name_ru: Движение без доспехов
+      text_ru: Скорость растёт, пока на монахе нет доспеха и щита.
+      mode: auto
     - key: deflect_missiles
       name: Deflect Missiles
       level: 3
       description: |-
         Starting at 3rd level, you can use your reaction to deflect or catch the missile when you are hit by a ranged weapon attack. When you do so, the damage you take from the attack is reduced by 1d10 + your Dexterity modifier + your monk level.
         If you reduce the damage to 0, you can catch the missile if it is small enough for you to hold in one hand and you have at least one hand free. If you catch a missile in this way, you can spend 1 ki point to make a ranged attack with the weapon or piece of ammunition you just caught, as part of the same reaction. You make this attack with proficiency, regardless of your weapon proficiencies, and the missile counts as a monk weapon for the attack, which has a normal range of 20 feet and a long range of 60 feet.
+      name_ru: Отражение снарядов
+      text_ru: Реакцией уменьшает урон от стрелы или болта, а поймав снаряд, может метнуть его обратно за 1 ци.
+      mode: declare
+      say: Ловлю снаряд
     - key: monastic_tradition
       name: Monastic Tradition
       level: 3
@@ -1713,18 +1948,32 @@ items:
       name: Slow Fall
       level: 4
       description: Beginning at 4th level, you can use your reaction when you fall to reduce any falling damage you take by an amount equal to five times your monk level.
+      name_ru: Замедленное падение
+      text_ru: Реакцией уменьшает урон от падения.
+      mode: master
     - key: monk_extra_attack
       name: Extra Attack
       level: 5
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn.
+      name_ru: Дополнительная атака
+      text_ru: Действие «Атака» даёт два удара.
+      mode: auto
     - key: stunning_strike
       name: Stunning Strike
       level: 5
       description: Starting at 5th level, you can interfere with the flow of ki in an opponent's body. When you hit another creature with a melee weapon attack, you can spend 1 ki point to attempt a stunning strike. The target must succeed on a Constitution saving throw or be stunned until the end of your next turn.
+      name_ru: Оглушающий удар
+      text_ru: 'Попав в ближнем бою, потратьте 1 ци: цель делает спасбросок Телосложения или ошеломлена до конца вашего следующего хода.'
+      mode: declare
+      how_ru: Заявите вместе с ударом.
+      say: Бью в нервный узел (оглушающий удар)
     - key: ki_empowered_strikes
       name: Ki Empowered Strikes
       level: 6
       description: Starting at 6th level, your unarmed strikes count as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.
+      name_ru: Удары, усиленные ци
+      text_ru: 'Безоружные удары считаются магическими: пробивают защиту от обычного оружия.'
+      mode: master
     - key: monastic_tradition_improvement_1
       name: Monastic Tradition feature
       level: 6
@@ -1733,10 +1982,16 @@ items:
       name: Evasion
       level: 7
       description: At 7th level, your instinctive agility lets you dodge out of the way of certain area effects, such as a blue dragon's lightning breath or a fireball spell. When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.
+      name_ru: Увёртливость
+      text_ru: 'От огня, взрыва и других бед со спасброском Ловкости: успех — без урона, провал — половина.'
+      mode: auto
     - key: stillness_of_mind
       name: Stillness of Mind
       level: 7
       description: Starting at 7th level, you can use your action to end one effect on yourself that is causing you to be charmed or frightened.
+      name_ru: Спокойствие разума
+      text_ru: Действием снимает с себя испуг или очарование.
+      mode: master
     - key: monk_ability_score_improvement_2
       name: Ability Score Improvement
       level: 8
@@ -1747,10 +2002,16 @@ items:
       description: |-
         Starting at 2nd level, your speed increases by 10 feet while you are not wearing armor or wielding a shield. This bonus increases when you reach certain monk levels, as shown in Table: The Monk.
         At 9th level, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move.
+      name_ru: Движение без доспехов
+      text_ru: Скорость растёт, пока на монахе нет доспеха и щита.
+      mode: auto
     - key: purity_of_body
       name: Purity of Body
       level: 10
       description: At 10th level, your mastery of the ki flowing through you makes you immune to disease and poison.
+      name_ru: Чистота тела
+      text_ru: Иммунитет к болезням и ядам.
+      mode: master
     - key: monastic_tradition_improvement_2
       name: Monastic Tradition feature
       level: 11
@@ -1763,16 +2024,25 @@ items:
       name: Tongue of the Sun and Moon
       level: 13
       description: Starting at 13th level, you learn to touch the ki of other minds so that you understand all spoken languages. Moreover, any creature that can understand a language can understand what you say.
+      name_ru: Язык солнца и луны
+      text_ru: Монаха понимает любое существо, знающее хоть один язык.
+      mode: master
     - key: diamond_soul
       name: Diamond Soul
       level: 14
       description: |-
         Beginning at 14th level, your mastery of ki grants you proficiency in all saving throws.
         Additionally, whenever you make a saving throw and fail, you can spend 1 ki point to reroll it and take the second result.
+      name_ru: Алмазная душа
+      text_ru: Владение всеми спасбросками; провал можно перебросить за 1 ци.
+      mode: master
     - key: monk_timeless_body
       name: Timeless Body
       level: 15
       description: At 15th level, your ki sustains you so that you suffer none of the frailty of old age, and you can't be aged magically. You can still die of old age, however. In addition, you no longer need food or water.
+      name_ru: Безвременное тело
+      text_ru: Монах не стареет и не нуждается в еде и воде.
+      mode: master
     - key: monk_ability_score_improvement_4
       name: Ability Score Improvement
       level: 16
@@ -1787,6 +2057,9 @@ items:
       description: |-
         Beginning at 18th level, you can use your action to spend 4 ki points to become invisible for 1 minute. During that time, you also have resistance to all damage but force damage.
         Additionally, you can spend 8 ki points to cast the astral projection spell, without needing material components. When you do so, you can't take any other creatures with you.
+      name_ru: Пустое тело
+      text_ru: За ци становится невидимым или уходит в астрал.
+      mode: master
     - key: monk_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -1795,6 +2068,9 @@ items:
       name: Perfect Self
       level: 20
       description: At 20th level, when you roll for initiative and have no ki points remaining, you regain 4 ki points.
+      name_ru: Совершенство
+      text_ru: В начале боя без ци получает 4 очка.
+      mode: master
   - id: class.paladin
     name: Паладин
     epithet: Воин клятвы
@@ -1957,6 +2233,10 @@ items:
       description: |-
         The presence of strong evil registers on your senses like a noxious odor, and powerful good rings like heavenly music in your ears. As an action, you can open your awareness to detect such forces. Until the end of your next turn, you know the location of any celestial, fiend, or undead within 60 feet of you that is not behind total cover. You know the type (celestial, fiend, or undead) of any being whose presence you sense, but not its identity. Within the same radius, you also detect the presence of any place or object that has been consecrated or desecrated, as with the hallow spell.
         You can use this feature a number of times equal to 1 + your Charisma modifier. When you finish a long rest, you regain all expended uses.
+      name_ru: Божественное чувство
+      text_ru: До конца следующего хода чувствует небожителей, исчадий и нежить в 60 футах.
+      mode: declare
+      say: Прислушиваюсь божественным чувством
     - key: lay_on_hands
       name: Lay on Hands
       level: 1
@@ -1965,10 +2245,20 @@ items:
         As an action, you can touch a creature and draw power from the pool to restore a number of hit points to that creature, up to the maximum amount remaining in your pool.
         Alternatively, you can expend 5 hit points from your pool of healing to cure the target of one disease or neutralize one poison affecting it. You can cure multiple diseases and neutralize multiple poisons with a single use of Lay on Hands, expending hit points separately for each one.
         This feature has no effect on undead and constructs.
+      name_ru: Наложение рук
+      text_ru: 'Запас целительной силы: касанием лечит хиты из запаса или за 5 хитов исцеляет болезнь или яд.'
+      mode: declare
+      how_ru: Действие; назовите, кого и на сколько лечите.
+      say: Накладываю руки на
     - key: divine_smite
       name: Divine Smite
       level: 2
       description: Starting at 2nd level, when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target, in addition to the weapon's damage. The extra damage is 2d8 for a 1st-level spell slot, plus 1d8 for each spell level higher than 1st, to a maximum of 5d8. The damage increases by 1d8 if the target is an undead or a fiend.
+      name_ru: Божественная кара
+      text_ru: Попав в ближнем бою, можно потратить ячейку заклинания на добавочный урон излучением.
+      mode: declare
+      how_ru: Заявите после попадания.
+      say: Вкладываю в удар божественную кару
     - key: paladin_fighting_style
       name: Fighting Style
       level: 2
@@ -2004,10 +2294,16 @@ items:
         Your oath allows you to channel divine energy to fuel magical effects. Each Channel Divinity option provided by your oath explains how to use it.
         When you use your Channel Divinity, you choose which option to use. You must then finish a short or long rest to use your Channel Divinity again.
         Some Channel Divinity effects require saving throws. When you use such an effect from this class, the DC equals your paladin spell save DC.
+      name_ru: Божественный канал
+      text_ru: Заряды божественной силы для особых приёмов класса. Возвращаются на отдыхе.
+      mode: master
     - key: divine_health
       name: Divine Health
       level: 3
       description: By 3rd level, the divine magic flowing through you makes you immune to disease.
+      name_ru: Божественное здоровье
+      text_ru: Иммунитет к болезням.
+      mode: master
     - key: oath_spells
       name: Oath Spells
       level: 3
@@ -2028,12 +2324,18 @@ items:
       name: Extra Attack
       level: 5
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn.
+      name_ru: Дополнительная атака
+      text_ru: Действие «Атака» даёт два удара.
+      mode: auto
     - key: aura_of_protection
       name: Aura of Protection
       level: 6
       description: |-
         Starting at 6th level, whenever you or a friendly creature within 10 feet of you must make a saving throw, the creature gains a bonus to the saving throw equal to your Charisma modifier (with a minimum bonus of +1). You must be conscious to grant this bonus.
         At 18th level, the range of this aura increases to 30 feet.
+      name_ru: Аура защиты
+      text_ru: Паладин и союзники в 10 футах добавляют его Харизму к спасброскам.
+      mode: master
     - key: sacred_oath_improvement_1
       name: Sacred Oath feature
       level: 7
@@ -2050,10 +2352,16 @@ items:
       description: |-
         Starting at 10th level, you and friendly creatures within 10 feet of you can't be frightened while you are conscious.
         At 18th level, the range of this aura increases to 30 feet.
+      name_ru: Аура отваги
+      text_ru: Паладина и союзников рядом нельзя испугать.
+      mode: master
     - key: improved_divine_smite
       name: Improved Divine Smite
       level: 11
       description: By 11th level, you are so suffused with righteous might that all your melee weapon strikes carry divine power with them. Whenever you hit a creature with a melee weapon, the creature takes an extra 1d8 radiant damage. If you also use your Divine Smite with an attack, you add this damage to the extra damage of your Divine Smite.
+      name_ru: Улучшенная божественная кара
+      text_ru: Каждый удар оружием ближнего боя добавляет 1d8 урона излучением.
+      mode: master
     - key: paladin_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -2064,6 +2372,10 @@ items:
       description: |-
         Beginning at 14th level, you can use your action to end one spell on yourself or on one willing creature that you touch.
         You can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain expended uses when you finish a long rest.
+      name_ru: Очищающее касание
+      text_ru: Действием снимает одно заклинание с себя или союзника.
+      mode: declare
+      say: Очищающим касанием снимаю чары с
     - key: sacred_oath_improvement_2
       name: Sacred Oath feature
       level: 15
@@ -2078,6 +2390,9 @@ items:
       name: Aura improvements
       level: 18
       description: At 18th level, the range of your auras increase to 30 feet.
+      name_ru: Улучшенные ауры
+      text_ru: Ауры паладина действуют на 30 футов.
+      mode: master
     - key: paladin_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -2270,6 +2585,9 @@ items:
         You have advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them.
         When you gain this feature, you also learn one language of your choice that is spoken by your favored enemies, if they speak one at all.
         You choose one additional favored enemy, as well as an associated language, at 6th and 14th level. As you gain levels, your choices should reflect the types of monsters you have encountered on your adventures.
+      name_ru: Избранный враг
+      text_ru: Преимущество на выслеживание и знания об избранных врагах.
+      mode: master
     - key: natural_explorer_1_terrain_type
       name: Natural Explorer (1 terrain type)
       level: 1
@@ -2283,6 +2601,9 @@ items:
         - When you forage, you find twice as much food as you normally would.
         - While tracking other creatures, you also learn their exact number, their sizes, and how long ago they passed through the area.
         You choose additional favored terrain types at 6th and 10th level.
+      name_ru: Исследователь природы
+      text_ru: В избранной местности отряд не плутает и идёт быстрее.
+      mode: master
     - key: ranger_fighting_style
       name: Fighting Style
       level: 2
@@ -2315,6 +2636,9 @@ items:
       name: Primeval Awareness
       level: 3
       description: 'Beginning at 3rd level, you can use your action and expend one ranger spell slot to focus your awareness on the region around you. For 1 minute per level of the spell slot you expend, you can sense whether the following types of creatures are present within 1 mile of you (or within up to 6 miles if you are in your favored terrain): aberrations, celestials, dragons, elementals, fey, fiends, and undead. This feature doesn''t reveal the creatures'' location or number.'
+      name_ru: Первозданная осведомлённость
+      text_ru: За ячейку чувствует, есть ли рядом враги избранных видов.
+      mode: master
     - key: ranger_archetype
       name: Ranger Archetype
       level: 3
@@ -2327,6 +2651,9 @@ items:
       name: Extra Attack
       level: 5
       description: Beginning at 5th level, you can attack twice, instead of once, whenever you take the Attack action on your turn.
+      name_ru: Дополнительная атака
+      text_ru: Действие «Атака» даёт два удара.
+      mode: auto
     - key: favored_enemy_2_types
       name: Favored Enemy (2 types)
       level: 6
@@ -2336,6 +2663,9 @@ items:
         You have advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them.
         When you gain this feature, you also learn one language of your choice that is spoken by your favored enemies, if they speak one at all.
         You choose one additional favored enemy, as well as an associated language, at 6th and 14th level. As you gain levels, your choices should reflect the types of monsters you have encountered on your adventures.
+      name_ru: Избранный враг
+      text_ru: Преимущество на выслеживание и знания об избранных врагах.
+      mode: master
     - key: natural_explorer_2_terrain_types
       name: Natural Explorer (2 terrain types)
       level: 6
@@ -2349,6 +2679,9 @@ items:
         - When you forage, you find twice as much food as you normally would.
         - While tracking other creatures, you also learn their exact number, their sizes, and how long ago they passed through the area.
         You choose additional favored terrain types at 6th and 10th level.
+      name_ru: Исследователь природы
+      text_ru: В избранной местности отряд не плутает и идёт быстрее.
+      mode: master
     - key: ranger_archetype_improvement_1
       name: Ranger Archetype feature
       level: 7
@@ -2363,12 +2696,18 @@ items:
       description: |-
         Starting at 8th level, moving through nonmagical difficult terrain costs you no extra movement. You can also pass through nonmagical plants without being slowed by them and without taking damage from them if they have thorns, spines, or a similar hazard.
         In addition, you have advantage on saving throws against plants that are magically created or manipulated to impede movement, such those created by the entangle spell.
+      name_ru: Тропы земли
+      text_ru: Трудная местность из растений не замедляет.
+      mode: master
     - key: hide_in_plain_sight
       name: Hide in Plain Sight
       level: 10
       description: |-
         Starting at 10th level, you can spend 1 minute creating camouflage for yourself. You must have access to fresh mud, dirt, plants, soot, and other naturally occurring materials with which to create your camouflage.
         Once you are camouflaged in this way, you can try to hide by pressing yourself up against a solid surface, such as a tree or wall, that is at least as tall and wide as you are. You gain a +10 bonus to Dexterity (Stealth) checks as long as you remain there without moving or taking actions. Once you move or take an action or a reaction, you must camouflage yourself again to gain this benefit.
+      name_ru: Маскировка на виду
+      text_ru: Замаскировавшись, получает +10 к Скрытности, пока не двигается.
+      mode: master
     - key: natural_explorer_3_terrain_types
       name: Natural Explorer (3 terrain types)
       level: 10
@@ -2382,6 +2721,9 @@ items:
         - When you forage, you find twice as much food as you normally would.
         - While tracking other creatures, you also learn their exact number, their sizes, and how long ago they passed through the area.
         You choose additional favored terrain types at 6th and 10th level.
+      name_ru: Исследователь природы
+      text_ru: В избранной местности отряд не плутает и идёт быстрее.
+      mode: master
     - key: ranger_archetype_improvement_2
       name: Ranger Archetype feature
       level: 11
@@ -2399,10 +2741,16 @@ items:
         You have advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them.
         When you gain this feature, you also learn one language of your choice that is spoken by your favored enemies, if they speak one at all.
         You choose one additional favored enemy, as well as an associated language, at 6th and 14th level. As you gain levels, your choices should reflect the types of monsters you have encountered on your adventures.
+      name_ru: Избранный враг
+      text_ru: Преимущество на выслеживание и знания об избранных врагах.
+      mode: master
     - key: vanish
       name: Vanish
       level: 14
       description: Starting at 14th level, you can use the Hide action as a bonus action on your turn. Also, you can't be tracked by nonmagical means, unless you choose to leave a trail.
+      name_ru: Исчезновение
+      text_ru: Прячется бонусным действием, и его не выследить магией.
+      mode: master
     - key: ranger_archetype_improvement_3
       name: Ranger Archetype feature
       level: 15
@@ -2417,6 +2765,9 @@ items:
       description: |-
         At 18th level, you gain preternatural senses that help you fight creatures you can't see. When you attack a creature you can't see, your inability to see it doesn't impose disadvantage on your attack rolls against it.
         You are also aware of the location of any invisible creature within 30 feet of you, provided that the creature isn't hidden from you and you aren't blinded or deafened.
+      name_ru: Дикие чувства
+      text_ru: Чует невидимых существ рядом.
+      mode: master
     - key: ranger_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -2425,6 +2776,9 @@ items:
       name: Foe Slayer
       level: 20
       description: At 20th level, you become an unparalleled hunter of your enemies. Once on each of your turns, you can add your Wisdom modifier to the attack roll or the damage roll of an attack you make against one of your favored enemies. You can choose to use this feature before or after the roll, but before any effects of the roll are applied.
+      name_ru: Убийца врагов
+      text_ru: Раз в ход прибавляет Мудрость к атаке или урону по избранному врагу.
+      mode: master
   - id: class.rogue
     name: Плут
     epithet: Ловкач и мастер навыков
@@ -2586,16 +2940,27 @@ items:
         Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll. The attack must use a finesse or a ranged weapon.
         You don't need advantage on the attack roll if another enemy of the target is within 5 feet of it, that enemy isn't incapacitated, and you don't have disadvantage on the attack roll.
         The amount of the extra damage increases as you gain levels in this class, as shown in the Sneak Attack column of the Rogue table.
+      name_ru: Скрытая атака
+      text_ru: Раз в ход — добавочные кости урона, если бьёте фехтовальным или дальнобойным оружием с преимуществом или когда рядом с целью стоит союзник.
+      mode: auto
+      how_ru: Сервер добавит сам. Ищите преимущество или бейте того, кого держит союзник.
     - key: thieves_cant
       name: Thieves' Cant
       level: 1
       description: |-
         During your rogue training you learned thieves' cant, a secret mix of dialect, jargon, and code that allows you to hide messages in seemingly normal conversation. Only another creature that knows thieves' cant understands such messages. It takes four times longer to convey such a message than it does to speak the same idea plainly.
         In addition, you understand a set of secret signs and symbols used to convey short, simple messages, such as whether an area is dangerous or the territory of a thieves' guild, whether loot is nearby, or whether the people in an area are easy marks or will provide a safe house for thieves on the run.
+      name_ru: Воровской жаргон
+      text_ru: 'Тайная речь и знаки воров: можно говорить так, что поймут только свои.'
+      mode: master
     - key: cunning_action
       name: Cunning Action
       level: 2
       description: Starting at 2nd level, your quick thinking and agility allow you to move and act quickly. You can take a bonus action on each of your turns in combat. This action can be used only to take the Dash, Disengage, or Hide action.
+      name_ru: Хитрое действие
+      text_ru: 'Рывок, отход или засада бонусным действием: ударить и скрыться в один ход.'
+      mode: declare
+      say: Хитрым действием отхожу в тень
     - key: roguish_archetype
       name: Roguish Archetype
       level: 3
@@ -2608,6 +2973,9 @@ items:
       name: Uncanny Dodge
       level: 5
       description: Starting at 5th level, when an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you.
+      name_ru: Невероятное уклонение
+      text_ru: Попавший по вам удар наносит половину урона. Тратит реакцию; сервер применит сам.
+      mode: auto
     - key: rogue_expertise_2
       name: Expertise
       level: 6
@@ -2618,6 +2986,9 @@ items:
       name: Evasion
       level: 7
       description: Beginning at 7th level, you can nimbly dodge out of the way of certain area effects, such as a red dragon's fiery breath or an ice storm spell. When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.
+      name_ru: Увёртливость
+      text_ru: 'От огня, взрыва и других бед со спасброском Ловкости: успех — без урона, провал — половина.'
+      mode: auto
     - key: rogue_ability_score_improvement_2
       name: Ability Score Improvement
       level: 8
@@ -2634,6 +3005,9 @@ items:
       name: Reliable Talent
       level: 11
       description: By 11th level, you have refined your chosen skills until they approach perfection. Whenever you make an ability check that lets you add your proficiency bonus, you can treat a d20 roll of 9 or lower as a 10.
+      name_ru: Надёжный талант
+      text_ru: В навыках с владением на кости не бывает меньше 10.
+      mode: master
     - key: rogue_ability_score_improvement_4
       name: Ability Score Improvement
       level: 12
@@ -2646,10 +3020,16 @@ items:
       name: Blindsense
       level: 14
       description: Starting at 14th level, if you are able to hear, you are aware of the location of any hidden or invisible creature within 10 feet of you.
+      name_ru: Слепое зрение
+      text_ru: Слышит спрятавшихся и невидимых в 10 футах.
+      mode: master
     - key: slippery_mind
       name: Slippery Mind
       level: 15
       description: By 15th level, you have acquired greater mental strength. You gain proficiency in Wisdom saving throws.
+      name_ru: Скользкий разум
+      text_ru: Владение спасбросками Мудрости.
+      mode: master
     - key: rogue_ability_score_improvement_5
       name: Ability Score Improvement
       level: 16
@@ -2662,6 +3042,9 @@ items:
       name: Elusive
       level: 18
       description: Beginning at 18th level, you are so evasive that attackers rarely gain the upper hand against you. No attack roll has advantage against you while you aren't incapacitated.
+      name_ru: Неуловимость
+      text_ru: Атаки по плуту не получают преимущества.
+      mode: master
     - key: rogue_ability_score_improvement_6
       name: Ability Score Improvement
       level: 19
@@ -2672,6 +3055,10 @@ items:
       description: |-
         At 20th level, you have an uncanny knack for succeeding when you need to. If your attack misses a target within range, you can turn the miss into a hit. Alternatively, if you fail an ability check, you can treat the d20 roll as a 20.
         Once you use this feature, you can't use it again until you finish a short or long rest.
+      name_ru: Удача
+      text_ru: Промах превращается в попадание, а провал проверки — в 20 на кости.
+      mode: declare
+      say: Испытываю удачу
   - id: class.sorcerer
     name: Чародей
     epithet: Магия в крови
@@ -3034,10 +3421,16 @@ items:
       name: 'Flexible Casting: Converting Spell Slot'
       level: 2
       description: As a bonus action on your turn, you can expend one spell slot and gain a number of sorcery points equal to the slot's level..
+      name_ru: Гибкое колдовство
+      text_ru: Чародейские очки обмениваются на ячейки и обратно.
+      mode: master
     - key: flexible_casting_creating_spell_slots
       name: 'Flexible Casting: Creating Spell Slots'
       level: 2
       description: "You can transform unexpended sorcery points into one spell slot as a bonus action on your turn. The Creating Spell Slots table shows the cost of creating a spell slot of a given level. You can create spell slots no higher in level than 5th. \nAny spell slot you create with this feature vanishes when you finish a long rest."
+      name_ru: Гибкое колдовство
+      text_ru: Чародейские очки обмениваются на ячейки и обратно.
+      mode: master
     - key: font_of_magic
       name: Font of Magic
       level: 2
@@ -3045,18 +3438,27 @@ items:
         At 2nd level, you tap into a deep wellspring of magic within yourself. This wellspring is represented by sorcery points, which allow you to create a variety of magical effects.
         Sorcery Points
         You have 2 sorcery points, and you gain more as you reach higher levels, as shown in the Sorcery Points column of the Sorcerer table. You can never have more sorcery points than shown on the table for your level. You regain all spent sorcery points when you finish a long rest.
+      name_ru: Источник магии
+      text_ru: Запас чародейских очков для метамагии и новых ячеек.
+      mode: master
     - key: metamagic_1
       name: Metamagic
       level: 3
       description: |-
         At 3rd level, you gain the ability to twist your spells to suit your needs. You gain two of the following Metamagic options of your choice. You gain another one at 10th and 17th level.
         You can use only one Metamagic option on a spell when you cast it, unless otherwise noted.
+      name_ru: Метамагия
+      text_ru: 'Чародейские очки меняют заклинание: дальше, тише, быстрее, на две цели.'
+      mode: master
     - key: metamagic_twinned_spell
       name: 'Metamagic: Twinned Spell'
       level: 3
       description: |-
         When you cast a spell that targets only one creature and doesn't have a range of self, you can spend a number of sorcery points equal to the spell's level to target a second creature in range with the same spell (1 sorcery point if the spell is a cantrip).
         To be eligible, a spell must be incapable of targeting more than one creature at the spell's current level. For example, magic missile and scorching ray aren't eligible, but ray of frost is.
+      name_ru: Метамагия
+      text_ru: 'Чародейские очки меняют заклинание: дальше, тише, быстрее, на две цели.'
+      mode: master
     - key: metamagic_careful_spell
       name: 'Metamagic: Careful Spell'
       level: 3
@@ -3116,6 +3518,9 @@ items:
       description: |-
         At 3rd level, you gain the ability to twist your spells to suit your needs. You gain two of the following Metamagic options of your choice. You gain another one at 10th and 17th level.
         You can use only one Metamagic option on a spell when you cast it, unless otherwise noted.
+      name_ru: Метамагия
+      text_ru: 'Чародейские очки меняют заклинание: дальше, тише, быстрее, на две цели.'
+      mode: master
     - key: sorcerer_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -3136,6 +3541,9 @@ items:
       description: |-
         At 3rd level, you gain the ability to twist your spells to suit your needs. You gain two of the following Metamagic options of your choice. You gain another one at 10th and 17th level.
         You can use only one Metamagic option on a spell when you cast it, unless otherwise noted.
+      name_ru: Метамагия
+      text_ru: 'Чародейские очки меняют заклинание: дальше, тише, быстрее, на две цели.'
+      mode: master
     - key: sorcerous_origin_improvement_3
       name: Sorcerous Origin feature
       level: 18
@@ -3150,6 +3558,9 @@ items:
       name: Sorcerous Restoration
       level: 20
       description: At 20th level, you regain 4 expended sorcery points whenever you finish a short rest.
+      name_ru: Чародейское восстановление
+      text_ru: Короткий отдых возвращает 4 чародейских очка.
+      mode: master
   - id: class.warlock
     name: Колдун
     epithet: Договор с покровителем
@@ -3482,6 +3893,9 @@ items:
         In your study of occult lore, you have unearthed eldritch invocations, fragments of forbidden knowledge that imbue you with an abiding magical ability.
         At 2nd level, you gain two eldritch invocations of your choice. Your invocation options are detailed at the end of the class description. When you gain certain warlock levels, you gain additional invocations of your choice, as shown in the Invocations Known column of the Warlock table.
         Additionally, when you gain a level in this class, you can choose one of the invocations you know and replace it with another invocation that you could learn at that level.
+      name_ru: Таинственные воззвания
+      text_ru: 'Особые дары покровителя: усиление заговоров, зрение во тьме и другое.'
+      mode: master
     - key: eldritch_invocation_agonizing_blast
       name: 'Eldritch Invocation: Agonizing Blast'
       level: 2
@@ -3674,6 +4088,9 @@ items:
         At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.
         You can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.
         At higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest.
+      name_ru: Таинственный арканум
+      text_ru: Одно сильное заклинание раз в день без ячейки.
+      mode: master
     - key: warlock_ability_score_improvement_3
       name: Ability Score Improvement
       level: 12
@@ -3690,6 +4107,9 @@ items:
         At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.
         You can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.
         At higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest.
+      name_ru: Таинственный арканум
+      text_ru: Одно сильное заклинание раз в день без ячейки.
+      mode: master
     - key: otherworldly_patron_improvement_3
       name: Otherworldly Patron feature
       level: 14
@@ -3701,6 +4121,9 @@ items:
         At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.
         You can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.
         At higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest.
+      name_ru: Таинственный арканум
+      text_ru: Одно сильное заклинание раз в день без ячейки.
+      mode: master
     - key: eldritch_invocation_chains_of_carceri
       name: 'Eldritch Invocation: Chains of Carceri'
       level: 15
@@ -3732,6 +4155,9 @@ items:
         At 11th level, your patron bestows upon you a magical secret called an arcanum. Choose one 6th- level spell from the warlock spell list as this arcanum.
         You can cast your arcanum spell once without expending a spell slot. You must finish a long rest before you can do so again.
         At higher levels, you gain more warlock spells of your choice that can be cast in this way: one 7th- level spell at 13th level, one 8th-level spell at 15th level, and one 9th-level spell at 17th level. You regain all uses of your Mystic Arcanum when you finish a long rest.
+      name_ru: Таинственный арканум
+      text_ru: Одно сильное заклинание раз в день без ячейки.
+      mode: master
     - key: warlock_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -3742,6 +4168,9 @@ items:
       description: |-
         At 20th level, you can draw on your inner reserve of mystical power while entreating your patron to regain expended spell slots. You can spend 1 minute entreating your patron for aid to regain all your expended spell slots from your Pact Magic feature.
         Once you regain spell slots with this feature, you must finish a long rest before you can do so again.
+      name_ru: Таинственный мастер
+      text_ru: Раз в день молитвой покровителю возвращает все ячейки договора.
+      mode: master
   - id: class.wizard
     name: Волшебник
     epithet: Учёный маг
@@ -3919,6 +4348,9 @@ items:
       description: |-
         You have learned to regain some of your magical energy by studying your spellbook. Once per day when you finish a short rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your wizard level (rounded up), and none of the slots can be 6th level or higher.
         For example, if you're a 4th-level wizard, you can recover up to two levels worth of spell slots. You can recover either a 2nd-level spell slot or two 1st-level spell slots.
+      name_ru: Магическое восстановление
+      text_ru: Раз в день на коротком отдыхе возвращает часть ячеек.
+      mode: auto
     - key: spellcasting_wizard
       name: 'Spellcasting: Wizard'
       level: 1
@@ -3969,6 +4401,9 @@ items:
       description: |-
         At 18th level, you have achieved such mastery over certain spells that you can cast them at will. Choose a 1st-level wizard spell and a 2nd-level wizard spell that are in your spellbook. You can cast those spells at their lowest level without expending a spell slot when you have them prepared. If you want to cast either spell at a higher level, you must expend a spell slot as normal.
         By spending 8 hours in study, you can exchange one or both of the spells you chose for different spells of the same levels.
+      name_ru: Мастерство заклинаний
+      text_ru: Два слабых заклинания творятся без ячеек.
+      mode: master
     - key: wizard_ability_score_improvement_5
       name: Ability Score Improvement
       level: 19
@@ -3979,3 +4414,6 @@ items:
       description: |-
         When you reach 20th level, you gain mastery over two powerful spells and can cast them with little effort. Choose two 3rd-level wizard spells in your spellbook as your signature spells. You always have these spells prepared, they don't count against the number of spells you have prepared, and you can cast each of them once at 3rd level without expending a spell slot. When you do so, you can't do so again until you finish a short or long rest.
         If you want to cast either spell at a higher level, you must expend a spell slot as normal.
+      name_ru: Фирменное заклинание
+      text_ru: Два заклинания 3-го круга всегда готовы и раз в отдых без ячейки.
+      mode: master

@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 from app.rules.dice import DiceError, parse  # noqa: E402
 from app.rules.dnd5e.tables import CONDITIONS, DAMAGE_TYPES, SKILLS  # noqa: E402
 from tools.srd_blurbs import CLASS_BLURBS, RACE_BLURBS  # noqa: E402
+from tools.srd_feature_texts import text_for  # noqa: E402
 
 SHA = "bce51b3958573819e3b842fbc0cd9524fe4bc2e1"
 BASE_URL = f"https://raw.githubusercontent.com/5e-bits/5e-database/{SHA}/src/2014/en/"
@@ -1005,8 +1006,23 @@ CLASSES_HEADER = """\
 # альтернатива — набор (список) записей {item: <id пакета>, qty} | {any: simple|martial|simple_melee|
 # martial_melee, qty} | {other: <имя вещи вне пакета по-русски>, qty}; other — прочее снаряжение.
 # features: умения класса (не подкласса); parent — у вариантов выбора (стиль боя, воззвания, метамагия).
+# name_ru, text_ru, how_ru — русские имя, что даёт и как применить; mode — кто исполняет (auto — сервер, declare —
+# игрок заявляет фразой say, master — мастер по описанию) — tools/srd_feature_texts.py.
 # epithet, badge, summary, description, highlights — русские тексты карточки конструктора (tools/srd_blurbs.py).
 """
+
+
+def feature_ru(key: str, option: bool) -> dict[str, str]:
+    """Русские тексты умения для игрока (tools/srd_feature_texts.py): имя, что даёт, как применить, кто исполняет."""
+    t = None if option else text_for(key)
+    if t is None:
+        return {}
+    out = {"name_ru": t["name"], "text_ru": t["text"], "mode": t["mode"]}
+    if t.get("how"):
+        out["how_ru"] = t["how"]
+    if t.get("say"):
+        out["say"] = t["say"]
+    return out
 
 
 def build_classes(raw: dict[str, Any]) -> list[dict]:
@@ -1046,6 +1062,7 @@ def build_classes(raw: dict[str, Any]) -> list[dict]:
                         "level": f["level"],
                         "parent": snake(f["parent"]["index"]) if f.get("parent") else None,
                         "description": joined(f["desc"]),
+                        **feature_ru(snake(f["index"]), bool(f.get("parent"))),
                     }
                 )
                 for f in feats

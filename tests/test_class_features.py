@@ -280,3 +280,47 @@ def test_monk_flurry_and_ki_moves_in_combat(client, admin, settings):
     assert one["ok"] and two["ok"], (one, two)
     assert not three["ok"] and "бонусное действие этого хода уже потрачено" in three["error"]
     assert not patient["ok"] and "бонусное действие этого хода уже потрачено" in patient["error"]
+
+
+def test_every_srd_feature_has_russian_text_for_player():
+    """Новичку (вопрос Arty 2026-10-06): у каждого умения SRD, которое видит игрок, есть русское имя, текст и метка."""
+    for cid, cls in CLASSES.items():
+        for f in cls.get("features") or []:
+            if cf.SKIP.search(f["key"]) or f.get("parent"):
+                continue
+            assert f.get("name_ru") and f.get("text_ru"), (cid, f["key"])
+            assert f.get("mode") in ("auto", "declare", "master"), (cid, f["key"])
+            if f["mode"] == "declare":
+                assert f.get("say"), (cid, f["key"])
+
+
+def test_player_texts_modes_and_world_pack_fallback():
+    rage = next(r for r in cf.class_features(CLASSES["class.barbarian"], 2) if r["key"] == "rage")
+    assert rage["mode"] == "declare" and rage["say"] and rage["text_ru"] and rage["how"]
+    ward = cf.class_features(CLASSES["class.fighter"], 1, {"fighting_style": "defense"})
+    assert next(r for r in ward if r["key"] == "fighting_style_defense")["mode"] == "auto"
+    pack = cf.player_texts({"description": "Чует ложь собеседника.", "action": "action"}, "Диагностика")
+    assert pack == {"mode": "declare", "text_ru": "Чует ложь собеседника.", "say": "Диагностика"}
+    assert cf.player_texts({"description": "Sees the truth."}, "X") == {"mode": "master"}
+
+
+def test_player_sheet_shows_features_with_uses_left(game):
+    from app.core.characters import full_view
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        _become(ctx, hero, "class.barbarian", 3)
+        ch = ctx.world.characters[hero]
+        ch.resources = {**(ch.resources or {}), "uses_spent": {"rage": 1}}
+        barb = full_view(ch, ctx.world.catalog, [], [])
+        _become(ctx, hero, "class.druid", 2)
+        druid = full_view(ch, ctx.world.catalog, [], [])
+        return barb, druid
+
+    barb, druid = play(settings, cid, [], fn)
+    rage = next(r for r in barb["class_features"] if r["key"] == "rage")
+    assert rage["uses"] == {"left": 2, "max": 3, "per_ru": rage["uses"]["per_ru"], "unit": "раз"}
+    assert "text" not in rage and rage["say"]
+    shape = next(r for r in druid["class_features"] if r["key"].startswith("wild_shape"))
+    assert shape["uses"]["max"] == 2 and any(f["id"] == "creature.wolf" for f in druid["wild_shape_forms"])
