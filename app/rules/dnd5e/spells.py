@@ -498,6 +498,18 @@ def range_ru(spell: dict) -> str:
 AREA_RU = {"cone": "конус", "sphere": "сфера", "cube": "куб", "line": "линия", "cylinder": "цилиндр"}
 
 
+def area_radius(area: dict) -> int:
+    """Как далеко от точки на дистанции достаёт область: радиус сферы или цилиндра, сторона куба, длина линии."""
+    return int(area.get("size_ft") or 0)
+
+
+def area_span(area: dict) -> int:
+    """Наибольшее расстояние между двумя существами внутри одной области: поперечник сферы или цилиндра,
+    сторона куба, длина конуса или линии."""
+    size = int(area.get("size_ft") or 0)
+    return 2 * size if area.get("shape") in ("sphere", "cylinder") else size
+
+
 def duration_ru(spell: dict) -> str:
     d = str(spell.get("duration", ""))
     table = {
