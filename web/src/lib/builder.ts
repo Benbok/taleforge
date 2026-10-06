@@ -314,7 +314,7 @@ export function steps(
 export interface CampaignHero extends SavedHero {
   seat_id: string | null;
   status: string;
-  reviewer?: "ai" | "human" | null;
+  reviewer?: "ai" | "master" | null;
   review_error?: string | null;
   review_comment?: string | null;
   class_name?: string | null;

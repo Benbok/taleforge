@@ -369,7 +369,7 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "character.sheet": {
-        // лист на сервере пока описан не весь (app/gateway/protocol.py, HeroSheet): остальное — по типам клиента
+        // книгу заклинаний сервер пока не описывает (app/core/views.py): её форма — в lib/spells.ts
         const h = e.payload.character as unknown as HeroSheet;
         // лист пришёл после изменения: прежние разборы чисел могли устареть
         if (h?.id)

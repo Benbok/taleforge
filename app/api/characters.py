@@ -17,6 +17,7 @@ from app.core import bonds
 from app.core import characters as svc
 from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
+from app.core.views import CharacterView
 from app.db.models import ActiveEffect, Character, InventoryItem
 from app.gateway.events import envelope
 
@@ -98,10 +99,10 @@ async def character_preview(
     return svc.preview(body.model_dump(exclude_none=True), cat, await svc.creation_rules(session, v.campaign))
 
 
-@router.get("/characters")
+@router.get("/characters", response_model_exclude_unset=True)
 async def list_characters(
     campaign_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> list[dict]:
+) -> list[CharacterView]:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     rows = (await session.scalars(select(Character).where(Character.campaign_id == campaign_id))).all()
     out = []
@@ -115,10 +116,10 @@ async def list_characters(
     return out
 
 
-@router.post("/characters", status_code=201)
+@router.post("/characters", status_code=201, response_model_exclude_unset=True)
 async def create_character(
     campaign_id: str, body: CharacterIn, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     rules = await svc.creation_rules(session, v.campaign)
     ch = await svc.create_draft(session, v, body.model_dump(exclude_none=True), rules)
@@ -126,15 +127,15 @@ async def create_character(
     return await _view(session, v, ch)
 
 
-@router.get("/characters/{character_id}")
+@router.get("/characters/{character_id}", response_model_exclude_unset=True)
 async def get_character(
     campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     return await _view(session, v, await svc.get_character(session, v, character_id))
 
 
-@router.put("/characters/{character_id}")
+@router.put("/characters/{character_id}", response_model_exclude_unset=True)
 async def update_character(
     campaign_id: str,
     character_id: str,
@@ -142,7 +143,7 @@ async def update_character(
     user: UserDep,
     session: SessionDep,
     as_seat: str | None = None,
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     ch = await svc.update_draft(
         session, v, await svc.get_character(session, v, character_id), body.model_dump(exclude_none=True)
@@ -172,7 +173,7 @@ async def spell_options(
     return {"spells": spellbook.learnable(ch.sheet or {}, cat)}
 
 
-@router.put("/characters/{character_id}/spells")
+@router.put("/characters/{character_id}/spells", response_model_exclude_unset=True)
 async def update_spells(
     campaign_id: str,
     character_id: str,
@@ -181,7 +182,7 @@ async def update_spells(
     session: SessionDep,
     request: Request,
     as_seat: str | None = None,
-) -> dict:
+) -> CharacterView:
     """Книга заклинаний в игре: выучить открывшееся с уровнем, сменить подготовленные после отдыха."""
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     ch = await svc.get_character(session, v, character_id)
@@ -236,7 +237,7 @@ async def submit(
     return {"status": ch.status, "errors": []}
 
 
-@router.post("/characters/{character_id}/review")
+@router.post("/characters/{character_id}/review", response_model_exclude_unset=True)
 async def review(
     campaign_id: str,
     character_id: str,
@@ -245,7 +246,7 @@ async def review(
     session: SessionDep,
     request: Request,
     as_seat: str | None = None,
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     ch = await svc.get_character(session, v, character_id)
     await svc.review(session, v, ch, await campaign_catalog(session, v.campaign), body.approve, body.comment)
@@ -288,10 +289,10 @@ async def retry_ai_review(
 # --- готовые герои и герои из профиля ---
 
 
-@router.post("/premades", status_code=201)
+@router.post("/premades", status_code=201, response_model_exclude_unset=True)
 async def create_premade(
     campaign_id: str, body: CharacterIn, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     rules = await svc.creation_rules(session, v.campaign)
     ch = await svc.create_premade(session, v, body.model_dump(exclude_none=True), rules)
@@ -299,7 +300,7 @@ async def create_premade(
     return await _view(session, v, ch)
 
 
-@router.put("/premades/{character_id}")
+@router.put("/premades/{character_id}", response_model_exclude_unset=True)
 async def update_premade(
     campaign_id: str,
     character_id: str,
@@ -307,7 +308,7 @@ async def update_premade(
     user: UserDep,
     session: SessionDep,
     as_seat: str | None = None,
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     ch = await svc.get_character(session, v, character_id)
     await svc.update_premade(session, v, ch, body.model_dump(exclude_none=True))
@@ -325,7 +326,7 @@ async def delete_premade(
     return Response(status_code=204)
 
 
-@router.post("/characters/{character_id}/claim")
+@router.post("/characters/{character_id}/claim", response_model_exclude_unset=True)
 async def claim(
     campaign_id: str,
     character_id: str,
@@ -333,7 +334,7 @@ async def claim(
     session: SessionDep,
     request: Request,
     as_seat: str | None = None,
-) -> dict:
+) -> CharacterView:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     ch = await svc.get_character(session, v, character_id)
     cat = await campaign_catalog(session, v.campaign)
@@ -345,10 +346,10 @@ async def claim(
     return await _view(session, v, ch)
 
 
-@router.post("/characters/from-library/{library_id}", status_code=201)
+@router.post("/characters/from-library/{library_id}", status_code=201, response_model_exclude_unset=True)
 async def from_library(
     campaign_id: str, library_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
+) -> CharacterView:
     """Копия героя из профиля — черновиком в кампании. Дальше его можно поправить и отправить мастеру."""
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     lc = await lib.get_mine(session, user, library_id)

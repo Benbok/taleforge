@@ -250,14 +250,12 @@
      "hero": {
       "anyOf": [
        {
-        "additionalProperties": true,
-        "type": "object"
+        "$ref": "#/components/schemas/CardHero"
        },
        {
         "type": "null"
        }
-      ],
-      "title": "Hero"
+      ]
      },
      "id": {
       "title": "Id",
@@ -282,6 +280,10 @@
      "my_role": {
       "anyOf": [
        {
+        "enum": [
+         "master",
+         "player"
+        ],
         "type": "string"
        },
        {
@@ -317,6 +319,12 @@
       "type": "boolean"
      },
      "status": {
+      "enum": [
+       "lobby",
+       "active",
+       "paused",
+       "ended"
+      ],
       "title": "Status",
       "type": "string"
      },
@@ -339,11 +347,16 @@
     "required": [
      "id",
      "name",
+     "world",
      "status",
      "session_live",
      "waiting_players",
+     "my_role",
      "is_owner",
+     "hero",
      "party",
+     "recap",
+     "last_session_at",
      "created_at"
     ],
     "title": "CampaignCard",
@@ -583,6 +596,10 @@
      "my_role": {
       "anyOf": [
        {
+        "enum": [
+         "master",
+         "player"
+        ],
         "type": "string"
        },
        {
@@ -661,6 +678,12 @@
       "type": "object"
      },
      "status": {
+      "enum": [
+       "lobby",
+       "active",
+       "paused",
+       "ended"
+      ],
       "title": "Status",
       "type": "string"
      }
@@ -681,6 +704,7 @@
      "party_size_recommended",
      "public_intro",
      "settings",
+     "brief",
      "seats",
      "created_at"
     ],
@@ -973,6 +997,41 @@
      "status"
     ],
     "title": "CampaignStatusChanged",
+    "type": "object"
+   },
+   "CardHero": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Level"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "status",
+     "level"
+    ],
+    "title": "CardHero",
     "type": "object"
    },
    "CharacterBonds": {
@@ -1278,6 +1337,246 @@
     "title": "CharacterUpdated",
     "type": "object"
    },
+   "CharacterView": {
+    "additionalProperties": false,
+    "description": "Герой в ответе REST: полный лист, если его можно видеть, иначе публичная часть; плюс имена из каталога и\nсостояние проверки.",
+    "properties": {
+     "bonds": {
+      "items": {
+       "$ref": "#/components/schemas/Bond"
+      },
+      "title": "Bonds",
+      "type": "array"
+     },
+     "class_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Class Id"
+     },
+     "class_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Class Name"
+     },
+     "dead": {
+      "title": "Dead",
+      "type": "boolean"
+     },
+     "death_saves": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Death Saves"
+     },
+     "derived": {
+      "$ref": "#/components/schemas/Derived"
+     },
+     "errors": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "features": {
+      "items": {
+       "$ref": "#/components/schemas/FeatureUses"
+      },
+      "title": "Features",
+      "type": "array"
+     },
+     "hp": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp"
+     },
+     "hp_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp Max"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "inventory": {
+      "items": {
+       "$ref": "#/components/schemas/InventoryRow"
+      },
+      "title": "Inventory",
+      "type": "array"
+     },
+     "level": {
+      "title": "Level",
+      "type": "integer"
+     },
+     "lineage": {
+      "$ref": "#/components/schemas/Lineage"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "origin_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origin Id"
+     },
+     "origin_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origin Name"
+     },
+     "personality": {
+      "additionalProperties": true,
+      "title": "Personality",
+      "type": "object"
+     },
+     "private_backstory": {
+      "title": "Private Backstory",
+      "type": "string"
+     },
+     "progress": {
+      "$ref": "#/components/schemas/Progress"
+     },
+     "public_bio": {
+      "title": "Public Bio",
+      "type": "string"
+     },
+     "resources": {
+      "additionalProperties": true,
+      "title": "Resources",
+      "type": "object"
+     },
+     "review_comment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Review Comment"
+     },
+     "review_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Review Error"
+     },
+     "reviewer": {
+      "enum": [
+       "ai",
+       "master"
+      ],
+      "title": "Reviewer",
+      "type": "string"
+     },
+     "seat_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seat Id"
+     },
+     "sheet": {
+      "additionalProperties": true,
+      "title": "Sheet",
+      "type": "object"
+     },
+     "spellbook": {
+      "additionalProperties": true,
+      "title": "Spellbook",
+      "type": "object"
+     },
+     "stand_in": {
+      "title": "Stand In",
+      "type": "boolean"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "seat_id",
+     "status",
+     "public_bio",
+     "class_id",
+     "origin_id",
+     "level",
+     "hp",
+     "hp_max",
+     "dead",
+     "death_saves",
+     "bonds"
+    ],
+    "title": "CharacterView",
+    "type": "object"
+   },
    "ChatMessage": {
     "additionalProperties": false,
     "description": "Сообщение чата. ``data`` — свободная форма: карточка броска, голосовая запись, место части отряда.",
@@ -1419,6 +1718,83 @@
      }
     },
     "title": "CreationRulesIn",
+    "type": "object"
+   },
+   "Derived": {
+    "additionalProperties": false,
+    "properties": {
+     "abilities": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Abilities",
+      "type": "object"
+     },
+     "ac": {
+      "title": "Ac",
+      "type": "integer"
+     },
+     "attacks": {
+      "items": {
+       "$ref": "#/components/schemas/HeroAttack"
+      },
+      "title": "Attacks",
+      "type": "array"
+     },
+     "effects": {
+      "items": {
+       "$ref": "#/components/schemas/HeroEffect"
+      },
+      "title": "Effects",
+      "type": "array"
+     },
+     "hp_max": {
+      "title": "Hp Max",
+      "type": "integer"
+     },
+     "mods": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Mods",
+      "type": "object"
+     },
+     "pb": {
+      "title": "Pb",
+      "type": "integer"
+     },
+     "saves": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Saves",
+      "type": "object"
+     },
+     "skills": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Skills",
+      "type": "object"
+     },
+     "speed": {
+      "title": "Speed",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "abilities",
+     "mods",
+     "ac",
+     "hp_max",
+     "saves",
+     "skills",
+     "pb",
+     "speed",
+     "attacks",
+     "effects"
+    ],
+    "title": "Derived",
     "type": "object"
    },
    "Empty": {
@@ -3371,6 +3747,54 @@
     "title": "Event_vote_updated",
     "type": "object"
    },
+   "FeatureUses": {
+    "additionalProperties": false,
+    "properties": {
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "left": {
+      "title": "Left",
+      "type": "integer"
+     },
+     "max": {
+      "title": "Max",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "per": {
+      "enum": [
+       "short_rest",
+       "long_rest"
+      ],
+      "title": "Per",
+      "type": "string"
+     },
+     "per_ru": {
+      "title": "Per Ru",
+      "type": "string"
+     },
+     "unit": {
+      "title": "Unit",
+      "type": "string"
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "max",
+     "left",
+     "per",
+     "per_ru",
+     "unit"
+    ],
+    "title": "FeatureUses",
+    "type": "object"
+   },
    "Grid": {
     "properties": {
      "bottom": {
@@ -3422,8 +3846,101 @@
     "title": "HTTPValidationError",
     "type": "object"
    },
+   "HeroAttack": {
+    "additionalProperties": true,
+    "properties": {
+     "attack_bonus": {
+      "title": "Attack Bonus",
+      "type": "integer"
+     },
+     "damage": {
+      "title": "Damage",
+      "type": "string"
+     },
+     "damage_type": {
+      "title": "Damage Type",
+      "type": "string"
+     },
+     "inventory_id": {
+      "default": null,
+      "title": "Inventory Id",
+      "type": "string"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "melee",
+       "ranged"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "long_ft": {
+      "default": null,
+      "title": "Long Ft",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "normal_ft": {
+      "default": null,
+      "title": "Normal Ft",
+      "type": "integer"
+     },
+     "reach_ft": {
+      "default": null,
+      "title": "Reach Ft",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "attack_bonus",
+     "damage",
+     "damage_type",
+     "kind"
+    ],
+    "title": "HeroAttack",
+    "type": "object"
+   },
+   "HeroEffect": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "stacks": {
+      "title": "Stacks",
+      "type": "integer"
+     },
+     "template": {
+      "title": "Template",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "template",
+     "name",
+     "stacks"
+    ],
+    "title": "HeroEffect",
+    "type": "object"
+   },
    "HeroPublic": {
     "additionalProperties": false,
+    "description": "Публичная часть героя: её видят все участники кампании.",
     "properties": {
      "bonds": {
       "items": {
@@ -3552,32 +4069,205 @@
     "type": "object"
    },
    "HeroSheet": {
-    "additionalProperties": true,
-    "description": "Полный лист героя: его видят только игрок героя и мастер. Состав листа шире, чем описано здесь.",
+    "additionalProperties": false,
+    "description": "Полный лист героя (``full_view``).",
     "properties": {
-     "id": {
-      "title": "Id",
-      "type": "string"
+     "bonds": {
+      "items": {
+       "$ref": "#/components/schemas/Bond"
+      },
+      "title": "Bonds",
+      "type": "array"
      },
-     "level": {
-      "title": "Level",
-      "type": "integer"
-     },
-     "name": {
-      "title": "Name",
-      "type": "string"
-     },
-     "resources": {
+     "class_id": {
       "anyOf": [
        {
-        "additionalProperties": true,
-        "type": "object"
+        "type": "string"
        },
        {
         "type": "null"
        }
       ],
-      "title": "Resources"
+      "title": "Class Id"
+     },
+     "class_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Class Name"
+     },
+     "dead": {
+      "title": "Dead",
+      "type": "boolean"
+     },
+     "death_saves": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Death Saves"
+     },
+     "derived": {
+      "$ref": "#/components/schemas/Derived",
+      "default": null
+     },
+     "errors": {
+      "default": null,
+      "items": {
+       "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "features": {
+      "default": null,
+      "items": {
+       "$ref": "#/components/schemas/FeatureUses"
+      },
+      "title": "Features",
+      "type": "array"
+     },
+     "hp": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp"
+     },
+     "hp_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp Max"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "inventory": {
+      "items": {
+       "$ref": "#/components/schemas/InventoryRow"
+      },
+      "title": "Inventory",
+      "type": "array"
+     },
+     "level": {
+      "title": "Level",
+      "type": "integer"
+     },
+     "lineage": {
+      "$ref": "#/components/schemas/Lineage",
+      "default": null
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "origin_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origin Id"
+     },
+     "origin_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Origin Name"
+     },
+     "personality": {
+      "additionalProperties": true,
+      "title": "Personality",
+      "type": "object"
+     },
+     "private_backstory": {
+      "default": null,
+      "title": "Private Backstory",
+      "type": "string"
+     },
+     "progress": {
+      "$ref": "#/components/schemas/Progress"
+     },
+     "public_bio": {
+      "title": "Public Bio",
+      "type": "string"
+     },
+     "resources": {
+      "additionalProperties": true,
+      "title": "Resources",
+      "type": "object"
+     },
+     "review_comment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Review Comment"
+     },
+     "review_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Review Error"
+     },
+     "reviewer": {
+      "default": null,
+      "enum": [
+       "ai",
+       "master"
+      ],
+      "title": "Reviewer",
+      "type": "string"
      },
      "seat_id": {
       "anyOf": [
@@ -3591,16 +4281,20 @@
       "title": "Seat Id"
      },
      "sheet": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Sheet"
+      "additionalProperties": true,
+      "title": "Sheet",
+      "type": "object"
+     },
+     "spellbook": {
+      "additionalProperties": true,
+      "default": null,
+      "title": "Spellbook",
+      "type": "object"
+     },
+     "stand_in": {
+      "default": null,
+      "title": "Stand In",
+      "type": "boolean"
      },
      "status": {
       "title": "Status",
@@ -3608,13 +4302,25 @@
      }
     },
     "required": [
+     "sheet",
+     "resources",
+     "personality",
+     "review_comment",
+     "progress",
+     "inventory",
      "id",
      "name",
      "seat_id",
      "status",
+     "public_bio",
+     "class_id",
+     "origin_id",
      "level",
-     "sheet",
-     "resources"
+     "hp",
+     "hp_max",
+     "dead",
+     "death_saves",
+     "bonds"
     ],
     "title": "HeroSheet",
     "type": "object"
@@ -3629,6 +4335,40 @@
      }
     },
     "title": "ImportIn",
+    "type": "object"
+   },
+   "InventoryRow": {
+    "additionalProperties": false,
+    "properties": {
+     "equipped": {
+      "title": "Equipped",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "item": {
+      "title": "Item",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "qty": {
+      "title": "Qty",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "item",
+     "name",
+     "qty",
+     "equipped"
+    ],
+    "title": "InventoryRow",
     "type": "object"
    },
    "InviteCreateIn": {
@@ -3768,7 +4508,8 @@
      "public_intro",
      "free_seats",
      "valid",
-     "problem"
+     "problem",
+     "pack_id"
     ],
     "title": "InvitePreviewOut",
     "type": "object"
@@ -4239,6 +4980,45 @@
      }
     },
     "title": "LibraryPreviewIn",
+    "type": "object"
+   },
+   "Lineage": {
+    "additionalProperties": false,
+    "properties": {
+     "caste": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Caste"
+     },
+     "features": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Features",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "caste",
+     "features"
+    ],
+    "title": "Lineage",
     "type": "object"
    },
    "LoginIn": {
@@ -4789,7 +5569,8 @@
      "id",
      "name",
      "settings",
-     "style"
+     "style",
+     "updated_at"
     ],
     "title": "MasterPersonaOut",
     "type": "object"
@@ -5040,7 +5821,18 @@
     },
     "required": [
      "id",
-     "name"
+     "name",
+     "model_profile_id",
+     "model_profile_name",
+     "model_resolved",
+     "provider",
+     "persona_id",
+     "persona_preset",
+     "persona_settings",
+     "style",
+     "style_preview",
+     "character",
+     "updated_at"
     ],
     "title": "MasterPresetOut",
     "type": "object"
@@ -5588,6 +6380,11 @@
       "title": "Hero Name"
      },
      "occupant_type": {
+      "enum": [
+       "human",
+       "agent",
+       "empty"
+      ],
       "title": "Occupant Type",
       "type": "string"
      },
@@ -5597,6 +6394,10 @@
       "type": "boolean"
      },
      "role": {
+      "enum": [
+       "master",
+       "player"
+      ],
       "title": "Role",
       "type": "string"
      },
@@ -5619,7 +6420,10 @@
     "required": [
      "seat_id",
      "role",
-     "occupant_type"
+     "occupant_type",
+     "user_name",
+     "hero_name",
+     "online"
     ],
     "title": "PartyMember",
     "type": "object"
@@ -6205,6 +7009,37 @@
     "title": "ProfileOut",
     "type": "object"
    },
+   "Progress": {
+    "additionalProperties": false,
+    "properties": {
+     "level_xp": {
+      "title": "Level Xp",
+      "type": "integer"
+     },
+     "next_xp": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Xp"
+     },
+     "xp": {
+      "title": "Xp",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "xp",
+     "level_xp",
+     "next_xp"
+    ],
+    "title": "Progress",
+    "type": "object"
+   },
    "ProviderActivePatch": {
     "properties": {
      "provider": {
@@ -6748,6 +7583,11 @@
       "type": "string"
      },
      "occupant_type": {
+      "enum": [
+       "human",
+       "agent",
+       "empty"
+      ],
       "title": "Occupant Type",
       "type": "string"
      },
@@ -6756,6 +7596,10 @@
       "type": "integer"
      },
      "role": {
+      "enum": [
+       "master",
+       "player"
+      ],
       "title": "Role",
       "type": "string"
      },
@@ -6788,7 +7632,8 @@
      "position",
      "occupant_type",
      "user_id",
-     "user_name"
+     "user_name",
+     "agent_provider"
     ],
     "title": "SeatOut",
     "type": "object"
@@ -7742,6 +8587,11 @@
       "type": "string"
      },
      "platform_role": {
+      "enum": [
+       "super_admin",
+       "admin",
+       "player"
+      ],
       "title": "Platform Role",
       "type": "string"
      }
@@ -10057,8 +10907,7 @@
        "application/json": {
         "schema": {
          "items": {
-          "additionalProperties": true,
-          "type": "object"
+          "$ref": "#/components/schemas/CharacterView"
          },
          "title": "Response List Characters Api Campaigns  Campaign Id  Characters Get",
          "type": "array"
@@ -10132,9 +10981,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Create Character Api Campaigns  Campaign Id  Characters Post",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -10207,9 +11054,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response From Library Api Campaigns  Campaign Id  Characters From Library  Library Id  Post",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -10281,9 +11126,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Character Api Campaigns  Campaign Id  Characters  Character Id  Get",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -10363,9 +11206,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Update Character Api Campaigns  Campaign Id  Characters  Character Id  Put",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -10591,9 +11432,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Claim Api Campaigns  Campaign Id  Characters  Character Id  Claim Post",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -11172,9 +12011,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Review Api Campaigns  Campaign Id  Characters  Character Id  Review Post",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -11402,9 +12239,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Update Spells Api Campaigns  Campaign Id  Characters  Character Id  Spells Put",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -12823,9 +13658,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Create Premade Api Campaigns  Campaign Id  Premades Post",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },
@@ -12970,9 +13803,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Update Premade Api Campaigns  Campaign Id  Premades  Character Id  Put",
-         "type": "object"
+         "$ref": "#/components/schemas/CharacterView"
         }
        }
       },

@@ -27,11 +27,20 @@ def schema() -> dict[str, Any]:
     schemas = doc.setdefault("components", {}).setdefault("schemas", {})
     events = TypeAdapter(ServerEvent).json_schema(ref_template="#/components/schemas/{model}", mode="validation")
     for name, definition in events.pop("$defs").items():
-        if name in schemas and schemas[name] != definition:
+        # модели героя общие у REST и событий: FastAPI описывает их так же, только без additionalProperties и default
+        if name in schemas and _bare(schemas[name]) != _bare(definition):
             raise RuntimeError(f"имя схемы {name!r} занято и REST, и событием WebSocket")
         schemas[name] = definition
     schemas["ServerEvent"] = events
     return doc
+
+
+def _bare(x: Any) -> Any:
+    if isinstance(x, dict):
+        return {k: _bare(v) for k, v in x.items() if k not in ("additionalProperties", "default")}
+    if isinstance(x, list):
+        return [_bare(v) for v in x]
+    return x
 
 
 def render() -> str:
