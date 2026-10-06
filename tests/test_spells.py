@@ -241,3 +241,95 @@ def test_spell_scrolls(wizard_game):
     assert r["ok"], r
     out = r["result"]
     assert out["scroll_check"]["success"] and out["outcomes"][0]["dc"] == 15 and not out["outcomes"][0]["success"]
+
+
+def _spell(ctx, sid):
+    from app.core.spells import spell_catalog
+
+    return spell_catalog(ctx.world.catalog).spells[sid]
+
+
+def _has(ctx, actor_id, cond):
+    return any(r.id == f"condition.{cond}" for _, r in ctx.world.actor(actor_id).effects)
+
+
+def test_repeat_save_auto_crit_and_magic_resistance(wizard_game):
+    from app.tools.spells import resolve, turn_end_saves
+
+    settings, cid, wiz, head, client = wizard_game
+    nums = {"dc": 13, "attack_bonus": 5, "ability_mod": 3, "char_level": 3}
+
+    async def fn(ctx):
+        sp = await call(
+            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "melee"}
+        )
+        gob = sp["result"]["spawned"][0]["id"]
+        hold = await resolve(ctx, ctx.world.actor(wiz), _spell(ctx, "spell.hold_person"), slot=2, targets=[gob], **nums)
+        held = _has(ctx, gob, "paralyzed")
+        # вплотную по парализованному: попадание — критическое, кости урона удваиваются
+        grasp = await resolve(
+            ctx, ctx.world.actor(wiz), _spell(ctx, "spell.shocking_grasp"), slot=0, targets=[gob], **nums
+        )
+        notes: list[str] = []
+        await turn_end_saves(ctx, gob, notes)  # конец хода гоблина: повторный спасбросок
+        return hold, held, grasp, notes, _has(ctx, gob, "paralyzed"), ctx.world.scene.state.get("spell_saves")
+
+    # спасбросок 1 — паралич; атака с преимуществом 15/15, урон 2к8 → 1+1; повторный спасбросок 20 — свободен
+    hold, held, grasp, notes, still, left = play(settings, cid, [1, 15, 15, 1, 1, 20], fn)
+    assert not next(r for r in hold["outcomes"] if "save" in r)["success"] and held
+    row = grasp["outcomes"][0]
+    assert row["hit"] and row["critical"] and row["damage"] == 2, row
+    assert not still and left == [] and "сбрасывает «Удержание личности»" in notes[0], notes
+
+    async def archmage(ctx):
+        sp = await call(
+            ctx, "spawn_entity", {"creature_template_id": "creature.archmage", "name": "Архимаг", "attitude": "neutral"}
+        )
+        mage = sp["result"]["spawned"][0]["id"]
+        return await resolve(
+            ctx, ctx.world.actor(wiz), _spell(ctx, "spell.hold_person"), slot=2, targets=[mage], **nums
+        )
+
+    r = next(x for x in play(settings, cid, [1, 20], archmage)["outcomes"] if "save" in x)
+    assert r["success"] and "преимущество: сопротивление магии" in r["reasons"], r
+
+
+def test_area_must_fit_and_lingering_zone_ticks(wizard_game):
+    from app.tools.registry import ToolError
+    from app.tools.spells import resolve, zone_tick
+
+    settings, cid, wiz, head, client = wizard_game
+    nums = {"dc": 13, "attack_bonus": 5, "ability_mod": 3, "char_level": 5}
+
+    async def spread(ctx):
+        ids = []
+        for name, cell in (("Левый", [2, 0]), ("Правый", [12, 0])):
+            sp = await call(
+                ctx,
+                "spawn_entity",
+                {"creature_template_id": "creature.goblin", "name": name, "cell": cell, "attitude": "neutral"},
+            )
+            ids.append(sp["result"]["spawned"][0]["id"])
+        try:
+            await resolve(ctx, ctx.world.actor(wiz), _spell(ctx, "spell.fireball"), slot=3, targets=ids, **nums)
+        except ToolError as e:
+            return str(e)
+        return None
+
+    err = play(settings, cid, [], spread)
+    assert err and "в одну область" in err, err
+
+    async def beam(ctx):
+        sp = await call(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
+        gob = sp["result"]["spawned"][0]["id"]
+        cast = await resolve(ctx, ctx.world.actor(wiz), _spell(ctx, "spell.moonbeam"), slot=2, targets=[gob], **nums)
+        hp0 = ctx.world.actor(gob).hp.current
+        notes: list[str] = []
+        await zone_tick(ctx, ctx.world.actor(gob), notes)  # начало хода гоблина в луче
+        await zone_tick(ctx, ctx.world.actor(gob), notes)  # тот же ход — второй раз не бьёт
+        return cast, hp0, ctx.world.actor(gob).hp.current, notes
+
+    # спасбросок 1 — провал, урон 2к10 = 1 + 2
+    cast, hp0, hp1, notes = play(settings, cid, [1, 1, 2], beam)
+    assert "outcomes" not in cast and cast["zone"]["members"] == ["Гоблин"], cast  # при сотворении не бьёт
+    assert hp0 - hp1 == 3 and len(notes) == 1 and "провал" in notes[0], (hp0, hp1, notes)

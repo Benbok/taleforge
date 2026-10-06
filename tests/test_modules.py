@@ -194,7 +194,7 @@ def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod
     assert all(p["id"] != "module-unquiet-dead" for p in ok(client.get("/api/packs", headers=admin_m)))
 
     async def catalog(s):
-        cat = (await load_catalog(s, [["dnd5e-srd", "0.5.0"], ["module-unquiet-dead", "1.0.0"]])).view(False)
+        cat = (await load_catalog(s, [["dnd5e-srd", "0.5.1"], ["module-unquiet-dead", "1.0.0"]])).view(False)
         statue = cat.get("creature.temple_statue")
         adv = cat.get("adventure.unquiet_dead", "adventure")
         return statue.data, adv.data

@@ -86,8 +86,12 @@ def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
 async def _next(ctx: ToolContext, notes: list[str]) -> None:
     """Передаёт ход следующему. Новый раунд — плюс 6 секунд игрового времени и снятие истёкших эффектов."""
     from app.tools.master.scene import expire_effects
+    from app.tools.spells import turn_end_saves
 
     sc = ctx.world.scene
+    ending = current_id(ctx)
+    if ending:
+        await turn_end_saves(ctx, ending, notes)
     i = int(state(ctx).get("turn", 0)) + 1
     if i >= len(sc.turn_order):
         i = 0
@@ -227,6 +231,8 @@ async def finish_turn(ctx: ToolContext, notes: list[str]) -> None:
 async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = None) -> list[str]:
     """Проигрывает ходы существ и героев без сознания до ближайшего героя, который может действовать.
     Возвращает заметки для повествования. Бой заканчивается сам, когда врагов или стоящих героев не осталось."""
+    from app.tools.spells import zone_tick
+
     notes: list[str] = []
     if not in_combat(ctx):
         return notes
@@ -238,6 +244,11 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
         try:
             act = ctx.world.actor(cid)
         except WorldError:
+            await _next(ctx, notes)
+            continue
+        await zone_tick(ctx, act, notes)  # начало хода в длящейся области заклинания
+        act = ctx.world.actor(cid)
+        if not act.alive and act.kind != "character":
             await _next(ctx, notes)
             continue
         if act.kind == "character":

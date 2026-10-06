@@ -158,7 +158,11 @@ export default function CastWizard({
               {!self && list.length > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs text-muted">
-                    {area ? "Или отметьте из сцены всех, кто внутри:" : "Или выберите из сцены:"}
+                    {area
+                      ? s.range.startsWith("на себя")
+                        ? "Или отметьте из сцены всех, кто внутри:"
+                        : "Или отметьте из сцены всех, кто внутри. Первый отмеченный — центр области:"
+                      : "Или выберите из сцены:"}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {list.map((c) => {

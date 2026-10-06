@@ -90,7 +90,7 @@ def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
         return None
     p = ev.payload or {}
     dice = ev.dice or []
-    if ev.tool == "cast_spell":
+    if ev.tool in ("cast_spell", "spell_effect"):
         return _spell_card(ev, p, dice, hero_ids)
     if ev.tool == "roll_check":
         label = SKILL_RU.get(p.get("stat"), ABILITY_RU.get(p.get("stat"), p.get("stat")))
@@ -165,7 +165,11 @@ def _spell_card(ev: Event, p: dict, dice: list[dict], hero_ids: set[str]) -> dic
     rows = [r for r in p.get("outcomes") or [] if r.get("target")]
     slot = p.get("slot") or {}
     title = f"Заклинание: {p.get('spell')}"
+    title += {"repeat_save": ": повторный спасбросок", "zone": ": ход в области"}.get(p.get("phase"), "")
     notes: list[str] = []
+    if p.get("zone"):
+        who = ", ".join(p["zone"]["members"])
+        notes.append(f"длящаяся область: спасбросок и урон в начале хода каждого, кто в ней: {who}")
     if p.get("source"):
         notes.append(f"со свитка «{p['source']}»: без ячейки")
     sc = p.get("scroll_check") or {}
@@ -196,6 +200,8 @@ def _spell_card(ev: Event, p: dict, dice: list[dict], hero_ids: set[str]) -> dic
             bits.append(f"временные хиты {r['temp_hp']}")
         if r.get("killed"):
             bits.append("повержен")
+        if r.get("ended"):
+            bits.append("заклинание спало")
         conc = r.get("concentration_check")
         if conc and not conc.get("kept", True):
             bits.append(f"концентрация на «{conc.get('concentration')}» сорвана")

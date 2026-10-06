@@ -2154,6 +2154,7 @@ items:
   on_fail:
   - prone
   - incapacitated
+  repeat_save: true
 - id: spell.hunters_mark
   name: Метка охотника
   status: canon
@@ -3196,6 +3197,7 @@ items:
     on_success: none
   on_fail:
   - blinded
+  repeat_save: true
 - id: spell.blur
   name: Размытый образ
   status: canon
@@ -3780,6 +3782,10 @@ items:
       7: 7d6
       8: 8d6
       9: 9d6
+  lingering: true
+  save:
+    stat: dex
+    on_success: half
 - id: spell.gentle_repose
   name: Нетленные останки
   status: canon
@@ -3959,6 +3965,7 @@ items:
     on_success: none
   on_fail:
   - paralyzed
+  repeat_save: true
 - id: spell.invisibility
   name: Невидимость
   status: canon
@@ -4381,6 +4388,7 @@ items:
       7: 7d10
       8: 8d10
       9: 9d10
+  lingering: true
 - id: spell.pass_without_trace
   name: Бесследное передвижение
   status: canon
@@ -6474,6 +6482,23 @@ items:
     or 3d8 necrotic damage (if you are evil). On a successful save, the creature takes half as much damage.'
   srd_text_higher: When you cast this spell using a spell slot of 4th level or higher, the damage increases by 1d8 for each
     slot level above 3rd.
+  lingering: true
+  area:
+    shape: sphere
+    size_ft: 15
+  save:
+    stat: wis
+    on_success: half
+  damage:
+  - type: radiant
+    by_slot:
+      3: 3d8
+      4: 4d8
+      5: 5d8
+      6: 6d8
+      7: 7d8
+      8: 8d8
+      9: 9d8
 - id: spell.stinking_cloud
   name: Зловонное облако
   status: canon
@@ -6899,6 +6924,9 @@ items:
   - type: bludgeoning
     by_slot:
       4: 3d6
+  lingering: true
+  on_fail:
+  - restrained
 - id: spell.blight
   name: Усыхание
   status: canon
@@ -8161,6 +8189,8 @@ items:
   - type: fire
     by_slot:
       4: 5d8
+  lingering: true
+  on_cast: true
 - id: spell.animate_objects
   name: Оживление предметов
   status: canon
@@ -8415,6 +8445,7 @@ items:
       7: 7d8
       8: 8d8
       9: 9d8
+  lingering: true
 - id: spell.commune
   name: Общение с божеством
   status: canon
@@ -9162,6 +9193,7 @@ items:
     on_success: none
   on_fail:
   - paralyzed
+  repeat_save: true
 - id: spell.insect_plague
   name: Насекомые
   status: canon
@@ -9217,6 +9249,7 @@ items:
       7: 6d10
       8: 7d10
       9: 8d10
+  lingering: true
 - id: spell.legend_lore
   name: Знание легенд
   status: canon
@@ -10001,6 +10034,7 @@ items:
   - type: slashing
     by_slot:
       6: 6d10
+  lingering: true
 - id: spell.chain_lightning
   name: Цепная молния
   status: canon
@@ -11307,6 +11341,8 @@ items:
       7: 8d8
       8: 9d8
       9: 10d8
+  lingering: true
+  on_cast: true
 - id: spell.wind_walk
   name: Хождение по ветру
   status: canon
@@ -12966,6 +13002,7 @@ items:
   - type: fire
     by_slot:
       8: 10d8
+  lingering: true
 - id: spell.maze
   name: Лабиринт
   status: canon

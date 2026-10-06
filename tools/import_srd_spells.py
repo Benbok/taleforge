@@ -24,23 +24,25 @@ OUT = ROOT / "content/dnd5e-srd/data/spells.yaml"
 
 # Механика сверх того, что даёт база: движок исполняет эти поля в cast_spell (app/tools/spells.py).
 # on_fail — состояния или эффекты цели при провале спасброска (при попадании — для атак), на время заклинания;
-# effect — эффект на цели без спасброска (усиление); rays — несколько бросков атаки; auto_hit — без броска.
+# effect — эффект на цели без спасброска (усиление); rays — несколько бросков атаки; auto_hit — без броска;
+# repeat_save — цель повторяет спасбросок в конце каждого своего хода и при успехе сбрасывает состояния;
+# lingering — длящаяся область (урон в начале хода существ в ней), on_cast — бьёт ещё и при появлении.
 MECHANICS: dict[str, dict] = {
     "magic-missile": {"auto_hit": True},
     "scorching-ray": {"attack": "ranged", "rays": {"count": 3, "per_slot": 1}},
     "eldritch-blast": {"rays_by_char_level": {1: 1, 5: 2, 11: 3, 17: 4}},
     "false-life": {"heal_kind": "temp_hp"},
     "aid": {"heal_kind": "max_hp"},
-    "hold-person": {"on_fail": ["paralyzed"]},
-    "hold-monster": {"on_fail": ["paralyzed"]},
+    "hold-person": {"on_fail": ["paralyzed"], "repeat_save": True},
+    "hold-monster": {"on_fail": ["paralyzed"], "repeat_save": True},
     "charm-person": {"on_fail": ["charmed"]},
     "dominate-person": {"on_fail": ["charmed"]},
     "dominate-beast": {"on_fail": ["charmed"]},
     "dominate-monster": {"on_fail": ["charmed"]},
-    "blindness-deafness": {"on_fail": ["blinded"]},
+    "blindness-deafness": {"on_fail": ["blinded"], "repeat_save": True},
     "entangle": {"on_fail": ["restrained"]},
     "web": {"on_fail": ["restrained"]},
-    "hideous-laughter": {"on_fail": ["prone", "incapacitated"]},
+    "hideous-laughter": {"on_fail": ["prone", "incapacitated"], "repeat_save": True},
     "fear": {"on_fail": ["frightened"]},
     "hypnotic-pattern": {"on_fail": ["charmed", "incapacitated"]},
     "flesh-to-stone": {"on_fail": ["restrained"]},
@@ -58,6 +60,24 @@ MECHANICS: dict[str, dict] = {
     "invisibility": {"effect": "invisible"},
     "greater-invisibility": {"effect": "invisible"},
     "revivify": {"revives": True},
+    # Длящиеся области: урон и спасбросок не при сотворении, а в начале хода каждого существа в области
+    # (движок держит область в состоянии сцены, пока длится заклинание или концентрация).
+    "moonbeam": {"lingering": True},
+    "spirit-guardians": {
+        "lingering": True,
+        "area": {"shape": "sphere", "size_ft": 15},
+        "save": {"stat": "wis", "on_success": "half"},
+        "damage": [{"type": "radiant", "by_slot": {n: f"{n}d8" for n in range(3, 10)}}],
+    },
+    "cloudkill": {"lingering": True},
+    "insect-plague": {"lingering": True},
+    "incendiary-cloud": {"lingering": True},
+    "black-tentacles": {"lingering": True, "on_fail": ["restrained"]},
+    "blade-barrier": {"lingering": True},
+    "flaming-sphere": {"lingering": True, "save": {"stat": "dex", "on_success": "half"}},
+    # Стены бьют и при появлении, и потом каждый ход
+    "wall-of-fire": {"lingering": True, "on_cast": True},
+    "wall-of-thorns": {"lingering": True, "on_cast": True},
 }
 
 
