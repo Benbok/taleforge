@@ -5,6 +5,8 @@ from collections.abc import AsyncIterator
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
+_READS = {"SELECT", "PRAGMA", "EXPLAIN"}
+
 
 def make_engine(url: str) -> AsyncEngine:
     engine = create_async_engine(url, pool_pre_ping=not url.startswith("sqlite"))
@@ -19,9 +21,17 @@ def make_engine(url: str) -> AsyncEngine:
             # отключаем его логику и открываем транзакцию явно — так откат хода мастера откатывает и инструменты
             dbapi_conn.isolation_level = None
 
-        @event.listens_for(engine.sync_engine, "begin")
-        def _begin(conn):
-            conn.exec_driver_sql("BEGIN")
+        @event.listens_for(engine.sync_engine, "before_cursor_execute")
+        def _begin_on_write(conn, cursor, statement, *_):
+            # Транзакция открывается перед первой записью и сразу берёт право записи (BEGIN IMMEDIATE), а чтения
+            # до неё идут без транзакции, как в READ COMMITTED у PostgreSQL. Обычный BEGIN падал с «database is
+            # locked», когда сессия сначала читала, а потом писала, пока пишет другая (фоновый ход мастера и
+            # запрос REST): SQLite не ждёт в этом случае. BEGIN IMMEDIATE с самого начала ждёт чужую запись, но
+            # держал бы запись всю сессию, даже только читающую, и запросы с вложенной сессией застревали бы.
+            in_tx = conn.connection.dbapi_connection._connection.in_transaction
+            if in_tx or statement.split(None, 1)[0].upper() in _READS:
+                return
+            cursor.execute("BEGIN IMMEDIATE")
 
     return engine
 
