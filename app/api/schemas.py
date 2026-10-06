@@ -5,10 +5,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 Name = Field(min_length=2, max_length=64, pattern=r"^[\w .\-]+$")
 Password = Field(min_length=6, max_length=128)
+
+
+class Out(BaseModel):
+    """Ответ REST: сервер всегда отдаёт все поля, поэтому и поля со значением по умолчанию в схеме для клиента
+    обязательные (иначе в типах клиента они стали бы ``x?: T``)."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
 
 class LoginIn(BaseModel):
@@ -26,15 +33,15 @@ class RegisterByInviteIn(BaseModel):
     password: str = Password
 
 
-class TokenOut(BaseModel):
+class TokenOut(Out):
     token: str
     user: UserOut
 
 
-class UserOut(BaseModel):
+class UserOut(Out):
     id: str
     name: str
-    platform_role: str
+    platform_role: Literal["super_admin", "admin", "player"]
 
 
 class UserCreateIn(BaseModel):
@@ -86,7 +93,7 @@ class MasterPersonaPatchIn(BaseModel):
     settings: PersonaSettingsIn | None = None
 
 
-class MasterPersonaOut(BaseModel):
+class MasterPersonaOut(Out):
     id: str
     name: str
     settings: dict
@@ -104,7 +111,7 @@ class PersonaChoiceIn(BaseModel):
     style: str | None = Field(default=None, max_length=2000)
 
 
-class CampaignPersonaOut(BaseModel):
+class CampaignPersonaOut(Out):
     name: str | None
     source: str | None  # profile | preset | custom | legacy
     settings: dict | None
@@ -159,7 +166,7 @@ class MasterPresetSaveFromCampaignIn(BaseModel):
     preset_id: str | None = None
 
 
-class MasterPresetOut(BaseModel):
+class MasterPresetOut(Out):
     id: str
     name: str
     model_profile_id: str | None = None
@@ -184,7 +191,7 @@ class MasterModelIn(BaseModel):
     temperature: float | None = Field(default=None, ge=0, le=2)
 
 
-class MasterModelOut(BaseModel):
+class MasterModelOut(Out):
     provider: str
     model: str
     resolved_model: str | None
@@ -212,7 +219,7 @@ class ModelProfilePatchIn(BaseModel):
     is_default: bool | None = None
 
 
-class ModelProfileOut(BaseModel):
+class ModelProfileOut(Out):
     id: str
     name: str
     provider: str
@@ -235,7 +242,7 @@ class ModelCheckIn(BaseModel):
     api_base: str | None = Field(default=None, max_length=255, pattern=r"^https?://\S+$")
 
 
-class ProviderOut(BaseModel):
+class ProviderOut(Out):
     id: str
     title: str
     key_env: str | None
@@ -246,7 +253,7 @@ class ProviderOut(BaseModel):
     is_active: bool
 
 
-class ProfileOut(BaseModel):
+class ProfileOut(Out):
     user: UserOut
     created_at: datetime
     stats: dict
@@ -321,24 +328,24 @@ class CampaignPatchIn(BaseModel):
     brief: BriefIn | None = None
 
 
-class SeatOut(BaseModel):
+class SeatOut(Out):
     id: str
-    role: str
+    role: Literal["master", "player"]
     position: int
-    occupant_type: str
+    occupant_type: Literal["human", "agent", "empty"]
     user_id: str | None
     user_name: str | None
     agent_provider: str | None = None
 
 
-class CampaignOut(BaseModel):
+class CampaignOut(Out):
     id: str
     name: str
-    status: str
+    status: Literal["lobby", "active", "paused", "ended"]
     owner_id: str
     is_owner: bool
     my_seat_id: str | None
-    my_role: str | None
+    my_role: Literal["master", "player"] | None
     ruleset_id: str
     ruleset_version: str
     pack_id: str | None
@@ -357,7 +364,7 @@ class InviteCreateIn(BaseModel):
     max_uses: int | None = Field(default=None, ge=1, le=6)
 
 
-class InviteOut(BaseModel):
+class InviteOut(Out):
     token: str
     url: str
     campaign_id: str
@@ -367,7 +374,7 @@ class InviteOut(BaseModel):
     revoked: bool
 
 
-class InvitePreviewOut(BaseModel):
+class InvitePreviewOut(Out):
     campaign_name: str
     public_intro: str
     free_seats: int
@@ -376,7 +383,7 @@ class InvitePreviewOut(BaseModel):
     pack_id: str | None = None
 
 
-class PackOut(BaseModel):
+class PackOut(Out):
     id: str
     version: str
     name: str

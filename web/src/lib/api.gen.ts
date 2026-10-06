@@ -2059,32 +2059,32 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-            /** Hero */
-            hero?: {
-                [key: string]: unknown;
-            } | null;
+            hero: components["schemas"]["CardHero"] | null;
             /** Id */
             id: string;
             /** Is Owner */
             is_owner: boolean;
             /** Last Session At */
-            last_session_at?: string | null;
+            last_session_at: string | null;
             /** My Role */
-            my_role?: string | null;
+            my_role: ("master" | "player") | null;
             /** Name */
             name: string;
             /** Party */
             party: components["schemas"]["PartyMember"][];
             /** Recap */
-            recap?: string | null;
+            recap: string | null;
             /** Session Live */
             session_live: boolean;
-            /** Status */
-            status: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "lobby" | "active" | "paused" | "ended";
             /** Waiting Players */
             waiting_players: number;
             /** World */
-            world?: string | null;
+            world: string | null;
         };
         /** CampaignCreateIn */
         CampaignCreateIn: {
@@ -2198,7 +2198,7 @@ export interface components {
         /** CampaignOut */
         CampaignOut: {
             /** Brief */
-            brief?: {
+            brief: {
                 [key: string]: unknown;
             } | null;
             /**
@@ -2213,7 +2213,7 @@ export interface components {
             /** Is Owner */
             is_owner: boolean;
             /** My Role */
-            my_role: string | null;
+            my_role: ("master" | "player") | null;
             /** My Seat Id */
             my_seat_id: string | null;
             /** Name */
@@ -2238,8 +2238,11 @@ export interface components {
             settings: {
                 [key: string]: unknown;
             };
-            /** Status */
-            status: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "lobby" | "active" | "paused" | "ended";
         };
         /** CampaignPatchIn */
         CampaignPatchIn: {
@@ -2305,6 +2308,17 @@ export interface components {
              * @enum {string}
              */
             status: "lobby" | "active" | "paused" | "ended";
+        };
+        /** CardHero */
+        CardHero: {
+            /** Id */
+            id: string;
+            /** Level */
+            level: number | null;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
         };
         /** CharacterBonds */
         CharacterBonds: {
@@ -2382,6 +2396,84 @@ export interface components {
             character: components["schemas"]["HeroPublic"];
         };
         /**
+         * CharacterView
+         * @description Герой в ответе REST: полный лист, если его можно видеть, иначе публичная часть; плюс имена из каталога и
+         *     состояние проверки.
+         */
+        CharacterView: {
+            /** Bonds */
+            bonds: components["schemas"]["Bond"][];
+            /** Class Id */
+            class_id: string | null;
+            /** Class Name */
+            class_name?: string | null;
+            /** Dead */
+            dead: boolean;
+            /** Death Saves */
+            death_saves: [
+                number,
+                number
+            ] | null;
+            derived?: components["schemas"]["Derived"];
+            /** Errors */
+            errors?: string[];
+            /** Features */
+            features?: components["schemas"]["FeatureUses"][];
+            /** Hp */
+            hp: number | null;
+            /** Hp Max */
+            hp_max: number | null;
+            /** Id */
+            id: string;
+            /** Inventory */
+            inventory?: components["schemas"]["InventoryRow"][];
+            /** Level */
+            level: number;
+            lineage?: components["schemas"]["Lineage"];
+            /** Name */
+            name: string;
+            /** Origin Id */
+            origin_id: string | null;
+            /** Origin Name */
+            origin_name?: string | null;
+            /** Personality */
+            personality?: {
+                [key: string]: unknown;
+            };
+            /** Private Backstory */
+            private_backstory?: string;
+            progress?: components["schemas"]["Progress"];
+            /** Public Bio */
+            public_bio: string;
+            /** Resources */
+            resources?: {
+                [key: string]: unknown;
+            };
+            /** Review Comment */
+            review_comment?: string | null;
+            /** Review Error */
+            review_error?: string | null;
+            /**
+             * Reviewer
+             * @enum {string}
+             */
+            reviewer?: "ai" | "master";
+            /** Seat Id */
+            seat_id: string | null;
+            /** Sheet */
+            sheet?: {
+                [key: string]: unknown;
+            };
+            /** Spellbook */
+            spellbook?: {
+                [key: string]: unknown;
+            };
+            /** Stand In */
+            stand_in?: boolean;
+            /** Status */
+            status: string;
+        };
+        /**
          * ChatMessage
          * @description Сообщение чата. ``data`` — свободная форма: карточка броска, голосовая запись, место части отряда.
          */
@@ -2434,6 +2526,37 @@ export interface components {
              * @default 1
              */
             start_level?: number;
+        };
+        /** Derived */
+        Derived: {
+            /** Abilities */
+            abilities: {
+                [key: string]: number;
+            };
+            /** Ac */
+            ac: number;
+            /** Attacks */
+            attacks: components["schemas"]["HeroAttack"][];
+            /** Effects */
+            effects: components["schemas"]["HeroEffect"][];
+            /** Hp Max */
+            hp_max: number;
+            /** Mods */
+            mods: {
+                [key: string]: number;
+            };
+            /** Pb */
+            pb: number;
+            /** Saves */
+            saves: {
+                [key: string]: number;
+            };
+            /** Skills */
+            skills: {
+                [key: string]: number;
+            };
+            /** Speed */
+            speed: number;
         };
         /** Empty */
         Empty: Record<string, never>;
@@ -3035,6 +3158,26 @@ export interface components {
              */
             type: "vote.updated";
         };
+        /** FeatureUses */
+        FeatureUses: {
+            /** Key */
+            key: string;
+            /** Left */
+            left: number;
+            /** Max */
+            max: number;
+            /** Name */
+            name: string;
+            /**
+             * Per
+             * @enum {string}
+             */
+            per: "short_rest" | "long_rest";
+            /** Per Ru */
+            per_ru: string;
+            /** Unit */
+            unit: string;
+        };
         /** Grid */
         Grid: {
             /** Bottom */
@@ -3055,7 +3198,61 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** HeroPublic */
+        /** HeroAttack */
+        HeroAttack: {
+            /** Attack Bonus */
+            attack_bonus: number;
+            /** Damage */
+            damage: string;
+            /** Damage Type */
+            damage_type: string;
+            /**
+             * Inventory Id
+             * @default null
+             */
+            inventory_id?: string;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "melee" | "ranged";
+            /**
+             * Long Ft
+             * @default null
+             */
+            long_ft?: number;
+            /** Name */
+            name: string;
+            /**
+             * Normal Ft
+             * @default null
+             */
+            normal_ft?: number;
+            /**
+             * Reach Ft
+             * @default null
+             */
+            reach_ft?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** HeroEffect */
+        HeroEffect: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Stacks */
+            stacks: number;
+            /** Template */
+            template: string;
+        };
+        /**
+         * HeroPublic
+         * @description Публичная часть героя: её видят все участники кампании.
+         */
         HeroPublic: {
             /** Bonds */
             bonds: components["schemas"]["Bond"][];
@@ -3089,29 +3286,107 @@ export interface components {
         };
         /**
          * HeroSheet
-         * @description Полный лист героя: его видят только игрок героя и мастер. Состав листа шире, чем описано здесь.
+         * @description Полный лист героя (``full_view``).
          */
         HeroSheet: {
+            /** Bonds */
+            bonds: components["schemas"]["Bond"][];
+            /** Class Id */
+            class_id: string | null;
+            /**
+             * Class Name
+             * @default null
+             */
+            class_name?: string | null;
+            /** Dead */
+            dead: boolean;
+            /** Death Saves */
+            death_saves: [
+                number,
+                number
+            ] | null;
+            /** @default null */
+            derived?: components["schemas"]["Derived"];
+            /**
+             * Errors
+             * @default null
+             */
+            errors?: string[];
+            /**
+             * Features
+             * @default null
+             */
+            features?: components["schemas"]["FeatureUses"][];
+            /** Hp */
+            hp: number | null;
+            /** Hp Max */
+            hp_max: number | null;
             /** Id */
             id: string;
+            /** Inventory */
+            inventory: components["schemas"]["InventoryRow"][];
             /** Level */
             level: number;
+            /** @default null */
+            lineage?: components["schemas"]["Lineage"];
             /** Name */
             name: string;
+            /** Origin Id */
+            origin_id: string | null;
+            /**
+             * Origin Name
+             * @default null
+             */
+            origin_name?: string | null;
+            /** Personality */
+            personality: {
+                [key: string]: unknown;
+            };
+            /**
+             * Private Backstory
+             * @default null
+             */
+            private_backstory?: string;
+            progress: components["schemas"]["Progress"];
+            /** Public Bio */
+            public_bio: string;
             /** Resources */
             resources: {
                 [key: string]: unknown;
-            } | null;
+            };
+            /** Review Comment */
+            review_comment: string | null;
+            /**
+             * Review Error
+             * @default null
+             */
+            review_error?: string | null;
+            /**
+             * Reviewer
+             * @default null
+             * @enum {string}
+             */
+            reviewer?: "ai" | "master";
             /** Seat Id */
             seat_id: string | null;
             /** Sheet */
             sheet: {
                 [key: string]: unknown;
-            } | null;
+            };
+            /**
+             * Spellbook
+             * @default null
+             */
+            spellbook?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Stand In
+             * @default null
+             */
+            stand_in?: boolean;
             /** Status */
             status: string;
-        } & {
-            [key: string]: unknown;
         };
         /** ImportIn */
         ImportIn: {
@@ -3120,6 +3395,19 @@ export interface components {
              * @default
              */
             note?: string;
+        };
+        /** InventoryRow */
+        InventoryRow: {
+            /** Equipped */
+            equipped: boolean;
+            /** Id */
+            id: string;
+            /** Item */
+            item: string;
+            /** Name */
+            name: string;
+            /** Qty */
+            qty: number;
         };
         /** InviteCreateIn */
         InviteCreateIn: {
@@ -3155,7 +3443,7 @@ export interface components {
             /** Free Seats */
             free_seats: number;
             /** Pack Id */
-            pack_id?: string | null;
+            pack_id: string | null;
             /** Problem */
             problem: string | null;
             /** Public Intro */
@@ -3254,6 +3542,17 @@ export interface components {
             skills?: string[] | null;
             /** Spells */
             spells?: string[] | null;
+        };
+        /** Lineage */
+        Lineage: {
+            /** Caste */
+            caste: string | null;
+            /** Features */
+            features: string[];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** LoginIn */
         LoginIn: {
@@ -3424,7 +3723,7 @@ export interface components {
             /** Style */
             style: string;
             /** Updated At */
-            updated_at?: string | null;
+            updated_at: string | null;
         };
         /** MasterPersonaPatchIn */
         MasterPersonaPatchIn: {
@@ -3450,35 +3749,35 @@ export interface components {
         /** MasterPresetOut */
         MasterPresetOut: {
             /** Character */
-            character?: {
+            character: {
                 [key: string]: unknown;
             } | null;
             /** Id */
             id: string;
             /** Model Profile Id */
-            model_profile_id?: string | null;
+            model_profile_id: string | null;
             /** Model Profile Name */
-            model_profile_name?: string | null;
+            model_profile_name: string | null;
             /** Model Resolved */
-            model_resolved?: string | null;
+            model_resolved: string | null;
             /** Name */
             name: string;
             /** Persona Id */
-            persona_id?: string | null;
+            persona_id: string | null;
             /** Persona Preset */
-            persona_preset?: string | null;
+            persona_preset: string | null;
             /** Persona Settings */
-            persona_settings?: {
+            persona_settings: {
                 [key: string]: unknown;
             } | null;
             /** Provider */
-            provider?: string | null;
+            provider: string | null;
             /** Style */
-            style?: string | null;
+            style: string | null;
             /** Style Preview */
-            style_preview?: string | null;
+            style_preview: string | null;
             /** Updated At */
-            updated_at?: string | null;
+            updated_at: string | null;
         };
         /** MasterPresetPatchIn */
         MasterPresetPatchIn: {
@@ -3662,20 +3961,26 @@ export interface components {
         /** PartyMember */
         PartyMember: {
             /** Hero Name */
-            hero_name?: string | null;
-            /** Occupant Type */
-            occupant_type: string;
+            hero_name: string | null;
+            /**
+             * Occupant Type
+             * @enum {string}
+             */
+            occupant_type: "human" | "agent" | "empty";
             /**
              * Online
              * @default false
              */
-            online?: boolean;
-            /** Role */
-            role: string;
+            online: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "master" | "player";
             /** Seat Id */
             seat_id: string;
             /** User Name */
-            user_name?: string | null;
+            user_name: string | null;
         };
         /** PartyPart */
         PartyPart: {
@@ -3871,6 +4176,15 @@ export interface components {
             };
             user: components["schemas"]["UserOut"];
         };
+        /** Progress */
+        Progress: {
+            /** Level Xp */
+            level_xp: number;
+            /** Next Xp */
+            next_xp: number | null;
+            /** Xp */
+            xp: number;
+        };
         /** ProviderActivePatch */
         ProviderActivePatch: {
             /** Provider */
@@ -4041,15 +4355,21 @@ export interface components {
         /** SeatOut */
         SeatOut: {
             /** Agent Provider */
-            agent_provider?: string | null;
+            agent_provider: string | null;
             /** Id */
             id: string;
-            /** Occupant Type */
-            occupant_type: string;
+            /**
+             * Occupant Type
+             * @enum {string}
+             */
+            occupant_type: "human" | "agent" | "empty";
             /** Position */
             position: number;
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "master" | "player";
             /** User Id */
             user_id: string | null;
             /** User Name */
@@ -4291,8 +4611,11 @@ export interface components {
             id: string;
             /** Name */
             name: string;
-            /** Platform Role */
-            platform_role: string;
+            /**
+             * Platform Role
+             * @enum {string}
+             */
+            platform_role: "super_admin" | "admin" | "player";
         };
         /** UserRoleIn */
         UserRoleIn: {
@@ -4396,14 +4719,17 @@ export type CampaignPatchIn = components['schemas']['CampaignPatchIn'];
 export type CampaignPersonaOut = components['schemas']['CampaignPersonaOut'];
 export type CampaignPlan = components['schemas']['CampaignPlan'];
 export type CampaignStatusChanged = components['schemas']['CampaignStatusChanged'];
+export type CardHero = components['schemas']['CardHero'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
 export type CharacterIn = components['schemas']['CharacterIn'];
 export type CharacterReviewFailed = components['schemas']['CharacterReviewFailed'];
 export type CharacterReviewed = components['schemas']['CharacterReviewed'];
 export type CharacterSheet = components['schemas']['CharacterSheet'];
 export type CharacterUpdated = components['schemas']['CharacterUpdated'];
+export type CharacterView = components['schemas']['CharacterView'];
 export type ChatMessage = components['schemas']['ChatMessage'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
+export type Derived = components['schemas']['Derived'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
@@ -4452,17 +4778,22 @@ export type Event_turn_changed = components['schemas']['Event_turn_changed'];
 export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
+export type FeatureUses = components['schemas']['FeatureUses'];
 export type Grid = components['schemas']['Grid'];
 export type HTTPValidationError = components['schemas']['HTTPValidationError'];
+export type HeroAttack = components['schemas']['HeroAttack'];
+export type HeroEffect = components['schemas']['HeroEffect'];
 export type HeroPublic = components['schemas']['HeroPublic'];
 export type HeroSheet = components['schemas']['HeroSheet'];
 export type ImportIn = components['schemas']['ImportIn'];
+export type InventoryRow = components['schemas']['InventoryRow'];
 export type InviteCreateIn = components['schemas']['InviteCreateIn'];
 export type InviteOut = components['schemas']['InviteOut'];
 export type InvitePreviewOut = components['schemas']['InvitePreviewOut'];
 export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
 export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
+export type Lineage = components['schemas']['Lineage'];
 export type LoginIn = components['schemas']['LoginIn'];
 export type MapChanged = components['schemas']['MapChanged'];
 export type MapState = components['schemas']['MapState'];
@@ -4509,6 +4840,7 @@ export type PlanRequestIn = components['schemas']['PlanRequestIn'];
 export type PresenceChanged = components['schemas']['PresenceChanged'];
 export type PreviewIn = components['schemas']['PreviewIn'];
 export type ProfileOut = components['schemas']['ProfileOut'];
+export type Progress = components['schemas']['Progress'];
 export type ProviderActivePatch = components['schemas']['ProviderActivePatch'];
 export type ProviderOut = components['schemas']['ProviderOut'];
 export type ReactionClosed = components['schemas']['ReactionClosed'];
@@ -5891,9 +6223,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["CharacterView"][];
                 };
             };
             /** @description Validation Error */
@@ -5930,9 +6260,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -5966,9 +6294,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -6002,9 +6328,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -6042,9 +6366,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -6152,9 +6474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -6425,9 +6745,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -6535,9 +6853,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -7396,9 +7712,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -7436,9 +7750,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */

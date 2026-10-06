@@ -9,7 +9,7 @@
 
 Поле ``x: T | None`` есть всегда и может быть null, ``x: T | None = None`` может и отсутствовать, а
 ``x: T = absent()`` либо отсутствует, либо не null. Модели ``_Strict`` не допускают лишних полей. Большие формы
-(лист героя, карточка сущности, схема места, ответ инструмента мастера) пока описаны открытыми моделями ``_Open``:
+(карточка сущности, схема места, ответ инструмента мастера) пока описаны открытыми моделями ``_Open``:
 известные поля проверяются, новые пропускаются.
 """
 
@@ -18,6 +18,8 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
+
+from app.core.views import HeroPublic, HeroSheet, absent
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False
@@ -32,11 +34,6 @@ class _Strict(BaseModel):
 
 class _Open(BaseModel):
     model_config = ConfigDict(extra="allow")
-
-
-def absent() -> Any:
-    """Поле, которого может не быть, но если оно есть — не null (в типах клиента ``x?: T``)."""
-    return Field(default=None)
 
 
 class Option(_Strict):
@@ -142,39 +139,6 @@ class SessionSummary(_Strict):
     recap: str
     events: list[str]
     quests: list[str]
-
-
-class Bond(_Open):
-    question: str
-    answer: str
-
-
-class HeroPublic(_Strict):
-    id: str
-    name: str
-    seat_id: str | None
-    status: str
-    public_bio: str
-    class_id: str | None
-    origin_id: str | None
-    level: int
-    hp: int | None
-    hp_max: int | None
-    dead: bool
-    death_saves: tuple[int, int] | None
-    bonds: list[Bond]
-
-
-class HeroSheet(_Open):
-    """Полный лист героя: его видят только игрок героя и мастер. Состав листа шире, чем описано здесь."""
-
-    id: str
-    name: str
-    seat_id: str | None
-    status: str
-    level: int
-    sheet: dict[str, Any] | None
-    resources: dict[str, Any] | None
 
 
 class SceneEntity(_Open):

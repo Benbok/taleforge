@@ -7,14 +7,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Literal
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.agents import memory
 from app.api.deps import SessionDep, UserDep
+from app.api.schemas import Out
 from app.content import theme as themes
 from app.core import campaigns as svc
 from app.core.inspect import types_for
@@ -25,25 +25,32 @@ router = APIRouter(prefix="/api", tags=["home"])
 LIVE_HEROES = ("approved", "active")
 
 
-class PartyMember(BaseModel):
+class PartyMember(Out):
     seat_id: str
-    role: str
-    occupant_type: str
+    role: Literal["master", "player"]
+    occupant_type: Literal["human", "agent", "empty"]
     user_name: str | None = None
     hero_name: str | None = None
     online: bool = False
 
 
-class CampaignCard(BaseModel):
+class CardHero(Out):
+    id: str
+    name: str
+    status: str
+    level: int | None
+
+
+class CampaignCard(Out):
     id: str
     name: str
     world: str | None = None
-    status: str  # lobby | active | paused | ended
+    status: Literal["lobby", "active", "paused", "ended"]
     session_live: bool
     waiting_players: int
-    my_role: str | None = None
+    my_role: Literal["master", "player"] | None = None
     is_owner: bool
-    hero: dict[str, Any] | None = None
+    hero: CardHero | None = None
     party: list[PartyMember]
     recap: str | None = None  # «Ранее в кампании…» целиком: длинный текст клиент сворачивает сам
     last_session_at: datetime | None = None
