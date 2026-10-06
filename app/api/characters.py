@@ -32,6 +32,8 @@ class CharacterIn(BaseModel):
     abilities: dict[str, int] | None = None
     ability_choice: list[str] | None = None
     skills: list[str] | None = None
+    fighting_style: str | None = Field(None, max_length=40)
+    expertise: list[str] | None = Field(None, max_length=8)
     equipment_choices: list[dict[str, Any]] | None = None
     cantrips: list[str] | None = Field(None, max_length=30)
     spells: list[str] | None = Field(None, max_length=80)

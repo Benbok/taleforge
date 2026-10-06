@@ -20,6 +20,7 @@ from app.core.features import uses_view
 from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
 from app.rules.dice import Dice
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e.advancement import progress_view
 from app.rules.dnd5e.character import (
     ABILITY_METHODS,
@@ -46,6 +47,8 @@ SHEET_FIELDS = (
     "abilities",
     "ability_choice",
     "skills",
+    "fighting_style",  # боевой стиль воина, паладина, следопыта
+    "expertise",  # навыки с компетентностью плута и барда
     "equipment_choices",
     "cantrips",  # заговоры
     "spells",  # известные заклинания; у волшебника — книга заклинаний
@@ -121,6 +124,12 @@ async def options_for_rules(rules: dict, cat: CatalogView) -> dict:
                 "spellcasting_ability": (d.get("spellcasting") or {}).get("ability"),
                 "subclasses": subclasses.get(e.id, []),
                 "spells": spellbook.class_options(cat, e.id, d, int(rules.get("start_level") or 1)),
+                # выборы класса на стартовом уровне: боевой стиль и навыки с компетентностью
+                "fighting_styles": [
+                    {"key": k, "name": cf.FIGHTING_STYLES[k][0], "text": cf.FIGHTING_STYLES[k][1]}
+                    for k in cf.fighting_style_options(d, int(rules.get("start_level") or 1))
+                ],
+                "expertise": cf.expertise_count(d, int(rules.get("start_level") or 1)),
                 "equipment_fixed": [
                     {**x, "name": items.get(x.get("item"), {}).get("name", x.get("item"))}
                     for x in ((se.get("fixed") or []) if isinstance(se, dict) else [])
@@ -328,7 +337,6 @@ def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, An
         a = character_actor(ch, cat, rows, [])
     except Exception:  # noqa: BLE001 — характеристики ещё не разложены
         return out
-    origin = cat.find(ch.sheet.get("origin_id") or "", "origin")
     out["derived"] = {
         "abilities": a.abilities,
         "mods": a.mods,
@@ -337,7 +345,7 @@ def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, An
         "saves": a.saves,
         "skills": a.skills,
         "pb": a.pb,
-        "speed": int((origin.data if origin else {}).get("speed") or 30),
+        "speed": a.speed,
         "attacks": a.attacks,
     }
     caster = spellbook.caster_for(ch.sheet, cat)
@@ -537,7 +545,6 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
     if ch.status in ("approved", "active", "dead") or (ch.sheet or {}).get("class_id"):
         try:
             a = character_actor(ch, cat, inventory, effects)
-            origin = cat.find((ch.sheet or {}).get("origin_id") or "", "origin")
             out["derived"] = {
                 "abilities": a.abilities,
                 "mods": a.mods,
@@ -546,7 +553,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
                 "saves": a.saves,
                 "skills": a.skills,
                 "pb": a.pb,
-                "speed": int((origin.data if origin else {}).get("speed") or 30),
+                "speed": a.speed,
                 "attacks": a.attacks,
                 "effects": [{"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks} for e, r in a.effects],
             }

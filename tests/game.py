@@ -20,6 +20,7 @@ FIGHTER = {
     "ability_method": "standard_array",
     "abilities": {"str": 15, "dex": 13, "con": 14, "int": 8, "wis": 12, "cha": 10},
     "skills": ["athletics", "perception"],
+    "fighting_style": "protection",
     "equipment_choices": [
         {"choice": 0, "option": 0},
         {"choice": 1, "option": 0, "items": ["item.longsword"]},

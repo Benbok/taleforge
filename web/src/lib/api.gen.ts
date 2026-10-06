@@ -2347,6 +2347,10 @@ export interface components {
             equipment_choices?: {
                 [key: string]: unknown;
             }[] | null;
+            /** Expertise */
+            expertise?: string[] | null;
+            /** Fighting Style */
+            fighting_style?: string | null;
             /** Name */
             name?: string | null;
             /** Origin Id */
@@ -3481,6 +3485,10 @@ export interface components {
             equipment_choices?: {
                 [key: string]: unknown;
             }[] | null;
+            /** Expertise */
+            expertise?: string[] | null;
+            /** Fighting Style */
+            fighting_style?: string | null;
             /** Name */
             name?: string | null;
             /** Origin Id */
@@ -3522,6 +3530,10 @@ export interface components {
             equipment_choices?: {
                 [key: string]: unknown;
             }[] | null;
+            /** Expertise */
+            expertise?: string[] | null;
+            /** Fighting Style */
+            fighting_style?: string | null;
             /** Name */
             name?: string | null;
             /** Origin Id */
@@ -4140,6 +4152,10 @@ export interface components {
             equipment_choices?: {
                 [key: string]: unknown;
             }[] | null;
+            /** Expertise */
+            expertise?: string[] | null;
+            /** Fighting Style */
+            fighting_style?: string | null;
             /** Name */
             name?: string | null;
             /** Origin Id */

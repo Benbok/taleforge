@@ -14,6 +14,7 @@ from app.content.catalog import Entry
 from app.core.world import Actor
 from app.db.models import ActiveEffect
 from app.rules.dice import parse
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.engine import Dnd5eEngine
 from app.tools.registry import ToolContext, ToolError, dice_json
@@ -202,8 +203,13 @@ async def run_ops(
             if not success and roll.margin <= -5 and m.get("on_fail_by_5"):
                 branch = m["on_fail_by_5"]
             sub_params = params
+            evasion = stat == "dex" and m.get("half") and cf.has(target.features, "rogue_evasion", "monk_evasion")
             if success and m.get("half") and m.get("on_fail"):  # успех — половина урона, без прочих последствий
                 branch = [x for x in m["on_fail"] if x.get("op") == "extra_damage"]
+                sub_params = {**params, "_half": True}
+                if evasion:  # Увёртливость (SRD): успех — совсем без урона
+                    branch = []
+            elif evasion and not success:  # провал — только половина урона
                 sub_params = {**params, "_half": True}
             sub = await run_ops(ctx, source, branch or [], ctx.world.actor(target.id), sub_params, depth + 1)
             for k in out:

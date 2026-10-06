@@ -1,0 +1,25 @@
+# Состояния от умений классов SRD 5.1, которые движок держит на герое. Их накладывают use_feature (ярость)
+# и resolve_attack (безрассудная атака). Прибавку ярости к урону считает resolve_attack по таблице класса.
+# Написано вручную по тексту SRD 5.1. Язык модификаторов — как у состояний (conditions.yaml).
+kind: effect_template
+items:
+  - id: effect.feature_rage
+    name: Ярость
+    description: Преимущество на проверки и спасброски Силы, сопротивление дробящему, колющему и рубящему урону, прибавка к урону рукопашных атак Силой. Длится минуту; в ярости нельзя творить заклинания и держать концентрацию.
+    status: canon
+    doc: "SRD 5.1: Barbarian, Rage"
+    tags: [class_feature, srd]
+    duration: {unit: minute, value: 1}
+    modifiers:
+      - {op: advantage, "on": check, stat: str}
+      - {op: advantage, "on": save, stat: str}
+      - {op: resistance, damage: [bludgeoning, piercing, slashing]}
+  - id: effect.feature_reckless
+    name: Безрассудная атака
+    description: В этот ход рукопашные атаки Силой с преимуществом; до начала следующего хода атаки по герою тоже с преимуществом.
+    status: canon
+    doc: "SRD 5.1: Barbarian, Reckless Attack"
+    tags: [class_feature, srd]
+    duration: {unit: round, value: 1}
+    modifiers:
+      - {op: advantage, "on": attack, who: attackers}

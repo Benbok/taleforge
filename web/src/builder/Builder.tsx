@@ -159,6 +159,9 @@ export default function Builder({
   const sn = spellNeed(cls, preview.data);
   const skillNeed = cls?.skills_choose?.count ?? 0;
   const skillFrom = cls?.skills_choose?.from?.length ? cls.skills_choose.from : SKILLS.map(([id]) => id);
+  const expertNeed = cls?.expertise ?? 0;
+  // компетентность — только в навыках, которыми герой владеет: выбранных в классе и данных происхождением
+  const expertFrom = [...new Set([...(origin?.proficiencies?.skills ?? []), ...draft.skills])];
 
   const [activeStep, setActiveStep] = useState<string>("name");
   const [wizardMode, setWizardMode] = useState<boolean>(true);
@@ -339,6 +342,8 @@ export default function Builder({
               set({
                 class_id: id,
                 skills: [],
+                fighting_style: "",
+                expertise: [],
                 cantrips: [],
                 spells: [],
                 prepared: [],
@@ -511,7 +516,11 @@ export default function Builder({
         {/* Step 5: Skills */}
         <Step
           id="skills"
-          title={cls ? `Навыки (${draft.skills.length} из ${skillNeed})` : "Навыки"}
+          title={
+            cls
+              ? `Навыки (${draft.skills.length} из ${skillNeed})${cls.fighting_styles?.length ? " и боевой стиль" : ""}`
+              : "Навыки"
+          }
           subtitle={STEP_GUIDE.skills.subtitle}
           hint={STEP_GUIDE.skills.hint}
           active={activeStep === "skills"}
@@ -556,7 +565,9 @@ export default function Builder({
                             className="accent-[var(--tf-accent)] h-4 w-4 rounded"
                             checked={on}
                             disabled={!on && draft.skills.length >= skillNeed}
-                            onChange={() => set({ skills: toggle(draft.skills, k) })}
+                            onChange={() =>
+                              set({ skills: toggle(draft.skills, k), expertise: draft.expertise.filter((x) => x !== k) })
+                            }
                           />
                           <span className="truncate">{SKILL_RU[k] ?? k}</span>
                         </div>
@@ -570,6 +581,74 @@ export default function Builder({
                   );
                 })}
               </div>
+
+              {expertNeed > 0 && (
+                <fieldset className="flex flex-col gap-2 pt-2">
+                  <legend className="mb-1 text-sm font-semibold text-ink">
+                    Компетентность ({draft.expertise.length} из {expertNeed})
+                  </legend>
+                  <p className="text-xs text-muted">
+                    В этих навыках бонус мастерства удваивается. Выбирайте из навыков, которыми герой владеет.
+                  </p>
+                  {expertFrom.length === 0 ? (
+                    <p className="text-xs text-muted">Сначала отметьте навыки выше.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {expertFrom.map((k) => {
+                        const on = draft.expertise.includes(k);
+                        return (
+                          <label
+                            key={k}
+                            className={`flex items-center gap-2 rounded-[8px] border px-2.5 py-1.5 text-sm transition cursor-pointer ${
+                              on ? "border-accent bg-accent/10 text-ink" : "border-line bg-raised/50 text-ink-2"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="accent-[var(--tf-accent)] h-4 w-4 rounded"
+                              checked={on}
+                              disabled={!on && draft.expertise.length >= expertNeed}
+                              onChange={() => set({ expertise: toggle(draft.expertise, k) })}
+                            />
+                            {SKILL_RU[k] ?? k}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </fieldset>
+              )}
+
+              {!!cls.fighting_styles?.length && (
+                <fieldset className="flex flex-col gap-2 pt-2">
+                  <legend className="mb-1 text-sm font-semibold text-ink">Боевой стиль</legend>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {cls.fighting_styles.map((fs) => {
+                      const on = draft.fighting_style === fs.key;
+                      return (
+                        <label
+                          key={fs.key}
+                          className={`flex items-start gap-2.5 rounded-[8px] border p-2.5 text-sm transition cursor-pointer ${
+                            on ? "border-accent bg-accent/10 text-ink" : "border-line bg-raised/50 text-ink-2"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="fighting_style"
+                            className="accent-[var(--tf-accent)] mt-0.5 h-4 w-4"
+                            checked={on}
+                            onChange={() => set({ fighting_style: fs.key })}
+                          />
+                          <span className="flex flex-col gap-0.5">
+                            <span className="font-medium">{fs.name}</span>
+                            <span className="text-xs text-muted">{fs.text}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
             </div>
           )}
         </Step>

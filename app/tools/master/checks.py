@@ -10,8 +10,9 @@ from pydantic import BaseModel, Field
 from app.core import adventure, economy
 from app.core import positions as grid
 from app.core.positions import COVER_AC, areas_at, pos_of
-from app.core.world import ZONE_NAMES, Actor, format_time
+from app.core.world import PLAYABLE, ZONE_NAMES, Actor, format_time
 from app.db.models import Character, Entity
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
 from app.tools import effects as fx
@@ -175,6 +176,14 @@ class AttackArgs(BaseModel):
         description="удар бонусным действием героя (вторая рука, особенность класса); "
         "иначе удар идёт из действия «Атака» в его ход",
     )
+    reckless: bool = Field(
+        False,
+        description="Безрассудная атака варвара (игрок заявил): рукопашные удары Силой этого хода с преимуществом, "
+        "атаки по нему с преимуществом до его следующего хода",
+    )
+    stunning_strike: bool = Field(
+        False, description="Оглушающий удар монаха (игрок заявил): при попадании в рукопашную 1 ци, спасбросок цели"
+    )
 
 
 @tool(
@@ -224,10 +233,19 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
             extra.append("помеха: дальше обычной дистанции")
         if dist <= 5:
             extra.append("помеха: дальняя атака вплотную к врагу")
+    if a.reckless:
+        _check_reckless(att, weapon)
+    if a.stunning_strike:
+        _check_stun(ctx, att, weapon)
     turn_inv = economy.charge_attack(ctx, att.id, a.as_bonus)
+    reckless_inv = await _go_reckless(ctx, att) if a.reckless else []
+    if reckless_inv:
+        att = w.actor(att.id)
     target_ac = tgt.ac + COVER_AC.get(cover, 0)
     am = mod.attack_mods(att.modifiers, tgt.modifiers, dist, extra)
     mode, am_reasons = mod.with_circumstance(am.mode, list(am.reasons), a.edge, _edge_reason(a.edge, a.edge_reason))
+    if _reckless_on(att) and weapon["kind"] == "melee" and weapon.get("ability", "str") == "str":
+        mode, am_reasons = mod.with_circumstance(mode, am_reasons, "advantage", "Безрассудная атака")
     spent = _inspire(ctx, att, a.inspiration, mode, am_reasons)
     if spent:
         mode, am_reasons, spent = spent
@@ -255,21 +273,32 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     if COVER_AC.get(cover):
         result["cover"] = f"+{COVER_AC[cover]} к КД за укрытие"
     dice = [dice_json(roll.roll)]
-    inverse = [snapshot(tgt), *(spent or []), *turn_inv]
+    inverse = [snapshot(tgt), *(spent or []), *turn_inv, *reckless_inv]
     if roll.hit:
-        o, droll = fx.damage_to(tgt, weapon["damage"], weapon["damage_type"], critical, ctx.dice)
+        bonus = class_hit(ctx, att, tgt, weapon, mode, critical)
+        result.update(bonus["notes"])
+        dodge = uncanny_dodge(ctx, tgt)
+        if dodge:
+            result["uncanny_dodge"] = dodge
+        expr = weapon["damage"] + (f"+{bonus['flat']}" if bonus["flat"] else "")
+        o, droll = fx.damage_to(tgt, expr, weapon["damage_type"], critical, ctx.dice, half=bool(dodge))
         dice.append(droll)
         result.update({"damage": o["damage"], "damage_type": o["damage_type"], "target_status": o["status"]})
         for k in ("instant_death", "death_save_failures_added", "defenses"):
             if o.get(k):
                 result[k] = o[k]
-        for extra_dmg in weapon.get("extra_damage") or []:
+        extras = [*(weapon.get("extra_damage") or []), *bonus["extra"]]
+        for extra_dmg in extras:
             if not tgt.alive:
                 break
-            o2, r2 = fx.damage_to(tgt, extra_dmg["dice"], extra_dmg["type"], critical, ctx.dice)
+            crit = critical and not extra_dmg.get("no_crit")
+            o2, r2 = fx.damage_to(tgt, extra_dmg["dice"], extra_dmg["type"], crit, ctx.dice, half=bool(dodge))
             dice.append(r2)
             result["damage"] += o2["damage"]
             result["target_status"] = o2["status"]
+        if a.stunning_strike and tgt.alive:
+            inverse.append(snapshot(att))
+            result["stunning_strike"] = await _stun(ctx, att, w.actor(tgt.id), dice)
         if tgt.hp.dead:
             result["killed"] = True
         from app.tools.spells import concentration_check
@@ -282,6 +311,131 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
     return result
 
 
+# --- умения классов в атаке (SRD 5.1): ярость, скрытая атака, сильный крит, безрассудство, оглушение, уклонение ---
+
+
+def _check_reckless(att: Actor, weapon: dict) -> None:
+    if "reckless_attack" not in att.features:
+        raise ToolError(f"{att.name}: Безрассудная атака — умение варвара 2-го уровня")
+    if weapon["kind"] != "melee" or weapon.get("ability", "str") != "str":
+        raise ToolError(f"{att.name}: Безрассудная атака — только рукопашный удар Силой")
+
+
+async def _go_reckless(ctx: ToolContext, att: Actor) -> list[dict]:
+    """Накладывает «Безрассудную атаку» на этот раунд: свои удары с преимуществом через edge, по нему — эффект."""
+    rec = ctx.world.catalog.find("effect.feature_reckless", "effect_template")
+    if rec is None or any(r.id == rec.id for _, r in att.effects):
+        return []
+    eff, _ = await fx.add_effect(ctx, att, rec, fx.duration_seconds(rec.data.get("duration")))
+    return [{"table": "active_effects", "op": "delete", "id": eff.id}] if eff is not None else []
+
+
+def _reckless_on(att: Actor) -> bool:
+    return any(r.id == "effect.feature_reckless" for _, r in att.effects)
+
+
+def _check_stun(ctx: ToolContext, att: Actor, weapon: dict) -> None:
+    if "stunning_strike" not in att.features:
+        raise ToolError(f"{att.name}: Оглушающий удар — умение монаха 5-го уровня")
+    if weapon["kind"] != "melee":
+        raise ToolError(f"{att.name}: Оглушающий удар — только рукопашная атака")
+    _ki_after(ctx, att.obj, "Оглушающий удар")  # отказ до броска, если ци кончилась
+
+
+async def _stun(ctx: ToolContext, att: Actor, tgt: Actor, dice: list) -> dict:
+    """1 ци; цель — спасбросок Телосложения против Сл ци (8 + мастерство + Мудрость) или ошеломлена до конца
+    следующего хода монаха (два раунда: эффекты снимаются на границе раунда)."""
+    from app.tools.spells import spell_save
+
+    spent, left = _ki_after(ctx, att.obj, "Оглушающий удар")
+    att.obj.resources = {**(att.obj.resources or {}), "uses_spent": spent}
+    ctx.world.invalidate(att.id)
+    ctx.changed.add(att.id)
+    dc = 8 + att.pb + att.mods["wis"]
+    row = spell_save(ctx, tgt, "con", dc, dice)
+    out = {"dc": dc, "save": row["total"], "success": row["success"], "ki_left": left}
+    if not row["success"]:
+        _, out["effect"] = await fx.add_effect(ctx, tgt, ctx.world.catalog.condition("stunned"), 12)
+    return out
+
+
+def class_hit(ctx: ToolContext, att: Actor, tgt: Actor, weapon: dict, mode, critical: bool) -> dict:
+    """Прибавки умений класса к попаданию героя: ярость (к урону), скрытая атака (раз в ход), сильный крит."""
+    out: dict = {"flat": 0, "extra": [], "notes": {}}
+    if att.kind != "character":
+        return out
+    melee_str = weapon["kind"] == "melee" and weapon.get("ability", "str") == "str"
+    if melee_str and any(r.id == "effect.feature_rage" for _, r in att.effects):
+        out["flat"] = int(att.class_numbers.get("rage_damage_bonus") or 2)
+        out["notes"]["rage_bonus"] = out["flat"]
+    sneak = str(att.class_numbers.get("sneak_attack") or "")
+    if "sneak_attack" in att.features and sneak and _sneak_ok(ctx, att, tgt, weapon, mode):
+        out["extra"].append({"dice": sneak, "type": weapon["damage_type"]})
+        out["notes"]["sneak_attack"] = sneak
+        _mark_sneak(ctx, att.id)
+    brutal = int(att.class_numbers.get("brutal_critical_dice") or 0)
+    if critical and weapon["kind"] == "melee" and brutal and cf.has(att.features, "brutal_critical"):
+        die = weapon["damage"].split("+")[0].split("-")[0]
+        if "d" in die:
+            size = die.split("d", 1)[1]
+            out["extra"].append({"dice": f"{brutal}d{size}", "type": weapon["damage_type"], "no_crit": True})
+            out["notes"]["brutal_critical"] = f"{brutal}d{size}"
+    return out
+
+
+def _sneak_ok(ctx: ToolContext, att: Actor, tgt: Actor, weapon: dict, mode) -> bool:
+    """Скрытая атака (SRD): фехтовальное или дальнобойное оружие, раз в ход; преимущество или союзник героя
+    в 5 футах от цели (и нет помехи)."""
+    from app.rules.base import RollMode
+
+    if weapon["kind"] != "ranged" and "finesse" not in (weapon.get("properties") or []):
+        return False
+    from app.core.combat import turn_marker
+
+    marker = turn_marker(ctx.world.scene)
+    if marker and ((ctx.world.scene.state or {}).get("sneak") or {}).get(att.id) == marker:
+        return False
+    if mode is RollMode.ADVANTAGE:
+        return True
+    if mode is RollMode.DISADVANTAGE:
+        return False
+    w = ctx.world
+    for ch in w.characters.values():
+        if ch.id == att.id or ch.status not in PLAYABLE:
+            continue
+        ally = w.actor(ch.id)
+        if ally.conscious and not mod.can_act(ally.modifiers) and w.distance_ft(ally, tgt) <= 5:
+            return True
+    return False
+
+
+def _mark_sneak(ctx: ToolContext, hero_id: str) -> None:
+    from app.core.combat import turn_marker
+
+    marker = turn_marker(ctx.world.scene)
+    if not marker:
+        return
+    st = dict(ctx.world.scene.state or {})
+    st["sneak"] = {**(st.get("sneak") or {}), hero_id: marker}
+    ctx.world.scene.state = st
+
+
+def uncanny_dodge(ctx: ToolContext, tgt: Actor) -> str | None:
+    """Невероятное уклонение плута: реакцией половина урона от попавшей атаки. Сервер тратит реакцию сам, если она
+    свободна и плут в сознании."""
+    from app.core import combat
+
+    if tgt.kind != "character" or "uncanny_dodge" not in tgt.features or not tgt.conscious:
+        return None
+    if mod.can_act(tgt.modifiers):
+        return None
+    if combat.in_combat(ctx):
+        if not combat.reaction_available(ctx, tgt.id):
+            return None
+        combat.use_reaction(ctx, tgt.id)
+    return f"{tgt.name} реакцией уходит от удара: урон вдвое меньше"
+
+
 class TakeActionArgs(BaseModel):
     character_id: str
     action: Literal["dash", "disengage", "dodge", "help", "hide", "ready", "search", "grapple", "other"] = Field(
@@ -289,7 +443,11 @@ class TakeActionArgs(BaseModel):
         "dodge — уклонение, help — помощь, hide — спрятаться, ready — подготовить действие, search — поиск, "
         "grapple — захват или толчок (вместо одного удара атаки), other — другое действие хода"
     )
-    bonus: bool = Field(False, description="бонусным действием: Хитрое действие плута, особенность класса")
+    bonus: bool = Field(
+        False,
+        description="бонусным действием: Хитрое действие плута (рывок, отход, засада), Терпеливая оборона "
+        "(уклонение) и Поступь ветра (рывок или отход) монаха — сервер спишет 1 ци; other — другая особенность",
+    )
     note: str | None = Field(None, max_length=200, description="что именно, если other или ready")
 
 
@@ -306,11 +464,21 @@ async def take_action(ctx: ToolContext, a: TakeActionArgs) -> dict:
     ch = _character(ctx, a.character_id)
     if not economy.active(ctx.world, ch.id):
         raise ToolError(f"{ch.name}: действия хода считаются только в бою и только в ход героя")
+    ki = _bonus_source(ctx, ch, a.action) if a.bonus else None
+    ki_spent = _ki_after(ctx, ch, ki) if ki else None  # сначала проверить запас, потом тратить действие
+    before = snapshot(ctx.world.actor(ch.id))
     if a.action == "grapple":
         inverse = economy.charge_attack(ctx, ch.id, a.bonus)
     else:
         inverse = economy.charge(ctx, ch.id, a.action, a.bonus)
     out = {"character": ch.name, "action": economy.ACTIONS_RU.get(a.action, a.action), "bonus": a.bonus}
+    if ki and ki_spent:
+        inverse.append(before)
+        spent, left = ki_spent
+        ch.resources = {**(ch.resources or {}), "uses_spent": spent}
+        ctx.world.invalidate(ch.id)
+        ctx.changed.add(ch.id)
+        out["ki"] = {"move": ki, "left": left}
     if a.note:
         out["note"] = a.note
     if a.action == "dodge":
@@ -320,6 +488,43 @@ async def take_action(ctx: ToolContext, a: TakeActionArgs) -> dict:
     out["left"] = economy.line(ctx.world, ch.id)
     await ctx.record("take_action", actor_id=ch.id, payload=out, inverse=inverse)
     return out
+
+
+BONUS_BY_FEATURE = {"dash": "рывок", "disengage": "отход", "hide": "засада", "dodge": "уклонение"}
+
+
+def _bonus_source(ctx: ToolContext, ch: Character, action: str) -> str | None:
+    """Чем герой оплачивает рывок, отход, засаду или уклонение бонусным действием. Возвращает имя приёма монаха,
+    если он стоит 1 ци; Хитрое действие плута бесплатно. Без такого умения — отказ."""
+    if action not in BONUS_BY_FEATURE:
+        return None
+    have = ctx.world.actor(ch.id).features
+    if "cunning_action" in have and action != "dodge":
+        return None
+    if "ki" in have and action in ("dash", "disengage"):
+        return "Поступь ветра"
+    if "ki" in have and action == "dodge":
+        return "Терпеливая оборона"
+    raise ToolError(
+        f"{ch.name}: {BONUS_BY_FEATURE[action]} бонусным действием даёт только Хитрое действие плута или приём монаха "
+        "за ци; иначе это действие хода (bonus=false)"
+    )
+
+
+def _ki_after(ctx: ToolContext, ch: Character, move: str) -> tuple[dict[str, int], int]:
+    """Траты умений после приёма за 1 ци и сколько ци останется; отказ, если ци кончилась."""
+    from app.core import features as feats
+    from app.rules.dnd5e import rest as rest_rules
+
+    act = ctx.world.actor(ch.id)
+    pool = next((p for p in feats.pools_for(ch, ctx.world.catalog, act.mods, act.pb) if p.key == "ki"), None)
+    if pool is None:
+        raise ToolError(f"{ch.name}: у героя нет запаса ци")
+    try:
+        spent = rest_rules.use(pool, feats.spent_of(ch), 1)
+    except rest_rules.RestError as e:
+        raise ToolError(f"{ch.name}: {move} — {e}") from e
+    return spent, pool.max - spent["ki"]
 
 
 class DeathSaveArgs(BaseModel):
@@ -528,6 +733,8 @@ def roll_initiative(ctx: ToolContext, ids: list[str]) -> tuple[list[dict], list[
             continue
         # инициатива — проверка Ловкости (SRD): эффекты с преимуществом или помехой на неё действуют
         mode, reasons = mod.roll_mode(act.modifiers, "check", "dex")
+        if "feral_instinct" in act.features:  # Дикий инстинкт варвара: инициатива с преимуществом
+            mode, reasons = mod.with_circumstance(mode, reasons, "advantage", "Дикий инстинкт")
         roll = engine.initiative(ctx.dice, act.mods["dex"], mode)
         entries.append((act.id, roll, act.mods["dex"]))
         dice.append({"who": act.id, **dice_json(roll), **({"reasons": reasons} if reasons else {})})

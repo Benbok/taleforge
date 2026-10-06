@@ -31,6 +31,10 @@ export interface ClassOption extends CardTexts {
   /** Заклинания класса на стартовом уровне; null — класс не колдует. */
   spells?: ClassSpells | null;
   skills_choose: { count?: number; from?: string[] };
+  /** Стили боя на выбор на стартовом уровне (воин; паладин и следопыт — со 2-го). Пусто — стиля нет. */
+  fighting_styles?: { key: string; name: string; text: string }[];
+  /** Сколько навыков с компетентностью (плут — 2 на 1-м уровне). */
+  expertise?: number;
   equipment_fixed: { item: string; name?: string; qty?: number }[];
   equipment_choices: EquipPart[][][];
 }
@@ -84,6 +88,8 @@ export interface Draft {
   /** Выбор прибавок происхождения, по группе на массив. Серверу уходит одним списком по порядку групп. */
   ability_picks: string[][];
   skills: string[];
+  fighting_style: string;
+  expertise: string[];
   equipment_choices: EquipChoice[];
   cantrips: string[];
   spells: string[];
@@ -149,6 +155,8 @@ export function emptyDraft(opts: BuilderOptions): Draft {
     abilities: Object.fromEntries(ABILS.map((a) => [a, null])),
     ability_picks: [],
     skills: [],
+    fighting_style: "",
+    expertise: [],
     equipment_choices: [],
     cantrips: [],
     spells: [],
@@ -171,6 +179,8 @@ export function draftFrom(obj: SavedHero, opts: BuilderOptions): Draft {
     abilities: { ...base.abilities, ...((s.abilities as Record<string, number>) ?? {}) },
     ability_picks: splitPicks((s.ability_choice as string[]) ?? [], opts.origins.find((o) => o.id === s.origin_id)),
     skills: (s.skills as string[]) ?? [],
+    fighting_style: (s.fighting_style as string) ?? "",
+    expertise: (s.expertise as string[]) ?? [],
     equipment_choices: ((s.equipment_choices as EquipChoice[]) ?? []).map((c) => ({ ...c, items: c.items ?? [] })),
     cantrips: (s.cantrips as string[]) ?? [],
     spells: (s.spells as string[]) ?? [],
@@ -191,6 +201,8 @@ export function toBody(d: Draft, rolls?: number[] | null): Record<string, unknow
     abilities,
     ability_choice: d.ability_picks.flat(),
     skills: d.skills,
+    ...(d.fighting_style ? { fighting_style: d.fighting_style } : {}),
+    expertise: d.expertise,
     equipment_choices: d.equipment_choices,
     cantrips: d.cantrips,
     spells: d.spells,
@@ -303,7 +315,15 @@ export function steps(
         Object.values(d.abilities).every((v) => v != null) &&
         (origin?.ability_groups ?? []).every((g, i) => (d.ability_picks[i]?.length ?? 0) === g.count),
     },
-    { id: "skills", label: "Навыки", done: !!cls && d.skills.length === need },
+    {
+      id: "skills",
+      label: "Навыки",
+      done:
+        !!cls &&
+        d.skills.length === need &&
+        d.expertise.length === (cls.expertise ?? 0) &&
+        (!cls.fighting_styles?.length || !!d.fighting_style),
+    },
     ...spellStep,
     { id: "gear", label: "Снаряжение", done: !!cls },
     { id: "story", label: "История", done: !!d.public_bio.trim() },

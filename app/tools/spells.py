@@ -19,6 +19,7 @@ from app.core.positions import COVER_AC, pos_of, wall_between
 from app.core.world import Actor, format_time
 from app.db.models import Character
 from app.rules.base import RollMode
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e import spells as rules
 from app.rules.dnd5e.engine import Dnd5eEngine
@@ -118,6 +119,8 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
     blocked = mod.can_act(act.modifiers)
     if blocked:
         raise ToolError(f"{act.name} не может действовать: {blocked}")
+    if any(r.id == "effect.feature_rage" for _, r in act.effects):
+        raise ToolError(f"{act.name} в ярости: в ярости нельзя творить заклинания (SRD)")
     sc = book.spell_catalog(w.catalog)
     spell = sc.spells.get(a.spell_id)
     if spell is None:
@@ -324,9 +327,9 @@ async def resolve(
             stat = str(spell["save"]["stat"])
             row = spell_save(ctx, t, stat, dc, dice)
             ok = row["success"]
-            half = str(spell["save"].get("on_success")) == "half"
-            if parts and (not ok or half):
-                await _damage(ctx, t, parts, False, ok, row, dice)
+            hit, cut = save_damage(t, stat, ok, str(spell["save"].get("on_success")) == "half", row)
+            if parts and hit:
+                await _damage(ctx, t, parts, False, cut, row, dice)
             if not ok:
                 made = [await apply(w.actor(t.id), ref) for ref in on_fail]
                 if spell.get("repeat_save") and any(made):
@@ -420,6 +423,8 @@ async def read_scroll(ctx: ToolContext, ch: Character, it: Any, rec: Any, target
     blocked = mod.can_act(act.modifiers)
     if blocked:
         raise ToolError(f"{act.name} не может действовать: {blocked}")
+    if any(r.id == "effect.feature_rage" for _, r in act.effects):
+        raise ToolError(f"{act.name} в ярости: в ярости нельзя творить заклинания (SRD)")
     sc = book.spell_catalog(w.catalog)
     sid = str(spec.get("spell_ref") or "")
     spell = sc.spells.get(sid)
@@ -516,6 +521,15 @@ def magic_resistant(w: Any, t: Actor) -> bool:
     if "magic_resistance" in (data.get("tags") or []):
         return True
     return any(isinstance(x, dict) and str(x.get("name")) in MAGIC_RESISTANCE for x in data.get("traits") or [])
+
+
+def save_damage(t: Actor, stat: str, ok: bool, half_on_success: bool, row: dict) -> tuple[bool, bool]:
+    """Есть ли урон после спасброска и половина ли он. Увёртливость плута и монаха (SRD): при спасброске Ловкости
+    от урона «половина при успехе» успех — без урона, провал — половина."""
+    if stat == "dex" and half_on_success and cf.has(t.features, "rogue_evasion", "monk_evasion"):
+        row["evasion"] = True
+        return (not ok), True
+    return (not ok or half_on_success), ok
 
 
 def spell_save(ctx: ToolContext, t: Actor, stat: str, dc: int, dice: list) -> dict:
@@ -660,8 +674,10 @@ async def zone_tick(ctx: ToolContext, act: Actor, notes: list[str]) -> None:
         row = spell_save(ctx, t, str(spell["save"]["stat"]), int(z["dc"]), dice)
         ok = row["success"]
         parts = rules.damage_parts(spell, int(z["slot"]), int(z.get("char_level") or 1))
-        if parts and (not ok or str(spell["save"].get("on_success")) == "half"):
-            await _damage(ctx, t, parts, False, ok, row, dice)
+        stat = str(spell["save"]["stat"])
+        hit, cut = save_damage(t, stat, ok, str(spell["save"].get("on_success")) == "half", row)
+        if parts and hit:
+            await _damage(ctx, t, parts, False, cut, row, dice)
         if not ok:
             left = z["until"] - w.scene.game_time if z.get("until") is not None else None
             for ref in spell.get("on_fail") or []:

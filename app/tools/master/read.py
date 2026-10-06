@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core.features import uses_view
+from app.core.features import class_rows, uses_view, wild_shape_forms
 from app.core.world import lineage_features
 from app.db.models import Character
 from app.tools.master.base import _character
@@ -68,8 +68,19 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         "personality": ch.personality,
         "public_bio": ch.public_bio,
         "features": uses_view(ch, ctx.world.catalog, act.mods, act.pb),
+        # все умения класса на уровне героя с текстом SRD: сервер сам считает КД, скорость, компетентность, ярость,
+        # скрытую атаку и подобное; остальное мастер исполняет по тексту
+        "class_features": class_rows(ch, ctx.world.catalog),
+        **_wild_shape(ctx, ch),
         **_spellbook(ctx, ch),
     }
+
+
+def _wild_shape(ctx: ToolContext, ch: Character) -> dict:
+    forms = wild_shape_forms(ch, ctx.world.catalog)
+    if forms is None:
+        return {}
+    return {"wild_shape_forms": forms}
 
 
 def _spellbook(ctx: ToolContext, ch: Character) -> dict:

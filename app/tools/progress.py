@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.core.world import PLAYABLE
 from app.db.models import Character, ContentPack
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e.advancement import XP_FOR_LEVEL, level_of, next_level_xp, progress_view, xp_of
 from app.tools.master.base import MAX_LEVEL_DEFAULT, _character, engine, snapshot
 from app.tools.master.entities import ENCOUNTER_XP
@@ -87,7 +88,28 @@ async def level_up(ctx: ToolContext, ch: Character, reason: str, tool_name: str 
         payload={"level": level + 1, "reason": reason, "hp_max": new_max},
         inverse=inverse,
     )
-    return {"character": ch.name, "level": level + 1, "hp_max": new_max}
+    out = {"character": ch.name, "level": level + 1, "hp_max": new_max}
+    todo = pending_choices(ch, ctx.world.catalog)
+    if todo:
+        out["choose"] = todo  # новый уровень открыл выбор класса: спроси игрока и запиши set_class_choice
+    return out
+
+
+def pending_choices(ch: Character, cat) -> list[str]:
+    """Что герой ещё не выбрал в классе на своём уровне: боевой стиль, навыки с компетентностью."""
+    sheet = ch.sheet or {}
+    cls = cat.find(sheet.get("class_id") or "", "class")
+    if cls is None:
+        return []
+    level = level_of(sheet)
+    out = []
+    styles = cf.fighting_style_options(cls.data, level)
+    if styles and sheet.get("fighting_style") not in styles:
+        out.append("боевой стиль: " + ", ".join(f"{k} ({cf.FIGHTING_STYLES[k][0]})" for k in styles))
+    need = cf.expertise_count(cls.data, level) - len(sheet.get("expertise") or [])
+    if need > 0:
+        out.append(f"компетентность: ещё {need} навыка из тех, которыми герой владеет")
+    return out
 
 
 async def award(ctx: ToolContext, total: int, source: str, reason: str) -> dict:
@@ -254,6 +276,72 @@ async def grant_level(ctx: ToolContext, a: GrantLevelArgs) -> dict:
             raise ToolError(f"{ch.name} уже на потолке уровня ({cap})")
         out.append(await level_up(ctx, ch, a.reason))
     return {"levels": out}
+
+
+class ClassChoiceArgs(BaseModel):
+    character_id: str
+    fighting_style: str | None = Field(
+        None,
+        description="ключ стиля боя: archery, defense, dueling, great_weapon_fighting, protection, two_weapon_fighting",
+    )
+    expertise: list[str] = Field(
+        default_factory=list, max_length=4, description="новые навыки с компетентностью (ключи навыков героя)"
+    )
+
+
+@tool(
+    "set_class_choice",
+    "Записать выбор игрока, который открыл новый уровень героя: боевой стиль (воин, паладин и следопыт со 2-го "
+    "уровня) или навыки компетентности (плут, бард). Только когда игрок сам назвал выбор; выбранное не меняется.",
+    ClassChoiceArgs,
+    ids={"character_id": "characters"},
+    closes=False,
+)
+async def set_class_choice(ctx: ToolContext, a: ClassChoiceArgs) -> dict:
+    ch = _character(ctx, a.character_id)
+    sheet = dict(ch.sheet or {})
+    cls = ctx.world.catalog.find(sheet.get("class_id") or "", "class")
+    if cls is None:
+        raise ToolError(f"у {ch.name} нет класса в мире кампании")
+    level = level_of(sheet)
+    before = copy.deepcopy(ch.sheet)
+    if a.fighting_style:
+        styles = cf.fighting_style_options(cls.data, level)
+        if not styles:
+            raise ToolError(f"{ch.name}: боевого стиля у класса на этом уровне нет")
+        if sheet.get("fighting_style") in styles:
+            raise ToolError(f"{ch.name}: боевой стиль уже выбран, он не меняется")
+        if a.fighting_style not in styles:
+            raise ToolError(f"{ch.name}: стили класса — {', '.join(styles)}")
+        sheet["fighting_style"] = a.fighting_style
+    if a.expertise:
+        have = list(sheet.get("expertise") or [])
+        need = cf.expertise_count(cls.data, level) - len(have)
+        act = ctx.world.actor(ch.id)
+        profs = {s for s in act.skills if s in (sheet.get("skills") or [])}
+        origin = ctx.world.catalog.find(sheet.get("origin_id") or "", "origin")
+        profs |= set(((origin.data if origin else {}).get("proficiencies") or {}).get("skills") or [])
+        if need <= 0:
+            raise ToolError(f"{ch.name}: новых навыков с компетентностью на этом уровне нет")
+        if len(a.expertise) > need or len(set(a.expertise)) != len(a.expertise):
+            raise ToolError(f"{ch.name}: можно выбрать ещё {need} разных навыка")
+        bad = [s for s in a.expertise if s not in profs or s in have]
+        if bad:
+            raise ToolError(f"{ch.name}: компетентность только в навыках, которыми герой владеет: {', '.join(bad)}")
+        sheet["expertise"] = have + list(a.expertise)
+    if sheet == ch.sheet:
+        raise ToolError("нечего записать: укажите fighting_style или expertise")
+    ch.sheet = sheet
+    ctx.world.invalidate(ch.id)
+    ctx.changed.add(ch.id)
+    out = {"character": ch.name, "fighting_style": sheet.get("fighting_style"), "expertise": sheet.get("expertise")}
+    await ctx.record(
+        "set_class_choice",
+        actor_id=ch.id,
+        payload=out,
+        inverse=[{"table": "characters", "id": ch.id, "field": "sheet", "before": before}],
+    )
+    return out
 
 
 PROGRESS_TOOLS = ("award_xp", "grant_level")

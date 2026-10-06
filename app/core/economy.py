@@ -142,7 +142,9 @@ def charge_attack(ctx: ToolContext, hero_id: str, bonus: bool = False) -> list[d
         return []
     inv = [_snap(ctx)]
     led = ledger(w, hero_id)
-    if bonus:
+    if bonus and led.get("bonus_strikes"):
+        led["bonus_strikes"] -= 1  # Шквал ударов: оплачен бонусным действием заранее
+    elif bonus:
         _need_bonus(w, hero_id, led, "удар бонусным действием")
     elif led["attacks_left"] > 0:
         led["attacks_left"] -= 1
@@ -201,6 +203,19 @@ def charge(ctx: ToolContext, hero_id: str, kind: str, bonus: bool = False) -> li
         led["dash"] += 1
     elif kind == "disengage":
         led["disengage"] = True
+    _save(w, hero_id, led)
+    return inv
+
+
+def flurry(ctx: ToolContext, hero_id: str) -> list[dict]:
+    """Шквал ударов монаха: бонусное действие сразу, взамен — два безоружных удара бонусом."""
+    w = ctx.world
+    if not active(w, hero_id):
+        return []
+    inv = [_snap(ctx)]
+    led = ledger(w, hero_id)
+    _need_bonus(w, hero_id, led, "шквал ударов")
+    led["bonus_strikes"] = 2
     _save(w, hero_id, led)
     return inv
 

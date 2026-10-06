@@ -247,6 +247,8 @@ async def copy_to_campaign(
             # навыки и стартовые наборы выбирались из списков прежнего класса
             data.pop("skills", None)
             data.pop("equipment_choices", None)
+            data.pop("fighting_style", None)
+            data.pop("expertise", None)
             for k in ("cantrips", "spells", "prepared"):
                 data.pop(k, None)
         if "origin" in foreign:

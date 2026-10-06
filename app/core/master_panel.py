@@ -66,6 +66,7 @@ GROUPS: dict[str, list[str]] = {
         "award_xp",
         "grant_inspiration",
         "grant_level",
+        "set_class_choice",
         "cross_threshold",
         "reveal_knowledge",
         "learn_fact",
