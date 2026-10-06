@@ -1,4 +1,5 @@
 // Формы данных сервера, которые читает клиент. Неизвестные поля клиент игнорирует.
+import type { ServerEvent } from "./api.gen";
 import type { Spellbook } from "./spells";
 
 export interface User {
@@ -53,12 +54,9 @@ export interface Theme {
   labels: Record<string, string>;
 }
 
-export interface Envelope<P = Record<string, unknown>> {
-  type: string;
-  campaign_id: string | null;
-  seq: number | null;
-  payload: P;
-}
+/** Событие сервера. Тип и поля каждого события — из контракта сервера (app/gateway/protocol.py → lib/api.gen.ts). */
+export type Envelope = ServerEvent;
+export type EventOf<T extends Envelope["type"]> = Extract<Envelope, { type: T }>;
 
 /** Статус реплики игрока при ИИ-мастере: ждёт хода, мастер отвечает, отвечено, не обработано. */
 export type ReplyState = "pending" | "processing" | "answered" | "failed";

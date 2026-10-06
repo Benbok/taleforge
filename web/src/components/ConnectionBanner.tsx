@@ -7,7 +7,9 @@ export default function ConnectionBanner() {
   const text =
     connectionDetail === "unauthorized"
       ? "Вход устарел: войдите заново."
-      : connection === "connecting"
+      : connectionDetail === "deleted"
+        ? "Владелец удалил эту кампанию: вернитесь на главную."
+        : connection === "connecting"
         ? "Подключаемся…"
         : connection === "reconnecting"
           ? "Переподключаемся…"

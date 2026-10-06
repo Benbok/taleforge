@@ -4,7 +4,8 @@ import type { Envelope } from "../lib/types";
 import { useToasts } from "../stores/toasts";
 import { lastPlace, secondsLeft, waitLeft } from "./Composer";
 
-const env = (type: string, payload: object = {}): Envelope => ({ type, campaign_id: "c1", seq: null, payload: payload as Record<string, unknown> });
+// в тестах форма события упрощена: проверяем реакцию стора, а не контракт
+const env = (type: string, payload: object = {}): Envelope => ({ type, campaign_id: "c1", seq: null, payload }) as unknown as Envelope;
 
 describe("игровой экран", () => {
   it("ошибка сервера показывается причиной, а смена хода перезапрашивает кнопки", () => {

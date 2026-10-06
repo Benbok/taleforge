@@ -13,12 +13,8 @@ const msg = (seq: number, content = `m${seq}`): ChatMessage => ({
   created_at: null,
 });
 
-const env = (type: string, payload: object, seq: number | null = null): Envelope => ({
-  type,
-  campaign_id: "c1",
-  seq,
-  payload: payload as Record<string, unknown>,
-});
+// в тестах форма события упрощена: проверяем реакцию стора, а не контракт
+const env = (type: string, payload: object, seq: number | null = null): Envelope => ({ type, campaign_id: "c1", seq, payload }) as unknown as Envelope;
 
 describe("хранилище игры", () => {
   beforeEach(() => useGame.getState().reset());

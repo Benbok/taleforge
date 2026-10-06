@@ -8,6 +8,7 @@ import type {
   EntityCard,
   EntityType,
   Envelope,
+  EventOf,
   Explained,
   HeroSheet,
   HeroPublic,
@@ -112,6 +113,9 @@ export function mergeMessages(have: ChatMessage[], add: ChatMessage[]): ChatMess
   return out.length > HISTORY_CAP ? out.slice(out.length - HISTORY_CAP) : out;
 }
 
+/** ``data`` сообщения сервер не описывает: её форма зависит от инструмента, разбирает её клиент (ChatMessage). */
+const asMessages = (ms: EventOf<"message.new">["payload"][]): ChatMessage[] => ms as ChatMessage[];
+
 const initial = {
   socket: null,
   connection: "connecting" as Connection,
@@ -185,11 +189,11 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   apply(e) {
-    const p = e.payload as Record<string, unknown>;
+    // e.payload сужается по e.type: формы событий приходят из контракта сервера (lib/api.gen.ts)
     switch (e.type) {
       case "state.snapshot": {
         const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, rest_votes, ...rest } =
-          p as unknown as Snapshot;
+          e.payload;
         set((s) => ({
           votes: votes ?? [],
           restVotes: rest_votes ?? [],
@@ -206,12 +210,12 @@ export const useGame = create<GameState>((set, get) => ({
           actions: actions ?? [],
           blocked: blocked ?? {},
           myPending: pending ?? null,
-          messages: rest.replay ? mergeMessages(s.messages, messages) : mergeMessages([], messages),
+          messages: rest.replay ? mergeMessages(s.messages, asMessages(messages)) : mergeMessages([], asMessages(messages)),
         }));
         return;
       }
       case "message.new": {
-        const m = { ...(p as unknown as ChatMessage), fresh: true };
+        const m: ChatMessage = { ...asMessages([e.payload])[0], fresh: true };
         const mine = get().snapshot?.me?.seat_id;
         const also = standInFor(get());
         set((s) => {
@@ -227,17 +231,16 @@ export const useGame = create<GameState>((set, get) => ({
       }
       case "message.chunk": {
         // черновик мастера по кускам: сообщение появляется до message.new, финальный текст его заменит
-        const id = String(p.id);
-        const chunk = String(p.chunk ?? "");
+        const p = e.payload;
         set((s) => {
-          if (!s.messages.some((m) => m.id === id)) {
+          if (!s.messages.some((m) => m.id === p.id)) {
             const draft: ChatMessage = {
-              id,
-              seq: Number(p.seq),
-              kind: String(p.kind ?? "narration"),
-              seat_id: (p.seat_id as string | null) ?? null,
+              id: p.id,
+              seq: p.seq,
+              kind: p.kind,
+              seat_id: p.seat_id,
               author: null,
-              content: chunk,
+              content: p.chunk,
               whisper: false,
               created_at: null,
               fresh: true,
@@ -245,53 +248,54 @@ export const useGame = create<GameState>((set, get) => ({
             return { messages: mergeMessages(s.messages, [draft]) };
           }
           return {
-            messages: s.messages.map((m) => (m.id === id ? { ...m, content: p.reset ? chunk : m.content + chunk } : m)),
+            messages: s.messages.map((m) => (m.id === p.id ? { ...m, content: p.reset ? p.chunk : m.content + p.chunk } : m)),
           };
         });
         return;
       }
       case "message.rejected": {
-        const clientId = p.client_id as string | undefined;
+        const p = e.payload;
         set((s) => {
-          const gone = s.pending.find((x) => x.clientId === clientId) ?? s.pending[0];
+          const gone = s.pending.find((x) => x.clientId === p.client_id) ?? s.pending[0];
           return {
             pending: s.pending.filter((x) => x !== gone),
             // у голосовой сервер возвращает расшифровку: её можно поправить и отправить текстом
-            rejected: {
-              text: typeof p.text === "string" ? p.text : (gone?.text ?? ""),
-              reason: String(p.reason ?? "реплика не принята"),
-            },
+            rejected: { text: p.text ?? gone?.text ?? "", reason: p.reason || "реплика не принята" },
           };
         });
         return;
       }
       case "message.notice":
-        set({ notice: String(p.text ?? "") });
+        set({ notice: e.payload.text });
         return;
       case "presence.changed": {
-        const x = p as { seat_id: string | null; status: SeatState["presence"] };
+        const x = e.payload;
         set((s) => ({ seats: s.seats.map((seat) => (seat.id === x.seat_id ? { ...seat, presence: x.status } : seat)) }));
         return;
       }
       case "vote.started":
       case "vote.updated": {
-        const v = p as unknown as Vote;
+        const v: Vote = e.payload;
         set((s) => ({ votes: [...s.votes.filter((x) => x.vote_id !== v.vote_id), v] }));
         return;
       }
-      case "vote.ended":
-        set((s) => ({ votes: s.votes.filter((x) => x.vote_id !== p.vote_id) }));
+      case "vote.ended": {
+        const id = e.payload.vote_id;
+        set((s) => ({ votes: s.votes.filter((x) => x.vote_id !== id) }));
         return;
+      }
       case "rest.vote": {
-        const v = p as unknown as RestVote;
+        const v: RestVote = e.payload;
         set((s) => ({ restVotes: [...s.restVotes.filter((x) => x.vote_id !== v.vote_id), v] }));
         return;
       }
-      case "rest.ended":
-        set((s) => ({ restVotes: s.restVotes.filter((x) => x.vote_id !== p.vote_id) }));
+      case "rest.ended": {
+        const id = e.payload.vote_id;
+        set((s) => ({ restVotes: s.restVotes.filter((x) => x.vote_id !== id) }));
         return;
+      }
       case "stand_in.changed": {
-        const x = p as { seat_id: string; stand_in: SeatState["stand_in"] };
+        const x = e.payload;
         set((s) => {
           if (!s.snapshot) return {};
           const me = s.snapshot.me;
@@ -307,71 +311,66 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "master.status": {
-        const stage = String(p.stage);
+        const stage = e.payload.stage;
         set({ masterStage: stage === "idle" ? null : stage });
         return;
       }
-      case "turn.changed":
-        set((s) => ({ turn: (p.turn as Turn) ?? null, scene: s.scene ? { ...s.scene, turn: (p.turn as Turn) ?? null } : s.scene }));
+      case "turn.changed": {
+        const turn: Turn | null = e.payload.turn ?? null;
+        set((s) => ({ turn, scene: s.scene ? { ...s.scene, turn } : s.scene }));
         return;
+      }
       case "audio.state": {
-        const { cues: _cues, ...state } = p as unknown as AudioState;
+        const { cues: _cues, ...state } = e.payload;
         set({ audio: state });
         return;
       }
-      case "scene.updated":
-        set({ scene: p as unknown as Scene, turn: ((p as unknown as Scene).turn as Turn) ?? null });
+      case "scene.updated": {
+        const scene: Scene = e.payload;
+        set({ scene, turn: scene.turn ?? null });
         return;
+      }
       case "reaction.prompt":
-        set({ reaction: p as unknown as ReactionPrompt });
+        set({ reaction: e.payload });
         return;
       case "error":
-        if (p.code === "reaction_closed") set({ reaction: null });
+        if (e.payload.code === "reaction_closed") set({ reaction: null });
         return;
-      case "reaction.closed":
-        set((s) => (s.reaction?.prompt_id === p.prompt_id ? { reaction: null } : {}));
+      case "reaction.closed": {
+        const id = e.payload.prompt_id;
+        set((s) => (s.reaction?.prompt_id === id ? { reaction: null } : {}));
         return;
+      }
       case "session.summary":
-        set({ summary: p as unknown as SessionSummary });
+        set({ summary: e.payload });
         return;
-      case "state.actions":
-        if (p.as_seat) {
-          const seat = String(p.as_seat);
-          set((s) => ({
-            standIn: {
-              ...s.standIn,
-              [seat]: {
-                actions: (p.actions as string[]) ?? [],
-                blocked: (p.blocked as Record<string, string>) ?? {},
-                pending: (p.pending as PendingReply | null) ?? null,
-              },
-            },
-          }));
+      case "state.actions": {
+        const { as_seat, actions, blocked, pending } = e.payload;
+        if (as_seat) {
+          set((s) => ({ standIn: { ...s.standIn, [as_seat]: { actions, blocked, pending } } }));
           return;
         }
-        set({
-          actions: (p.actions as string[]) ?? [],
-          blocked: (p.blocked as Record<string, string>) ?? {},
-          myPending: (p.pending as PendingReply | null) ?? null,
-        });
+        set({ actions, blocked, myPending: pending });
         return;
+      }
       case "message.state": {
-        const ids = new Set((p.ids as string[]) ?? []);
-        const state = p.state as ChatMessage["state"];
+        const ids = new Set(e.payload.ids);
+        const state = e.payload.state;
         set((s) => ({ messages: s.messages.map((m) => (ids.has(m.id) ? { ...m, state } : m)) }));
         return;
       }
       case "message.withdrawn": {
-        const id = String(p.id);
+        const { id, text } = e.payload;
         set((s) => ({
           messages: s.messages.filter((m) => m.id !== id),
           myPending: s.myPending?.id === id ? null : s.myPending,
-          restored: typeof p.text === "string" ? p.text : s.restored,
+          restored: typeof text === "string" ? text : s.restored,
         }));
         return;
       }
       case "character.sheet": {
-        const h = p.character as HeroSheet;
+        // лист на сервере пока описан не весь (app/gateway/protocol.py, HeroSheet): остальное — по типам клиента
+        const h = e.payload.character as unknown as HeroSheet;
         // лист пришёл после изменения: прежние разборы чисел могли устареть
         if (h?.id)
           set((s) => ({
@@ -382,17 +381,17 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "stat.explained": {
-        const x = p as unknown as Explained;
+        const x = e.payload as Explained;
         set((s) => ({ explained: { ...s.explained, [x.stat]: x } }));
         return;
       }
       case "character.updated": {
-        const h = p.character as HeroPublic;
+        const h: HeroPublic = e.payload.character;
         if (h?.id) set((s) => ({ heroes: { ...s.heroes, [h.id]: h } }));
         return;
       }
       case "entity.card": {
-        const c = p as unknown as EntityCard;
+        const c = e.payload as EntityCard;
         set((s) => ({
           cards: { ...s.cards, [c.id]: c },
           types: c.type ? { ...s.types, [c.id]: c.type } : s.types,
@@ -400,6 +399,7 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "knowledge.revealed": {
+        const p = e.payload;
         const id = String(p.entity_id);
         const last = get().messages.at(-1)?.seq ?? 0;
         set((s) => {

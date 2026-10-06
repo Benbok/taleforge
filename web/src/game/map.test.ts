@@ -1,3 +1,4 @@
+import type { Envelope } from "../lib/types";
 import { describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
 import {
@@ -20,6 +21,9 @@ import {
 } from "./map";
 
 const empty: MapState = { here: null, around: [], exits: [], places: [], links: [], bearings: {} as MapState["bearings"] };
+
+// в тестах форма события упрощена
+const ev = (type: string, payload: object): Envelope => ({ type, campaign_id: "c1", seq: null, payload }) as unknown as Envelope;
 
 describe("карта", () => {
   it("сторона света задаёт клетку: север вверху, восток справа; зона — число клеток", () => {
@@ -60,13 +64,13 @@ describe("карта", () => {
   it("открытая карта перезапрашивается после хода мастера, закрытая — нет", () => {
     const send = vi.fn(() => true);
     useGame.setState({ socket: { send } as never });
-    mapEvent("scene.updated", {});
+    mapEvent(ev("scene.updated", {}));
     expect(send).not.toHaveBeenCalled();
     useMapWindow.getState().show();
     expect(send).toHaveBeenCalledWith("map.get");
-    mapEvent("scene.updated", {});
+    mapEvent(ev("scene.updated", {}));
     expect(send).toHaveBeenCalledTimes(2);
-    mapEvent("map.state", { ...empty, here: { id: "x", name: "Площадь", description: null } });
+    mapEvent(ev("map.state", { ...empty, here: { id: "x", name: "Площадь", description: null } }));
     expect(useMapWindow.getState().data?.here?.name).toBe("Площадь");
     expect(useMapWindow.getState().loading).toBe(false);
   });

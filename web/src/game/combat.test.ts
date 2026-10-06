@@ -3,12 +3,8 @@ import type { Envelope, SceneEntity } from "../lib/types";
 import { useGame } from "../stores/game";
 import { byZone, myTurn, ringState, turnLeft } from "./combat";
 
-const env = (type: string, payload: object): Envelope => ({
-  type,
-  campaign_id: "c1",
-  seq: null,
-  payload: payload as Record<string, unknown>,
-});
+// в тестах форма события упрощена: проверяем реакцию стора, а не контракт
+const env = (type: string, payload: object): Envelope => ({ type, campaign_id: "c1", seq: null, payload }) as unknown as Envelope;
 
 const ent = (id: string, zone: string, kind = "creature"): SceneEntity => ({ id, name: id, kind, zone, attitude: "hostile" });
 

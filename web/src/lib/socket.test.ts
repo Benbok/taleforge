@@ -104,6 +104,13 @@ describe("GameSocket", () => {
     expect(statuses.at(-1)).toBe("closed");
     expect(timers.filter((t) => t.ms < 25000)).toHaveLength(0);
 
+    const gone = setup();
+    gone.sock.start();
+    gone.sockets[0].open();
+    gone.sockets[0].recv("campaign.deleted");
+    expect(gone.statuses.at(-1)).toBe("closed"); // кампанию удалили: переподключаться некуда
+    expect(gone.timers.filter((t) => t.ms < 25000)).toHaveLength(0);
+
     const other = setup();
     other.sock.start();
     other.sock.stop();

@@ -305,11 +305,11 @@ export function callTool(name: string, args: Record<string, unknown>): Promise<T
 /** Подхватывает ответ сервера на вызов. Возвращает true, если событие было ответом на наш вызов. */
 export function resolveToolResult(e: Envelope): boolean {
   if (e.type !== "master.tool.result") return false;
-  const id = String((e.payload as { request_id?: string }).request_id ?? "");
+  const id = e.payload.request_id ?? "";
   const w = waiting.get(id);
   if (!w) return false;
   clearTimeout(w.timer);
   waiting.delete(id);
-  w.resolve(e.payload as unknown as ToolResult);
+  w.resolve(e.payload as ToolResult);
   return true;
 }
