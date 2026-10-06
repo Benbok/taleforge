@@ -27,6 +27,12 @@ def test_hero_turn_counts_action_bonus_and_moves(client, admin, settings):
     gob = play(settings, cid, [10, 10], setup)
 
     async def turn(ctx):
+        # воин отход бонусным действием не делает: это Хитрое действие плута
+        refused = await call(ctx, "take_action", {"character_id": hid, "action": "disengage", "bonus": True})
+        assert not refused["ok"] and "Хитрое действие" in refused["error"], refused
+        ch = ctx.world.characters[hid]
+        ch.sheet = {**ch.sheet, "class_id": "class.rogue", "level": 2}  # дальше герой — плут 2-го уровня
+        ctx.world.invalidate(hid)
         weapon = next(x for x in ctx.world.actor(hid).attacks if x["kind"] == "melee")["key"]
         hit = {"attacker_id": hid, "target_id": gob, "attack": weapon}
         fresh = combat.public_turn(ctx.world)["economy"]

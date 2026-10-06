@@ -597,15 +597,24 @@ async def rest(ctx: ToolContext, a: RestArgs) -> dict:
 
 class UseFeatureArgs(BaseModel):
     character_id: str
-    feature: str = Field(description="ключ или название умения: rage, second_wind, ki, channel_divinity…")
+    feature: str = Field(
+        description="ключ или название умения: rage, second_wind, action_surge, ki, flurry_of_blows, "
+        "channel_divinity, bardic_inspiration…"
+    )
     amount: int = Field(1, ge=1, le=100, description="сколько тратит: у запасов (ци, наложение рук) — сколько очков")
+
+
+# Приёмы монаха за 1 ци: тратят запас «Ци». Терпеливая оборона и Поступь ветра — take_action с bonus=true.
+KI_MOVES = {"flurry_of_blows": "Шквал ударов", "шквал ударов": "Шквал ударов"}
 
 
 @tool(
     "use_feature",
-    "Герой применяет умение с ограниченным числом использований (ярость, второе дыхание, всплеск действий, ци, "
-    "божественный канал, вдохновение барда…): сервер списывает использование или отказывает, если они кончились до "
-    "отдыха. Что умение даёт, опиши по его тексту; числа бросков — через обычные инструменты.",
+    "Герой применяет умение с ограниченным числом использований: сервер списывает использование или отказывает, "
+    "если они кончились до отдыха. Сам исполняет: ярость (бонусное действие, состояние на минуту: сопротивление, "
+    "прибавка к урону), второе дыхание (бонусное действие, лечит 1d10 + уровень), всплеск действий (ещё действие), "
+    "шквал ударов (1 ци и бонусное действие: два безоружных удара через resolve_attack с as_bonus). Остальное "
+    "(божественный канал, вдохновение барда…) опиши по тексту умения; числа бросков — через обычные инструменты.",
     UseFeatureArgs,
     ids={"character_id": "characters"},
 )
@@ -616,6 +625,9 @@ async def use_feature(ctx: ToolContext, a: UseFeatureArgs) -> dict:
     act = ctx.world.actor(ch.id)
     pools = feats.pools_for(ch, ctx.world.catalog, act.mods, act.pb)
     want = a.feature.strip().lower()
+    move = KI_MOVES.get(want)
+    if move:
+        want, a = "ki", a.model_copy(update={"amount": 1})
     pool = next((p for p in pools if p.key == want or p.name.lower() == want), None)
     if pool is None:
         have = ", ".join(f"{p.key} ({p.name})" for p in pools) or "нет"
@@ -625,14 +637,45 @@ async def use_feature(ctx: ToolContext, a: UseFeatureArgs) -> dict:
     except rules.RestError as e:
         raise ToolError(f"{ch.name}: {e}") from e
     inverse = [snapshot(act)]
+    out: dict[str, Any] = {}
+    dice: list = []
     if pool.key == "action_surge":
         inverse += economy.surge(ctx, ch.id)
+    elif pool.key == "rage":
+        inverse += economy.charge(ctx, ch.id, "other", bonus=True)
+        rec = ctx.world.catalog.find("effect.feature_rage", "effect_template")
+        if rec is not None:
+            fresh = not any(r.id == rec.id for _, r in act.effects)
+            eff, note = await fx.add_effect(ctx, act, rec, fx.duration_seconds(rec.data.get("duration")))
+            out["effect"] = note
+            if eff is not None and fresh:
+                inverse.append({"table": "active_effects", "op": "delete", "id": eff.id})
+        out["rage_damage"] = int(act.class_numbers.get("rage_damage_bonus") or 2)
+        from app.tools.spells import end_concentration
+
+        lost = await end_concentration(ctx, act, "ярость")  # в ярости концентрацию не удержать
+        if lost:
+            out["concentration_lost"] = lost["spell"]
+    elif pool.key == "second_wind":
+        inverse += economy.charge(ctx, ch.id, "other", bonus=True)
+        r = ctx.dice.roll(f"1d10+{act.level}")
+        dice.append(dice_json(r))
+        before = act.hp.current
+        engine.heal(act.hp, max(0, r.total))
+        act.save_hp()
+        out["healed"] = act.hp.current - before
+        out["status"] = act.status()
+    elif move:
+        inverse += economy.flurry(ctx, ch.id)
+        out["move"] = move
+        out["note"] = "два безоружных удара: resolve_attack с attack=unarmed и as_bonus=true, дважды"
     ch.resources = {**(ch.resources or {}), "uses_spent": spent}
     ctx.world.invalidate(ch.id)
+    ctx.changed.add(ch.id)
     left = pool.max - spent[pool.key]
-    out = {"character": ch.name, "feature": pool.name, "spent": a.amount, "left": left, "max": pool.max,
-           "returns": rules.PER_RU[pool.per]}  # fmt: skip
-    await ctx.record("use_feature", actor_id=ch.id, payload=out, inverse=inverse)
+    out = {"character": ch.name, "feature": move or pool.name, "spent": a.amount, "left": left, "max": pool.max,
+           "returns": rules.PER_RU[pool.per], **out}  # fmt: skip
+    await ctx.record("use_feature", actor_id=ch.id, payload=out, dice=dice, inverse=inverse)
     return out
 
 

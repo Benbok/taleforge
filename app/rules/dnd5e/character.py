@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.rules.dice import Dice
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e.engine import Dnd5eEngine, RulesError
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
 
@@ -237,6 +238,25 @@ def validate_character(
             errors.append("навыки класса: навык не из списка класса")
         _, eq_errors = starting_items(class_data, sheet.get("equipment_choices") or [], items)
         errors += eq_errors
+        errors += class_choice_errors(sheet, class_data, origin, level)
+    return errors
+
+
+def class_choice_errors(sheet: dict, class_data: dict, origin: dict | None, level: int) -> list[str]:
+    """Выборы класса на уровне героя: боевой стиль и навыки с компетентностью."""
+    errors = []
+    styles = cf.fighting_style_options(class_data, level)
+    if styles and sheet.get("fighting_style") not in styles:
+        errors.append("боевой стиль: выберите один из стилей класса")
+    need = cf.expertise_count(class_data, level)
+    picked = list(sheet.get("expertise") or [])
+    if need:
+        origin_skills = ((origin or {}).get("proficiencies") or {}).get("skills") or []
+        profs = set(sheet.get("skills") or []) | set(origin_skills)
+        if len(picked) != need or len(set(picked)) != need:
+            errors.append(f"компетентность: выберите {need} разных навыка")
+        elif any(s not in profs for s in picked):
+            errors.append("компетентность: только навыки, которыми герой владеет")
     return errors
 
 
@@ -252,9 +272,11 @@ class Attack:
     normal_ft: int | None = None
     long_ft: int | None = None
     inventory_id: str | None = None
+    ability: str = "str"  # от какой характеристики удар: ярость — только Силой, скрытая атака — фехтовальным
+    properties: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
-        return {k: v for k, v in self.__dict__.items() if v is not None}
+        return {k: v for k, v in self.__dict__.items() if v is not None and v != []}
 
 
 @dataclass
@@ -273,6 +295,7 @@ class Derived:
     attacks: list[Attack] = field(default_factory=list)
     resistances: list[str] = field(default_factory=list)
     senses: dict[str, int] = field(default_factory=dict)
+    proficient_skills: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         d = dict(self.__dict__)
@@ -289,27 +312,59 @@ def _proficient_weapon(item: dict, profs: list[str]) -> bool:
     )
 
 
-def weapon_attack(item: dict, mods: dict[str, int], pb: int, proficient: bool, inv_id: str | None, name: str) -> Attack:
+def _with_mod(dice: str, mod: int) -> str:
+    return dice + (f"+{mod}" if mod > 0 else (f"-{-mod}" if mod < 0 else ""))
+
+
+def _die_size(dice: str) -> int:
+    d = str(dice).split("d", 1)
+    return int(d[1].split("+")[0]) if len(d) == 2 and d[1].split("+")[0].isdigit() else 0
+
+
+def monk_weapon(item: dict) -> bool:
+    """Оружие монаха (SRD): короткий меч и простое рукопашное без свойств «двуручное» и «тяжёлое»."""
     props = item.get("properties") or []
+    if "shortsword" in str(item.get("id")):
+        return True
+    return item.get("weapon_group") == "simple_melee" and "two_handed" not in props and "heavy" not in props
+
+
+def weapon_attack(
+    item: dict,
+    mods: dict[str, int],
+    pb: int,
+    proficient: bool,
+    inv_id: str | None,
+    name: str,
+    martial_arts: str | None = None,
+) -> Attack:
+    """Атака оружием. ``martial_arts`` — кость боевых искусств монаха: оружие монаха бьёт Ловкостью и этой костью,
+    если она больше своей."""
+    props = list(item.get("properties") or [])
     ranged = item.get("weapon_group", "").endswith("ranged")
-    if "finesse" in props:
-        mod = max(mods["str"], mods["dex"])
+    if "finesse" in props or (martial_arts and monk_weapon(item)):
+        ability = "dex" if mods["dex"] > mods["str"] else "str"
     else:
-        mod = mods["dex"] if ranged else mods["str"]
+        ability = "dex" if ranged else "str"
+    mod = mods[ability]
     dmg = item.get("damage") or {"dice": "1", "type": "bludgeoning"}
-    expr = dmg["dice"] + (f"+{mod}" if mod > 0 else (f"-{-mod}" if mod < 0 else ""))
+    dice = dmg["dice"]
+    if martial_arts and monk_weapon(item) and _die_size(martial_arts) > _die_size(dice):
+        dice = martial_arts
     rng = item.get("range") or {}
     return Attack(
         key=item["id"],
         name=name,
         attack_bonus=mod + (pb if proficient else 0),
-        damage=expr,
+        damage=_with_mod(dice, mod),
         damage_type=dmg["type"],
         kind="ranged" if ranged else "melee",
         reach_ft=10 if "reach" in props else 5,
         normal_ft=rng.get("normal"),
         long_ft=rng.get("long"),
         inventory_id=inv_id,
+        ability=ability,
+        properties=props,
     )
 
 
@@ -335,24 +390,69 @@ def derive(
             else:
                 armor = item
     shield_bonus = int(shield.get("ac_bonus", 2)) if shield else 0
+    have = cf.owned(class_data, level)
+    nums = cf.numbers(class_data, level)
+    style = (
+        sheet.get("fighting_style")
+        if sheet.get("fighting_style") in cf.fighting_style_options(class_data, level)
+        else None
+    )
     ac = engine.armor_class(mods["dex"], armor, shield_bonus)
+    if armor is None:
+        # Защита без доспехов: варвар — 10 + Лов + Тел (щит можно), монах — 10 + Лов + Мдр (и без щита)
+        if "barbarian_unarmored_defense" in have:
+            ac = max(ac, 10 + mods["dex"] + mods["con"] + shield_bonus)
+        if "monk_unarmored_defense" in have and shield is None:
+            ac = max(ac, 10 + mods["dex"] + mods["wis"])
+    elif style == "defense":
+        ac += 1
+
+    speed = int((origin or {}).get("speed") or 30)
+    if "fast_movement" in have and (armor or {}).get("armor_type") != "heavy":
+        speed += 10
+    if cf.has(have, "unarmored_movement") and armor is None and shield is None:
+        speed += int(nums.get("unarmored_movement") or 0)
 
     save_profs = set(class_data.get("saving_throws") or [])
     saves = {a: mods[a] + (pb if a in save_profs else 0) for a in ABILITIES}
     origin_skills = ((origin or {}).get("proficiencies") or {}).get("skills") or []
     skill_profs = set(sheet.get("skills") or []) | set(origin_skills)
-    skills = {s: mods[a] + (pb if s in skill_profs else 0) for s, a in SKILLS.items()}
+    # Компетентность (плут, бард): удвоенный бонус мастерства в выбранных навыках, которыми герой владеет
+    need = cf.expertise_count(class_data, level)
+    expert = {s for s in (sheet.get("expertise") or [])[:need] if s in skill_profs}
+    jack = pb // 2 if "jack_of_all_trades" in have else 0  # Мастер на все руки барда
+    skills = {s: mods[a] + (2 * pb if s in expert else pb if s in skill_profs else jack) for s, a in SKILLS.items()}
 
     wprofs = list(((class_data.get("proficiencies") or {}).get("weapons")) or [])
     wprofs += list((((origin or {}).get("proficiencies") or {}).get("weapons")) or [])
+    arts = str(nums["martial_arts"]) if "martial_arts" in have and nums.get("martial_arts") else None
     attacks = [
-        weapon_attack(item, mods, pb, _proficient_weapon(item, wprofs), inv_id, name)
+        weapon_attack(item, mods, pb, _proficient_weapon(item, wprofs), inv_id, name, arts)
         for inv_id, item, _, name in inventory
         if item.get("category") == "weapon"
     ]
-    attacks.append(
-        Attack("unarmed", "Безоружный удар", mods["str"] + pb, str(max(1, 1 + mods["str"])), "bludgeoning", "melee")
-    )
+    for at in attacks:
+        if style == "archery" and at.kind == "ranged":
+            at.attack_bonus += 2
+        if style == "dueling" and at.kind == "melee" and "two_handed" not in at.properties:
+            at.damage += "+2"
+    if arts:  # безоружный удар монаха: кость боевых искусств и лучшая из Силы и Ловкости
+        ab = "dex" if mods["dex"] > mods["str"] else "str"
+        attacks.append(
+            Attack(
+                "unarmed",
+                "Безоружный удар",
+                mods[ab] + pb,
+                _with_mod(arts, mods[ab]),
+                "bludgeoning",
+                "melee",
+                ability=ab,
+            )  # fmt: skip
+        )
+    else:
+        attacks.append(
+            Attack("unarmed", "Безоружный удар", mods["str"] + pb, str(max(1, 1 + mods["str"])), "bludgeoning", "melee")
+        )
     senses = {}
     if (origin or {}).get("darkvision"):
         senses["darkvision"] = int(origin["darkvision"])
@@ -363,7 +463,7 @@ def derive(
         pb=pb,
         hp_max=hp_max,
         ac=ac,
-        speed=int((origin or {}).get("speed") or 30),
+        speed=speed,
         saves=saves,
         skills=skills,
         passive_perception=10 + skills["perception"],
@@ -371,6 +471,7 @@ def derive(
         attacks=attacks,
         resistances=list((origin or {}).get("damage_resistances") or []),
         senses=senses,
+        proficient_skills=sorted(skill_profs),
     )
 
 

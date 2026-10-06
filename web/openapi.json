@@ -1141,6 +1141,33 @@
       ],
       "title": "Equipment Choices"
      },
+     "expertise": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 8,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expertise"
+     },
+     "fighting_style": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fighting Style"
+     },
      "name": {
       "anyOf": [
        {
@@ -4638,6 +4665,33 @@
       ],
       "title": "Equipment Choices"
      },
+     "expertise": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 8,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expertise"
+     },
+     "fighting_style": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fighting Style"
+     },
      "name": {
       "anyOf": [
        {
@@ -4860,6 +4914,33 @@
        }
       ],
       "title": "Equipment Choices"
+     },
+     "expertise": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 8,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expertise"
+     },
+     "fighting_style": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fighting Style"
      },
      "name": {
       "anyOf": [
@@ -6865,6 +6946,33 @@
        }
       ],
       "title": "Equipment Choices"
+     },
+     "expertise": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 8,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expertise"
+     },
+     "fighting_style": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fighting Style"
      },
      "name": {
       "anyOf": [

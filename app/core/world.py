@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.content.catalog import CatalogView, Entry
 from app.db.models import ActiveEffect, Campaign, CampaignSecret, Character, Entity, InventoryItem, Scene
 from app.rules.base import DeathSaves, HitPoints
+from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.character import derive
 from app.rules.dnd5e.engine import Dnd5eEngine
@@ -54,6 +55,9 @@ class Actor:
     zone: str = "near"
     template_id: str | None = None
     speed: int = 30  # футов за ход, для перемещения в бою
+    features: frozenset[str] = frozenset()  # ключи умений класса героя на его уровне (app/rules/dnd5e/features.py)
+    class_numbers: dict = field(default_factory=dict)  # числа класса: скрытая атака, урон ярости, кость ци…
+    level: int = 0
 
     @property
     def alive(self) -> bool:
@@ -166,6 +170,12 @@ def character_actor(
     lin, _, feats = lineage_features(sheet, cat)
     lin_mods = [m for f in feats for m in f.get("modifiers") or [] if isinstance(m, dict)]
     extra = [(lin.id, {"modifiers": lin_mods}, 1)] if lin else []
+    level = int(sheet.get("level") or 1)
+    have = frozenset(cf.owned(cls.data, level)) if cls else frozenset()
+    # Чувство опасности варвара: преимущество на спасброски Ловкости, пока он видит и слышит и дееспособен
+    blind = {r.id for _, r in effs} & {"condition.blinded", "condition.deafened", "condition.incapacitated"}
+    if "danger_sense" in have and not blind:
+        extra.append(("Чувство опасности", {"modifiers": [{"op": "advantage", "on": "save", "stat": "dex"}]}, 1))
     mods_ = mod.collect(
         [*extra, *((rec.id, rec.data, e.stacks) for e, rec in effs)],
         lambda name: (lambda r: {"id": r.id, **r.data} if r else None)(
@@ -177,8 +187,8 @@ def character_actor(
     for m in lin_mods:
         # владения навыками от Порога: к навыку, которым герой ещё не владеет, прибавляется бонус мастерства
         s = m.get("value")
-        if m.get("op") == "proficiency" and m.get("kind") == "skill" and s in SKILLS and skills[s] == d.mods[SKILLS[s]]:
-            skills[s] += d.pb
+        if m.get("op") == "proficiency" and m.get("kind") == "skill" and s in SKILLS and s not in d.proficient_skills:
+            skills[s] = d.mods[SKILLS[s]] + d.pb
     ac = d.ac
     armored = any(
         eq and item.get("category") == "armor" and item.get("armor_type") != "shield" for _, item, eq, _ in inv
@@ -221,6 +231,9 @@ def character_actor(
         modifiers=mods_,
         zone="party",
         speed=int(d.speed or 30),
+        features=have,
+        class_numbers=cf.numbers(cls.data, level) if cls else {},
+        level=level,
     )
 
 
@@ -581,10 +594,22 @@ class World:
                     for it in items
                 )
                 lines.append(f"    снаряжение: {inv}")
+            skills = self._feature_line(ch)
+            if skills:
+                lines.append(f"    {skills}")
             magic = self._spell_line(ch)
             if magic:
                 lines.append(f"    {magic}")
         return lines
+
+    def _feature_line(self, ch: Character) -> str | None:
+        """Умения класса: без этой строки мастер не знает о скрытой атаке, ярости и формах друида."""
+        from app.core.features import scene_line
+
+        try:
+            return scene_line(ch, self.catalog)
+        except Exception:  # noqa: BLE001 — сломанный лист не должен ронять таблицу сцены
+            return None
 
     def _spell_line(self, ch: Character) -> str | None:
         """Что герой может сотворить: без этой строки мастер считает героя немагом и выдумывает эффекты."""
