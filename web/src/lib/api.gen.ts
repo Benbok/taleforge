@@ -2407,6 +2407,8 @@ export interface components {
         CharacterView: {
             /** Bonds */
             bonds: components["schemas"]["Bond"][];
+            /** Class Features */
+            class_features?: components["schemas"]["ClassFeature"][];
             /** Class Id */
             class_id: string | null;
             /** Class Name */
@@ -2476,6 +2478,8 @@ export interface components {
             stand_in?: boolean;
             /** Status */
             status: string;
+            /** Wild Shape Forms */
+            wild_shape_forms?: components["schemas"]["WildShapeForm"][];
         };
         /**
          * ChatMessage
@@ -2504,6 +2508,62 @@ export interface components {
             state: ("pending" | "processing" | "answered" | "failed") | null;
             /** Whisper */
             whisper: boolean;
+        };
+        /**
+         * ClassFeature
+         * @description Умение класса в листе игрока: что даёт, как применить и кто его исполняет (``mode``): сервер сам,
+         *     игрок заявляет в ходе фразой ``say`` или мастер по описанию.
+         */
+        ClassFeature: {
+            /**
+             * Detail
+             * @default null
+             */
+            detail?: string;
+            /**
+             * How
+             * @default null
+             */
+            how?: string;
+            /** Key */
+            key: string;
+            /** Level */
+            level: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "declare" | "master";
+            /** Name */
+            name: string;
+            /**
+             * Say
+             * @default null
+             */
+            say?: string;
+            /**
+             * Skills
+             * @default null
+             */
+            skills?: string[];
+            /**
+             * Text Ru
+             * @default null
+             */
+            text_ru?: string;
+            /** @default null */
+            uses?: components["schemas"]["ClassFeatureUses"];
+        };
+        /** ClassFeatureUses */
+        ClassFeatureUses: {
+            /** Left */
+            left: number;
+            /** Max */
+            max: number;
+            /** Per Ru */
+            per_ru: string;
+            /** Unit */
+            unit: string;
         };
         /**
          * CreationRulesIn
@@ -3295,6 +3355,11 @@ export interface components {
         HeroSheet: {
             /** Bonds */
             bonds: components["schemas"]["Bond"][];
+            /**
+             * Class Features
+             * @default null
+             */
+            class_features?: components["schemas"]["ClassFeature"][];
             /** Class Id */
             class_id: string | null;
             /**
@@ -3391,6 +3456,11 @@ export interface components {
             stand_in?: boolean;
             /** Status */
             status: string;
+            /**
+             * Wild Shape Forms
+             * @default null
+             */
+            wild_shape_forms?: components["schemas"]["WildShapeForm"][];
         };
         /** ImportIn */
         ImportIn: {
@@ -4714,6 +4784,15 @@ export interface components {
             /** Who */
             who: string;
         };
+        /** WildShapeForm */
+        WildShapeForm: {
+            /** Cr */
+            cr: unknown;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -4744,6 +4823,8 @@ export type CharacterSheet = components['schemas']['CharacterSheet'];
 export type CharacterUpdated = components['schemas']['CharacterUpdated'];
 export type CharacterView = components['schemas']['CharacterView'];
 export type ChatMessage = components['schemas']['ChatMessage'];
+export type ClassFeature = components['schemas']['ClassFeature'];
+export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type Derived = components['schemas']['Derived'];
 export type Empty = components['schemas']['Empty'];
@@ -4895,6 +4976,7 @@ export type UserRoleIn = components['schemas']['UserRoleIn'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
+export type WildShapeForm = components['schemas']['WildShapeForm'];
 export type $defs = Record<string, never>;
 export interface operations {
     admin_audio_api_admin_audio_get: {

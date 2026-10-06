@@ -46,6 +46,21 @@ def wild_shape_forms(ch: Character, cat) -> list[dict[str, Any]] | None:
     return cf.wild_shape_forms(level, beasts)
 
 
+def sheet_rows(ch: Character, cat, uses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Умения для листа игрока: русские тексты, как применить и сколько использований осталось до отдыха.
+    Запас умения узнаётся по ключу: «bardic_inspiration» — у ступеней «bardic_inspiration_d6», «_d8»…"""
+    alias = {"sorcery_points": "font_of_magic"}
+    out = []
+    for r in class_rows(ch, cat):
+        row = {k: v for k, v in r.items() if k != "text"}
+        for u in uses:
+            if row["key"].startswith(alias.get(u["key"], u["key"])):
+                row["uses"] = {k: u[k] for k in ("left", "max", "per_ru", "unit")}
+                break
+        out.append(row)
+    return out
+
+
 def scene_line(ch: Character, cat) -> str | None:
     """Строка умений героя для таблицы сцены: имена с числами, у друида — формы Дикого облика."""
     rows = class_rows(ch, cat)
