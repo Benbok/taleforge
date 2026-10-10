@@ -188,5 +188,5 @@ class StreamFilter:
         """Выпустить проверенный хвост после завершения потока (текст без перевода строки)."""
         safe = strip(self.pending, self.names)
         self.pending = ""
-        if safe.strip() and safe.strip().lower().strip("\\\\") not in ("<center>", "</center>"):
+        if safe.strip() and safe.strip().lower().strip("\\") not in ("<center>", "</center>"):
             await self.push(safe)
