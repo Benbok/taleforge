@@ -490,7 +490,7 @@ function Around({ m }: { m: MapState }) {
         {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} visual={MAP_PRESETS.hero} label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row }) => (
           <Token
-            key={x.id}
+            key={x.id ?? x.room_ref ?? x.name}
             cx={px(col)}
             cy={py(row)}
             size={CELL}
@@ -498,7 +498,7 @@ function Around({ m }: { m: MapState }) {
             label={fitLabel(x.name, occupied, col, row, false)}
             dashed={!x.visited}
             selected={isSelected(col, row)}
-            onClick={pickThing(x.id, x.name, col, row)}
+            onClick={x.id ? pickThing(x.id, x.name, col, row) : undefined}
             ariaLabel={`Выход: ${x.name}`}
           />
         ))}
@@ -654,11 +654,15 @@ function Around({ m }: { m: MapState }) {
           <li>
             <span className="font-mono text-xs uppercase text-muted">куда можно пройти: </span>
             {m.exits.map((x, i) => (
-              <span key={x.id}>
+              <span key={x.id ?? x.room_ref ?? x.name}>
                 {i > 0 && ", "}
-                <button className="underline decoration-dotted underline-offset-4" style={{ color: TYPE_COLOR.location }} onClick={open(x.id, x.name)}>
-                  {x.name}
-                </button>
+                {x.id ? (
+                  <button className="underline decoration-dotted underline-offset-4" style={{ color: TYPE_COLOR.location }} onClick={open(x.id, x.name)}>
+                    {x.name}
+                  </button>
+                ) : (
+                  <span>{x.name}</span>
+                )}
                 <span className="text-muted">
                   {" "}
                   ({[x.via, x.bearing ? m.bearings[x.bearing] : null, x.visited ? null : "ещё не были"].filter(Boolean).join(", ")})

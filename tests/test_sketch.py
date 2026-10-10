@@ -76,15 +76,15 @@ def test_book_room_gets_a_sketch_from_its_cells():
     # Г-образная комната: правый нижний угол коробки — стена, колонна (1, 1) тоже
     assert [1, 1] in sk["walls"] and [3, 5] in sk["walls"] and [0, 0] not in sk["walls"]
     assert sk["exits"] == []  # нет координат двери, значит не придумываем её положение
-    assert sk["unplaced_exits"] == [{"name": "Комната 2", "to": "en_2"}]
+    assert sk["unplaced_exits"] == [{"name": "Комната 2", "to": "en_2", "room_ref": "r2"}]
     assert sketch.check(sk, {"en_2"}) == []
     # При достоверной разметке дверь оказывается ровно на отмеченной границе Г-образной комнаты.
     marked = {**mark, "passages": [{"to": "r2", "side": "e", "cell": [3, 0], "kind": "door"}]}
     plotted = sketch.from_book(marked, grid, [("Комната 2", "en_2", "r2"), ("Комната 3", None, "r3")])
     assert plotted["exits"] == [
-        {"side": "e", "at": 0, "kind": "door", "state": "open", "name": "Комната 2", "to": "en_2"}
+        {"side": "e", "at": 0, "kind": "door", "state": "open", "name": "Комната 2", "to": "en_2", "room_ref": "r2"}
     ]
-    assert plotted["unplaced_exits"] == [{"name": "Комната 3", "to": None}]
+    assert plotted["unplaced_exits"] == [{"name": "Комната 3", "to": None, "room_ref": "r3"}]
     assert sketch.for_viewer(plotted, False, set())["exits"][0]["to"] is None
     assert sketch.for_viewer(plotted, True, set())["exits"][0]["to"] == "en_2"
 

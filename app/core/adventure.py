@@ -94,27 +94,12 @@ def room_entity(entities: dict[str, Entity], place: Entity, rid: str) -> Entity 
 
 
 def room_destinations(room: Entity, catalog: CatalogView, places: dict[str, Entity]) -> set[str] | None:
-    """Непосредственные выходы комнаты книги по данным модуля, а не по истории перемещений.
+    """Созданные соседи комнаты книги; полный список (включая room_ref) даёт topology.location_exits."""
+    if room_of(room) is None:
+        return None
+    from app.core.topology import location_exits
 
-    None означает, что место не является комнатой книги; пустое множество — комната без
-    зарегистрированных соседей. Отсутствующие в реестре комнаты пока не имеют entity_id.
-    """
-    ref = room_of(room)
-    if ref is None:
-        return None
-    found = module_place(room, catalog, places)
-    if found is None:
-        return None
-    parent, rec = found
-    spec = find_room(rec, ref["id"])
-    if spec is None:
-        return None
-    result = set()
-    for rid in spec.get("exits") or []:
-        neighbour = room_entity(places, parent, rid)
-        if neighbour is not None:
-            result.add(neighbour.id)
-    return result
+    return {exit.target_id for exit in location_exits(room, catalog, places) if exit.target_id is not None}
 
 
 def new_room(campaign_id: str, place: Entity, rec: Entry, room: dict) -> Entity:
@@ -190,7 +175,14 @@ def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogVie
         lines.append("Тайное (игрокам — только когда найдут): " + "; ".join(map(str, room["secrets"])))
     exits = []
     place_id = entity.location_id if entity is not None else None
-    for rid in room.get("exits") or []:
+    from app.core.topology import location_exits
+
+    refs = (
+        [x.room_ref for x in location_exits(entity, catalog, entities) if x.room_ref]
+        if entity is not None
+        else room.get("exits") or []
+    )
+    for rid in refs:
         other = find_room(rec, rid)
         if other is None:
             continue

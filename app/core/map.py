@@ -26,6 +26,7 @@ from app.content.catalog import campaign_catalog
 from app.core import adventure, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
 from app.db.models import Character, Entity, Knowledge, Message
 
@@ -97,6 +98,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     visited = {
         pid for pid, p in places.items() if pid in heres or hero_ids & set((p.state or {}).get("visited_by") or [])
     }
+    has_book_rooms = any(adventure.room_of(p) for p in places.values())
+    catalog = await campaign_catalog(session, viewer.campaign) if has_book_rooms else None
     if master:
         shown = set(places)
     else:
@@ -108,12 +111,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         # из места, где побывали, видно, внутри чего оно, что в нём и куда из него ведут пути
         for pid in list(visited):
             p = places[pid]
-            near = {x["to"] for x in _links(p)} | {c for c, e in places.items() if e.location_id == pid}
+            near = {x.target_id for x in location_exits(p, catalog, places) if x.target_id}
             if p.location_id:
-                near.add(p.location_id)
-            for oid, o in places.items():
-                if any(x["to"] == pid for x in _links(o)):
-                    near.add(oid)
+                near.add(p.location_id)  # группировка; не выход из комнаты книги
             shown |= {n for n in near if n in places and not (places[n].state or {}).get("secret")}
 
     def status(pid: str) -> str:
@@ -134,8 +134,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     # В модуле настоящие переходы между комнатами определены книгой.
     # state.links может содержать старые ссылки, добавленные при перемещениях.
     has_book_rooms = any(adventure.room_of(places[pid]) for pid in shown)
-    needs_catalog = has_book_rooms or (here is not None and bool(here.template_id))
-    catalog = await campaign_catalog(session, viewer.campaign) if needs_catalog else None
+    if catalog is None and here is not None and here.template_id:
+        catalog = await campaign_catalog(session, viewer.campaign)
     book_destinations: dict[str, set[str]] = {}
     if catalog is not None and has_book_rooms:
         for pid in shown:
@@ -157,6 +157,16 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             if x["to"] in shown and key not in seen:
                 seen.add(key)
                 links.append({"a": key[0], "b": key[1], "label": x.get("label")})
+
+    # Книга даёт соседство независимо от исторических state.links.
+    for src, targets in book_destinations.items():
+        for dst in targets:
+            if dst not in shown:
+                continue
+            key = tuple(sorted((src, dst)))
+            if key not in seen:
+                seen.add(key)
+                links.append({"a": key[0], "b": key[1], "label": None})
 
     around: list[dict] = []
     exits: list[dict] = []
@@ -236,12 +246,34 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             exits.append(
                 {
                     "id": pid,
+                    "room_ref": next(
+                        (x.room_ref for x in location_exits(here, catalog, places) if x.target_id == pid), None
+                    ),
                     "name": p["name"],
                     "via": via,
                     "bearing": (link or {}).get("bearing") or (places[pid].state or {}).get("bearing"),
                     "visited": p["status"] != "known",
                 }
             )
+    if here is not None and adventure.room_of(here) and catalog is not None:
+        known_ids = {exit["id"] for exit in exits}
+        for passage in location_exits(here, catalog, places):
+            if passage.target_id is not None and passage.target_id not in shown:
+                continue
+            if passage.target_id is not None and passage.target_id in known_ids:
+                continue
+            if passage.room_ref:
+                known_ids.add(passage.target_id)
+                exits.append(
+                    {
+                        "id": passage.target_id,
+                        "name": next((p["name"] for p in out_places if p["id"] == passage.target_id), passage.label),
+                        "room_ref": passage.room_ref,
+                        "via": None,
+                        "bearing": passage.bearing,
+                        "visited": passage.target_id in visited,
+                    }
+                )
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
     scene_view = [
         {
