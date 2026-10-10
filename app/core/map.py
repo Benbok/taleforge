@@ -261,6 +261,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             heroes_at,
             None if master else visited,
             hero.id if hero is not None else None,
+            entities=ents,
             scene_tokens=scene_view,
         )
         sk = sketch.of_place(here, catalog, places)

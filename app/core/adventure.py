@@ -247,12 +247,8 @@ def _token_spots(
 ) -> dict[str, tuple[float, float]]:
     """Где стоят значки героев на картинке, в долях. С клетками — на свободных клетках комнаты ближе к своим
     позициям сцены; без них — рядом с номером комнаты."""
-    # Фолбэк существует для каждого маркера — даже когда свободных клеток в комнате меньше.
     spots = {
-        tid: (
-            round(mark["x"] + 0.03 * (i % 4 - 1.5), 4),
-            round(mark["y"] + 0.04 + 0.035 * (i // 4), 4),
-        )
+        tid: (round(mark["x"] + 0.03 * (i % 4 - 1.5), 4), round(mark["y"] + 0.04 + 0.035 * (i // 4), 4))
         for i, (tid, _, _) in enumerate(tokens)
     }
     if grid and mark.get("cells"):
@@ -268,6 +264,7 @@ def book_map(
     heroes: list[tuple[Any, str | None, dict]],
     shown: set[str] | None,
     mine: str | None,
+    entities: list[Entity] | None = None,
     scene_tokens: list[dict] | None = None,
 ) -> dict | None:
     """Карта места модуля, где стоит отряд: картинка из книги, номера комнат и значки героев.
@@ -301,6 +298,7 @@ def book_map(
         marks.append(out)
     numbers = {m["number"] for m in marks}
     tokens = []
+    token_positions: dict[str, tuple[float, float]] = {}
     groups: dict[str, list] = {}
     for ch, pid, pos in heroes:
         e = rooms_here.get(pid or "")
@@ -314,7 +312,8 @@ def book_map(
             mark,
             [(ch.id, *Pos(p.get("zone"), p.get("bearing")).xy(None)) for ch, p in members],
         )
-        for ch, _ in members:
+        for ch, pos in members:
+            token_positions[ch.id] = Pos(pos.get("zone"), pos.get("bearing")).xy(None)
             x, y = spots[ch.id]
             tokens.append(
                 {
@@ -327,14 +326,48 @@ def book_map(
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )
-    # Одна зрительская проекция для «Вокруг» и карты книги.
-    # Перераскладываем маркеры вместе: предметы не накладываются на героев.
+    # Существа и лежащие в мире предметы находятся в конкретных комнатах.
+    # Игрок видит только сущности в своей комнате; мастер — во всех показанных.
+    for e in entities or []:
+        room = rooms_here.get(e.location_id or "")
+        if room is None or e.kind == "location":
+            continue
+        st = e.state or {}
+        if st.get("hidden") or st.get("secret") or st.get("area"):
+            continue
+        if shown is not None and room.id != (here.id if here is not None else None):
+            continue
+        if scene_tokens is not None and here is not None and room.id == here.id:
+            continue
+        num = str((room_of(room) or {}).get("number"))
+        mark = next((m for m in mp["marks"] if str(m.get("number")) == num), None)
+        if num not in numbers or mark is None:
+            continue
+        from app.core.inspect import entity_type
+
+        token_positions[e.id] = Pos(e.zone, st.get("bearing")).xy(None)
+        x, y = mark["x"], mark["y"]
+        tokens.append(
+            {
+                "id": e.id,
+                "name": e.name,
+                "mine": False,
+                "room": num,
+                "x": x,
+                "y": y,
+                "down": bool(st.get("dead")),
+                "type": entity_type(e),
+            }
+        )
+    # Видимые маркеры текущей комнаты берём из общей проекции, уже
+    # отфильтрованной под права конкретного игрока.
     if here_number in numbers and scene_tokens is not None:
-        mark = next(m for m in mp["marks"] if str(m.get("number")) == here_number)
         existing = {t["id"] for t in tokens}
+        mark = next(m for m in mp["marks"] if str(m.get("number")) == here_number)
         for t in scene_tokens:
             if t["id"] in existing:
                 continue
+            token_positions[t["id"]] = Pos(t.get("zone"), t.get("bearing")).xy(None)
             tokens.append(
                 {
                     "id": t["id"],
@@ -347,21 +380,14 @@ def book_map(
                     "type": t["type"],
                 }
             )
-        in_room = [t for t in tokens if t["room"] == here_number]
-        positions_by_id = {t["id"]: t for t in scene_tokens}
-        positions = [
-            (
-                t["id"],
-                *Pos(
-                    positions_by_id.get(t["id"], {}).get("zone"),
-                    positions_by_id.get(t["id"], {}).get("bearing"),
-                ).xy(None),
-            )
-            for t in in_room
-        ]
-        spots = _token_spots(grid, mark, positions)
-        for t in in_room:
-            t["x"], t["y"] = spots[t["id"]]
+    # Располагаем всех персонажей, существ и предметы комнаты вместе,
+    # иначе каждый новый объект занимал бы одну и ту же клетку.
+    for num in {t["room"] for t in tokens}:
+        mark = next(m for m in mp["marks"] if str(m.get("number")) == num)
+        room_tokens = [t for t in tokens if t["room"] == num]
+        spots = _token_spots(grid, mark, [(t["id"], *token_positions[t["id"]]) for t in room_tokens])
+        for token in room_tokens:
+            token["x"], token["y"] = spots[token["id"]]
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
