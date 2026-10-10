@@ -34,6 +34,7 @@ from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
 from app.tools import progress as progress_tools
 from app.tools import standing as standing_tools
+from app.tools.action_plan import approach_attack, execute_approach_attack, hostile_target
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -294,6 +295,35 @@ class TurnMixin:
         routed: list[str] = []
         opening_actors: set[str] = set()
         opening_notes: list[str] = []
+        blocked_actors: set[str] = set()
+        if not combat.in_combat(ctx):
+            # Compound 'approach, then attack' is one ordered declaration:
+            # initiate combat now, execute both parts on the legal turn.
+            for m in new:
+                plan = approach_attack(m.intent) if m.kind == "action" else None
+                if (
+                    not plan
+                    or not hostile_target(ctx, plan)
+                    or plan["attacker_id"] not in required
+                    or m.seat_id not in char_by_seat
+                    or char_by_seat[m.seat_id].id != plan["attacker_id"]
+                ):
+                    continue
+                opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{turn_id}:plan:initiative")
+                trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True, "routed": True})
+                if opened.get("ok"):
+                    combat.queue_opening_plan(ctx, plan)
+                    opening_actors.add(plan["attacker_id"])
+                    ctx.closed.add(plan["attacker_id"])
+                    routed.append(
+                        f"{plan['attacker_id']}: движение и последующая атака поставлены в очередь "
+                        "инициативы; не вызывай их повторно"
+                    )
+                    await self._status(cid, "rolling")
+                    opening_notes += await combat.run_until_hero(ctx, f"{turn_id}:plan", self._ask_reaction)
+                else:
+                    routed.append(f"{plan['attacker_id']}: начало боя отклонено: {opened.get('error')}")
+                break
         if not combat.in_combat(ctx):
             for m in new:
                 attack = intents.routable_attack(m.intent) if m.kind == "action" else None
@@ -351,6 +381,22 @@ class TurnMixin:
         for m in new:
             if m.seat_id in char_by_seat and char_by_seat[m.seat_id].id in opening_actors:
                 continue
+            plan = approach_attack(m.intent) if m.kind == "action" else None
+            if plan is not None and hostile_target(ctx, plan) and plan["attacker_id"] in required:
+                actor = plan["attacker_id"]
+                if combat.in_combat(ctx) and hero_turn is not None and hero_turn.id == actor:
+                    await self._status(cid, "rolling")
+                    result = await execute_approach_attack(ctx, plan, f"{turn_id}:plan:{m.id}")
+                    trace_calls.append({"tool": "action_plan", "args": plan, "result": result, "routed": True})
+                    routed.append(
+                        f"{actor}: составная заявка проверена сервером: {'; '.join(result['notes'])}. "
+                        "Не дублируй перемещение или атаку"
+                    )
+                    ctx.closed.add(actor)
+                    if not result["completed"]:
+                        blocked_actors.add(actor)
+                        combat._set(ctx, submitted=False)
+                    continue
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
             if args and any(a.get("verb") in intents.MOVE_VERBS for a in (m.intent or {}).get("actions") or []):
                 # Preserve the sequence for the decision model: route must never
@@ -635,6 +681,7 @@ class TurnMixin:
                 fighting
                 and hero_turn is not None
                 and hero_turn.id not in opening_actors
+                and hero_turn.id not in blocked_actors
                 and any(m.kind == "action" and m.seat_id == hero_turn.seat_id for m in new)
             )
             if acted and combat.current_id(ctx) == hero_turn.id:
