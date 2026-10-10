@@ -8,7 +8,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -349,6 +349,7 @@ class LibraryCharacter(Base):
 
 class InventoryItem(Base):
     __tablename__ = "inventory"
+    __table_args__ = (Index("uq_inventory_world_entity_id", "world_entity_id", unique=True),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("inv"))
     character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
@@ -356,6 +357,9 @@ class InventoryItem(Base):
     display_name: Mapped[str | None] = mapped_column(String(128))  # имя от мастера, статы — из шаблона
     qty: Mapped[int] = mapped_column(Integer, default=1)
     equipped: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Только уникальные экземпляры сохраняют Entity.id при переносе в инвентарь.
+    # У старых и обычных стаковых предметов ссылка остаётся NULL.
+    world_entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"))
 
 
 class Entity(Base):
@@ -375,6 +379,72 @@ class Entity(Base):
     # Зона дальности относительно отряда (раздел 7.1): melee — вплотную, near — близко, far — далеко
     zone: Mapped[str] = mapped_column(String(16), default="near")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class WorldGenerationState(Base):
+    """Состояние однократной материализации локации/контейнера; не запускает генерацию само по себе."""
+
+    __tablename__ = "world_generation_states"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "target_entity_id", "phase", name="uq_world_generation_scope"),
+        CheckConstraint(
+            "phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"
+        ),
+        CheckConstraint(
+            "status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"
+        ),
+        CheckConstraint(
+            "quality IS NULL OR quality IN ('normal', 'fallback', 'legacy_preserved')",
+            name="ck_world_generation_quality",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("wg"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    target_entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"))
+    phase: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="unprepared")
+    quality: Mapped[str | None] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    lease_token: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    generator_version: Mapped[str | None] = mapped_column(String(64))
+    profile_ref: Mapped[str | None] = mapped_column(String(128))
+    source_versions: Mapped[list[Any]] = mapped_column(default=list)
+    context_digest: Mapped[str | None] = mapped_column(String(64))
+    reservation: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    seed: Mapped[int | None] = mapped_column(Integer)
+    result_digest: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PlotAnchorBinding(Base):
+    """Стабильная привязка сюжетной зацепки к физическому объекту или месту."""
+
+    __tablename__ = "world_plot_bindings"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "anchor_id", name="uq_world_plot_anchor"),
+        CheckConstraint(
+            "state IN ('reserved', 'materialized', 'revealed', 'lost', 'replaced_by_story')",
+            name="ck_world_plot_binding_state",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("pab"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    anchor_id: Mapped[str] = mapped_column(String(128))
+    plot_ref: Mapped[str] = mapped_column(String(128))
+    holder_entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"))
+    target_location_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"))
+    state: Mapped[str] = mapped_column(String(32), default="reserved")
+    source_snapshot: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    replacement_ref: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
 class ActiveEffect(Base):
