@@ -45,6 +45,26 @@ def test_whisper_answered_privately_without_turn(game_client, admin_g, llm, sett
         assert {mine["id"], answer["id"]}.isdisjoint(m["id"] for m in snap["payload"]["messages"])
 
 
+def test_where_am_i_whisper_uses_actual_hero_location(game_client, admin_g, llm, settings):
+    from app.db.models import Character, Entity, Scene
+    from tests.game import run
+
+    c, (p1,), hero = party(game_client, admin_g)
+
+    async def actual_place(s):
+        ch = await s.get(Character, hero["id"])
+        scene = await s.get(Scene, c["id"])
+        loc = await s.get(Entity, ch.location_id or scene.location_id)
+        return loc.name
+
+    here = run(settings, actual_place)
+    llm.replies += [{"text": "Вы точно на другом конце света, в тайном логове."}]
+    _, answer = whisper(game_client, p1, c["id"], "где я?")
+    assert here in answer["content"]
+    assert "тайном логове" not in answer["content"]
+    assert len(llm.requests) == 0  # этот известный факт сервер берёт непосредственно из мира
+
+
 def test_turn_does_not_take_whisper(game_client, admin_g, llm):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [{"text": "Дверь заперта изнутри."}]
