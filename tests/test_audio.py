@@ -180,11 +180,15 @@ def test_combat_music_and_cues(game):
 
     async def fn(ctx):
         await execute(ctx, "set_music", {"mood": "calm", "reason": "отдых"})
-        await execute(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero]})
+        r = await execute(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
+        gob = r["result"]["spawned"][0]["id"]
+        await execute(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero, gob]})
         fight = audio.mixer(ctx.world.scene)["music"]
         audio.finalize(ctx)
         start = [c["id"] for c in ctx.audio]
         ctx.audio.clear()
+        en = ctx.world.entities[gob]
+        en.state = {**en.state, "dead": True}  # враг пал: конец боя — победа
         await execute(ctx, "set_scene_mode", {"mode": "free"})
         audio.finalize(ctx)
         return fight, start, audio.mixer(ctx.world.scene)["music"], [c["id"] for c in ctx.audio]

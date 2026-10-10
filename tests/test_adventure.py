@@ -81,8 +81,10 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
         assert "enter_room" in decision_tools(ctx)
         # место первой сцены вступление уже открыло в реестре (prelude._open_first_place)
         crypt = next(x["entity_id"] for x in ctx.world.plot["locations"] if x["id"] == "crypt")
-        assert ctx.world.scene.location_id == crypt
-        assert "комната 1 «Зал Мёртвых»" in adventure.master_block(ctx.world)  # отряд у места, но не в комнате
+        # и отряд сразу в первой комнате книги: герой на её карте с начала игры, а не после enter_room
+        start = ctx.world.entities[ctx.world.scene.location_id]
+        assert start.location_id == crypt and str(adventure.room_of(start)["number"]) == "1"
+        assert "Комната 1 «Зал Мёртвых»" in adventure.master_block(ctx.world)
         room = await _ok(ctx, "enter_room", {"room": "1"})
         check = await _ok(
             ctx,
