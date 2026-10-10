@@ -126,6 +126,22 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     assert sk["exits"] == []  # нет размеченной двери — её координаты неизвестны
     assert [x["name"] for x in sk["unplaced_exits"]] == ["Комната 2"]
 
+    # Исторические ссылки могут отсутствовать: книга всё равно задаёт переход.
+    neighbor_id = next(e["id"] for e in m["exits"] if e["id"] != crypt)
+
+    async def forget_legacy_links(ctx):
+        for pid in (room["room_id"], neighbor_id):
+            entity = ctx.world.entities[pid]
+            entity.state = {**(entity.state or {}), "links": []}
+
+    _play(settings, cid, forget_legacy_links)
+    m = _map(client, p1, cid)
+    assert neighbor_id in {x["id"] for x in m["exits"]}
+    assert tuple(sorted((room["room_id"], neighbor_id))) in {
+        (x["a"], x["b"]) for x in m["links"]
+    }
+    assert m["exits"][0]["room_ref"] == "r2"
+
     # Та же вещь имеет один визуальный ключ на обеих картах: никаких новых
     # правил рисования для готового приключения не требуется.
     async def place_book_loot(ctx):
