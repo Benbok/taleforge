@@ -182,7 +182,7 @@ class StreamFilter:
             if boundary is None:
                 return
             line, self.pending = self.pending[:boundary], self.pending[boundary:]
-            if line.strip().lower() in ("<center>", "</center>"):
+            if line.strip().lower() in ("<center>", "</center>") or _LEFTOVER.fullmatch(line.rstrip("\n")):
                 continue
             safe = strip(line, self.names)
             if safe.strip():
