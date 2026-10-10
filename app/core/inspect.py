@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
+from app.core import adventure
 from app.core.campaigns import Viewer
 from app.core.characters import public_view
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
@@ -191,7 +192,11 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         "name": e.name,
         "level": level,
         "level_name": LEVELS[level],
-        "description": e.description or None,
+        "description": (
+            adventure.public_description(e, await campaign_catalog(session, viewer.campaign))
+            if adventure.room_of(e)
+            else e.description or None
+        ),
         "locked": [LEVELS[i] for i in range(level + 1, 4)],  # что ещё можно узнать
     }
     rec = None
