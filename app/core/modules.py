@@ -743,6 +743,19 @@ def room_numbers(draft: dict) -> dict[str, list[str]]:
 
 def map_tool_spec() -> dict:
     cell = {"type": "array", "items": {"type": "integer"}, "description": "Клетка [столбец, строка], счёт с 0."}
+    passage = _obj(
+        {
+            "to": {"type": "string", "description": "ID соседней комнаты в rooms[].exits."},
+            "side": {"type": "string", "enum": ["n", "e", "s", "w"], "description": "Сторона проёма на плане комнаты."},
+            "cell": cell,
+            "kind": {
+                "type": "string",
+                "enum": ["passage", "door", "arch", "stairs", "hatch", "gap", "bars"],
+                "description": "Вид физического проёма, если достоверно известен.",
+            },
+        },
+        ["to", "side", "cell"],
+    )
     mark = _obj(
         {
             "number": {"type": "string", "description": "Номер комнаты, как он написан на карте."},
@@ -754,6 +767,11 @@ def map_tool_spec() -> dict:
                 "Круглую или неровную комнату покрой несколькими прямоугольниками.",
             ),
             "blocked": _arr(cell, "Клетки комнаты, где стоять нельзя: стены, колонны, гробы, статуи, алтарь."),
+            "passages": _arr(
+                passage,
+                "Подтверждённые дверные проёмы на граничной клетке комнаты. "
+                "Если положение на изображении неочевидно, не придумывай его и не добавляй запись.",
+            ),
         },
         ["number", "x", "y"],
     )
@@ -790,6 +808,10 @@ MAP_SYSTEM = """Ты смотришь на карту из приключени�
 3. Если есть сетка: сколько в ней столбцов и строк и где её края (доли размера картинки).
 4. Для каждой комнаты: какие клетки занимает её пол (прямоугольниками) и какие из них заняты — стены внутри,
    колонны, гробы, статуи, алтарь, всё, на чём нельзя стоять. Там герои не будут показаны.
+5. Если ТОЧНО виден проём между комнатами: укажи passages в комнате отправления — id соседней комнаты
+   (из описания модуля), сторону n/e/s/w и абсолютную клетку комнаты на границе проёма. Не определяй
+   положение по центру соседней комнаты. Не рисуй дверей, если проход не подтверждён картой и описанием.
+   Если местоположение неизвестно, оставь passages пустым: связь комнат сохраняется отдельно.
 Сдай ответ вызовом submit_map_marks."""
 MAX_GRID = 200
 
@@ -853,6 +875,72 @@ def _cells(m: dict, grid: dict | None, where: str, errors: list[str]) -> tuple[l
     return out_rects, out_blocked
 
 
+def _passages(m: dict, grid: dict | None, draft_room: dict, where: str, errors: list[str]) -> list[dict]:
+    """Проверить дверные клетки по плану и реальной топологии книги.
+
+    Нельзя проводить проём через стену, выдумывать соседнюю комнату или
+    привязывать дверь к середине расстояния между комнатами.
+    """
+    result: list[dict] = []
+    used_destinations: set[str] = set()
+    used_sides: set[tuple[str, int]] = set()
+    rects = m.get("cells") or []
+    blocked = {tuple(c) for c in m.get("blocked") or [] if isinstance(c, list) and len(c) == 2}
+    floor = {
+        (c, r)
+        for rect in rects
+        if isinstance(rect, list) and len(rect) == 4 and all(isinstance(v, int) for v in rect)
+        for c in range(rect[0], rect[2] + 1)
+        for r in range(rect[1], rect[3] + 1)
+    }
+    if not floor and m.get("passages"):
+        errors.append(f"{where}: для координат проходов нужен пол комнаты и grid")
+        return result
+    if not grid and m.get("passages"):
+        errors.append(f"{where}: проходы без сетки")
+        return result
+    if not floor:
+        return result
+    c0, c1 = min(c for c, _ in floor), max(c for c, _ in floor)
+    r0, r1 = min(r for _, r in floor), max(r for _, r in floor)
+    for p in m.get("passages") or []:
+        if not isinstance(p, dict):
+            errors.append(f"{where}: проход — объект с to, side и cell")
+            continue
+        to, side, cell = p.get("to"), p.get("side"), p.get("cell")
+        kind = p.get("kind") or "passage"
+        if to not in (draft_room.get("exits") or []):
+            errors.append(f"{where}: проход в {to!r} отсутствует в rooms[].exits")
+            continue
+        if to in used_destinations:
+            errors.append(f"{where}: два положения прохода в {to!r}")
+            continue
+        if side not in ("n", "e", "s", "w") or kind not in (
+            "passage", "door", "arch", "stairs", "hatch", "gap", "bars"
+        ):
+            errors.append(f"{where}: неверная сторона или вид прохода")
+            continue
+        if not isinstance(cell, list) or len(cell) != 2 or not all(type(v) is int for v in cell):
+            errors.append(f"{where}: клетка прохода должна быть [столбец, строка]")
+            continue
+        c, r = cell
+        if (c, r) not in floor or (c, r) in blocked:
+            errors.append(f"{where}: проход {to!r} на стене или вне пола комнаты")
+            continue
+        edge = {"n": r == r0, "s": r == r1, "w": c == c0, "e": c == c1}
+        if not edge[side]:
+            errors.append(f"{where}: проход {to!r} не на стороне {side} границы комнаты")
+            continue
+        slot = (side, c if side in ("n", "s") else r)
+        if slot in used_sides:
+            errors.append(f"{where}: два прохода на одной граничной клетке")
+            continue
+        used_sides.add(slot)
+        used_destinations.add(to)
+        result.append({"to": to, "side": side, "cell": [c, r], "kind": kind})
+    return result
+
+
 def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
     """Место карты, сетка и комнаты. Номера, которых нет у места, — ошибка; ненайденные — не ошибка."""
     if not isinstance(raw, dict):
@@ -864,6 +952,8 @@ def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
     errors: list[str] = []
     grid = _grid(raw.get("grid"), errors)
     marks, seen = [], set()
+    location = next((loc for loc in draft.get("locations") or [] if loc.get("id") == lid), {})
+    room_by_number = {str(r.get("number")): r for r in location.get("rooms") or []}
     for m in raw.get("marks") or []:
         if not isinstance(m, dict):
             errors.append("отметка — объект {number, x, y}")
@@ -884,6 +974,9 @@ def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
         rects, blocked = _cells(m, grid, f"комната {n}", errors)
         if rects:
             mark["cells"], mark["blocked"] = rects, blocked
+        passages = _passages(m, grid, room_by_number.get(n) or {}, f"комната {n}", errors)
+        if passages:
+            mark["passages"] = passages
         marks.append(mark)
     if errors:
         return None, errors
