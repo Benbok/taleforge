@@ -12,7 +12,7 @@ from app.core.world import PLAYABLE, format_time
 from app.tools import effects as fx
 from app.tools.master.base import snapshot
 from app.tools.master.checks import _deploy, roll_initiative
-from app.tools.registry import ToolContext, tool
+from app.tools.registry import ToolContext, ToolError, tool
 
 # --- сцена и время ---
 
@@ -71,6 +71,18 @@ async def set_scene_mode(ctx: ToolContext, a: SceneModeArgs) -> dict:
     if joining:
         have = {x["id"] for x in sc.turn_order}
         ids = [i for i in ids if i not in have]
+    elif not any(
+        (en := w.entities.get(i)) is not None
+        and en.kind == "creature"
+        and not (en.state or {}).get("dead")
+        and (en.state or {}).get("attitude", "hostile") == "hostile"
+        for i in ids
+    ):
+        # без врагов бой закончился бы тем же ходом «победой», а повествование описало бы битву, которой не было
+        raise ToolError(
+            "в бою нет врагов: существ, названных в тексте, в реестре нет. Сначала заведи их spawn_entity, "
+            "потом начни бой"
+        )
     entries, dice = roll_initiative(ctx, ids)
     if joining:
         combat.insert(ctx, entries)

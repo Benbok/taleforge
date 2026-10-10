@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { roomRects, tokenSize } from "./BookMap";
-import type { MapBook } from "./map";
+import { roomLabel, whereTrail, type MapBook } from "./map";
 
 const book: MapBook = {
   module_id: "mod1",
@@ -22,5 +22,16 @@ describe("карта книги", () => {
   it("значок — в клетку сетки книги, без сетки — 3% ширины", () => {
     expect(tokenSize(book, 1000)).toBe(100);
     expect(tokenSize({ ...book, grid: null }, 1000)).toBe(30);
+  });
+
+  it("подписи: номер комнаты с названием и где стоит отряд", () => {
+    expect(roomLabel({ number: "1", name: "Зал" })).toBe("1 · Зал");
+    expect(roomLabel({ number: "2", name: null })).toBe("2");
+    const places = [
+      { id: "room", name: "Зал Мёртвых", parent_id: "crypt", status: "here" as const },
+      { id: "crypt", name: "Склеп Давоса", parent_id: null, status: "visited" as const },
+    ];
+    expect(whereTrail({ here: { id: "room", name: "Зал Мёртвых", description: null }, places })).toBe("Зал Мёртвых · Склеп Давоса");
+    expect(whereTrail({ here: null, places })).toBeNull();
   });
 });

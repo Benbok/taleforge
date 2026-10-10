@@ -70,6 +70,28 @@ export interface MapPlace {
   status: "here" | "visited" | "known";
 }
 
+/** Где стоит отряд словами: само место и то, внутри чего оно («Зал Мёртвых · Склеп Давоса»). */
+export function whereTrail(m: Pick<MapState, "here" | "places">): string | null {
+  if (!m.here) return null;
+  const byId = new Map(m.places.map((p) => [p.id, p]));
+  const names = [m.here.name];
+  let parent = byId.get(m.here.id)?.parent_id ?? null;
+  const seen = new Set([m.here.id]);
+  while (parent && !seen.has(parent) && names.length < 3) {
+    seen.add(parent);
+    const p = byId.get(parent);
+    if (!p) break;
+    names.push(p.name);
+    parent = p.parent_id;
+  }
+  return names.join(" · ");
+}
+
+/** Подпись комнаты на карте книги: номер, а у знакомой комнаты — и название. */
+export function roomLabel(r: { number: string; name: string | null }): string {
+  return r.name ? `${r.number} · ${r.name}` : r.number;
+}
+
 /** Карта места готового приключения: картинка из книги, комнаты отряда и герои на клетках (доли картинки). */
 export interface MapBook {
   module_id: string;

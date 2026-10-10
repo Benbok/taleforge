@@ -362,6 +362,15 @@ async def _open_first_place(svc, cid: str, where: dict) -> None:
             log.warning("место первой сцены не открылось: %s", result.get("error"))
             await s.rollback()
             return
+        # готовое приключение: отряд начинает в первой комнате книги, иначе героя нет на её карте, пока мастер
+        # не вспомнит про enter_room
+        place = ctx.world.entities.get((result.get("result") or {}).get("entity_id") or "")
+        found = adventure.module_place(place, ctx.world.catalog, ctx.world.entities)
+        if found is not None:
+            first = adventure.rooms(found[1])[0]
+            entered = await execute(ctx, "enter_room", {"room": str(first.get("number") or first["id"])})
+            if not entered.get("ok"):
+                log.warning("отряд не вошёл в первую комнату приключения: %s", entered.get("error"))
         messages = await flush_outbox(s, ctx)
         await s.commit()
     await publish_changes(svc.bus, ctx, messages)

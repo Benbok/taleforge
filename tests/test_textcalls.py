@@ -102,3 +102,19 @@ def test_decide_executes_calls_written_as_text(game_client, admin_g, llm, dice, 
     assert any(t.get("from_text") for t in turn.trace["calls"])
     assert turn.trace["audit"]["tool_text"] == ["spawn_entity"]
     assert rows(settings, Event, Event.tool == "spawn_entity") == []  # в повествовании мир не меняется
+
+
+def test_combat_without_enemies_is_refused(game_client, admin_g, llm, settings):  # noqa: F811
+    """Скелеты были только в тексте мастера: бой без врагов не начинается, а не кончается тут же «победой»."""
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {"tool_calls": [("set_scene_mode", {"mode": "combat"})]},
+        {"tool_calls": [("cancel_action", {"character_id": hero["id"], "reason": "врагов нет"})]},
+        DONE,
+        {"text": "Вокруг тихо."},
+    ]
+    act(game_client, p1, c["id"], "Атакую скелетов")
+    tool_msg = next(m for m in llm.requests[1]["messages"] if m["role"] == "tool")
+    assert "в бою нет врагов" in tool_msg["content"]
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["combat"] == []
