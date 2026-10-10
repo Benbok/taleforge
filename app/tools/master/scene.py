@@ -162,10 +162,14 @@ async def expire_effects(ctx: ToolContext, inverse: list) -> list[str]:
     for ch in ctx.world.characters.values():
         ench = (ch.resources or {}).get("shillelagh")
         if isinstance(ench, dict) and int(ench.get("expires_at") or 0) <= ctx.world.scene.game_time:
-            inverse.append({
-                "table": "characters", "id": ch.id, "field": "resources",
-                "before": copy.deepcopy(ch.resources),
-            })
+            inverse.append(
+                {
+                    "table": "characters",
+                    "id": ch.id,
+                    "field": "resources",
+                    "before": copy.deepcopy(ch.resources),
+                }
+            )
             ch.resources = {k: v for k, v in (ch.resources or {}).items() if k != "shillelagh"}
             ctx.world.invalidate(ch.id)
             ctx.changed.add(ch.id)
