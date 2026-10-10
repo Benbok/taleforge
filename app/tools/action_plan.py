@@ -32,6 +32,7 @@ def approach_attack(intent: dict[str, Any] | None) -> dict[str, str] | None:
         or attack.get("missing_item")
         or move.get("zone") not in (None, "melee")
         or move.get("target_id") not in (None, target_id)
+        or (move.get("zone") != "melee" and move.get("target_id") != target_id)
     ):
         return None
     return {"attacker_id": hero_id, "target_id": target_id, "attack": weapon_id}
