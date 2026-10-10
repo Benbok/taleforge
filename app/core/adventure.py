@@ -247,12 +247,18 @@ def _token_spots(
 ) -> dict[str, tuple[float, float]]:
     """Где стоят значки героев на картинке, в долях. С клетками — на свободных клетках комнаты ближе к своим
     позициям сцены; без них — рядом с номером комнаты."""
+    # Фолбэк существует для каждого маркера — даже когда свободных клеток в комнате меньше.
+    spots = {
+        tid: (
+            round(mark["x"] + 0.03 * (i % 4 - 1.5), 4),
+            round(mark["y"] + 0.04 + 0.035 * (i // 4), 4),
+        )
+        for i, (tid, _, _) in enumerate(tokens)
+    }
     if grid and mark.get("cells"):
         cells = place_tokens(grid, mark, tokens)
-        if cells:
-            return {tid: cell_center(grid, c, r) for tid, (c, r) in cells.items()}
-    return {tid: (round(mark["x"] + 0.03 * (i % 4 - 1.5), 4), round(mark["y"] + 0.04 + 0.035 * (i // 4), 4)) for i, (tid, _, _) in
-            enumerate(tokens)}  # fmt: skip
+        spots.update({tid: cell_center(grid, c, r) for tid, (c, r) in cells.items()})
+    return spots
 
 
 def book_map(
