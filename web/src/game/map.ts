@@ -57,7 +57,8 @@ export const COVER_NAME: Record<Cover, string> = {
 };
 
 export interface MapExit {
-  id: string;
+  id: string | null;
+  room_ref?: string | null;
   name: string;
   via: string | null;
   bearing: Bearing | null;
@@ -112,6 +113,7 @@ export interface SketchExit {
   kind: "door" | "bars" | "window" | "arch" | "stairs" | "hatch" | "gap" | "passage";
   state?: "open" | "closed" | "locked";
   to?: string | null;
+  room_ref?: string | null;
   beyond?: string | null;
   hidden?: boolean;
 }
@@ -133,7 +135,7 @@ export interface Sketch {
   exits: SketchExit[];
   features: SketchFeature[];
   book?: boolean; // эскиз построен непосредственно из размеченной сетки книги
-  unplaced_exits?: { name: string; to?: string | null }[]; // выход есть в книге, но клетка двери неизвестна
+  unplaced_exits?: { name: string; to?: string | null; room_ref?: string | null }[]; // выход есть в книге, но клетка двери неизвестна
 }
 
 export type SceneTokenType = "hero" | "creature" | "npc" | "item" | "landmark";
@@ -370,15 +372,15 @@ export interface UnlocatedBookExit {
  */
 export function unlocatedBookExits(m: Pick<MapState, "sketch" | "exits">): UnlocatedBookExit[] {
   if (!m.sketch?.book) return [];
-  const destinations = new Map(m.exits.map((e) => [e.id, e]));
+  const destinations = new Map(m.exits.map((e) => [e.room_ref ?? e.id, e]));
   const located = new Set(m.sketch.exits.map((e) => e.to).filter(Boolean));
   return (m.sketch.unplaced_exits ?? [])
     .map((exit, index) => ({ exit, index }))
     .filter(({ exit }) => !exit.to || !located.has(exit.to))
     .map(({ exit, index }) => {
-      const known = exit.to ? destinations.get(exit.to) : undefined;
+      const known = destinations.get(exit.room_ref ?? exit.to ?? null);
       return {
-        key: exit.to ?? `unlocated-${index}`,
+        key: exit.to ?? exit.room_ref ?? `unlocated-${index}`,
         name: known?.name ?? exit.name,
         destinationId: known?.id ?? null,
         visited: known?.visited ?? null,
@@ -438,9 +440,9 @@ export function layoutGrid(m: MapState): GridLayout {
       put(t, target(t.id, t.bearing, ZONE_CELLS[t.zone] ?? ZONE_CELLS.near)),
   );
   const exits = m.exits
-    .filter((x) => !drawn.has(x.id))
+    .filter((x) => x.id !== null && !(m.sketch?.book && x.room_ref) && !drawn.has(x.id))
     .map((x) => {
-      const [c, r] = target(x.id, x.bearing, reach);
+      const [c, r] = target(x.id ?? x.room_ref ?? "exit", x.bearing, reach);
       return put(x, [Math.max(-reach, Math.min(reach, c)), Math.max(-reach, Math.min(reach, r))]);
     });
   // область не занимает клетку: она лежит под значками
