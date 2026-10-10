@@ -189,6 +189,20 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     assert len(rows(settings, Event, Event.tool == "spawn_entity")) == 1
 
 
+def test_failed_resolve_attack_cannot_be_narrated_as_hit(game_client, admin_g, llm, settings):
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {"tool_calls": [("resolve_attack", {"attacker_id": hero["id"], "target_id": "en_missing", "attack": "unarmed"})]},
+        DONE,
+        DONE,
+        {"text": "Бран попал по противнику и нанёс 20 урона."},
+    ]
+    msg = act(game_client, p1, c["id"], "Бью несуществующего противника.")
+    assert "Атака не состоялась" in msg["content"]
+    assert "нанёс 20 урона" not in msg["content"]
+    assert rows(settings, Event, Event.tool == "resolve_attack") == []
+
+
 def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
     """Названные мастером враги не становятся настоящими без spawn_entity."""
     c, (p1,), _ = party(game_client, admin_g)
