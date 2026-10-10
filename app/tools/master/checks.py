@@ -472,6 +472,8 @@ async def resolve_grapple(ctx: ToolContext, a: GrappleArgs) -> dict:
         raise ToolError("через стену схватить цель нельзя")
     if _creature_size(ctx, tgt) > _creature_size(ctx, att) + 1:
         raise ToolError("цель больше захватывающего более чем на одну категорию")
+    if "grappled" in tgt.condition_immunities:
+        raise ToolError("цель невосприимчива к состоянию «Схваченный»")
     if not gp.free_hand(ctx, att.id):
         raise ToolError("для захвата нужна свободная рука: уберите оружие или щит")
     if att.id in gp.holders(ctx, tgt.id):
@@ -662,6 +664,8 @@ async def resolve_shove(ctx: ToolContext, a: ShoveArgs) -> dict:
         dice=[dice_json(aroll), dice_json(droll)],
         inverse=inv,
     )
+    if success and destination is not None:
+        await gp.refresh(ctx)
     return result
 
 
