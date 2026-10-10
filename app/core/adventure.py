@@ -341,11 +341,18 @@ def book_map(
         from app.core.inspect import entity_type
         token_positions[e.id] = Pos(e.zone, st.get("bearing")).xy(None)
         x, y = mark["x"], mark["y"]
-        tokens.append({
-            "id": e.id, "name": e.name, "mine": False, "room": num,
-            "x": x, "y": y, "down": bool(st.get("dead")),
-            "type": entity_type(e),
-        })
+        tokens.append(
+            {
+                "id": e.id,
+                "name": e.name,
+                "mine": False,
+                "room": num,
+                "x": x,
+                "y": y,
+                "down": bool(st.get("dead")),
+                "type": entity_type(e),
+            }
+        )
     # Располагаем всех персонажей, существ и предметы комнаты вместе,
     # иначе каждый новый объект занимал бы одну и ту же клетку.
     for num in {t["room"] for t in tokens}:
