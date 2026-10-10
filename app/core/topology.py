@@ -21,9 +21,7 @@ class LocationExit:
     bearing: str | None
 
 
-def location_exits(
-    place: Entity, catalog: CatalogView | None, entities: dict[str, Entity]
-) -> list[LocationExit]:
+def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[str, Entity]) -> list[LocationExit]:
     """Соседние места; для комнаты книги допускается ещё не созданный room_ref."""
     from app.core import adventure
 
@@ -71,7 +69,8 @@ def location_exits(
 
     def links(entity: Entity) -> list[dict]:
         return [
-            link for link in (entity.state or {}).get("links") or []
+            link
+            for link in (entity.state or {}).get("links") or []
             if isinstance(link, dict) and isinstance(link.get("to"), str)
         ]
 
