@@ -229,6 +229,8 @@ def _unique_inventory_entity(ctx: ToolContext, item: InventoryItem) -> Entity:
         raise ToolError("уникальный предмет не найден в текущей кампании")
     if entity.location_id is not None or is_nested(entity):
         raise ToolError("уникальный предмет уже размещён в мире")
+    if read_world_object(entity).metadata.get("physical") == "destroyed":
+        raise ToolError("уникальный предмет уничтожен")
     return entity
 
 
@@ -548,7 +550,9 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         # Identity stays in Entity, while InventoryItem links the current owner.
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id)
         en.location_id = None
-        en.state = _object_state(en, container_id=None)
+        carried = _object_state(en, container_id=None)
+        carried.pop("cell", None)
+        en.state = carried
     else:
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
     inverse += inv
@@ -598,7 +602,13 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
     if it.world_entity_id is not None:
         en = _unique_inventory_entity(ctx, it)
         inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-        inverse.append({"table": "entities", "id": en.id, "field": "location_id", "before": None})
+        inverse.extend(
+            [
+                {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
+                {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},
+                {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
+            ]
+        )
         en.location_id = ctx.world.place_of(ch)
         en.zone = "melee"
         en.state = _object_state(en, container_id=None)
