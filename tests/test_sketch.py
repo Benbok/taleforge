@@ -89,7 +89,6 @@ def test_book_room_gets_a_sketch_from_its_cells():
     assert sketch.for_viewer(plotted, True, set())["exits"][0]["to"] == "en_2"
 
 
-
 def test_master_edits_one_detail_of_the_sketch(client, admin, settings):
     import_base(settings)
     c, (p1,), _ = party(client, admin)
