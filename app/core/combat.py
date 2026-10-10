@@ -69,12 +69,12 @@ def timeout_sec(ctx: ToolContext) -> int:
 
 def start_combat(ctx: ToolContext) -> None:
     """Вызывается после броска инициативы: первый в очереди получает ход."""
-    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={})
+    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={}, opening_spells={})
 
 
 def end_combat(ctx: ToolContext) -> None:
     st = state(ctx)
-    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks"):
+    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells"):
         st.pop(k, None)
     ctx.world.scene.state = st
 
@@ -91,6 +91,24 @@ def queue_opening_attack(ctx: ToolContext, args: dict[str, str]) -> None:
     pending = dict(state(ctx).get("opening_attacks") or {})
     pending[hero_id] = dict(args)
     _set(ctx, opening_attacks=pending)
+
+
+def queue_opening_spell(ctx: ToolContext, args: dict[str, Any]) -> None:
+    """Save an offensive cast until its caster's first legal initiative turn.
+
+    Keep the validated tool arguments, not the narrative text. The eventual
+    cast_spell call performs normal spell-slot and action accounting.
+    """
+    hero_id = args["caster_id"]
+    if hero_id not in ctx.world.characters or not in_combat(ctx):
+        raise WorldError("начальное заклинание можно отложить только для героя в бою")
+    if not any(entry["id"] == hero_id for entry in ctx.world.scene.turn_order or []):
+        raise WorldError("заклинатель не участвует в очереди инициативы")
+    if hero_id in (state(ctx).get("opening_attacks") or {}):
+        raise WorldError("герой уже заявил начальную атаку")
+    pending = dict(state(ctx).get("opening_spells") or {})
+    pending[hero_id] = dict(args)
+    _set(ctx, opening_spells=pending)
 
 
 def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
@@ -288,6 +306,21 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
                 await _next(ctx, notes)
                 continue
             _begin_hero_turn(ctx, ch)
+            pending_spells = dict(state(ctx).get("opening_spells") or {})
+            spell = pending_spells.pop(cid, None)
+            if spell is not None:
+                _set(ctx, opening_spells=pending_spells)
+                result = await execute(ctx, "cast_spell", spell, key=f"{key}:opening-spell:{cid}")
+                if result.get("ok"):
+                    name = result["result"].get("spell") or spell["spell_id"]
+                    notes.append(f"{ch.name} творит «{name}»: результат заклинания записан в журнал")
+                    await _next(ctx, notes)
+                    continue
+                notes.append(
+                    f"{ch.name}: начальное заклинание не выполнено: {result.get('error', 'неизвестная ошибка')}. "
+                    "Ход остаётся за героем; выберите допустимое действие."
+                )
+                return notes
             pending = dict(state(ctx).get("opening_attacks") or {})
             attack = pending.pop(cid, None)
             if attack:
