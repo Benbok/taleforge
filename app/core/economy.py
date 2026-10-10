@@ -135,6 +135,36 @@ def _need_bonus(world, hero_id: str, led: dict, what: str) -> None:
     led["bonus"] = True
 
 
+def charge_movement(ctx: ToolContext, hero_id: str, feet: int) -> bool:
+    """Spend cumulative movement in the current hero turn.
+
+    Returns whether a Dash action was consumed automatically. This must run
+    before writing a new position, so an invalid move cannot change the map.
+    """
+    if feet <= 0:
+        return False
+    w = ctx.world
+    if not w.in_fight(hero_id):
+        return False  # a different party's combat does not stop free movement
+    if not active(w, hero_id) or (w.scene.state or {}).get("actor") != hero_id:
+        raise ToolError(f"{w.characters[hero_id].name}: перемещаться можно только в свой ход боя")
+    speed = max(0, int(w.actor(hero_id).speed or 0))
+    led = ledger(w, hero_id)
+    distance = moved_ft(w, hero_id) + feet
+    if speed == 0:
+        raise ToolError(f"{w.characters[hero_id].name}: скорость 0, передвигаться нельзя")
+    dashed = False
+    while distance > speed * (1 + int(led.get("dash") or 0)):
+        _need_action(w, hero_id, led, "рывок для перемещения")
+        led["dash"] = int(led.get("dash") or 0) + 1
+        dashed = True
+    moved = dict((w.scene.state or {}).get("moved") or {})
+    moved[hero_id] = {"turn": _marker(w), "ft": distance}
+    w.scene.state = {**(w.scene.state or {}), "moved": moved}
+    _save(w, hero_id, led)
+    return dashed
+
+
 def charge_attack(ctx: ToolContext, hero_id: str, bonus: bool = False) -> list[dict]:
     """Удар героя в его ход: из действия «Атака» (или бонусным действием). Возвращает запись для отмены."""
     w = ctx.world
