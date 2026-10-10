@@ -186,6 +186,7 @@ def test_unregistered_named_actors_accepts_russian_case_declensions():
 
 def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings, monkeypatch):
     """Отказ входа прерывает batch: враги не появляются в прежней комнате."""
+
     async def no_intro(*_args, **_kw):
         return None
 
@@ -220,6 +221,7 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
 
 def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monkeypatch):
     """Ранний отказ не перечёркивает успешный повтор и спавн в НОВОЙ комнате."""
+
     async def no_intro(*_args, **_kw):
         return None
 
