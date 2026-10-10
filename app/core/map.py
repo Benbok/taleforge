@@ -134,8 +134,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     # В модуле настоящие переходы между комнатами определены книгой.
     # state.links может содержать старые ссылки, добавленные при перемещениях.
     has_book_rooms = any(adventure.room_of(places[pid]) for pid in shown)
-    needs_catalog = has_book_rooms or (here is not None and bool(here.template_id))
-    catalog = await campaign_catalog(session, viewer.campaign) if needs_catalog else None
+    if catalog is None and here is not None and here.template_id:
+        catalog = await campaign_catalog(session, viewer.campaign)
     book_destinations: dict[str, set[str]] = {}
     if catalog is not None and has_book_rooms:
         for pid in shown:
