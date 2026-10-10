@@ -179,6 +179,21 @@ describe("эскиз места", () => {
     expect(layoutGrid({ ...m, sketch: null }).exits).toHaveLength(1);
   });
 
+  it("сохраняет переход книги без materialized Entity и не рисует ложную дверь", () => {
+    const m: MapState = {
+      ...empty,
+      sketch: {
+        shape: "room", cols: 4, rows: 4, party: [1, 1], walls: [], exits: [], features: [], book: true,
+        unplaced_exits: [{ name: "Комната 3", to: null, room_ref: "r3" }],
+      },
+      exits: [{ id: null, room_ref: "r3", name: "Комната 3", via: null, bearing: null, visited: false }],
+    };
+    expect(layoutGrid(m).exits).toHaveLength(0);
+    expect(unlocatedBookExits(m)).toEqual([
+      { key: "r3", name: "Комната 3", destinationId: null, visited: false },
+    ]);
+  });
+
   it("показывает все выходы старой книги, не дублирует размеченную дверь и не открывает скрытую карточку", () => {
     const sketch: Sketch = {
       shape: "room", cols: 7, rows: 7, party: [3, 3], walls: [], features: [], book: true,
