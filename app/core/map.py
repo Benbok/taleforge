@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import adventure, sketch
+from app.core.topology import location_exits
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
@@ -97,6 +98,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     visited = {
         pid for pid, p in places.items() if pid in heres or hero_ids & set((p.state or {}).get("visited_by") or [])
     }
+    has_book_rooms = any(adventure.room_of(p) for p in places.values())
+    catalog = await campaign_catalog(session, viewer.campaign) if has_book_rooms else None
     if master:
         shown = set(places)
     else:
@@ -108,12 +111,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         # из места, где побывали, видно, внутри чего оно, что в нём и куда из него ведут пути
         for pid in list(visited):
             p = places[pid]
-            near = {x["to"] for x in _links(p)} | {c for c, e in places.items() if e.location_id == pid}
+            near = {x.target_id for x in location_exits(p, catalog, places) if x.target_id}
             if p.location_id:
-                near.add(p.location_id)
-            for oid, o in places.items():
-                if any(x["to"] == pid for x in _links(o)):
-                    near.add(oid)
+                near.add(p.location_id)  # группировка; не выход из комнаты книги
             shown |= {n for n in near if n in places and not (places[n].state or {}).get("secret")}
 
     def status(pid: str) -> str:
