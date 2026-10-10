@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { useAuthedImage } from "../lib/authedImage";
 import { Token } from "./GridBoard";
+import { MAP_PRESETS } from "./mapPresets";
 import { useInspector } from "./inspector";
 import { roomLabel, type MapBook } from "./map";
 
@@ -30,6 +31,8 @@ export function tokenSize(book: MapBook, width: number): number {
 export default function BookMap({ book, where }: { book: MapBook; where?: string | null }) {
   const src = useAuthedImage(`/api/modules/${book.module_id}/maps/${book.map_id}`);
   const [ratio, setRatio] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [selected, setSelected] = useState<string | null>(null);
   const open = useInspector((s) => s.open);
 
   useEffect(() => {
@@ -49,7 +52,9 @@ export default function BookMap({ book, where }: { book: MapBook; where?: string
       <p className="font-heading text-sm font-semibold text-ink">
         <span className="text-accent">⌖</span> {where ?? (here ? `${roomLabel(here)} · ${book.name}` : book.name)}
       </p>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full select-none rounded-md" role="img" aria-label={`Карта: ${book.name}`}>
+      <div className="flex gap-2 items-center text-xs"><button type="button" onClick={() => setZoom((v) => Math.max(1, v - 0.25))}>−</button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((v) => Math.min(3, v + 0.25))}>+</button><button type="button" onClick={() => setZoom(1)}>Сброс</button></div>
+      <div className="overflow-auto rounded-md">
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: `${zoom * 100}%`, maxWidth: "none" }} className="select-none" role="img" aria-label={`Карта: ${book.name}`}>
         <image href={src} x={0} y={0} width={W} height={H} />
         {here?.cells &&
           roomRects(book, here.cells, W, H).map((r, i) => (
@@ -93,15 +98,17 @@ export default function BookMap({ book, where }: { book: MapBook; where?: string
             cx={t.x * W}
             cy={t.y * H}
             size={size}
-            color="var(--tf-accent)"
-            icon="★"
+            color={MAP_PRESETS[t.type ?? "hero"].color}
+            icon={MAP_PRESETS[t.type ?? "hero"].icon}
+            selected={selected === t.id}
             ring={t.mine}
             faded={t.down}
-            onClick={(e: MouseEvent<Element>) => open(t.id, t.name, e.currentTarget as unknown as HTMLElement)}
+            onClick={(e: MouseEvent<Element>) => { setSelected(t.id); open(t.id, t.name, e.currentTarget as unknown as HTMLElement); }}
             ariaLabel={`${t.name}, комната ${t.room}`}
           />
         ))}
       </svg>
+      </div>
       <p className="font-mono text-xs text-muted">
         {here ? `Отряд в комнате ${here.number}${here.name ? ` «${here.name}»` : ""}.` : "Отряд у этого места."} Обведены комнаты, где
         вы уже были.
