@@ -262,6 +262,7 @@ def book_map(
     heroes: list[tuple[Any, str | None, dict]],
     shown: set[str] | None,
     mine: str | None,
+    entities: list[Entity] | None = None,
 ) -> dict | None:
     """Карта места модуля, где стоит отряд: картинка из книги, номера комнат и значки героев.
 
@@ -320,6 +321,29 @@ def book_map(
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )
+    # Существа и лежащие в мире предметы находятся в конкретных комнатах.
+    # Игрок видит только сущности в своей комнате; мастер — во всех показанных.
+    for e in entities or []:
+        room = rooms_here.get(e.location_id or "")
+        if room is None or e.kind == "location":
+            continue
+        st = e.state or {}
+        if st.get("hidden") or st.get("secret") or st.get("area"):
+            continue
+        if shown is not None and room.id != (here.id if here is not None else None):
+            continue
+        num = str((room_of(room) or {}).get("number"))
+        mark = next((m for m in mp["marks"] if str(m.get("number")) == num), None)
+        if num not in numbers or mark is None:
+            continue
+        from app.core.inspect import entity_type
+        from app.core.positions import Pos
+        x, y = _token_spots(grid, mark, [(e.id, *Pos(e.zone, st.get("bearing")).xy(None))])[e.id]
+        tokens.append({
+            "id": e.id, "name": e.name, "mine": False, "room": num,
+            "x": x, "y": y, "down": bool(st.get("dead")),
+            "type": entity_type(e),
+        })
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
