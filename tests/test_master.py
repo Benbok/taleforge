@@ -181,9 +181,10 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     msg = act(game_client, p1, c["id"], "Осматриваю вход и жду решения мастера.")
     (turn,) = rows(settings, MasterTurn)
     calls = turn.trace["calls"]
-    assert calls[0]["tool"] == "enter_room" and calls[0]["result"]["ok"] is False
-    assert calls[1]["tool"] == "enter_room" and calls[1]["result"]["ok"] is True
-    assert calls[2]["tool"] == "spawn_entity" and calls[2]["result"]["ok"] is True
+    attempts = [c for c in calls if c["tool"] == "enter_room"]
+    assert any(c.get("args", {}).get("room") == "99" and not c["result"]["ok"] for c in attempts), calls
+    assert any(c.get("args", {}).get("room") == "2" and c["result"]["ok"] for c in attempts), calls
+    assert any(c["tool"] == "spawn_entity" and c["result"]["ok"] for c in calls), calls
     assert turn.trace["audit"]["transition_outcome"] == "success"
     assert "Переход не состоялся" not in msg["content"]
     assert len(rows(settings, Event, Event.tool == "spawn_entity")) == 1
