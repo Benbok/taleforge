@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.agents.llm import LLMError, ScriptedLLM
-from app.db.models import CampaignSecret, Event, LlmCall, MasterTurn
+from app.db.models import CampaignSecret, Entity, Event, LlmCall, MasterTurn
 from app.main import create_app
 from tests.conftest import login
 from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
@@ -190,7 +190,11 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     assert any(c["tool"] == "spawn_entity" and c["result"]["ok"] for c in calls), calls
     assert turn.trace["audit"]["transition_outcome"] == "success"
     assert "Переход не состоялся" not in msg["content"]
-    assert len(rows(settings, Event, Event.tool == "spawn_entity")) == 1
+    spawned = rows(settings, Event, Event.tool == "spawn_entity")
+    entered = rows(settings, Event, Event.tool == "enter_room")
+    assert len(spawned) == len(entered) == 1
+    (skeleton,) = rows(settings, Entity, Entity.id == spawned[0].target_id)
+    assert skeleton.location_id == entered[0].target_id  # встреча именно в новой комнате
 
 
 def test_failed_resolve_attack_cannot_be_narrated_as_hit(game_client, admin_g, llm, settings):
