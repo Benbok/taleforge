@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core import economy
 from app.core import positions as grid
+from app.core.weapon_enchantments import release_weapon
 from app.core.world import is_scene_item
 from app.core.world_objects import container_chain, container_parent, is_nested, read_world_object
 from app.db.models import Character, Entity, InventoryItem
@@ -308,6 +309,9 @@ async def _remove_from_inventory(ctx: ToolContext, ch: Character, it: InventoryI
             },
         }
     ]
+    released = release_weapon(ch, it.id)
+    if released:
+        inverse.append(released)
     it.qty -= qty
     if it.qty == 0:
         await ctx.session.delete(it)
@@ -386,6 +390,10 @@ async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
                     inverse.append({"table": "inventory", "id": other.id, "field": "equipped", "before": True})
                     other.equipped = False
     it.equipped = a.equipped
+    if not a.equipped:
+        released = release_weapon(ch, it.id)
+        if released:
+            inverse.append(released)
     ctx.world.invalidate(ch.id)
     act = ctx.world.actor(ch.id)
     result = {"character": ch.name, "item": ctx.world.item_name(it), "equipped": a.equipped, "ac": act.ac}
@@ -660,6 +668,9 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
             raise ToolError("уникальный предмет передаётся целиком")
         inverse = [{"table": "inventory", "id": it.id, "field": "character_id", "before": ch.id}]
         ctx.world.inventory[ch.id].remove(it)
+        released = release_weapon(ch, it.id)
+        if released:
+            inverse.append(released)
         ctx.world.inventory.setdefault(to.id, []).append(it)
         it.character_id = to.id
         ctx.world.invalidate(ch.id)
