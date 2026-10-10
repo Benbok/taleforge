@@ -41,6 +41,7 @@ def test_generator_whitelist_budget_and_seed_are_deterministic():
     assert [e.id for e in chosen] == [e.id for e in gen.choose_loot(list(reversed(pool)), seed, 250, 3)]
     assert sum(gen.item_price_cp(e) for e in chosen) <= 250
     assert gen.choose_loot([], seed, 0, 2) == []
+    assert gen.choose_loot(pool, seed, 250, 0) == []
     assert gen.source_snapshot(pool, "склад", "location_initial")[0] == ["pack"]
 
 
@@ -86,7 +87,8 @@ def test_location_and_container_generate_once_and_keep_persistent_ids(client, ad
     room_id, made, chest, filled = _play(settings, cid, first)
     visible = _map(client, player, cid)
     assert set(made["containers"]).issubset({x["id"] for x in visible["around"]})
-    assert all(x["id"] not in {z["id"] for z in visible["around"]} for x in filled["items"])
+    seen_ids = {entry["id"] for entry in visible["around"]}
+    assert all(item_id not in seen_ids for item_id in filled["items"])
 
     async def after(ctx):
         row = await ctx.session.scalar(

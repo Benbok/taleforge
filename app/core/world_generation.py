@@ -171,6 +171,8 @@ def source_snapshot(entries: list[Entry], profile: str, phase: str) -> tuple[lis
 
 def choose_loot(entries: list[Entry], seed: int, budget_cp: int, limit: int) -> list[Entry]:
     """Выбор воспроизводим, сортировка кандидатов не зависит от порядка импортов каталога."""
+    if limit <= 0 or budget_cp < 0:
+        return []
     rng = random.Random(seed)
     pool = sorted(entries, key=lambda e: e.id)
     rng.shuffle(pool)
