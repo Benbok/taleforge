@@ -353,9 +353,7 @@ class TurnMixin:
             if not reply.tool_calls:
                 # Отказ spawn_entity не должен незаметно перейти в повествование
                 # о несуществующих врагах (например, из-за бюджета встречи).
-                failed_spawns = [
-                    t for t in trace_calls if t["tool"] == "spawn_entity" and not t["result"].get("ok")
-                ]
+                failed_spawns = [t for t in trace_calls if t["tool"] == "spawn_entity" and not t["result"].get("ok")]
                 if failed_spawns and not spawn_retry:
                     spawn_retry = True
                     issues = "; ".join(str(t["result"].get("error") or "вызов отклонён") for t in failed_spawns)
