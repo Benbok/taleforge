@@ -279,6 +279,7 @@ def test_failed_resolve_attack_cannot_be_narrated_as_hit(game_client, admin_g, l
             ("resolve_attack", {"attacker_id": hero["id"], "target_id": "en_missing", "attack": "unarmed"}),
         ]},
         DONE,
+        DONE,
         {"text": "Бран попал по противнику и нанёс 20 урона."},
     ]
     msg = act(game_client, p1, c["id"], "Бью несуществующего противника.")
