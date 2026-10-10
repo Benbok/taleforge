@@ -486,3 +486,32 @@ def test_grapple_and_escape_are_routed_to_real_tools():
         {**base, "actions": [{"verb": "escape_grapple", "skill": "acrobatics"}]}
     ) == ("escape_grapple", {"character_id": "ch_hero", "skill": "acrobatics"})
     assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": None}]}) is None
+
+
+def test_chat_grapple_starts_initiative_and_applies_real_condition(game_client, admin_g, llm, dice, settings):
+    from app.tools.runtime import open_context
+
+    c, (p1,), hero = party(game_client, admin_g)
+    goblin, _ = goblin_in_melee(settings, c["id"], hero["id"])
+
+    async def open_hand(session):
+        campaign = await session.get(Campaign, c["id"])
+        ctx = await open_context(session, campaign, QueueDice([]), turn_id=None, seat_id=None)
+        for item in ctx.world.inventory[hero["id"]]:
+            item.equipped = False
+        await session.commit()
+
+    run(settings, open_hand)
+    llm.replies += [
+        intent({"verb": "grapple", "target_id": goblin}),
+        DONE,
+        {"text": "Герой схватил гоблина и удерживает его на месте."},
+    ]
+    dice += [20, 1, 18, 1]
+    response = act(game_client, p1, c["id"], "Хватаю гоблина свободной рукой и не даю ему уйти")
+    assert response["kind"] == "narration"
+    events = rows(settings, Event, Event.campaign_id == c["id"])
+    assert len([e for e in events if e.tool == "resolve_grapple" and e.actor_id == hero["id"]]) == 1
+    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
+    (message,) = rows(settings, Message, Message.kind == "action")
+    assert message.intent["actions"][0]["verb"] == "grapple"
