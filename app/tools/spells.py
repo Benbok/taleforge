@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 
 from app.core import economy
 from app.core import spells as book
-from app.core.weapon_enchantments import ELIGIBLE, SHILLELAGH
 from app.core.positions import COVER_AC, pos_of, wall_between
+from app.core.weapon_enchantments import ELIGIBLE, SHILLELAGH
 from app.core.world import Actor, format_time
 from app.db.models import Character
 from app.rules.base import RollMode
