@@ -69,12 +69,17 @@ def timeout_sec(ctx: ToolContext) -> int:
 
 def start_combat(ctx: ToolContext) -> None:
     """Вызывается после броска инициативы: первый в очереди получает ход."""
-    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={}, opening_spells={}, opening_plans={})
+    _set(
+        ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None,
+        opening_attacks={}, opening_spells={}, opening_plans={},
+    )
 
 
 def end_combat(ctx: ToolContext) -> None:
     st = state(ctx)
-    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells", "opening_plans"):
+    for k in (
+        "turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells", "opening_plans",
+    ):
         st.pop(k, None)
     ctx.world.scene.state = st
 
