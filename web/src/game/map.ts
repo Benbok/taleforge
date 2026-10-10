@@ -100,7 +100,7 @@ export interface MapBook {
   grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
   here: string | null;
   rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
-  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: EntityType }[];
 }
 
 /** Эскиз места, нарисованный мастером (app/core/sketch.py): клетки по 5 футов, (0, 0) — северо-западный угол. */

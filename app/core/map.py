@@ -148,6 +148,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             if e.kind == "location" or e.location_id != here.id:
                 continue
             st = e.state or {}
+            if not master and (st.get("hidden") or st.get("secret")):
+                continue
             area = st.get("area")
             if area:
                 if area.get("expires_at") is None or scene.game_time < int(area["expires_at"]):
@@ -227,7 +229,13 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
         ]
         book = adventure.book_map(
-            catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None
+            catalog,
+            places,
+            here,
+            heroes_at,
+            None if master else visited,
+            hero.id if hero is not None else None,
+            entities=ents,
         )
         sk = sketch.of_place(here, catalog, places)
     else:
