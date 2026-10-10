@@ -41,6 +41,48 @@ from app.tools.runtime import flush_outbox, open_context, publish_changes
 log = logging.getLogger(__name__)
 
 
+def _targets_hostile_with_spell(ctx: ToolContext, args: dict) -> bool:
+    """Combat trigger for a damaging/hostile spell with an explicit enemy target."""
+    from app.core.spells import spell_catalog
+
+    caster_id = args.get("caster_id")
+    spell_id = args.get("spell_id")
+    target_ids = args.get("target_ids")
+    if not isinstance(caster_id, str) or not isinstance(spell_id, str) or not isinstance(target_ids, list):
+        return False
+    spell = spell_catalog(ctx.world.catalog).spells.get(spell_id)
+    if (
+        caster_id not in ctx.world.characters
+        or not spell
+        or args.get("ritual")
+        or not any(spell.get(k) for k in ("attack", "save", "damage", "auto_hit"))
+    ):
+        return False
+    for target_id in target_ids:
+        if not isinstance(target_id, str):
+            continue
+        target = ctx.world.entities.get(target_id)
+        if (
+            target is not None
+            and target.kind == "creature"
+            and not (target.state or {}).get("dead")
+            and not (target.state or {}).get("fled")
+            and (target.state or {}).get("attitude", "hostile") == "hostile"
+            and ctx.world.actor_place(caster_id) == ctx.world.actor_place(target_id)
+        ):
+            return True
+    return False
+
+
+def _hostile_opening_spell(ctx: ToolContext, intent: dict | None) -> dict | None:
+    """Route only a single unequivocal hostile cast; buffs and parley stay free."""
+    actions = (intent or {}).get("actions") or []
+    if len(actions) != 1 or actions[0].get("verb") != "cast":
+        return None
+    args = _routable_cast(ctx, intent)
+    return args if args and _targets_hostile_with_spell(ctx, args) else None
+
+
 class TurnMixin:
     """Часть MasterService (app/agents/master/service.py)."""
 
@@ -245,9 +287,9 @@ class TurnMixin:
             and m.seat_id in char_by_seat
             and char_by_seat[m.seat_id].status in ("approved", "active")
         }
-        # A hostile opening attack begins initiative BEFORE its damage is rolled.
-        # Only a single, unambiguous weapon attack is queued here. Compound actions
-        # (move + attack, spell + attack) stay with the decision model for now.
+        # A declared hostile weapon strike or offensive spell begins initiative
+        # before damage, saving the original action for its caster's legal turn.
+        # Compound actions remain with the master until the Action Plan phase.
         trace_calls: list[dict] = []
         routed: list[str] = []
         opening_actors: set[str] = set()
@@ -255,38 +297,45 @@ class TurnMixin:
         if not combat.in_combat(ctx):
             for m in new:
                 attack = intents.routable_attack(m.intent) if m.kind == "action" else None
+                spell = _hostile_opening_spell(ctx, m.intent) if m.kind == "action" else None
                 actions = (m.intent or {}).get("actions") or []
+                actor_id = attack["attacker_id"] if attack else spell["caster_id"] if spell else None
                 if (
-                    attack is None
+                    actor_id is None
                     or len(actions) != 1
-                    or attack["attacker_id"] not in required
+                    or actor_id not in required
                     or m.seat_id not in char_by_seat
-                    or char_by_seat[m.seat_id].id != attack["attacker_id"]
+                    or char_by_seat[m.seat_id].id != actor_id
                 ):
                     continue
-                enemy = ctx.world.entities.get(attack["target_id"])
-                if (
-                    enemy is None
-                    or enemy.kind != "creature"
-                    or (enemy.state or {}).get("dead")
-                    or (enemy.state or {}).get("attitude", "hostile") != "hostile"
-                    or ctx.world.actor_place(attack["attacker_id"]) != ctx.world.actor_place(enemy.id)
-                ):
-                    continue
+                if attack is not None:
+                    enemy = ctx.world.entities.get(attack["target_id"])
+                    if (
+                        enemy is None
+                        or enemy.kind != "creature"
+                        or (enemy.state or {}).get("dead")
+                        or (enemy.state or {}).get("attitude", "hostile") != "hostile"
+                        or ctx.world.actor_place(actor_id) != ctx.world.actor_place(enemy.id)
+                    ):
+                        continue
                 opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{turn_id}:opening:initiative")
                 trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True, "routed": True})
                 if opened.get("ok"):
-                    combat.queue_opening_attack(ctx, attack)
-                    opening_actors.add(attack["attacker_id"])
-                    ctx.closed.add(attack["attacker_id"])
+                    if attack is not None:
+                        combat.queue_opening_attack(ctx, attack)
+                    else:
+                        combat.queue_opening_spell(ctx, spell)
+                    opening_actors.add(actor_id)
+                    ctx.closed.add(actor_id)
+                    action_name = "атака" if attack is not None else "заклинание"
                     routed.append(
-                        f"{attack['attacker_id']}: запуск инициативы уже выполнен сервером; "
-                        "атака заявлена и будет проведена в собственный ход героя (или уже проведена)"
+                        f"{actor_id}: запуск инициативы уже выполнен сервером; {action_name} заявлено "
+                        "и будет проведено в собственный ход героя (или уже проведено)"
                     )
                     await self._status(cid, "rolling")
                     opening_notes += await combat.run_until_hero(ctx, f"{turn_id}:opening", self._ask_reaction)
                 else:
-                    routed.append(f"{attack['attacker_id']}: начать бой не удалось: {opened.get('error')}")
+                    routed.append(f"{actor_id}: начать бой не удалось: {opened.get('error')}")
                 break
         fighting = combat.in_combat(ctx) and ctx.world.fighting_here()  # бой другой группы этот ход не ведёт
         hero_turn = combat.current_character(ctx) if fighting else None  # в бою: чей ход закрывает ответ мастера
@@ -409,6 +458,33 @@ class TurnMixin:
                     opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
                     done_calls += 1
                     return {"ok": True, "result": {"mode": "combat", "opening_attack": "queued by initiative"}}
+            if name == "cast_spell" and _targets_hostile_with_spell(ctx, args):
+                caster = args["caster_id"]
+                if combat.in_combat(ctx):
+                    from app.core import economy
+
+                    if not economy.active(ctx.world, caster):
+                        return {"ok": False, "error": "атакующее заклинание: сейчас ход другого участника"}
+                    if combat.state(ctx).get("actor") != caster:
+                        if caster in opening_actors:
+                            return {"ok": False, "error": "начальное действие уже заявлено"}
+                        combat.queue_opening_spell(ctx, args)
+                        opening_actors.add(caster)
+                        ctx.closed.add(caster)
+                        done_calls += 1
+                        return {"ok": True, "result": {"opening_spell": "queued by initiative"}}
+                elif caster in required:
+                    opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{key}:initiative")
+                    trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
+                    if not opened.get("ok"):
+                        return opened
+                    combat.queue_opening_spell(ctx, args)
+                    opening_actors.add(caster)
+                    ctx.closed.add(caster)
+                    await self._status(cid, "rolling")
+                    opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
+                    done_calls += 1
+                    return {"ok": True, "result": {"mode": "combat", "opening_spell": "queued by initiative"}}
             if name in ROLL_TOOLS:
                 await self._status(cid, "rolling")
             result = await execute(ctx, name, args, key=key)
