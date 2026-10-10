@@ -251,7 +251,7 @@ def _token_spots(
         cells = place_tokens(grid, mark, tokens)
         if cells:
             return {tid: cell_center(grid, c, r) for tid, (c, r) in cells.items()}
-    return {tid: (round(mark["x"] + 0.03 * (i % 4 - 1.5), 4), round(mark["y"] + 0.04, 4)) for i, (tid, _, _) in
+    return {tid: (round(mark["x"] + 0.03 * (i % 4 - 1.5), 4), round(mark["y"] + 0.04 + 0.035 * (i // 4), 4)) for i, (tid, _, _) in
             enumerate(tokens)}  # fmt: skip
 
 
