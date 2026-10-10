@@ -66,6 +66,12 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     if consumed:
         it.qty -= 1
         if it.qty <= 0:
+            if it.world_entity_id is not None:
+                entity = _unique_inventory_entity(ctx, it)
+                inv.append(
+                    {"table": "entities", "id": entity.id, "field": "state", "before": copy.deepcopy(entity.state)}
+                )
+                entity.state = _object_state(entity, physical="destroyed")
             await ctx.session.delete(it)
             ctx.world.inventory[ch.id].remove(it)
     dice = out.pop("dice")
@@ -539,12 +545,10 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     many = f" ×{qty}" if qty > 1 else ""
     ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
-    if unique:
-        pass  # Entity and its state persist in the world registry, only location_id changes.
-    elif qty == have:
+    if not unique and qty == have:
         await ctx.session.delete(en)
         ctx.world.entities.pop(en.id, None)
-    else:
+    elif not unique:
         en.state = {**st, "qty": have - qty}
     return result
 
