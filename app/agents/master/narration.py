@@ -11,7 +11,7 @@ from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
-from app.agents.master.outcomes import public_attempts, transition_outcome
+from app.agents.master.outcomes import failed_attack, public_attempts, transition_outcome
 from app.core import combat
 from app.db.models import AgentConfig, Campaign, Scene
 from app.emotion import game as mood
@@ -45,6 +45,7 @@ class NarrationMixin:
         tool_attempts: list[dict] | None = None,
     ):
         outcome = transition_outcome(tool_attempts)
+        attack_rejected = failed_attack(tool_attempts)
         attempts = public_attempts(tool_attempts)
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
@@ -71,7 +72,7 @@ class NarrationMixin:
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
         audit: dict[str, Any] = {"regenerated": False, "stripped": [], "transition_outcome": outcome}
-        push = textcalls.StreamFilter(stream.push) if stream is not None and outcome != "failed" else None
+        push = textcalls.StreamFilter(stream.push) if stream is not None and outcome != "failed" and not attack_rejected else None
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
         if push is not None:
             await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
@@ -160,6 +161,9 @@ class NarrationMixin:
             # Используем факты из движка, не историю диалога и не секретные ToolError.
             audit["transition_fallback"] = True
             text = "Переход не состоялся. Герои остались на прежнем месте."
+        elif attack_rejected:
+            audit["attack_fallback"] = True
+            text = "Атака не состоялась: сервер отклонил действие."
         return text or "…", audit
 
     def _tts_ready(self, c: Campaign) -> bool:
