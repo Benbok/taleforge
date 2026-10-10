@@ -135,10 +135,18 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
             place = await s.get(Entity, place_id)
             st = place.state or {}
             mine = st.get("sketch") or {}
-            if int(st.get("layout_rev") or 0) == rev and not (mine and not mine.get("auto") and mine.get("rev") == rev):
+            if (
+                int(st.get("layout_rev") or 0) == rev
+                and not sketch.linked_entity_ids(mine)
+                and not (mine and not mine.get("auto") and mine.get("rev") == rev)
+            ):
                 ents = (await s.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
                 link_exits(place, data, {e.id: e for e in ents})
-                place.state = {**(place.state or {}), "sketch": {**data, "auto": True, "rev": rev}}
+                data = sketch.with_feature_ids(data)
+                place.state = {
+                    **(place.state or {}),
+                    "sketch": {**data, "auto": True, "rev": rev, "edit_rev": int(mine.get("edit_rev") or 0) + 1},
+                }
                 stored = True
         await s.commit()
     if not stored:

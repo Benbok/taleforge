@@ -276,6 +276,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     }
                 )
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
+    # Linked physical entities have one scene representation: the sketch feature.
+    # Keep around (gameplay targets) and full book tokens separate from rendered scene tokens.
     scene_view = [
         {
             "id": h["id"],
@@ -324,9 +326,13 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         sk = sketch.of_place(here, catalog, places)
     else:
         sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
+
+    projected_sketch = sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
+    linked = sketch.linked_entity_ids(projected_sketch)
+    scene_view = [token for token in scene_view if token["id"] not in linked]
     return {
         "book": book,
-        "sketch": sketch.for_viewer(sk, master, shown) if sk else None,
+        "sketch": projected_sketch,
         "here": {
             "id": here.id,
             "name": here.name,

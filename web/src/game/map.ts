@@ -119,6 +119,10 @@ export interface SketchExit {
 }
 
 export interface SketchFeature {
+  id?: string; // стабильная идентичность детали эскиза
+  entity_id?: string; // ссылка на реальный объект, не дублировать сценным токеном
+  entity_type?: EntityType; // публичный тип подтверждённого объекта
+  visual_key?: string | null;
   name: string;
   kind: "furniture" | "cover" | "hazard" | "light" | "object" | "nature";
   cells: number[][];
@@ -127,6 +131,7 @@ export interface SketchFeature {
 }
 
 export interface Sketch {
+  edit_rev?: number; // CAS-ревизия для редактирования и привязки Entity
   shape: "room" | "corridor" | "cave" | "street" | "open";
   cols: number;
   rows: number;
