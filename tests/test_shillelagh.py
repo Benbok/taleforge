@@ -12,9 +12,15 @@ async def _make_druid(ctx, hero):
 
 
 async def _weapon(ctx, hero, template):
-    result = await call(ctx, "give_item", {
-        "character_id": hero, "item_template_id": template, "reason": "test",
-    })
+    result = await call(
+        ctx,
+        "give_item",
+        {
+            "character_id": hero,
+            "item_template_id": template,
+            "reason": "test",
+        },
+    )
     assert result["ok"], result
     inv_id = result["result"]["inventory_id"]
     equipped = await call(ctx, "equip_item", {"character_id": hero, "inventory_id": inv_id, "equipped": True})
@@ -35,12 +41,20 @@ def test_shillelagh_improves_only_held_club_and_preserves_proficiency(game):
         second = await _weapon(ctx, hero, "item.quarterstaff")
         before = dict(_attack(ctx, hero, first))
         other = dict(_attack(ctx, hero, second))
-        cast = await call(ctx, "cast_spell", {
-            "caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": first,
-        })
+        cast = await call(
+            ctx,
+            "cast_spell",
+            {
+                "caster_id": hero,
+                "spell_id": "spell.shillelagh",
+                "weapon_id": first,
+            },
+        )
         assert cast["ok"], cast
         assert cast["result"]["enchantment"] == {
-            "weapon_id": first, "damage_die": "1d8", "magical": True,
+            "weapon_id": first,
+            "damage_die": "1d8",
+            "magical": True,
         }
         att = _attack(ctx, hero, first)
         mods = ctx.world.actor(hero).mods
@@ -62,13 +76,25 @@ def test_shillelagh_recasting_and_releasing_weapon(game):
         await _make_druid(ctx, hero)
         club = await _weapon(ctx, hero, "item.club")
         staff = await _weapon(ctx, hero, "item.quarterstaff")
-        first = await call(ctx, "cast_spell", {
-            "caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": club,
-        })
+        first = await call(
+            ctx,
+            "cast_spell",
+            {
+                "caster_id": hero,
+                "spell_id": "spell.shillelagh",
+                "weapon_id": club,
+            },
+        )
         assert first["ok"], first
-        second = await call(ctx, "cast_spell", {
-            "caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": staff,
-        })
+        second = await call(
+            ctx,
+            "cast_spell",
+            {
+                "caster_id": hero,
+                "spell_id": "spell.shillelagh",
+                "weapon_id": staff,
+            },
+        )
         assert second["ok"], second
         assert _attack(ctx, hero, club).get("magical") is None
         assert _attack(ctx, hero, staff)["magical"] is True
@@ -109,9 +135,15 @@ def test_shillelagh_rejects_empty_hand_and_nonwooden_weapon(game):
         assert not no_weapon["ok"]
         assert "сначала возьмите" in no_weapon["error"]
         sword = await _weapon(ctx, hero, "item.longsword")
-        wrong = await call(ctx, "cast_spell", {
-            "caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": sword,
-        })
+        wrong = await call(
+            ctx,
+            "cast_spell",
+            {
+                "caster_id": hero,
+                "spell_id": "spell.shillelagh",
+                "weapon_id": sword,
+            },
+        )
         assert not wrong["ok"]
         assert "дубинка или боевой посох" in wrong["error"]
         assert ench.SHILLELAGH not in ctx.world.characters[hero].resources
@@ -126,9 +158,17 @@ def test_shillelagh_ends_when_item_is_dropped(game):
     async def fn(ctx):
         await _make_druid(ctx, hero)
         club = await _weapon(ctx, hero, "item.club")
-        assert (await call(ctx, "cast_spell", {
-            "caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": club,
-        }))["ok"]
+        assert (
+            await call(
+                ctx,
+                "cast_spell",
+                {
+                    "caster_id": hero,
+                    "spell_id": "spell.shillelagh",
+                    "weapon_id": club,
+                },
+            )
+        )["ok"]
         result = await call(ctx, "drop_item", {"character_id": hero, "inventory_id": club})
         assert result["ok"], result
         assert ench.SHILLELAGH not in ctx.world.characters[hero].resources
