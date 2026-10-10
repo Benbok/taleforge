@@ -46,23 +46,21 @@ def test_whisper_answered_privately_without_turn(game_client, admin_g, llm, sett
 
 
 def test_where_am_i_whisper_uses_actual_hero_location(game_client, admin_g, llm, settings):
-    from app.db.models import Character, Entity, Scene
-    from tests.game import run
+    from tests.test_map import _ok, _play
 
-    c, (p1,), hero = party(game_client, admin_g)
+    c, (p1,), _ = party(game_client, admin_g)
 
-    async def actual_place(s):
-        ch = await s.get(Character, hero["id"])
-        scene = await s.get(Scene, c["id"])
-        loc = await s.get(Entity, ch.location_id or scene.location_id)
-        return loc.name
+    async def locate(ctx):
+        result = await _ok(ctx, "create_location", {"name": "Контрольный зал", "make_current": True})
+        return result["location_id"]
 
-    here = run(settings, actual_place)
-    llm.replies += [{"text": "Вы точно на другом конце света, в тайном логове."}]
+    _play(settings, c["id"], locate)
+    llm.replies += [{"text": "Вы точно в вымышленной комнате."}]
+    before = len(llm.requests)
     _, answer = whisper(game_client, p1, c["id"], "где я?")
-    assert here in answer["content"]
-    assert "тайном логове" not in answer["content"]
-    assert len(llm.requests) == 0  # этот известный факт сервер берёт непосредственно из мира
+    assert "Контрольный зал" in answer["content"]
+    assert "вымышленной комнате" not in answer["content"]
+    assert len(llm.requests) == before
 
 
 def test_turn_does_not_take_whisper(game_client, admin_g, llm):
