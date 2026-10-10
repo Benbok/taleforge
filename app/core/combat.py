@@ -569,6 +569,12 @@ async def _strike(ctx: ToolContext, act: Actor, target: Actor, keys: list[str], 
 
 
 async def _flee(ctx: ToolContext, act: Actor, key: str, notes: list[str], ask: ReactionAsk | None) -> None:
+    from app.tools import grapples as gp
+
+    await gp.refresh(ctx)
+    if gp.holders(ctx, act.id):
+        notes.append(f"{act.name} пытается убежать, но схвачен и не может покинуть бой")
+        return
     en = act.obj
     grid_mode = _on_grid(ctx, en.id)
     if (grid_mode or en.zone == "melee") and ask is not None:
