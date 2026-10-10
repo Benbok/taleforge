@@ -258,14 +258,21 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     if here is not None and adventure.room_of(here) and catalog is not None:
         known_ids = {exit["id"] for exit in exits}
         for passage in location_exits(here, catalog, places):
-            if passage.target_id not in known_ids and passage.target_id is None:
+            if passage.target_id is not None and passage.target_id not in shown:
+                continue
+            if passage.target_id in known_ids:
+                continue
+            if passage.room_ref:
+                known_ids.add(passage.target_id)
                 exits.append({
-                    "id": None,
-                    "name": passage.label,
+                    "id": passage.target_id,
+                    "name": next(
+                        (p["name"] for p in out_places if p["id"] == passage.target_id), passage.label
+                    ),
                     "room_ref": passage.room_ref,
                     "via": None,
-                    "bearing": None,
-                    "visited": False,
+                    "bearing": passage.bearing,
+                    "visited": passage.target_id in visited,
                 })
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
     scene_view = [
