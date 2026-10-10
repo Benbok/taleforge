@@ -166,6 +166,9 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     mid = publish_sample(settings)
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
+    # Первая игровая реплика нового героя отдельно запускает introduce() и
+    # потребляет ответ ScriptedLLM: в этом тесте проверяем только фазу хода.
+    monkeypatch.setattr(game_client.app.state.master, "introduce", skip_intro)
 
     llm.replies += [
         {"tool_calls": [("enter_room", {"room": "99", "character_ids": [hero["id"]]})]},
