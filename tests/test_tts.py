@@ -504,6 +504,13 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
 
         c, (p1,), ch = party(client, admin)
 
+        response = client.put(
+            f"/api/campaigns/{c['id']}/master-persona",
+            json={"preset": "innkeeper", "style": "Сочувствует смелым попыткам, даже когда они не удались."},
+            headers=admin,
+        )
+        assert response.status_code == 200
+
         # Задаём ответы модели:
         # 1. Решение (roll_check)
         # 2. Решение (готово)
@@ -535,6 +542,10 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
         # Проверяем, что в TTS ушла короткая реплика, а не длинный нарратив
         assert synthesized_texts == ["Отличный прыжок, храбрец!"]
         assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
+        voice_messages = llm.voice_requests[-1]["messages"]
+        assert "Сочувствует смелым попыткам" in voice_messages[0]["content"]
+        assert "Прыгаю через пропасть!" in voice_messages[1]["content"]
+        assert "roll_check" in voice_messages[1]["content"]
 
 
 def test_campaign_intro_voiced_in_parts(settings, tmp_path):

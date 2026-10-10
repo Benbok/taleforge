@@ -217,10 +217,12 @@ def _narration_length(ctx: ToolContext, notes=()) -> str:
     )
 
 
-def _render_results(ctx: ToolContext) -> str:
+def _render_results(ctx: ToolContext, *, public_only: bool = False) -> str:
     out = []
     for ev in ctx.events:
         if ev.tool in AUDIO_TOOLS:
+            continue
+        if public_only and (ev.hidden or ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock"):
             continue
         res = ev.payload.get("result", ev.payload)
         if ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock":

@@ -442,7 +442,9 @@ class TurnMixin:
         # реплика для озвучки и синтез идут параллельно с повествованием, а не перед ним
         voice_task = None
         if self._tts_ready(c):
-            voice_task = asyncio.create_task(self._voice(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes))
+            voice_task = asyncio.create_task(
+                self._voice(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes, news=news)
+            )
 
         whispers = await flush_outbox(s, ctx)  # карточки бросков и шёпоты встают в чат раньше повествования
         heard = _heard_by(ctx, crew)  # отряд разделён: ответ и броски видят герои этой группы

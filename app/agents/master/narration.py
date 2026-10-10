@@ -159,12 +159,12 @@ class NarrationMixin:
         return bool(engine.enabled)
 
     async def _voice(
-        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes
+        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, *, news: str = ""
     ) -> tuple[str | None, dict | None]:
         """Короткая реплика мастера и её озвучка. Сбой не мешает ходу: остаётся текст без голоса."""
         st = c.settings or {}
         try:
-            line = await self._voice_line(calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes)
+            line = await self._voice_line(calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, news=news)
             if not line:
                 return None, None
             data = await self.tts.voice_for_narration(
@@ -185,7 +185,7 @@ class NarrationMixin:
         deltas = [mood.crit_delta(persona, hi, lo)]
         text = "\n".join(m.content for m in new if m.kind in ("action", "speech") and m.content)
         if text:
-            analyzer = LLMAnalyzer(persona_id=persona_id)
+            analyzer = LLMAnalyzer(persona_id=persona_id, persona_description=cfg.persona or "")
             ask = PlayerActionContext(player_id="party", character_name="", action_text=text[:2000])
             try:
                 reply = await self._ask(
@@ -218,11 +218,14 @@ class NarrationMixin:
         system: str,
         ctx: ToolContext,
         combat_notes: list,
+        *,
+        news: str = "",
     ) -> str:
-        results = _render_results(ctx)
+        results = _render_results(ctx, public_only=True)
         prompt = render(
             "voice_line.j2",
             results=results,
+            news=news,
             combat_notes=list(combat_notes),
         )
         custom = (cfg.settings or {}).get("voice_line_model")
