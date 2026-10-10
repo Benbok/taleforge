@@ -3,26 +3,26 @@
 kind: item_template
 items:
   - id: item.club
-    visual_key: item:weapon
     name: Дубинка
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Club"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 1}
     damage: {dice: "1d4", type: bludgeoning}
     weight: 2
     properties: [light]
   - id: item.dagger
-    visual_key: item:weapon
     name: Кинжал
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Dagger"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: piercing}
@@ -30,26 +30,26 @@ items:
     properties: [finesse, light, thrown]
     range: {normal: 20, long: 60}
   - id: item.greatclub
-    visual_key: item:weapon
     name: Палица
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greatclub"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 2}
     damage: {dice: "1d8", type: bludgeoning}
     weight: 10
     properties: [two_handed]
   - id: item.handaxe
-    visual_key: item:weapon
     name: Ручной топор
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Handaxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: slashing}
@@ -57,13 +57,13 @@ items:
     properties: [light, thrown]
     range: {normal: 20, long: 60}
   - id: item.javelin
-    visual_key: item:weapon
     name: Метательное копьё
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Javelin"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 5}
     damage: {dice: "1d6", type: piercing}
@@ -71,13 +71,13 @@ items:
     properties: [thrown]
     range: {normal: 30, long: 120}
   - id: item.light_hammer
-    visual_key: item:weapon
     name: Лёгкий молот
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Light hammer"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: bludgeoning}
@@ -85,26 +85,26 @@ items:
     properties: [light, thrown]
     range: {normal: 20, long: 60}
   - id: item.mace
-    visual_key: item:weapon
     name: Булава
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Mace"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: bludgeoning}
     weight: 4
     properties: []
   - id: item.quarterstaff
-    visual_key: item:weapon
     name: Боевой посох
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Quarterstaff"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 2}
     damage: {dice: "1d6", type: bludgeoning}
@@ -112,26 +112,26 @@ items:
     properties: [versatile]
     versatile_damage: "1d8"
   - id: item.sickle
-    visual_key: item:weapon
     name: Серп
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Sickle"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 1}
     damage: {dice: "1d4", type: slashing}
     weight: 2
     properties: [light]
   - id: item.spear
-    visual_key: item:weapon
     name: Копьё
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Spear"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 1}
     damage: {dice: "1d6", type: piercing}
@@ -140,13 +140,13 @@ items:
     range: {normal: 20, long: 60}
     versatile_damage: "1d8"
   - id: item.light_crossbow
-    visual_key: item:weapon
     name: Лёгкий арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, light"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {gp: 25}
     damage: {dice: "1d8", type: piercing}
@@ -154,13 +154,13 @@ items:
     properties: [ammunition, loading, two_handed]
     range: {normal: 80, long: 320}
   - id: item.dart
-    visual_key: item:weapon
     name: Дротик
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Dart"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {cp: 5}
     damage: {dice: "1d4", type: piercing}
@@ -168,13 +168,13 @@ items:
     properties: [finesse, thrown]
     range: {normal: 20, long: 60}
   - id: item.shortbow
-    visual_key: item:weapon
     name: Короткий лук
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Shortbow"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {gp: 25}
     damage: {dice: "1d6", type: piercing}
@@ -182,13 +182,13 @@ items:
     properties: [ammunition, two_handed]
     range: {normal: 80, long: 320}
   - id: item.sling
-    visual_key: item:weapon
     name: Праща
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Sling"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {sp: 1}
     damage: {dice: "1d4", type: bludgeoning}
@@ -196,13 +196,13 @@ items:
     properties: [ammunition]
     range: {normal: 30, long: 120}
   - id: item.battleaxe
-    visual_key: item:weapon
     name: Боевой топор
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Battleaxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d8", type: slashing}
@@ -210,78 +210,78 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.flail
-    visual_key: item:weapon
     name: Цеп
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Flail"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d8", type: bludgeoning}
     weight: 2
     properties: []
   - id: item.glaive
-    visual_key: item:weapon
     name: Глефа
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Glaive"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 20}
     damage: {dice: "1d10", type: slashing}
     weight: 6
     properties: [heavy, reach, two_handed]
   - id: item.greataxe
-    visual_key: item:weapon
     name: Секира
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greataxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 30}
     damage: {dice: "1d12", type: slashing}
     weight: 7
     properties: [heavy, two_handed]
   - id: item.greatsword
-    visual_key: item:weapon
     name: Двуручный меч
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greatsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 50}
     damage: {dice: "2d6", type: slashing}
     weight: 6
     properties: [heavy, two_handed]
   - id: item.halberd
-    visual_key: item:weapon
     name: Алебарда
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Halberd"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 20}
     damage: {dice: "1d10", type: slashing}
     weight: 6
     properties: [heavy, reach, two_handed]
   - id: item.lance
-    visual_key: item:weapon
     name: Длинное копьё
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Lance"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d12", type: piercing}
@@ -289,13 +289,13 @@ items:
     properties: [reach, special]
     description: Помеха при атаке цели в 5 футах. Без скакуна нужны две руки.
   - id: item.longsword
-    visual_key: item:weapon
     name: Длинный меч
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Longsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: slashing}
@@ -303,91 +303,91 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.maul
-    visual_key: item:weapon
     name: Молот
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Maul"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "2d6", type: bludgeoning}
     weight: 10
     properties: [heavy, two_handed]
   - id: item.morningstar
-    visual_key: item:weapon
     name: Моргенштерн
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Morningstar"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: piercing}
     weight: 4
     properties: []
   - id: item.pike
-    visual_key: item:weapon
     name: Пика
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Pike"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d10", type: piercing}
     weight: 18
     properties: [heavy, reach, two_handed]
   - id: item.rapier
-    visual_key: item:weapon
     name: Рапира
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Rapier"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 25}
     damage: {dice: "1d8", type: piercing}
     weight: 2
     properties: [finesse]
   - id: item.scimitar
-    visual_key: item:weapon
     name: Скимитар
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Scimitar"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 25}
     damage: {dice: "1d6", type: slashing}
     weight: 3
     properties: [finesse, light]
   - id: item.shortsword
-    visual_key: item:weapon
     name: Короткий меч
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Shortsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d6", type: piercing}
     weight: 2
     properties: [finesse, light]
   - id: item.trident
-    visual_key: item:weapon
     name: Трезубец
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Trident"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: piercing}
@@ -396,26 +396,26 @@ items:
     range: {normal: 20, long: 60}
     versatile_damage: "1d8"
   - id: item.war_pick
-    visual_key: item:weapon
     name: Боевая кирка
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "War pick"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d8", type: piercing}
     weight: 2
     properties: []
   - id: item.warhammer
-    visual_key: item:weapon
     name: Боевой молот
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Warhammer"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: bludgeoning}
@@ -423,26 +423,26 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.whip
-    visual_key: item:weapon
     name: Кнут
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Whip"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: slashing}
     weight: 3
     properties: [finesse, reach]
   - id: item.blowgun
-    visual_key: item:weapon
     name: Духовая трубка
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Blowgun"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 10}
     damage: {dice: "1", type: piercing}
@@ -450,13 +450,13 @@ items:
     properties: [ammunition, loading]
     range: {normal: 25, long: 100}
   - id: item.hand_crossbow
-    visual_key: item:weapon
     name: Ручной арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, hand"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 75}
     damage: {dice: "1d6", type: piercing}
@@ -464,13 +464,13 @@ items:
     properties: [ammunition, light, loading]
     range: {normal: 30, long: 120}
   - id: item.heavy_crossbow
-    visual_key: item:weapon
     name: Тяжёлый арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, heavy"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 50}
     damage: {dice: "1d10", type: piercing}
@@ -478,13 +478,13 @@ items:
     properties: [ammunition, heavy, loading, two_handed]
     range: {normal: 100, long: 400}
   - id: item.longbow
-    visual_key: item:weapon
     name: Длинный лук
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Longbow"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 50}
     damage: {dice: "1d8", type: piercing}
@@ -492,13 +492,13 @@ items:
     properties: [ammunition, heavy, two_handed]
     range: {normal: 150, long: 600}
   - id: item.net
-    visual_key: item:weapon
     name: Сеть
     status: canon
     doc: "SRD 5.1: Weapons"
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Net"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 1}
     damage: null

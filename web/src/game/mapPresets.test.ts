@@ -32,6 +32,16 @@ describe("каталог визуальных элементов карты", ()
     expect(entityVisual("item", null)).toBe(MAP_PRESETS.item);
   });
 
+  it("визуальные ключи предметов можно использовать как метаданные шаблона", () => {
+    const keys = ["item:chest", "item:weapon", "item:potion", "item:scroll", "item:key", "item:coin", "item:container"];
+    for (const key of keys) {
+      expect(entityVisual("item", key).family).toBe("item");
+      expect(entityVisual("item", key)).toBe(VISUAL_VARIANTS[key]);
+      expect(entityVisual("creature", key)).toBe(MAP_PRESETS.creature);
+    }
+    expect(entityVisual("item", "item:custom-not-yet-installed")).toBe(MAP_PRESETS.item);
+  });
+
   it("один SVG-рендерер рисует пресеты без эмодзи и шрифтовых значков", () => {
     const markup = renderToStaticMarkup(createElement(Token, {
       cx: 10, cy: 12, size: 20, visual: entityVisual("item", "item:chest"),

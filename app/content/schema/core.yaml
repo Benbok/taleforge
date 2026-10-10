@@ -49,10 +49,12 @@ kinds:
   echo_technique: {required: [side, cost, min_level]}
   spell_note: {}
   spell_template: {required: [level, school, casting_time, range, duration, components]}
+  # Необязательный визуальный ключ. Конкретные варианты живут только в клиентском VISUAL_VARIANTS.
+  # Сервер проверяет семейство item, но не дублирует список всех SVG-пресетов.
   item_template:
     required: [category, price]
     properties:
-      visual_key: {type: string}
+      visual_key: {type: string, pattern: "^item:[a-z][a-z0-9_-]*$"}
   loot_table: {required: [dice, rows]}
   price_index: {required: [rules]}
   creature_template: {required: [cr]}

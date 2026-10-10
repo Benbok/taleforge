@@ -13,6 +13,7 @@ items:
     tags: [stimulant, healing]
     srd_ref: {type: item, name: Potion of Healing}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -27,6 +28,7 @@ items:
     tags: [stimulant, healing]
     srd_ref: {type: item, name: Potion of Greater Healing}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -41,6 +43,7 @@ items:
     tags: [stimulant, strength]
     srd_ref: {type: item, name: Potion of Hill Giant Strength}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -55,6 +58,7 @@ items:
     tags: [stimulant, climbing, darkvision]
     srd_ref: {type: item, name: Potion of Climbing}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -72,6 +76,7 @@ items:
     tags: [stimulant, speed]
     srd_ref: {type: item, name: Potion of Speed}
     category: consumable
+    visual_key: item:potion
     source: blood
     injection: true
     price: {fk: null, for_sale: false}
@@ -87,6 +92,7 @@ items:
     tags: [stimulant, cordon]
     srd_ref: {type: item, name: Potion of Heroism}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -105,6 +111,7 @@ items:
     tags: [stimulant, resistance]
     srd_ref: {type: item, name: Potion of Resistance}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -122,6 +129,7 @@ items:
     tags: [stimulant, breathing]
     srd_ref: {type: item, name: Potion of Water Breathing}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -136,6 +144,7 @@ items:
     tags: [stimulant, healing]
     srd_ref: {type: item, name: Potion of Superior Healing}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -150,6 +159,7 @@ items:
     tags: [stimulant, strength]
     srd_ref: {type: item, name: Potion of Frost Giant Strength}
     category: consumable
+    visual_key: item:potion
     source: blood
     injection: true
     price: {fk: null, for_sale: false}
@@ -163,6 +173,7 @@ items:
     tags: [stimulant, poison, black_market]
     srd_ref: {type: item, name: Potion of Poison}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -179,6 +190,7 @@ items:
     tags: [stimulant, poison]
     srd_ref: {type: item, name: Antitoxin}
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -192,6 +204,7 @@ items:
     doc: items.md#4.1
     tags: [stimulant, exhaustion]
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     injection: true
@@ -289,6 +302,7 @@ items:
     doc: rules.md#3.3
     tags: [corruption, cure]
     category: consumable
+    visual_key: item:potion
     source: blood
     index_group: blood
     price: {fk: 25}
@@ -304,6 +318,7 @@ items:
     doc: items.md#4.2
     tags: [elixir, fear]
     category: consumable
+    visual_key: item:potion
     source: blood
     price: {fk: 10}
     weight: 0.1
@@ -317,6 +332,7 @@ items:
     doc: items.md#4.2
     tags: [elixir, mental]
     category: consumable
+    visual_key: item:potion
     source: blood
     price: {fk: 30}
     weight: 0.1
@@ -331,6 +347,7 @@ items:
     doc: items.md#4.2
     tags: [elixir, alteration]
     category: consumable
+    visual_key: item:potion
     source: blood
     price: {fk: 25}
     weight: 0.5
@@ -345,6 +362,7 @@ items:
     doc: items.md#4.2
     tags: [elixir, stealth]
     category: consumable
+    visual_key: item:potion
     source: blood
     price: {fk: 20}
     weight: 0.5
@@ -359,6 +377,7 @@ items:
     doc: items.md#4.2
     tags: [elixir, fire, anti_swarm]
     category: consumable
+    visual_key: item:potion
     source: blood
     price: {fk: 10}
     weight: 1

@@ -12,6 +12,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, healing]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: common
@@ -25,6 +26,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, healing]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: common
@@ -38,6 +40,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, defense]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: common
@@ -51,6 +54,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, attack]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: common
@@ -64,6 +68,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, utility]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: common
@@ -77,6 +82,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, movement]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: uncommon
@@ -90,6 +96,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, healing]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: uncommon
@@ -103,6 +110,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, attack]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: uncommon
@@ -116,6 +124,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, healing]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: rare
@@ -129,6 +138,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, attack]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: rare
@@ -142,6 +152,7 @@ items:
     doc: items.md#1.4
     tags: [liquor, scroll, formula, utility]
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: rare

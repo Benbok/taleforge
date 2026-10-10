@@ -12,6 +12,7 @@ items:
     tags: [srd_reskin, weapon, liquor]
     srd_ref: {type: item, name: "Weapon, +1"}
     category: weapon
+    visual_key: item:weapon
     source: liquor
     rarity: uncommon
     price: {fk: 500}
@@ -23,6 +24,7 @@ items:
     tags: [srd_reskin, weapon, liquor]
     srd_ref: {type: item, name: "Weapon, +2"}
     category: weapon
+    visual_key: item:weapon
     source: liquor
     rarity: rare
     price: {fk: 4000}
@@ -34,6 +36,7 @@ items:
     tags: [srd_reskin, weapon, liquor]
     srd_ref: {type: item, name: "Weapon, +3"}
     category: weapon
+    visual_key: item:weapon
     source: liquor
     rarity: very_rare
     price: {fk: 20000, for_sale: contract_or_loot}
@@ -256,6 +259,7 @@ items:
     tags: [srd_reskin, liquor, weapon]
     srd_ref: {type: item, name: Holy Avenger}
     category: weapon
+    visual_key: item:weapon
     source: liquor
     rarity: legendary
     attunement: true
@@ -271,6 +275,7 @@ items:
     tags: [srd_reskin, liquor, scroll]
     srd_ref: {type: item, name: Spell Scroll}
     category: consumable
+    visual_key: item:scroll
     source: liquor
     index_group: liquor
     rarity: by_level

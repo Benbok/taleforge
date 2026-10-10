@@ -159,6 +159,28 @@ def test_item_template_visual_key_survives_place_pickup_drop_and_stacks(client, 
     assert next(x for x in state["scene_view"] if x["id"] == dropped_id)["visual_key"] == "item:potion"
 
 
+def test_refilling_item_stack_keeps_explicit_visual_key(client, admin, settings):
+    import_base(settings)
+    c, (player,), _ = party(client, admin)
+    cid = c["id"]
+
+    async def setup(ctx):
+        await _ok(ctx, "create_location", {"name": "Аптека", "make_current": True})
+        args = {"item_template_id": "item.potion_of_healing", "reason": "находка"}
+        first = await _ok(ctx, "place_item", args)
+        entity = ctx.world.entities[first["entity_id"]]
+        entity.state = {**entity.state, "visual_key": "item:scroll"}
+        second = await _ok(ctx, "place_item", args)
+        assert second["entity_id"] == first["entity_id"]
+        assert entity.state["qty"] == 2
+        return first["entity_id"]
+
+    item_id = _play(settings, cid, setup)
+    state = _map(client, player, cid)
+    assert next(x for x in state["around"] if x["id"] == item_id)["visual_key"] == "item:scroll"
+    assert next(x for x in state["scene_view"] if x["id"] == item_id)["visual_key"] == "item:scroll"
+
+
 def test_item_template_without_visual_key_uses_current_fallback(client, admin, settings):
     import_base(settings)
     c, (player,), _ = party(client, admin)

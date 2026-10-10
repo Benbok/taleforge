@@ -338,6 +338,8 @@ async def _put_in_scene(
     ``place`` — место, где он ляжет; по умолчанию основное место сцены. ``cell`` — точная клетка (от строя)."""
     rec = ctx.world.catalog.find(template_id, "item_template")
     name = display_name or (rec.name if rec else template_id)
+    # Внешний вид задаёт шаблон, не имя вещи и не LLM; неизвестный клиенту ключ
+    # безопасно отображается стандартным пресетом предмета.
     key = rec.data.get("visual_key") if rec else None
     visual_key = key if isinstance(key, str) and key else None
     place = place or ctx.world.home()
@@ -346,10 +348,10 @@ async def _put_in_scene(
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
         same = en.template_id == template_id and st.get("display_name") == display_name and here
         if is_scene_item(en) and same:
-            merged = {**st, "qty": int(st.get("qty") or 1) + qty}
-            if visual_key is not None:
-                merged["visual_key"] = visual_key
-            en.state = merged
+            # Прежние стопки без визуального ключа получают его при пополнении.
+            # Явный ключ уже существующего объекта не перезаписываем.
+            visual = {"visual_key": visual_key} if visual_key and "visual_key" not in st else {}
+            en.state = {**st, "qty": int(st.get("qty") or 1) + qty, **visual}
             return en, [{"table": "entities", "id": en.id, "field": "state", "before": st}]
     en = Entity(
         campaign_id=ctx.campaign.id,
