@@ -371,9 +371,7 @@ def test_rejected_opening_spell_preserves_caster_turn(wizard_game):
 
     async def fn(ctx):
         goblin = await _fight(ctx, wizard, "creature.goblin", zone="melee", first="hero")
-        combat.queue_opening_spell(
-            ctx, {"caster_id": wizard, "spell_id": "spell.detect_magic", "target_ids": [goblin]}
-        )
+        combat.queue_opening_spell(ctx, {"caster_id": wizard, "spell_id": "spell.detect_magic", "target_ids": [goblin]})
         notes = await combat.run_until_hero(ctx, "invalid-spell")
         assert not combat.state(ctx).get("opening_spells")
         assert combat.current_id(ctx) == wizard
