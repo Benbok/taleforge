@@ -46,7 +46,11 @@ def _targets_hostile_with_spell(ctx: ToolContext, args: dict) -> bool:
     from app.core.spells import spell_catalog
 
     caster_id = args.get("caster_id")
-    spell = spell_catalog(ctx.world.catalog).spells.get(args.get("spell_id") or "")
+    spell_id = args.get("spell_id")
+    target_ids = args.get("target_ids")
+    if not isinstance(caster_id, str) or not isinstance(spell_id, str) or not isinstance(target_ids, list):
+        return False
+    spell = spell_catalog(ctx.world.catalog).spells.get(spell_id)
     if (
         caster_id not in ctx.world.characters
         or not spell
@@ -54,7 +58,9 @@ def _targets_hostile_with_spell(ctx: ToolContext, args: dict) -> bool:
         or not any(spell.get(k) for k in ("attack", "save", "damage", "auto_hit"))
     ):
         return False
-    for target_id in args.get("target_ids") or []:
+    for target_id in target_ids:
+        if not isinstance(target_id, str):
+            continue
         target = ctx.world.entities.get(target_id)
         if (
             target is not None
