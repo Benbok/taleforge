@@ -262,6 +262,7 @@ def book_map(
     heroes: list[tuple[Any, str | None, dict]],
     shown: set[str] | None,
     mine: str | None,
+    scene_tokens: list[dict] | None = None,
 ) -> dict | None:
     """Карта места модуля, где стоит отряд: картинка из книги, номера комнат и значки героев.
 
@@ -320,6 +321,25 @@ def book_map(
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )
+    # Тот же набор видимых маркеров, что и во «Вокруг»: никаких
+    # отдельных запросов сущностей или самостоятельных правил доступа.
+    if here_number in numbers and scene_tokens is not None:
+        mark = next(m for m in mp["marks"] if str(m.get("number")) == here_number)
+        existing = {t["id"] for t in tokens}
+        extras = [t for t in scene_tokens if t["id"] not in existing]
+        if extras:
+            positions = [
+                (t["id"], *Pos(t.get("zone"), t.get("bearing")).xy(None))
+                for t in extras
+            ]
+            spots = _token_spots(grid, mark, positions)
+            for t in extras:
+                x, y = spots[t["id"]]
+                tokens.append({
+                    "id": t["id"], "name": t["name"], "mine": False,
+                    "room": here_number, "x": x, "y": y,
+                    "down": t.get("down", False), "type": t["type"],
+                })
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
