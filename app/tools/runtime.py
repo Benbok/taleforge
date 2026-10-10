@@ -15,6 +15,7 @@ from app.core import audio, combat, rolls
 from app.core.campaigns import master_seat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
+from app.core.scene_view import VisibleScene, visible_scene
 from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
 from app.db.models import Campaign, Entity, Message
 from app.gateway.events import envelope, publish_message
@@ -119,18 +120,30 @@ def public_entity(e: Entity) -> dict[str, Any]:
     return item
 
 
-def scene_public(world: World, place: str | None = None) -> dict[str, Any]:
-    """Сцена, как её видят игроки: имена, зоны и примерное состояние, без чисел существ (раздел 10). ``place`` —
-    место группы разделившегося отряда: её герои видят только своё окружение."""
-    loc = world.entities.get(place or world.home() or "")
-    ents = [public_entity(e) for e in world.in_scene_entities(place)]
-    split = party_public(world.groups(), world.entities, place)
+def scene_payload(scene, entities: dict, characters: dict, view: VisibleScene) -> dict[str, Any]:
+    """Единая сериализация видимой сцены для первичного снимка и обновлений."""
+    loc = entities.get(view.current_location_id or "")
+    here = view.current_location_id if len(view.place_ids) == 1 else None
+    split = party_public(view.groups, entities, here)
     return {
         **({"party": split} if split else {}),
         "location": {"id": loc.id, "name": loc.name} if loc else None,
-        "entities": ents,
-        **combat_public(world.scene, world.characters, world.entities, place, len(world.groups()) > 1),
+        "entities": [public_entity(e) for e in view.entities],
+        **combat_public(scene, characters, entities, here, len(view.groups) > 1),
     }
+
+
+def scene_public(
+    world: World, place: str | None = None, *, hero_id: str | None = None, is_master: bool = False
+) -> dict[str, Any]:
+    """Сцена из текущего мира по тем же правилам, что и карта и повторное подключение."""
+    if place is not None and hero_id is None:
+        hero_id = next(
+            (h.id for h in world.characters.values() if world.place_of(h) == place and h.status in ("approved", "active")),
+            None,
+        )
+    view = visible_scene(world.scene, world.entities, world.characters, hero_id=hero_id, is_master=is_master)
+    return scene_payload(world.scene, world.entities, world.characters, view)
 
 
 def combat_public(scene, characters: dict, entities: dict, place: str | None, split: bool) -> dict[str, Any]:
@@ -168,22 +181,30 @@ def party_public(groups: dict, entities: dict, place: str | None) -> list[dict[s
 
 
 def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
-    """Кому какую сцену отправить. Отряд вместе — одна сцена всем. Разделился — каждой группе своё место, а мастеру
-    и местам без героя на этом месте — все места сразу."""
-    groups = world.groups()
-    if len(groups) <= 1:
+    """Персональные сцены группируются по одинаковому содержимому, без утечки скрытого мастеру/игрокам."""
+    import json
+
+    seats = world.campaign.seats
+    if not seats:
         return [(None, scene_public(world))]
-    out: list[tuple[list[str] | None, dict[str, Any]]] = []
-    placed: set[str] = set()
-    for place, heroes in groups.items():
-        seats = [h.seat_id for h in heroes if h.seat_id]
-        placed.update(seats)
-        if seats:
-            out.append((seats, scene_public(world, place)))
-    rest = [s.id for s in world.campaign.seats if s.id not in placed]
-    if rest:
-        out.insert(0, (rest, scene_public(world)))
-    return out
+    playable = {ch.seat_id: ch.id for ch in world.characters.values() if ch.seat_id and ch.status in ("approved", "active")}
+    out: dict[str, tuple[list[str], dict[str, Any]]] = {}
+    for seat in seats:
+        master = seat.role == "master"
+        view = visible_scene(
+            world.scene, world.entities, world.characters,
+            hero_id=None if master else playable.get(seat.id), is_master=master,
+        )
+        payload = scene_payload(world.scene, world.entities, world.characters, view)
+        key = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+        if key in out:
+            out[key][0].append(seat.id)
+        else:
+            out[key] = ([seat.id], payload)
+    if len(out) == 1:
+        only = next(iter(out.values()))
+        return [(None, only[1])]
+    return list(out.values())
 
 
 async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names: dict[str, str] | None = None):
