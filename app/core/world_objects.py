@@ -80,3 +80,35 @@ def read_world_object(entity: Entity) -> WorldObjectView:
         visual_key=visual_key,
         metadata=copy.deepcopy(raw),
     )
+
+
+def container_parent(entity: Entity) -> str | None:
+    """Stored objects are never public floor objects, even if location_id is set."""
+    state = entity.state if isinstance(entity.state, dict) else {}
+    raw = state.get("world_object")
+    if not isinstance(raw, dict):
+        return None
+    return raw.get("container_id") if isinstance(raw.get("container_id"), str) else None
+
+
+def is_nested(entity: Entity) -> bool:
+    return container_parent(entity) is not None
+
+
+def container_chain(entity: Entity, entities: dict[str, Entity]) -> list[Entity]:
+    """Ancestors with cycle/campaign checks; fail closed for corrupted legacy JSON."""
+    chain: list[Entity] = []
+    seen = {entity.id}
+    current = entity
+    while parent_id := container_parent(current):
+        if parent_id in seen:
+            raise ValueError("обнаружен цикл вложенности объектов")
+        seen.add(parent_id)
+        parent = entities.get(parent_id)
+        if parent is None or parent.campaign_id != entity.campaign_id:
+            raise ValueError("контейнер отсутствует или принадлежит другой кампании")
+        if read_world_object(parent).role != "container":
+            raise ValueError("родитель не является контейнером")
+        chain.append(parent)
+        current = parent
+    return chain

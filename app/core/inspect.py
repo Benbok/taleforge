@@ -30,6 +30,7 @@ from app.core.campaigns import Viewer
 from app.core.characters import public_view
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
 from app.core.world import get_scene
+from app.core.world_objects import container_parent
 from app.db.models import Character, Entity, Knowledge, KnownFact, Message
 
 LEVELS = {0: "видел", 1: "наслышан", 2: "изучил", 3: "знает всё"}
@@ -85,6 +86,21 @@ async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> int | N
         row = await session.get(Knowledge, (hero.id, e.id))
         if row is not None:
             return row.level
+    # Nested objects are not visible simply because their effective room matches the hero.
+    # They only become directly inspectable after every containing box is opened.
+    seen = {e.id}
+    parent_id = container_parent(e)
+    while parent_id:
+        if parent_id in seen:
+            return None
+        seen.add(parent_id)
+        container = await session.get(Entity, parent_id)
+        if container is None or container.campaign_id != viewer.campaign.id:
+            return None
+        state = (container.state or {}).get("world_object") or {}
+        if not state.get("access", {}).get("open"):
+            return None
+        parent_id = container_parent(container)
     scene = await get_scene(session, viewer.campaign.id)
     spot = (hero.location_id if hero is not None else None) or scene.location_id  # своё место героя
     here = spot and (e.id == spot or e.location_id == spot)

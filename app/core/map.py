@@ -28,6 +28,7 @@ from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
+from app.core.world_objects import is_nested
 from app.db.models import Character, Entity, Knowledge, Message
 
 BEARINGS = ("n", "ne", "e", "se", "s", "sw", "w", "nw")
@@ -174,7 +175,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     areas: list[dict] = []
     if here is not None:
         for e in ents:
-            if e.kind == "location" or e.location_id != here.id:
+            if e.kind == "location" or e.location_id != here.id or is_nested(e):
                 continue
             st = e.state or {}
             if not master and (st.get("hidden") or st.get("secret")):

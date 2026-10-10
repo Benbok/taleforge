@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView, Entry
+from app.core.world_objects import is_nested
 from app.db.models import ActiveEffect, Campaign, CampaignSecret, Character, Entity, InventoryItem, Scene
 from app.rules.base import DeathSaves, HitPoints
 from app.rules.dnd5e import features as cf
@@ -403,8 +404,10 @@ class World:
         """Сущности рядом с героями: в месте ``place`` или во всех местах, где стоят герои отряда."""
         places = [place] if place else self.scene_places()
         if not places:
-            return [e for e in self.entities.values() if e.kind != "location"]
-        return [e for e in self.entities.values() if e.kind != "location" and e.location_id in places]
+            return [e for e in self.entities.values() if e.kind != "location" and not is_nested(e)]
+        return [
+            e for e in self.entities.values() if e.kind != "location" and e.location_id in places and not is_nested(e)
+        ]
 
     def fighting_here(self) -> bool:
         """Идёт бой, и он касается группы хода: в очереди инициативы есть кто-то из её места."""
