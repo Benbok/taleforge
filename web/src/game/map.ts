@@ -3,6 +3,7 @@
 // после каждого хода мастера (scene.updated).
 import { create } from "zustand";
 import type { EntityType, Envelope } from "../lib/types";
+import type { MapState as GeneratedMapState } from "../lib/api.gen";
 import { useGame } from "../stores/game";
 
 export type Zone = "melee" | "near" | "far";
@@ -152,20 +153,7 @@ export interface SceneTokenView {
   cell?: [number, number] | null;
 }
 
-export interface MapState {
-  scene_view?: SceneTokenView[];
-  book?: MapBook | null;
-  sketch?: Sketch | null;
-  here: { id: string; name: string; description: string | null } | null;
-  around: MapThing[];
-  party?: MapHero[];
-  areas?: MapArea[];
-  mode?: "free" | "combat";
-  exits: MapExit[];
-  places: MapPlace[];
-  links: { a: string; b: string; label: string | null }[];
-  bearings: Record<Bearing, string>;
-}
+export type MapState = GeneratedMapState;
 
 type Tab = "around" | "places" | "book";
 
@@ -271,8 +259,7 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
 export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
-  // схему места сервер пока не описывает в контракте (MapState в app/gateway/protocol.py открыт): форма — здесь
-  if (e.type === "map.state") w.receive(e.payload as unknown as MapState);
+  if (e.type === "map.state") w.receive(e.payload);
   else if (e.type === "map.step.result") w.stepResult(e.payload);
   else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
