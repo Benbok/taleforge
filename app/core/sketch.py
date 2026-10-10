@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.db.models import new_id
+
 SHAPES = {
     "room": "помещение",
     "corridor": "коридор",
@@ -65,7 +67,25 @@ def check(sk: dict, place_ids: set[str]) -> list[str]:
             errors.append(f"стена ({c}, {r}) за пределами места {cols}×{rows}")
         walls.add((c, r))
     taken: dict[tuple[int, int], str] = {}
+    feature_ids: set[str] = set()
+    entity_ids: set[str] = set()
     for f in sk.get("features") or []:
+        feature_id = f.get("id")
+        entity_id = f.get("entity_id")
+        if feature_id is not None:
+            if not isinstance(feature_id, str) or not feature_id:
+                errors.append("id детали должен быть непустой строкой")
+            elif feature_id in feature_ids:
+                errors.append(f"дублирующийся id детали: {feature_id}")
+            else:
+                feature_ids.add(feature_id)
+        if entity_id is not None:
+            if not isinstance(entity_id, str) or not entity_id:
+                errors.append(f"«{f['name']}»: entity_id должен быть непустой строкой")
+            elif entity_id in entity_ids:
+                errors.append(f"сущность {entity_id} уже привязана к другой детали")
+            else:
+                entity_ids.add(entity_id)
         for c0, r0, c1, r1 in f["cells"]:
             if c1 < c0 or r1 < r0:
                 errors.append(f"«{f['name']}»: клетки [c0, r0, c1, r1] — от северо-западного угла к юго-восточному")
@@ -138,6 +158,80 @@ def for_viewer(sk: dict, master: bool, visible_places: set[str]) -> dict:
         for x in sk.get("unplaced_exits") or []
         if master or not x.get("hidden")
     ]
+    return out
+
+
+def with_feature_ids(sk: dict) -> dict:
+    """Новые features получают стабильный ID; старые декоративные записи не изменяются при чтении."""
+    return {
+        **sk,
+        "features": [{**f, "id": f.get("id") or new_id("sf")} for f in sk.get("features") or []],
+    }
+
+
+def linked_entity_ids(sk: dict | None) -> set[str]:
+    """Связанные сущности отображаются графическим feature вместо дублирующего токена."""
+    return {
+        f["entity_id"]
+        for f in (sk or {}).get("features") or []
+        if isinstance(f.get("entity_id"), str) and f["entity_id"]
+    }
+
+
+def physical_geometry(sk: dict | None, entities: dict[str, Any], location_id: str | None) -> dict | None:
+    """A removed/carried object must not leave a phantom blocking feature."""
+    if not sk or location_id is None:
+        return sk
+    from app.core.world_objects import is_nested
+
+    features = []
+    for feature in sk.get("features") or []:
+        ref = feature.get("entity_id")
+        if ref:
+            entity = entities.get(ref)
+            if (
+                entity is None
+                or entity.kind != "object"
+                or entity.location_id != location_id
+                or is_nested(entity)
+                or (entity.state or {}).get("world_object", {}).get("physical") == "destroyed"
+            ):
+                continue
+        features.append(feature)
+    return {**sk, "features": features}
+
+
+def project_for_viewer(
+    sk: dict,
+    master: bool,
+    visible_places: set[str],
+    entities: dict[str, Any],
+    location_id: str,
+) -> dict:
+    """Единая проверка физического состояния, видимости и связи с реестром на стороне сервера."""
+    from app.core.inspect import entity_type
+    from app.core.world_objects import is_nested
+
+    out = for_viewer(sk, master, visible_places)
+    features = []
+    for feature in out["features"]:
+        f = dict(feature)
+        eid = f.get("entity_id")
+        if eid:
+            entity = entities.get(eid)
+            if entity is None or entity.kind != "object" or entity.location_id != location_id or is_nested(entity):
+                continue
+            st = entity.state or {}
+            if st.get("world_object", {}).get("physical") == "destroyed":
+                continue
+            if not master and (st.get("hidden") or st.get("secret")):
+                continue
+            f["name"] = entity.name
+            f["entity_type"] = entity_type(entity)
+            f["visual_key"] = st.get("visual_key") if isinstance(st.get("visual_key"), str) else None
+        features.append(f)
+    out["features"] = features
+    out["edit_rev"] = int(sk.get("edit_rev") or 0)
     return out
 
 

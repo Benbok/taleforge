@@ -5831,6 +5831,18 @@
       "title": "Cols",
       "type": "integer"
      },
+     "edit_rev": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Edit Rev"
+     },
      "exits": {
       "items": {
        "$ref": "#/components/schemas/MapSketchExit"
@@ -6011,10 +6023,46 @@
       "default": null,
       "title": "Cover"
      },
+     "entity_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Entity Id"
+     },
+     "entity_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Entity Type"
+     },
      "hidden": {
       "default": false,
       "title": "Hidden",
       "type": "boolean"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Id"
      },
      "kind": {
       "title": "Kind",
@@ -6023,6 +6071,18 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "visual_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Visual Key"
      }
     },
     "required": [

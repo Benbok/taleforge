@@ -282,7 +282,17 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                         "visited": passage.target_id in visited,
                     }
                 )
-    # Единый, уже отфильтрованный для зрителя список маркеров сцены.
+    # Linked secret geometry must not reveal an entity through around or book tokens.
+    saved_sketch = (here.state or {}).get("sketch") if here is not None else None
+    hidden_linked = {
+        feature["entity_id"]
+        for feature in (saved_sketch or {}).get("features") or []
+        if feature.get("hidden") and isinstance(feature.get("entity_id"), str)
+    }
+    if not master and hidden_linked:
+        around = [item for item in around if item["id"] not in hidden_linked]
+
+    # The book receives unmodified scene tokens; Around renders bound Entity as a sketch feature.
     scene_view = [
         {
             "id": h["id"],
@@ -332,9 +342,14 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         sk = sketch.of_place(here, catalog, places)
     else:
         sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
+    projected_sketch = (
+        sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
+    )
+    linked = sketch.linked_entity_ids(projected_sketch)
+    scene_view = [token for token in scene_view if token["id"] not in linked]
     return {
         "book": book,
-        "sketch": sketch.for_viewer(sk, master, shown) if sk else None,
+        "sketch": projected_sketch,
         "here": {
             "id": here.id,
             "name": here.name,

@@ -193,15 +193,31 @@ function SketchLayer({
           const h = (r1 - r0 + 1) * CELL;
           const cells: [number, number][] = [];
           for (const [a0, b0, a1, b1] of ft.cells) for (let c = a0; c <= a1; c++) for (let r = b0; r <= b1; r++) cells.push([c - f.dc, r - f.dr]);
+          const appearance = ft.entity_id
+            ? entityVisual(ft.entity_type ?? "item", ft.visual_key)
+            : FEATURE_VISUALS[ft.kind];
           return (
-            <g key={`${i}-${j}`} className="cursor-pointer" role="button" aria-label={ft.name} onClick={() => onPick({ name: ft.name, near: cells })}>
+            <g
+              key={`${ft.id ?? i}-${j}`}
+              className="cursor-pointer"
+              role="button"
+              aria-label={ft.name}
+              onClick={(event) => {
+                onPick({
+                  name: ft.name,
+                  near: cells,
+                  ...(ft.entity_id ? { items: [{ id: ft.entity_id, name: ft.name }] } : {}),
+                });
+                if (ft.entity_id) onOpen(ft.entity_id, ft.name)(event);
+              }}
+            >
               <title>{ft.name}</title>
-              <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_VISUALS[ft.kind].color} fillOpacity={0.17} stroke={FEATURE_VISUALS[ft.kind].color} strokeWidth={1} />
+              <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={appearance.color} fillOpacity={0.17} stroke={appearance.color} strokeWidth={1} />
               {j === 0 && (
-                <MapGlyph name={FEATURE_VISUALS[ft.kind].glyph}
+                <MapGlyph name={appearance.glyph}
                   x={p.x + 3} y={p.y + (h - Math.min(CELL - 6, 10)) / 2}
                   width={Math.min(CELL - 6, 10)} height={Math.min(CELL - 6, 10)}
-                  color={FEATURE_VISUALS[ft.kind].color} className="pointer-events-none" />
+                  color={appearance.color} className="pointer-events-none" />
               )}
               {j === 0 && w >= CELL * 2 && (
                 <text
@@ -404,7 +420,11 @@ export function UnlocatedExitStrip({ m }: { m: MapState }) {
 
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
-  const { things, exits, heroes, areas } = layoutGrid(m);
+  const { things: allThings, exits, heroes, areas } = layoutGrid(m);
+  // Geometry-backed entities already render as interactive sketch features.
+  // Keep them in around for narrative/interaction, not as overlapping SVG tokens.
+  const linked = new Set(m.sketch?.features.map((f) => f.entity_id).filter(Boolean) ?? []);
+  const things = allThings.filter((x) => !linked.has(x.item.id));
   const [pick, setPick] = useState<Pick | null>(null);
   const isSelected = (c: number, r: number) => pick?.near?.some(([col, row]) => col === c && row === r) ?? false;
   const { step, stepTo, cancelStep } = useMapWindow();
