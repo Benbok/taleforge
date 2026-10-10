@@ -140,8 +140,7 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
 
 
-
-@pytest.mark.parametrize(
+@pytest.mark.parametrize
     "scenery",
     ["Два больших гроба встроены в северную и южную стены.", None],
 )
