@@ -9,12 +9,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agents.llm import ScriptedLLM
-from app.content import load_pack
 from app.content.catalog import load_catalog
 from app.core import modules
 from app.db.models import LlmCall
 from app.main import create_app
-from tests.game import QueueDice, import_base, ok, run
+from tests.game import BASE_VERSION, QueueDice, import_base, ok, run
 from tests.module_sample import sample
 from tests.test_api import login
 
@@ -233,8 +232,7 @@ def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod
     assert all(p["id"] != "module-unquiet-dead" for p in ok(client.get("/api/packs", headers=admin_m)))
 
     async def catalog(s):
-        base_version = load_pack(ROOT / "dnd5e-srd")[0].manifest.version
-        cat = (await load_catalog(s, [["dnd5e-srd", base_version], ["module-unquiet-dead", "1.0.0"]])).view(False)
+        cat = (await load_catalog(s, [["dnd5e-srd", BASE_VERSION], ["module-unquiet-dead", "1.0.0"]])).view(False)
         statue = cat.get("creature.temple_statue")
         adv = cat.get("adventure.unquiet_dead", "adventure")
         return statue.data, adv.data
