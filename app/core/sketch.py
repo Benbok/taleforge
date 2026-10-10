@@ -113,6 +113,9 @@ def describe(sk: dict) -> str:
     ]
     if exits:
         parts.append("выходы: " + "; ".join(exits))
+    unplaced = [x["name"] for x in sk.get("unplaced_exits") or []]
+    if unplaced:
+        parts.append("выходы без точных координат на карте: " + "; ".join(unplaced))
     feats = [
         f"{f['name']} {f['cells'][0][:2]}" + (" (тайное)" if f.get("hidden") else "") for f in sk.get("features") or []
     ]
@@ -130,28 +133,24 @@ def for_viewer(sk: dict, master: bool, visible_places: set[str]) -> dict:
         if master or not x.get("hidden")
     ]
     out["features"] = [f for f in sk.get("features") or [] if master or not f.get("hidden")]
+    out["unplaced_exits"] = [
+        {**x, "to": x.get("to") if master or x.get("to") in visible_places else None}
+        for x in sk.get("unplaced_exits") or []
+        if master or not x.get("hidden")
+    ]
     return out
 
 
 # --- комната готового приключения: эскиз по карте книги ---
 
 
-def _side_toward(box: tuple[int, int, int, int], x: float, y: float) -> tuple[str, int]:
-    """Сторона комнаты (и клетка на ней), обращённая к точке (x, y) в клетках сетки книги."""
-    c0, r0, c1, r1 = box
-    cx, cy = (c0 + c1) / 2, (r0 + r1) / 2
-    dx, dy = x - cx, y - cy
-    if abs(dx) >= abs(dy):
-        side = "e" if dx > 0 else "w"
-        at = round(min(max(y, r0), r1)) - r0
-    else:
-        side = "s" if dy > 0 else "n"
-        at = round(min(max(x, c0), c1)) - c0
-    return side, at
+def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, str]]) -> dict | None:
+    """Геометрия комнаты из книги: двери только на подтверждённых клетках.
 
-
-def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, dict]]) -> dict | None:
-    """Эскиз комнаты по её клеткам на карте книги. ``neighbours`` — (имя, id места или None, отметка соседа)."""
+    neighbours: (публичное имя, entity_id если создана, book room id).
+    Отсутствие координат НЕ делает проход несуществующим: он остаётся
+    текстовым выходом, не подменяемым выдуманной дверью на эскизе.
+    """
     floor = set()
     for c0, r0, c1, r1 in mark.get("cells") or []:
         floor |= {(c, r) for c in range(c0, c1 + 1) for r in range(r0, r1 + 1)}
@@ -166,23 +165,32 @@ def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, di
         for c in range(c0, c1 + 1)
         if (c, r) not in floor or (c, r) in blocked
     ][:MAX_WALLS]
-    free = [(c, r) for c, r in sorted(floor, key=lambda p: (p[1], p[0])) if (c, r) not in blocked]
-    if not free:
-        return None
     from app.core.modules import room_anchor
 
-    pc, pr = room_anchor(mark)  # те же координаты опорной клетки, что на карте книги
-    cw = (grid["right"] - grid["left"]) / grid["cols"]
-    ch = (grid["bottom"] - grid["top"]) / grid["rows"]
-    exits, used = [], set()
-    for name, to, other in neighbours[:MAX_EXITS]:
-        x, y = (other["x"] - grid["left"]) / cw - 0.5, (other["y"] - grid["top"]) / ch - 0.5
-        side, at = _side_toward(box, x, y)
-        n = (c1 - c0 + 1) if side in ("n", "s") else (r1 - r0 + 1)
-        while (side, at) in used and at < n - 1:
-            at += 1
-        used.add((side, at))
-        exits.append({"side": side, "at": at, "kind": "passage", "state": "open", "name": name, "to": to})
+    anchor = room_anchor(mark)
+    if anchor is None:
+        return None
+    pc, pr = anchor
+    marked = {x["to"]: x for x in mark.get("passages") or []}
+    exits, unplaced = [], []
+    for name, to, rid in neighbours:
+        portal = marked.get(rid)
+        if portal is None:
+            unplaced.append({"name": name, "to": to})
+            continue
+        c, r = portal["cell"]
+        side = portal["side"]
+        at = c - c0 if side in ("n", "s") else r - r0
+        exits.append(
+            {
+                "side": side,
+                "at": at,
+                "kind": portal.get("kind") or "passage",
+                "state": "open",
+                "name": name,
+                "to": to,
+            }
+        )
     return {
         "shape": "room",
         "cols": c1 - c0 + 1,
@@ -190,6 +198,7 @@ def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, di
         "party": [pc - c0, pr - r0],
         "walls": walls,
         "exits": exits,
+        "unplaced_exits": unplaced,
         "features": [],
         "book": True,
     }
@@ -218,12 +227,11 @@ def book_sketch(room: Any, catalog: Any, entities: dict) -> dict | None:
     neighbours = []
     for rid in room_data.get("exits") or []:
         other = adventure.find_room(rec, rid)
-        om = marks.get(str((other or {}).get("number")))
-        if other is None or om is None:
+        if other is None:
             continue
         there = adventure.room_entity(entities, place, rid) if place is not None else None
         name = f"Комната {other['number']}" if other.get("number") else str(other.get("name"))
-        neighbours.append((name, there.id if there is not None else None, om))
+        neighbours.append((name, there.id if there is not None else None, rid))
     return from_book(mark, mp["grid"], neighbours)
 
 
