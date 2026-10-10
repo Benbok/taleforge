@@ -35,7 +35,11 @@ def approach_attack(intent: dict[str, Any] | None) -> dict[str, str] | None:
         or (move.get("zone") != "melee" and move.get("target_id") != target_id)
     ):
         return None
-    return {"attacker_id": hero_id, "target_id": target_id, "attack": weapon_id}
+    plan = {"attacker_id": hero_id, "target_id": target_id, "attack": weapon_id}
+    for feature in ("reckless", "stunning_strike"):
+        if attack.get(feature):
+            plan[feature] = True
+    return plan
 
 
 def hostile_target(ctx: ToolContext, plan: dict[str, str]) -> bool:
