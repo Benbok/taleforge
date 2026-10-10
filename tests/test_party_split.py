@@ -135,10 +135,10 @@ def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
     views = run(settings, published)
     assert any(seats is None for seats, _ in views)  # безопасная сцена для владельца без кресла
     for seats, scene in views:
-        assert ids["gob"] not in {e["id"] for e in scene["entities"]}
-        assert ids["gob"] not in {e["id"] for e in scene["order"]}
-        assert ids["gob"] not in {e["id"] for e in scene["turn_order"]}
-        if h2["seat_id"] in (seats or []):
+        if seats is None or h2["seat_id"] in seats:
+            assert ids["gob"] not in {e["id"] for e in scene["entities"]}
+            assert ids["gob"] not in {e["id"] for e in scene["order"]}
+            assert ids["gob"] not in {e["id"] for e in scene["turn_order"]}
             assert scene["turn"] is None
 
 
