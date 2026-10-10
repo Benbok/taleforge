@@ -93,8 +93,8 @@ export default function BookMap({ book, where }: { book: MapBook; where?: string
             cx={t.x * W}
             cy={t.y * H}
             size={size}
-            color="var(--tf-accent)"
-            icon="★"
+            color={t.type === "creature" ? "var(--tf-ember, #c0563a)" : t.type === "npc" ? "var(--tf-patina, #5f9e8f)" : t.type === "item" ? "var(--color-copper, #b07a4a)" : "var(--tf-accent)"}
+            icon={t.type === "creature" ? "⚔" : t.type === "npc" ? "●" : t.type === "item" ? "◆" : t.type === "landmark" ? "◈" : "★"}
             ring={t.mine}
             faded={t.down}
             onClick={(e: MouseEvent<Element>) => open(t.id, t.name, e.currentTarget as unknown as HTMLElement)}
