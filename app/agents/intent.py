@@ -37,7 +37,8 @@ VERBS = (
     "dodge",  # уклонение
     "dash",  # рывок
     "disengage",  # отход без атак по возможности
-    "grapple",  # схватить, толкнуть существо
+    "grapple",  # захват: отдельный манёвр с проверкой противодействия
+    "shove",  # толкнуть врага с места или опрокинуть его
     "rest",  # отдых
     "talk",  # говорить с NPC без проверки
     "custom",  # нестандартное: мастер отнесёт к типу действия из правил
@@ -57,6 +58,11 @@ PARSER_SYSTEM = (
     "с target_id цели и zone=melee, затем attack с тем же target_id и выбранным instrument_id. "
     "«Подхожу и творю заклинание» — сначала move с целью и zone=melee, затем cast с spell_id "
     "из книги героя и target_id цели; не переставляй cast перед move. "
+    "«Толкаю существо, чтобы сбить с ног» — verb=shove и maneuver=prone; "
+    "«отталкиваю на пять футов» — verb=shove и maneuver=push; цель обязательна. "
+    "«Хватаю и удерживаю противника» — verb=grapple; не подменяй захват проверкой со случайной Сл. "
+    "Флаги reckless и stunning_strike выставляй только когда игрок ЯВНО называет «безрассудную атаку» "
+    "или «оглушающий удар» и заявляет attack; они проверяются сервером по классу. "
     "Не подменяй перемещение атакой и не добавляй второй удар, преимущество или двойной урон из-за "
     "прыжка, хвата двумя руками или художественного описания: это не новые действия и не бонусы. "
     "kind: action — персонаж что-то делает (даже если при этом говорит); speech — только говорит, без действий; "
@@ -84,6 +90,11 @@ class IntentAction(BaseModel):
     zone: Literal["melee", "near", "far"] | None = Field(None, description="куда перемещается: вплотную/близко/далеко")
     skill: str | None = Field(None, max_length=32, description="навык, если игрок его назвал")
     manner: str = Field("", max_length=300, description="как именно: «с разбега, целясь в ноги»")
+    reckless: bool = Field(False, description="игрок явно заявил умение варвара «Безрассудная атака»")
+    stunning_strike: bool = Field(False, description="игрок явно заявил умение монаха «Оглушающий удар»")
+    maneuver: Literal["prone", "push"] | None = Field(
+        None, description="только shove: сбить с ног (prone) или оттолкнуть на 5 футов (push)"
+    )
 
 
 class Intent(BaseModel):
@@ -298,7 +309,12 @@ def routable_attack(intent: dict[str, Any] | None) -> dict[str, Any] | None:
     a = acts[0]
     if a["verb"] != "attack" or not a.get("target_id") or not a.get("instrument_id") or a.get("missing_item"):
         return None
-    return {"attacker_id": intent["character_id"], "target_id": a["target_id"], "attack": a["instrument_id"]}
+    out = {"attacker_id": intent["character_id"], "target_id": a["target_id"], "attack": a["instrument_id"]}
+    if a.get("reckless"):
+        out["reckless"] = True
+    if a.get("stunning_strike"):
+        out["stunning_strike"] = True
+    return out
 
 
 def routable_cast(intent: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -334,7 +350,6 @@ SKILL_VERB_MAP: dict[str, tuple[str, str]] = {
     "persuade": ("persuasion", "dc.medium"),
     "deceive": ("deception", "dc.medium"),
     "intimidate": ("intimidation", "dc.medium"),
-    "grapple": ("athletics", "dc.medium"),
 }
 
 
@@ -353,6 +368,12 @@ def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, An
         return None
 
     verb = a.get("verb")
+    if verb == "shove" and a.get("target_id") and a.get("maneuver") in ("prone", "push"):
+        return "resolve_shove", {
+            "attacker_id": char_id,
+            "target_id": a["target_id"],
+            "technique": a["maneuver"],
+        }
     if verb == "use_item" and a.get("instrument_id") and not a.get("missing_item"):
         args: dict[str, Any] = {
             "character_id": char_id,
