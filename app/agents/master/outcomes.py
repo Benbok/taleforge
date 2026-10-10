@@ -27,3 +27,12 @@ def public_attempts(attempts: list[dict] | None) -> str:
         outcome = "выполнен" if (entry.get("result") or {}).get("ok") else "не выполнен"
         rows.append(f"- {name}: {outcome}")
     return "\n".join(rows) or "попыток перехода или атаки нет"
+
+
+def failed_attack(attempts: list[dict] | None) -> bool:
+    """Атака считается несостоявшейся только если последняя её попытка отклонена."""
+    latest = None
+    for entry in attempts or []:
+        if entry.get("tool") == "resolve_attack":
+            latest = bool((entry.get("result") or {}).get("ok"))
+    return latest is False
