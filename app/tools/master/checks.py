@@ -16,6 +16,7 @@ from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
 from app.tools import effects as fx
+from app.tools import grapples as gp
 from app.tools.master.base import EDGE_HINT, Edge, _alive, _character, _hidden_skills, engine, snapshot
 from app.tools.registry import ToolContext, ToolError, dice_json, tool
 
@@ -438,6 +439,121 @@ def uncanny_dodge(ctx: ToolContext, tgt: Actor) -> str | None:
             return None
         combat.use_reaction(ctx, tgt.id)
     return f"{tgt.name} реакцией уходит от удара: урон вдвое меньше"
+
+
+class GrappleArgs(BaseModel):
+    attacker_id: str = Field(description="герой, который хватает существо свободной рукой вместо одного удара")
+    target_id: str = Field(description="существо, которое герой пытается удержать")
+
+
+@tool(
+    "resolve_grapple",
+    "Попытка захвата вместо одного удара: Атлетика против Атлетики/Акробатики цели. "
+    "При успехе накладывает «Схваченный» со скоростью 0 и запоминает удерживающего. "
+    "Проверяет свободную руку, размер, соседство и очередь инициативы.",
+    GrappleArgs,
+    ids={"attacker_id": "characters", "target_id": "combatants"},
+)
+async def resolve_grapple(ctx: ToolContext, a: GrappleArgs) -> dict:
+    await gp.refresh(ctx)
+    w = ctx.world
+    att, tgt = w.actor(a.attacker_id), w.actor(a.target_id)
+    if att.id == tgt.id:
+        raise ToolError("самого себя схватить нельзя")
+    _alive(att, "Хватающий")
+    _alive(tgt, "Цель")
+    if not att.conscious or mod.can_act(att.modifiers):
+        raise ToolError(f"{att.name} сейчас не может действовать")
+    if not economy.active(w, att.id):
+        raise ToolError("захват разрешён только в свой ход инициативы")
+    if w.actor_place(att.id) != w.actor_place(tgt.id) or w.distance_ft(att, tgt) > 5:
+        raise ToolError("цель должна быть в пределах 5 футов")
+    if grid.wall_between(w, att.id, tgt.id):
+        raise ToolError("через стену схватить цель нельзя")
+    if _creature_size(ctx, tgt) > _creature_size(ctx, att) + 1:
+        raise ToolError("цель больше захватывающего более чем на одну категорию")
+    if not gp.free_hand(ctx, att.id):
+        raise ToolError("для захвата нужна свободная рука: уберите оружие или щит")
+    if att.id in gp.holders(ctx, tgt.id):
+        raise ToolError("этот герой уже удерживает цель")
+
+    inv = economy.charge_attack(ctx, att.id)
+    att_mod, _ = att.ability_check_bonus("athletics")
+    skill = max(("athletics", "acrobatics"), key=lambda st: tgt.ability_check_bonus(st)[0])
+    def_mod, ability = tgt.ability_check_bonus(skill)
+    attack_mode, _ = mod.roll_mode(att.modifiers, "check", "str", "athletics")
+    defense_mode, _ = mod.roll_mode(tgt.modifiers, "check", ability, skill)
+    attack = engine.roll_d20(ctx.dice, att_mod, attack_mode)
+    defense = engine.roll_d20(ctx.dice, def_mod, defense_mode)
+    success = attack.total > defense.total
+    result = {
+        "attacker": att.name, "target": tgt.name, "success": success,
+        "attacker_total": attack.total, "defender_total": defense.total, "defender_skill": skill,
+    }
+    if success:
+        inv.extend(await gp.establish(ctx, att.id, tgt.id))
+        result["effect"] = "condition.grappled"
+    result["left"] = economy.line(w, att.id)
+    await ctx.record(
+        "resolve_grapple", actor_id=att.id, target_id=tgt.id,
+        payload=result, dice=[dice_json(attack), dice_json(defense)], inverse=inv,
+    )
+    return result
+
+
+class EscapeGrappleArgs(BaseModel):
+    character_id: str = Field(description="герой, пытающийся вырваться из захвата действием")
+    holder_id: str | None = Field(None, description="кто удерживает; обязательно, если удерживающих несколько")
+    skill: Literal["athletics", "acrobatics"] | None = Field(
+        None, description="Атлетика или Акробатика героя; по умолчанию лучшее умение"
+    )
+
+
+@tool(
+    "escape_grapple",
+    "Герой тратит действие на освобождение: его Атлетика или Акробатика против Атлетики удерживающего. "
+    "В случае успеха снимает связь захвата, при нескольких удерживающих — только выбранную.",
+    EscapeGrappleArgs,
+    ids={"character_id": "characters", "holder_id": "combatants"},
+)
+async def escape_grapple(ctx: ToolContext, a: EscapeGrappleArgs) -> dict:
+    await gp.refresh(ctx)
+    w = ctx.world
+    hero = w.actor(a.character_id)
+    if not hero.conscious or mod.can_act(hero.modifiers):
+        raise ToolError("без сознания или возможности действовать нельзя освободиться")
+    if not economy.active(w, hero.id):
+        raise ToolError("освободиться можно только в свой ход инициативы")
+    holding = gp.holders(ctx, hero.id)
+    if not holding:
+        raise ToolError("герой сейчас никем не схвачен")
+    if a.holder_id is None and len(holding) > 1:
+        raise ToolError("укажите holder_id: героя удерживают несколько существ")
+    hid = a.holder_id or holding[0]
+    if hid not in holding:
+        raise ToolError("указанное существо не удерживает героя")
+    holder = w.actor(hid)
+    skill = a.skill or max(("athletics", "acrobatics"), key=lambda st: hero.ability_check_bonus(st)[0])
+    yours, ability = hero.ability_check_bonus(skill)
+    theirs, _ = holder.ability_check_bonus("athletics")
+    own_mode, _ = mod.roll_mode(hero.modifiers, "check", ability, skill)
+    other_mode, _ = mod.roll_mode(holder.modifiers, "check", "str", "athletics")
+    inv = economy.charge(ctx, hero.id, "other")
+    roll = engine.roll_d20(ctx.dice, yours, own_mode)
+    opposed = engine.roll_d20(ctx.dice, theirs, other_mode)
+    won = roll.total > opposed.total
+    if won:
+        await gp.release(ctx, hid, hero.id, "цель вырвалась из захвата")
+    result = {
+        "character": hero.name, "holder": holder.name, "success": won, "skill": skill,
+        "total": roll.total, "holder_total": opposed.total,
+        "remaining_holders": gp.holders(ctx, hero.id), "left": economy.line(w, hero.id),
+    }
+    await ctx.record(
+        "escape_grapple", actor_id=hero.id, target_id=hid,
+        payload=result, dice=[dice_json(roll), dice_json(opposed)], inverse=inv,
+    )
+    return result
 
 
 class ShoveArgs(BaseModel):
