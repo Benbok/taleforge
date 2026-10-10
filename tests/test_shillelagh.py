@@ -1,3 +1,4 @@
+# ruff: noqa: F811 — fixture imported from test_tools
 """Shillelagh: server-side item-bound magical weapon mechanics (SRD 5.1)."""
 
 from app.core import weapon_enchantments as ench
