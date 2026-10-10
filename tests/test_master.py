@@ -178,7 +178,7 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
         DONE,
         {"text": "Бран входит в Восточную крипту; один скелет поднялся у гробницы."},
     ]
-    msg = act(game_client, p1, c["id"], "Вхожу в комнату 2.")
+    msg = act(game_client, p1, c["id"], "Осматриваю вход и жду решения мастера.")
     (turn,) = rows(settings, MasterTurn)
     calls = turn.trace["calls"]
     assert calls[0]["tool"] == "enter_room" and calls[0]["result"]["ok"] is False
