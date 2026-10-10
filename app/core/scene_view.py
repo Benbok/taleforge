@@ -42,6 +42,7 @@ def visible_scene(
         hero = None
     current, places = viewer_places(characters.values(), scene, None if is_master else hero)
     allowed = set(places)
+
     def hidden_by_sketch(e: Entity) -> bool:
         room = entities.get(e.location_id or "")
         features = ((room.state or {}).get("sketch") or {}).get("features") or [] if room is not None else []
@@ -53,10 +54,7 @@ def visible_scene(
         if e.kind != "location"
         and not is_nested(e)
         and (not allowed or e.location_id in allowed)
-        and (
-            is_master
-            or not ((e.state or {}).get("hidden") or (e.state or {}).get("secret") or hidden_by_sketch(e))
-        )
+        and (is_master or not ((e.state or {}).get("hidden") or (e.state or {}).get("secret") or hidden_by_sketch(e)))
     )
     heroes = tuple(
         ch

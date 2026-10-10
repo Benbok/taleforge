@@ -615,9 +615,7 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     current = sketch.of_place(place, w.catalog, w.entities)
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
-    revision = _verify_sketch_revision(
-        current, a.expected_revision, replacing=bool(sketch.linked_entity_ids(current))
-    )
+    revision = _verify_sketch_revision(current, a.expected_revision, replacing=bool(sketch.linked_entity_ids(current)))
     data = copy.deepcopy(current)
     exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
     note = ""

@@ -132,7 +132,7 @@ export interface SketchFeature {
 }
 
 export interface Sketch {
-  edit_rev?: number;
+  edit_rev?: number | null;
   shape: "room" | "corridor" | "cave" | "street" | "open";
   cols: number;
   rows: number;
