@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.core import economy
 from app.core import spells as book
+from app.core.weapon_enchantments import ELIGIBLE, SHILLELAGH
 from app.core.positions import COVER_AC, pos_of, wall_between
 from app.core.world import Actor, format_time
 from app.db.models import Character
@@ -99,6 +100,7 @@ class CastArgs(BaseModel):
     )
     slot_level: int | None = Field(None, ge=1, le=9, description="круг ячейки, если игрок творит выше круга заклинания")
     ritual: bool = Field(False, description="ритуалом: без ячейки, на 10 минут дольше, только вне боя")
+    weapon_id: str | None = Field(None, description="инвентарный id удерживаемой дубинки или посоха для Shillelagh")
 
 
 @tool(
@@ -106,7 +108,7 @@ class CastArgs(BaseModel):
     "Сотворение заклинания героем по правилам: ячейка, бросок атаки или спасбросок целей, урон, лечение, состояния, "
     "концентрация. Заговоры — без ячейки. Вне боя тоже: лечение, свет, опознание, ритуалы. Числа — только сервер.",
     CastArgs,
-    ids={"caster_id": "characters", "target_ids": "combatants"},
+    ids={"caster_id": "characters", "target_ids": "combatants", "weapon_id": "inventory"},
 )
 async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
     w = ctx.world
@@ -133,6 +135,26 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
     why = rules.can_cast_now(caster, rules.Choice.of(ch.sheet or {}), a.spell_id, spell, a.ritual)
     if why:
         raise ToolError(f"{act.name}: {why}")
+
+    chosen_weapon: str | None = None
+    if a.spell_id == "spell.shillelagh":
+        held = [
+            it for it in w.inventory.get(ch.id, [])
+            if it.equipped and it.item_template_id in ELIGIBLE
+        ]
+        if a.weapon_id:
+            item = next((it for it in held if it.id == a.weapon_id), None)
+            if item is None:
+                raise ToolError("Дубинка: выбранное оружие нужно держать в руках (дубинка или боевой посох)")
+        elif len(held) == 1:
+            item = held[0]
+        elif not held:
+            raise ToolError("Дубинка: сначала возьмите в руки дубинку или боевой посох (equip_item)")
+        else:
+            raise ToolError("Дубинка: выберите конкретное оружие через weapon_id")
+        chosen_weapon = item.id
+    elif a.weapon_id:
+        raise ToolError("weapon_id используется только для заклинания «Дубинка»")
 
     combat = w.in_fight(ch.id)  # бой другой части отряда не мешает
     ct = str(spell.get("casting_time"))
@@ -165,6 +187,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
         inverse=[{"table": "characters", "id": ch.id, "field": "resources", "before": res_before}, *turn_inv],
         extra={"slot": {"kind": slot_kind, "level": slot}} if slot_kind else {},
         class_tags=_class_tags(w, ch),
+        weapon_id=chosen_weapon,
     )
 
 
@@ -191,6 +214,7 @@ async def resolve(
     source: str | None = None,
     pre_dice: list | None = None,
     before_record: Any = None,
+    weapon_id: str | None = None,
 ) -> dict:
     """Общее ядро: цели, дальность, бросок, урон, лечение, эффекты, концентрация и время сотворения."""
     w = ctx.world
@@ -269,6 +293,23 @@ async def resolve(
 
     outcomes: list[dict] = []
     effects_made: list[str] = []
+    if spell["id"] == "spell.shillelagh" and isinstance(act.obj, Character):
+        if weapon_id is None:
+            raise ToolError("Дубинка: необходимо выбрать оружие, которое вы держите")
+        inverse.append(_snapshot(act))
+        caster = book.caster_for(act.obj.sheet or {}, w.catalog)
+        if caster is None:
+            raise ToolError("Дубинка: не найдена заклинательная характеристика")
+        act.obj.resources = {
+            **(act.obj.resources or {}),
+            SHILLELAGH: {
+                "inventory_id": weapon_id,
+                "ability": caster.ability,
+                "expires_at": w.scene.game_time + (spell_seconds(spell.get("duration")) or 60),
+            },
+        }
+        w.invalidate(act.id)
+        result["enchantment"] = {"weapon_id": weapon_id, "damage_die": "1d8", "magical": True}
     parts = rules.damage_parts(spell, slot or level, char_level)
     heal = rules.heal_expr(spell, slot or level, ability_mod)
     on_fail = list(spell.get("on_fail") or [])
