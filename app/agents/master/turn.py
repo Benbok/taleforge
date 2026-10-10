@@ -12,7 +12,6 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
-from app.agents.master.outcomes import TRANSITION_TOOLS, unresolved_transition
 from app.agents.master.helpers import (
     _batches,
     _heard_by,
@@ -24,6 +23,7 @@ from app.agents.master.helpers import (
     _turn_messages,
     _unsettled_fails,
 )
+from app.agents.master.outcomes import TRANSITION_TOOLS, unresolved_transition
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
