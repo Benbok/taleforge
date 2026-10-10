@@ -337,7 +337,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     else:
         sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
 
-    projected_sketch = sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
+    projected_sketch = (
+        sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
+    )
     linked = sketch.linked_entity_ids(projected_sketch)
     scene_view = [token for token in scene_view if token["id"] not in linked]
     return {

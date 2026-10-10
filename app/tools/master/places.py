@@ -474,7 +474,9 @@ class SketchArgs(BaseModel):
     exits: list[SketchExit] = Field(default_factory=list, max_length=sketch.MAX_EXITS)
     features: list[SketchFeature] = Field(default_factory=list, max_length=sketch.MAX_FEATURES)
     location_id: str | None = Field(None, description=PLACE_HINT)
-    expected_revision: int | None = Field(None, ge=0, description="ревизия текущего эскиза для защиты от устаревших правок")
+    expected_revision: int | None = Field(
+        None, ge=0, description="ревизия текущего эскиза для защиты от устаревших правок"
+    )
 
 
 def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
