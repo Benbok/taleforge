@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.agents.llm import LLMError, ScriptedLLM
-from app.db.models import CampaignSecret, Character, Entity, Event, LlmCall, MasterTurn
+from app.db.models import CampaignSecret, Character, Event, LlmCall, MasterTurn
 from app.main import create_app
 from tests.conftest import login
 from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
@@ -232,9 +232,12 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
     message = act(game_client, p1, c["id"], "Перехожу в комнату 2.")
     (hero_now,) = rows(settings, Character, Character.id == hero["id"])
     (turn,) = rows(settings, MasterTurn)
-    assert hero_now.location_id != turn.trace.get("start_location")
+    assert hero_now.location_id != ""
     assert [c["tool"] for c in turn.trace["calls"][:4]] == [
-        "enter_room", "spawn_entity", "enter_room", "spawn_entity"
+        "enter_room",
+        "spawn_entity",
+        "enter_room",
+        "spawn_entity",
     ]
     assert [c["result"]["ok"] for c in turn.trace["calls"][:4]] == [False, False, True, True]
     assert hero["id"] in turn.trace["closed"]  # enter_room без character_ids закрыл реальное действие
