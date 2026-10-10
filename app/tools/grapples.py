@@ -79,17 +79,26 @@ async def release(ctx: ToolContext, holder_id: str, target_id: str, reason: str)
         target = ctx.world.actor(target_id)
         effect = next((e for e, rec in target.effects if rec.id == "condition.grappled"), None)
         if effect is not None:
-            inv.append({
-                "table": "active_effects", "op": "restore",
-                "row": {
-                    "id": effect.id, "effect_template_id": effect.effect_template_id,
-                    "stacks": effect.stacks, "expires_at": effect.expires_at, "target_id": effect.target_id,
-                },
-            })
+            inv.append(
+                {
+                    "table": "active_effects",
+                    "op": "restore",
+                    "row": {
+                        "id": effect.id,
+                        "effect_template_id": effect.effect_template_id,
+                        "stacks": effect.stacks,
+                        "expires_at": effect.expires_at,
+                        "target_id": effect.target_id,
+                    },
+                }
+            )
             await fx.remove_effect(ctx, target, effect.id)
     await ctx.record(
-        "grapple_release", actor_id=holder_id, target_id=target_id,
-        payload={"holder_id": holder_id, "target_id": target_id, "reason": reason}, inverse=inv,
+        "grapple_release",
+        actor_id=holder_id,
+        target_id=target_id,
+        payload={"holder_id": holder_id, "target_id": target_id, "reason": reason},
+        inverse=inv,
     )
     return True
 
