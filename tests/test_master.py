@@ -212,7 +212,7 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
     assert after.location_id == initial
     assert rows(settings, Event, Event.tool == "spawn_entity") == []
     (turn,) = rows(settings, MasterTurn)
-    assert [x["result"]["ok"] for x in turn.trace["calls"][:2]] == [False, False], (turn.trace, message["content"], llm.requests)
+    assert [x["result"]["ok"] for x in turn.trace["calls"][:2]] == [False, False], (turn.trace, message["content"], [(bool(q["tools"]), [m["role"] for m in q["messages"]]) for q in llm.requests])
     assert "не выполнено после ошибки перехода" in turn.trace["calls"][1]["result"]["error"]
     assert "не состоялся" in message["content"].lower()
     assert "вы вошли" not in message["content"].lower()
@@ -249,7 +249,7 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     (hero_now,) = rows(settings, Character, Character.id == hero["id"])
     (turn,) = rows(settings, MasterTurn)
     entered = rows(settings, Event, Event.tool == "enter_room", Event.turn_id == turn.id)
-    assert len(entered) == 1 and hero_now.location_id == entered[0].target_id, (turn.trace, llm.requests)
+    assert len(entered) == 1 and hero_now.location_id == entered[0].target_id, (turn.trace, [(bool(q["tools"]), [m["role"] for m in q["messages"]]) for q in llm.requests])
     assert [c["tool"] for c in turn.trace["calls"][:4]] == [
         "enter_room",
         "spawn_entity",
