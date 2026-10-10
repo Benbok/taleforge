@@ -117,7 +117,8 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
         b = encounter_budget(ctx, [{"xp": int(rec.data.get("xp") or 0)} for _ in range(a.count)], place)
         if not b["ok"]:
             raise ToolError(
-                f"встреча превышает бюджет сложности кампании ({b['adjusted_xp']} > {b['cap']} опыта с поправкой на "
+                f"встреча превышает бюджет сложности кампании ({ctx.campaign.difficulty}: " 
+                f"{b['adjusted_xp']} > {b['cap']} опыта с поправкой на "
                 f"число существ, героев: {b['party']}). Выставьте меньше или слабее"
             )
     hp = int((rec.data.get("hp") or {}).get("average", 1))
