@@ -145,9 +145,7 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     "scenery",
     ["Два больших гроба встроены в северную и южную стены.", None],
 )
-def test_book_room_public_description_excludes_scripted_encounter(
-    client, admin, settings, monkeypatch, scenery
-):
+def test_book_room_public_description_excludes_scripted_encounter(client, admin, settings, monkeypatch, scenery):
     """В «Вокруг» и карточку не просачивается read_aloud, даже из старого Entity.description."""
     draft = sample()
     r2 = draft["locations"][0]["rooms"][1]
@@ -194,7 +192,6 @@ def test_book_room_public_description_excludes_scripted_encounter(
         card = next_of(ws, "entity.card")["payload"]
     assert card["description"] == scenery
     assert "Скелет 1" not in str(card)
-
 
 
 def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
