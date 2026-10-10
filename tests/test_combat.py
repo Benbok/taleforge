@@ -246,9 +246,7 @@ def test_opening_attack_waits_for_creatures_that_win_initiative(game):
 
     async def fn(ctx):
         enemy = await _fight(ctx, hero, "creature.goblin", zone="melee", first="creature")
-        combat.queue_opening_attack(
-            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
-        )
+        combat.queue_opening_attack(ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"})
         notes = await combat.run_until_hero(ctx, "opening")
         observed = [e.actor_id for e in ctx.events if e.tool == "resolve_attack"]
         assert hero in observed and observed.index(enemy) < observed.index(hero)
@@ -263,9 +261,7 @@ def test_opening_attack_out_of_range_is_not_fabricated_as_miss(game):
 
     async def fn(ctx):
         enemy = await _fight(ctx, hero, "creature.goblin", zone="far", first="hero")
-        combat.queue_opening_attack(
-            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
-        )
+        combat.queue_opening_attack(ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"})
         notes = await combat.run_until_hero(ctx, "opening")
         assert not attacks(ctx, hero)
         assert ctx.world.scene.round == 1 and combat.current_id(ctx) == hero
@@ -285,9 +281,7 @@ def test_ending_combat_discards_unresolved_opening_actions(game):
 
     async def fn(ctx):
         enemy = await _fight(ctx, hero, "creature.goblin", zone="melee", first="creature")
-        combat.queue_opening_attack(
-            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
-        )
+        combat.queue_opening_attack(ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"})
         ended = await call(ctx, "set_scene_mode", {"mode": "free"})
         assert ended["ok"], ended
         assert ctx.world.scene.mode == "free"
