@@ -328,28 +328,25 @@ class TurnMixin:
         for _ in range(MAX_STEPS):
             reply = await self._ask(calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, allowed))
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
-            # Слабая модель пишет вызовы текстом («action: spawn_entity(…)»): сервер выполняет их как настоящие,
-            # иначе ход закрылся бы без изменений мира, а повествование описало бы несделанное
-            written = textcalls.parse(reply.text, allowed) if not reply.tool_calls and written_rounds < 2 else []
-            if written:
+            # Текстовые имитации вызовов нельзя исполнять: только native tool_calls проходят
+            # через серверный диспетчер. Даём модели шанс исправить формат ответа.
+            if not reply.tool_calls and textcalls.contains(reply.text, allowed):
                 written_rounds += 1
-                lines = []
-                for i, (name, args) in enumerate(written):
-                    result = await run_call(name, args, f"{turn_id}:text{written_rounds}:{i}")
-                    trace_calls.append({"tool": name, "args": args, "result": result, "from_text": True})
-                    lines.append(f"{name}: {json.dumps(result, ensure_ascii=False, default=str)}")
-                msgs.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            "Ты написал вызовы инструментов текстом. Сервер выполнил их, результаты:\n"
-                            + "\n".join(lines)
-                            + "\nДальше вызывай инструменты только через вызов функции, не текстом. Исправь вызовы с "
-                            "ошибкой; когда все действия закрыты, ответь одним словом «готово»."
-                        ),
-                    }
-                )
-                continue
+                if written_rounds <= 2:
+                    msgs.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Ты написал вызовы инструментов обычным текстом. Сервер НЕ выполнил эти команды. "
+                                "Повтори необходимые действия настоящими tool_calls (function calling), "
+                                "передавая параметры через аргументы инструмента. Текстовые команды запрещены. "
+                                "После выполнения всех действий ответь «готово»."
+                            ),
+                        }
+                    )
+                    continue
+                # Никаких изменений от текстовых вызовов. Незакрытые действия будут отменены ниже.
+                break
             if not reply.tool_calls:
                 open_ = required - ctx.closed
                 fails = _unsettled_fails(ctx, trace_calls)
@@ -478,6 +475,7 @@ class TurnMixin:
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             "calls": trace_calls,
+            "text_call_rejections": written_rounds,
             "audit": audit,
             "voice_line": voice_line_text,
             "required": sorted(required),
