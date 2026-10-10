@@ -138,10 +138,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
 
     chosen_weapon: str | None = None
     if a.spell_id == "spell.shillelagh":
-        held = [
-            it for it in w.inventory.get(ch.id, [])
-            if it.equipped and it.item_template_id in ELIGIBLE
-        ]
+        held = [it for it in w.inventory.get(ch.id, []) if it.equipped and it.item_template_id in ELIGIBLE]
         if a.weapon_id:
             item = next((it for it in held if it.id == a.weapon_id), None)
             if item is None:
