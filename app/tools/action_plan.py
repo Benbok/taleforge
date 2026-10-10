@@ -121,8 +121,9 @@ def approach_cast(ctx: ToolContext, intent: dict[str, Any] | None) -> dict[str, 
     if len(actions) != 2 or [a.get("verb") for a in actions] != ["move", "cast"]:
         return None
     move, cast = actions
-    args = _routable_cast(ctx, {"character_id": intent.get("character_id"), "confidence": intent["confidence"],
-                                "actions": [cast]})
+    args = _routable_cast(
+        ctx, {"character_id": intent.get("character_id"), "confidence": intent["confidence"], "actions": [cast]}
+    )
     if not args or args.get("ritual") or len(args.get("target_ids") or []) != 1:
         return None
     target_id = args["target_ids"][0]
@@ -176,8 +177,10 @@ async def execute_approach_cast(ctx: ToolContext, plan: dict[str, Any], key: str
         return {"completed": False, "notes": [f"{name}: сближение с {target_name} не выполнено: {exc}"]}
     if movement.get("confirm_needed"):
         details = "; ".join(movement.get("warnings") or [])
-        return {"completed": False, "notes": [f"{name}: движение требует подтверждения: {details}. "
-                                               "Заклинание не сотворено."]}
+        return {
+            "completed": False,
+            "notes": [f"{name}: движение требует подтверждения: {details}. Заклинание не сотворено."],
+        }
     if not w.actor(hero_id).alive or w.actor(hero_id).hp.current <= 0:
         return {"completed": False, "notes": [f"{name} не может колдовать после перемещения"]}
 
@@ -190,8 +193,10 @@ async def execute_approach_cast(ctx: ToolContext, plan: dict[str, Any], key: str
         }
     return {
         "completed": True,
-        "notes": [f"{name} сближается с {target_name} ({movement.get('moved_ft', 0)} фт)",
-                  f"{name} творит заклинание: результат записан в журнал"],
+        "notes": [
+            f"{name} сближается с {target_name} ({movement.get('moved_ft', 0)} фт)",
+            f"{name} творит заклинание: результат записан в журнал",
+        ],
         "movement": movement,
         "spell_result": result["result"],
     }
