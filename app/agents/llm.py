@@ -218,7 +218,8 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         cost = 0.0
     # stream_chunk_builder reconstructs the assistant message, including tool calls.
     # Previously streaming silently discarded them, so game actions could be lost.
-    msg = full.choices[0].message if full is not None and full.choices else None
+    choices = getattr(full, "choices", None)
+    msg = choices[0].message if choices else None
     calls = [
         ToolCall(tc.id, tc.function.name, _parse_args(tc.function.arguments), tc.function.arguments or "")
         for tc in (getattr(msg, "tool_calls", None) or [])
