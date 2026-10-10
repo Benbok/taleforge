@@ -7,7 +7,7 @@ from tests.test_map import _map, _ok, _play
 
 def test_linked_sketch_object_uses_one_visual_marker_and_revisions(client, admin, settings):
     import_base(settings)
-    campaign, (player,), _hero = party(client, admin)
+    campaign, (player,), hero = party(client, admin)
     cid = campaign["id"]
     sketch_data = {
         "shape": "room",
@@ -80,6 +80,19 @@ def test_linked_sketch_object_uses_one_visual_marker_and_revisions(client, admin
     assert entity_id in {x["id"] for x in revealed["around"]}
     assert entity_id not in {x["id"] for x in revealed["scene_view"]}
     assert fid in {x.get("id") for x in revealed["sketch"]["features"]}
+
+    async def take(ctx):
+        from app.core import positions
+
+        await _ok(ctx, "pick_up_item", {"character_id": hero["id"], "entity_id": entity_id})
+        room_id = ctx.world.home()
+        target = positions.to_rel(ctx.world, room_id, [4, 1])
+        assert positions.cell_problem(ctx.world, room_id, target) is None
+
+    _play(settings, cid, take)
+    carried = _map(client, player, cid)
+    assert entity_id not in {v["id"] for v in carried["around"]}
+    assert entity_id not in {f.get("entity_id") for f in carried["sketch"]["features"]}
 
 
 def test_sketch_binding_rejects_nested_object_and_duplicate_reference(client, admin, settings):
