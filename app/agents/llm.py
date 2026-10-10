@@ -227,7 +227,9 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
     history = (
         msg.model_dump(exclude_none=True)
         if msg is not None and hasattr(msg, "model_dump")
-        else dict(msg) if msg is not None else {"role": "assistant", "content": text}
+        else dict(msg)
+        if msg is not None
+        else {"role": "assistant", "content": text}
     )
     history["role"] = "assistant"
     return LLMReply(
