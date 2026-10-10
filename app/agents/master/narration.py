@@ -6,6 +6,7 @@ import logging
 import re
 from typing import Any
 
+from app.agents import textcalls
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
@@ -63,7 +64,7 @@ class NarrationMixin:
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
-        push = stream.push if stream is not None else None
+        push = textcalls.StreamFilter(stream.push) if stream is not None else None
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
@@ -93,6 +94,11 @@ class NarrationMixin:
             return m.group(2)
 
         text = MARKUP.sub(strip, text)
+        # вызовы инструментов, написанные текстом («action: spawn_entity(…)»): мир они не меняют, игрокам не нужны
+        written = [name for name, _ in textcalls.parse(text, textcalls.tool_names())]
+        if written:
+            audit["tool_text"] = written
+            text = textcalls.clean(text)
         # Очистка от случайных вызовов инструментов в тексте мастера (например, set_music {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
         # Очистка от оборванного незакрытого тега разметки в конце текста

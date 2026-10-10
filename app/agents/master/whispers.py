@@ -7,6 +7,7 @@ import re
 
 from sqlalchemy import func, select
 
+from app.agents import textcalls
 from app.agents.llm import LLMError
 from app.agents.master.common import MARKUP, WHISPER_HISTORY, render
 from app.agents.master.helpers import _names, _render_history, _who
@@ -108,6 +109,7 @@ class WhisperMixin:
             )
             text = MARKUP.sub(lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or "").strip()
             text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
+            text = textcalls.clean(text)
             if not text:
                 raise LLMError("модель вернула пустой ответ")
         except LLMError as e:

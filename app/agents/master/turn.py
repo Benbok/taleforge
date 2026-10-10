@@ -9,7 +9,7 @@ import logging
 from sqlalchemy import func, select
 
 from app.agents import intent as intents
-from app.agents import rhythm
+from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
 from app.agents.master.helpers import (
@@ -308,13 +308,48 @@ class TurnMixin:
                 ),
             },
         ]
-        done_calls = retries = 0
+        done_calls = retries = written_rounds = 0
         nudged = False
+        allowed = decision_tools(ctx)
+
+        async def run_call(name: str, args: dict, key: str) -> dict:
+            nonlocal done_calls
+            if done_calls >= MAX_CALLS:
+                return {"ok": False, "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию"}
+            if "__invalid_json__" in args:
+                return {"ok": False, "error": "аргументы — не JSON-объект"}
+            if name in ROLL_TOOLS:
+                await self._status(cid, "rolling")
+            result = await execute(ctx, name, args, key=key)
+            if name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
+                done_calls += 1
+            return result
+
         for _ in range(MAX_STEPS):
-            reply = await self._ask(
-                calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, decision_tools(ctx))
-            )
+            reply = await self._ask(calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, allowed))
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
+            # Слабая модель пишет вызовы текстом («action: spawn_entity(…)»): сервер выполняет их как настоящие,
+            # иначе ход закрылся бы без изменений мира, а повествование описало бы несделанное
+            written = textcalls.parse(reply.text, allowed) if not reply.tool_calls and written_rounds < 2 else []
+            if written:
+                written_rounds += 1
+                lines = []
+                for i, (name, args) in enumerate(written):
+                    result = await run_call(name, args, f"{turn_id}:text{written_rounds}:{i}")
+                    trace_calls.append({"tool": name, "args": args, "result": result, "from_text": True})
+                    lines.append(f"{name}: {json.dumps(result, ensure_ascii=False, default=str)}")
+                msgs.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Ты написал вызовы инструментов текстом. Сервер выполнил их, результаты:\n"
+                            + "\n".join(lines)
+                            + "\nДальше вызывай инструменты только через вызов функции, не текстом. Исправь вызовы с "
+                            "ошибкой; когда все действия закрыты, ответь одним словом «готово»."
+                        ),
+                    }
+                )
+                continue
             if not reply.tool_calls:
                 open_ = required - ctx.closed
                 fails = _unsettled_fails(ctx, trace_calls)
@@ -347,19 +382,7 @@ class TurnMixin:
                     continue
                 break
             for call in reply.tool_calls:
-                if done_calls >= MAX_CALLS:
-                    result = {
-                        "ok": False,
-                        "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию",
-                    }
-                elif "__invalid_json__" in call.arguments:
-                    result = {"ok": False, "error": "аргументы — не JSON-объект"}
-                else:
-                    if call.name in ROLL_TOOLS:
-                        await self._status(cid, "rolling")
-                    result = await execute(ctx, call.name, call.arguments, key=f"{turn_id}:{call.id}")
-                    if call.name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
-                        done_calls += 1
+                result = await run_call(call.name, call.arguments, f"{turn_id}:{call.id}")
                 trace_calls.append({"tool": call.name, "args": call.arguments, "result": result})
                 msgs.append(
                     {

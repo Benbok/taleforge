@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.agents import voiceover
+from app.agents import textcalls, voiceover
 from app.agents.llm import LLMError
 from app.content.catalog import campaign_catalog
 from app.core import adventure, bonds, plot
@@ -44,6 +44,7 @@ def clean_story(text: str, keep=lambda _id: False) -> str:
     """Текст повествования для игроков: без чужой разметки, служебного заголовка и повтора завязки из подсказки.
     Строка в начале считается заголовком, только если за ней есть текст: в потоке первая строка ещё пишется."""
     text = MARKUP.sub(lambda m: m.group(0) if keep(m.group(1)) else m.group(2), text.strip())
+    text = textcalls.clean(text)  # вызовы инструментов, написанные текстом, игрокам не показываем
     lines = text.split("\n")
     while len(lines) > 1 and (not lines[0].strip() or HEADING.match(lines[0])):
         lines.pop(0)
