@@ -176,7 +176,7 @@ def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, st
     for name, to, rid in neighbours:
         portal = marked.get(rid)
         if portal is None:
-            unplaced.append({"name": name, "to": to})
+            unplaced.append({"name": name, "to": to, "room_ref": rid})
             continue
         c, r = portal["cell"]
         side = portal["side"]
@@ -189,6 +189,7 @@ def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, st
                 "state": "open",
                 "name": name,
                 "to": to,
+                "room_ref": rid,
             }
         )
     return {
@@ -216,22 +217,17 @@ def book_sketch(room: Any, catalog: Any, entities: dict) -> dict | None:
     if adv is None or rec is None:
         return None
     mp = next((m for m in adv.data.get("maps") or [] if m.get("location_ref") == rec.id and m.get("grid")), None)
-    room_data = adventure.find_room(rec, r["id"])
-    if mp is None or room_data is None:
-        return None
+    from app.core.topology import location_exits
+
     marks = {str(m.get("number")): m for m in mp.get("marks") or []}
     mark = marks.get(str(r.get("number")))
     if mark is None:
         return None
-    place = entities.get(room.location_id or "")
-    neighbours = []
-    for rid in room_data.get("exits") or []:
-        other = adventure.find_room(rec, rid)
-        if other is None:
-            continue
-        there = adventure.room_entity(entities, place, rid) if place is not None else None
-        name = f"Комната {other['number']}" if other.get("number") else str(other.get("name"))
-        neighbours.append((name, there.id if there is not None else None, rid))
+    neighbours = [
+        (exit.label or "Неизведанная комната", exit.target_id, exit.room_ref)
+        for exit in location_exits(room, catalog, entities)
+        if exit.room_ref is not None
+    ]
     return from_book(mark, mp["grid"], neighbours)
 
 
