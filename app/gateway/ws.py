@@ -133,30 +133,20 @@ async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
 
 
 async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
-    """Сцена для снимка — то же, что ``scene.updated`` (app/tools/runtime.scene_public), но без загрузки
-    каталога: только чтение, чтобы вход в кампанию ничего не блокировал. Герой разделившегося отряда видит своё
-    место."""
+    """Первичный снимок сцены использует ту же проекцию, что и очередной scene.updated."""
     from sqlalchemy import select
 
     from app.core.inspect import viewer_hero
-    from app.core.world import get_scene, party_groups, viewer_places
-    from app.tools.runtime import combat_public, party_public, public_entity
+    from app.core.scene_view import visible_scene
+    from app.core.world import get_scene
+    from app.tools.runtime import scene_payload
 
     sc = await get_scene(session, c.id)
-    ents = (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()
-    chars = {ch.id: ch for ch in (await session.scalars(select(Character).where(Character.campaign_id == c.id)))}
-    here, places = viewer_places(chars.values(), sc, await viewer_hero(session, viewer))
-    loc = next((e for e in ents if e.id == here), None)
-    out = [public_entity(e) for e in ents if e.kind != "location" and (not places or e.location_id in places)]
-    groups = party_groups(chars.values(), sc)
-    mine = here if len(places) == 1 else None
-    split = party_public(groups, {e.id: e for e in ents}, mine)
-    return {
-        **({"party": split} if split else {}),
-        "location": {"id": loc.id, "name": loc.name} if loc else None,
-        "entities": out,
-        **combat_public(sc, chars, {e.id: e for e in ents}, mine, len(groups) > 1),
-    }
+    ents = {e.id: e for e in (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()}
+    chars = {ch.id: ch for ch in (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()}
+    hero = None if viewer.is_master else await viewer_hero(session, viewer)
+    view = visible_scene(sc, ents, chars, hero_id=hero.id if hero is not None else None, is_master=viewer.is_master)
+    return scene_payload(sc, ents, chars, view)
 
 
 async def _audio(session: AsyncSession, c: Campaign, viewer) -> dict:
