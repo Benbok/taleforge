@@ -190,8 +190,8 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
     assert any(c["tool"] == "spawn_entity" and c["result"]["ok"] for c in calls), calls
     assert turn.trace["audit"]["transition_outcome"] == "success"
     assert "Переход не состоялся" not in msg["content"]
-    spawned = rows(settings, Event, Event.tool == "spawn_entity")
-    entered = rows(settings, Event, Event.tool == "enter_room")
+    spawned = rows(settings, Event, Event.tool == "spawn_entity", Event.turn_id == turn.id)
+    entered = rows(settings, Event, Event.tool == "enter_room", Event.turn_id == turn.id)
     assert len(spawned) == len(entered) == 1
     (skeleton,) = rows(settings, Entity, Entity.id == spawned[0].target_id)
     assert skeleton.location_id == entered[0].target_id  # встреча именно в новой комнате
