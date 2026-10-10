@@ -5,6 +5,7 @@ venv/
 .env
 .pytest_cache/
 .ruff_cache/
+.superpowers/
 .mypy_cache/
 *.egg-info/
 dist/

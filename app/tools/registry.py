@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogError
+from app.core.resolution.contracts import FailureCategory, FailureInfo
 from app.core.world import World, WorldError, load_world
 from app.db.models import Campaign, Event
 from app.rules.dice import Dice, DiceError, DiceRoll
@@ -29,6 +30,28 @@ log = logging.getLogger(__name__)
 
 class ToolError(Exception):
     """Отказ инструмента с причиной и, если есть, допустимыми вариантами. Уходит модели."""
+
+    def __init__(self, message: str, *, code: str = "unclassified", category: FailureCategory = "unknown"):
+        super().__init__(message)
+        self.code = code
+        self.category = category
+
+
+class UnsupportedMechanicError(ToolError):
+    """Server-confirmed absence of a supported mechanic, never an inferred error."""
+
+    def __init__(self, message: str, *, code: str = "unsupported_mechanic"):
+        super().__init__(message, code=code, category="unsupported")
+
+
+def _failure(message: str, code: str, category: FailureCategory, key: str | None, *, rolled_back=False):
+    return {
+        "ok": False,
+        "error": message,
+        "failure": FailureInfo(
+            code=code, category=category, rolled_back=rolled_back, attempt_id=key or ""
+        ).model_dump(),
+    }
 
 
 @dataclass
@@ -190,7 +213,7 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     key = _fit_key(key)
     t = REGISTRY.get(name)
     if t is None:
-        return {"ok": False, "error": f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}"}
+        return _failure(f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}", "unknown_tool", "unknown", key)
     if key and t.mutating:
         q = select(Event).where(Event.campaign_id == ctx.campaign.id, Event.idempotency_key == key)
         prev = (await ctx.session.scalars(q)).first()
@@ -200,7 +223,7 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         args = t.args.model_validate(raw_args or {})
     except ValidationError as e:
         errs = "; ".join(f"{'.'.join(map(str, x['loc'])) or 'аргументы'}: {x['msg']}" for x in e.errors())
-        return {"ok": False, "error": f"неверные аргументы: {errs}"}
+        return _failure(f"неверные аргументы: {errs}", "invalid_arguments", "invalid_arguments", key)
     for fname, kind in t.id_fields.items():
         values = _enum_values(ctx.world, kind)
         val = getattr(args, fname, None)
@@ -216,7 +239,9 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         ]
         if bad:
             hint = f"; допустимо: {', '.join(values[:30])}" if values else ""
-            return {"ok": False, "error": f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}"}
+            return _failure(
+                f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}", "invalid_target", "rule_denial", key
+            )
     ctx.call_key = key
     ctx._first_event = None
     nested = await ctx.session.begin_nested()
@@ -233,7 +258,13 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         await ctx.session.refresh(ctx.campaign)
         ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog)
         ctx.events = [ev for ev in ctx.events if ev in ctx.session]
-        return {"ok": False, "error": str(e)}
+        return _failure(
+            str(e),
+            e.code if isinstance(e, ToolError) else "unclassified",
+            e.category if isinstance(e, ToolError) else "unknown",
+            key,
+            rolled_back=True,
+        )
     await nested.commit()
     ev = ctx._first_event
     if ev is not None:
