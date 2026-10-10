@@ -198,7 +198,7 @@ function SketchLayer({
             : FEATURE_VISUALS[ft.kind];
           return (
             <g
-              key={`${ft.id ?? i}-${j}`
+              key={`${ft.id ?? i}-${j}`}
               className="cursor-pointer"
               role="button"
               aria-label={ft.name}
