@@ -66,6 +66,8 @@ class NarrationMixin:
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
         push = textcalls.StreamFilter(stream.push) if stream is not None else None
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
+        if push is not None:
+            await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
         if unknown:
