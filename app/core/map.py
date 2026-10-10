@@ -240,7 +240,12 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
         ]
         book = adventure.book_map(
-            catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None,
+            catalog,
+            places,
+            here,
+            heroes_at,
+            None if master else visited,
+            hero.id if hero is not None else None,
             scene_tokens=scene_view,
         )
         sk = sketch.of_place(here, catalog, places)
