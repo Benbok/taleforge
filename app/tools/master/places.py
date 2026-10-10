@@ -279,9 +279,11 @@ def _clear_positions(ctx: ToolContext, hero_ids: set[str], inverse: list) -> Non
         return
     inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)})
     new_positions = {k: v for k, v in positions.items() if k not in to_clear}
-    sc.state = {**(sc.state or {}), "positions": new_positions} if new_positions else {
-        k: v for k, v in (sc.state or {}).items() if k != "positions"
-    }
+    sc.state = (
+        {**(sc.state or {}), "positions": new_positions}
+        if new_positions
+        else {k: v for k, v in (sc.state or {}).items() if k != "positions"}
+    )
 
 
 def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
