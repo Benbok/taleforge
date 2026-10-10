@@ -296,6 +296,7 @@ def test_ending_combat_discards_unresolved_opening_actions(game):
 
     play(settings, cid, [], fn)
 
+
 def test_compound_opening_approach_and_attack_runs_in_order(game):
     """The opening declaration moves on the grid before its single legal strike."""
     settings, cid, hero = game
