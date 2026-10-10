@@ -18,12 +18,12 @@ def test_visual_key_follows_template_stacks_and_inventory(client, admin, setting
         scroll = await _ok(ctx, "place_item", {"item_template_id": "item.scroll_magic_missile", "reason": "добыча"})
         sword = await _ok(ctx, "place_item", {"item_template_id": "item.dagger", "reason": "добыча"})
         armor = await _ok(ctx, "place_item", {"item_template_id": "item.leather", "reason": "добыча"})
-        gift = await _ok(ctx, "give_item", {
-            "character_id": hid, "item_template_id": "item.potion_of_healing", "qty": 2, "reason": "награда"
-        })
-        dropped = await _ok(ctx, "drop_item", {
-            "character_id": hid, "inventory_id": gift["inventory_id"], "qty": 1
-        })
+        gift = await _ok(
+            ctx,
+            "give_item",
+            {"character_id": hid, "item_template_id": "item.potion_of_healing", "qty": 2, "reason": "награда"},
+        )
+        dropped = await _ok(ctx, "drop_item", {"character_id": hid, "inventory_id": gift["inventory_id"], "qty": 1})
         return pot["entity_id"], scroll["entity_id"], sword["entity_id"], armor["entity_id"], dropped["entity_id"]
 
     potion, scroll, sword, armor, dropped = _play(settings, cid, setup)
