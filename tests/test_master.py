@@ -8,10 +8,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.agents.llm import LLMError, ScriptedLLM
-from app.db.models import CampaignSecret, Event, LlmCall, MasterTurn
+from app.db.models import CampaignSecret, Character, Entity, Event, LlmCall, MasterTurn
 from app.main import create_app
 from tests.conftest import login
 from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
+from tests.test_adventure import publish_sample
 from tests.test_api import invite, make_campaign, register
 from tests.test_ws import connect, next_of
 
@@ -180,6 +181,68 @@ def test_unregistered_named_actors_accepts_russian_case_declensions():
     assert unregistered_named_actors("На Скелете 1 видны трещины.", world) == []
     assert unregistered_named_actors("Скелет 2 поднимает меч.", world) == ["Скелет 2"]
     assert unregistered_named_actors("Иван бьёт Зомби 1.", world) == ["Зомби 1"]
+
+
+
+def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings):
+    """Отказ входа прерывает batch: враги не появляются в прежней комнате."""
+    mid = publish_sample(settings)
+    c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
+    game_client.portal.call(game_client.app.state.master.wait_idle, None)
+    (before,) = rows(settings, Character, Character.id == hero["id"])
+    initial = before.location_id
+    llm.replies += [
+        {"tool_calls": [
+            ("enter_room", {"room": "99"}),
+            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
+        ]},
+        DONE,
+        DONE,
+        {"text": "Вы вошли в комнату 99; скелет уже смотрит вам в глаза."},
+    ]
+    message = act(game_client, p1, c["id"], "Вхожу в комнату 99; внутри скелет.")
+    (after,) = rows(settings, Character, Character.id == hero["id"])
+    assert after.location_id == initial
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
+    (turn,) = rows(settings, MasterTurn)
+    assert [x["result"]["ok"] for x in turn.trace["calls"][:2]] == [False, False]
+    assert "не выполнено после ошибки перехода" in turn.trace["calls"][1]["result"]["error"]
+    assert "не состоялся" in message["content"].lower()
+    assert "вы вошли" not in message["content"].lower()
+    assert initial in message["content"] or before.name in message["content"] or "остался" in message["content"]
+
+
+def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
+    """Ранний отказ не перечёркивает успешный повтор и спавн в НОВОЙ комнате."""
+    mid = publish_sample(settings)
+    c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
+    game_client.portal.call(game_client.app.state.master.wait_idle, None)
+    llm.replies += [
+        {"tool_calls": [
+            ("enter_room", {"room": "99"}),
+            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Ненастоящий"}),
+        ]},
+        {"tool_calls": [
+            ("enter_room", {"room": "2"}),
+            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
+        ]},
+        DONE,
+        {"text": "Герой входит в Восточную крипту. Здесь появился Скелет 1."},
+    ]
+    message = act(game_client, p1, c["id"], "Перехожу в комнату 2.")
+    (hero_now,) = rows(settings, Character, Character.id == hero["id"])
+    (turn,) = rows(settings, MasterTurn)
+    assert hero_now.location_id != turn.trace.get("start_location")
+    assert [c["tool"] for c in turn.trace["calls"][:4]] == [
+        "enter_room", "spawn_entity", "enter_room", "spawn_entity"
+    ]
+    assert [c["result"]["ok"] for c in turn.trace["calls"][:4]] == [False, False, True, True]
+    assert hero["id"] in turn.trace["closed"]  # enter_room без character_ids закрыл реальное действие
+    spawned = rows(settings, Event, Event.tool == "spawn_entity")
+    assert len(spawned) == 1 and spawned[0].turn_id == turn.id
+    assert "Восточную крипту" in message["content"]
+    assert "не состоялся" not in message["content"]
+
 
 
 def test_failed_turn_rolls_back(game_client, admin_g, llm, settings):
