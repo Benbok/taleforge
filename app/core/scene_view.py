@@ -20,6 +20,7 @@ class VisibleScene:
     entities: tuple[Entity, ...]
     heroes: tuple[Character, ...]
     groups: dict[str | None, list[Character]]
+    is_master: bool
 
 
 def visible_scene(
@@ -52,4 +53,4 @@ def visible_scene(
         for ch in characters.values()
         if ch.status in PLAYABLE and (not allowed or (ch.location_id or scene.location_id) in allowed)
     )
-    return VisibleScene(current, tuple(places), filtered, heroes, party_groups(characters.values(), scene))
+    return VisibleScene(current, tuple(places), filtered, heroes, party_groups(characters.values(), scene), is_master)
