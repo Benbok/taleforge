@@ -125,7 +125,7 @@ def strip(text: str, names: Iterable[str]) -> str:
     pending = [m.start() for m in _NAME.finditer(cut) if m.group(1) in known and _span(cut, m.end() - 1) is None]
     if pending:
         cut = cut[: min(pending)]
-    cut = re.sub(r"</?center(?:\s[^>]*)?>", "", cut, flags=re.IGNORECASE)
+    cut = re.sub(r"\\?</?center(?:\s[^>]*)?>\\?", "", cut, flags=re.IGNORECASE)
     lines = [ln for ln in cut.split("\n") if not _LEFTOVER.fullmatch(ln) or not ln.strip()]
     out = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     return out
@@ -178,7 +178,7 @@ class StreamFilter:
             if boundary is None:
                 return
             line, self.pending = self.pending[:boundary], self.pending[boundary:]
-            if line.strip().lower() in ("<center>", "</center>") or _LEFTOVER.fullmatch(line.rstrip("\n")):
+            if line.strip().lower().strip("\\") in ("<center>", "</center>") or _LEFTOVER.fullmatch(line.rstrip("\n")):
                 continue
             safe = strip(line, self.names)
             if safe.strip():
