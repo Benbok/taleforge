@@ -354,6 +354,37 @@ export function bookAroundCells(m: MapState): Map<string, [number, number]> {
   return projected;
 }
 
+/** Выход книги, для которого известна связность, но не положение проёма на стене.
+ * Не является координатой и не должен попадать в layoutGrid / алгоритм шагов.
+ */
+export interface UnlocatedBookExit {
+  key: string;
+  name: string;
+  destinationId: string | null;
+  visited: boolean | null;
+}
+
+/** Показываем неизвестные проходы отдельными навигационными маркерами.
+ * Если сервер не раскрыл идентификатор назначения, не выдаём его клиенту и
+ * не позволяем открыть карточку. Старые карты без passages поддерживаются.
+ */
+export function unlocatedBookExits(m: Pick<MapState, "sketch" | "exits">): UnlocatedBookExit[] {
+  if (!m.sketch?.book) return [];
+  const destinations = new Map(m.exits.map((e) => [e.id, e]));
+  const located = new Set(m.sketch.exits.map((e) => e.to).filter(Boolean));
+  return (m.sketch.unplaced_exits ?? [])
+    .filter((e) => !e.to || !located.has(e.to))
+    .map((e, i) => {
+      const known = e.to ? destinations.get(e.to) : undefined;
+      return {
+        key: e.to ?? `unlocated-${i}`,
+        name: known?.name ?? e.name,
+        destinationId: known?.id ?? null,
+        visited: known?.visited ?? null,
+      };
+    });
+}
+
 /** Раскладка «Вокруг» по клеткам: каждый в клетке по своей зоне и стороне, двое в одной точке — в соседних.
  *  С эскизом места значки встают только на его пол, а выходы, нарисованные в эскизе, не дублируются. */
 export function layoutGrid(m: MapState): GridLayout {
