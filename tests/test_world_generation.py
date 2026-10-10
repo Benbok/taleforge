@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.content.catalog import Catalog, Entry
 from app.core import world_generation as gen
-from app.db.models import Entity, PlotAnchorBinding, WorldGenerationState
+from app.db.models import PlotAnchorBinding, WorldGenerationState
 from app.tools.registry import execute
 from tests.game import import_base, party
 from tests.test_map import _map, _ok, _play
@@ -29,7 +29,9 @@ def test_generator_whitelist_budget_and_seed_are_deterministic():
         entry("item.no_price", category="gear"),
     ]
     catalog = Catalog({e.id: e for e in [good, candidate, *blocked]}).view(allow_proposals=True)
-    profile = gen.LocationProfile((("Сундук", "item:chest"),), tuple(e.id for e in [good, candidate, *blocked]), 250, 3, 2)
+    profile = gen.LocationProfile(
+        (("Сундук", "item:chest"),), tuple(e.id for e in [good, candidate, *blocked]), 250, 3, 2
+    )
     pool = gen.permitted_pool(catalog, profile)
     assert {e.id for e in pool} == {"item.good", "item.cheap"}
     seed = gen.stable_seed("camp", "room", "location_initial", "склад")
@@ -157,7 +159,10 @@ def test_story_anchor_materializes_once_but_missing_template_stays_reserved(clie
 
     async def verify(ctx):
         binding = await ctx.session.scalar(
-            select(PlotAnchorBinding).where(PlotAnchorBinding.campaign_id == cid, PlotAnchorBinding.anchor_id == "clue.handwritten-letter")
+            select(PlotAnchorBinding).where(
+                PlotAnchorBinding.campaign_id == cid,
+                PlotAnchorBinding.anchor_id == "clue.handwritten-letter",
+            )
         )
         assert binding.holder_entity_id == item_id
         assert ctx.world.entities[item_id].location_id == rid

@@ -54,21 +54,33 @@ PROFILES: dict[str, LocationProfile] = {
         2,
     ),
     "лаборатория": LocationProfile(
-        (("Шкаф реактивов", "item:container"), ("Запертый ящик", "item:chest"), ("Стол с отделениями", "item:container")),
+        (
+            ("Шкаф реактивов", "item:container"),
+            ("Запертый ящик", "item:chest"),
+            ("Стол с отделениями", "item:container"),
+        ),
         ("item.potion_of_healing", "item.healers_kit", "item.torch", "item.waterskin"),
         5500,
         1,
         1,
     ),
     "склеп": LocationProfile(
-        (("Погребальный ларец", "item:chest"), ("Каменный саркофаг", "item:container"), ("Ниша с крышкой", "item:container")),
+        (
+            ("Погребальный ларец", "item:chest"),
+            ("Каменный саркофаг", "item:container"),
+            ("Ниша с крышкой", "item:container"),
+        ),
         ("item.torch", "item.dagger", "item.club", "item.rope_hempen"),
         500,
         1,
         1,
     ),
     "пещера": LocationProfile(
-        (("Потерянный ранец", "item:container"), ("Ящик экспедиции", "item:container"), ("Старый тайник", "item:chest")),
+        (
+            ("Потерянный ранец", "item:container"),
+            ("Ящик экспедиции", "item:container"),
+            ("Старый тайник", "item:chest"),
+        ),
         ("item.torch", "item.rope_hempen", "item.rations", "item.bedroll", "item.waterskin"),
         600,
         1,

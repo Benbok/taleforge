@@ -185,8 +185,8 @@ async def resolve_location(ctx: ToolContext, a: ResolveLocationArgs) -> dict:
         bound.append(binding.anchor_id)
 
     result = {"containers": made_containers, "items": created_items, "anchors": bound, "pending_anchors": pending}
-    _complete(record, a.profile, seed, versions, digest((source_digest, [(b.anchor_id, b.plot_ref) for b in reservations])),
-              result)
+    context = digest((source_digest, [(b.anchor_id, b.plot_ref) for b in reservations]))
+    _complete(record, a.profile, seed, versions, context, result)
     await ctx.record(
         "resolve_location",
         target_id=target.id,
