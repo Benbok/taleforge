@@ -67,7 +67,10 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("campaign_id", "target_entity_id", "phase", name="uq_world_generation_scope"),
         sa.CheckConstraint("phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"),
-        sa.CheckConstraint("status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"),
+        sa.CheckConstraint(
+            "status IN ('unprepared', 'preparing', 'ready', 'blocked')",
+            name="ck_world_generation_status",
+        ),
         sa.CheckConstraint(
             "quality IS NULL OR quality IN ('normal', 'fallback', 'legacy_preserved')",
             name="ck_world_generation_quality",
