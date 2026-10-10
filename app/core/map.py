@@ -270,7 +270,15 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     return {
         "book": book,
         "sketch": sketch.for_viewer(sk, master, shown) if sk else None,
-        "here": {"id": here.id, "name": here.name, "description": here.description or None} if here else None,
+        "here": {
+            "id": here.id,
+            "name": here.name,
+            "description": adventure.public_description(here, catalog)
+            if adventure.room_of(here)
+            else here.description or None,
+        }
+        if here
+        else None,
         "around": around,
         "scene_view": scene_view,
         "party": party,
