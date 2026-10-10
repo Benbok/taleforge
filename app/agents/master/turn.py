@@ -565,6 +565,7 @@ class TurnMixin:
             pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
+            difficulty=c.difficulty,
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
             critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
