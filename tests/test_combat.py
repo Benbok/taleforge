@@ -295,3 +295,64 @@ def test_ending_combat_discards_unresolved_opening_actions(game):
         assert "opening_attacks" not in combat.state(ctx)
 
     play(settings, cid, [], fn)
+
+def test_compound_opening_approach_and_attack_runs_in_order(game):
+    """The opening declaration moves on the grid before its single legal strike."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="near", first="hero")
+        plan = {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
+        combat.queue_opening_plan(ctx, plan)
+        assert not attacks(ctx, hero)
+        notes = await combat.run_until_hero(ctx, "compound-opening")
+        events = [e for e in ctx.events if e.tool in ("step", "resolve_attack") and e.actor_id == hero]
+        assert [e.tool for e in events] == ["step", "resolve_attack"]
+        assert len(attacks(ctx, hero)) == 1
+        assert not combat.state(ctx).get("opening_plans")
+        assert any("сближается" in n for n in notes)
+        return events[0].payload["moved_ft"]
+
+    assert play(settings, cid, [10, 10, 15, 1], fn) > 0
+
+
+def test_compound_opener_out_of_reach_preserves_turn(game):
+    """Do not invent movement or a missed attack if the hero cannot reach."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="far", first="hero")
+        combat.queue_opening_plan(ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"})
+        notes = await combat.run_until_hero(ctx, "unreachable")
+        assert combat.current_id(ctx) == hero
+        assert combat.state(ctx)["deadline"] is not None
+        assert not combat.state(ctx).get("opening_plans")
+        assert not attacks(ctx, hero)
+        assert not [e for e in ctx.events if e.tool == "step" and e.actor_id == hero]
+        assert any("сближение" in n or "подтверждения" in n for n in notes)
+        return notes
+
+    assert play(settings, cid, [10, 10], fn)
+
+
+def test_compound_attack_refusal_keeps_remaining_turn(game):
+    """Moving is real even when the weapon is not usable; the action is not spent."""
+    from app.tools.action_plan import execute_approach_attack
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="near", first="hero")
+        combat._begin_hero_turn(ctx, ctx.world.characters[hero])
+        outcome = await execute_approach_attack(
+            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.no_such_weapon"}, "bad-attack"
+        )
+        assert not outcome["completed"]
+        assert outcome["movement"]["moved_ft"] > 0
+        assert combat.current_id(ctx) == hero
+        assert combat.state(ctx)["deadline"] is not None
+        assert not attacks(ctx, hero)
+        return outcome["notes"]
+
+    notes = play(settings, cid, [10, 10], fn)
+    assert "атака не выполнена" in " ".join(notes)
