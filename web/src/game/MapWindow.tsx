@@ -24,7 +24,6 @@ import {
   type MapState,
   type Sketch,
   type SketchExit,
-  type SketchFeature,
   type StepRequest,
   type CellStack,
   exitCell,
