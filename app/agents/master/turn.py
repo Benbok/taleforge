@@ -285,6 +285,12 @@ class TurnMixin:
             if ch.seat_id and ch.status in ("approved", "active", "dead")
         }
 
+        from app.tools.resolution.requests import bind_message_actions
+
+        for message in new:
+            if message.kind == "action" and message.seat_id in char_by_seat:
+                bind_message_actions(message, char_by_seat[message.seat_id].id)
+
         system = await self._system_prompt(s, c, cfg, ctx)
         convo = _render_history(history, char_by_seat, names)
         news = _render_new(new, char_by_seat, names)

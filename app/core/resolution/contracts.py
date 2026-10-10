@@ -1,10 +1,25 @@
 """Versioned resolution contracts, independent of tools and language models."""
 
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 FailureCategory = Literal["invalid_arguments", "rule_denial", "unsupported", "technical_safe", "unknown"]
+
+
+@dataclass(frozen=True)
+class ActionContext:
+    ref: "ActionRef"
+    verbs: tuple[str, ...]
+    target_ids: tuple[str, ...]
+    place_id: str | None
+    parsed: bool
+    affected_in_combat: bool
+    combat_related: bool
+    completed_parts: tuple[int, ...]
+    module_data_known: bool
+    canonical_denial: bool
 
 
 class Contract(BaseModel):
