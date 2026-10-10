@@ -439,10 +439,12 @@ def test_shove_routes_to_contested_tool_not_fixed_dc_check():
     prone = {"verb": "shove", "target_id": "en1", "maneuver": "prone"}
     push = {**prone, "maneuver": "push"}
     assert intents.routable_tool_call({**base, "actions": [prone]}) == (
-        "resolve_shove", {"attacker_id": "ch1", "target_id": "en1", "technique": "prone"}
+        "resolve_shove",
+        {"attacker_id": "ch1", "target_id": "en1", "technique": "prone"},
     )
     assert intents.routable_tool_call({**base, "actions": [push]}) == (
-        "resolve_shove", {"attacker_id": "ch1", "target_id": "en1", "technique": "push"}
+        "resolve_shove",
+        {"attacker_id": "ch1", "target_id": "en1", "technique": "push"},
     )
     assert intents.routable_tool_call({**base, "actions": [{**prone, "maneuver": None}]}) is None
     assert intents.routable_tool_call({**base, "actions": [{**prone, "target_id": None}]}) is None
