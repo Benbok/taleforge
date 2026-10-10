@@ -1,5 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
+import { MAP_PRESETS } from "./mapPresets";
 import { useDraft } from "./draft";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
@@ -483,8 +484,8 @@ function Around({ m }: { m: MapState }) {
                   cx={px(st.col)}
                   cy={py(st.row)}
                   size={CELL}
-                  color={TYPE_COLOR[t.type]}
-                  icon={TYPE_ICON[t.type]}
+                  color={MAP_PRESETS[t.type].color}
+                  icon={MAP_PRESETS[t.type].icon}
                   label={fitLabel(t.name, occupied, st.col, st.row, false)}
                   faded={t.condition === "мёртв"}
                   badge={badge(t.elevation, t.cover)}
@@ -516,8 +517,8 @@ function Around({ m }: { m: MapState }) {
             cx={px(col)}
             cy={py(row)}
             size={CELL}
-            color="var(--tf-accent)"
-            icon="★"
+            color={MAP_PRESETS.hero.color}
+            icon={MAP_PRESETS.hero.icon}
             label={fitLabel(h.name, occupied, col, row, true)}
             ring={h.mine}
             faded={h.down}
