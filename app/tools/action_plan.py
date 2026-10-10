@@ -224,9 +224,7 @@ def maneuver_plan(intent: dict[str, Any] | None) -> dict[str, Any] | None:
 async def execute_action_plan(ctx: ToolContext, plan: dict[str, Any], key: str) -> dict[str, Any]:
     """Dispatch a persisted ordered plan; legacy weapon plans remain supported."""
     if plan.get("kind") == "grapple":
-        result = await execute(
-            ctx, "resolve_grapple", {k: plan[k] for k in ("attacker_id", "target_id")}, key=key
-        )
+        result = await execute(ctx, "resolve_grapple", {k: plan[k] for k in ("attacker_id", "target_id")}, key=key)
         if not result.get("ok"):
             return {"completed": False, "notes": [f"Захват не выполнен: {result.get('error')}"]}
         row = result["result"]
