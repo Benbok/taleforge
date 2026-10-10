@@ -35,8 +35,18 @@ def upgrade() -> None:
     op.create_table(
         "world_generation_states",
         sa.Column("id", sa.String(length=32), primary_key=True),
-        sa.Column("campaign_id", sa.String(length=32), sa.ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("target_entity_id", sa.String(length=32), sa.ForeignKey("entities.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "campaign_id",
+            sa.String(length=32),
+            sa.ForeignKey("campaigns.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "target_entity_id",
+            sa.String(length=32),
+            sa.ForeignKey("entities.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("phase", sa.String(length=32), nullable=False),
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("quality", sa.String(length=32), nullable=True),
@@ -56,12 +66,8 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("campaign_id", "target_entity_id", "phase", name="uq_world_generation_scope"),
-        sa.CheckConstraint(
-            "phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"
-        ),
-        sa.CheckConstraint(
-            "status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"
-        ),
+        sa.CheckConstraint("phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"),
+        sa.CheckConstraint("status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"),
         sa.CheckConstraint(
             "quality IS NULL OR quality IN ('normal', 'fallback', 'legacy_preserved')",
             name="ck_world_generation_quality",
@@ -72,14 +78,25 @@ def upgrade() -> None:
     op.create_table(
         "world_plot_bindings",
         sa.Column("id", sa.String(length=32), primary_key=True),
-        sa.Column("campaign_id", sa.String(length=32), sa.ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "campaign_id",
+            sa.String(length=32),
+            sa.ForeignKey("campaigns.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("anchor_id", sa.String(length=128), nullable=False),
         sa.Column("plot_ref", sa.String(length=128), nullable=False),
         sa.Column(
-            "holder_entity_id", sa.String(length=32), sa.ForeignKey("entities.id", ondelete="SET NULL"), nullable=True
+            "holder_entity_id",
+            sa.String(length=32),
+            sa.ForeignKey("entities.id", ondelete="SET NULL"),
+            nullable=True,
         ),
         sa.Column(
-            "target_location_id", sa.String(length=32), sa.ForeignKey("entities.id", ondelete="SET NULL"), nullable=True
+            "target_location_id",
+            sa.String(length=32),
+            sa.ForeignKey("entities.id", ondelete="SET NULL"),
+            nullable=True,
         ),
         sa.Column("state", sa.String(length=32), nullable=False),
         sa.Column("source_snapshot", JSON, nullable=False),
