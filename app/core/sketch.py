@@ -123,7 +123,7 @@ def describe(sk: dict) -> str:
 
 def for_viewer(sk: dict, master: bool, visible_places: set[str]) -> dict:
     """Эскиз для карты: игрок не видит тайных выходов и предметов, а ссылку выхода — только на известное место."""
-    out = {k: sk[k] for k in ("shape", "cols", "rows", "party", "walls") if k in sk}
+    out = {k: sk[k] for k in ("shape", "cols", "rows", "party", "walls", "book") if k in sk}
     out["exits"] = [
         {**x, "to": x.get("to") if master or x.get("to") in visible_places else None}
         for x in sk.get("exits") or []
@@ -169,8 +169,9 @@ def from_book(mark: dict, grid: dict, neighbours: list[tuple[str, str | None, di
     free = [(c, r) for c, r in sorted(floor, key=lambda p: (p[1], p[0])) if (c, r) not in blocked]
     if not free:
         return None
-    mx, my = sum(c for c, _ in free) / len(free), sum(r for _, r in free) / len(free)
-    pc, pr = min(free, key=lambda p: ((p[0] - mx) ** 2 + (p[1] - my) ** 2, p[1], p[0]))
+    from app.core.modules import room_anchor
+
+    pc, pr = room_anchor(mark)  # те же координаты опорной клетки, что на карте книги
     cw = (grid["right"] - grid["left"]) / grid["cols"]
     ch = (grid["bottom"] - grid["top"]) / grid["rows"]
     exits, used = [], set()

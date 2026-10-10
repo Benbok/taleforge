@@ -2,6 +2,7 @@ import type { Envelope } from "../lib/types";
 import { describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
 import {
+  bookAroundCells,
   exitCell,
   freeCell,
   interactText,
@@ -136,6 +137,28 @@ describe("эскиз места", () => {
     const g = layoutGrid(m);
     for (const x of [...g.things, ...g.exits]) expect(f.allowed(x.col, x.row)).toBe(true);
     expect(g.exits.map((x) => x.item.id)).toEqual(["loc_yard"]);
+  });
+
+  it("книга и «Вокруг» используют одинаковые клетки героев и объектов в комнате со смещённым началом", () => {
+    const book = {
+      module_id: "m", map_id: "a", name: "Склеп", here: "2",
+      grid: { cols: 20, rows: 16, left: 0, top: 0, right: 1, bottom: 1 },
+      rooms: [{ number: "2", x: 0.6, y: 0.5, status: "here" as const, name: "Крипта", cells: [[7, 4, 10, 7]] }],
+      tokens: [
+        { id: "h1", name: "Иван", mine: true, room: "2", x: 0.425, y: 0.40625, down: false, cell: [8, 6] as [number, number] },
+        { id: "e1", name: "Скелет", mine: false, room: "2", x: 0.475, y: 0.40625, down: false, cell: [9, 6] as [number, number] },
+      ],
+    };
+    const room: Sketch = { shape: "room", cols: 4, rows: 4, party: [1, 2], walls: [], exits: [], features: [], book: true };
+    const hero: MapHero = { id: "h1", name: "Иван", mine: true, zone: null, bearing: null, elevation: "ground", cover: "none", down: false };
+    const enemy: MapThing = { id: "e1", name: "Скелет", type: "creature", zone: "far", zone_name: "далеко", bearing: "n" };
+    const map: MapState = { ...empty, book, sketch: room, party: [hero], around: [enemy] };
+    expect([...bookAroundCells(map)]).toEqual([["h1", [0, 0]], ["e1", [1, 0]]]);
+    const layout = layoutGrid(map);
+    expect([layout.heroes[0].col, layout.heroes[0].row]).toEqual([0, 0]);
+    expect([layout.things[0].col, layout.things[0].row]).toEqual([1, 0]);
+    // Ручные эскизы не обязаны совпадать с книгой: старое размещение остаётся доступным.
+    expect(bookAroundCells({ ...map, sketch: { ...room, book: false } }).size).toBe(0);
   });
 
   it("бой на сетке: стоящий на клетке встаёт ровно туда, остальные обходят его клетку", () => {

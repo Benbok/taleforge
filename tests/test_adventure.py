@@ -139,6 +139,24 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     statuses = [(r["number"], r["status"]) for r in m["book"]["rooms"]]
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
 
+    # У книги и локального эскиза одна опорная клетка, даже с ненулевым
+    # началом комнаты на общей сетке.
+    token = next(t for t in m["book"]["tokens"] if t["id"] == hero["id"])
+    assert m["sketch"]["book"] is True
+    assert token["cell"] == [6 + m["sketch"]["party"][0], m["sketch"]["party"][1]]
+    assert token["x"] == modules.cell_center(GRID, *token["cell"])[0]
+    assert token["y"] == modules.cell_center(GRID, *token["cell"])[1]
+
+    async def step_in_room(ctx):
+        return await _ok(ctx, "reposition", {"actor_id": hero["id"], "cell": [2, 2]})
+
+    _play(settings, cid, step_in_room)
+    m = _map(client, p1, cid)
+    token = next(t for t in m["book"]["tokens"] if t["id"] == hero["id"])
+    assert token["cell"] == [8, 2]
+    assert m["party"][0]["cell"] == [1, 0]
+    assert next(t for t in m["scene_view"] if t["id"] == hero["id"])["cell"] == [1, 0]
+
     # История исследования не создаёт физический выход из комнаты 2.
     # В старых сохранениях переходы движения уже могли добавить ложные state.links.
     async def explore_and_return(ctx):

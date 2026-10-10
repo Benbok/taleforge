@@ -913,20 +913,48 @@ def cell_center(grid: dict, col: int, row: int) -> tuple[float, float]:
     return round(grid["left"] + (col + 0.5) * w, 4), round(grid["top"] + (row + 0.5) * h, 4)
 
 
-def place_tokens(grid: dict, mark: dict, tokens: list[tuple[str, float, float]]) -> dict[str, tuple[int, int]]:
-    """Клетки для значков в комнате. Токен — (id, сдвиг на восток в футах, сдвиг на север в футах) от середины
-    комнаты: так задаются позиции сцены (app/core/positions.py). Значок встаёт на ближайшую к своей точке свободную
-    клетку, которую ещё не занял другой значок; стены и колонны (blocked) пропускаются."""
+def room_anchor(mark: dict) -> tuple[int, int] | None:
+    """Опорная клетка строя: свободная клетка, ближайшая к центру пола комнаты.
+
+    И «Вокруг», и карта книги должны использовать именно эту клетку, а не
+    дробный центр прямоугольника (особенно для L-образных помещений).
+    """
     free = free_cells(mark)
     if not free:
-        return {}
+        return None
     cx = sum(c for c, _ in free) / len(free)
     cy = sum(r for _, r in free) / len(free)
+    return min(free, key=lambda p: ((p[0] - cx) ** 2 + (p[1] - cy) ** 2, p[1], p[0]))
+
+
+def place_tokens(
+    grid: dict,
+    mark: dict,
+    tokens: list[tuple[str, float, float]],
+    *,
+    exact: dict[str, tuple[int, int]] | None = None,
+) -> dict[str, tuple[int, int]]:
+    """Одна раскладка токенов для книги и локальной схемы.
+
+    Позиции в футах и точные клетки задаются относительно опорной клетки
+    строя. Точные клетки имеют приоритет; проекция на свободный пол не меняет
+    настоящие позиции мира или правила боя.
+    """
+    free = free_cells(mark)
+    anchor = room_anchor(mark)
+    if not free or anchor is None:
+        return {}
+    exact = exact or {}
     taken: set[tuple[int, int]] = set()
     out: dict[str, tuple[int, int]] = {}
-    for tid, east_ft, north_ft in tokens:
-        tx, ty = cx + east_ft / 5, cy - north_ft / 5  # клетка — 5 футов, строки растут к югу
-        options = [c for c in free if c not in taken] or free
+    for tid, east_ft, north_ft in sorted(tokens, key=lambda t: t[0] not in exact):
+        target = exact.get(tid)
+        tx, ty = (
+            (anchor[0] + target[0], anchor[1] + target[1])
+            if target is not None
+            else (anchor[0] + east_ft / 5, anchor[1] - north_ft / 5)
+        )
+        options = [cell for cell in free if cell not in taken] or free
         best = min(options, key=lambda c: ((c[0] - tx) ** 2 + (c[1] - ty) ** 2, c[1], c[0]))
         taken.add(best)
         out[tid] = best

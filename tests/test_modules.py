@@ -106,9 +106,13 @@ def test_heroes_stand_on_free_cells_near_their_positions():
     spots = modules.place_tokens(GRID, mark, [("a", 0, 0), ("b", 0, 0), ("c", 10, 0), ("d", 0, 10)])
     assert (2, 1) not in spots.values()  # на колонну никто не встал
     assert len(set(spots.values())) == 4  # двое в одной точке встали в разные клетки
-    assert spots["c"] == (4, 1)  # 10 футов на восток — две клетки вправо
+    assert modules.room_anchor(mark) == (2, 0)  # центр перекрыт колонной: опора — свободная клетка
+    assert spots["c"] == (4, 0)  # 10 футов на восток — две клетки от опорной
     assert spots["d"][1] == 0  # на север — вверх
     assert modules.cell_center(GRID, 4, 1) == (0.45, 0.1875)
+    exact = modules.place_tokens(GRID, mark, [("a", 0, 0), ("b", 0, 0)], exact={"b": (0, 0)})
+    assert exact["b"] == modules.room_anchor(mark)  # точная позиция получает опорную клетку первой
+    assert exact["a"] != exact["b"]
     assert modules.place_tokens(GRID, {"cells": []}, [("a", 0, 0)]) == {}
 
 

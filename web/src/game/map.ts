@@ -100,7 +100,7 @@ export interface MapBook {
   grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
   here: string | null;
   rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
-  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: EntityType }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: EntityType; cell?: [number, number] }[];
 }
 
 /** Эскиз места, нарисованный мастером (app/core/sketch.py): клетки по 5 футов, (0, 0) — северо-западный угол. */
@@ -131,6 +131,7 @@ export interface Sketch {
   walls: number[][];
   exits: SketchExit[];
   features: SketchFeature[];
+  book?: boolean; // эскиз построен непосредственно из размеченной сетки книги
 }
 
 export type SceneTokenType = "hero" | "creature" | "npc" | "item" | "landmark";
@@ -330,10 +331,31 @@ function target(id: string, bearing: Bearing | null, cells: number): [number, nu
   return [Math.round(cells * Math.sin(a)) || 0, Math.round(-cells * Math.cos(a)) || 0]; // без −0
 }
 
+/** Абсолютные клетки из книги -> координаты «Вокруг» относительно строя.
+ *  Используем только автоматически выведенный из книги эскиз: ручной эскиз
+ *  мастера может иметь другую систему отсчёта.
+ */
+export function bookAroundCells(m: MapState): Map<string, [number, number]> {
+  const sk = m.sketch;
+  const book = m.book;
+  if (!sk?.book || !book?.grid || !book.here) return new Map();
+  const room = book.rooms.find((r) => r.number === book.here);
+  if (!room?.cells?.length) return new Map();
+  const c0 = Math.min(...room.cells.map((r) => r[0]));
+  const r0 = Math.min(...room.cells.map((r) => r[1]));
+  const projected = new Map<string, [number, number]>();
+  for (const token of book.tokens) {
+    if (token.room !== book.here || !token.cell) continue;
+    projected.set(token.id, [token.cell[0] - c0 - sk.party[0], token.cell[1] - r0 - sk.party[1]]);
+  }
+  return projected;
+}
+
 /** Раскладка «Вокруг» по клеткам: каждый в клетке по своей зоне и стороне, двое в одной точке — в соседних.
  *  С эскизом места значки встают только на его пол, а выходы, нарисованные в эскизе, не дублируются. */
 export function layoutGrid(m: MapState): GridLayout {
   const frame = m.sketch ? sketchFrame(m.sketch) : null;
+  const bookCells = bookAroundCells(m);
   const allowed = frame?.allowed;
   const reach = frame ? frame.reach : GRID_R;
   const drawn = new Set((m.sketch?.exits ?? []).map((x) => x.to).filter(Boolean) as string[]);
@@ -356,13 +378,19 @@ export function layoutGrid(m: MapState): GridLayout {
   };
   const party = m.party ?? [];
   const placed = new Map<string, Cell<MapHero> | Cell<MapThing>>();
-  for (const h of party) if (h.cell) placed.set(h.id, exact(h, h.cell));
-  for (const t of m.around) if (t.cell) placed.set(t.id, exact(t, t.cell));
+  for (const h of party) {
+    const cell = bookCells.get(h.id) ?? h.cell;
+    if (cell) placed.set(h.id, exact(h, cell));
+  }
+  for (const t of m.around) {
+    const cell = bookCells.get(t.id) ?? t.cell;
+    if (cell) placed.set(t.id, exact(t, cell));
+  }
   // потом герои в строю — вокруг центра, потом все остальные по зонам; выходы — по краю схемы
   const heroes = [
-    ...party.filter((h) => !h.cell && !h.zone).map((h) => put(h, [0, 0])),
-    ...party.filter((h) => !h.cell && h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
-    ...party.filter((h) => h.cell).map((h) => placed.get(h.id) as Cell<MapHero>),
+    ...party.filter((h) => !placed.has(h.id) && !h.zone).map((h) => put(h, [0, 0])),
+    ...party.filter((h) => !placed.has(h.id) && h.zone).map((h) => put(h, target(h.id, h.bearing, ZONE_CELLS[h.zone as Zone]))),
+    ...party.filter((h) => placed.has(h.id)).map((h) => placed.get(h.id) as Cell<MapHero>),
   ];
   const things = m.around.map(
     (t) =>
