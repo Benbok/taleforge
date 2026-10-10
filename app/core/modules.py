@@ -893,11 +893,11 @@ def _passages(m: dict, grid: dict | None, draft_room: dict, where: str, errors: 
         for c in range(rect[0], rect[2] + 1)
         for r in range(rect[1], rect[3] + 1)
     }
-    if not floor and m.get("passages"):
-        errors.append(f"{where}: для координат проходов нужен пол комнаты и grid")
-        return result
     if not grid and m.get("passages"):
         errors.append(f"{where}: проходы без сетки")
+        return result
+    if not floor and m.get("passages"):
+        errors.append(f"{where}: для координат проходов нужен пол комнаты")
         return result
     if not floor:
         return result
