@@ -50,7 +50,9 @@ class NarrationMixin:
         attempts = tool_attempts or []
         if unresolved_transition(attempts):
             return safe_stay_message(ctx, affected_heroes or set()), {
-                "regenerated": False, "stripped": [], "failed_transition": True
+                "regenerated": False,
+                "stripped": [],
+                "failed_transition": True,
             }
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
