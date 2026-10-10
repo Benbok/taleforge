@@ -1,0 +1,23 @@
+name: P0 targeted regressions (temporary)
+
+on:
+  pull_request:
+    paths:
+      - "app/agents/master/**"
+      - "app/agents/prompts/narrate.j2"
+      - "tests/test_master.py"
+      - ".github/workflows/p0-targeted.yml"
+
+jobs:
+  p0:
+    name: Fast transition checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check app/agents/master/outcomes.py app/agents/master/turn.py app/agents/master/narration.py tests/test_master.py
+      - run: pytest -q -n 0 tests/test_master.py -k "failed_enter_room_does_not_spawn_or_claim_arrival or transition_retry_can_succeed"
