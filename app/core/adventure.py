@@ -175,7 +175,13 @@ def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogVie
         lines.append("Тайное (игрокам — только когда найдут): " + "; ".join(map(str, room["secrets"])))
     exits = []
     place_id = entity.location_id if entity is not None else None
-    for rid in room.get("exits") or []:
+    from app.core.topology import location_exits
+
+    refs = (
+        [x.room_ref for x in location_exits(entity, catalog, entities) if x.room_ref]
+        if entity is not None else room.get("exits") or []
+    )
+    for rid in refs:
         other = find_room(rec, rid)
         if other is None:
             continue
