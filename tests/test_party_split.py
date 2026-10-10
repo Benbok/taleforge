@@ -167,7 +167,7 @@ def test_each_hero_sees_own_place(client, admin, settings):
     by_place = {loc: (seats, ents) for seats, loc, ents in out}
     assert by_place[ids["docks"]] == ([h2["seat_id"]], {ids["gob"]})
     # мастер и место без героя здесь получают общую сцену; места героев — свою
-    assert any(h1["seat_id"] in seats for seats, loc, _ in out if loc == ids["square"])
+    assert any(h1["seat_id"] in (seats or []) for seats, loc, _ in out if loc == ids["square"])
 
     # герой вернулся: отряд снова вместе, одна сцена всем
     async def back(ctx):
