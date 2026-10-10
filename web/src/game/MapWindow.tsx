@@ -420,7 +420,11 @@ export function UnlocatedExitStrip({ m }: { m: MapState }) {
 
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
-  const { things, exits, heroes, areas } = layoutGrid(m);
+  const { things: allThings, exits, heroes, areas } = layoutGrid(m);
+  // Geometry-backed entities already render as interactive sketch features.
+  // Keep them in around for narrative/interaction, not as overlapping SVG tokens.
+  const linked = new Set(m.sketch?.features.map((f) => f.entity_id).filter(Boolean) ?? []);
+  const things = allThings.filter((x) => !linked.has(x.item.id));
   const [pick, setPick] = useState<Pick | null>(null);
   const isSelected = (c: number, r: number) => pick?.near?.some(([col, row]) => col === c && row === r) ?? false;
   const { step, stepTo, cancelStep } = useMapWindow();
