@@ -274,8 +274,8 @@ def test_litellm_prompt_caching_injection(monkeypatch):
 
 def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g, llm, dice, settings):
     """A natural-language offensive cast resolves only after initiative is rolled."""
-    from tests.test_spells import WIZARD
     from app.tools.registry import execute
+    from tests.test_spells import WIZARD
 
     c, heads, _ = party(game_client, admin_g, players=2)
     cid = c["id"]
