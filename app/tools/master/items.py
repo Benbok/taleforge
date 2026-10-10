@@ -6,6 +6,7 @@ import copy
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.core import economy
 from app.core import positions as grid
@@ -530,8 +531,20 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         else [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
     )
     if unique:
-        if en.location_id is None:
-            raise ToolError("уникальный предмет уже перенесён")
+        # Lock the persistent identity before granting ownership. A stale scene snapshot
+        # cannot give the same artifact to two heroes in concurrent master turns.
+        query = (
+            select(Entity)
+            .where(Entity.id == en.id, Entity.campaign_id == ctx.campaign.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        en = (await ctx.session.scalars(query)).one_or_none()
+        if en is None or en.location_id != ctx.world.place_of(ch) or is_nested(en):
+            raise ToolError("уникальный предмет уже перемещён")
+        owned = await ctx.session.scalar(select(InventoryItem.id).where(InventoryItem.world_entity_id == en.id))
+        if owned is not None:
+            raise ToolError("уникальный предмет уже принадлежит персонажу")
         # Identity stays in Entity, while InventoryItem links the current owner.
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id)
         en.location_id = None
