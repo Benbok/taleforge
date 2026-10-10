@@ -11,6 +11,7 @@ from app.core import adventure, audio, combat, economy, sketch
 from app.core import positions as grid
 from app.core.positions import Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import PLAYABLE
+from app.core.world_objects import is_nested
 from app.db.models import Character, Entity
 from app.tools.master.base import (
     BEARING_HINT,
@@ -451,6 +452,8 @@ class SketchExit(BaseModel):
 
 
 class SketchFeature(BaseModel):
+    id: str | None = Field(None, min_length=1, max_length=32, description="постоянный id элемента эскиза")
+    entity_id: str | None = Field(None, description="опциональная привязка к Entity.kind=object в этом месте")
     name: str = Field(min_length=1, max_length=60, description="«Каменный стол», «Колонна», «Жаровня»")
     kind: Literal["furniture", "cover", "hazard", "light", "object", "nature"] = "object"
     cells: list[list[int]] = Field(
@@ -471,6 +474,7 @@ class SketchArgs(BaseModel):
     exits: list[SketchExit] = Field(default_factory=list, max_length=sketch.MAX_EXITS)
     features: list[SketchFeature] = Field(default_factory=list, max_length=sketch.MAX_FEATURES)
     location_id: str | None = Field(None, description=PLACE_HINT)
+    expected_revision: int | None = Field(None, ge=0, description="ревизия текущего эскиза для защиты от устаревших правок")
 
 
 def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
@@ -480,7 +484,7 @@ def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
             return {}, [f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]"]
     if any(len(c) != 2 for c in a.walls):
         return {}, ["стена — клетка [c, r]"]
-    data = a.model_dump(exclude={"location_id"})
+    data = a.model_dump(exclude={"location_id", "expected_revision"}, exclude_none=True)
     data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
     return data, sketch.check(data, places)
 
@@ -491,6 +495,35 @@ def link_exits(place: Entity, data: dict, entities: dict) -> None:
         other = entities.get(x["to"] or "")
         if other is not None and other.id != place.id and not _linked(None, place, other):
             _link(place, other.id, x["name"])
+
+
+
+
+def _validate_feature_bindings(w, place: Entity, data: dict) -> None:
+    """Never accept an LLM/entity reference from another room, campaign, inventory or closed container."""
+    for feature in data.get("features") or []:
+        entity_id = feature.get("entity_id")
+        if not entity_id:
+            continue
+        entity = w.entities.get(entity_id)
+        if (
+            entity is None
+            or entity.campaign_id != place.campaign_id
+            or entity.kind != "object"
+            or entity.location_id != place.id
+            or is_nested(entity)
+            or (entity.state or {}).get("world_object", {}).get("physical") == "destroyed"
+        ):
+            raise ToolError(f"«{feature['name']}»: entity_id {entity_id} не принадлежит открытому объекту этой комнаты")
+
+
+def _verify_sketch_revision(current: dict, expected: int | None, *, replacing: bool = False) -> int:
+    revision = int(current.get("edit_rev") or 0)
+    if expected is not None and expected != revision:
+        raise ToolError(f"устаревшая ревизия эскиза: ожидалась {expected}, текущая {revision}")
+    if replacing and expected is None and sketch.linked_entity_ids(current):
+        raise ToolError(f"у эскиза есть связанные объекты: укажи expected_revision={revision}")
+    return revision
 
 
 @tool(
@@ -507,9 +540,15 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     if w.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    current = (place.state or {}).get("sketch") or {}
+    revision = _verify_sketch_revision(current, a.expected_revision, replacing=True)
     data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"})
     if errors:
         raise ToolError("; ".join(errors[:8]))
+    _validate_feature_bindings(w, place, data)
+    # Existing linked features may only be overwritten by an explicit revision-aware replacement.
+    data = sketch.with_feature_ids(data)
+    data["edit_rev"] = revision + 1
     before = copy.deepcopy(place.state)
     link_exits(place, data, w.entities)
     data["rev"] = int((place.state or {}).get("layout_rev") or 0)  # нарисован после этого описания: фон не заменит
@@ -539,6 +578,7 @@ class EditSketchArgs(BaseModel):
     feature: SketchFeature | None = Field(None, description="для add_feature")
     exit: SketchExit | None = Field(None, description="для add_exit и to_exit: выход на краю места")
     location_id: str | None = Field(None, description=PLACE_HINT)
+    expected_revision: int | None = Field(None, ge=0)
 
 
 def _find(items: list[dict], name: str, what: str) -> int:
@@ -566,6 +606,7 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     current = sketch.of_place(place, w.catalog, w.entities)
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
+    revision = _verify_sketch_revision(current, a.expected_revision)
     data = copy.deepcopy(current)
     exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
     note = ""
@@ -616,9 +657,12 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
                 raise ToolError(f"«{f['name']}» — предмет эскиза: для него reveal, hide, remove или to_exit")
         note = a.rename or a.target
     data["exits"], data["features"] = exits, feats
+    data = sketch.with_feature_ids(data)
     errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"})
     if errors:
         raise ToolError("; ".join(errors[:8]))
+    _validate_feature_bindings(w, place, data)
+    data["edit_rev"] = revision + 1
     before = copy.deepcopy(place.state)
     link_exits(place, data, w.entities)
     data["auto"] = False  # правка мастера: фоновая перерисовка по старому описанию её не заменит
@@ -632,6 +676,56 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     )
     return {"place": place.name, "sketch": sketch.describe(data)}
 
+
+
+
+class BindSketchFeatureArgs(BaseModel):
+    location_id: str | None = Field(None, description=PLACE_HINT)
+    feature_id: str = Field(min_length=1, max_length=32, description="стабильный id из sketch.features")
+    entity_id: str | None = Field(None, description="id физического объекта, None — отвязать")
+    expected_revision: int = Field(ge=0, description="edit_rev с последнего map.state")
+
+
+@tool(
+    "bind_sketch_feature",
+    "Привязывает существующий геометрический элемент к объекту Entity в той же комнате; "
+    "не создаёт предметов и не меняет геометрию. Проверяет версию эскиза.",
+    BindSketchFeatureArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def bind_sketch_feature(ctx: ToolContext, a: BindSketchFeatureArgs) -> dict:
+    w = ctx.world
+    place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    current = (place.state or {}).get("sketch")
+    if not isinstance(current, dict):
+        raise ToolError("у места нет сохранённого эскиза")
+    revision = _verify_sketch_revision(current, a.expected_revision)
+    data = copy.deepcopy(current)
+    features = data.get("features") or []
+    feature = next((x for x in features if x.get("id") == a.feature_id), None)
+    if feature is None:
+        raise ToolError("не найден feature_id; обновите эскиз карты")
+    if a.entity_id:
+        feature["entity_id"] = a.entity_id
+    else:
+        feature.pop("entity_id", None)
+    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"})
+    if errors:
+        raise ToolError("; ".join(errors[:8]))
+    _validate_feature_bindings(w, place, data)
+    before = copy.deepcopy(place.state)
+    data["edit_rev"] = revision + 1
+    data["auto"] = False
+    place.state = {**(place.state or {}), "sketch": data}
+    result = {"feature_id": a.feature_id, "entity_id": a.entity_id, "revision": data["edit_rev"]}
+    await ctx.record(
+        "bind_sketch_feature",
+        target_id=place.id,
+        payload=result,
+        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+    )
+    return result
 
 class DescribePlaceArgs(BaseModel):
     layout: str = Field(
