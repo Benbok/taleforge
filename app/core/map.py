@@ -222,13 +222,28 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             )
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
     scene_view = [
-        {"id": h["id"], "name": h["name"], "type": "hero", "mine": h["mine"], "down": h["down"],
-         "zone": h["zone"], "bearing": h["bearing"], "cell": h["cell"]}
+        {
+            "id": h["id"],
+            "name": h["name"],
+            "type": "hero",
+            "mine": h["mine"],
+            "down": h["down"],
+            "zone": h["zone"],
+            "bearing": h["bearing"],
+            "cell": h["cell"],
+        }
         for h in party
     ] + [
-        {"id": t["id"], "name": t["name"], "type": t["type"], "mine": False,
-         "down": t.get("condition") == "мёртв", "zone": t["zone"],
-         "bearing": t["bearing"], "cell": t["cell"]}
+        {
+            "id": t["id"],
+            "name": t["name"],
+            "type": t["type"],
+            "mine": False,
+            "down": t.get("condition") == "мёртв",
+            "zone": t["zone"],
+            "bearing": t["bearing"],
+            "cell": t["cell"],
+        }
         for t in around
     ]
     book = sk = None
