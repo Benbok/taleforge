@@ -332,11 +332,18 @@ def book_map(
             spots = _token_spots(grid, mark, positions)
             for t in extras:
                 x, y = spots[t["id"]]
-                tokens.append({
-                    "id": t["id"], "name": t["name"], "mine": False,
-                    "room": here_number, "x": x, "y": y,
-                    "down": t.get("down", False), "type": t["type"],
-                })
+                tokens.append(
+                    {
+                        "id": t["id"],
+                        "name": t["name"],
+                        "mine": False,
+                        "room": here_number,
+                        "x": x,
+                        "y": y,
+                        "down": t.get("down", False),
+                        "type": t["type"],
+                    }
+                )
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
