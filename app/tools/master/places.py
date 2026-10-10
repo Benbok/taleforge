@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core import adventure, audio, combat, sketch
+from app.core import adventure, audio, combat, economy, sketch
 from app.core import positions as grid
 from app.core.positions import Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import PLAYABLE
@@ -77,6 +77,7 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
         after.cover = a.cover
     if act.kind == "creature" and after.zone is None:
         raise ToolError("существо не встаёт в строй отряда: укажите melee, near или far")
+    previous_scene_state = copy.deepcopy(w.scene.state)
     moved = 0
     if (after.cell, after.zone, after.bearing, after.elevation) != (
         before.cell,
@@ -87,16 +88,20 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
         moved = distance(before, after)
     out: dict = {"who": act.name, "position": after.public(), "moved_ft": moved}
     if combat.in_combat(ctx) and ctx.world.in_fight(act.id) and moved:
-        if moved > 2 * act.speed:
-            raise ToolError(
-                f"{act.name} проходит за ход не больше {2 * act.speed} футов с рывком, а тут {moved}: "
-                "переместите ближе, остальное — следующим ходом"
-            )
-        if moved > act.speed:
-            out["note"] = f"рывок: {moved} футов больше скорости {act.speed}, действие потрачено на рывок"
+        if act.kind == "character":
+            if economy.charge_movement(ctx, act.id, moved):
+                out["note"] = "рывок: общая дистанция за ход превысила скорость, действие потрачено"
+        else:
+            if moved > 2 * act.speed:
+                raise ToolError(
+                    f"{act.name} проходит за ход не больше {2 * act.speed} футов с рывком, а тут {moved}: "
+                    "переместите ближе, остальное — следующим ходом"
+                )
+            if moved > act.speed:
+                out["note"] = f"рывок: {moved} футов больше скорости {act.speed}, действие потрачено на рывок"
     if act.kind == "character":
         sc = w.scene
-        inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)}]
+        inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": previous_scene_state}]
         positions = hero_positions(sc)
         positions[act.id] = after.public()
         sc.state = {**(sc.state or {}), "positions": positions}
