@@ -13,6 +13,7 @@ import {
   GRID_R,
   interactText,
   layoutGrid,
+  unlocatedBookExits,
   stackCells,
   stackTitle,
   layoutPlaces,
@@ -319,12 +320,6 @@ function SketchLegend({ sk }: { sk: Sketch }) {
             .join("; ")}
         </li>
       )}
-      {(sk.unplaced_exits?.length ?? 0) > 0 && (
-        <li>
-          <span className="font-mono text-xs uppercase text-muted">проходы без разметки: </span>
-          {sk.unplaced_exits!.map((x) => x.name).join("; ")}. Точное положение дверей на карте книги не определено.
-        </li>
-      )}
       {sk.features.length > 0 && (
         <li>
           <span className="font-mono text-xs uppercase text-muted">видно: </span>
@@ -357,6 +352,53 @@ function CompassRose({ x, y }: { x: number; y: number }) {
         З
       </text>
     </g>
+  );
+}
+
+/** Переходы без клетки проёма показываем отдельно от стен — как интерактивные
+ * маркеры карты, но не как выдуманные физические двери на конкретной стороне.
+ */
+export function UnlocatedExitStrip({ m }: { m: MapState }) {
+  const exits = unlocatedBookExits(m);
+  const open = useOpen();
+  const insert = useDraft((s) => s.insert);
+  if (!exits.length) return null;
+
+  return (
+    <section className="rounded border border-line px-2 py-2" aria-label="Проходы с неизвестным положением">
+      <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+        <MapGlyph name="passage" width={14} height={14} color="var(--tf-entity-location)" />
+        <span className="font-semibold text-ink-2">Проходы без точной разметки</span>
+        <span>· место двери на схеме неизвестно</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {exits.map((exit) => (
+          <div key={exit.key} className="inline-flex min-h-8 items-center gap-1.5 rounded border border-dashed border-line bg-raised px-2 py-1 text-xs">
+            <MapGlyph name="passage" width={14} height={14} color="var(--tf-entity-location)" />
+            {exit.destinationId ? (
+              <button
+                type="button"
+                className="text-ink underline decoration-dotted underline-offset-4 hover:text-accent"
+                onClick={open(exit.destinationId, exit.name)}
+                title={exit.visited ? "Открыть карточку посещённого места" : "Открыть карточку места"}
+              >
+                {exit.name}
+              </button>
+            ) : (
+              <span className="text-ink-2">{exit.name}</span>
+            )}
+            <button
+              type="button"
+              className="ml-1 rounded border border-line px-1.5 py-0.5 text-muted hover:border-accent hover:text-accent"
+              onClick={() => insert(`Ищу, где находится проход к месту «${exit.name}».`)}
+              aria-label={`Найти проход: ${exit.name}`}
+            >
+              Найти
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -402,6 +444,7 @@ function Around({ m }: { m: MapState }) {
         <span className="text-accent">⌖</span> {whereTrail(m)}
       </p>
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
+      <UnlocatedExitStrip m={m} />
       <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
         {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} onPick={setPick} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}

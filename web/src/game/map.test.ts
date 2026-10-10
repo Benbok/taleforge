@@ -13,6 +13,7 @@ import {
   type Sketch,
   GRID_R,
   layoutGrid,
+  unlocatedBookExits,
   layoutPlaces,
   mapEvent,
   useMapWindow,
@@ -170,10 +171,41 @@ describe("эскиз места", () => {
       },
       exits: [{ id: "loc3", name: "Комната 3", via: null, bearing: "e", visited: false }],
     };
-    expect(layoutGrid(m).exits).toHaveLength(0);
-    expect(m.sketch?.unplaced_exits?.[0].name).toBe("Комната 3");
+    expect(layoutGrid(m).exits).toHaveLength(0); // дверь НЕ появляется на выдуманной клетке
+    expect(unlocatedBookExits(m)).toEqual([
+      { key: "loc3", name: "Комната 3", destinationId: "loc3", visited: false },
+    ]); // но выход отображается в отдельной полосе маркеров
     // Если координат книги нет, старый свободный мир работает без изменений.
     expect(layoutGrid({ ...m, sketch: null }).exits).toHaveLength(1);
+  });
+
+  it("показывает все выходы старой книги, не дублирует размеченную дверь и не открывает скрытую карточку", () => {
+    const sketch: Sketch = {
+      shape: "room", cols: 7, rows: 7, party: [3, 3], walls: [], features: [], book: true,
+      exits: [{ name: "Восточная крипта", to: "loc2", side: "e", at: 2, kind: "door" }],
+      unplaced_exits: [
+        { name: "Кладбище у мавзолея", to: "cemetery" },
+        { name: "Восточная крипта", to: "loc2" },
+        { name: "Комната 3", to: "loc3" },
+        { name: "Секретный выход", to: null },
+      ],
+    };
+    const m: MapState = {
+      ...empty, sketch,
+      exits: [
+        { id: "cemetery", name: "Кладбище у мавзолея", visited: true, bearing: "w", via: null },
+        { id: "loc2", name: "Восточная крипта", visited: true, bearing: "e", via: null },
+        { id: "loc3", name: "Комната 3", visited: false, bearing: null, via: null },
+      ],
+    };
+    expect(layoutGrid(m).exits).toHaveLength(0);
+    expect(unlocatedBookExits(m)).toEqual([
+      { key: "cemetery", name: "Кладбище у мавзолея", destinationId: "cemetery", visited: true },
+      { key: "loc3", name: "Комната 3", destinationId: "loc3", visited: false },
+      { key: "unlocated-3", name: "Секретный выход", destinationId: null, visited: null },
+    ]);
+    expect(unlocatedBookExits({ ...m, sketch: { ...sketch, book: false } })).toEqual([]);
+    expect(unlocatedBookExits({ ...m, sketch: null })).toEqual([]);
   });
 
   it("бой на сетке: стоящий на клетке встаёт ровно туда, остальные обходят его клетку", () => {
