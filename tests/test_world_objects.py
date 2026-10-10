@@ -1,8 +1,12 @@
 """World Objects: read compatibility, storage invariants and SQLite/PG paths."""
 
 import copy
+import sqlite3
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.exc import IntegrityError
 
 from app.core.world_objects import read_world_object
@@ -138,3 +142,31 @@ def test_new_tables_and_legacy_inventory_are_compatible(settings):
                 await session.flush()
 
     run(settings, exercise)
+
+
+def test_sqlite_alembic_world_objects_upgrade_and_downgrade(monkeypatch, tmp_path):
+    """Миграция из прежней схемы и обратно не требует создания игровых данных."""
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "alembic"))
+    db_path = tmp_path / "legacy.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
+
+    command.upgrade(config, "0014")
+    with sqlite3.connect(db_path) as db:
+        before = {row[1] for row in db.execute("PRAGMA table_info(inventory)")}
+        assert "world_entity_id" not in before
+
+    command.upgrade(config, "0015")
+    with sqlite3.connect(db_path) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(inventory)")}
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "world_entity_id" in columns
+        assert {"world_generation_states", "world_plot_bindings"} <= tables
+
+    command.downgrade(config, "0014")
+    with sqlite3.connect(db_path) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(inventory)")}
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "world_entity_id" not in columns
+        assert not {"world_generation_states", "world_plot_bindings"} & tables

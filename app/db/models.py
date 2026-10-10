@@ -8,7 +8,19 @@ import secrets
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -387,12 +399,8 @@ class WorldGenerationState(Base):
     __tablename__ = "world_generation_states"
     __table_args__ = (
         UniqueConstraint("campaign_id", "target_entity_id", "phase", name="uq_world_generation_scope"),
-        CheckConstraint(
-            "phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"
-        ),
-        CheckConstraint(
-            "status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"
-        ),
+        CheckConstraint("phase IN ('location_initial', 'container_contents')", name="ck_world_generation_phase"),
+        CheckConstraint("status IN ('unprepared', 'preparing', 'ready', 'blocked')", name="ck_world_generation_status"),
         CheckConstraint(
             "quality IS NULL OR quality IN ('normal', 'fallback', 'legacy_preserved')",
             name="ck_world_generation_quality",
