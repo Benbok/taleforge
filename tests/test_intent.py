@@ -448,7 +448,9 @@ def test_shove_routes_to_contested_tool_not_fixed_dc_check():
     )
     assert intents.routable_tool_call({**base, "actions": [{**prone, "maneuver": None}]}) is None
     assert intents.routable_tool_call({**base, "actions": [{**prone, "target_id": None}]}) is None
-    assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": "en1"}]}) is None
+    assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": "en1"}]}) == (
+        "resolve_grapple", {"attacker_id": "ch1", "target_id": "en1"}
+    )
 
 
 def test_chat_shove_starts_initiative_before_contested_maneuver(game_client, admin_g, llm, dice, settings):
@@ -468,3 +470,19 @@ def test_chat_shove_starts_initiative_before_contested_maneuver(game_client, adm
     assert len(shoves) == 1 and shoves[0].payload["success"]
     assert opening.created_at <= shoves[0].created_at
     assert not [e for e in events if e.tool == "roll_check" and e.actor_id == hero["id"]]
+
+
+def test_grapple_and_escape_are_routed_to_real_tools():
+    base = {"character_id": "ch_hero", "confidence": 0.9}
+    assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": "en1"}]}) == (
+        "resolve_grapple",
+        {"attacker_id": "ch_hero", "target_id": "en1"},
+    )
+    assert intents.routable_tool_call({**base, "actions": [{"verb": "escape_grapple", "target_id": "en1"}]}) == (
+        "escape_grapple",
+        {"character_id": "ch_hero", "holder_id": "en1"},
+    )
+    assert intents.routable_tool_call(
+        {**base, "actions": [{"verb": "escape_grapple", "skill": "acrobatics"}]}
+    ) == ("escape_grapple", {"character_id": "ch_hero", "skill": "acrobatics"})
+    assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": None}]}) is None
