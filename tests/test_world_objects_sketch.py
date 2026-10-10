@@ -56,7 +56,8 @@ def test_linked_sketch_object_uses_one_visual_marker_and_revisions(client, admin
 
     async def conceal(ctx):
         await _ok(
-            ctx, "edit_sketch",
+            ctx,
+            "edit_sketch",
             {"action": "hide", "target": "Оружейная стойка", "expected_revision": 2},
         )
         return ctx.world.entities[entity_id].state["visual_key"]
@@ -69,7 +70,8 @@ def test_linked_sketch_object_uses_one_visual_marker_and_revisions(client, admin
 
     async def reveal(ctx):
         await _ok(
-            ctx, "edit_sketch",
+            ctx,
+            "edit_sketch",
             {"action": "reveal", "target": "Оружейная стойка", "expected_revision": 3},
         )
 
@@ -120,11 +122,13 @@ def test_sketch_binding_rejects_nested_object_and_duplicate_reference(client, ad
         chest = await _ok(ctx, "create_container", {"name": "Сундук"})
         await _ok(ctx, "open_container", {"character_id": hero["id"], "container_id": chest["container_id"]})
         await _ok(
-            ctx, "store_object",
+            ctx,
+            "store_object",
             {"character_id": hero["id"], "container_id": chest["container_id"], "object_id": obj["entity_id"]},
         )
         other = await execute(
-            ctx, "bind_sketch_feature",
+            ctx,
+            "bind_sketch_feature",
             {"feature_id": first, "entity_id": obj["entity_id"], "expected_revision": 2},
         )
         assert not other["ok"] and "не принадлежит" in other["error"]

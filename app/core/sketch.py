@@ -219,12 +219,7 @@ def project_for_viewer(
         eid = f.get("entity_id")
         if eid:
             entity = entities.get(eid)
-            if (
-                entity is None
-                or entity.kind != "object"
-                or entity.location_id != location_id
-                or is_nested(entity)
-            ):
+            if entity is None or entity.kind != "object" or entity.location_id != location_id or is_nested(entity):
                 continue
             st = entity.state or {}
             if st.get("world_object", {}).get("physical") == "destroyed":

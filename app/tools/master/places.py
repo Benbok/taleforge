@@ -499,8 +499,6 @@ def link_exits(place: Entity, data: dict, entities: dict) -> None:
             _link(place, other.id, x["name"])
 
 
-
-
 def _validate_feature_bindings(w, place: Entity, data: dict) -> None:
     """Never accept an LLM/entity reference from another room, campaign, inventory or closed container."""
     for feature in data.get("features") or []:
@@ -679,8 +677,6 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     return {"place": place.name, "sketch": sketch.describe(data)}
 
 
-
-
 class BindSketchFeatureArgs(BaseModel):
     location_id: str | None = Field(None, description=PLACE_HINT)
     feature_id: str = Field(min_length=1, max_length=32, description="стабильный id из sketch.features")
@@ -728,6 +724,7 @@ async def bind_sketch_feature(ctx: ToolContext, a: BindSketchFeatureArgs) -> dic
         inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
     )
     return result
+
 
 class DescribePlaceArgs(BaseModel):
     layout: str = Field(
