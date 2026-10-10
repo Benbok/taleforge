@@ -9,6 +9,7 @@ from typing import Any
 from app.agents import textcalls
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
+from app.agents.master.continuity import unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
 from app.core import combat
 from app.db.models import AgentConfig, Campaign, Scene
@@ -70,17 +71,28 @@ class NarrationMixin:
             await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
-        if unknown:
+        unregistered = unregistered_named_actors(text, ctx.world)
+        if unknown or unregistered:
             audit["regenerated"] = True
-            audit["unknown_first"] = unknown
+            if unknown:
+                audit["unknown_first"] = unknown
+            if unregistered:
+                audit["unregistered_actors"] = unregistered
+            problems = []
+            if unknown:
+                problems.append(f"неизвестные id: {', '.join(unknown)}")
+            if unregistered:
+                problems.append(f"не зарегистрированы в текущей сцене: {', '.join(unregistered)}")
             retry = [
                 *base,
                 {"role": "assistant", "content": text},
                 {
                     "role": "user",
                     "content": (
-                        f"В тексте размечены сущности, которых нет в реестре: {', '.join(unknown)}. Перепиши ответ: "
-                        "размечай только id из таблицы сцены, новых существ и предметов не вводи."
+                        f"Нарушена достоверность сцены ({'; '.join(problems)}). Перепиши ответ: "
+                        "возможны только участники и события, подтверждённые текущей таблицей сцены "
+                        "и успешными вызовами инструментов. Не описывай незарегистрированных врагов как "
+                        "видимых или приближающихся. Если действие игрока не выполнено, объясни причину."
                     ),
                 },
             ]
@@ -124,6 +136,15 @@ class NarrationMixin:
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
+        # Последний барьер: повторная галлюцинация не превращается в факт игрового мира.
+        unregistered = unregistered_named_actors(text, ctx.world)
+        if unregistered:
+            audit["blocked_actors"] = unregistered
+            text = (
+                "Мастер не смог подтвердить появление этих существ в игровой сцене. "
+                "Они пока отсутствуют в реестре мира; для взаимодействия мастер должен сначала "
+                "добавить их в сцену."
+            )
         return text or "…", audit
 
     def _tts_ready(self, c: Campaign) -> bool:
