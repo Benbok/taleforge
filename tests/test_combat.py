@@ -365,9 +365,7 @@ def test_shove_prone_is_contested_and_consumes_single_attack(game):
 
     async def fn(ctx):
         goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
-        result = await call(
-            ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "prone"}
-        )
+        result = await call(ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "prone"})
         assert result["ok"], result
         assert result["result"]["success"]
         assert len([e for e in ctx.events if e.tool == "resolve_shove"]) == 1
