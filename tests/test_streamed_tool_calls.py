@@ -18,7 +18,7 @@ class AsyncChunks:
         try:
             return next(self._iter)
         except StopIteration:
-            raise StopAsyncIteration
+            raise StopAsyncIteration from None
 
 
 def test_collect_stream_preserves_tool_calls():
