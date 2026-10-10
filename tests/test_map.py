@@ -68,6 +68,13 @@ def test_map_shows_surroundings_exits_and_hides_secrets(client, admin, settings)
     assert around[ids["gob"]]["zone"] == "far" and around[ids["gob"]]["bearing"] == "n"
     assert around[ids["gob"]]["type"] == "creature" and around[ids["gob"]]["condition"] == "невредим"
     assert around[ids["mark"]]["type"] == "landmark" and around[ids["mark"]]["bearing"] == "s"
+    scene_tokens = {t["id"]: t for t in m["scene_view"]}
+    assert scene_tokens[ids["gob"]]["type"] == "creature"
+    assert scene_tokens[ids["mark"]]["type"] == "landmark"
+    assert {t["id"] for t in m["scene_view"]} == {
+        *(t["id"] for t in m["around"]),
+        *(h["id"] for h in m["party"]),
+    }
     exits = {x["id"]: x for x in m["exits"]}
     assert exits[ids["shop"]]["via"] == "внутри" and not exits[ids["shop"]]["visited"]
     assert exits[ids["docks"]]["via"] == "переулок" and exits[ids["docks"]]["bearing"] == "e"

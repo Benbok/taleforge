@@ -133,7 +133,21 @@ export interface Sketch {
   features: SketchFeature[];
 }
 
+export type SceneTokenType = "hero" | "creature" | "npc" | "item" | "landmark";
+
+export interface SceneTokenView {
+  id: string;
+  name: string;
+  type: SceneTokenType;
+  mine: boolean;
+  down: boolean;
+  zone: Zone | null;
+  bearing: Bearing | null;
+  cell?: [number, number] | null;
+}
+
 export interface MapState {
+  scene_view?: SceneTokenView[];
   book?: MapBook | null;
   sketch?: Sketch | null;
   here: { id: string; name: string; description: string | null } | null;
