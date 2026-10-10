@@ -164,7 +164,16 @@ async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
         template = ctx.world.catalog.get(IMPROVISED_WEAPON, "item_template").id
     else:
         template = FOUND_ITEM
-    inv_id, inverse = await _add_to_inventory(ctx, ch, template, a.name, a.qty)
+    rec = ctx.world.catalog.find(template, "item_template") if a.kind == "template" else None
+    unique = bool(rec and rec.data.get("unique"))
+    if unique and a.qty != 1:
+        raise ToolError("уникальный экземпляр нельзя сохранить стопкой")
+    entity = await _new_unique_item(ctx, template, a.name) if unique else None
+    inv_id, inverse = await _add_to_inventory(
+        ctx, ch, template, a.name, a.qty, world_entity_id=entity.id if entity else None
+    )
+    if entity is not None:
+        inverse.append({"table": "entities", "op": "delete", "id": entity.id})
     src = ctx.world.entities.get(a.from_id or "") or ctx.world.characters.get(a.from_id or "")
     result = {"character": ch.name, "item": a.name, "qty": a.qty, "inventory_id": inv_id, "how": a.how}
     if src is not None:
