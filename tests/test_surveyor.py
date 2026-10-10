@@ -27,7 +27,7 @@ def test_master_describes_a_place_and_the_sketch_is_built(game_client, admin_g, 
         return cell, done, ctx.world.scene_table(), sorted(ctx.signals)
 
     cell, done, table, signals = _play(settings, cid, describe)
-    assert "строится" in done["note"] and signals == [f"sketch:{cell}"]
+    assert "строится" in done["note"] and signals == ["map.changed", f"sketch:{cell}"]
     assert "эскиз строится по закрытому описанию" in table and "Тесная камера" in table
 
     # первая попытка налезает на стену — модель получает ошибку и исправляется

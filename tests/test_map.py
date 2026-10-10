@@ -196,7 +196,10 @@ def test_partial_move_clears_hero_positions_and_emits_map_changed(client, admin,
     # Через сокет живого мастера: перемещение второго героя шлёт map.changed всем подключённым
     with connect(client, p1, cid) as (ws1, _), connect(client, admin, cid) as (ws_m, _):
         ws_m.send_json(
-            {"type": "master.tool", "payload": {"tool": "move", "args": {"character_ids": [hid2], "location_id": docks}}}
+            {
+                "type": "master.tool",
+                "payload": {"tool": "move", "args": {"character_ids": [hid2], "location_id": docks}},
+            }
         )
         ev = next_of(ws1, "map.changed")
         assert ev["type"] == "map.changed"
