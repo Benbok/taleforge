@@ -316,7 +316,9 @@ class TurnMixin:
             nonlocal done_calls
             if done_calls >= MAX_CALLS:
                 return {"ok": False, "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию"}
-            if "__invalid_json__" in args:
+            if name not in allowed:
+                return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
+            if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
             if name in ROLL_TOOLS:
                 await self._status(cid, "rolling")
