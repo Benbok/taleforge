@@ -126,6 +126,77 @@ def test_map_shows_surroundings_exits_and_hides_secrets(client, admin, settings)
     assert m2["here"]["id"] == ids["stash"] and ids["square"] in {p["id"] for p in m2["places"]}
 
 
+def test_item_template_visual_key_survives_place_pickup_drop_and_stacks(client, admin, settings):
+    import_base(settings)
+    c, (player,), hero = party(client, admin)
+    cid, hid = c["id"], hero["id"]
+
+    async def setup(ctx):
+        await _ok(ctx, "create_location", {"name": "Аптека", "make_current": True})
+        args = {"item_template_id": "item.potion_of_healing", "qty": 1, "reason": "находка"}
+        first = await _ok(ctx, "place_item", args)
+        second = await _ok(ctx, "place_item", args)
+        assert first["entity_id"] == second["entity_id"]
+        entity = ctx.world.entities[first["entity_id"]]
+        assert entity.state["qty"] == 2
+        assert entity.state["visual_key"] == "item:potion"
+        return first["entity_id"]
+
+    original = _play(settings, cid, setup)
+    state = _map(client, player, cid)
+    assert next(x for x in state["around"] if x["id"] == original)["visual_key"] == "item:potion"
+    assert next(x for x in state["scene_view"] if x["id"] == original)["visual_key"] == "item:potion"
+
+    async def carry(ctx):
+        picked = await _ok(ctx, "pick_up_item", {"character_id": hid, "entity_id": original, "qty": 1})
+        remaining = ctx.world.entities[original]
+        assert remaining.state["qty"] == 1 and remaining.state["visual_key"] == "item:potion"
+        dropped = await _ok(ctx, "drop_item", {"character_id": hid, "inventory_id": picked["inventory_id"]})
+        return dropped["entity_id"]
+
+    dropped_id = _play(settings, cid, carry)
+    state = _map(client, player, cid)
+    assert next(x for x in state["scene_view"] if x["id"] == dropped_id)["visual_key"] == "item:potion"
+
+
+def test_refilling_item_stack_keeps_explicit_visual_key(client, admin, settings):
+    import_base(settings)
+    c, (player,), _ = party(client, admin)
+    cid = c["id"]
+
+    async def setup(ctx):
+        await _ok(ctx, "create_location", {"name": "Аптека", "make_current": True})
+        args = {"item_template_id": "item.potion_of_healing", "reason": "находка"}
+        first = await _ok(ctx, "place_item", args)
+        entity = ctx.world.entities[first["entity_id"]]
+        entity.state = {**entity.state, "visual_key": "item:scroll"}
+        second = await _ok(ctx, "place_item", args)
+        assert second["entity_id"] == first["entity_id"]
+        assert entity.state["qty"] == 2
+        return first["entity_id"]
+
+    item_id = _play(settings, cid, setup)
+    state = _map(client, player, cid)
+    assert next(x for x in state["around"] if x["id"] == item_id)["visual_key"] == "item:scroll"
+    assert next(x for x in state["scene_view"] if x["id"] == item_id)["visual_key"] == "item:scroll"
+
+
+def test_item_template_without_visual_key_uses_current_fallback(client, admin, settings):
+    import_base(settings)
+    c, (player,), _ = party(client, admin)
+    cid = c["id"]
+
+    async def setup(ctx):
+        await _ok(ctx, "create_location", {"name": "Арсенал", "make_current": True})
+        item = await _ok(ctx, "place_item", {"item_template_id": "item.leather", "reason": "находка"})
+        return item["entity_id"]
+
+    item_id = _play(settings, cid, setup)
+    state = _map(client, player, cid)
+    assert next(x for x in state["around"] if x["id"] == item_id)["visual_key"] is None
+    assert next(x for x in state["scene_view"] if x["id"] == item_id)["visual_key"] is None
+
+
 def test_positions_distance_cover_and_areas(client, admin, settings):
     import_base(settings)
     c, (p1,), hero = party(client, admin)

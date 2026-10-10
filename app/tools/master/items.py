@@ -336,13 +336,12 @@ async def _put_in_scene(
 ) -> tuple[Entity, list[dict]]:
     """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит там же, складывается в стопку.
     ``place`` — место, где он ляжет; по умолчанию основное место сцены. ``cell`` — точная клетка (от строя)."""
-    rec = ctx.world.catalog.find(template_id)
+    rec = ctx.world.catalog.find(template_id, "item_template")
     name = display_name or (rec.name if rec else template_id)
     # Внешний вид задаёт шаблон, не имя вещи и не LLM; неизвестный клиенту ключ
     # безопасно отображается стандартным пресетом предмета.
-    visual_key = rec.data.get("visual_key") if rec else None
-    if not isinstance(visual_key, str):
-        visual_key = None
+    key = rec.data.get("visual_key") if rec else None
+    visual_key = key if isinstance(key, str) and key else None
     place = place or ctx.world.home()
     for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
@@ -364,7 +363,7 @@ async def _put_in_scene(
             "item": True,
             "qty": qty,
             "display_name": display_name,
-            **({"visual_key": visual_key} if visual_key else {}),
+            **({"visual_key": visual_key} if visual_key is not None else {}),
         },
         location_id=place,
         zone=zone,

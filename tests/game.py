@@ -7,11 +7,13 @@ from pathlib import Path
 
 from app.content.catalog import clear_cache
 from app.content.importer import import_pack
+from app.content.yaml_io import load_file
 from app.db.session import make_engine, make_sessionmaker
 from app.rules.dice import Dice
 from tests.test_api import invite, make_campaign, register
 
 BASE = Path(__file__).resolve().parents[1] / "content" / "dnd5e-srd"
+BASE_VERSION = str(load_file(BASE / "pack.yaml")["version"])
 
 FIGHTER = {
     "name": "Бран",
