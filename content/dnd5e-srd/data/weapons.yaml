@@ -9,6 +9,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Club"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 1}
     damage: {dice: "1d4", type: bludgeoning}
@@ -21,6 +22,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Dagger"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: piercing}
@@ -34,6 +36,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greatclub"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 2}
     damage: {dice: "1d8", type: bludgeoning}
@@ -46,6 +49,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Handaxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: slashing}
@@ -59,6 +63,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Javelin"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 5}
     damage: {dice: "1d6", type: piercing}
@@ -72,6 +77,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Light hammer"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: bludgeoning}
@@ -85,6 +91,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Mace"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: bludgeoning}
@@ -97,6 +104,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Quarterstaff"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {sp: 2}
     damage: {dice: "1d6", type: bludgeoning}
@@ -110,6 +118,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Sickle"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 1}
     damage: {dice: "1d4", type: slashing}
@@ -122,6 +131,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Spear"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_melee
     price: {gp: 1}
     damage: {dice: "1d6", type: piercing}
@@ -136,6 +146,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, light"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {gp: 25}
     damage: {dice: "1d8", type: piercing}
@@ -149,6 +160,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Dart"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {cp: 5}
     damage: {dice: "1d4", type: piercing}
@@ -162,6 +174,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Shortbow"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {gp: 25}
     damage: {dice: "1d6", type: piercing}
@@ -175,6 +188,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Sling"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: simple_ranged
     price: {sp: 1}
     damage: {dice: "1d4", type: bludgeoning}
@@ -188,6 +202,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Battleaxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d8", type: slashing}
@@ -201,6 +216,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Flail"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d8", type: bludgeoning}
@@ -213,6 +229,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Glaive"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 20}
     damage: {dice: "1d10", type: slashing}
@@ -225,6 +242,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greataxe"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 30}
     damage: {dice: "1d12", type: slashing}
@@ -237,6 +255,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Greatsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 50}
     damage: {dice: "2d6", type: slashing}
@@ -249,6 +268,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Halberd"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 20}
     damage: {dice: "1d10", type: slashing}
@@ -261,6 +281,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Lance"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d12", type: piercing}
@@ -274,6 +295,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Longsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: slashing}
@@ -287,6 +309,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Maul"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "2d6", type: bludgeoning}
@@ -299,6 +322,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Morningstar"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: piercing}
@@ -311,6 +335,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Pike"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d10", type: piercing}
@@ -323,6 +348,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Rapier"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 25}
     damage: {dice: "1d8", type: piercing}
@@ -335,6 +361,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Scimitar"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 25}
     damage: {dice: "1d6", type: slashing}
@@ -347,6 +374,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Shortsword"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 10}
     damage: {dice: "1d6", type: piercing}
@@ -359,6 +387,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Trident"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d6", type: piercing}
@@ -373,6 +402,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "War pick"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 5}
     damage: {dice: "1d8", type: piercing}
@@ -385,6 +415,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Warhammer"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 15}
     damage: {dice: "1d8", type: bludgeoning}
@@ -398,6 +429,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Whip"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_melee
     price: {gp: 2}
     damage: {dice: "1d4", type: slashing}
@@ -410,6 +442,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Blowgun"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 10}
     damage: {dice: "1", type: piercing}
@@ -423,6 +456,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, hand"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 75}
     damage: {dice: "1d6", type: piercing}
@@ -436,6 +470,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Crossbow, heavy"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 50}
     damage: {dice: "1d10", type: piercing}
@@ -449,6 +484,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Longbow"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 50}
     damage: {dice: "1d8", type: piercing}
@@ -462,6 +498,7 @@ items:
     tags: [weapon, srd]
     srd_ref: {type: item, name: "Net"}
     category: weapon
+    visual_key: item:weapon
     weapon_group: martial_ranged
     price: {gp: 1}
     damage: null

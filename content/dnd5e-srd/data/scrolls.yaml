@@ -15,6 +15,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: common
   price:
     gp: 50
@@ -33,6 +34,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: common
   price:
     gp: 50
@@ -51,6 +53,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: common
   price:
     gp: 50
@@ -69,6 +72,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: uncommon
   price:
     gp: 150
@@ -87,6 +91,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: uncommon
   price:
     gp: 150
@@ -105,6 +110,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: uncommon
   price:
     gp: 300
@@ -123,6 +129,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: uncommon
   price:
     gp: 300
@@ -141,6 +148,7 @@ items:
   - srd
   - magic_item
   category: consumable
+  visual_key: item:scroll
   rarity: uncommon
   price:
     gp: 300

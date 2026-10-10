@@ -338,13 +338,21 @@ async def _put_in_scene(
     ``place`` — место, где он ляжет; по умолчанию основное место сцены. ``cell`` — точная клетка (от строя)."""
     rec = ctx.world.catalog.find(template_id)
     name = display_name or (rec.name if rec else template_id)
+    # Внешний вид задаёт шаблон, не имя вещи и не LLM; неизвестный клиенту ключ
+    # безопасно отображается стандартным пресетом предмета.
+    visual_key = rec.data.get("visual_key") if rec else None
+    if not isinstance(visual_key, str):
+        visual_key = None
     place = place or ctx.world.home()
     for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
         same = en.template_id == template_id and st.get("display_name") == display_name and here
         if is_scene_item(en) and same:
-            en.state = {**st, "qty": int(st.get("qty") or 1) + qty}
+            # Прежние стопки без визуального ключа получают его при пополнении.
+            # Явный ключ уже существующего объекта не перезаписываем.
+            visual = {"visual_key": visual_key} if visual_key and "visual_key" not in st else {}
+            en.state = {**st, "qty": int(st.get("qty") or 1) + qty, **visual}
             return en, [{"table": "entities", "id": en.id, "field": "state", "before": st}]
     en = Entity(
         campaign_id=ctx.campaign.id,
@@ -352,7 +360,12 @@ async def _put_in_scene(
         name=name,
         template_id=template_id,
         description=description or ((rec.data.get("description") or "") if rec else ""),
-        state={"item": True, "qty": qty, "display_name": display_name},
+        state={
+            "item": True,
+            "qty": qty,
+            "display_name": display_name,
+            **({"visual_key": visual_key} if visual_key else {}),
+        },
         location_id=place,
         zone=zone,
     )

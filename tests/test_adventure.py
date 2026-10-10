@@ -126,6 +126,21 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     assert sk["exits"] == []  # нет размеченной двери — её координаты неизвестны
     assert [x["name"] for x in sk["unplaced_exits"]] == ["Комната 2"]
 
+    # Та же вещь имеет один визуальный ключ на обеих картах: никаких новых
+    # правил рисования для готового приключения не требуется.
+    async def place_book_loot(ctx):
+        return await _ok(
+            ctx,
+            "place_item",
+            {"item_template_id": "item.potion_of_healing", "reason": "добыча в крипте"},
+        )
+
+    loot = _play(settings, cid, place_book_loot)
+    m = _map(client, p1, cid)
+    assert next(x for x in m["around"] if x["id"] == loot["entity_id"])["visual_key"] == "item:potion"
+    assert next(x for x in m["scene_view"] if x["id"] == loot["entity_id"])["visual_key"] == "item:potion"
+    assert next(x for x in m["book"]["tokens"] if x["id"] == loot["entity_id"])["visual_key"] == "item:potion"
+
     async def next_room(ctx):
         r2 = await _ok(ctx, "enter_room", {"room": "2"})
         bad = await __import__("app.tools.registry", fromlist=["execute"]).execute(ctx, "enter_room", {"room": "9"})
