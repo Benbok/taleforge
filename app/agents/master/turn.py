@@ -40,7 +40,7 @@ from app.tools.action_plan import (
     execute_action_plan,
     hostile_cast_plan,
     hostile_target,
-    shove_plan,
+    maneuver_plan,
 )
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import ToolContext, execute, tool_specs
@@ -308,7 +308,7 @@ class TurnMixin:
             for m in new:
                 if m.kind != "action":
                     continue
-                plan = approach_attack(m.intent) or approach_cast(ctx, m.intent) or shove_plan(m.intent)
+                plan = approach_attack(m.intent) or approach_cast(ctx, m.intent) or maneuver_plan(m.intent)
                 if plan is None:
                     continue
                 spell_plan = plan.get("kind") == "cast"
@@ -327,7 +327,9 @@ class TurnMixin:
                     combat.queue_opening_plan(ctx, plan)
                     opening_actors.add(actor)
                     ctx.closed.add(actor)
-                    description = "Толчок" if plan.get("kind") == "shove" else "Движение и последующее действие"
+                    description = (
+                        "Манёвр" if plan.get("kind") in ("shove", "grapple") else "Движение и последующее действие"
+                    )
                     routed.append(
                         f"{actor}: {description} сохранён до законного хода по инициативе; не исполняй повторно"
                     )
@@ -480,7 +482,7 @@ class TurnMixin:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
-            if name in ("resolve_attack", "resolve_shove"):
+            if name in ("resolve_attack", "resolve_shove", "resolve_grapple"):
                 attacker = (args or {}).get("attacker_id")
                 target = ctx.world.entities.get((args or {}).get("target_id"))
                 if attacker in ctx.world.characters and combat.in_combat(ctx):
@@ -493,8 +495,9 @@ class TurnMixin:
                         # been initialized. Do not spend an untracked free attack.
                         if attacker in opening_actors:
                             return {"ok": False, "error": "начальная атака уже заявлена"}
-                        if name == "resolve_shove":
-                            combat.queue_opening_plan(ctx, {"kind": "shove", **args})
+                        if name in ("resolve_shove", "resolve_grapple"):
+                            kind = "shove" if name == "resolve_shove" else "grapple"
+                            combat.queue_opening_plan(ctx, {"kind": kind, **args})
                         else:
                             combat.queue_opening_attack(ctx, args)
                         opening_actors.add(attacker)
@@ -516,8 +519,9 @@ class TurnMixin:
                     trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
                     if not opened.get("ok"):
                         return opened
-                    if name == "resolve_shove":
-                        combat.queue_opening_plan(ctx, {"kind": "shove", **args})
+                    if name in ("resolve_shove", "resolve_grapple"):
+                        kind = "shove" if name == "resolve_shove" else "grapple"
+                        combat.queue_opening_plan(ctx, {"kind": kind, **args})
                     else:
                         combat.queue_opening_attack(ctx, args)
                     opening_actors.add(attacker)
