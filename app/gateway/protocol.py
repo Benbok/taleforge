@@ -441,6 +441,10 @@ class MapSketchExit(_Strict):
 
 
 class MapSketchFeature(_Strict):
+    id: str | None = None
+    entity_id: str | None = None
+    entity_type: str | None = None
+    visual_key: str | None = None
     name: str
     kind: str
     cells: list[list[int]]
@@ -455,6 +459,7 @@ class MapUnplacedExit(_Strict):
 
 
 class MapSketch(_Strict):
+    edit_rev: int | None = None
     shape: str
     cols: int
     rows: int
