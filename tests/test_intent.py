@@ -414,3 +414,55 @@ def test_natural_language_move_then_spell_starts_initiative_and_moves_first(game
     assert [a["verb"] for a in msg.intent["actions"]] == ["move", "cast"]
     (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
+
+
+def test_class_features_are_routed_only_when_explicitly_declared():
+    base = {
+        "character_id": "ch1",
+        "confidence": 0.95,
+        "actions": [{"verb": "attack", "target_id": "en1", "instrument_id": "inv1"}],
+    }
+    ordinary = {"attacker_id": "ch1", "target_id": "en1", "attack": "inv1"}
+    assert intents.routable_attack(base) == ordinary
+    enhanced = {
+        **base,
+        "actions": [{**base["actions"][0], "reckless": True, "stunning_strike": True}],
+    }
+    assert intents.routable_attack(enhanced) == {**ordinary, "reckless": True, "stunning_strike": True}
+    # Vivid prose without the explicit feature flags cannot grant advantage.
+    flavor = {**base, "actions": [{**base["actions"][0], "manner": "яростно, прыгая на врага"}]}
+    assert intents.routable_attack(flavor) == ordinary
+
+
+def test_shove_routes_to_contested_tool_not_fixed_dc_check():
+    base = {"character_id": "ch1", "confidence": 0.95}
+    prone = {"verb": "shove", "target_id": "en1", "maneuver": "prone"}
+    push = {**prone, "maneuver": "push"}
+    assert intents.routable_tool_call({**base, "actions": [prone]}) == (
+        "resolve_shove", {"attacker_id": "ch1", "target_id": "en1", "technique": "prone"}
+    )
+    assert intents.routable_tool_call({**base, "actions": [push]}) == (
+        "resolve_shove", {"attacker_id": "ch1", "target_id": "en1", "technique": "push"}
+    )
+    assert intents.routable_tool_call({**base, "actions": [{**prone, "maneuver": None}]}) is None
+    assert intents.routable_tool_call({**base, "actions": [{**prone, "target_id": None}]}) is None
+    assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": "en1"}]}) is None
+
+
+def test_chat_shove_starts_initiative_before_contested_maneuver(game_client, admin_g, llm, dice, settings):
+    c, (p1,), hero = party(game_client, admin_g)
+    goblin, _ = goblin_in_melee(settings, c["id"], hero["id"])
+    llm.replies += [
+        intent({"verb": "shove", "target_id": goblin, "maneuver": "prone"}),
+        DONE,
+        {"text": "Герой попытался сбить гоблина с ног."},
+    ]
+    dice += [20, 1, 18, 1]
+    reply = act(game_client, p1, c["id"], "Толкаю гоблина, чтобы сбить с ног")
+    assert reply["kind"] == "narration"
+    events = rows(settings, Event, Event.campaign_id == c["id"])
+    opening = next(e for e in events if e.tool == "set_scene_mode" and e.payload.get("mode") == "combat")
+    shoves = [e for e in events if e.tool == "resolve_shove" and e.actor_id == hero["id"]]
+    assert len(shoves) == 1 and shoves[0].payload["success"]
+    assert opening.created_at <= shoves[0].created_at
+    assert not [e for e in events if e.tool == "roll_check" and e.actor_id == hero["id"]]
