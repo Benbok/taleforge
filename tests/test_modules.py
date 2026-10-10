@@ -100,6 +100,43 @@ def test_room_cells_and_obstacles_are_checked():
     assert "left < right" in modules.check_marks(bad_grid, draft)[1][0]
 
 
+
+def test_book_passages_require_authoritative_topology_and_boundary_cells():
+    draft, _, _ = check(sample())
+    source = {
+        "number": "1",
+        "x": 0.2,
+        "y": 0.2,
+        "cells": [[0, 0, 3, 2]],
+        "blocked": [[1, 1]],
+        "passages": [{"to": "r2", "side": "e", "cell": [3, 1], "kind": "door"}],
+    }
+
+    def validate(**changed):
+        data = {"location_id": "location.davos_crypt", "grid": GRID, "marks": [{**source, **changed}]}
+        return modules.check_marks(data, draft)
+
+    parsed, errors = validate()
+    assert errors == []
+    assert parsed["marks"][0]["passages"] == [
+        {"to": "r2", "side": "e", "cell": [3, 1], "kind": "door"}
+    ]
+    assert "rooms[].exits" in " ".join(validate(passages=[{"to": "r99", "side": "e", "cell": [3, 1]}])[1])
+    assert "не на стороне" in " ".join(validate(passages=[{"to": "r2", "side": "w", "cell": [3, 1]}])[1])
+    assert "стене или вне пола" in " ".join(
+        validate(passages=[{"to": "r2", "side": "n", "cell": [1, 0]}], blocked=[[1, 0]])[1]
+    )
+    assert "два положения" in " ".join(
+        validate(passages=[{"to": "r2", "side": "e", "cell": [3, 0]}, {"to": "r2", "side": "e", "cell": [3, 1]}])[1]
+    )
+    assert "проходы без сетки" in " ".join(
+        modules.check_marks({"location_id": "location.davos_crypt", "marks": [source]}, draft)[1]
+    )
+    # Старые карты не имеют поля passages и по-прежнему валидны.
+    legacy, errors = validate(passages=[])
+    assert errors == [] and "passages" not in legacy["marks"][0]
+
+
 def test_heroes_stand_on_free_cells_near_their_positions():
     # комната 5×3 клетки, посередине колонна
     mark = {"cells": [[0, 0, 4, 2]], "blocked": [[2, 1]]}
