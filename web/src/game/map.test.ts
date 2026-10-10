@@ -5,7 +5,9 @@ import {
   bookAroundCells,
   exitCell,
   freeCell,
+  inMapFrame,
   interactText,
+  mechanicalNear,
   stackCells,
   stackTitle,
   sketchFrame,
@@ -29,6 +31,61 @@ const empty: MapState = {
 
 // в тестах форма события упрощена
 const ev = (type: string, payload: object): Envelope => ({ type, campaign_id: "c1", seq: null, payload }) as unknown as Envelope;
+
+describe("источник координат карты", () => {
+  const creature = (id: string, cell?: [number, number]): MapThing => ({
+    id, name: id, type: "creature", zone: "near", zone_name: "близко",
+    bearing: "n", ...(cell ? { cell } : {}),
+  });
+
+  it("не обрезает механические координаты за пределами окна и не выдумывает расстояние", () => {
+    const real: [number, number] = [GRID_R + 9, -GRID_R - 6];
+    const [token] = layoutGrid({ ...empty, around: [creature("far", real)] }).things;
+    expect([token.col, token.row]).toEqual(real);
+    expect(token.placement).toBe("mechanical");
+    expect(inMapFrame(token)).toBe(false);
+    expect(mechanicalNear(token)).toEqual([real]);
+    const approximate = layoutGrid({ ...empty, around: [creature("guess")] }).things[0];
+    expect(approximate.placement).toBe("schematic");
+    expect(mechanicalNear(approximate)).toEqual([]);
+    expect(inMapFrame(approximate)).toBe(true);
+  });
+
+  it("не сдвигает пересекающиеся точные позиции и отодвигает условный значок", () => {
+    const layout = layoutGrid({
+      ...empty,
+      around: [creature("realA", [0, 0]), creature("realB", [0, 0]), {
+        ...creature("rough"), zone: "melee", bearing: null,
+      }],
+    });
+    const at = (id: string) => layout.things.find((x) => x.item.id === id)!;
+    expect([at("realA").col, at("realA").row]).toEqual([0, 0]);
+    expect([at("realB").col, at("realB").row]).toEqual([0, 0]);
+    expect(at("realA").placement).toBe("mechanical");
+    expect([at("rough").col, at("rough").row]).not.toEqual([0, 0]);
+    expect(at("rough").placement).toBe("schematic");
+  });
+
+  it("использует точную клетку механики прежде старой координаты книги", () => {
+    const sk: Sketch = { shape: "room", cols: 5, rows: 5, party: [1, 1], walls: [], exits: [], features: [], book: true };
+    const book: NonNullable<MapState["book"]> = {
+      module_id: "m", map_id: "m1", name: "Зал", here: "2",
+      grid: { cols: 16, rows: 16, left: 0, top: 0, right: 1, bottom: 1 },
+      rooms: [{ number: "2", x: 0, y: 0, status: "here", name: "Зал", cells: [[4, 4, 8, 8]] }],
+      tokens: [{ id: "mob", name: "Враг", mine: false, room: "2", x: 0, y: 0, down: false, cell: [5, 5] }],
+    };
+    const base = { ...empty, sketch: sk, book };
+    const anchored = layoutGrid({ ...base, around: [creature("mob")] }).things[0];
+    expect([anchored.col, anchored.row]).toEqual([0, 0]);
+    expect(anchored.placement).toBe("book");
+    expect(mechanicalNear(anchored)).toEqual([]);
+    const moved = layoutGrid({ ...base, around: [creature("mob", [2, -1])] }).things[0];
+    expect([moved.col, moved.row]).toEqual([2, -1]);
+    expect(moved.placement).toBe("mechanical");
+    expect(mechanicalNear(moved)).toEqual([[2, -1]]);
+    expect(inMapFrame(moved, sk)).toBe(false); // вне комнаты остаётся вне комнаты
+  });
+});
 
 describe("карта", () => {
   it("сторона света задаёт клетку: север вверху, восток справа; зона — число клеток", () => {
