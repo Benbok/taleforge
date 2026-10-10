@@ -309,6 +309,12 @@ class TurnMixin:
             if m.seat_id in char_by_seat and char_by_seat[m.seat_id].id in opening_actors:
                 continue
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
+            if args and any(
+                a.get("verb") in intents.MOVE_VERBS for a in (m.intent or {}).get("actions") or []
+            ):
+                # Preserve the sequence for the decision model: route must never
+                # try the weapon attack before the declared movement.
+                args = None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
             if args is None and m.kind == "action":
@@ -370,6 +376,38 @@ class TurnMixin:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
+            if name == "resolve_attack":
+                attacker = (args or {}).get("attacker_id")
+                target = ctx.world.entities.get((args or {}).get("target_id"))
+                if attacker in ctx.world.characters and combat.in_combat(ctx):
+                    from app.core import economy
+
+                    if not economy.active(ctx.world, attacker):
+                        return {"ok": False, "error": "атака невозможна: сейчас ход другого участника"}
+                # The model may initiate an attack that was not recognized by the
+                # intent router. Initiate initiative instead of permitting a free hit.
+                if (
+                    not combat.in_combat(ctx)
+                    and attacker in required
+                    and target is not None
+                    and target.kind == "creature"
+                    and not (target.state or {}).get("dead")
+                    and (target.state or {}).get("attitude", "hostile") == "hostile"
+                    and ctx.world.actor_place(attacker) == ctx.world.actor_place(target.id)
+                ):
+                    opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{key}:initiative")
+                    trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
+                    if not opened.get("ok"):
+                        return opened
+                    combat.queue_opening_attack(ctx, args)
+                    opening_actors.add(attacker)
+                    ctx.closed.add(attacker)
+                    await self._status(cid, "rolling")
+                    opening_notes.extend(
+                        await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction)
+                    )
+                    done_calls += 1
+                    return {"ok": True, "result": {"mode": "combat", "opening_attack": "queued by initiative"}}
             if name in ROLL_TOOLS:
                 await self._status(cid, "rolling")
             result = await execute(ctx, name, args, key=key)
