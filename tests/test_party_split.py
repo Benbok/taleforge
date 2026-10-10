@@ -103,11 +103,21 @@ def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
     async def hide(ctx):
         gob = ctx.world.entities[ids["gob"]]
         gob.state = {**(gob.state or {}), "hidden": True}
+        ctx.world.scene.mode = "combat"
+        ctx.world.scene.round = 1
+        ctx.world.scene.turn_order = [
+            {"id": gob.id, "initiative": 16},
+            {"id": h2["id"], "initiative": 12},
+        ]
+        ctx.world.scene.state = {**(ctx.world.scene.state or {}), "turn": 0}
 
     _play(settings, cid, hide)
     for _ in range(2):
         with connect(client, p2, cid) as (ws, snapshot):
             assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["entities"]}
+            assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["order"]}
+            assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["turn_order"]}
+            assert snapshot["payload"]["scene"]["turn"] is None
             ws.send_json({"type": "map.get", "payload": {}})
             board = next_of(ws, "map.state")["payload"]
             assert ids["gob"] not in {e["id"] for e in board["around"]}
@@ -123,9 +133,13 @@ def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
         return scene_views(ctx.world)
 
     views = run(settings, published)
+    assert any(seats is None for seats, _ in views)  # безопасная сцена для владельца без кресла
     for seats, scene in views:
+        assert ids["gob"] not in {e["id"] for e in scene["entities"]}
+        assert ids["gob"] not in {e["id"] for e in scene["order"]}
+        assert ids["gob"] not in {e["id"] for e in scene["turn_order"]}
         if h2["seat_id"] in (seats or []):
-            assert ids["gob"] not in {e["id"] for e in scene["entities"]}
+            assert scene["turn"] is None
 
 
 def test_each_hero_sees_own_place(client, admin, settings):
