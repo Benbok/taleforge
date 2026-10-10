@@ -72,19 +72,19 @@ def test_unmarked_exit_is_available_without_grid_portal():
     )
     assert sketch_data is not None
     assert sketch_data["exits"] == []
-    assert sketch_data["unplaced_exits"] == [
-        {"name": "Комната 2", "to": None, "room_ref": "r2"}
-    ]
+    assert sketch_data["unplaced_exits"] == [{"name": "Комната 2", "to": None, "room_ref": "r2"}]
 
 
 def test_free_campaign_preserves_links_reverse_links_and_containment():
     square = Entity(
-        id="en_square", campaign_id="cp_test", kind="location", name="Площадь",
+        id="en_square",
+        campaign_id="cp_test",
+        kind="location",
+        name="Площадь",
         state={"links": [{"to": "en_docks", "label": "переулок", "bearing": "e"}]},
     )
     docks = Entity(id="en_docks", campaign_id="cp_test", kind="location", name="Доки", state={})
-    shop = Entity(id="en_shop", campaign_id="cp_test", kind="location", name="Лавка",
-                  location_id=square.id, state={})
+    shop = Entity(id="en_shop", campaign_id="cp_test", kind="location", name="Лавка", location_id=square.id, state={})
     places = {e.id: e for e in (square, docks, shop)}
     assert location_exits(square, None, places) == [
         LocationExit(docks.id, None, "переулок", "e"),
