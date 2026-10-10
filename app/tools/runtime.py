@@ -125,11 +125,20 @@ def scene_payload(scene, entities: dict, characters: dict, view: VisibleScene) -
     loc = entities.get(view.current_location_id or "")
     here = view.current_location_id if len(view.place_ids) == 1 else None
     split = party_public(view.groups, entities, here)
+    battle = combat_public(scene, characters, entities, here, len(view.groups) > 1)
+    if not view.is_master:
+        # Скрытый противник не должен утекать через порядок инициативы,
+        # даже когда его нет в видимых сущностях сцены.
+        visible_ids = {e.id for e in view.entities} | {ch.id for ch in view.heroes}
+        battle["turn_order"] = [x for x in battle["turn_order"] if x["id"] in visible_ids]
+        battle["order"] = [x for x in battle["order"] if x["id"] in visible_ids]
+        if battle["turn"] is not None and battle["turn"]["actor_id"] not in visible_ids:
+            battle["turn"] = None
     return {
         **({"party": split} if split else {}),
         "location": {"id": loc.id, "name": loc.name} if loc else None,
         "entities": [public_entity(e) for e in view.entities],
-        **combat_public(scene, characters, entities, here, len(view.groups) > 1),
+        **battle,
     }
 
 
@@ -210,14 +219,13 @@ def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
             out[key][0].append(seat.id)
         else:
             out[key] = ([seat.id], payload)
-    if len(out) == 1:
-        only = next(iter(out.values()))
-        # None рассылает всем сокетам, включая владельца без кресла мастера.
-        # Это безопасно лишь тогда, когда такой зритель получает те же данные.
-        guest = visible_scene(world.scene, world.entities, world.characters, hero_id=None, is_master=False)
-        if scene_payload(world.scene, world.entities, world.characters, guest) == only[1]:
-            return [(None, only[1])]
-    return list(out.values())
+    # Владелец без кресла игрока тоже подключается к WebSocket: сначала
+    # безопасная общая сцена для всех, затем персональные варианты для мест.
+    guest = visible_scene(world.scene, world.entities, world.characters, hero_id=None, is_master=False)
+    common = scene_payload(world.scene, world.entities, world.characters, guest)
+    if len(out) == 1 and next(iter(out.values()))[1] == common:
+        return [(None, common)]
+    return [(None, common), *out.values()]
 
 
 async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names: dict[str, str] | None = None):
