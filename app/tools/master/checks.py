@@ -443,9 +443,7 @@ def uncanny_dodge(ctx: ToolContext, tgt: Actor) -> str | None:
 class ShoveArgs(BaseModel):
     attacker_id: str = Field(description="герой, который толкает цель вместо одной оружейной атаки")
     target_id: str = Field(description="существо, которое герой пытается опрокинуть или оттолкнуть")
-    technique: Literal["prone", "push"] = Field(
-        description="prone — сбить с ног; push — оттолкнуть от себя на 5 футов"
-    )
+    technique: Literal["prone", "push"] = Field(description="prone — сбить с ног; push — оттолкнуть от себя на 5 футов")
 
 
 SIZE_ORDER = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "gargantuan": 5}
@@ -527,20 +525,26 @@ async def resolve_shove(ctx: ToolContext, a: ShoveArgs) -> dict:
         result["effect"] = note
     elif success and destination is not None:
         if target.id in w.characters:
-            inv.append({"table": "scenes", "id": ctx.campaign.id, "field": "state",
-                        "before": copy.deepcopy(w.scene.state)})
+            inv.append(
+                {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}
+            )
         else:
-            inv.extend([
-                {"table": "entities", "id": target.id, "field": "state",
-                 "before": copy.deepcopy(target.obj.state)},
-                {"table": "entities", "id": target.id, "field": "zone", "before": target.obj.zone},
-            ])
+            inv.extend(
+                [
+                    {"table": "entities", "id": target.id, "field": "state", "before": copy.deepcopy(target.obj.state)},
+                    {"table": "entities", "id": target.id, "field": "zone", "before": target.obj.zone},
+                ]
+            )
         grid.set_cell(w, target.id, destination)
         result["cell"] = list(destination)
     result["left"] = economy.line(w, attacker.id)
     await ctx.record(
-        "resolve_shove", actor_id=attacker.id, target_id=target.id,
-        payload=result, dice=[dice_json(aroll), dice_json(droll)], inverse=inv,
+        "resolve_shove",
+        actor_id=attacker.id,
+        target_id=target.id,
+        payload=result,
+        dice=[dice_json(aroll), dice_json(droll)],
+        inverse=inv,
     )
     return result
 
