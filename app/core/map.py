@@ -260,7 +260,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         for passage in location_exits(here, catalog, places):
             if passage.target_id is not None and passage.target_id not in shown:
                 continue
-            if passage.target_id in known_ids:
+            if passage.target_id is not None and passage.target_id in known_ids:
                 continue
             if passage.room_ref:
                 known_ids.add(passage.target_id)
