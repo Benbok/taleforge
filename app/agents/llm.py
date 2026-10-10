@@ -216,9 +216,23 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         cost = float(litellm.completion_cost(completion_response=full) or 0.0) if full is not None else 0.0
     except Exception:  # noqa: BLE001 — у локальных моделей цены нет
         cost = 0.0
+    # stream_chunk_builder reconstructs the assistant message, including tool calls.
+    # Previously streaming silently discarded them, so game actions could be lost.
+    msg = full.choices[0].message if full is not None and full.choices else None
+    calls = [
+        ToolCall(tc.id, tc.function.name, _parse_args(tc.function.arguments), tc.function.arguments or "")
+        for tc in (getattr(msg, "tool_calls", None) or [])
+    ]
+    history = (
+        msg.model_dump(exclude_none=True)
+        if msg is not None and hasattr(msg, "model_dump")
+        else dict(msg) if msg is not None else {"role": "assistant", "content": text}
+    )
+    history["role"] = "assistant"
     return LLMReply(
         text=text,
-        message={"role": "assistant", "content": text},
+        tool_calls=calls,
+        message=history,
         model=getattr(full, "model", None) or model,
         tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
         tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
