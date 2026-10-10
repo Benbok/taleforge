@@ -161,6 +161,21 @@ describe("эскиз места", () => {
     expect(bookAroundCells({ ...map, sketch: { ...room, book: false } }).size).toBe(0);
   });
 
+  it("не придумывает позицию выхода из книги без размеченной двери", () => {
+    const m: MapState = {
+      ...empty,
+      sketch: {
+        shape: "room", cols: 4, rows: 3, party: [1, 1], walls: [], exits: [], features: [], book: true,
+        unplaced_exits: [{ name: "Комната 3", to: "loc3" }],
+      },
+      exits: [{ id: "loc3", name: "Комната 3", via: null, bearing: "e", visited: false }],
+    };
+    expect(layoutGrid(m).exits).toHaveLength(0);
+    expect(m.sketch?.unplaced_exits?.[0].name).toBe("Комната 3");
+    // Если координат книги нет, старый свободный мир работает без изменений.
+    expect(layoutGrid({ ...m, sketch: null }).exits).toHaveLength(1);
+  });
+
   it("бой на сетке: стоящий на клетке встаёт ровно туда, остальные обходят его клетку", () => {
     const hero: MapHero = { id: "h1", name: "Воин", mine: true, zone: null, bearing: null, elevation: "ground", cover: "none", down: false };
     const g = layoutGrid({
