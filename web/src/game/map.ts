@@ -373,12 +373,13 @@ export function unlocatedBookExits(m: Pick<MapState, "sketch" | "exits">): Unloc
   const destinations = new Map(m.exits.map((e) => [e.id, e]));
   const located = new Set(m.sketch.exits.map((e) => e.to).filter(Boolean));
   return (m.sketch.unplaced_exits ?? [])
-    .filter((e) => !e.to || !located.has(e.to))
-    .map((e, i) => {
-      const known = e.to ? destinations.get(e.to) : undefined;
+    .map((exit, index) => ({ exit, index }))
+    .filter(({ exit }) => !exit.to || !located.has(exit.to))
+    .map(({ exit, index }) => {
+      const known = exit.to ? destinations.get(exit.to) : undefined;
       return {
-        key: e.to ?? `unlocated-${i}`,
-        name: known?.name ?? e.name,
+        key: exit.to ?? `unlocated-${index}`,
+        name: known?.name ?? exit.name,
         destinationId: known?.id ?? null,
         visited: known?.visited ?? null,
       };
