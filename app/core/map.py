@@ -264,16 +264,16 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 continue
             if passage.room_ref:
                 known_ids.add(passage.target_id)
-                exits.append({
-                    "id": passage.target_id,
-                    "name": next(
-                        (p["name"] for p in out_places if p["id"] == passage.target_id), passage.label
-                    ),
-                    "room_ref": passage.room_ref,
-                    "via": None,
-                    "bearing": passage.bearing,
-                    "visited": passage.target_id in visited,
-                })
+                exits.append(
+                    {
+                        "id": passage.target_id,
+                        "name": next((p["name"] for p in out_places if p["id"] == passage.target_id), passage.label),
+                        "room_ref": passage.room_ref,
+                        "via": None,
+                        "bearing": passage.bearing,
+                        "visited": passage.target_id in visited,
+                    }
+                )
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
     scene_view = [
         {
