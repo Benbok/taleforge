@@ -432,3 +432,31 @@ def test_feature_flags_refuse_unsupported_class_without_burning_attack(game):
         return legitimate
 
     assert play(settings, cid, [10, 10, 12, 3], fn)["ok"]
+
+
+def test_reckless_attack_uses_real_advantage_for_barbarian(game):
+    """A declared class feature is executable when the sheet really grants it."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        ch = ctx.world.characters[hero]
+        ch.sheet = {**ch.sheet, "class_id": "class.barbarian", "level": 2}
+        ctx.world.invalidate(hero)
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        actor = ctx.world.actor(hero)
+        assert "reckless_attack" in actor.features
+        weapon = next(x for x in actor.attacks if x["kind"] == "melee" and x["ability"] == "str")
+        args = {
+            "attacker_id": hero,
+            "target_id": goblin,
+            "attack": weapon.get("inventory_id") or weapon["key"],
+            "reckless": True,
+        }
+        result = await call(ctx, "resolve_attack", args)
+        assert result["ok"], result
+        assert result["result"]["natural"] == 18
+        assert result["result"]["hit"]
+        assert any(rec.id == "effect.feature_reckless" for _, rec in ctx.world.actor(hero).effects)
+        return result["result"]
+
+    assert play(settings, cid, [10, 10, 18, 3, 1], fn)["hit"]
