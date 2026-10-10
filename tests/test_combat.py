@@ -563,3 +563,20 @@ def test_grapple_requires_free_hand_and_melee(game):
         return far
 
     assert not play(settings, cid, [10, 10], fn)["ok"]
+
+
+def test_grappled_creature_cannot_flee_by_skipping_movement_rules(game):
+    from app.tools import grapples as gp
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        wolf = await _fight(ctx, hero, "creature.wolf", zone="melee", first="creature")
+        await gp.establish(ctx, hero, wolf)
+        notes = []
+        await combat._flee(ctx, ctx.world.actor(wolf), "held-wolf", notes, None)
+        assert not (ctx.world.entities[wolf].state or {}).get("fled")
+        assert gp.holders(ctx, wolf) == [hero]
+        assert any("схвачен" in note for note in notes)
+
+    play(settings, cid, [10, 10], fn)
