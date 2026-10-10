@@ -7,6 +7,7 @@ import json
 from sqlalchemy import select
 
 from app.agents import intent as intents
+from app.agents import textcalls
 from app.agents.master.common import COMBAT_LENGTH, HISTORY, PLAYER_KINDS
 from app.core import chat, combat
 from app.db.models import Campaign, Character, Message, Scene, User
@@ -155,7 +156,8 @@ def _render_history(rows: list[Message], char_by_seat: dict, names: dict) -> str
         if m.kind == "narration" and m.visible_to is not None:
             out.append(f"[мастер шёпотом, видит только адресат] {m.content}")
         elif m.kind == "narration":
-            out.append(f"[мастер] {m.content}")
+            # старые ответы с вызовами, написанными текстом, модель стала бы повторять
+            out.append(f"[мастер] {textcalls.clean(m.content)}")
         elif m.kind == "system":
             out.append(f"[система] {m.content}")
         else:
