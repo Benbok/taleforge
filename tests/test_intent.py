@@ -373,9 +373,7 @@ def test_natural_language_approach_attack_starts_combat_and_moves_first(game_cli
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
 
 
-def test_natural_language_move_then_spell_starts_initiative_and_moves_first(
-    game_client, admin_g, llm, dice, settings
-):
+def test_natural_language_move_then_spell_starts_initiative_and_moves_first(game_client, admin_g, llm, dice, settings):
     """A clear Russian move-and-cast command must not cast before movement."""
     from app.tools.registry import execute
     from tests.test_spells import WIZARD
