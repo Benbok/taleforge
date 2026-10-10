@@ -212,7 +212,11 @@ def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
             out[key] = ([seat.id], payload)
     if len(out) == 1:
         only = next(iter(out.values()))
-        return [(None, only[1])]
+        # None рассылает всем сокетам, включая владельца без кресла мастера.
+        # Это безопасно лишь тогда, когда такой зритель получает те же данные.
+        guest = visible_scene(world.scene, world.entities, world.characters, hero_id=None, is_master=False)
+        if scene_payload(world.scene, world.entities, world.characters, guest) == only[1]:
+            return [(None, only[1])]
     return list(out.values())
 
 
