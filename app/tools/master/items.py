@@ -533,9 +533,7 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         if en.location_id is None:
             raise ToolError("уникальный предмет уже перенесён")
         # Identity stays in Entity, while InventoryItem links the current owner.
-        inv_id, inv = await _add_to_inventory(
-            ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id
-        )
+        inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id)
         en.location_id = None
         en.state = _object_state(en, container_id=None)
     else:
@@ -595,9 +593,7 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
             grid.set_cell(ctx.world, en.id, where)
     else:
         inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-        en, inv = await _put_in_scene(
-            ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where
-        )
+        en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where)
         inverse += inv
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)

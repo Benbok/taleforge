@@ -84,23 +84,21 @@ def test_container_hides_contents_until_retrieved_and_rejects_cycle(client, admi
     chest, box, dagger = play(settings, cid, setup)
 
     async def store(ctx):
-        assert not (await execute(
-            ctx, "store_object", {"character_id": hid, "container_id": chest, "object_id": dagger}
-        ))["ok"]
+        assert not (
+            await execute(ctx, "store_object", {"character_id": hid, "container_id": chest, "object_id": dagger})
+        )["ok"]
         await ok(ctx, "open_container", {"character_id": hid, "container_id": chest})
         await ok(ctx, "open_container", {"character_id": hid, "container_id": box})
         await ok(ctx, "store_object", {"character_id": hid, "container_id": chest, "object_id": dagger})
         await ok(ctx, "store_object", {"character_id": hid, "container_id": chest, "object_id": box})
         inner = await ok(ctx, "inspect_container", {"character_id": hid, "container_id": chest})
         assert {x["id"] for x in inner["contents"]} == {box, dagger}
-        cycle = await execute(
-            ctx, "store_object", {"character_id": hid, "container_id": box, "object_id": chest}
-        )
+        cycle = await execute(ctx, "store_object", {"character_id": hid, "container_id": box, "object_id": chest})
         assert not cycle["ok"] and "потомка" in cycle["error"]
         await ok(ctx, "open_container", {"character_id": hid, "container_id": chest, "opened": False})
-        assert not (await execute(
-            ctx, "retrieve_object", {"character_id": hid, "container_id": chest, "object_id": dagger}
-        ))["ok"]
+        assert not (
+            await execute(ctx, "retrieve_object", {"character_id": hid, "container_id": chest, "object_id": dagger})
+        )["ok"]
 
     play(settings, cid, store)
     scene = _map(client, player, cid)

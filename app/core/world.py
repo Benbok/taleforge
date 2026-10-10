@@ -406,9 +406,7 @@ class World:
         if not places:
             return [e for e in self.entities.values() if e.kind != "location" and not is_nested(e)]
         return [
-            e
-            for e in self.entities.values()
-            if e.kind != "location" and e.location_id in places and not is_nested(e)
+            e for e in self.entities.values() if e.kind != "location" and e.location_id in places and not is_nested(e)
         ]
 
     def fighting_here(self) -> bool:
