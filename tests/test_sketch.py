@@ -82,7 +82,7 @@ def test_book_room_gets_a_sketch_from_its_cells():
     marked = {**mark, "passages": [{"to": "r2", "side": "e", "cell": [3, 0], "kind": "door"}]}
     plotted = sketch.from_book(marked, grid, [("Комната 2", "en_2", "r2"), ("Комната 3", None, "r3")])
     assert plotted["exits"] == [
-        {"side": "e", "at": 0, "kind": "door", "state": "open", "name": "Комната 2", "to": "en_2"}
+        {"side": "e", "at": 0, "kind": "door", "state": "open", "name": "Комната 2", "to": "en_2", "room_ref": "r2"}
     ]
     assert plotted["unplaced_exits"] == [{"name": "Комната 3", "to": None, "room_ref": "r3"}]
     assert sketch.for_viewer(plotted, False, set())["exits"][0]["to"] is None
