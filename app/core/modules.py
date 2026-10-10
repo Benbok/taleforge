@@ -920,7 +920,13 @@ def _passages(m: dict, grid: dict | None, draft_room: dict, where: str, errors: 
             errors.append(f"{where}: два положения прохода в {to!r}")
             continue
         if side not in ("n", "e", "s", "w") or kind not in (
-            "passage", "door", "arch", "stairs", "hatch", "gap", "bars"
+            "passage",
+            "door",
+            "arch",
+            "stairs",
+            "hatch",
+            "gap",
+            "bars",
         ):
             errors.append(f"{where}: неверная сторона или вид прохода")
             continue
