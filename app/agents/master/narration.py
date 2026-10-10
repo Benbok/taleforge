@@ -94,11 +94,30 @@ class NarrationMixin:
             return m.group(2)
 
         text = MARKUP.sub(strip, text)
-        # вызовы инструментов, написанные текстом («action: spawn_entity(…)»): мир они не меняют, игрокам не нужны
-        written = [name for name, _ in textcalls.parse(text, textcalls.tool_names())]
-        if written:
-            audit["tool_text"] = written
+        # Ни markdown-псевдовызовы, ни обычные текстовые команды нельзя публиковать
+        # или превращать в действия мира. Повторно запрашиваем прозу, если ответа не осталось.
+        tools = textcalls.tool_names()
+        if textcalls.contains(text, tools):
+            audit["tool_text"] = [name for name, _ in textcalls.parse(text, tools)] or ["incomplete"]
             text = textcalls.clean(text)
+            if not text:
+                audit["regenerated"] = True
+                retry = [
+                    *base,
+                    {
+                        "role": "user",
+                        "content": (
+                            "Вместо повествования ты вывел текстовые команды инструментов. Они НЕ были выполнены. "
+                            "Напиши только художественное описание уже произошедших событий по фактическим "
+                            "результатам инструментов и таблице сцены; не выдумывай исполнение команд."
+                        ),
+                    },
+                ]
+                reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+                text = MARKUP.sub(strip, reply.text.strip())
+                if textcalls.contains(text, tools):
+                    audit["tool_text_retry"] = True
+                    text = textcalls.clean(text)
         # Очистка от случайных вызовов инструментов в тексте мастера (например, set_music {...})
         text = re.sub(r"^\s*[a-z_]+\s*\{.*?\}\s*", "", text, flags=re.DOTALL).strip()
         # Очистка от оборванного незакрытого тега разметки в конце текста
