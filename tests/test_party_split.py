@@ -98,7 +98,7 @@ def test_snapshot_update_and_map_agree_for_viewer(client, admin, settings):
 
 
 def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
-    cid, (p1, p2), (_, _), ids = _split_party(client, admin, settings)
+    cid, (p1, p2), (_, h2), ids = _split_party(client, admin, settings)
 
     async def hide(ctx):
         gob = ctx.world.entities[ids["gob"]]
@@ -124,7 +124,7 @@ def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
 
     views = run(settings, published)
     for seats, scene in views:
-        if p2["seat_id"] in (seats or []):
+        if h2["seat_id"] in (seats or []):
             assert ids["gob"] not in {e["id"] for e in scene["entities"]}
 
 
