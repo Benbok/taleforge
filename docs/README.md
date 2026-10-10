@@ -8,6 +8,7 @@
 - [campaign-preparation.md](campaign-preparation.md) — подготовка кампании: анкета, сюжетный каркас, вступление, характер мастера.
 - [world-objects-stage0.md](world-objects-stage0.md) — **этап 0 системы игровых объектов**: точная схема хранения, жизненный цикл, операции, сюжетные ограничения, совместимость с картой.
 - [world-objects-stage0-verification.md](world-objects-stage0-verification.md) — тестовая матрица, архитектурные риски и декомпозиция будущих PR.
+- [item-catalog-audit.md](item-catalog-audit.md) — аудит библиотеки предметов и таблиц добычи: покрытие, `canon/proposal`, редкость и требования к генерации.
 - [interface-stage7.md](interface-stage7.md) — план этапа 7 «Интерфейс». Макеты экранов лежат в [stage7/](stage7/).
 - [stage8/](stage8/) — снимки этапа 8 «Офлайн и голосования»: переподключение, голосование, игра за ушедшего, возврат со сводкой. Как устроено — в конце раздела 11 [ТЗ](tz-ai-master.md).
 - [ai-players-stage9.md](ai-players-stage9.md) — план этапа 9 «ИИ-игроки и живой характер» и как сделана часть 9а; снимки — [stage9/](stage9/).
