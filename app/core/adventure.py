@@ -71,6 +71,30 @@ def room_entity(entities: dict[str, Entity], place: Entity, rid: str) -> Entity 
     )
 
 
+def room_destinations(room: Entity, catalog: CatalogView, places: dict[str, Entity]) -> set[str] | None:
+    """Непосредственные выходы комнаты книги по данным модуля, а не по истории перемещений.
+
+    None означает, что место не является комнатой книги; пустое множество — комната без
+    зарегистрированных соседей. Отсутствующие в реестре комнаты пока не имеют entity_id.
+    """
+    ref = room_of(room)
+    if ref is None:
+        return None
+    found = module_place(room, catalog, places)
+    if found is None:
+        return None
+    parent, rec = found
+    spec = find_room(rec, ref["id"])
+    if spec is None:
+        return None
+    result = set()
+    for rid in spec.get("exits") or []:
+        neighbour = room_entity(places, parent, rid)
+        if neighbour is not None:
+            result.add(neighbour.id)
+    return result
+
+
 def new_room(campaign_id: str, place: Entity, rec: Entry, room: dict) -> Entity:
     """Комната в реестре. Карточка для игроков — текст вслух из книги: там то, что герои видят с порога."""
     return Entity(
