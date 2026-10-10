@@ -21,15 +21,12 @@ JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgres
 
 def upgrade() -> None:
     # Nullable: existing inventory rows keep their legacy stack semantics.
-    op.add_column(
-        "inventory",
-        sa.Column(
-            "world_entity_id",
-            sa.String(length=32),
-            sa.ForeignKey("entities.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-    )
+    # SQLite cannot ALTER an FK constraint in place; batch mode preserves legacy rows.
+    with op.batch_alter_table("inventory") as batch:
+        batch.add_column(sa.Column("world_entity_id", sa.String(length=32), nullable=True))
+        batch.create_foreign_key(
+            "fk_inventory_world_entity_id", "entities", ["world_entity_id"], ["id"], ondelete="SET NULL"
+        )
     op.create_index("uq_inventory_world_entity_id", "inventory", ["world_entity_id"], unique=True)
 
     op.create_table(
@@ -121,4 +118,6 @@ def downgrade() -> None:
     op.drop_index("ix_world_generation_states_campaign_id", table_name="world_generation_states")
     op.drop_table("world_generation_states")
     op.drop_index("uq_inventory_world_entity_id", table_name="inventory")
-    op.drop_column("inventory", "world_entity_id")
+    with op.batch_alter_table("inventory") as batch:
+        batch.drop_constraint("fk_inventory_world_entity_id", type_="foreignkey")
+        batch.drop_column("world_entity_id")
