@@ -128,7 +128,6 @@ def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
     assert ev.target_id == hero["id"]
 
 
-
 def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
     """Названные мастером враги не становятся настоящими без spawn_entity."""
     c, (p1,), _ = party(game_client, admin_g)
