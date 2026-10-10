@@ -456,15 +456,18 @@ def test_move_cast_parser_rejects_ambiguous_combinations(wizard_game):
     settings, cid, wizard, _, _ = wizard_game
 
     async def fn(ctx):
+        ally = next(cid for cid in ctx.world.characters if cid != wizard)
         base = {
             "character_id": wizard,
             "confidence": 0.95,
             "actions": [
                 {"verb": "move", "zone": "melee"},
-                {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": wizard},
+                {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": ally},
             ],
         }
         assert approach_cast(ctx, base) is not None
+        self_target = [base["actions"][0], {**base["actions"][1], "target_id": wizard}]
+        assert approach_cast(ctx, {**base, "actions": self_target}) is None
         assert approach_cast(ctx, {**base, "actions": list(reversed(base["actions"]))}) is None
         assert approach_cast(ctx, {**base, "confidence": 0.3}) is None
         assert (
