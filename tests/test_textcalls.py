@@ -1,6 +1,5 @@
 # ruff: noqa: E501 — образец ответа модели: длинные строки как есть
-"""Вызовы инструментов, которые модель написала текстом (playtest 2026-10-10): фаза решения их выполняет,
-игроки их не видят ни в готовом ответе, ни в потоке."""
+"""Текстовые псевдовызовы: фаза решения отклоняет, повествование не показывает игрокам."""
 
 import asyncio
 import random
@@ -73,7 +72,7 @@ def test_stream_filter_hides_calls_in_any_chunking():
         assert text.startswith("Иван сосредотачивает") and "Скелеты скрежещут костями." in text
 
 
-def test_decide_executes_calls_written_as_text(game_client, admin_g, llm, dice, settings):  # noqa: F811
+def test_decide_requires_native_calls_for_text_attempts(game_client, admin_g, llm, dice, settings):  # noqa: F811
     c, (p1,), hero = party(game_client, admin_g)
     dice += [14]
     llm.replies += [
@@ -84,6 +83,14 @@ def test_decide_executes_calls_written_as_text(game_client, admin_g, llm, dice, 
                 + "', stat='athletics', difficulty='dc.medium', reason='дверь')`"
             )
         },
+        {
+            "tool_calls": [
+                (
+                    "roll_check",
+                    {"character_id": hero["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "дверь"},
+                )
+            ]
+        },
         DONE,
         {
             "text": "Бран вышибает дверь.\naction: spawn_entity(template_id='monster.skeleton', name='Скелет')\n"
@@ -92,16 +99,17 @@ def test_decide_executes_calls_written_as_text(game_client, admin_g, llm, dice, 
     ]
     n = act(game_client, p1, c["id"], "Вышибаю дверь плечом")
     assert n["content"].endswith("вышибает дверь.\nЗа дверью темно.") and "spawn_entity" not in n["content"]
-    # вызов из текста выполнен, модель получила результат и просьбу звать инструменты по-настоящему
+    # Текстовый вызов НЕ исполняется: реальный бросок — только из native tool_call.
     assert len(rows(settings, Event, Event.tool == "roll_check")) == 1
     note = llm.requests[1]["messages"][-1]["content"]
-    assert "написал вызовы инструментов текстом" in note and '"ok": true' in note
+    assert "НЕ выполнил" in note and "настоящими tool_calls" in note
 
     (turn,) = rows(settings, MasterTurn)
     assert turn.trace["closed"] == [hero["id"]]
-    assert any(t.get("from_text") for t in turn.trace["calls"])
+    assert turn.trace["text_call_rejections"] == 1
+    assert not any(t.get("from_text") for t in turn.trace["calls"])
     assert turn.trace["audit"]["tool_text"] == ["spawn_entity"]
-    assert rows(settings, Event, Event.tool == "spawn_entity") == []  # в повествовании мир не меняется
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
 
 
 def test_combat_without_enemies_is_refused(game_client, admin_g, llm, settings):  # noqa: F811
@@ -118,3 +126,67 @@ def test_combat_without_enemies_is_refused(game_client, admin_g, llm, settings):
     assert "в бою нет врагов" in tool_msg["content"]
     (turn,) = rows(settings, MasterTurn)
     assert turn.trace["combat"] == []
+
+
+MARKDOWN_CALLS = """<center>
+[spawn_entity](template_id="creature.skeleton", location="en_room", position={"cell":{"x":2,"y":2}}, name="Скелет 1")
+[spawn_entity](template_id="creature.skeleton", location="en_room", position={"cell":{"x":3,"y":1}}, name="Скелет 2")
+[resolve_attack](attacker="ch_hero", target="en_foe", weapon="inv_sword")
+</center>
+Кости звенят в пустом зале.
+"""
+
+
+def test_markdown_calls_are_detected_and_removed():
+    names = textcalls.tool_names()
+    calls = textcalls.parse(MARKDOWN_CALLS, names)
+    assert [name for name, _ in calls] == ["spawn_entity", "spawn_entity", "resolve_attack"]
+    assert calls[0][1]["position"] == {"cell": {"x": 2, "y": 2}}
+    assert textcalls.clean(MARKDOWN_CALLS) == "Кости звенят в пустом зале."
+    assert textcalls.contains(r"\\[spawn_entity\\]\\(name='Скелет')", names)
+    assert textcalls.clean("[spawn_entity](name='Незаконченный'") == ""
+
+
+def test_markdown_calls_never_leak_into_stream():
+    for seed in range(35):
+        rnd = random.Random(seed)
+        chunks: list[str] = []
+
+        async def push(chunk):
+            chunks.append(chunk)
+
+        async def feed():
+            stream = textcalls.StreamFilter(push)
+            offset = 0
+            while offset < len(MARKDOWN_CALLS):
+                step = rnd.randint(1, 11)
+                await stream(MARKDOWN_CALLS[offset : offset + step])
+                offset += step
+
+        asyncio.run(feed())
+        public = "".join(chunks)
+        assert "spawn_entity" not in public
+        assert "resolve_attack" not in public
+        assert "<center>" not in public
+        assert "creature.skeleton" not in public
+        assert "Кости звенят" in public
+
+
+def test_master_rejects_markdown_commands_and_regenerates_story(game_client, admin_g, llm, settings):  # noqa: F811
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {"text": MARKDOWN_CALLS},
+        {"tool_calls": [("cancel_action", {"character_id": hero["id"], "reason": "действие непонятно"})]},
+        DONE,
+        {"text": MARKDOWN_CALLS.split("Кости звенят")[0]},
+        {"text": "Бран заглядывает в пустую комнату."},
+    ]
+    n = act(game_client, p1, c["id"], "Оглядываюсь по сторонам")
+    assert n["content"] == "Бран заглядывает в пустую комнату."
+    assert "spawn_entity" not in n["content"]
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
+    assert rows(settings, Event, Event.tool == "resolve_attack") == []
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["text_call_rejections"] == 1
+    assert turn.trace["audit"]["regenerated"]
+    assert "spawn_entity" in turn.trace["audit"]["tool_text"]
