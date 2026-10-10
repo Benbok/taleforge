@@ -1,0 +1,21 @@
+name: Map contract diagnostic (temporary)
+
+on:
+  pull_request:
+
+jobs:
+  compare-map-contract:
+    if: github.head_ref == 'refactor/map-consistency-scene-view-20261010'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Emit generated OpenAPI diff
+        run: |
+          python -m app.contract
+          echo MAP_SCHEMA_DIFF_BEGIN
+          git --no-pager diff -- web/openapi.json
+          echo MAP_SCHEMA_DIFF_END
