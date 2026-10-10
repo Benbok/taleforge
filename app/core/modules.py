@@ -819,7 +819,11 @@ MAX_GRID = 200
 def map_input(draft: dict, taken: dict[str, str] | None = None) -> str:
     lines = []
     for loc in draft.get("locations") or []:
-        rooms = ", ".join(f"{r.get('number')} — {r.get('name')}" for r in loc.get("rooms") or [] if r.get("number"))
+        rooms = ", ".join(
+            f"{r.get('number')} ({r.get('id')}) — {r.get('name')}; выходы: {', '.join(r.get('exits') or []) or 'нет'}"
+            for r in loc.get("rooms") or []
+            if r.get("number")
+        )
         lines.append(f"- {loc.get('id')} ({loc.get('name')}): {rooms or 'номеров нет'}")
     text = "Места модуля и номера их комнат:\n" + "\n".join(lines)
     if taken:
