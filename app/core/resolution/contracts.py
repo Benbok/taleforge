@@ -22,6 +22,23 @@ class ActionContext:
     canonical_denial: bool
 
 
+@dataclass(frozen=True)
+class CapabilitySpec:
+    id: str
+    action_class: Literal["noncombat", "combat"]
+    verbs: frozenset[str]
+    operations: frozenset[str]
+    atomic: bool
+    allow_unsupported: bool
+    allow_safe_failure: bool
+
+
+@dataclass(frozen=True)
+class Admission:
+    route: Literal["ordinary", "repair", "fallback", "deny"]
+    reason_code: str
+
+
 class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[1] = 1
