@@ -178,6 +178,29 @@ def linked_entity_ids(sk: dict | None) -> set[str]:
     }
 
 
+def physical_geometry(sk: dict | None, entities: dict[str, Any], location_id: str | None) -> dict | None:
+    """A removed/carried object must not leave a phantom blocking feature."""
+    if not sk or location_id is None:
+        return sk
+    from app.core.world_objects import is_nested
+
+    features = []
+    for feature in sk.get("features") or []:
+        ref = feature.get("entity_id")
+        if ref:
+            entity = entities.get(ref)
+            if (
+                entity is None
+                or entity.kind != "object"
+                or entity.location_id != location_id
+                or is_nested(entity)
+                or (entity.state or {}).get("world_object", {}).get("physical") == "destroyed"
+            ):
+                continue
+        features.append(feature)
+    return {**sk, "features": features}
+
+
 def project_for_viewer(
     sk: dict,
     master: bool,

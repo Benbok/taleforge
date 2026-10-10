@@ -81,7 +81,8 @@ def bearing_of_cell(cell: tuple[int, int]) -> str | None:
 def _sketch(world, place: str | None) -> dict | None:
     from app.core import sketch
 
-    return sketch.of_place(world.entities.get(place or ""), world.catalog, world.entities)
+    geometry = sketch.of_place(world.entities.get(place or ""), world.catalog, world.entities)
+    return sketch.physical_geometry(geometry, world.entities, place)
 
 
 def anchor(world, place: str | None, sk: dict | None = None) -> tuple[int, int]:
