@@ -357,9 +357,7 @@ class TurnMixin:
                 failed_spawns = [
                     t
                     for t in trace_calls
-                    if t["tool"] == "spawn_entity"
-                    and not t["result"].get("ok")
-                    and not t["result"].get("skipped")
+                    if t["tool"] == "spawn_entity" and not t["result"].get("ok") and not t["result"].get("skipped")
                 ]
                 if failed_spawns and not spawn_retry:
                     spawn_retry = True
