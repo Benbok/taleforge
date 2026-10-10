@@ -218,3 +218,79 @@ def test_reaction_declined(game):
 
     notes, available, oa = play(settings, cid, [], fn)
     assert available and not oa and any("бежит" in n for n in notes)
+
+
+def test_opening_attack_is_resolved_only_in_initiative_order(game):
+    """The declared attack is queued, not dealt as free damage before combat turns."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        attack = {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
+        combat.queue_opening_attack(ctx, attack)
+        assert attacks(ctx, hero) == []
+        assert combat.state(ctx)["opening_attacks"][hero] == attack
+        notes = await combat.run_until_hero(ctx, "opening")
+        assert len(attacks(ctx, hero)) == 1
+        assert combat.state(ctx)["opening_attacks"] == {}
+        assert combat.current_id(ctx) == hero
+        assert ctx.world.scene.round == 2
+        return notes
+
+    notes = play(settings, cid, [], fn)
+    assert any("атакует" in n for n in notes)
+
+
+def test_opening_attack_waits_for_creatures_that_win_initiative(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="melee", first="creature")
+        combat.queue_opening_attack(
+            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
+        )
+        notes = await combat.run_until_hero(ctx, "opening")
+        observed = [e.actor_id for e in ctx.events if e.tool == "resolve_attack"]
+        assert hero in observed and observed.index(enemy) < observed.index(hero)
+        assert combat.current_id(ctx) == hero
+        return notes
+
+    assert play(settings, cid, [], fn)
+
+
+def test_opening_attack_out_of_range_is_not_fabricated_as_miss(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="far", first="hero")
+        combat.queue_opening_attack(
+            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
+        )
+        notes = await combat.run_until_hero(ctx, "opening")
+        assert not attacks(ctx, hero)
+        assert ctx.world.scene.round == 1 and combat.current_id(ctx) == hero
+        assert not combat.state(ctx).get("opening_attacks")
+        assert combat.state(ctx)["deadline"] is not None
+        assert any("не выполнена" in n and "сблизиться" in n for n in notes)
+        deadline = combat.state(ctx)["deadline"]
+        await combat.run_until_hero(ctx, "repeat-sync")
+        assert combat.state(ctx)["deadline"] == deadline
+        return notes
+
+    assert play(settings, cid, [], fn)
+
+
+def test_ending_combat_discards_unresolved_opening_actions(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        enemy = await _fight(ctx, hero, "creature.goblin", zone="melee", first="creature")
+        combat.queue_opening_attack(
+            ctx, {"attacker_id": hero, "target_id": enemy, "attack": "item.longsword"}
+        )
+        ended = await call(ctx, "set_scene_mode", {"mode": "free"})
+        assert ended["ok"], ended
+        assert ctx.world.scene.mode == "free"
+        assert "opening_attacks" not in combat.state(ctx)
+
+    play(settings, cid, [], fn)
