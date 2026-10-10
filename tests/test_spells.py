@@ -467,11 +467,15 @@ def test_move_cast_parser_rejects_ambiguous_combinations(wizard_game):
         assert approach_cast(ctx, base) is not None
         assert approach_cast(ctx, {**base, "actions": list(reversed(base["actions"]))}) is None
         assert approach_cast(ctx, {**base, "confidence": 0.3}) is None
-        assert approach_cast(ctx, {**base, "actions": [
-            base["actions"][0], {**base["actions"][1], "spell_id": "spell.unknown"}
-        ]}) is None
-        assert approach_cast(ctx, {**base, "actions": [
-            base["actions"][0], {**base["actions"][1], "target_id": None}
-        ]}) is None
+        assert (
+            approach_cast(
+                ctx, {**base, "actions": [base["actions"][0], {**base["actions"][1], "spell_id": "spell.unknown"}]}
+            )
+            is None
+        )
+        assert (
+            approach_cast(ctx, {**base, "actions": [base["actions"][0], {**base["actions"][1], "target_id": None}]})
+            is None
+        )
 
     play(settings, cid, [], fn)
