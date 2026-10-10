@@ -3,7 +3,7 @@ import BookMap from "./BookMap";
 import { entityVisual, EXIT_VISUALS, FEATURE_VISUALS, MAP_PRESETS } from "./mapPresets";
 import { MapGlyph } from "./MapGlyph";
 import { useDraft } from "./draft";
-import { TYPE_COLOR, TYPE_ICON } from "./entities";
+import { TYPE_COLOR } from "./entities";
 import { useInspector } from "./inspector";
 import { fitLabel, GridLines, Token } from "./GridBoard";
 import {
@@ -565,7 +565,7 @@ function Around({ m }: { m: MapState }) {
                 <span key={t.id}>
                   {i > 0 && ", "}
                   <button className="underline decoration-dotted underline-offset-4" style={{ color: TYPE_COLOR[t.type] }} onClick={open(t.id, t.name)}>
-                    {TYPE_ICON[t.type]} {t.name}
+                    <MapGlyph name={entityVisual(t.type, t.visual_key).glyph} width={13} height={13} color="currentColor" className="inline-block align-middle" /> {t.name}
                   </button>
                   {(t.bearing || posNote(t.elevation, t.cover)) && (
                     <span className="text-muted"> ({[t.bearing ? m.bearings[t.bearing] : null, posNote(t.elevation, t.cover)].filter(Boolean).join(", ")})</span>
@@ -583,7 +583,7 @@ function Around({ m }: { m: MapState }) {
               <span key={h.id}>
                 {i > 0 && ", "}
                 <button className="underline decoration-dotted underline-offset-4" style={{ color: "var(--tf-accent)" }} onClick={open(h.id, h.name)}>
-                  ★ {h.name}
+                  <MapGlyph name={MAP_PRESETS.hero.glyph} width={13} height={13} color="currentColor" className="inline-block align-middle" /> {h.name}
                 </button>
                 <span className="text-muted">
                   {" "}
