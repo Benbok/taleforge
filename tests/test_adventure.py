@@ -136,6 +136,21 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     statuses = [(r["number"], r["status"]) for r in m["book"]["rooms"]]
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
 
+    # История исследования не создаёт физический выход из комнаты 2.
+    # В старых сохранениях переходы движения уже могли добавить ложные state.links.
+    async def explore_and_return(ctx):
+        other = await _ok(ctx, "create_location", {"name": "Дальнее хранилище", "parent_id": crypt})
+        await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": other["location_id"]})
+        await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": r2["room_id"]})
+        return other["location_id"]
+
+    remote = _play(settings, cid, explore_and_return)
+    m = _map(client, p1, cid)
+    assert remote in {p["id"] for p in m["places"]}  # посещённая локация остаётся в «Местах»
+    assert {e["id"] for e in m["exits"]} == {room["room_id"]}
+    assert {x["to"] for x in m["sketch"]["exits"] if x.get("to")} == {room["room_id"]}
+    assert not any(remote in (x["a"], x["b"]) for x in m["links"])
+
 
 def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
     import_base(settings)
@@ -150,3 +165,30 @@ def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
         return (await s.get(Campaign, c["id"])).settings
 
     assert "module" not in run(settings, campaign)
+
+
+def test_find_room_resilient_matching():
+    from app.content.catalog import Entry
+
+    rec = Entry(
+        id="location.davos_crypt",
+        kind="location_template",
+        status="active",
+        pack_id="pack1",
+        data={
+            "name": "Семейный склеп Давоса",
+            "rooms": [
+                {"id": "r1", "name": "Зал Мёртвых", "number": "1"},
+                {"id": "graveyard", "name": "Кладбище у мавзолея"},
+            ],
+        },
+    )
+    assert adventure.find_room(rec, "1")["id"] == "r1"
+    assert adventure.find_room(rec, "r1")["id"] == "r1"
+    assert adventure.find_room(rec, "Зал Мёртвых")["id"] == "r1"
+    assert adventure.find_room(rec, "комната 1")["id"] == "r1"
+    assert adventure.find_room(rec, "room 1")["id"] == "r1"
+    assert adventure.find_room(rec, "room_1")["id"] == "r1"
+    assert adventure.find_room(rec, "room_1_graveyard_at_the_mausoleum")["id"] == "r1"
+    assert adventure.find_room(rec, "graveyard")["id"] == "graveyard"
+    assert adventure.find_room(rec, "Кладбище у мавзолея")["id"] == "graveyard"

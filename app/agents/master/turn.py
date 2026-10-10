@@ -310,6 +310,7 @@ class TurnMixin:
         ]
         done_calls = retries = written_rounds = 0
         nudged = False
+        spawn_retry = False
         allowed = decision_tools(ctx)
 
         async def run_call(name: str, args: dict, key: str) -> dict:
@@ -350,6 +351,24 @@ class TurnMixin:
                 # Никаких изменений от текстовых вызовов. Незакрытые действия будут отменены ниже.
                 break
             if not reply.tool_calls:
+                # Отказ spawn_entity не должен незаметно перейти в повествование
+                # о несуществующих врагах (например, из-за бюджета встречи).
+                failed_spawns = [t for t in trace_calls if t["tool"] == "spawn_entity" and not t["result"].get("ok")]
+                if failed_spawns and not spawn_retry:
+                    spawn_retry = True
+                    issues = "; ".join(str(t["result"].get("error") or "вызов отклонён") for t in failed_spawns)
+                    msgs.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Существа НЕ появились: spawn_entity отклонён ({issues[:800]}). "
+                                "Если их появление необходимо, повтори вызов с допустимым количеством или "
+                                "подходящим более слабым шаблоном. Если нельзя — не утверждай, что они "
+                                "присутствуют, видят героев или атакуют. Выполняй только реальные tool_calls."
+                            ),
+                        }
+                    )
+                    continue
                 open_ = required - ctx.closed
                 fails = _unsettled_fails(ctx, trace_calls)
                 if fails and not nudged:
@@ -546,6 +565,7 @@ class TurnMixin:
             pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
             dc_scale=dc,
             max_calls=MAX_CALLS,
+            difficulty=c.difficulty,
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
             critical_checks=(c.settings or {}).get("critical_checks", True) is not False,

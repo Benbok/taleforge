@@ -14,6 +14,7 @@ id записи места в пакете, ``id`` — id комнаты в кн
 from __future__ import annotations
 
 import copy
+import re
 from typing import Any
 
 from app.content.catalog import CatalogView, Entry
@@ -50,13 +51,34 @@ def module_place(e: Entity | None, catalog: CatalogView, entities: dict[str, Ent
 
 
 def find_room(rec: Entry, ref: str) -> dict | None:
-    """Комната по id из книги или по номеру на карте."""
+    """Комната по id из книги, номеру на карте или названию."""
     ref = str(ref).strip()
-    for r in rooms(rec):
+    all_rooms = rooms(rec)
+    for r in all_rooms:
         if r["id"] == ref or str(r.get("number") or "") == ref:
             return r
     low = ref.lower()
-    return next((r for r in rooms(rec) if str(r.get("name") or "").lower() == low), None)
+    for r in all_rooms:
+        if str(r.get("name") or "").lower() == low:
+            return r
+    cleaned = re.sub(r"^(?:комната|room)[\s_-]*", "", low)
+    if cleaned:
+        for r in all_rooms:
+            if r["id"] == cleaned or str(r.get("number") or "") == cleaned:
+                return r
+            if str(r.get("name") or "").lower() == cleaned:
+                return r
+    m = re.search(r"(?:комната|room|r)?[_\s-]*([0-9]+)", low)
+    if m:
+        num = m.group(1)
+        for r in all_rooms:
+            if str(r.get("number") or "") == num or r["id"] == f"r{num}":
+                return r
+    for r in all_rooms:
+        r_name = str(r.get("name") or "").lower()
+        if r_name and (r_name in low or low in r_name):
+            return r
+    return None
 
 
 def room_title(room: dict) -> str:
@@ -69,6 +91,30 @@ def room_entity(entities: dict[str, Entity], place: Entity, rid: str) -> Entity 
         (e for e in entities.values() if e.location_id == place.id and (room_of(e) or {}).get("id") == rid),
         None,
     )
+
+
+def room_destinations(room: Entity, catalog: CatalogView, places: dict[str, Entity]) -> set[str] | None:
+    """Непосредственные выходы комнаты книги по данным модуля, а не по истории перемещений.
+
+    None означает, что место не является комнатой книги; пустое множество — комната без
+    зарегистрированных соседей. Отсутствующие в реестре комнаты пока не имеют entity_id.
+    """
+    ref = room_of(room)
+    if ref is None:
+        return None
+    found = module_place(room, catalog, places)
+    if found is None:
+        return None
+    parent, rec = found
+    spec = find_room(rec, ref["id"])
+    if spec is None:
+        return None
+    result = set()
+    for rid in spec.get("exits") or []:
+        neighbour = room_entity(places, parent, rid)
+        if neighbour is not None:
+            result.add(neighbour.id)
+    return result
 
 
 def new_room(campaign_id: str, place: Entity, rec: Entry, room: dict) -> Entity:

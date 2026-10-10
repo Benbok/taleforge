@@ -245,7 +245,9 @@ def _linked(ctx: ToolContext | None, a: Entity, b: Entity) -> bool:
 
 
 def _connect(ctx: ToolContext, a: Entity, b: Entity, inverse: list) -> None:
-    """Герои прошли из ``a`` в ``b``: путь отмечается на карте, если места ещё не связаны."""
+    """В свободном мире пройденный маршрут отмечается; в книге переходы заданы её планом."""
+    if adventure.room_of(a) and adventure.room_of(b) and a.location_id == b.location_id:
+        return  # Переход персонажей не создаёт новую дверь между комнатами модуля.
     if a.id != b.id and not _linked(ctx, a, b):
         inverse.append({"table": "entities", "id": a.id, "field": "state", "before": copy.deepcopy(a.state)})
         _link(a, b.id)

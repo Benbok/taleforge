@@ -128,6 +128,60 @@ def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
     assert ev.target_id == hero["id"]
 
 
+def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
+    """Названные мастером враги не становятся настоящими без spawn_entity."""
+    c, (p1,), _ = party(game_client, admin_g)
+    llm.replies += [
+        DONE,
+        DONE,
+        {"text": "Скелет 1 и Скелет 2 приближаются с мечами."},
+        {"text": "Никого из противников рядом пока нет."},
+    ]
+    msg = act(game_client, p1, c["id"], "Бью ближайшего скелета")
+    assert "Скелет 1" not in msg["content"]
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["audit"]["unregistered_actors"] == ["Скелет 1", "Скелет 2"]
+    assert turn.trace["audit"]["regenerated"] is True
+    assert "не зарегистрированы в текущей сцене" in llm.requests[-1]["messages"][-1]["content"]
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
+
+
+def test_narration_blocks_repeated_unregistered_enemies(game_client, admin_g, llm, settings):
+    c, (p1,), _ = party(game_client, admin_g)
+    llm.replies += [
+        DONE,
+        DONE,
+        {"text": "Скелет 1 бежит на вас."},
+        {"text": "Скелет 1 уже стоит перед вами."},
+    ]
+    msg = act(game_client, p1, c["id"], "Осматриваюсь")
+    assert "Скелет 1" not in msg["content"]
+    assert "отсутствуют в реестре мира" in msg["content"]
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["audit"]["blocked_actors"] == ["Скелет 1"]
+
+
+def test_unregistered_named_actors_accepts_russian_case_declensions():
+    from types import SimpleNamespace
+
+    from app.agents.master.continuity import unregistered_named_actors
+
+    class FakeWorld:
+        def in_scene_entities(self):
+            return [SimpleNamespace(name="Скелет 1")]
+
+        characters = {"c1": SimpleNamespace(name="Иван")}
+        entities = {}
+
+    world = FakeWorld()
+    assert unregistered_named_actors("Иван атакует Скелета 1 посохом.", world) == []
+    assert unregistered_named_actors("Удар нанесён Скелету 1 в череп.", world) == []
+    assert unregistered_named_actors("Бой со Скелетом 1 продолжается.", world) == []
+    assert unregistered_named_actors("На Скелете 1 видны трещины.", world) == []
+    assert unregistered_named_actors("Скелет 2 поднимает меч.", world) == ["Скелет 2"]
+    assert unregistered_named_actors("Иван бьёт Зомби 1.", world) == ["Зомби 1"]
+
+
 def test_failed_turn_rolls_back(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [

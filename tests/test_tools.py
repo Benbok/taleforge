@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import ActiveEffect, Campaign, Character, Event, Message
+from app.tools.master.entities import encounter_budget
 from app.tools.registry import execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context
 from tests.game import QueueDice, import_base, party, run
@@ -147,6 +148,42 @@ def test_potion_and_budget(game):
     give, big = play(settings, cid, [], fn)
     assert give["ok"], give
     assert not big["ok"] and "бюджет" in big["error"]
+
+
+def test_spawn_uses_existing_table_difficulty_and_rejects_oversized_encounter(game):
+    """Бюджет одной и той же встречи зависит от настройки стола; отклонённые враги не появляются."""
+    settings, cid, _ = game
+
+    async def fn(ctx):
+        budgets = {}
+        for mode in ("easy", "normal", "hard", "deadly"):
+            ctx.campaign.difficulty = mode
+            one = encounter_budget(ctx, [{"xp": 50}])
+            two = encounter_budget(ctx, [{"xp": 50}, {"xp": 50}])
+            budgets[mode] = {"one": one, "two": two}
+        ctx.campaign.difficulty = "normal"
+        rejected = await call(
+            ctx, "spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет", "count": 2}
+        )
+        present_after_reject = len(ctx.world.in_scene_entities())
+        accepted = await call(
+            ctx, "spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет", "count": 1}
+        )
+        return budgets, rejected, present_after_reject, accepted
+
+    budgets, rejected, present_after_reject, accepted = play(settings, cid, [], fn)
+    assert {mode: data["one"]["cap"] for mode, data in budgets.items()} == {
+        "easy": 50,
+        "normal": 75,
+        "hard": 100,
+        "deadly": 150,
+    }
+    assert budgets["easy"]["one"]["ok"] is False
+    assert all(budgets[mode]["one"]["ok"] for mode in ("normal", "hard", "deadly"))
+    assert all(not data["two"]["ok"] for data in budgets.values())
+    assert not rejected["ok"] and "бюджет" in rejected["error"]
+    assert present_after_reject == 0
+    assert accepted["ok"] and len(accepted["result"]["spawned"]) == 1
 
 
 def test_time_expires_effects_and_whisper(game):
