@@ -3829,6 +3829,11 @@ export interface components {
             book?: boolean;
             /** Cols */
             cols: number;
+            /**
+             * Edit Rev
+             * @default null
+             */
+            edit_rev?: number | null;
             /** Exits */
             exits: components["schemas"]["MapSketchExit"][];
             /** Features */
@@ -3899,14 +3904,34 @@ export interface components {
              */
             cover?: string | null;
             /**
+             * Entity Id
+             * @default null
+             */
+            entity_id?: string | null;
+            /**
+             * Entity Type
+             * @default null
+             */
+            entity_type?: string | null;
+            /**
              * Hidden
              * @default false
              */
             hidden?: boolean;
+            /**
+             * Id
+             * @default null
+             */
+            id?: string | null;
             /** Kind */
             kind: string;
             /** Name */
             name: string;
+            /**
+             * Visual Key
+             * @default null
+             */
+            visual_key?: string | null;
         };
         /** MapState */
         MapState: {
