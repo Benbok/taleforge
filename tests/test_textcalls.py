@@ -144,6 +144,7 @@ def test_markdown_calls_are_detected_and_removed():
     assert calls[0][1]["position"] == {"cell": {"x": 2, "y": 2}}
     assert textcalls.clean(MARKDOWN_CALLS) == "Кости звенят в пустом зале."
     assert textcalls.contains(r"\\[spawn_entity\\]\\(name='Скелет')", names)
+    assert textcalls.clean(r"\\<center>" + "\n" + r"\\[spawn_entity\\]\\(name='Скелет')" + "\n" + r"\\</center>") == ""
     assert textcalls.clean("[spawn_entity](name='Незаконченный'") == ""
 
 
