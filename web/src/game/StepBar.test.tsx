@@ -36,7 +36,8 @@ describe("подход к объекту на карте", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Подойти" }));
-    expect(go).toHaveBeenCalledExactlyOnceWith({ near: [[2, 4]] });
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenCalledWith({ near: [[2, 4]] });
     expect(useDraft.getState().text).toBe("");
     expect(onClose).not.toHaveBeenCalled();
   });
