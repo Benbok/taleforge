@@ -121,9 +121,7 @@ class WhisperMixin:
                     [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
                     None,
                 )
-                text = MARKUP.sub(
-                    lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or ""
-                ).strip()
+                text = MARKUP.sub(lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or "").strip()
             text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
             text = textcalls.clean(text)
             if not text:
