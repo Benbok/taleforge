@@ -191,6 +191,7 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
         return None
 
     monkeypatch.setattr(prelude, "prepare_campaign_intro", no_intro)
+    monkeypatch.setattr(game_client.app.state.master, "introduce", no_intro)
     mid = publish_sample(settings)
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
@@ -230,6 +231,7 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
         return None
 
     monkeypatch.setattr(prelude, "prepare_campaign_intro", no_intro)
+    monkeypatch.setattr(game_client.app.state.master, "introduce", no_intro)
     mid = publish_sample(settings)
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
