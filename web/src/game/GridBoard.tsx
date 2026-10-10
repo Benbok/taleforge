@@ -1,4 +1,6 @@
-import type { MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
+import { MapGlyph } from "./MapGlyph";
+import type { MapVisualPreset, TokenShape } from "./mapPresets";
 
 // Клетки и значки на них: схема «Вокруг» и (этап 3 готовых приключений) карта модуля рисуются одними деталями.
 // Координаты здесь — в пикселях SVG; раскладку по клеткам делает вызывающий.
@@ -87,27 +89,61 @@ export function roomForLabel(occupied: Set<string>, col: number, row: number): b
   ].every(([c, r]) => !occupied.has(`${c},${r}`));
 }
 
-/** Значок в клетке: кружок с символом, подпись под ним, пометки высоты и укрытия справа сверху. */
+/** Одна геометрия фишки для обеих карт. Варианты выбирает реестр, не сам компонент. */
+function TokenDisc({ cx, cy, r, shape, fill, stroke, dashed, ring }: {
+  cx: number;
+  cy: number;
+  r: number;
+  shape: TokenShape;
+  fill: string;
+  stroke: string;
+  dashed: boolean;
+  ring: boolean;
+}) {
+  const common = {
+    fill,
+    stroke,
+    strokeWidth: ring ? 1.7 : 1.15,
+    strokeDasharray: dashed ? "2.5 2" : undefined,
+  };
+  if (shape === "hex") {
+    const points = Array.from({ length: 6 }, (_, i) => {
+      const theta = (Math.PI * i) / 3 - Math.PI / 2;
+      return `${cx + Math.cos(theta) * r},${cy + Math.sin(theta) * r}`;
+    }).join(" ");
+    return <polygon points={points} {...common} />;
+  }
+  if (shape === "diamond") {
+    return <rect x={cx - r * 0.74} y={cy - r * 0.74} width={r * 1.48} height={r * 1.48}
+      rx={r * 0.12} transform={`rotate(45 ${cx} ${cy})`} {...common} />;
+  }
+  if (shape === "square") {
+    return <rect x={cx - r * 0.88} y={cy - r * 0.88} width={r * 1.76} height={r * 1.76}
+      rx={r * 0.28} {...common} />;
+  }
+  return <circle cx={cx} cy={cy} r={r} {...common} />;
+}
+
+/** Токен: форма = тип, пиктограмма = вид, цвет = семантический акцент.
+ * Визуал не выбирается по имени и не меняет данные игры. */
 export function Token({
   cx,
   cy,
   size,
-  color,
-  icon,
+  visual,
   label,
   badge,
-  faded,
-  ring,
-  dashed,
-  selected,
+  faded = false,
+  ring = false,
+  dashed = false,
+  selected = false,
   onClick,
   ariaLabel,
 }: {
   cx: number;
   cy: number;
   size: number;
-  color: string;
-  icon: string;
+  visual: MapVisualPreset;
   label?: string;
   badge?: string;
   faded?: boolean;
@@ -118,140 +154,70 @@ export function Token({
   ariaLabel: string;
 }) {
   const r = size * 0.42;
+  const activate = (e: KeyboardEvent<SVGGElement>) => {
+    if (onClick && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onClick(e as unknown as MouseEvent<Element>);
+    }
+  };
   return (
     <g
-      className="group cursor-pointer"
+      className={onClick ? "group cursor-pointer outline-none" : "group"}
       onClick={onClick}
-      role="button"
+      onKeyDown={activate}
+      role={onClick ? "button" : undefined}
       aria-label={ariaLabel}
-      tabIndex={0}
+      tabIndex={onClick ? 0 : undefined}
+      data-map-glyph={visual.glyph}
     >
       <title>{ariaLabel}</title>
 
-      {/* Кольцо выбора активной цели */}
-      {selected && (
-        <g aria-hidden="true">
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r + 3.5}
-            fill="none"
-            stroke="var(--tf-accent, #c98a4b)"
-            strokeWidth={1.2}
-            strokeDasharray="3 2"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r + 2}
-            fill="none"
-            stroke="var(--tf-accent, #c98a4b)"
-            strokeWidth={0.8}
-            strokeOpacity={0.6}
-          />
-        </g>
-      )}
-
-      {/* Основной диск токена */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={r}
-        fill={dashed ? "var(--color-surface, #222)" : color}
-        fillOpacity={faded ? 0.35 : 1}
-        stroke={ring ? "var(--color-ink, #ddd)" : dashed ? color : "rgba(0,0,0,0.4)"}
-        strokeWidth={ring ? 1.5 : 1}
-        strokeDasharray={dashed ? "2 2" : undefined}
-        className="transition-transform duration-150 group-hover:scale-105"
-        style={{ transformOrigin: `${cx}px ${cy}px` }}
-      />
-
-      {/* Внутренний ободок фишки */}
-      {!dashed && (
-        <circle
-          cx={cx}
-          cy={cy}
-          r={Math.max(1, r - 1.4)}
-          fill="none"
-          stroke="rgba(255, 255, 255, 0.22)"
-          strokeWidth={0.5}
+      {(selected || ring) && (
+        <circle cx={cx} cy={cy} r={r + (selected ? 3.5 : 2.3)}
+          fill="none" stroke={selected ? "var(--tf-accent)" : visual.color}
+          strokeWidth={selected ? 1.5 : 1}
+          strokeDasharray={selected ? "2.5 2" : undefined}
           className="pointer-events-none"
         />
       )}
+      <g className="transition-transform duration-150 group-hover:scale-105 group-focus:scale-105"
+        style={{ transformOrigin: `${cx}px ${cy}px` }}
+        opacity={faded ? 0.45 : 1}>
+        <TokenDisc cx={cx} cy={cy} r={r} shape={visual.shape}
+          fill="var(--tf-surface, #17181c)" stroke={visual.color} dashed={dashed} ring={ring} />
+        <circle cx={cx} cy={cy} r={r * 0.65} fill={visual.color} fillOpacity={dashed ? 0.06 : 0.14}
+          className="pointer-events-none" />
+        <MapGlyph name={visual.glyph}
+          x={cx - r * 0.77} y={cy - r * 0.77}
+          width={r * 1.54} height={r * 1.54}
+          color={visual.color}
+          className="pointer-events-none" />
+      </g>
 
-      {/* Иконка внутри токена */}
-      <text
-        x={cx}
-        y={cy + r * 0.45}
-        textAnchor="middle"
-        fontSize={r * 1.15}
-        fill={dashed ? color : "var(--color-bg, #111)"}
-        fontWeight="bold"
-        className="pointer-events-none select-none"
-      >
-        {icon}
-      </text>
-
-      {/* Подпись токена на сетке с защитным ореолом */}
       {label && (
-        <text
-          x={cx}
-          y={cy + r + 7}
-          textAnchor="middle"
-          fontSize={7}
-          fontWeight={500}
-          fill="var(--color-ink, #ddd)"
-          paintOrder="stroke"
-          stroke="var(--color-surface, #17181c)"
-          strokeWidth={2.5}
-          strokeLinejoin="round"
-          className="pointer-events-none select-none"
-        >
+        <text x={cx} y={cy + r + 7} textAnchor="middle" fontSize={7} fontWeight={600}
+          fill="var(--color-ink, #ddd)" paintOrder="stroke"
+          stroke="var(--color-surface, #17181c)" strokeWidth={2.5}
+          strokeLinejoin="round" className="pointer-events-none select-none">
           {label}
         </text>
       )}
-
-      {/* Бейдж высоты/укрытия */}
       {badge && (
-        <text
-          x={cx + r}
-          y={cy - r + 2}
-          fontSize={7.5}
-          fill="var(--color-warn, #d9a441)"
-          paintOrder="stroke"
-          stroke="var(--color-surface, #17181c)"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          className="pointer-events-none select-none"
-        >
+        <text x={cx + r} y={cy - r + 2} fontSize={7.5}
+          fill="var(--color-warn, #d9a441)" paintOrder="stroke"
+          stroke="var(--color-surface, #17181c)" strokeWidth={2}
+          strokeLinejoin="round" className="pointer-events-none select-none">
           {badge}
         </text>
       )}
 
-      {/* Всплывающий тултип при наведении */}
-      <g
-        className="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-        aria-hidden="true"
-      >
-        <rect
-          x={cx - Math.min(ariaLabel.length * 2.8 + 6, 60)}
-          y={cy - r - 13}
-          width={Math.min(ariaLabel.length * 5.6 + 12, 120)}
-          height={11}
-          rx={3}
-          fill="var(--color-surface, #17181c)"
-          stroke="var(--tf-accent, #c98a4b)"
-          strokeWidth={0.8}
-          filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
-        />
-        <text
-          x={cx}
-          y={cy - r - 5}
-          textAnchor="middle"
-          fontSize={6.5}
-          fontWeight={600}
-          fill="var(--color-ink, #eee)"
-        >
+      <g className="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+        aria-hidden="true">
+        <rect x={cx - Math.min(ariaLabel.length * 2.8 + 6, 60)} y={cy - r - 13}
+          width={Math.min(ariaLabel.length * 5.6 + 12, 120)} height={11} rx={3}
+          fill="var(--color-surface, #17181c)" stroke={visual.color} strokeWidth={0.8} />
+        <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize={6.5} fontWeight={600}
+          fill="var(--color-ink, #eee)">
           {short(ariaLabel, 22)}
         </text>
       </g>

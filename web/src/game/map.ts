@@ -15,6 +15,7 @@ export interface MapThing {
   id: string;
   name: string;
   type: EntityType;
+  visual_key?: string | null; // ключ рисунка из Entity.state, только из проверенного каталога пресетов
   zone: Zone;
   zone_name: string;
   bearing: Bearing | null;
@@ -100,7 +101,7 @@ export interface MapBook {
   grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
   here: string | null;
   rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
-  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: EntityType; cell?: [number, number] }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: EntityType; cell?: [number, number]; visual_key?: string | null }[];
 }
 
 /** Эскиз места, нарисованный мастером (app/core/sketch.py): клетки по 5 футов, (0, 0) — северо-западный угол. */
@@ -141,6 +142,7 @@ export interface SceneTokenView {
   id: string;
   name: string;
   type: SceneTokenType;
+  visual_key?: string | null;
   mine: boolean;
   down: boolean;
   zone: Zone | null;
