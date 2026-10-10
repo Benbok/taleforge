@@ -246,6 +246,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             exits.append(
                 {
                     "id": pid,
+                    "room_ref": next((x.room_ref for x in location_exits(here, catalog, places) if x.target_id == pid), None),
                     "name": p["name"],
                     "via": via,
                     "bearing": (link or {}).get("bearing") or (places[pid].state or {}).get("bearing"),
