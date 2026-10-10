@@ -26,6 +26,7 @@ from app.content.catalog import campaign_catalog
 from app.core import adventure, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
 from app.core.world_objects import is_nested
@@ -86,15 +87,20 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     master = viewer.seat is not None and viewer.seat.role == "master"
     hero = None if master else await viewer_hero(session, viewer)
 
-    if hero is not None:
-        heroes = [hero]
-        here_id = place_of(hero, scene.location_id)
-    else:
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
-        heroes = list((await session.scalars(q)).all())
-        here_id = scene.location_id
+    q = select(Character).where(Character.campaign_id == cid)
+    all_chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
+    view = visible_scene(
+        scene,
+        {e.id: e for e in ents},
+        all_chars,
+        hero_id=hero.id if hero is not None else None,
+        is_master=master,
+    )
+    heroes = [hero] if hero is not None and hero.status in PLAYABLE else list(view.heroes)
+    here_id = view.current_location_id
     hero_ids = {h.id for h in heroes}
     heres = {place_of(h, scene.location_id) for h in heroes} | {here_id}
+    allowed_entities = {e.id for e in view.entities}
 
     visited = {
         pid for pid, p in places.items() if pid in heres or hero_ids & set((p.state or {}).get("visited_by") or [])
@@ -175,7 +181,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     areas: list[dict] = []
     if here is not None:
         for e in ents:
-            if e.kind == "location" or e.location_id != here.id or is_nested(e):
+            if e.id not in allowed_entities or e.location_id != here.id or is_nested(e):
                 continue
             st = e.state or {}
             if not master and (st.get("hidden") or st.get("secret")):
@@ -210,8 +216,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             around.append(item)
         # герои в этом месте: у кого нет позиции, тот в строю отряда, в центре схемы
         positions = (scene.state or {}).get("positions") or {}
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
-        for ch in (await session.scalars(q)).all():
+        for ch in all_chars.values():
+            if ch.status not in PLAYABLE:
+                continue
             if place_of(ch, scene.location_id) != here.id:
                 continue
             pos = positions.get(ch.id) or {}
@@ -275,8 +282,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                         "visited": passage.target_id in visited,
                     }
                 )
-    # Единый, уже отфильтрованный для зрителя список маркеров сцены.
-    # An unrevealed linked feature must not leak through another map projection.
+    # Linked secret geometry must not reveal an entity through around or book tokens.
     saved_sketch = (here.state or {}).get("sketch") if here is not None else None
     hidden_linked = {
         feature["entity_id"]
@@ -286,8 +292,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     if not master and hidden_linked:
         around = [item for item in around if item["id"] not in hidden_linked]
 
-    # Linked physical entities have one scene representation: the sketch feature.
-    # Keep around (gameplay targets) and full book tokens separate from rendered scene tokens.
+    # The book receives unmodified scene tokens; Around renders bound Entity as a sketch feature.
     scene_view = [
         {
             "id": h["id"],
@@ -319,9 +324,10 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         if catalog is None:
             catalog = await campaign_catalog(session, viewer.campaign)
         positions = (scene.state or {}).get("positions") or {}
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
         heroes_at = [
-            (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
+            (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {})
+            for ch in all_chars.values()
+            if ch.status in PLAYABLE
         ]
         book = adventure.book_map(
             catalog,
@@ -336,7 +342,6 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         sk = sketch.of_place(here, catalog, places)
     else:
         sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
-
     projected_sketch = (
         sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
     )

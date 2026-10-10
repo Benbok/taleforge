@@ -3643,6 +3643,71 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MapArea */
+        MapArea: {
+            /** Bearing */
+            bearing: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Radius Ft */
+            radius_ft: number;
+            /** Zone */
+            zone: string | null;
+        };
+        /** MapBook */
+        MapBook: {
+            grid: components["schemas"]["MapBookGrid"] | null;
+            /** Here */
+            here: string | null;
+            /** Map Id */
+            map_id: string;
+            /** Module Id */
+            module_id: string;
+            /** Name */
+            name: string;
+            /** Rooms */
+            rooms: components["schemas"]["MapBookRoom"][];
+            /** Tokens */
+            tokens: components["schemas"]["MapToken"][];
+        };
+        /** MapBookGrid */
+        MapBookGrid: {
+            /** Bottom */
+            bottom: number;
+            /** Cols */
+            cols: number;
+            /** Left */
+            left: number;
+            /** Right */
+            right: number;
+            /** Rows */
+            rows: number;
+            /** Top */
+            top: number;
+        };
+        /** MapBookRoom */
+        MapBookRoom: {
+            /**
+             * Cells
+             * @default null
+             */
+            cells?: number[][];
+            /** Name */
+            name: string | null;
+            /** Number */
+            number: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "here" | "visited" | "known";
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
         /** MapChanged */
         MapChanged: {
             /**
@@ -3651,9 +3716,226 @@ export interface components {
              */
             place_id?: string;
         };
+        /** MapExit */
+        MapExit: {
+            /** Bearing */
+            bearing: string | null;
+            /** Id */
+            id: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Room Ref
+             * @default null
+             */
+            room_ref?: string | null;
+            /** Via */
+            via: string | null;
+            /** Visited */
+            visited: boolean;
+        };
+        /** MapHere */
+        MapHere: {
+            /** Description */
+            description: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** MapHero */
+        MapHero: {
+            /** Bearing */
+            bearing: string | null;
+            /** Cell */
+            cell: [
+                number,
+                number
+            ] | null;
+            /** Cover */
+            cover: string;
+            /** Down */
+            down: boolean;
+            /** Elevation */
+            elevation: string;
+            /** Id */
+            id: string;
+            /** Mine */
+            mine: boolean;
+            /** Name */
+            name: string;
+            /** Zone */
+            zone: string | null;
+        };
+        /** MapLink */
+        MapLink: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** Label */
+            label: string | null;
+        };
+        /** MapPlace */
+        MapPlace: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "here" | "visited" | "known";
+        };
+        /** MapSceneToken */
+        MapSceneToken: {
+            /** Bearing */
+            bearing: string | null;
+            /** Cell */
+            cell: [
+                number,
+                number
+            ] | null;
+            /** Down */
+            down: boolean;
+            /** Id */
+            id: string;
+            /** Mine */
+            mine: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "hero" | "creature" | "npc" | "item" | "landmark";
+            /**
+             * Visual Key
+             * @default null
+             */
+            visual_key?: string | null;
+            /** Zone */
+            zone: string | null;
+        };
+        /** MapSketch */
+        MapSketch: {
+            /**
+             * Book
+             * @default false
+             */
+            book?: boolean;
+            /** Cols */
+            cols: number;
+            /** Exits */
+            exits: components["schemas"]["MapSketchExit"][];
+            /** Features */
+            features: components["schemas"]["MapSketchFeature"][];
+            /** Party */
+            party: [
+                number,
+                number
+            ];
+            /** Rows */
+            rows: number;
+            /** Shape */
+            shape: string;
+            /**
+             * Unplaced Exits
+             * @default null
+             */
+            unplaced_exits?: components["schemas"]["MapUnplacedExit"][];
+            /** Walls */
+            walls: number[][];
+        };
+        /** MapSketchExit */
+        MapSketchExit: {
+            /** At */
+            at: number;
+            /**
+             * Beyond
+             * @default null
+             */
+            beyond?: string | null;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden?: boolean;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Room Ref
+             * @default null
+             */
+            room_ref?: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "n" | "e" | "s" | "w";
+            /**
+             * State
+             * @default null
+             */
+            state?: string | null;
+            /**
+             * To
+             * @default null
+             */
+            to?: string | null;
+        };
+        /** MapSketchFeature */
+        MapSketchFeature: {
+            /** Cells */
+            cells: number[][];
+            /**
+             * Cover
+             * @default null
+             */
+            cover?: string | null;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden?: boolean;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+        };
         /** MapState */
         MapState: {
-            [key: string]: unknown;
+            /** Areas */
+            areas: components["schemas"]["MapArea"][];
+            /** Around */
+            around: components["schemas"]["MapThing"][];
+            /** Bearings */
+            bearings: {
+                [key: string]: string;
+            };
+            book: components["schemas"]["MapBook"] | null;
+            /** Exits */
+            exits: components["schemas"]["MapExit"][];
+            here: components["schemas"]["MapHere"] | null;
+            /** Links */
+            links: components["schemas"]["MapLink"][];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "free" | "combat";
+            /** Party */
+            party: components["schemas"]["MapHero"][];
+            /** Places */
+            places: components["schemas"]["MapPlace"][];
+            /** Scene View */
+            scene_view: components["schemas"]["MapSceneToken"][];
+            sketch: components["schemas"]["MapSketch"] | null;
         };
         /** MapStepResult */
         MapStepResult: {
@@ -3663,6 +3945,94 @@ export interface components {
             request_id: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** MapThing */
+        MapThing: {
+            /** Bearing */
+            bearing: string | null;
+            /** Cell */
+            cell: [
+                number,
+                number
+            ] | null;
+            /**
+             * Condition
+             * @default null
+             */
+            condition?: string | null;
+            /** Cover */
+            cover: string;
+            /** Elevation */
+            elevation: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "creature" | "npc" | "item" | "landmark";
+            /**
+             * Visual Key
+             * @default null
+             */
+            visual_key?: string | null;
+            /** Zone */
+            zone: string | null;
+            /** Zone Name */
+            zone_name: string | null;
+        };
+        /** MapToken */
+        MapToken: {
+            /**
+             * Cell
+             * @default null
+             */
+            cell?: [
+                number,
+                number
+            ];
+            /** Down */
+            down: boolean;
+            /** Id */
+            id: string;
+            /** Mine */
+            mine: boolean;
+            /** Name */
+            name: string;
+            /** Room */
+            room: string;
+            /**
+             * Type
+             * @default null
+             * @enum {string}
+             */
+            type?: "hero" | "creature" | "npc" | "item" | "landmark";
+            /**
+             * Visual Key
+             * @default null
+             */
+            visual_key?: string | null;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** MapUnplacedExit */
+        MapUnplacedExit: {
+            /** Name */
+            name: string;
+            /**
+             * Room Ref
+             * @default null
+             */
+            room_ref?: string | null;
+            /**
+             * To
+             * @default null
+             */
+            to?: string | null;
         };
         /** Mark */
         Mark: {
@@ -4912,9 +5282,25 @@ export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
 export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
 export type Lineage = components['schemas']['Lineage'];
 export type LoginIn = components['schemas']['LoginIn'];
+export type MapArea = components['schemas']['MapArea'];
+export type MapBook = components['schemas']['MapBook'];
+export type MapBookGrid = components['schemas']['MapBookGrid'];
+export type MapBookRoom = components['schemas']['MapBookRoom'];
 export type MapChanged = components['schemas']['MapChanged'];
+export type MapExit = components['schemas']['MapExit'];
+export type MapHere = components['schemas']['MapHere'];
+export type MapHero = components['schemas']['MapHero'];
+export type MapLink = components['schemas']['MapLink'];
+export type MapPlace = components['schemas']['MapPlace'];
+export type MapSceneToken = components['schemas']['MapSceneToken'];
+export type MapSketch = components['schemas']['MapSketch'];
+export type MapSketchExit = components['schemas']['MapSketchExit'];
+export type MapSketchFeature = components['schemas']['MapSketchFeature'];
 export type MapState = components['schemas']['MapState'];
 export type MapStepResult = components['schemas']['MapStepResult'];
+export type MapThing = components['schemas']['MapThing'];
+export type MapToken = components['schemas']['MapToken'];
+export type MapUnplacedExit = components['schemas']['MapUnplacedExit'];
 export type Mark = components['schemas']['Mark'];
 export type MarksIn = components['schemas']['MarksIn'];
 export type MasterCharacterIn = components['schemas']['MasterCharacterIn'];

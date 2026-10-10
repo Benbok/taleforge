@@ -325,8 +325,172 @@ class MapChanged(_Strict):
     place_id: str = absent()
 
 
-class MapState(_Open):
-    pass
+class MapPlace(_Strict):
+    id: str
+    name: str
+    parent_id: str | None
+    status: Literal["here", "visited", "known"]
+
+
+class MapHere(_Strict):
+    id: str
+    name: str
+    description: str | None
+
+
+class MapExit(_Strict):
+    id: str | None
+    room_ref: str | None = None
+    name: str
+    via: str | None
+    bearing: str | None
+    visited: bool
+
+
+class MapLink(_Strict):
+    a: str
+    b: str
+    label: str | None
+
+
+class MapHero(_Strict):
+    id: str
+    name: str
+    mine: bool
+    zone: str | None
+    bearing: str | None
+    elevation: str
+    cover: str
+    cell: tuple[int, int] | None
+    down: bool
+
+
+class MapThing(_Strict):
+    id: str
+    name: str
+    type: Literal["creature", "npc", "item", "landmark"]
+    visual_key: str | None = None
+    zone: str | None
+    zone_name: str | None
+    bearing: str | None
+    elevation: str
+    cover: str
+    cell: tuple[int, int] | None
+    condition: str | None = None
+
+
+class MapArea(_Strict):
+    id: str
+    name: str
+    zone: str | None
+    bearing: str | None
+    radius_ft: int
+
+
+class MapToken(_Strict):
+    id: str
+    name: str
+    mine: bool
+    room: str
+    x: float
+    y: float
+    down: bool
+    type: Literal["hero", "creature", "npc", "item", "landmark"] = absent()
+    cell: tuple[int, int] = absent()
+    visual_key: str | None = None
+
+
+class MapBookRoom(_Strict):
+    number: str
+    x: float
+    y: float
+    status: Literal["here", "visited", "known"]
+    name: str | None
+    cells: list[list[int]] = absent()
+
+
+class MapBookGrid(_Strict):
+    cols: int
+    rows: int
+    left: float
+    top: float
+    right: float
+    bottom: float
+
+
+class MapBook(_Strict):
+    module_id: str
+    map_id: str
+    name: str
+    grid: MapBookGrid | None
+    here: str | None
+    rooms: list[MapBookRoom]
+    tokens: list[MapToken]
+
+
+class MapSketchExit(_Strict):
+    name: str
+    side: Literal["n", "e", "s", "w"]
+    at: int
+    kind: str
+    state: str | None = None
+    to: str | None = None
+    room_ref: str | None = None
+    beyond: str | None = None
+    hidden: bool = False
+
+
+class MapSketchFeature(_Strict):
+    name: str
+    kind: str
+    cells: list[list[int]]
+    cover: str | None = None
+    hidden: bool = False
+
+
+class MapUnplacedExit(_Strict):
+    name: str
+    to: str | None = None
+    room_ref: str | None = None
+
+
+class MapSketch(_Strict):
+    shape: str
+    cols: int
+    rows: int
+    party: tuple[int, int]
+    walls: list[list[int]]
+    exits: list[MapSketchExit]
+    features: list[MapSketchFeature]
+    book: bool = False
+    unplaced_exits: list[MapUnplacedExit] = absent()
+
+
+class MapSceneToken(_Strict):
+    id: str
+    name: str
+    type: Literal["hero", "creature", "npc", "item", "landmark"]
+    visual_key: str | None = None
+    mine: bool
+    down: bool
+    zone: str | None
+    bearing: str | None
+    cell: tuple[int, int] | None
+
+
+class MapState(_Strict):
+    here: MapHere | None
+    around: list[MapThing]
+    scene_view: list[MapSceneToken]
+    party: list[MapHero]
+    areas: list[MapArea]
+    mode: Literal["free", "combat"]
+    exits: list[MapExit]
+    places: list[MapPlace]
+    links: list[MapLink]
+    bearings: dict[str, str]
+    sketch: MapSketch | None
+    book: MapBook | None
 
 
 class MapStepResult(_Open):

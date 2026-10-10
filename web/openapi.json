@@ -5246,6 +5246,213 @@
     "title": "LoginIn",
     "type": "object"
    },
+   "MapArea": {
+    "additionalProperties": false,
+    "properties": {
+     "bearing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bearing"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "radius_ft": {
+      "title": "Radius Ft",
+      "type": "integer"
+     },
+     "zone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zone"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "zone",
+     "bearing",
+     "radius_ft"
+    ],
+    "title": "MapArea",
+    "type": "object"
+   },
+   "MapBook": {
+    "additionalProperties": false,
+    "properties": {
+     "grid": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapBookGrid"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "here": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Here"
+     },
+     "map_id": {
+      "title": "Map Id",
+      "type": "string"
+     },
+     "module_id": {
+      "title": "Module Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "rooms": {
+      "items": {
+       "$ref": "#/components/schemas/MapBookRoom"
+      },
+      "title": "Rooms",
+      "type": "array"
+     },
+     "tokens": {
+      "items": {
+       "$ref": "#/components/schemas/MapToken"
+      },
+      "title": "Tokens",
+      "type": "array"
+     }
+    },
+    "required": [
+     "module_id",
+     "map_id",
+     "name",
+     "grid",
+     "here",
+     "rooms",
+     "tokens"
+    ],
+    "title": "MapBook",
+    "type": "object"
+   },
+   "MapBookGrid": {
+    "additionalProperties": false,
+    "properties": {
+     "bottom": {
+      "title": "Bottom",
+      "type": "number"
+     },
+     "cols": {
+      "title": "Cols",
+      "type": "integer"
+     },
+     "left": {
+      "title": "Left",
+      "type": "number"
+     },
+     "right": {
+      "title": "Right",
+      "type": "number"
+     },
+     "rows": {
+      "title": "Rows",
+      "type": "integer"
+     },
+     "top": {
+      "title": "Top",
+      "type": "number"
+     }
+    },
+    "required": [
+     "cols",
+     "rows",
+     "left",
+     "top",
+     "right",
+     "bottom"
+    ],
+    "title": "MapBookGrid",
+    "type": "object"
+   },
+   "MapBookRoom": {
+    "additionalProperties": false,
+    "properties": {
+     "cells": {
+      "default": null,
+      "items": {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      "title": "Cells",
+      "type": "array"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "number": {
+      "title": "Number",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "here",
+       "visited",
+       "known"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "x": {
+      "title": "X",
+      "type": "number"
+     },
+     "y": {
+      "title": "Y",
+      "type": "number"
+     }
+    },
+    "required": [
+     "number",
+     "x",
+     "y",
+     "status",
+     "name"
+    ],
+    "title": "MapBookRoom",
+    "type": "object"
+   },
    "MapChanged": {
     "additionalProperties": false,
     "properties": {
@@ -5258,9 +5465,686 @@
     "title": "MapChanged",
     "type": "object"
    },
+   "MapExit": {
+    "additionalProperties": false,
+    "properties": {
+     "bearing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bearing"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "room_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Room Ref"
+     },
+     "via": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Via"
+     },
+     "visited": {
+      "title": "Visited",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "via",
+     "bearing",
+     "visited"
+    ],
+    "title": "MapExit",
+    "type": "object"
+   },
+   "MapHere": {
+    "additionalProperties": false,
+    "properties": {
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "MapHere",
+    "type": "object"
+   },
+   "MapHero": {
+    "additionalProperties": false,
+    "properties": {
+     "bearing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bearing"
+     },
+     "cell": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cell"
+     },
+     "cover": {
+      "title": "Cover",
+      "type": "string"
+     },
+     "down": {
+      "title": "Down",
+      "type": "boolean"
+     },
+     "elevation": {
+      "title": "Elevation",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "mine": {
+      "title": "Mine",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "zone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zone"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "mine",
+     "zone",
+     "bearing",
+     "elevation",
+     "cover",
+     "cell",
+     "down"
+    ],
+    "title": "MapHero",
+    "type": "object"
+   },
+   "MapLink": {
+    "additionalProperties": false,
+    "properties": {
+     "a": {
+      "title": "A",
+      "type": "string"
+     },
+     "b": {
+      "title": "B",
+      "type": "string"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Label"
+     }
+    },
+    "required": [
+     "a",
+     "b",
+     "label"
+    ],
+    "title": "MapLink",
+    "type": "object"
+   },
+   "MapPlace": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "parent_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parent Id"
+     },
+     "status": {
+      "enum": [
+       "here",
+       "visited",
+       "known"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "parent_id",
+     "status"
+    ],
+    "title": "MapPlace",
+    "type": "object"
+   },
+   "MapSceneToken": {
+    "additionalProperties": false,
+    "properties": {
+     "bearing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bearing"
+     },
+     "cell": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cell"
+     },
+     "down": {
+      "title": "Down",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "mine": {
+      "title": "Mine",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "hero",
+       "creature",
+       "npc",
+       "item",
+       "landmark"
+      ],
+      "title": "Type",
+      "type": "string"
+     },
+     "visual_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Visual Key"
+     },
+     "zone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zone"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "type",
+     "mine",
+     "down",
+     "zone",
+     "bearing",
+     "cell"
+    ],
+    "title": "MapSceneToken",
+    "type": "object"
+   },
+   "MapSketch": {
+    "additionalProperties": false,
+    "properties": {
+     "book": {
+      "default": false,
+      "title": "Book",
+      "type": "boolean"
+     },
+     "cols": {
+      "title": "Cols",
+      "type": "integer"
+     },
+     "exits": {
+      "items": {
+       "$ref": "#/components/schemas/MapSketchExit"
+      },
+      "title": "Exits",
+      "type": "array"
+     },
+     "features": {
+      "items": {
+       "$ref": "#/components/schemas/MapSketchFeature"
+      },
+      "title": "Features",
+      "type": "array"
+     },
+     "party": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "integer"
+       }
+      ],
+      "title": "Party",
+      "type": "array"
+     },
+     "rows": {
+      "title": "Rows",
+      "type": "integer"
+     },
+     "shape": {
+      "title": "Shape",
+      "type": "string"
+     },
+     "unplaced_exits": {
+      "default": null,
+      "items": {
+       "$ref": "#/components/schemas/MapUnplacedExit"
+      },
+      "title": "Unplaced Exits",
+      "type": "array"
+     },
+     "walls": {
+      "items": {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      "title": "Walls",
+      "type": "array"
+     }
+    },
+    "required": [
+     "shape",
+     "cols",
+     "rows",
+     "party",
+     "walls",
+     "exits",
+     "features"
+    ],
+    "title": "MapSketch",
+    "type": "object"
+   },
+   "MapSketchExit": {
+    "additionalProperties": false,
+    "properties": {
+     "at": {
+      "title": "At",
+      "type": "integer"
+     },
+     "beyond": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Beyond"
+     },
+     "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "room_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Room Ref"
+     },
+     "side": {
+      "enum": [
+       "n",
+       "e",
+       "s",
+       "w"
+      ],
+      "title": "Side",
+      "type": "string"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "State"
+     },
+     "to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "To"
+     }
+    },
+    "required": [
+     "name",
+     "side",
+     "at",
+     "kind"
+    ],
+    "title": "MapSketchExit",
+    "type": "object"
+   },
+   "MapSketchFeature": {
+    "additionalProperties": false,
+    "properties": {
+     "cells": {
+      "items": {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      "title": "Cells",
+      "type": "array"
+     },
+     "cover": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cover"
+     },
+     "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "kind",
+     "cells"
+    ],
+    "title": "MapSketchFeature",
+    "type": "object"
+   },
    "MapState": {
-    "additionalProperties": true,
-    "properties": {},
+    "additionalProperties": false,
+    "properties": {
+     "areas": {
+      "items": {
+       "$ref": "#/components/schemas/MapArea"
+      },
+      "title": "Areas",
+      "type": "array"
+     },
+     "around": {
+      "items": {
+       "$ref": "#/components/schemas/MapThing"
+      },
+      "title": "Around",
+      "type": "array"
+     },
+     "bearings": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Bearings",
+      "type": "object"
+     },
+     "book": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapBook"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "exits": {
+      "items": {
+       "$ref": "#/components/schemas/MapExit"
+      },
+      "title": "Exits",
+      "type": "array"
+     },
+     "here": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapHere"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "links": {
+      "items": {
+       "$ref": "#/components/schemas/MapLink"
+      },
+      "title": "Links",
+      "type": "array"
+     },
+     "mode": {
+      "enum": [
+       "free",
+       "combat"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "party": {
+      "items": {
+       "$ref": "#/components/schemas/MapHero"
+      },
+      "title": "Party",
+      "type": "array"
+     },
+     "places": {
+      "items": {
+       "$ref": "#/components/schemas/MapPlace"
+      },
+      "title": "Places",
+      "type": "array"
+     },
+     "scene_view": {
+      "items": {
+       "$ref": "#/components/schemas/MapSceneToken"
+      },
+      "title": "Scene View",
+      "type": "array"
+     },
+     "sketch": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapSketch"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "here",
+     "around",
+     "scene_view",
+     "party",
+     "areas",
+     "mode",
+     "exits",
+     "places",
+     "links",
+     "bearings",
+     "sketch",
+     "book"
+    ],
     "title": "MapState",
     "type": "object"
    },
@@ -5288,6 +6172,249 @@
      "ok"
     ],
     "title": "MapStepResult",
+    "type": "object"
+   },
+   "MapThing": {
+    "additionalProperties": false,
+    "properties": {
+     "bearing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bearing"
+     },
+     "cell": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cell"
+     },
+     "condition": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Condition"
+     },
+     "cover": {
+      "title": "Cover",
+      "type": "string"
+     },
+     "elevation": {
+      "title": "Elevation",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "creature",
+       "npc",
+       "item",
+       "landmark"
+      ],
+      "title": "Type",
+      "type": "string"
+     },
+     "visual_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Visual Key"
+     },
+     "zone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zone"
+     },
+     "zone_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zone Name"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "type",
+     "zone",
+     "zone_name",
+     "bearing",
+     "elevation",
+     "cover",
+     "cell"
+    ],
+    "title": "MapThing",
+    "type": "object"
+   },
+   "MapToken": {
+    "additionalProperties": false,
+    "properties": {
+     "cell": {
+      "default": null,
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "integer"
+       }
+      ],
+      "title": "Cell",
+      "type": "array"
+     },
+     "down": {
+      "title": "Down",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "mine": {
+      "title": "Mine",
+      "type": "boolean"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "room": {
+      "title": "Room",
+      "type": "string"
+     },
+     "type": {
+      "default": null,
+      "enum": [
+       "hero",
+       "creature",
+       "npc",
+       "item",
+       "landmark"
+      ],
+      "title": "Type",
+      "type": "string"
+     },
+     "visual_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Visual Key"
+     },
+     "x": {
+      "title": "X",
+      "type": "number"
+     },
+     "y": {
+      "title": "Y",
+      "type": "number"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "mine",
+     "room",
+     "x",
+     "y",
+     "down"
+    ],
+    "title": "MapToken",
+    "type": "object"
+   },
+   "MapUnplacedExit": {
+    "additionalProperties": false,
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "room_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Room Ref"
+     },
+     "to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "To"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "MapUnplacedExit",
     "type": "object"
    },
    "Mark": {

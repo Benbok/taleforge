@@ -66,6 +66,82 @@ def test_master_sees_every_place_of_split_party(client, admin, settings):
     assert _play(settings, cid, check) == {h2["id"], ids["gob"]}
 
 
+def test_snapshot_update_and_map_agree_for_viewer(client, admin, settings):
+    cid, (p1, p2), (_, _), ids = _split_party(client, admin, settings)
+    expected = [(p1, ids["square"], {ids["fountain"]}), (p2, ids["docks"], {ids["gob"]})]
+    for headers, location, entities in expected:
+        with connect(client, headers, cid) as (ws, snapshot):
+            scene = snapshot["payload"]["scene"]
+            assert scene["location"]["id"] == location
+            assert {e["id"] for e in scene["entities"]} == entities
+            ws.send_json({"type": "map.get", "payload": {}})
+            board = next_of(ws, "map.state")["payload"]
+            assert board["here"]["id"] == location
+            assert {t["id"] for t in board["around"]} == entities
+
+    async def views(s):
+        c = await s.get(Campaign, cid)
+        ctx = await open_context(s, c, QueueDice([]), turn_id="t_scene_views", seat_id=None)
+        return scene_views(ctx.world)
+
+    live = run(settings, views)
+    for _, location, entities in expected:
+        # Сравниваем публикацию с новым подключением по локации группы.
+        assert any(
+            view["location"]["id"] == location and {e["id"] for e in view["entities"]} == entities for _, view in live
+        )
+    with connect(client, admin, cid) as (ws, snapshot):
+        assert {e["id"] for e in snapshot["payload"]["scene"]["entities"]} == {ids["fountain"], ids["gob"]}
+        ws.send_json({"type": "map.get", "payload": {}})
+        board = next_of(ws, "map.state")["payload"]
+        assert board["here"]["id"] == snapshot["payload"]["scene"]["location"]["id"]
+
+
+def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
+    cid, (p1, p2), (_, h2), ids = _split_party(client, admin, settings)
+
+    async def hide(ctx):
+        gob = ctx.world.entities[ids["gob"]]
+        gob.state = {**(gob.state or {}), "hidden": True}
+        ctx.world.scene.mode = "combat"
+        ctx.world.scene.round = 1
+        ctx.world.scene.turn_order = [
+            {"id": gob.id, "initiative": 16},
+            {"id": h2["id"], "initiative": 12},
+        ]
+        ctx.world.scene.state = {**(ctx.world.scene.state or {}), "turn": 0}
+
+    _play(settings, cid, hide)
+    for _ in range(2):
+        with connect(client, p2, cid) as (ws, snapshot):
+            assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["entities"]}
+            assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["order"]}
+            assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["turn_order"]}
+            assert snapshot["payload"]["scene"]["turn"] is None
+            ws.send_json({"type": "map.get", "payload": {}})
+            board = next_of(ws, "map.state")["payload"]
+            assert ids["gob"] not in {e["id"] for e in board["around"]}
+            assert ids["gob"] not in {e["id"] for e in board["scene_view"]}
+
+    # Владелец без кресла мастера также не получает скрытые объекты.
+    with connect(client, admin, cid) as (_, snapshot):
+        assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["entities"]}
+
+    async def published(s):
+        c = await s.get(Campaign, cid)
+        ctx = await open_context(s, c, QueueDice([]), turn_id="t_hidden_views", seat_id=None)
+        return scene_views(ctx.world)
+
+    views = run(settings, published)
+    assert any(seats is None for seats, _ in views)  # безопасная сцена для владельца без кресла
+    for seats, scene in views:
+        if seats is None or h2["seat_id"] in seats:
+            assert ids["gob"] not in {e["id"] for e in scene["entities"]}
+            assert ids["gob"] not in {e["id"] for e in scene["order"]}
+            assert ids["gob"] not in {e["id"] for e in scene["turn_order"]}
+            assert scene["turn"] is None
+
+
 def test_each_hero_sees_own_place(client, admin, settings):
     cid, (p1, p2), (h1, h2), ids = _split_party(client, admin, settings)
 
@@ -91,7 +167,7 @@ def test_each_hero_sees_own_place(client, admin, settings):
     by_place = {loc: (seats, ents) for seats, loc, ents in out}
     assert by_place[ids["docks"]] == ([h2["seat_id"]], {ids["gob"]})
     # мастер и место без героя здесь получают общую сцену; места героев — свою
-    assert any(h1["seat_id"] in seats for seats, loc, _ in out if loc == ids["square"])
+    assert any(h1["seat_id"] in (seats or []) for seats, loc, _ in out if loc == ids["square"])
 
     # герой вернулся: отряд снова вместе, одна сцена всем
     async def back(ctx):
