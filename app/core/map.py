@@ -148,6 +148,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             if e.kind == "location" or e.location_id != here.id:
                 continue
             st = e.state or {}
+            if not master and (st.get("hidden") or st.get("secret")):
+                continue
             area = st.get("area")
             if area:
                 if area.get("expires_at") is None or scene.game_time < int(area["expires_at"]):
@@ -218,6 +220,17 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "visited": p["status"] != "known",
                 }
             )
+    # Единый, уже отфильтрованный для зрителя список маркеров сцены.
+    scene_view = [
+        {"id": h["id"], "name": h["name"], "type": "hero", "mine": h["mine"], "down": h["down"],
+         "zone": h["zone"], "bearing": h["bearing"], "cell": h["cell"]}
+        for h in party
+    ] + [
+        {"id": t["id"], "name": t["name"], "type": t["type"], "mine": False,
+         "down": t.get("condition") == "мёртв", "zone": t["zone"],
+         "bearing": t["bearing"], "cell": t["cell"]}
+        for t in around
+    ]
     book = sk = None
     if here is not None and (here.template_id or adventure.room_of(here)):  # карта книги — только у мест модуля
         catalog = await campaign_catalog(session, viewer.campaign)
@@ -227,7 +240,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
         ]
         book = adventure.book_map(
-            catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None
+            catalog, places, here, heroes_at, None if master else visited, hero.id if hero is not None else None,
+            scene_tokens=scene_view,
         )
         sk = sketch.of_place(here, catalog, places)
     else:
@@ -237,6 +251,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         "sketch": sketch.for_viewer(sk, master, shown) if sk else None,
         "here": {"id": here.id, "name": here.name, "description": here.description or None} if here else None,
         "around": around,
+        "scene_view": scene_view,
         "party": party,
         "areas": areas,
         "mode": scene.mode,
