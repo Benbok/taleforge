@@ -27,7 +27,12 @@ def test_panel_lists_values_and_labels_for_master_seat(game_client, admin_g):
     move = _field(panel, "move", "character_ids")
     assert move["many"] and move["required"]
     groups = {t["name"]: t["group"] for t in panel["tools"]}
-    assert groups["whisper"] == "players" and groups["advance_plot"] == "plot" and groups["spawn_entity"] == "scene"
+    assert (
+        groups["whisper"] == "players"
+        and groups["move"] == "players"
+        and groups["advance_plot"] == "plot"
+        and groups["spawn_entity"] == "scene"
+    )
     assert not panel["has_plot"]
     # игроку панель не отдаётся
     assert game_client.get(f"/api/campaigns/{c['id']}/master-panel", headers=p1).status_code == 404

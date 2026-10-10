@@ -4,7 +4,7 @@
 from app.db.models import Campaign, Entity
 from app.tools.registry import execute
 from app.tools.runtime import flush_outbox, open_context
-from tests.game import QueueDice, import_base, party, run
+from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
 from tests.test_ws import connect, next_of
 
 
@@ -166,3 +166,37 @@ def test_positions_distance_cover_and_areas(client, admin, settings):
         return "positions" in (ctx.world.scene.state or {})
 
     assert _play(settings, cid, leave) is False  # в новом месте герой снова в строю
+
+
+def test_partial_move_clears_hero_positions_and_emits_map_changed(client, admin, settings):
+    import_base(settings)
+    c, (p1, p2), h1 = party(client, admin, players=2, master={"type": "owner"})
+    cid, hid1 = c["id"], h1["id"]
+    h2 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Гимли"}, headers=p2), 201)
+    ok(client.post(f"/api/campaigns/{cid}/characters/{h2['id']}/submit", headers=p2))
+    hid2 = h2["id"]
+
+    async def setup(ctx):
+        sq = (await _ok(ctx, "create_location", {"name": "Площадь", "make_current": True}))["location_id"]
+        docks = (await _ok(ctx, "create_location", {"name": "Доки"}))["location_id"]
+        await _ok(ctx, "reposition", {"actor_id": hid1, "zone": "near", "bearing": "s"})
+        await _ok(ctx, "reposition", {"actor_id": hid2, "zone": "melee", "bearing": "n"})
+        assert hid1 in (ctx.world.scene.state or {}).get("positions", {})
+        assert hid2 in (ctx.world.scene.state or {}).get("positions", {})
+        # Перемещаем только первого героя в доки:
+        await _ok(ctx, "move", {"character_ids": [hid1], "location_id": docks})
+        assert "map.changed" in ctx.signals
+        pos = (ctx.world.scene.state or {}).get("positions", {})
+        assert hid1 not in pos
+        assert hid2 in pos
+        return sq, docks
+
+    sq, docks = _play(settings, cid, setup)
+
+    # Через сокет живого мастера: перемещение второго героя шлёт map.changed всем подключённым
+    with connect(client, p1, cid) as (ws1, _), connect(client, admin, cid) as (ws_m, _):
+        ws_m.send_json(
+            {"type": "master.tool", "payload": {"tool": "move", "args": {"character_ids": [hid2], "location_id": docks}}}
+        )
+        ev = next_of(ws1, "map.changed")
+        assert ev["type"] == "map.changed"

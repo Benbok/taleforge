@@ -296,6 +296,7 @@ const HERO_FIELD: Record<string, string> = {
   rest: "character_ids",
   grant_level: "character_ids",
   learn_fact: "character_ids",
+  move: "character_ids",
 };
 
 function Players({

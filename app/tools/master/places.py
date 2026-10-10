@@ -270,6 +270,20 @@ def _reset_positions(ctx: ToolContext, inverse: list) -> None:
         sc.state = {k: v for k, v in (sc.state or {}).items() if k != "positions"}
 
 
+def _clear_positions(ctx: ToolContext, hero_ids: set[str], inverse: list) -> None:
+    """Убирает позиции конкретных героев из scene.state.positions (они в новом месте — старые координаты неверны)."""
+    sc = ctx.world.scene
+    positions = hero_positions(sc)
+    to_clear = {hid for hid in hero_ids if hid in positions}
+    if not to_clear:
+        return
+    inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)})
+    new_positions = {k: v for k, v in positions.items() if k not in to_clear}
+    sc.state = {**(sc.state or {}), "positions": new_positions} if new_positions else {
+        k: v for k, v in (sc.state or {}).items() if k != "positions"
+    }
+
+
 def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
     """Сцена переходит в новое место вместе с героями, которые стояли в старом: место отмечается посещённым,
     а старое и новое связываются на карте, если ещё не связаны."""
@@ -288,6 +302,7 @@ def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
     _reset_positions(ctx, inverse)
     ctx.world.scene.location_id = loc.id
     _visit(ctx, loc, going, inverse)
+    ctx.signals.add("map.changed")
 
 
 @tool(
@@ -765,8 +780,10 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
         ch.location_id = loc.id
         moved.append(ch)
     _visit(ctx, loc, moved, inverse)
-    joined = await _move_in_combat(ctx, moved, inverse, dice)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
+    if not all(c.location_id == loc.id for c in party):
+        _clear_positions(ctx, {ch.id for ch in moved}, inverse)
+    joined = await _move_in_combat(ctx, moved, inverse, dice)
     if all(c.location_id == loc.id for c in party):
         inverse.append(
             {"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": ctx.world.scene.location_id}
@@ -774,6 +791,7 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
         if ctx.world.scene.location_id != loc.id:
             _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
+    ctx.signals.add("map.changed")
     return joined
 
 

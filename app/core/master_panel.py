@@ -37,7 +37,6 @@ GROUPS: dict[str, list[str]] = {
         "describe_place",
         "sketch_place",
         "edit_sketch",
-        "move",
         "enter_room",
         "reposition",
         "place_area",
@@ -49,6 +48,7 @@ GROUPS: dict[str, list[str]] = {
     "checks": ["roll_check", "resolve_attack", "take_action", "death_save", "auto_success", "cancel_action"],
     "players": [
         "get_character",
+        "move",
         "whisper",
         "give_item",
         "take_item",

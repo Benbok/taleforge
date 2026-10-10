@@ -215,6 +215,9 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
         if NOTICE_HOOKS.get(kind):
             NOTICE_HOOKS[kind](cid, payload)
     ctx.notices.clear()
+    if "map.changed" in ctx.signals:
+        await bus.publish(cid, envelope("map.changed", cid, {}), None)
+        ctx.signals.discard("map.changed")
     if "audio" in ctx.signals:
         # после сообщений: эффект звучит, когда игроки уже видят текст хода
         # отряд разделён: каждой группе свой звук, эффекты хода слышит только группа, ради которой он шёл
