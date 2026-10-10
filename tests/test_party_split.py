@@ -113,8 +113,9 @@ def test_hidden_entity_stays_hidden_after_reconnect(client, admin, settings):
             assert ids["gob"] not in {e["id"] for e in board["around"]}
             assert ids["gob"] not in {e["id"] for e in board["scene_view"]}
 
+    # Владелец без кресла мастера также не получает скрытые объекты.
     with connect(client, admin, cid) as (_, snapshot):
-        assert ids["gob"] in {e["id"] for e in snapshot["payload"]["scene"]["entities"]}
+        assert ids["gob"] not in {e["id"] for e in snapshot["payload"]["scene"]["entities"]}
 
     async def published(s):
         c = await s.get(Campaign, cid)
