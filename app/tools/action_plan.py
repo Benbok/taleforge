@@ -225,8 +225,10 @@ async def execute_action_plan(ctx: ToolContext, plan: dict[str, Any], key: str) 
     """Dispatch a persisted ordered plan; legacy weapon plans remain supported."""
     if plan.get("kind") == "shove":
         result = await execute(
-            ctx, "resolve_shove",
-            {k: plan[k] for k in ("attacker_id", "target_id", "technique")}, key=key,
+            ctx,
+            "resolve_shove",
+            {k: plan[k] for k in ("attacker_id", "target_id", "technique")},
+            key=key,
         )
         if not result.get("ok"):
             return {"completed": False, "notes": [f"Толчок не выполнен: {result.get('error')}"]}
@@ -234,7 +236,8 @@ async def execute_action_plan(ctx: ToolContext, plan: dict[str, Any], key: str) 
         description = "сбивает с ног" if r["technique"] == "prone" else "отталкивает на 5 футов"
         note = (
             f"{r['attacker']} {description} {r['target']}"
-            if r["success"] else f"{r['target']} устоял после попытки толчка {r['attacker']}"
+            if r["success"]
+            else f"{r['target']} устоял после попытки толчка {r['attacker']}"
         )
         return {"completed": True, "notes": [note], "maneuver_result": r}
     if plan.get("kind") == "cast":
