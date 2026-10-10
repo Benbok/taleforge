@@ -26,6 +26,7 @@ from app.content.catalog import campaign_catalog
 from app.core import adventure, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
 from app.db.models import Character, Entity, Knowledge, Message
@@ -85,15 +86,17 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     master = viewer.seat is not None and viewer.seat.role == "master"
     hero = None if master else await viewer_hero(session, viewer)
 
-    if hero is not None:
-        heroes = [hero]
-        here_id = place_of(hero, scene.location_id)
-    else:
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
-        heroes = list((await session.scalars(q)).all())
-        here_id = scene.location_id
+    q = select(Character).where(Character.campaign_id == cid)
+    all_chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
+    view = visible_scene(
+        scene, {e.id: e for e in ents}, all_chars,
+        hero_id=hero.id if hero is not None else None, is_master=master,
+    )
+    heroes = [hero] if hero is not None else list(view.heroes)
+    here_id = view.current_location_id
     hero_ids = {h.id for h in heroes}
     heres = {place_of(h, scene.location_id) for h in heroes} | {here_id}
+    allowed_entities = {e.id for e in view.entities}
 
     visited = {
         pid for pid, p in places.items() if pid in heres or hero_ids & set((p.state or {}).get("visited_by") or [])
@@ -174,7 +177,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     areas: list[dict] = []
     if here is not None:
         for e in ents:
-            if e.kind == "location" or e.location_id != here.id:
+            if e.id not in allowed_entities or e.location_id != here.id:
                 continue
             st = e.state or {}
             if not master and (st.get("hidden") or st.get("secret")):
@@ -209,8 +212,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             around.append(item)
         # герои в этом месте: у кого нет позиции, тот в строю отряда, в центре схемы
         positions = (scene.state or {}).get("positions") or {}
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
-        for ch in (await session.scalars(q)).all():
+        for ch in all_chars.values():
+            if ch.status not in PLAYABLE:
+                continue
             if place_of(ch, scene.location_id) != here.id:
                 continue
             pos = positions.get(ch.id) or {}
@@ -306,9 +310,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         if catalog is None:
             catalog = await campaign_catalog(session, viewer.campaign)
         positions = (scene.state or {}).get("positions") or {}
-        q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
         heroes_at = [
-            (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {}) for ch in (await session.scalars(q)).all()
+            (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {})
+            for ch in all_chars.values() if ch.status in PLAYABLE
         ]
         book = adventure.book_map(
             catalog,
