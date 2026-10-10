@@ -276,6 +276,16 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     }
                 )
     # Единый, уже отфильтрованный для зрителя список маркеров сцены.
+    # An unrevealed linked feature must not leak through another map projection.
+    saved_sketch = (here.state or {}).get("sketch") if here is not None else None
+    hidden_linked = {
+        feature["entity_id"]
+        for feature in (saved_sketch or {}).get("features") or []
+        if feature.get("hidden") and isinstance(feature.get("entity_id"), str)
+    }
+    if not master and hidden_linked:
+        around = [item for item in around if item["id"] not in hidden_linked]
+
     # Linked physical entities have one scene representation: the sketch feature.
     # Keep around (gameplay targets) and full book tokens separate from rendered scene tokens.
     scene_view = [
