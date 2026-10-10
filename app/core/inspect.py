@@ -105,7 +105,7 @@ async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> int | N
     spot = (hero.location_id if hero is not None else None) or scene.location_id  # своё место героя
     if spot and e.kind == "object" and e.location_id == spot:
         room = await session.get(Entity, spot)
-        features = ((room.state or {}).get("sketch") or {}).get("features") or [] if room else []
+        features = ((room.state or {}).get("sketch") or {}).get("features") or [] if room is not None else []
         if any(f.get("entity_id") == e.id and f.get("hidden") for f in features):
             return None  # unrevealed geometry must not grant a direct inspector-card bypass
     here = spot and (e.id == spot or e.location_id == spot)
