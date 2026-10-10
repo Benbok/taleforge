@@ -22,7 +22,10 @@ import {
   type MapThing,
 } from "./map";
 
-const empty: MapState = { here: null, around: [], exits: [], places: [], links: [], bearings: {} as MapState["bearings"] };
+const empty: MapState = {
+  here: null, around: [], exits: [], places: [], links: [], bearings: {},
+  party: [], areas: [], scene_view: [], book: null, sketch: null, mode: "free",
+};
 
 // в тестах форма события упрощена
 const ev = (type: string, payload: object): Envelope => ({ type, campaign_id: "c1", seq: null, payload }) as unknown as Envelope;

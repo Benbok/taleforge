@@ -3,6 +3,7 @@
 // после каждого хода мастера (scene.updated).
 import { create } from "zustand";
 import type { EntityType, Envelope } from "../lib/types";
+import type { MapState as GeneratedMapState } from "../lib/api.gen";
 import { useGame } from "../stores/game";
 
 export type Zone = "melee" | "near" | "far";
@@ -152,19 +153,86 @@ export interface SceneTokenView {
   cell?: [number, number] | null;
 }
 
-export interface MapState {
+/** Представление карты для UI. Основные поля наследуют серверный контракт;
+ * визуальные перечисления нормализуются только на границе сокета. */
+export interface MapState extends Pick<GeneratedMapState, "here" | "places" | "links" | "bearings"> {
   scene_view?: SceneTokenView[];
   book?: MapBook | null;
   sketch?: Sketch | null;
-  here: { id: string; name: string; description: string | null } | null;
   around: MapThing[];
   party?: MapHero[];
   areas?: MapArea[];
   mode?: "free" | "combat";
   exits: MapExit[];
-  places: MapPlace[];
-  links: { a: string; b: string; label: string | null }[];
-  bearings: Record<Bearing, string>;
+}
+
+const ZONES: Zone[] = ["melee", "near", "far"];
+const ELEVATIONS: Elevation[] = ["low", "ground", "high"];
+const COVERS: Cover[] = ["none", "half", "three_quarters", "total"];
+const SHAPES: Sketch["shape"][] = ["room", "corridor", "cave", "street", "open"];
+const EXIT_KINDS: SketchExit["kind"][] = ["door", "bars", "window", "arch", "stairs", "hatch", "gap", "passage"];
+const FEATURE_KINDS: SketchFeature["kind"][] = ["furniture", "cover", "hazard", "light", "object", "nature"];
+const EXIT_STATES: NonNullable<SketchExit["state"]>[] = ["open", "closed", "locked"];
+
+function listed<T extends string>(value: string | null | undefined, values: readonly T[], fallback: T): T {
+  return values.find((v) => v === value) ?? fallback;
+}
+
+function safeBearing(value: string | null | undefined): Bearing | null {
+  return BEARINGS.find((b) => b === value) ?? null;
+}
+
+/** Проводной MapState строго типизирован в api.gen.ts, здесь лишь приводим
+ * расширяемые серверные строки к ограниченным словарям рисования. */
+export function mapForDisplay(data: GeneratedMapState): MapState {
+  const sketch: Sketch | null = data.sketch ? {
+    ...data.sketch,
+    shape: listed(data.sketch.shape, SHAPES, "room"),
+    exits: data.sketch.exits.map((e) => ({
+      ...e,
+      kind: listed(e.kind, EXIT_KINDS, "passage"),
+      state: e.state ? listed(e.state, EXIT_STATES, "open") : undefined,
+    })),
+    features: data.sketch.features.map((feature) => ({
+      ...feature,
+      kind: listed(feature.kind, FEATURE_KINDS, "object"),
+      cover: feature.cover ? listed(feature.cover, COVERS, "none") : undefined,
+    })),
+  } : null;
+  return {
+    here: data.here,
+    places: data.places,
+    links: data.links,
+    bearings: data.bearings,
+    book: data.book ? {
+      ...data.book,
+      tokens: data.book.tokens.map((token) => ({ ...token, type: token.type === "hero" ? undefined : token.type })),
+    } : null,
+    sketch,
+    mode: data.mode,
+    party: data.party.map((h) => ({
+      ...h,
+      zone: h.zone == null ? null : listed(h.zone, ZONES, "near"),
+      bearing: safeBearing(h.bearing),
+      elevation: listed(h.elevation, ELEVATIONS, "ground"),
+      cover: listed(h.cover, COVERS, "none"),
+    })),
+    around: data.around.map((t) => ({
+      ...t,
+      zone: listed(t.zone, ZONES, "near"),
+      zone_name: t.zone_name ?? "",
+      bearing: safeBearing(t.bearing),
+      elevation: listed(t.elevation, ELEVATIONS, "ground"),
+      cover: listed(t.cover, COVERS, "none"),
+    })),
+    areas: data.areas.map((a) => ({ ...a, zone: listed(a.zone, ZONES, "near"), bearing: safeBearing(a.bearing) })),
+    exits: data.exits.map((e) => ({ ...e, bearing: safeBearing(e.bearing) })),
+    scene_view: data.scene_view.map((t) => ({
+      ...t,
+      zone: t.zone == null ? null : listed(t.zone, ZONES, "near"),
+      bearing: safeBearing(t.bearing),
+    })),
+  };
 }
 
 type Tab = "around" | "places" | "book";
@@ -271,8 +339,7 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
 export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
-  // схему места сервер пока не описывает в контракте (MapState в app/gateway/protocol.py открыт): форма — здесь
-  if (e.type === "map.state") w.receive(e.payload as unknown as MapState);
+  if (e.type === "map.state") w.receive(mapForDisplay(e.payload));
   else if (e.type === "map.step.result") w.stepResult(e.payload);
   else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
