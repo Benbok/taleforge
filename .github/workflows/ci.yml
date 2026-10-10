@@ -8,6 +8,21 @@ on:
   pull_request:
 
 jobs:
+  map_contract_probe:
+    name: Map schema probe (temporary)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Print generated diff
+        run: |
+          python -m app.contract
+          echo MAP_SCHEMA_DIFF_BEGIN
+          git --no-pager diff -- web/openapi.json
+          echo MAP_SCHEMA_DIFF_END
   test:
     name: Тесты на SQLite
     runs-on: ubuntu-latest
