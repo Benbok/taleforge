@@ -327,9 +327,7 @@ class TurnMixin:
                     combat.queue_opening_plan(ctx, plan)
                     opening_actors.add(actor)
                     ctx.closed.add(actor)
-                    description = (
-                        "Толчок" if plan.get("kind") == "shove" else "Движение и последующее действие"
-                    )
+                    description = "Толчок" if plan.get("kind") == "shove" else "Движение и последующее действие"
                     routed.append(
                         f"{actor}: {description} сохранён до законного хода по инициативе; не исполняй повторно"
                     )
