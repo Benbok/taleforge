@@ -158,6 +158,16 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 seen.add(key)
                 links.append({"a": key[0], "b": key[1], "label": x.get("label")})
 
+    # Книга даёт соседство независимо от исторических state.links.
+    for src, targets in book_destinations.items():
+        for dst in targets:
+            if dst not in shown:
+                continue
+            key = tuple(sorted((src, dst)))
+            if key not in seen:
+                seen.add(key)
+                links.append({"a": key[0], "b": key[1], "label": None})
+
     around: list[dict] = []
     exits: list[dict] = []
     party: list[dict] = []
