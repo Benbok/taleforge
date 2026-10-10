@@ -489,16 +489,24 @@ async def resolve_grapple(ctx: ToolContext, a: GrappleArgs) -> dict:
     defense = engine.roll_d20(ctx.dice, def_mod, defense_mode)
     success = attack.total > defense.total
     result = {
-        "attacker": att.name, "target": tgt.name, "success": success,
-        "attacker_total": attack.total, "defender_total": defense.total, "defender_skill": skill,
+        "attacker": att.name,
+        "target": tgt.name,
+        "success": success,
+        "attacker_total": attack.total,
+        "defender_total": defense.total,
+        "defender_skill": skill,
     }
     if success:
         inv.extend(await gp.establish(ctx, att.id, tgt.id))
         result["effect"] = "condition.grappled"
     result["left"] = economy.line(w, att.id)
     await ctx.record(
-        "resolve_grapple", actor_id=att.id, target_id=tgt.id,
-        payload=result, dice=[dice_json(attack), dice_json(defense)], inverse=inv,
+        "resolve_grapple",
+        actor_id=att.id,
+        target_id=tgt.id,
+        payload=result,
+        dice=[dice_json(attack), dice_json(defense)],
+        inverse=inv,
     )
     return result
 
@@ -547,13 +555,22 @@ async def escape_grapple(ctx: ToolContext, a: EscapeGrappleArgs) -> dict:
     if won:
         await gp.release(ctx, hid, hero.id, "цель вырвалась из захвата")
     result = {
-        "character": hero.name, "holder": holder.name, "success": won, "skill": skill,
-        "total": roll.total, "holder_total": opposed.total,
-        "remaining_holders": gp.holders(ctx, hero.id), "left": economy.line(w, hero.id),
+        "character": hero.name,
+        "holder": holder.name,
+        "success": won,
+        "skill": skill,
+        "total": roll.total,
+        "holder_total": opposed.total,
+        "remaining_holders": gp.holders(ctx, hero.id),
+        "left": economy.line(w, hero.id),
     }
     await ctx.record(
-        "escape_grapple", actor_id=hero.id, target_id=hid,
-        payload=result, dice=[dice_json(roll), dice_json(opposed)], inverse=inv,
+        "escape_grapple",
+        actor_id=hero.id,
+        target_id=hid,
+        payload=result,
+        dice=[dice_json(roll), dice_json(opposed)],
+        inverse=inv,
     )
     return result
 
