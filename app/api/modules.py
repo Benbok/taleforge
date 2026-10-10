@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import shutil
 from datetime import timedelta
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
@@ -31,12 +31,20 @@ class ImportIn(BaseModel):
     note: str = Field(default="", max_length=2000)
 
 
+class PassageMark(BaseModel):
+    to: str
+    side: Literal["n", "e", "s", "w"]
+    cell: list[int]
+    kind: Literal["passage", "door", "arch", "stairs", "hatch", "gap", "bars"] = "passage"
+
+
 class Mark(BaseModel):
     number: str
     x: float
     y: float
     cells: list[list[int]] = Field(default_factory=list)
     blocked: list[list[int]] = Field(default_factory=list)
+    passages: list[PassageMark] = Field(default_factory=list)
 
 
 class Grid(BaseModel):

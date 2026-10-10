@@ -9,12 +9,20 @@ export type ModuleStatus =
   | "published"
   | "failed";
 
+export interface MapPassage {
+  to: string;
+  side: "n" | "e" | "s" | "w";
+  cell: [number, number];
+  kind?: "passage" | "door" | "arch" | "stairs" | "hatch" | "gap" | "bars";
+}
+
 export interface MapMark {
   number: string;
   x: number;
   y: number;
   cells?: number[][]; // пол комнаты прямоугольниками [столбец1, строка1, столбец2, строка2]
   blocked?: number[][]; // клетки, где стоять нельзя: стены, колонны
+  passages?: MapPassage[]; // достоверно размеченные проёмы в соседние комнаты
 }
 
 export interface MapGrid {
@@ -65,7 +73,7 @@ export interface ModuleDraft {
   locations: {
     id: string;
     name: string;
-    rooms: { id: string; number?: string; name: string }[];
+    rooms: { id: string; number?: string; name: string; exits?: string[] }[];
   }[];
   creatures: {
     id: string;

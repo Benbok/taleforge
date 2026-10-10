@@ -466,7 +466,7 @@ function MapsBlock({
   );
 }
 
-type EditMode = "numbers" | "floor" | "blocked";
+type EditMode = "numbers" | "floor" | "blocked" | "passages";
 
 const NO_GRID: MapGrid = {
   cols: 20,
@@ -539,6 +539,17 @@ function GridOverlay({
                 fillOpacity="0.18"
               />
             ))}
+            {(k.passages ?? []).map((portal) => (
+              <circle
+                key={`portal-${portal.to}`}
+                cx={x(portal.cell[0] + 0.5)}
+                cy={y(portal.cell[1] + 0.5)}
+                r={Math.min(w, h) * 0.28}
+                fill="var(--tf-patina, #5f9e8f)"
+                stroke="var(--color-bg, #111)"
+                strokeWidth="0.002"
+              />
+            ))}
             {(k.blocked ?? []).map(([c, r]) => (
               <rect
                 key={`${c}-${r}`}
@@ -583,6 +594,8 @@ function MapEditor({
   const [grid, setGrid] = useState<MapGrid | null>(map.grid ?? null);
   const [mode, setMode] = useState<EditMode>("numbers");
   const [corner, setCorner] = useState<[number, number] | null>(null);
+  const [passageTo, setPassageTo] = useState("");
+  const [passageSide, setPassageSide] = useState<"n" | "e" | "s" | "w">("e");
   const numbers = m.room_numbers[loc] ?? [];
   const [pick, setPick] = useState<string | null>(null);
   const dirty =
@@ -599,6 +612,10 @@ function MapEditor({
   const todo = unplaced(numbers, marks);
   const current = pick ?? (mode === "numbers" ? todo[0] : numbers[0]) ?? null;
   const room = marks.find((k) => k.number === current) ?? null;
+  const bookRooms = m.draft?.locations.find((l) => l.id === loc)?.rooms ?? [];
+  const bookRoom = bookRooms.find((r) => r.number === current);
+  const neighbours = bookRooms.filter((r) => bookRoom?.exits?.includes(r.id));
+  const selectedPassage = neighbours.some((r) => r.id === passageTo) ? passageTo : neighbours[0]?.id ?? "";
 
   function click(fx: number, fy: number) {
     if (!loc || !current) {
@@ -637,6 +654,37 @@ function MapEditor({
     }
     if (!inRoom(room, cell)) {
       toast.info("Клетка вне пола комнаты: сначала отметьте пол");
+      return;
+    }
+    if (mode === "passages") {
+      if (!selectedPassage) {
+        toast.info("У комнаты нет подтверждённых выходов в книге");
+        return;
+      }
+      const occupied = room.blocked?.some(([c, r]) => c === cell[0] && r === cell[1]);
+      if (occupied) {
+        toast.info("Дверь нельзя поставить на занятую клетку");
+        return;
+      }
+      const cols = (room.cells ?? []).flatMap(([c0, , c1]) => [c0, c1]);
+      const rows = (room.cells ?? []).flatMap(([, r0, , r1]) => [r0, r1]);
+      const edge = {
+        n: cell[1] === Math.min(...rows),
+        s: cell[1] === Math.max(...rows),
+        w: cell[0] === Math.min(...cols),
+        e: cell[0] === Math.max(...cols),
+      };
+      if (!edge[passageSide]) {
+        toast.info("Выберите граничную клетку на указанной стороне комнаты");
+        return;
+      }
+      update({
+        ...room,
+        passages: [
+          ...(room.passages ?? []).filter((p) => p.to !== selectedPassage),
+          { to: selectedPassage, side: passageSide, cell, kind: "door" },
+        ],
+      });
       return;
     }
     update(toggleBlocked(room, cell));
@@ -701,6 +749,7 @@ function MapEditor({
           {modeBtn("numbers", "ставит номер")}
           {modeBtn("floor", "отмечает пол комнаты")}
           {modeBtn("blocked", "занята ⇄ свободна")}
+          {modeBtn("passages", "дверные проёмы")}
           {mode !== "numbers" && room && (room.cells ?? []).length > 0 && (
             <button
               type="button"
@@ -708,7 +757,7 @@ function MapEditor({
               onClick={() =>
                 setMarks(
                   marks.map((k) =>
-                    k.number === current ? { ...k, cells: [], blocked: [] } : k,
+                    k.number === current ? { ...k, cells: [], blocked: [], passages: [] } : k,
                   ),
                 )
               }
@@ -716,6 +765,47 @@ function MapEditor({
               очистить комнату {current}
             </button>
           )}
+        </div>
+      )}
+      {mode === "passages" && room && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted">Подтверждённый выход:</span>
+          <select
+            className="field h-8 py-0 text-xs"
+            value={selectedPassage}
+            onChange={(e) => setPassageTo(e.target.value)}
+          >
+            {neighbours.length === 0 && <option value="">нет проходов по книге</option>}
+            {neighbours.map((r) => (
+              <option key={r.id} value={r.id}>{r.number ? `Комната ${r.number}` : r.name}</option>
+            ))}
+          </select>
+          <span className="text-muted">Сторона:</span>
+          <select
+            className="field h-8 py-0 text-xs"
+            value={passageSide}
+            onChange={(e) => setPassageSide(e.target.value as "n" | "e" | "s" | "w")}
+          >
+            <option value="n">север</option>
+            <option value="e">восток</option>
+            <option value="s">юг</option>
+            <option value="w">запад</option>
+          </select>
+          <span className="text-muted">Щёлкните точную клетку дверного проёма на карте.</span>
+          {(room.passages ?? []).map((p) => (
+            <button
+              key={p.to}
+              type="button"
+              className="rounded border border-line px-2 py-0.5 text-muted hover:text-ink"
+              onClick={() => setMarks(marks.map((mark) =>
+                mark.number === current
+                  ? { ...mark, passages: (mark.passages ?? []).filter((x) => x.to !== p.to) }
+                  : mark,
+              ))}
+            >
+              убрать {bookRooms.find((r) => r.id === p.to)?.number ?? p.to} ×
+            </button>
+          ))}
         </div>
       )}
       {loc && numbers.length > 0 && (

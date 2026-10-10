@@ -328,6 +328,12 @@ function SketchLegend({ sk }: { sk: Sketch }) {
             .join("; ")}
         </li>
       )}
+      {(sk.unplaced_exits?.length ?? 0) > 0 && (
+        <li>
+          <span className="font-mono text-xs uppercase text-muted">проходы без разметки: </span>
+          {sk.unplaced_exits!.map((x) => x.name).join("; ")}. Точное положение дверей на карте книги не определено.
+        </li>
+      )}
       {sk.features.length > 0 && (
         <li>
           <span className="font-mono text-xs uppercase text-muted">видно: </span>

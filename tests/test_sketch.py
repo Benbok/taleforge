@@ -71,15 +71,22 @@ def test_sketch_exit_to_an_unknown_place_is_refused(client, admin, settings):
 def test_book_room_gets_a_sketch_from_its_cells():
     grid = {"cols": 10, "rows": 8, "left": 0.0, "top": 0.0, "right": 1.0, "bottom": 0.8}
     mark = {"number": "1", "x": 0.2, "y": 0.3, "cells": [[0, 0, 3, 2], [0, 3, 1, 5]], "blocked": [[1, 1]]}
-    east = {"number": "2", "x": 0.75, "y": 0.15}
-    sk = sketch.from_book(mark, grid, [("Комната 2", "en_2", east)])
+    sk = sketch.from_book(mark, grid, [("Комната 2", "en_2", "r2")])
     assert (sk["cols"], sk["rows"]) == (4, 6)
     # Г-образная комната: правый нижний угол коробки — стена, колонна (1, 1) тоже
     assert [1, 1] in sk["walls"] and [3, 5] in sk["walls"] and [0, 0] not in sk["walls"]
-    assert sk["exits"] == [
-        {"side": "e", "at": 1, "kind": "passage", "state": "open", "name": "Комната 2", "to": "en_2"}
-    ]
+    assert sk["exits"] == []  # нет координат двери, значит не придумываем её положение
+    assert sk["unplaced_exits"] == [{"name": "Комната 2", "to": "en_2"}]
     assert sketch.check(sk, {"en_2"}) == []
+    # При достоверной разметке дверь оказывается ровно на отмеченной границе Г-образной комнаты.
+    marked = {**mark, "passages": [{"to": "r2", "side": "e", "cell": [3, 0], "kind": "door"}]}
+    plotted = sketch.from_book(marked, grid, [("Комната 2", "en_2", "r2"), ("Комната 3", None, "r3")])
+    assert plotted["exits"] == [
+        {"side": "e", "at": 0, "kind": "door", "state": "open", "name": "Комната 2", "to": "en_2"}
+    ]
+    assert plotted["unplaced_exits"] == [{"name": "Комната 3", "to": None}]
+    assert sketch.for_viewer(plotted, False, set())["exits"][0]["to"] is None
+    assert sketch.for_viewer(plotted, True, set())["exits"][0]["to"] == "en_2"
 
 
 def test_master_edits_one_detail_of_the_sketch(client, admin, settings):

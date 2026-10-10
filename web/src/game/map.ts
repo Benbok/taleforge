@@ -132,6 +132,7 @@ export interface Sketch {
   exits: SketchExit[];
   features: SketchFeature[];
   book?: boolean; // эскиз построен непосредственно из размеченной сетки книги
+  unplaced_exits?: { name: string; to?: string | null }[]; // выход есть в книге, но клетка двери неизвестна
 }
 
 export type SceneTokenType = "hero" | "creature" | "npc" | "item" | "landmark";
@@ -358,7 +359,12 @@ export function layoutGrid(m: MapState): GridLayout {
   const bookCells = bookAroundCells(m);
   const allowed = frame?.allowed;
   const reach = frame ? frame.reach : GRID_R;
-  const drawn = new Set((m.sketch?.exits ?? []).map((x) => x.to).filter(Boolean) as string[]);
+  // Не рисуем приблизительный маркер выхода, если книга не знает его координаты.
+  const drawn = new Set(
+    [...(m.sketch?.exits ?? []), ...(m.sketch?.unplaced_exits ?? [])]
+      .map((x) => x.to)
+      .filter(Boolean) as string[],
+  );
   const taken = new Set<string>();
   const put = <T>(item: T, at: [number, number], limit = reach): Cell<T> => {
     if (frame) {
