@@ -468,7 +468,7 @@ async def _put_in_scene(
     unique = bool(rec and rec.data.get("unique")) or force_unique
     if unique and qty != 1:
         raise ToolError("уникальный предмет не может быть стопкой")
-    for en in ([] if force_new or container_id is not None else ctx.world.in_scene_entities(place)):
+    for en in [] if force_new or container_id is not None else ctx.world.in_scene_entities(place):
         st = en.state or {}
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
         same = en.template_id == template_id and st.get("display_name") == display_name and here

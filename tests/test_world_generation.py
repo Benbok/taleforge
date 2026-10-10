@@ -103,9 +103,11 @@ def test_location_and_container_generate_once_and_keep_persistent_ids(client, ad
         contents = await _ok(ctx, "inspect_container", {"character_id": hero["id"], "container_id": chest})
         assert {x["id"] for x in contents["contents"]} == set(filled["items"])
         if filled["items"]:
-            moved = await _ok(ctx, "retrieve_object", {
-                "character_id": hero["id"], "container_id": chest, "object_id": filled["items"][0]
-            })
+            moved = await _ok(
+                ctx,
+                "retrieve_object",
+                {"character_id": hero["id"], "container_id": chest, "object_id": filled["items"][0]},
+            )
             assert moved["object_id"] == filled["items"][0]
         repeat = await _ok(ctx, "resolve_container", {"container_id": chest})
         assert repeat["repeated"] and repeat["items"] == filled["items"]
@@ -131,12 +133,20 @@ def test_story_anchor_materializes_once_but_missing_template_stays_reserved(clie
             source_snapshot={"item_template_id": "item.potion_of_healing"},
         )
         pending = PlotAnchorBinding(
-            campaign_id=cid, anchor_id="clue.secret", plot_ref="story.secret",
-            target_location_id=rid, state="reserved", source_snapshot={"text": "только намёк"}
+            campaign_id=cid,
+            anchor_id="clue.secret",
+            plot_ref="story.secret",
+            target_location_id=rid,
+            state="reserved",
+            source_snapshot={"text": "только намёк"},
         )
         lost = PlotAnchorBinding(
-            campaign_id=cid, anchor_id="clue.lost", plot_ref="story.lost",
-            target_location_id=rid, state="lost", source_snapshot={"item_template_id": "item.dagger"}
+            campaign_id=cid,
+            anchor_id="clue.lost",
+            plot_ref="story.lost",
+            target_location_id=rid,
+            state="lost",
+            source_snapshot={"item_template_id": "item.dagger"},
         )
         ctx.session.add_all([anchor, pending, lost])
         await ctx.session.flush()
@@ -178,18 +188,22 @@ def test_invalid_story_reservation_rolls_back_entire_generation(client, admin, s
     async def exercise(ctx):
         room = await _ok(ctx, "create_location", {"name": "Зал", "make_current": True})
         rid = room["location_id"]
-        ctx.session.add(PlotAnchorBinding(
-            campaign_id=cid, anchor_id="clue.invalid", plot_ref="plot.invalid",
-            target_location_id=rid, state="reserved", source_snapshot={"item_template_id": "item.missing"}
-        ))
+        ctx.session.add(
+            PlotAnchorBinding(
+                campaign_id=cid,
+                anchor_id="clue.invalid",
+                plot_ref="plot.invalid",
+                target_location_id=rid,
+                state="reserved",
+                source_snapshot={"item_template_id": "item.missing"},
+            )
+        )
         await ctx.session.flush()
         before = set(ctx.world.entities)
         bad = await execute(ctx, "resolve_location", {"location_id": rid, "profile": "дом"})
         assert not bad["ok"] and "сюжетный резерв" in bad["error"]
         assert set(ctx.world.entities) == before
-        row = await ctx.session.scalar(
-            select(WorldGenerationState).where(WorldGenerationState.target_entity_id == rid)
-        )
+        row = await ctx.session.scalar(select(WorldGenerationState).where(WorldGenerationState.target_entity_id == rid))
         assert row is None
 
     _play(settings, cid, exercise)

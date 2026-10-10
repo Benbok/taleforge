@@ -62,8 +62,9 @@ async def _locked_state(ctx: ToolContext, target: Entity, phase: str) -> tuple[W
     return record, False
 
 
-def _complete(record: WorldGenerationState, profile: str, seed: int, versions: list[str], context: str,
-              result: dict) -> None:
+def _complete(
+    record: WorldGenerationState, profile: str, seed: int, versions: list[str], context: str, result: dict
+) -> None:
     record.status = "ready"
     record.quality = "normal"
     record.generator_version = GENERATOR_VERSION
@@ -81,8 +82,15 @@ def _complete(record: WorldGenerationState, profile: str, seed: int, versions: l
     record.last_error = None
 
 
-async def _create_loot(ctx: ToolContext, target: Entity, template_id: str, generation_id: str,
-                       *, container_id: str | None = None, story: bool = False) -> Entity:
+async def _create_loot(
+    ctx: ToolContext,
+    target: Entity,
+    template_id: str,
+    generation_id: str,
+    *,
+    container_id: str | None = None,
+    story: bool = False,
+) -> Entity:
     item, _ = await _put_in_scene(
         ctx,
         template_id,
@@ -190,8 +198,13 @@ async def resolve_location(ctx: ToolContext, a: ResolveLocationArgs) -> dict:
     await ctx.record(
         "resolve_location",
         target_id=target.id,
-        payload={"profile": a.profile, "generation_id": record.id, "containers": len(made_containers),
-                 "items": len(created_items), "plot_anchors": len(bound)},
+        payload={
+            "profile": a.profile,
+            "generation_id": record.id,
+            "containers": len(made_containers),
+            "items": len(created_items),
+            "plot_anchors": len(bound),
+        },
         hidden=True,
     )
     ctx.signals.add("map.changed")

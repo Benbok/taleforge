@@ -164,8 +164,7 @@ def source_snapshot(entries: list[Entry], profile: str, phase: str) -> tuple[lis
     """Хешируем реальную доступную механику, а не только название или текущий уровень героев."""
     versions = sorted({e.pack_id for e in entries})
     snapshot = [
-        (e.id, e.pack_id, e.status, e.data.get("category"), e.data.get("rarity"), e.data.get("price"))
-        for e in entries
+        (e.id, e.pack_id, e.status, e.data.get("category"), e.data.get("rarity"), e.data.get("price")) for e in entries
     ]
     return versions, digest((GENERATOR_VERSION, phase, profile, snapshot))
 
