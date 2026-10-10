@@ -137,6 +137,24 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
 
 
+    # История исследования не создаёт физический выход из комнаты 2.
+    # В старых сохранениях переходы движения уже могли добавить ложные state.links.
+    async def explore_and_return(ctx):
+        other = await _ok(
+            ctx, "create_location", {"name": "Дальнее хранилище", "parent_id": crypt}
+        )
+        await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": other["location_id"]})
+        await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": r2["room_id"]})
+        return other["location_id"]
+
+    remote = _play(settings, cid, explore_and_return)
+    m = _map(client, p1, cid)
+    assert remote in {p["id"] for p in m["places"]}  # посещённая локация остаётся в «Местах»
+    assert {e["id"] for e in m["exits"]} == {room["room_id"]}
+    assert {x["to"] for x in m["sketch"]["exits"] if x.get("to")} == {room["room_id"]}
+    assert not any(remote in (x["a"], x["b"]) for x in m["links"])
+
+
 def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
     import_base(settings)
     c, _, _ = party(client, admin)
