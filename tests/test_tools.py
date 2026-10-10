@@ -149,6 +149,7 @@ def test_potion_and_budget(game):
     assert give["ok"], give
     assert not big["ok"] and "бюджет" in big["error"]
 
+
 def test_spawn_uses_existing_table_difficulty_and_rejects_oversized_encounter(game):
     """Бюджет одной и той же встречи зависит от настройки стола; отклонённые враги не появляются."""
     settings, cid, _ = game
