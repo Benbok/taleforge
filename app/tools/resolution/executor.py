@@ -25,6 +25,7 @@ async def execute_resolution(ctx: ToolContext, proposal: ResolutionProposal, adm
     event_ids = []
     try:
         for index, operation in enumerate(proposal.operations):
+            ctx.resolution_calls_used += 1
             name, _ = OPERATION_TOOLS[operation.kind]
             raw = await execute(ctx, name, operation.args.model_dump(), key=f"{action_key(proposal.ref)[:48]}:{index}")
             if not raw["ok"]:

@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogError
-from app.core.resolution.contracts import FailureCategory, FailureInfo
+from app.core.resolution.contracts import ActionRef, FailureCategory, FailureInfo
 from app.core.world import World, WorldError, load_world
 from app.db.models import Campaign, Event
 from app.rules.dice import Dice, DiceError, DiceRoll
@@ -74,6 +74,10 @@ class ToolContext:
     notices: list[tuple[str, dict[str, Any], list[str] | None]] = field(default_factory=list)
     call_key: str | None = None
     _first_event: Event | None = None
+    resolved_actions: set[str] = field(default_factory=set)
+    required_actions: list[ActionRef] = field(default_factory=list)
+    remaining_resolution_calls: int = 0
+    resolution_calls_used: int = 0
 
     async def record(
         self,

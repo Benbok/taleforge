@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from app.tools.registry import ToolContext
 
-CHANNELS = ("changed", "closed", "signals", "carded", "outbox", "audio", "notices")
+CHANNELS = ("changed", "closed", "signals", "carded", "outbox", "audio", "notices", "resolved_actions")
 
 
 @dataclass

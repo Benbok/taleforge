@@ -7,8 +7,8 @@ import json
 from sqlalchemy import select, update
 
 from app.core import adventure
-from app.core.resolution.contracts import ActionContext, ActionRef
-from app.db.models import Event, Message, Scene
+from app.core.resolution.contracts import ActionContext, ActionRef, ResolutionResult
+from app.db.models import Event, MasterTurn, Message, Scene, new_id
 from app.tools.registry import ToolContext, ToolError
 
 
@@ -137,3 +137,82 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         module_data_known=module_known,
         canonical_denial=any(t not in ctx.world.characters and t not in ctx.world.entities for t in targets),
     )
+
+
+async def record_attempt(ctx: ToolContext, ref: ActionRef, capability_id: str, result: ResolutionResult) -> str:
+    await load_action_context(ctx, ref)
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+    message = await ctx.session.get(Message, ref.source_id) if ref.source_kind == "message" else None
+    if (
+        turn is None
+        or turn.campaign_id != ref.campaign_id
+        or turn.status != "running"
+        or (message is not None and message.turn_id != ctx.turn_id)
+    ):
+        raise ToolError("попытка другого хода", code="invalid_attempt", category="rule_denial")
+    attempt_id = new_id("ra")
+    result = result.model_copy(deep=True)
+    if result.failure:
+        result.failure.attempt_id = attempt_id
+    attempts = list((turn.trace or {}).get("resolution_attempts") or [])
+    attempts.append(
+        {
+            "schema_version": 1,
+            "id": attempt_id,
+            "ref": ref.model_dump(),
+            "capability_id": capability_id,
+            "result": result.model_dump(),
+        }
+    )
+    turn.trace = {**(turn.trace or {}), "resolution_attempts": attempts}
+    return attempt_id
+
+
+async def eligible_adjudications(ctx: ToolContext) -> list[dict]:
+    from app.core.resolution.policy import admit
+    from app.tools.resolution.capabilities import CAPABILITIES
+
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+    if turn is None or turn.campaign_id != ctx.campaign.id or turn.status != "running":
+        return []
+    latest = {}
+    for attempt in (turn.trace or {}).get("resolution_attempts") or []:
+        ref = ActionRef.model_validate(attempt["ref"])
+        latest[action_key(ref)] = attempt
+    eligible = []
+    for attempt in latest.values():
+        ref = ActionRef.model_validate(attempt["ref"])
+        if await resolution_receipt(ctx, ref) is not None:
+            continue
+        result = ResolutionResult.model_validate(attempt["result"])
+        capability = CAPABILITIES.get(attempt["capability_id"])
+        if capability is None or result.failure is None:
+            continue
+        try:
+            context = await load_action_context(ctx, ref)
+        except ToolError:
+            continue
+        if ref.source_kind == "message":
+            message = await ctx.session.get(Message, ref.source_id)
+            if message.turn_id != ctx.turn_id:
+                continue
+        admission = admit(context, capability, result.failure)
+        if admission.route == "fallback":
+            eligible.append(
+                {
+                    "ref": ref.model_dump(),
+                    "attempt_id": attempt["id"],
+                    "capability_id": capability.id,
+                    "failure_code": result.failure.code,
+                }
+            )
+    return eligible
+
+
+def mark_resolved(ctx: ToolContext, ref: ActionRef) -> None:
+    ctx.resolved_actions.add(action_key(ref))
+    required = [r for r in ctx.required_actions if r.actor_id == ref.actor_id]
+    if required and all(action_key(r) in ctx.resolved_actions for r in required):
+        ctx.closed.add(ref.actor_id)
+    elif required:
+        ctx.closed.discard(ref.actor_id)

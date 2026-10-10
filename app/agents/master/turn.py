@@ -23,6 +23,7 @@ from app.agents.master.helpers import (
     _turn_messages,
     _unsettled_fails,
 )
+from app.agents.master.resolution import capture_attempt, resolution_prompt
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
@@ -289,7 +290,7 @@ class TurnMixin:
 
         for message in new:
             if message.kind == "action" and message.seat_id in char_by_seat:
-                bind_message_actions(message, char_by_seat[message.seat_id].id)
+                ctx.required_actions.extend(bind_message_actions(message, char_by_seat[message.seat_id].id))
 
         system = await self._system_prompt(s, c, cfg, ctx)
         convo = _render_history(history, char_by_seat, names)
@@ -442,6 +443,7 @@ class TurnMixin:
                 continue
             await self._status(cid, "rolling")
             r = await execute(ctx, name, args, key=f"{turn_id}:route:{m.id}")
+            await capture_attempt(ctx, actor, r)
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
@@ -465,6 +467,7 @@ class TurnMixin:
                 "role": "user",
                 "content": (
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
+                    f"{await resolution_prompt(ctx)}"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -561,9 +564,15 @@ class TurnMixin:
                     return {"ok": True, "result": {"mode": "combat", "opening_spell": "queued by initiative"}}
             if name in ROLL_TOOLS:
                 await self._status(cid, "rolling")
+            ctx.remaining_resolution_calls = MAX_CALLS - done_calls
+            ctx.resolution_calls_used = 0
             result = await execute(ctx, name, args, key=key)
+            if name != "adjudicate_action":
+                await capture_attempt(
+                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id"), result
+                )
             if name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
-                done_calls += 1
+                done_calls += max(1, ctx.resolution_calls_used) if name == "adjudicate_action" else 1
             return result
 
         for _ in range(MAX_STEPS):
@@ -676,6 +685,9 @@ class TurnMixin:
                     else:
                         failed_transition = True
                         failed_in_batch = True
+            admission_note = await resolution_prompt(ctx)
+            if admission_note:
+                msgs.append({"role": "user", "content": admission_note})
             if failed_in_batch:
                 msgs.append(
                     {
@@ -785,6 +797,7 @@ class TurnMixin:
         party_msgs = [await system_message(s, c, text, None) for text in party_notes]
         turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
+            **(turn.trace or {}),
             "calls": trace_calls,
             "text_call_rejections": written_rounds,
             "audit": audit,
