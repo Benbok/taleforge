@@ -744,8 +744,10 @@ async def enter_room(ctx: ToolContext, a: EnterRoomArgs) -> dict:
         return en
 
     target = await ensure(room)
-    for rid in room.get("exits") or []:
-        other = adventure.find_room(rec, rid)
+    from app.core.topology import location_exits
+
+    for passage in location_exits(target, w.catalog, w.entities):
+        other = adventure.find_room(rec, passage.room_ref) if passage.room_ref else None
         if other is not None:
             nxt = await ensure(other)
             if not _linked(ctx, target, nxt):
