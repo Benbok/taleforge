@@ -274,14 +274,14 @@ class TurnMixin:
                 ):
                     continue
                 opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{turn_id}:opening:initiative")
-                trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
+                trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True, "routed": True})
                 if opened.get("ok"):
                     combat.queue_opening_attack(ctx, attack)
                     opening_actors.add(attack["attacker_id"])
                     ctx.closed.add(attack["attacker_id"])
                     routed.append(
-                        f"{attack['attacker_id']}: атака заявлена; инициатива определена сервером, "
-                        "удар будет проведён в собственный ход героя (или уже проведён)"
+                        f"{attack['attacker_id']}: запуск инициативы уже выполнен сервером; "
+                        "атака заявлена и будет проведена в собственный ход героя (или уже проведена)"
                     )
                     await self._status(cid, "rolling")
                     opening_notes += await combat.run_until_hero(ctx, f"{turn_id}:opening", self._ask_reaction)
