@@ -95,7 +95,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         hero_id=hero.id if hero is not None else None,
         is_master=master,
     )
-    heroes = [hero] if hero is not None else list(view.heroes)
+    heroes = [hero] if hero is not None and hero.status in PLAYABLE else list(view.heroes)
     here_id = view.current_location_id
     hero_ids = {h.id for h in heroes}
     heres = {place_of(h, scene.location_id) for h in heroes} | {here_id}
