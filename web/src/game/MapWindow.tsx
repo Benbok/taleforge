@@ -3,7 +3,7 @@ import BookMap from "./BookMap";
 import { useDraft } from "./draft";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
-import { GridLines, roomForLabel, Token } from "./GridBoard";
+import { fitLabel, GridLines, Token } from "./GridBoard";
 import {
   CELL_FT,
   COVER_NAME,
@@ -58,7 +58,7 @@ function badge(elevation?: Elevation, cover?: Cover): string | undefined {
 // с эскизом — само место и клетка запаса по краям для выходов.
 const CELL = 15;
 const SIDE = 2 * GRID_R + 1;
-const PAD = 14;
+const PAD = 20;
 
 interface View {
   c0: number;
@@ -70,8 +70,26 @@ interface View {
 function viewOf(sk: Sketch | null | undefined): View {
   if (!sk) return { c0: -GRID_R, r0: -GRID_R, cols: SIDE, rows: SIDE };
   const f = sketchFrame(sk);
-  const m = 2; // выход и подпись того, что за ним
-  return { c0: f.minCol - m, r0: f.minRow - m, cols: f.maxCol - f.minCol + 1 + 2 * m, rows: f.maxRow - f.minRow + 1 + 2 * m };
+  const wExits = sk.exits.filter((x) => x.side === "w");
+  const eExits = sk.exits.filter((x) => x.side === "e");
+  const nExits = sk.exits.filter((x) => x.side === "n");
+  const sExits = sk.exits.filter((x) => x.side === "s");
+
+  const maxWLen = Math.max(0, ...wExits.map((x) => (x.beyond || x.name || "").length));
+  const maxELen = Math.max(0, ...eExits.map((x) => (x.beyond || x.name || "").length));
+
+  // На одну букву шрифта 7px уходит ~4.5px, размер клетки CELL = 15px
+  const mW = wExits.length > 0 ? Math.max(3, Math.min(6, Math.ceil((maxWLen * 4.5) / CELL) + 1)) : 2;
+  const mE = eExits.length > 0 ? Math.max(3, Math.min(6, Math.ceil((maxELen * 4.5) / CELL) + 1)) : 2;
+  const mN = nExits.length > 0 ? 3 : 2;
+  const mS = sExits.length > 0 ? 3 : 2;
+
+  return {
+    c0: f.minCol - mW,
+    r0: f.minRow - mN,
+    cols: f.maxCol - f.minCol + 1 + mW + mE,
+    rows: f.maxRow - f.minRow + 1 + mN + mS,
+  };
 }
 
 const EXIT_ICON: Record<SketchExit["kind"], string> = {
@@ -158,10 +176,20 @@ function SketchLayer({
             rx={rounded && wall ? 4 : 0}
             fill={wall ? "var(--color-line, #2a2b31)" : "var(--color-raised, #202127)"}
             stroke="var(--color-line, #2a2b31)"
-            strokeWidth={0.6}
+            strokeOpacity={0.35}
+            strokeWidth={0.5}
           />
         );
       })}
+      {/* Мягкий свет факела вокруг центра отряда */}
+      <circle
+        cx={px(0)}
+        cy={py(0)}
+        r={CELL * 4.5}
+        fill="var(--tf-accent, #c98a4b)"
+        fillOpacity={0.06}
+        className="pointer-events-none select-none"
+      />
       <rect
         x={px(f.minCol) - CELL / 2}
         y={py(f.minRow) - CELL / 2}
@@ -172,6 +200,7 @@ function SketchLayer({
         stroke="var(--color-ink-2, #cfc8bb)"
         strokeWidth={sk.shape === "open" ? 0.8 : 2}
         strokeDasharray={sk.shape === "open" || sk.shape === "street" ? "4 3" : undefined}
+        style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.3))" }}
       />
       {sk.features.map((ft, i) =>
         ft.cells.map(([c0, r0, c1, r1], j) => {
@@ -185,8 +214,18 @@ function SketchLayer({
               <title>{ft.name}</title>
               <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_COLOR[ft.kind]} fillOpacity={0.35} stroke={FEATURE_COLOR[ft.kind]} strokeWidth={1} />
               {j === 0 && (
-                <text x={p.x + w / 2} y={p.y + h / 2 + 2.5} textAnchor="middle" fontSize={6.5} fill="var(--color-ink, #ddd)">
-                  {short(ft.name, Math.max(4, Math.floor(w / 4)))}
+                <text
+                  x={p.x + w / 2}
+                  y={p.y + h / 2 + 2.5}
+                  textAnchor="middle"
+                  fontSize={6.5}
+                  fill="var(--color-ink, #ddd)"
+                  paintOrder="stroke"
+                  stroke="var(--color-surface, #17181c)"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                >
+                  {short(ft.name, Math.max(6, Math.floor(w / 3.5)))}
                 </text>
               )}
             </g>
@@ -198,12 +237,31 @@ function SketchLayer({
         const cx = px(c);
         const cy = py(r);
         const shut = x.state === "locked" || x.state === "closed";
-        const out = x.side === "n" ? [0, -1] : x.side === "s" ? [0, 1] : x.side === "w" ? [-1, 0] : [1, 0];
+        const color = shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location;
         const label = `${x.name}: ${EXIT_KIND[x.kind]}${x.state ? `, ${EXIT_STATE[x.state]}` : ""}${x.beyond ? `, за ним ${x.beyond}` : ""}`;
+        const title = x.beyond || x.name;
+        const titleText = title ? short(title, 14) : "";
+        const isWest = x.side === "w";
+        const isEast = x.side === "e";
+        const isHoriz = isWest || isEast;
+
+        // Размеры плашки выхода
+        const textW = titleText ? titleText.length * 4.5 + 4 : 0;
+        const pillW = isHoriz ? (titleText ? CELL + textW : CELL - 2) : (titleText ? Math.max(CELL, textW + 8) : CELL - 2);
+        const pillH = CELL - 2;
+
+        let pillX = cx - pillW / 2;
+        let pillY = cy - pillH / 2;
+        if (isWest) {
+          pillX = cx + CELL / 2 - 1 - pillW;
+        } else if (isEast) {
+          pillX = cx - CELL / 2 + 1;
+        }
+
         return (
           <g
             key={i}
-            className="cursor-pointer"
+            className="cursor-pointer group"
             onClick={(e) => {
               onPick({ name: x.name, near: [[c, r]], exit: x });
               if (x.to) onOpen(x.to, x.name)(e);
@@ -212,20 +270,39 @@ function SketchLayer({
             aria-label={label}
           >
             <title>{label}</title>
-            <rect x={cx - CELL / 2 + 1} y={cy - CELL / 2 + 1} width={CELL - 2} height={CELL - 2} rx={3} fill="var(--color-surface, #17181c)" stroke={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location} strokeWidth={1.2} />
-            <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={10} fill={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location}>
+            <rect
+              x={pillX}
+              y={pillY}
+              width={pillW}
+              height={pillH}
+              rx={3.5}
+              fill="var(--color-surface, #17181c)"
+              stroke={color}
+              strokeWidth={1.2}
+              className="transition-all duration-150 group-hover:stroke-accent group-hover:brightness-110"
+              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}
+            />
+            <text
+              x={isWest ? cx : isEast ? cx : isHoriz ? cx : pillX + 6.5}
+              y={cy + 3.5}
+              textAnchor="middle"
+              fontSize={9.5}
+              fill={color}
+              className="pointer-events-none select-none transition-colors duration-150 group-hover:fill-accent"
+            >
               {EXIT_ICON[x.kind]}
             </text>
-            {(x.beyond || x.name) && (
+            {titleText && (
               <text
-                x={cx + out[0] * CELL * 0.9}
-                y={cy + out[1] * CELL * 0.9 + 2.5}
-                textAnchor={x.side === "w" ? "end" : x.side === "e" ? "start" : "middle"}
-                fontSize={6.5}
-                fontStyle="italic"
-                fill="var(--color-muted, #a8a296)"
+                x={isWest ? cx - CELL / 2 - 2.5 : isEast ? cx + CELL / 2 + 2.5 : pillX + 15}
+                y={cy + 2.5}
+                textAnchor={isWest ? "end" : "start"}
+                fontSize={6.8}
+                fontWeight={500}
+                fill="var(--color-ink, #ddd)"
+                className="pointer-events-none select-none"
               >
-                {short(x.beyond || x.name, 16)}
+                {titleText}
               </text>
             )}
           </g>
@@ -269,15 +346,40 @@ function SketchLegend({ sk }: { sk: Sketch }) {
   );
 }
 
+/** Компактная роза ветров в углу тактической карты. */
+function CompassRose({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x}, ${y})`} className="select-none pointer-events-none" aria-label="Компас: Север вверху">
+      <circle cx={0} cy={0} r={11} fill="var(--color-surface, #17181c)" fillOpacity={0.88} stroke="var(--color-line, #333)" strokeWidth={0.8} />
+      <line x1={0} y1={-9} x2={0} y2={9} stroke="var(--color-line, #444)" strokeWidth={0.6} />
+      <line x1={-9} y1={0} x2={9} y2={0} stroke="var(--color-line, #444)" strokeWidth={0.6} />
+      <polygon points="0,-9 -2.5,-2 0,-3.5 2.5,-2" fill="var(--tf-accent, #c98a4b)" />
+      <polygon points="0,9 -2,2 0,3 2,2" fill="var(--color-muted, #777)" />
+      <text x={0} y={-11.5} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
+        С
+      </text>
+      <text x={13} y={2.5} fontSize={5.5} fill="var(--color-muted, #888)" textAnchor="start">
+        В
+      </text>
+      <text x={0} y={16.5} fontSize={5.5} fill="var(--color-muted, #888)" textAnchor="middle">
+        Ю
+      </text>
+      <text x={-13} y={2.5} fontSize={5.5} fill="var(--color-muted, #888)" textAnchor="end">
+        З
+      </text>
+    </g>
+  );
+}
+
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
   const { things, exits, heroes, areas } = layoutGrid(m);
   const [pick, setPick] = useState<Pick | null>(null);
+  const isSelected = (c: number, r: number) => pick?.near?.some(([col, row]) => col === c && row === r) ?? false;
   const { step, stepTo, cancelStep } = useMapWindow();
   const go = (req: StepRequest) => stepTo(req);
   const canWalk = heroes.some((h) => h.item.mine) && !step.busy;
   const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
-  const name = (s: string, col: number, row: number) => (roomForLabel(occupied, col, row) ? s : undefined);
   const combat = m.mode === "combat";
   const sk = m.sketch ?? null;
   const v = viewOf(sk);
@@ -341,21 +443,8 @@ function Around({ m }: { m: MapState }) {
           </g>
         ))}
 
-        {/* Стороны света */}
-        <g className="font-mono select-none" aria-hidden="true">
-          <text x={W / 2} y={-4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--tf-accent, #c98a4b)">
-            С
-          </text>
-          <text x={W / 2} y={H + 11} textAnchor="middle" fontSize={9} fill="var(--color-muted, #888)">
-            Ю
-          </text>
-          <text x={W + 3} y={H / 2 + 3} fontSize={9} fill="var(--color-muted, #888)">
-            В
-          </text>
-          <text x={-3} y={H / 2 + 3} textAnchor="end" fontSize={9} fill="var(--color-muted, #888)">
-            З
-          </text>
-        </g>
+        {/* Компас (роза ветров в правом верхнем углу) */}
+        <CompassRose x={W + 2} y={-4} />
 
         {areas.map(({ item: a, col, row }) => (
           <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}`}>
@@ -368,12 +457,25 @@ function Around({ m }: { m: MapState }) {
 
         {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row }) => (
-          <Token key={x.id} cx={px(col)} cy={py(row)} size={CELL} color={TYPE_COLOR.location} icon={TYPE_ICON.location} label={name(x.name, col, row)} dashed={!x.visited} onClick={pickThing(x.id, x.name, col, row)} ariaLabel={`Выход: ${x.name}`} />
+          <Token
+            key={x.id}
+            cx={px(col)}
+            cy={py(row)}
+            size={CELL}
+            color={TYPE_COLOR.location}
+            icon={TYPE_ICON.location}
+            label={fitLabel(x.name, occupied, col, row, false)}
+            dashed={!x.visited}
+            selected={isSelected(col, row)}
+            onClick={pickThing(x.id, x.name, col, row)}
+            ariaLabel={`Выход: ${x.name}`}
+          />
         ))}
         {stacks
           .filter((st) => !st.under)
           .map((st) => {
             const t = st.items[0];
+            const isSel = isSelected(st.col, st.row);
             if (st.items.length === 1)
               return (
                 <Token
@@ -383,9 +485,10 @@ function Around({ m }: { m: MapState }) {
                   size={CELL}
                   color={TYPE_COLOR[t.type]}
                   icon={TYPE_ICON[t.type]}
-                  label={name(t.name, st.col, st.row)}
+                  label={fitLabel(t.name, occupied, st.col, st.row, false)}
                   faded={t.condition === "мёртв"}
                   badge={badge(t.elevation, t.cover)}
+                  selected={isSel}
                   onClick={pickThing(t.id, t.name, st.col, st.row)}
                   ariaLabel={t.name}
                 />
@@ -399,8 +502,9 @@ function Around({ m }: { m: MapState }) {
                 size={CELL}
                 color={TYPE_COLOR[t.type]}
                 icon={TYPE_ICON[t.type]}
-                label={name(title, st.col, st.row)}
+                label={fitLabel(title, occupied, st.col, st.row, false)}
                 badge={`×${st.items.length}`}
+                selected={isSel}
                 onClick={pickStack(st)}
                 ariaLabel={title}
               />
@@ -414,10 +518,11 @@ function Around({ m }: { m: MapState }) {
             size={CELL}
             color="var(--tf-accent)"
             icon="★"
-            label={name(h.name, col, row)}
+            label={fitLabel(h.name, occupied, col, row, true)}
             ring={h.mine}
             faded={h.down}
             badge={badge(h.elevation, h.cover)}
+            selected={isSelected(col, row)}
             onClick={open(h.id, h.name)}
             ariaLabel={h.name}
           />
