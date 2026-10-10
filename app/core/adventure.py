@@ -308,7 +308,10 @@ def hook_line(plan: dict | None) -> str:
 
 
 def _token_spots(
-    grid: dict | None, mark: dict, tokens: list[tuple[str, float, float]]
+    grid: dict | None,
+    mark: dict,
+    tokens: list[tuple[str, float, float]],
+    cells: dict[str, tuple[int, int]] | None = None,
 ) -> dict[str, tuple[float, float]]:
     """Где стоят значки героев на картинке, в долях. С клетками — на свободных клетках комнаты ближе к своим
     позициям сцены; без них — рядом с номером комнаты."""
@@ -317,9 +320,18 @@ def _token_spots(
         for i, (tid, _, _) in enumerate(tokens)
     }
     if grid and mark.get("cells"):
-        cells = place_tokens(grid, mark, tokens)
-        spots.update({tid: cell_center(grid, c, r) for tid, (c, r) in cells.items()})
+        placed = cells if cells is not None else place_tokens(grid, mark, tokens)
+        spots.update({tid: cell_center(grid, c, r) for tid, (c, r) in placed.items()})
     return spots
+
+
+def _exact_cell(raw: Any) -> tuple[int, int] | None:
+    """Точная клетка в координатах от строя (не абсолютная клетка карты книги)."""
+    if not isinstance(raw, (list, tuple)) or len(raw) != 2:
+        return None
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in raw):
+        return None
+    return raw[0], raw[1]
 
 
 def book_map(
@@ -364,6 +376,7 @@ def book_map(
     numbers = {m["number"] for m in marks}
     tokens = []
     token_positions: dict[str, tuple[float, float]] = {}
+    exact_positions: dict[str, tuple[int, int]] = {}
     groups: dict[str, list] = {}
     for ch, pid, pos in heroes:
         e = rooms_here.get(pid or "")
@@ -372,22 +385,19 @@ def book_map(
             groups.setdefault(num, []).append((ch, pos))
     for num, members in groups.items():
         mark = next(m for m in mp["marks"] if str(m.get("number")) == num)
-        spots = _token_spots(
-            grid,
-            mark,
-            [(ch.id, *Pos(p.get("zone"), p.get("bearing")).xy(None)) for ch, p in members],
-        )
         for ch, pos in members:
-            token_positions[ch.id] = Pos(pos.get("zone"), pos.get("bearing")).xy(None)
-            x, y = spots[ch.id]
+            cell = _exact_cell(pos.get("cell"))
+            if cell is not None:
+                exact_positions[ch.id] = cell
+            token_positions[ch.id] = Pos(pos.get("zone"), pos.get("bearing"), cell=cell).xy(None)
             tokens.append(
                 {
                     "id": ch.id,
                     "name": ch.name,
                     "mine": ch.id == mine,
                     "room": num,
-                    "x": x,
-                    "y": y,
+                    "x": mark["x"],
+                    "y": mark["y"],
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )
@@ -410,7 +420,10 @@ def book_map(
             continue
         from app.core.inspect import entity_type
 
-        token_positions[e.id] = Pos(e.zone, st.get("bearing")).xy(None)
+        cell = _exact_cell(st.get("cell"))
+        if cell is not None:
+            exact_positions[e.id] = cell
+        token_positions[e.id] = Pos(e.zone, st.get("bearing"), cell=cell).xy(None)
         x, y = mark["x"], mark["y"]
         tokens.append(
             {
@@ -432,7 +445,10 @@ def book_map(
         for t in scene_tokens:
             if t["id"] in existing:
                 continue
-            token_positions[t["id"]] = Pos(t.get("zone"), t.get("bearing")).xy(None)
+            cell = _exact_cell(t.get("cell"))
+            if cell is not None:
+                exact_positions[t["id"]] = cell
+            token_positions[t["id"]] = Pos(t.get("zone"), t.get("bearing"), cell=cell).xy(None)
             tokens.append(
                 {
                     "id": t["id"],
@@ -450,9 +466,14 @@ def book_map(
     for num in {t["room"] for t in tokens}:
         mark = next(m for m in mp["marks"] if str(m.get("number")) == num)
         room_tokens = [t for t in tokens if t["room"] == num]
-        spots = _token_spots(grid, mark, [(t["id"], *token_positions[t["id"]]) for t in room_tokens])
+        offsets = [(t["id"], *token_positions[t["id"]]) for t in room_tokens]
+        exact = {t["id"]: exact_positions[t["id"]] for t in room_tokens if t["id"] in exact_positions}
+        cells = place_tokens(grid, mark, offsets, exact=exact) if grid and mark.get("cells") else {}
+        spots = _token_spots(grid, mark, offsets, cells)
         for token in room_tokens:
             token["x"], token["y"] = spots[token["id"]]
+            if token["id"] in cells:
+                token["cell"] = list(cells[token["id"]])
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
