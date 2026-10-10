@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import shutil
 from datetime import timedelta
-from typing import Literal, Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
