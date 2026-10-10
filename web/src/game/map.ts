@@ -120,9 +120,9 @@ export interface SketchExit {
 }
 
 export interface SketchFeature {
-  id?: string;
-  entity_id?: string;
-  entity_type?: EntityType;
+  id?: string | null;
+  entity_id?: string | null;
+  entity_type?: EntityType | null;
   visual_key?: string | null;
   name: string;
   kind: "furniture" | "cover" | "hazard" | "light" | "object" | "nature";
@@ -200,6 +200,9 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
     })),
     features: data.sketch.features.map((feature) => ({
       ...feature,
+      entity_type: feature.entity_type === "item" || feature.entity_type === "landmark"
+        ? feature.entity_type
+        : undefined,
       kind: listed(feature.kind, FEATURE_KINDS, "object"),
       cover: feature.cover ? listed(feature.cover, COVERS, "none") : undefined,
     })),
