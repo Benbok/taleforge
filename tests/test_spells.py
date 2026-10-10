@@ -333,3 +333,53 @@ def test_area_must_fit_and_lingering_zone_ticks(wizard_game):
     cast, hp0, hp1, notes = play(settings, cid, [1, 1, 2], beam)
     assert "outcomes" not in cast and cast["zone"]["members"] == ["Гоблин"], cast  # при сотворении не бьёт
     assert hp0 - hp1 == 3 and len(notes) == 1 and "провал" in notes[0], (hp0, hp1, notes)
+
+
+def test_hostile_spell_opener_waits_for_initiative(wizard_game):
+    """A hostile spell is not cast before initiative and consumes a normal slot."""
+    from app.core import combat
+    from app.agents.master.turn import _targets_hostile_with_spell
+    from tests.test_combat import _fight
+
+    settings, cid, wizard, _, _ = wizard_game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, wizard, "creature.goblin", zone="melee", first="hero")
+        args = {"caster_id": wizard, "spell_id": "spell.magic_missile", "target_ids": [goblin]}
+        assert _targets_hostile_with_spell(ctx, args)
+        assert not _targets_hostile_with_spell(ctx, {**args, "spell_id": "spell.shillelagh"})
+        assert not [ev for ev in ctx.events if ev.tool == "cast_spell"]
+        combat.queue_opening_spell(ctx, args)
+        assert combat.state(ctx)["opening_spells"][wizard] == args
+        notes = await combat.run_until_hero(ctx, "spell-opener")
+        spells = [ev for ev in ctx.events if ev.tool == "cast_spell"]
+        assert len(spells) == 1
+        assert spells[0].payload["spell_id"] == "spell.magic_missile"
+        assert not combat.state(ctx).get("opening_spells")
+        return notes
+
+    notes = play(settings, cid, [10, 10, 10, 2, 2, 2], fn)
+    assert any("творит" in note for note in notes)
+
+
+def test_rejected_opening_spell_preserves_caster_turn(wizard_game):
+    """An invalid spell fails honestly and does not consume the turn."""
+    from app.core import combat
+    from tests.test_combat import _fight
+
+    settings, cid, wizard, _, _ = wizard_game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, wizard, "creature.goblin", zone="melee", first="hero")
+        combat.queue_opening_spell(
+            ctx, {"caster_id": wizard, "spell_id": "spell.detect_magic", "target_ids": [goblin]}
+        )
+        notes = await combat.run_until_hero(ctx, "invalid-spell")
+        assert not combat.state(ctx).get("opening_spells")
+        assert combat.current_id(ctx) == wizard
+        assert combat.state(ctx)["deadline"] is not None
+        assert not [ev for ev in ctx.events if ev.tool == "cast_spell"]
+        return notes
+
+    notes = play(settings, cid, [10, 10, 10], fn)
+    assert any("заклинание не выполнено" in note for note in notes)
