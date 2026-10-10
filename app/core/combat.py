@@ -70,15 +70,29 @@ def timeout_sec(ctx: ToolContext) -> int:
 def start_combat(ctx: ToolContext) -> None:
     """Вызывается после броска инициативы: первый в очереди получает ход."""
     _set(
-        ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None,
-        opening_attacks={}, opening_spells={}, opening_plans={},
+        ctx,
+        turn=0,
+        submitted=False,
+        reactions={},
+        deadline=None,
+        actor=None,
+        opening_attacks={},
+        opening_spells={},
+        opening_plans={},
     )
 
 
 def end_combat(ctx: ToolContext) -> None:
     st = state(ctx)
     for k in (
-        "turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells", "opening_plans",
+        "turn",
+        "submitted",
+        "reactions",
+        "deadline",
+        "actor",
+        "opening_attacks",
+        "opening_spells",
+        "opening_plans",
     ):
         st.pop(k, None)
     ctx.world.scene.state = st
@@ -119,8 +133,10 @@ def queue_opening_spell(ctx: ToolContext, args: dict[str, Any]) -> None:
 def queue_opening_plan(ctx: ToolContext, plan: dict[str, str]) -> None:
     """Save a composite action until the declared attacker's initiative turn."""
     hero_id = plan["attacker_id"]
-    if not in_combat(ctx) or hero_id not in ctx.world.characters or not any(
-        entry["id"] == hero_id for entry in ctx.world.scene.turn_order or []
+    if (
+        not in_combat(ctx)
+        or hero_id not in ctx.world.characters
+        or not any(entry["id"] == hero_id for entry in ctx.world.scene.turn_order or [])
     ):
         raise WorldError("составное действие может ждать только героя в очереди инициативы")
     pending = dict(state(ctx).get("opening_plans") or {})
