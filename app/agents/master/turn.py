@@ -12,6 +12,7 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
+from app.agents.master.creative import creative_context, creative_note
 from app.agents.master.helpers import (
     _batches,
     _heard_by,
@@ -468,6 +469,7 @@ class TurnMixin:
                 "content": (
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"{await resolution_prompt(ctx)}"
+                    f"\n{creative_note(creative_context(ctx))}\n"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
