@@ -213,7 +213,10 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
     assert rows(settings, Event, Event.tool == "spawn_entity") == []
     (turn,) = rows(settings, MasterTurn)
     diag = [(x["tool"], x["result"].get("ok")) for x in turn.trace["calls"]]
-    assert diag[:2] == [("enter_room", False), ("spawn_entity", False)], (diag, [bool(q["tools"]) for q in llm.requests])
+    assert diag[:2] == [("enter_room", False), ("spawn_entity", False)], (
+        diag,
+        [bool(q["tools"]) for q in llm.requests],
+    )
     assert "не выполнено после ошибки перехода" in turn.trace["calls"][1]["result"]["error"]
     assert "не состоялся" in message["content"].lower()
     assert "вы вошли" not in message["content"].lower()
