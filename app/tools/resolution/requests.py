@@ -4,8 +4,11 @@ import copy
 import hashlib
 import json
 
+from sqlalchemy import select, update
+
+from app.core import adventure
 from app.core.resolution.contracts import ActionContext, ActionRef
-from app.db.models import Message
+from app.db.models import Event, Message, Scene
 from app.tools.registry import ToolContext, ToolError
 
 
@@ -49,6 +52,32 @@ def bind_world_action(campaign_id: str, response_id: str, actor_id: str) -> Acti
     )
 
 
+async def resolution_receipt(ctx: ToolContext, ref: ActionRef) -> Event | None:
+    return await ctx.session.scalar(
+        select(Event).where(
+            Event.campaign_id == ref.campaign_id,
+            Event.idempotency_key == action_key(ref),
+            Event.tool == "resolve_action",
+        )
+    )
+
+
+async def lock_resolution_source(ctx: ToolContext, ref: ActionRef) -> None:
+    if ref.campaign_id != ctx.campaign.id:
+        raise ToolError("чужая заявка", code="invalid_source", category="rule_denial")
+    model = Message if ref.source_kind == "message" else Scene
+    condition = (
+        (Message.id == ref.source_id) & (Message.campaign_id == ref.campaign_id)
+        if model is Message
+        else (Scene.campaign_id == ref.campaign_id)
+    )
+    if ctx.session.get_bind().dialect.name == "sqlite":
+        column = model.data if model is Message else model.state
+        await ctx.session.execute(update(model).where(condition).values({column.key: column}))
+    else:
+        await ctx.session.execute(select(model).where(condition).with_for_update())
+
+
 async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext:
     """Only persisted, owned and still live sources can supply action facts."""
 
@@ -89,15 +118,22 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
     verbs = tuple(a.get("verb", "") for a in actions)
     targets = tuple(dict.fromkeys(t for a in actions for t in [a.get("target_id"), *a.get("target_ids", [])] if t))
     combat_verbs = {"attack", "cast", "grapple", "shove", "dodge", "dash", "disengage"}
+    place_id = ctx.world.place_of(hero)
+    place = ctx.world.entities.get(place_id or "")
+    module_known = not adventure.is_module(ctx.campaign)
+    if not module_known and place is not None:
+        module = adventure.module_place(place, ctx.world.catalog, ctx.world.entities)
+        room = adventure.room_of(place)
+        module_known = module is not None and (room is None or adventure.find_room(module[1], room["id"]) is not None)
     return ActionContext(
         ref=ref,
         verbs=verbs,
         target_ids=targets,
-        place_id=ctx.world.place_of(hero),
+        place_id=place_id,
         parsed=parsed,
         affected_in_combat=ctx.world.in_fight(hero.id) or any(ctx.world.in_fight(t) for t in targets),
         combat_related=bool(set(verbs) & combat_verbs),
         completed_parts=(),
-        module_data_known=False,
-        canonical_denial=False,
+        module_data_known=module_known,
+        canonical_denial=any(t not in ctx.world.characters and t not in ctx.world.entities for t in targets),
     )

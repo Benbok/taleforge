@@ -72,6 +72,7 @@ def test_source_actor_and_campaign_checked_in_database(game):
         ref = bind_message_actions(message, hero)[0]
         loaded = await load_action_context(ctx, ref)
         assert loaded.parsed and loaded.verbs == ("talk",)
+        assert loaded.module_data_known  # a non-module campaign has no unloaded book canon
         for replacement in ({"campaign_id": "foreign"}, {"actor_id": "foreign"}):
             with pytest.raises(ToolError):
                 await load_action_context(ctx, ref.model_copy(update=replacement))

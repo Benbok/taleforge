@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.core.resolution.contracts import ActionRef, Admission
 from app.tools.resolution.executor import execute_resolution
 from app.tools.resolution.operations import ResolutionProposal
+from tests.resolution_helpers import prepare_action
 from tests.test_tools import game as game_fixture
 from tests.test_tools import play
 
@@ -25,19 +26,18 @@ def test_second_operation_failure_rolls_back_first(game):
 
     async def check(ctx):
         before = ctx.world.scene.game_time
+        ref = await prepare_action(ctx, hero, [{"verb": "interact"}])
+        proposed = proposal(
+            campaign_id,
+            hero,
+            [
+                {"kind": "time", "args": {"amount": 1, "unit": "minute", "reason": "test"}},
+                {"kind": "remove_item", "args": {"character_id": hero, "inventory_id": "missing", "reason": "test"}},
+            ],
+        ).model_copy(update={"ref": ref})
         result = await execute_resolution(
             ctx,
-            proposal(
-                campaign_id,
-                hero,
-                [
-                    {"kind": "time", "args": {"amount": 1, "unit": "minute", "reason": "test"}},
-                    {
-                        "kind": "remove_item",
-                        "args": {"character_id": hero, "inventory_id": "missing", "reason": "test"},
-                    },
-                ],
-            ),
+            proposed,
             Admission("ordinary", "supported_action"),
         )
         assert result.execution == "denied"
