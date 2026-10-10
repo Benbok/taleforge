@@ -156,7 +156,8 @@ def natural_ac(feats: list[dict], dex_mod: int) -> int | None:
 
 
 def character_actor(
-    ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list[ActiveEffect]
+    ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list[ActiveEffect],
+    game_time: int = 0,
 ) -> Actor:
     sheet = ch.sheet or {}
     cls = cat.find(sheet.get("class_id", ""), "class")
@@ -167,6 +168,13 @@ def character_actor(
         if rec is not None:
             inv.append((it.id, {"id": rec.id, **rec.data}, it.equipped, it.display_name or rec.name))
     d = derive(sheet, cls.data if cls else None, origin.data if origin else None, inv)
+    from app.core.weapon_enchantments import active_shillelagh, enchant_attack
+
+    shillelagh = active_shillelagh(ch, inventory, game_time)
+    if shillelagh:
+        for attack in d.attacks:
+            data = attack.__dict__
+            enchant_attack(data, shillelagh, d.mods)
     effs = _effects_for(ch.id, effects, cat)
     lin, _, feats = lineage_features(sheet, cat)
     lin_mods = [m for f in feats for m in f.get("modifiers") or [] if isinstance(m, dict)]
@@ -338,7 +346,10 @@ class World:
         if actor_id in self._actors:
             return self._actors[actor_id]
         if actor_id in self.characters:
-            a = character_actor(self.characters[actor_id], self.catalog, self.inventory.get(actor_id, []), self.effects)
+            a = character_actor(
+                self.characters[actor_id], self.catalog, self.inventory.get(actor_id, []),
+                self.effects, self.scene.game_time,
+            )
         elif actor_id in self.entities and self.entities[actor_id].kind == "creature":
             a = creature_actor(self.entities[actor_id], self.catalog, self.effects)
         elif actor_id in self.entities:
