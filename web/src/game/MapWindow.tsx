@@ -502,7 +502,7 @@ function Around({ m }: { m: MapState }) {
           Вне границ схемы: {offMap.map((x) => `${x.item.name} — клетка (${x.col}, ${x.row})`).join("; ")}.
           Точные координаты сохранены, значки не перенесены к краю.
         </p>
-      )
+      )}
       <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
         {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} onPick={setPick} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
