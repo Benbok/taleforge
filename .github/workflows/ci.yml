@@ -18,6 +18,14 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
+      # TEMPORARY during stage-3 API contract synchronization; remove before merge.
+      - name: Map contract diff (temporary)
+        run: |
+          python -m app.contract
+          echo MAP_SCHEMA_DIFF_BEGIN
+          git diff -- web/openapi.json
+          echo MAP_SCHEMA_DIFF_END
+          git checkout -- web/openapi.json
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
