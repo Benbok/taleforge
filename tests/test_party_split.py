@@ -88,13 +88,10 @@ def test_snapshot_update_and_map_agree_for_viewer(client, admin, settings):
     for _, location, entities in expected:
         # Сравниваем публикацию с новым подключением по локации группы.
         assert any(
-            view["location"]["id"] == location and {e["id"] for e in view["entities"]} == entities
-            for _, view in live
+            view["location"]["id"] == location and {e["id"] for e in view["entities"]} == entities for _, view in live
         )
     with connect(client, admin, cid) as (ws, snapshot):
-        assert {e["id"] for e in snapshot["payload"]["scene"]["entities"]} == {
-            ids["fountain"], ids["gob"]
-        }
+        assert {e["id"] for e in snapshot["payload"]["scene"]["entities"]} == {ids["fountain"], ids["gob"]}
         ws.send_json({"type": "map.get", "payload": {}})
         board = next_of(ws, "map.state")["payload"]
         assert board["here"]["id"] == snapshot["payload"]["scene"]["location"]["id"]
