@@ -187,7 +187,7 @@ def test_book_room_public_description_excludes_scripted_encounter(client, admin,
     assert m["around"] == []  # сценарные скелеты сами собой не появляются
 
     with connect(client, p1, cid) as (ws, _):
-        ws.send_json({"type": "entity.inspect", "payload": {"id": rid}})
+        ws.send_json({"type": "entity.inspect", "payload": {"entity_id": rid}})
         card = next_of(ws, "entity.card")["payload"]
     assert card["description"] == scenery
     assert "Скелет 1" not in str(card)
