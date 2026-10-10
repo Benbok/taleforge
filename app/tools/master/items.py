@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.core import economy
 from app.core import positions as grid
 from app.core.world import is_scene_item
-from app.core.world_objects import container_parent, is_nested, read_world_object
+from app.core.world_objects import container_chain, container_parent, is_nested, read_world_object
 from app.db.models import Character, Entity, InventoryItem
 from app.tools import effects as fx
 from app.tools.master.base import (
@@ -515,7 +515,14 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         raise ToolError(f"здесь лежит только {have} шт. «{en.name}»")
     if en.template_id != FOUND_ITEM:
         ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
-    inverse = [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
+    inverse = (
+        [
+            {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
+            {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
+        ]
+        if unique
+        else [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
+    )
     if unique:
         if en.location_id is None:
             raise ToolError("уникальный предмет уже перенесён")
@@ -523,7 +530,6 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         inv_id, inv = await _add_to_inventory(
             ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id
         )
-        inverse.append({"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id})
         en.location_id = None
         en.state = _object_state(en, container_id=None)
     else:
@@ -533,7 +539,9 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     many = f" ×{qty}" if qty > 1 else ""
     ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
-    if qty == have and not unique:
+    if unique:
+        pass  # Entity and its state persist in the world registry, only location_id changes.
+    elif qty == have:
         await ctx.session.delete(en)
         ctx.world.entities.pop(en.id, None)
     else:
@@ -635,3 +643,199 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
         {"kind": "system", "content": f"{ch.name} передаёт {to.name} «{name}»{f' ×{a.qty}' if a.qty > 1 else ''}."}
     )
     return result
+
+
+# --- persistent containers and nested world objects ---
+
+
+class CreateContainerArgs(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    description: str = Field("", max_length=500)
+    location_id: str | None = Field(None, description=PLACE_HINT)
+    zone: Zone = "near"
+    visual_key: str = Field("item:chest", pattern=r"^item:[a-z][a-z0-9_-]*$")
+
+
+@tool(
+    "create_container",
+    "Создаёт постоянный пустой контейнер. Содержимое не генерируется автоматически.",
+    CreateContainerArgs,
+    ids={"location_id": "places"},
+    closes=False,
+)
+async def create_container(ctx: ToolContext, a: CreateContainerArgs) -> dict:
+    place = ctx.world.place_arg(a.location_id, "стоит контейнер")
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=a.name,
+        description=a.description,
+        location_id=place,
+        zone=a.zone,
+        state={
+            "visual_key": a.visual_key,
+            "world_object": {
+                "schema_version": 1,
+                "role": "container",
+                "unique": True,
+                "container_id": None,
+                "capabilities": ["inspect", "open", "close", "put", "take"],
+                "access": {"open": False, "locked": False},
+                "contents": {"status": "ready"},
+                "physical": "intact",
+                "revision": 0,
+            },
+        },
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    ctx.world.entities[en.id] = en
+    result = {"container_id": en.id, "name": en.name}
+    await ctx.record(
+        "create_container",
+        target_id=en.id,
+        payload=result,
+        inverse=[{"table": "entities", "op": "delete", "id": en.id}],
+    )
+    return result
+
+
+def _accessible_container(ctx: ToolContext, character_id: str, container_id: str) -> tuple[Character, Entity]:
+    hero = _character(ctx, character_id)
+    _can_handle(ctx, hero)
+    container = ctx.world.entities.get(container_id)
+    if container is None or container.campaign_id != ctx.campaign.id or container.kind != "object":
+        raise ToolError("контейнер не найден в текущей кампании")
+    try:
+        view = read_world_object(container)
+        ancestors = container_chain(container, ctx.world.entities)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    if view.role != "container" or view.metadata.get("physical") == "destroyed":
+        raise ToolError("объект недоступен как контейнер")
+    if container.location_id != ctx.world.place_of(hero):
+        raise ToolError("контейнер находится в другой комнате")
+    for other in [container, *ancestors]:
+        st = other.state or {}
+        if st.get("secret") or st.get("hidden"):
+            raise ToolError("контейнер скрыт")
+    if any(not (parent.state or {}).get("world_object", {}).get("access", {}).get("open") for parent in ancestors):
+        raise ToolError("сначала откройте внешний контейнер")
+    return hero, container
+
+
+class ContainerAccessArgs(BaseModel):
+    character_id: str
+    container_id: str
+    opened: bool = True
+
+
+@tool(
+    "open_container",
+    "Открывает или закрывает доступный контейнер; запертый требует отдельного разрешённого действия.",
+    ContainerAccessArgs,
+    ids={"character_id": "characters"},
+)
+async def open_container(ctx: ToolContext, a: ContainerAccessArgs) -> dict:
+    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    wo = read_world_object(container).metadata
+    access = dict(wo.get("access") or {})
+    if a.opened and access.get("locked"):
+        raise ToolError("контейнер заперт")
+    inverse = [{"table": "entities", "id": container.id, "field": "state", "before": copy.deepcopy(container.state)}]
+    container.state = _object_state(container, access={**access, "open": a.opened})
+    result = {"container_id": container.id, "opened": a.opened}
+    await ctx.record("open_container", actor_id=hero.id, target_id=container.id, payload=result, inverse=inverse)
+    return result
+
+
+class ContainerMoveArgs(BaseModel):
+    character_id: str
+    container_id: str
+    object_id: str
+
+
+def _validate_container_move(ctx: ToolContext, container: Entity, obj: Entity) -> None:
+    if obj.id == container.id or obj.kind != "object" or obj.campaign_id != ctx.campaign.id:
+        raise ToolError("нельзя поместить объект в самого себя или чужой мир")
+    if obj.location_id != container.location_id:
+        raise ToolError("вещь и контейнер должны находиться в одном месте")
+    try:
+        chain = container_chain(container, ctx.world.entities)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    if any(parent.id == obj.id for parent in chain):
+        raise ToolError("контейнер нельзя поместить в собственного потомка")
+    if (obj.state or {}).get("hidden") or (obj.state or {}).get("secret"):
+        raise ToolError("объект скрыт")
+
+
+@tool(
+    "store_object",
+    "Помещает целый предмет сцены или небольшой контейнер в открытый контейнер, без повторной генерации добычи.",
+    ContainerMoveArgs,
+    ids={"character_id": "characters"},
+)
+async def store_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
+    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    if not read_world_object(container).metadata.get("access", {}).get("open"):
+        raise ToolError("контейнер закрыт")
+    obj = ctx.world.entities.get(a.object_id)
+    if obj is None:
+        raise ToolError("объект не найден")
+    if is_nested(obj):
+        raise ToolError("объект уже находится внутри контейнера")
+    _validate_container_move(ctx, container, obj)
+    inverse = [{"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)}]
+    if (obj.state or {}).get("world_object") is None:
+        role = "item" if is_scene_item(obj) else "prop"
+        base = {"schema_version": 1, "role": role, "unique": False, "capabilities": [], "revision": 0}
+        obj.state = {**(obj.state or {}), "world_object": base}
+    obj.state = _object_state(obj, container_id=container.id)
+    result = {"object_id": obj.id, "container_id": container.id}
+    await ctx.record("store_object", actor_id=hero.id, target_id=obj.id, payload=result, inverse=inverse)
+    return result
+
+
+@tool(
+    "retrieve_object",
+    "Достаёт целый объект из открытого контейнера на пол той же комнаты.",
+    ContainerMoveArgs,
+    ids={"character_id": "characters"},
+)
+async def retrieve_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
+    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    if not read_world_object(container).metadata.get("access", {}).get("open"):
+        raise ToolError("контейнер закрыт")
+    obj = ctx.world.entities.get(a.object_id)
+    if obj is None or obj.campaign_id != ctx.campaign.id or container_parent(obj) != container.id:
+        raise ToolError("этого объекта нет в контейнере")
+    inverse = [{"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)}]
+    obj.state = _object_state(obj, container_id=None)
+    result = {"object_id": obj.id, "container_id": container.id}
+    await ctx.record("retrieve_object", actor_id=hero.id, target_id=obj.id, payload=result, inverse=inverse)
+    return result
+
+
+class InspectContainerArgs(BaseModel):
+    character_id: str
+    container_id: str
+
+
+@tool(
+    "inspect_container",
+    "Показывает содержимое только открытого доступного контейнера; ничего не генерирует.",
+    InspectContainerArgs,
+    ids={"character_id": "characters"},
+    mutating=False,
+)
+async def inspect_container(ctx: ToolContext, a: InspectContainerArgs) -> dict:
+    _, container = _accessible_container(ctx, a.character_id, a.container_id)
+    if not read_world_object(container).metadata.get("access", {}).get("open"):
+        raise ToolError("контейнер закрыт")
+    contents = [
+        {"id": obj.id, "name": obj.name, "qty": (obj.state or {}).get("qty", 1)}
+        for obj in ctx.world.entities.values()
+        if container_parent(obj) == container.id and obj.campaign_id == ctx.campaign.id
+    ]
+    return {"container_id": container.id, "contents": contents}
