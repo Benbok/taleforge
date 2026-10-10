@@ -757,7 +757,7 @@ function MapEditor({
               onClick={() =>
                 setMarks(
                   marks.map((k) =>
-                    k.number === current ? { ...k, cells: [], blocked: [] } : k,
+                    k.number === current ? { ...k, cells: [], blocked: [], passages: [] } : k,
                   ),
                 )
               }
