@@ -89,6 +89,7 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
     hero = ctx.world.characters[ref.actor_id]
     actions = []
     parsed = False
+    completed_parts = ()
     if ref.source_kind == "message":
         message = await ctx.session.get(Message, ref.source_id)
         if (
@@ -103,6 +104,7 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         if ref.part >= len(bound) or ActionRef.model_validate(bound[ref.part]["ref"]) != ref:
             raise denied()
         actions = [item["action"] for item in bound]
+        completed_parts = tuple(int(part) for part in (message.data or {}).get("resolution_completed", {}))
         parsed = bool(actions) and (message.intent or {}).get("confidence", 1) >= 0.7
     elif ref.source_kind == "standing_response":
         responses = ((ctx.world.scene.state or {}).get("standing") or {}).get("responses", [])
@@ -133,7 +135,7 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         parsed=parsed,
         affected_in_combat=ctx.world.in_fight(hero.id) or any(ctx.world.in_fight(t) for t in targets),
         combat_related=bool(set(verbs) & combat_verbs),
-        completed_parts=(),
+        completed_parts=completed_parts,
         module_data_known=module_known,
         canonical_denial=any(t not in ctx.world.characters and t not in ctx.world.entities for t in targets),
     )
@@ -165,6 +167,10 @@ async def record_attempt(ctx: ToolContext, ref: ActionRef, capability_id: str, r
         }
     )
     turn.trace = {**(turn.trace or {}), "resolution_attempts": attempts}
+    if message is not None and result.execution in {"applied", "repeated"}:
+        completed = dict((message.data or {}).get("resolution_completed") or {})
+        completed.setdefault(str(ref.part), result.model_dump())
+        message.data = {**(message.data or {}), "resolution_completed": completed}
     return attempt_id
 
 
@@ -197,7 +203,7 @@ async def eligible_adjudications(ctx: ToolContext) -> list[dict]:
             if message.turn_id != ctx.turn_id:
                 continue
         admission = admit(context, capability, result.failure)
-        if admission.route == "fallback":
+        if admission.route == "fallback" and ref.part not in context.completed_parts:
             eligible.append(
                 {
                     "ref": ref.model_dump(),

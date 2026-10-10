@@ -104,6 +104,16 @@ def test_grant_constraints(game, change):
                 ctx, ref, "noncombat.interaction", ResolutionResult(execution="applied", game_outcome="failure")
             )
             assert not await eligible_adjudications(ctx)
+            await record_attempt(
+                ctx,
+                ref,
+                "noncombat.interaction",
+                ResolutionResult(
+                    execution="denied",
+                    failure=FailureInfo(code="later", category="unsupported", rolled_back=True, attempt_id=""),
+                ),
+            )
+            assert not await eligible_adjudications(ctx)  # a confirmed roll cannot be reopened by a later error
         elif change == "cross_turn":
             message.turn_id = "other_turn"
         elif change == "budget":
