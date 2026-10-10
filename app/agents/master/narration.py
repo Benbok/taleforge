@@ -71,7 +71,9 @@ class NarrationMixin:
             },
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
-        audit: dict[str, Any] = {"regenerated": False, "stripped": [], "transition_outcome": outcome}
+        audit: dict[str, Any] = {"regenerated": False, "stripped": []}
+        if outcome is not None:
+            audit["transition_outcome"] = outcome
         push = textcalls.StreamFilter(stream.push) if stream is not None and outcome != "failed" and not attack_rejected else None
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
         if push is not None:
