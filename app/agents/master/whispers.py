@@ -93,21 +93,37 @@ class WhisperMixin:
                     convo=_render_history(list(reversed(seen)), char_by_seat, names),
                     question=m.content,
                 )
+                # Прямой вопрос о местонахождении — факт движка, а не предмет догадки LLM.
+                location_reply = None
+                if m.content.strip().casefold().rstrip(" ?.!,") in {"где я", "где я нахожусь", "в каком я месте"}:
+                    hero = char_by_seat.get(m.seat_id)
+                    place_id = ctx.world.place_of(hero) if hero is not None else None
+                    place = ctx.world.entities.get(place_id or "")
+                    location_reply = (
+                        f"Вы находитесь в локации «{place.name}»."
+                        if place is not None
+                        else "Ваше текущее местонахождение не определено."
+                    )
                 known = set(ctx.world.characters) | set(ctx.world.entities)
                 seat_id, author, session_id = seat.id, m.seat_id, m.session_id
                 s.expunge(cfg)
                 await s.rollback()  # база не держится, пока думает модель
-            reply = await self._ask(
-                calls,
-                cfg,
-                cid,
-                seat_id,
-                None,
-                "whisper",
-                [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-                None,
-            )
-            text = MARKUP.sub(lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or "").strip()
+            if location_reply is not None:
+                text = location_reply
+            else:
+                reply = await self._ask(
+                    calls,
+                    cfg,
+                    cid,
+                    seat_id,
+                    None,
+                    "whisper",
+                    [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                    None,
+                )
+                text = MARKUP.sub(
+                    lambda x: x.group(0) if x.group(1) in known else x.group(2), reply.text or ""
+                ).strip()
             text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
             text = textcalls.clean(text)
             if not text:
