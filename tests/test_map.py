@@ -62,15 +62,26 @@ def test_map_shows_surroundings_exits_and_hides_secrets(client, admin, settings)
         }
 
     ids = _play(settings, cid, build)
+
+    # Ключ вида живёт в состоянии Entity; карта только передаёт его клиенту.
+    # Новые шаблоны предметов смогут выбирать значки, не меняя рендерер карт.
+    async def appearance(session):
+        mark = await session.get(Entity, ids["mark"])
+        mark.state = {**(mark.state or {}), "visual_key": "landmark:torch"}
+        await session.commit()
+
+    run(settings, appearance)
     m = _map(client, p1, cid)
     assert m["here"]["id"] == ids["square"]
     around = {x["id"]: x for x in m["around"]}
     assert around[ids["gob"]]["zone"] == "far" and around[ids["gob"]]["bearing"] == "n"
     assert around[ids["gob"]]["type"] == "creature" and around[ids["gob"]]["condition"] == "невредим"
     assert around[ids["mark"]]["type"] == "landmark" and around[ids["mark"]]["bearing"] == "s"
+    assert around[ids["mark"]]["visual_key"] == "landmark:torch"
     scene_tokens = {t["id"]: t for t in m["scene_view"]}
     assert scene_tokens[ids["gob"]]["type"] == "creature"
     assert scene_tokens[ids["mark"]]["type"] == "landmark"
+    assert scene_tokens[ids["mark"]]["visual_key"] == "landmark:torch"
     assert {t["id"] for t in m["scene_view"]} == {
         *(t["id"] for t in m["around"]),
         *(h["id"] for h in m["party"]),
