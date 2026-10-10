@@ -191,12 +191,12 @@ async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
     return result
 
 
-def _world_item_state() -> dict:
+def _world_item_state(*, unique: bool = True) -> dict:
     return {
         "schema_version": 1,
         "role": "item",
         "capabilities": ["inspect", "take", "put"],
-        "unique": True,
+        "unique": unique,
         "container_id": None,
         "revision": 0,
         "physical": "intact",
@@ -450,6 +450,11 @@ async def _put_in_scene(
     description: str = "",
     place: str | None = None,
     cell: tuple[int, int] | None = None,
+    *,
+    container_id: str | None = None,
+    force_new: bool = False,
+    force_unique: bool = False,
+    generation_ref: str | None = None,
 ) -> tuple[Entity, list[dict]]:
     """Предмет в сцене — объект реестра с шаблоном предмета. Такой же, что уже лежит там же, складывается в стопку.
     ``place`` — место, где он ляжет; по умолчанию основное место сцены. ``cell`` — точная клетка (от строя)."""
@@ -460,14 +465,20 @@ async def _put_in_scene(
     key = rec.data.get("visual_key") if rec else None
     visual_key = key if isinstance(key, str) and key else None
     place = place or ctx.world.home()
-    unique = bool(rec and rec.data.get("unique"))
+    unique = bool(rec and rec.data.get("unique")) or force_unique
     if unique and qty != 1:
         raise ToolError("уникальный предмет не может быть стопкой")
-    for en in ctx.world.in_scene_entities(place):
+    for en in ([] if force_new or container_id is not None else ctx.world.in_scene_entities(place)):
         st = en.state or {}
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
         same = en.template_id == template_id and st.get("display_name") == display_name and here
-        if not unique and is_scene_item(en) and same and not read_world_object(en).unique:
+        if (
+            not unique
+            and is_scene_item(en)
+            and same
+            and not read_world_object(en).unique
+            and not read_world_object(en).metadata.get("generation_ref")
+        ):
             # Прежние стопки без визуального ключа получают его при пополнении.
             # Явный ключ уже существующего объекта не перезаписываем.
             visual = {"visual_key": visual_key} if visual_key and "visual_key" not in st else {}
@@ -484,7 +495,17 @@ async def _put_in_scene(
             "qty": qty,
             "display_name": display_name,
             **({"visual_key": visual_key} if visual_key is not None else {}),
-            **({"world_object": _world_item_state()} if unique else {}),
+            **(
+                {
+                    "world_object": {
+                        **_world_item_state(unique=unique),
+                        "container_id": container_id,
+                        **({"origin": "generated", "generation_ref": generation_ref} if generation_ref else {}),
+                    }
+                }
+                if unique or container_id is not None or generation_ref
+                else {}
+            ),
         },
         location_id=place,
         zone=zone,
@@ -691,6 +712,22 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
 # --- persistent containers and nested world objects ---
 
 
+def _container_state(*, status: str = "ready", profile: str | None = None) -> dict:
+    """Один формат состояния для ручных и сгенерированных контейнеров."""
+    return {
+        "schema_version": 1,
+        "role": "container",
+        "unique": True,
+        "container_id": None,
+        "capabilities": ["inspect", "open", "close", "put", "take"],
+        "access": {"open": False, "locked": False},
+        "contents": {"status": status},
+        "physical": "intact",
+        "revision": 0,
+        **({"generation_profile": profile, "origin": "generated"} if profile else {}),
+    }
+
+
 class CreateContainerArgs(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str = Field("", max_length=500)
@@ -717,17 +754,7 @@ async def create_container(ctx: ToolContext, a: CreateContainerArgs) -> dict:
         zone=a.zone,
         state={
             "visual_key": a.visual_key,
-            "world_object": {
-                "schema_version": 1,
-                "role": "container",
-                "unique": True,
-                "container_id": None,
-                "capabilities": ["inspect", "open", "close", "put", "take"],
-                "access": {"open": False, "locked": False},
-                "contents": {"status": "ready"},
-                "physical": "intact",
-                "revision": 0,
-            },
+            "world_object": _container_state(),
         },
     )
     ctx.session.add(en)
