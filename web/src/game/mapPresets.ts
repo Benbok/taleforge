@@ -4,4 +4,6 @@ export const MAP_PRESETS = {
   npc: { icon: "●", color: "#5f9e8f" },
   item: { icon: "◆", color: "#b07a4a" },
   landmark: { icon: "◈", color: "#a8a296" },
+  location: { icon: "⌖", color: "#5f9e8f" },
+  lore: { icon: "◇", color: "#a8a296" },
 } as const;
