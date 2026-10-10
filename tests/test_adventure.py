@@ -3,13 +3,16 @@
 
 from pathlib import Path
 
+import pytest
+
 from app.agents import prelude
 from app.agents.master import decision_tools
 from app.core import adventure, modules
-from app.db.models import AdventureModule, Campaign, CampaignSecret
+from app.db.models import AdventureModule, Campaign, CampaignSecret, Entity
 from tests.game import import_base, ok, party, run
 from tests.module_sample import sample
 from tests.test_map import _map, _ok, _play
+from tests.test_ws import connect, next_of
 
 ROOT = Path(__file__).resolve().parents[1] / "content"
 
@@ -135,6 +138,63 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     assert names[r2["room_id"]] == "Восточная крипта" and names[room["room_id"]] == "Зал Мёртвых"
     statuses = [(r["number"], r["status"]) for r in m["book"]["rooms"]]
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
+
+
+
+@pytest.mark.parametrize(
+    "scenery",
+    ["Два больших гроба встроены в северную и южную стены.", None],
+)
+def test_book_room_public_description_excludes_scripted_encounter(
+    client, admin, settings, monkeypatch, scenery
+):
+    """В «Вокруг» и карточку не просачивается read_aloud, даже из старого Entity.description."""
+    draft = sample()
+    r2 = draft["locations"][0]["rooms"][1]
+    scripted = "Два больших гроба стоят у стен. Скелет 1 и Скелет 2 бродят по комнате."
+    r2["read_aloud"] = scripted
+    if scenery is not None:
+        r2["scenery"] = scenery
+    monkeypatch.setattr("tests.test_adventure.sample", lambda: draft)
+
+    import_base(settings)
+    mid = publish_sample(settings)
+    c, (p1,), _ = party(client, admin, module_id=mid, module_hook="board")
+    cid = c["id"]
+    client.portal.call(client.app.state.master.wait_idle, None)
+
+    async def enter(ctx):
+        return await _ok(ctx, "enter_room", {"room": "2"})
+
+    entered = _play(settings, cid, enter)
+    rid = entered["room_id"]
+    assert scripted in entered["book"]  # для мастера подлинный текст книги сохранён
+    assert "2 × Скелет" in entered["book"]  # запланированная встреча никуда не исчезла
+
+    async def description(s):
+        e = await s.get(Entity, rid)
+        return e.description
+
+    assert run(settings, description) == (scenery or "")
+
+    # Симулируем уже существующую кампанию, где текст книги был скопирован в Entity.description.
+    async def old_save(s):
+        e = await s.get(Entity, rid)
+        e.description = scripted
+        await s.commit()
+
+    run(settings, old_save)
+    assert run(settings, description) == scripted  # старые данные остаются в БД, миграции не нужны
+    m = _map(client, p1, cid)
+    assert m["here"]["description"] == scenery
+    assert m["around"] == []  # сценарные скелеты сами собой не появляются
+
+    with connect(client, p1, cid) as (ws, _):
+        ws.send_json({"type": "entity.inspect", "payload": {"id": rid}})
+        card = next_of(ws, "entity.card")["payload"]
+    assert card["description"] == scenery
+    assert "Скелет 1" not in str(card)
+
 
 
 def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
