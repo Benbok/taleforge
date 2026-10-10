@@ -152,10 +152,10 @@ def test_markdown_calls_never_leak_into_stream():
         rnd = random.Random(seed)
         chunks: list[str] = []
 
-        async def push(chunk):
+        async def push(chunk, chunks=chunks):
             chunks.append(chunk)
 
-        async def feed():
+        async def feed(rnd=rnd):
             stream = textcalls.StreamFilter(push)
             offset = 0
             while offset < len(MARKDOWN_CALLS):
