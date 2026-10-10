@@ -3672,6 +3672,8 @@ export interface components {
             cells?: number[][];
             /** Number */
             number: string;
+            /** Passages */
+            passages?: components["schemas"]["PassageMark"][];
             /** X */
             x: number;
             /** Y */
@@ -4074,6 +4076,21 @@ export interface components {
             names: string[];
             /** Place */
             place: string | null;
+        };
+        /** PassageMark */
+        PassageMark: {
+            /** Cell */
+            cell: number[];
+            /**
+             * Kind
+             * @default passage
+             * @enum {string}
+             */
+            kind?: "passage" | "door" | "arch" | "stairs" | "hatch" | "gap" | "bars";
+            /** Side */
+            side: "n" | "e" | "s" | "w";
+            /** To */
+            to: string;
         };
         /** PasswordIn */
         PasswordIn: {
