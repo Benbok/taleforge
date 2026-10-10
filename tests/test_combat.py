@@ -357,3 +357,106 @@ def test_compound_attack_refusal_keeps_remaining_turn(game):
 
     notes = play(settings, cid, [10, 10], fn)
     assert "атака не выполнена" in " ".join(notes)
+
+
+def test_shove_prone_is_contested_and_consumes_single_attack(game):
+    """One attack is spent; a winning Athletics contest imposes prone."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        result = await call(ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "prone"})
+        assert result["ok"], result
+        assert result["result"]["success"]
+        assert len([e for e in ctx.events if e.tool == "resolve_shove"]) == 1
+        assert any(rec.id == "condition.prone" for _, rec in ctx.world.actor(goblin).effects)
+        again = await call(ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "prone"})
+        assert not again["ok"] and "действие" in again["error"]
+        return result["result"]
+
+    outcome = play(settings, cid, [10, 10, 18, 1], fn)
+    assert outcome["attacker_total"] > outcome["defender_total"]
+
+
+def test_shove_push_moves_target_one_cell_without_damage(game):
+    """A push uses actual grid coordinates and cannot conjure bonus damage."""
+    from app.core.positions import pos_of
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        source = pos_of(ctx.world, hero).cell
+        before = pos_of(ctx.world, goblin).cell
+        assert source is not None and before is not None
+        result = await call(ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "push"})
+        assert result["ok"], result
+        row = result["result"]
+        assert row["success"] and "damage" not in row
+        after = pos_of(ctx.world, goblin).cell
+        dx = (before[0] > source[0]) - (before[0] < source[0])
+        dy = (before[1] > source[1]) - (before[1] < source[1])
+        assert after == (before[0] + dx, before[1] + dy)
+        assert list(after) == row["cell"]
+
+    play(settings, cid, [10, 10, 18, 1], fn)
+
+
+def test_failed_shove_and_out_of_reach_preserve_rules(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        failed = await call(ctx, "resolve_shove", {"attacker_id": hero, "target_id": goblin, "technique": "prone"})
+        assert failed["ok"] and not failed["result"]["success"]
+        assert not any(rec.id == "condition.prone" for _, rec in ctx.world.actor(goblin).effects)
+        return failed["result"]
+
+    row = play(settings, cid, [10, 10, 1, 20], fn)
+    assert row["attacker_total"] <= row["defender_total"]
+
+
+def test_feature_flags_refuse_unsupported_class_without_burning_attack(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        club = next(at for at in ctx.world.actor(hero).attacks if at["kind"] == "melee")
+        args = {"attacker_id": hero, "target_id": goblin, "attack": club.get("inventory_id") or club["key"]}
+        denied = await call(ctx, "resolve_attack", {**args, "reckless": True})
+        assert not denied["ok"] and "умение варвара" in denied["error"]
+        denied_stun = await call(ctx, "resolve_attack", {**args, "stunning_strike": True})
+        assert not denied_stun["ok"] and "умение монаха" in denied_stun["error"]
+        legitimate = await call(ctx, "resolve_attack", args)
+        assert legitimate["ok"]
+        return legitimate
+
+    assert play(settings, cid, [10, 10, 12, 3], fn)["ok"]
+
+
+def test_reckless_attack_uses_real_advantage_for_barbarian(game):
+    """A declared class feature is executable when the sheet really grants it."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        ch = ctx.world.characters[hero]
+        ch.sheet = {**ch.sheet, "class_id": "class.barbarian", "level": 2}
+        ctx.world.invalidate(hero)
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        actor = ctx.world.actor(hero)
+        assert "reckless_attack" in actor.features
+        weapon = next(x for x in actor.attacks if x["kind"] == "melee" and x["ability"] == "str")
+        args = {
+            "attacker_id": hero,
+            "target_id": goblin,
+            "attack": weapon.get("inventory_id") or weapon["key"],
+            "reckless": True,
+        }
+        result = await call(ctx, "resolve_attack", args)
+        assert result["ok"], result
+        assert result["result"]["natural"] == 18
+        assert result["result"]["hit"]
+        assert any(rec.id == "effect.feature_reckless" for _, rec in ctx.world.actor(hero).effects)
+        return result["result"]
+
+    assert play(settings, cid, [10, 10, 18, 3, 1], fn)["hit"]

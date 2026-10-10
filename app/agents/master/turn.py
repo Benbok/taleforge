@@ -40,6 +40,7 @@ from app.tools.action_plan import (
     execute_action_plan,
     hostile_cast_plan,
     hostile_target,
+    shove_plan,
 )
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import ToolContext, execute, tool_specs
@@ -307,7 +308,7 @@ class TurnMixin:
             for m in new:
                 if m.kind != "action":
                     continue
-                plan = approach_attack(m.intent) or approach_cast(ctx, m.intent)
+                plan = approach_attack(m.intent) or approach_cast(ctx, m.intent) or shove_plan(m.intent)
                 if plan is None:
                     continue
                 spell_plan = plan.get("kind") == "cast"
@@ -326,9 +327,9 @@ class TurnMixin:
                     combat.queue_opening_plan(ctx, plan)
                     opening_actors.add(actor)
                     ctx.closed.add(actor)
+                    description = "Толчок" if plan.get("kind") == "shove" else "Движение и последующее действие"
                     routed.append(
-                        f"{actor}: движение и последующее действие сохранены до хода по инициативе; "
-                        "не исполняй их повторно"
+                        f"{actor}: {description} сохранён до законного хода по инициативе; не исполняй повторно"
                     )
                     await self._status(cid, "rolling")
                     opening_notes += await combat.run_until_hero(ctx, f"{turn_id}:plan", self._ask_reaction)
@@ -479,7 +480,7 @@ class TurnMixin:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
-            if name == "resolve_attack":
+            if name in ("resolve_attack", "resolve_shove"):
                 attacker = (args or {}).get("attacker_id")
                 target = ctx.world.entities.get((args or {}).get("target_id"))
                 if attacker in ctx.world.characters and combat.in_combat(ctx):
@@ -492,7 +493,10 @@ class TurnMixin:
                         # been initialized. Do not spend an untracked free attack.
                         if attacker in opening_actors:
                             return {"ok": False, "error": "начальная атака уже заявлена"}
-                        combat.queue_opening_attack(ctx, args)
+                        if name == "resolve_shove":
+                            combat.queue_opening_plan(ctx, {"kind": "shove", **args})
+                        else:
+                            combat.queue_opening_attack(ctx, args)
                         opening_actors.add(attacker)
                         ctx.closed.add(attacker)
                         done_calls += 1
@@ -512,7 +516,10 @@ class TurnMixin:
                     trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
                     if not opened.get("ok"):
                         return opened
-                    combat.queue_opening_attack(ctx, args)
+                    if name == "resolve_shove":
+                        combat.queue_opening_plan(ctx, {"kind": "shove", **args})
+                    else:
+                        combat.queue_opening_attack(ctx, args)
                     opening_actors.add(attacker)
                     ctx.closed.add(attacker)
                     await self._status(cid, "rolling")

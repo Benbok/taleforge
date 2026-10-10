@@ -440,12 +440,121 @@ def uncanny_dodge(ctx: ToolContext, tgt: Actor) -> str | None:
     return f"{tgt.name} реакцией уходит от удара: урон вдвое меньше"
 
 
+class ShoveArgs(BaseModel):
+    attacker_id: str = Field(description="герой, который толкает цель вместо одной оружейной атаки")
+    target_id: str = Field(description="существо, которое герой пытается опрокинуть или оттолкнуть")
+    technique: Literal["prone", "push"] = Field(description="prone — сбить с ног; push — оттолкнуть от себя на 5 футов")
+
+
+SIZE_ORDER = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "gargantuan": 5}
+
+
+def _creature_size(ctx: ToolContext, actor: Actor) -> int:
+    if actor.kind == "character":
+        sheet = actor.obj.sheet or {}
+        rec = ctx.world.catalog.find(sheet.get("origin_id") or "", "origin")
+        size = (rec.data.get("size") if rec else None) or "medium"
+    else:
+        rec = ctx.world.catalog.find(actor.obj.template_id or "", "creature_template")
+        size = rec.data.get("size", "medium") if rec else "medium"
+    return SIZE_ORDER.get(str(size).lower(), 2)
+
+
+@tool(
+    "resolve_shove",
+    "Толчок вместо одного удара: противоборство Атлетики героя и лучшей Атлетики/Акробатики цели. "
+    "При успехе либо состояние «Сбит с ног», либо реальный сдвиг по сетке на 5 футов. "
+    "Не добавляет урон, преимущество и оглушение по описанию игрока.",
+    ShoveArgs,
+    ids={"attacker_id": "characters", "target_id": "combatants"},
+)
+async def resolve_shove(ctx: ToolContext, a: ShoveArgs) -> dict:
+    w = ctx.world
+    attacker, target = w.actor(a.attacker_id), w.actor(a.target_id)
+    if attacker.id == target.id:
+        raise ToolError("себя толкнуть нельзя")
+    _alive(attacker, "Толкающий")
+    _alive(target, "Цель")
+    if not attacker.conscious or mod.can_act(attacker.modifiers):
+        raise ToolError(f"{attacker.name}: сейчас не может совершить толчок")
+    if not economy.active(w, attacker.id):
+        raise ToolError(f"{attacker.name}: толчок возможен только в свой ход боя")
+    if w.actor_place(attacker.id) != w.actor_place(target.id) or w.distance_ft(attacker, target) > 5:
+        raise ToolError(f"{target.name} слишком далеко: для толчка нужно находиться в пределах 5 футов")
+    if grid.wall_between(w, attacker.id, target.id):
+        raise ToolError("между существами стена: толкнуть через неё нельзя")
+    if _creature_size(ctx, target) > _creature_size(ctx, attacker) + 1:
+        raise ToolError(f"{target.name} слишком велик для толчка")
+
+    destination = None
+    if a.technique == "push":
+        start, other = grid.pos_of(w, attacker.id).cell, grid.pos_of(w, target.id).cell
+        if start is None or other is None or start == other:
+            raise ToolError("для отталкивания нужна определённая позиция обоих существ на сетке")
+        dx = (other[0] > start[0]) - (other[0] < start[0])
+        dy = (other[1] > start[1]) - (other[1] < start[1])
+        destination = (other[0] + dx, other[1] + dy)
+        problem = grid.cell_problem(w, w.actor_place(target.id), destination, target.id)
+        if problem:
+            raise ToolError(f"оттолкнуть некуда: {problem}")
+
+    inv = economy.charge_attack(ctx, attacker.id)
+    atk_bonus, _ = attacker.ability_check_bonus("athletics")
+    def_skill = max(("athletics", "acrobatics"), key=lambda skill: target.ability_check_bonus(skill)[0])
+    def_bonus, def_ability = target.ability_check_bonus(def_skill)
+    amode, _ = mod.roll_mode(attacker.modifiers, "check", "str", "athletics")
+    dmode, _ = mod.roll_mode(target.modifiers, "check", def_ability, def_skill)
+    aroll = engine.roll_d20(ctx.dice, atk_bonus, amode)
+    droll = engine.roll_d20(ctx.dice, def_bonus, dmode)
+    success = aroll.total > droll.total  # равенство в противоборстве оставляет положение прежним
+    result = {
+        "attacker": attacker.name,
+        "target": target.name,
+        "technique": a.technique,
+        "attacker_total": aroll.total,
+        "defender_total": droll.total,
+        "defender_skill": def_skill,
+        "success": success,
+    }
+    if success and a.technique == "prone":
+        record = w.catalog.condition("prone")
+        existing = next((e for e, r in target.effects if r.id == record.id), None)
+        effect, note = await fx.add_effect(ctx, target, record, None)
+        if effect is not None and existing is None:
+            inv.append({"table": "active_effects", "op": "delete", "id": effect.id})
+        result["effect"] = note
+    elif success and destination is not None:
+        if target.id in w.characters:
+            inv.append(
+                {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}
+            )
+        else:
+            inv.extend(
+                [
+                    {"table": "entities", "id": target.id, "field": "state", "before": copy.deepcopy(target.obj.state)},
+                    {"table": "entities", "id": target.id, "field": "zone", "before": target.obj.zone},
+                ]
+            )
+        grid.set_cell(w, target.id, destination)
+        result["cell"] = list(destination)
+    result["left"] = economy.line(w, attacker.id)
+    await ctx.record(
+        "resolve_shove",
+        actor_id=attacker.id,
+        target_id=target.id,
+        payload=result,
+        dice=[dice_json(aroll), dice_json(droll)],
+        inverse=inv,
+    )
+    return result
+
+
 class TakeActionArgs(BaseModel):
     character_id: str
-    action: Literal["dash", "disengage", "dodge", "help", "hide", "ready", "search", "grapple", "other"] = Field(
+    action: Literal["dash", "disengage", "dodge", "help", "hide", "ready", "search", "other"] = Field(
         description="dash — рывок (ещё скорость шагов), disengage — отход (без атак по возможности до конца хода), "
         "dodge — уклонение, help — помощь, hide — спрятаться, ready — подготовить действие, search — поиск, "
-        "grapple — захват или толчок (вместо одного удара атаки), other — другое действие хода"
+        "other — другое действие хода; толчок выполняется через resolve_shove"
     )
     bonus: bool = Field(
         False,
@@ -458,7 +567,7 @@ class TakeActionArgs(BaseModel):
 @tool(
     "take_action",
     "Герой в свой ход в бою тратит действие (или бонусное действие) на рывок, отход, уклонение, помощь, засаду, "
-    "подготовку, поиск, захват. Атака, заклинание и предмет тратят действие сами — для них этот вызов не нужен. "
+    "подготовку и поиск. Атака, толчок, заклинание и предмет тратят действие сами — отдельный вызов не нужен. "
     "Сервер откажет, если действие этого хода уже потрачено.",
     TakeActionArgs,
     ids={"character_id": "characters"},
@@ -471,10 +580,7 @@ async def take_action(ctx: ToolContext, a: TakeActionArgs) -> dict:
     ki = _bonus_source(ctx, ch, a.action) if a.bonus else None
     ki_spent = _ki_after(ctx, ch, ki) if ki else None  # сначала проверить запас, потом тратить действие
     before = snapshot(ctx.world.actor(ch.id))
-    if a.action == "grapple":
-        inverse = economy.charge_attack(ctx, ch.id, a.bonus)
-    else:
-        inverse = economy.charge(ctx, ch.id, a.action, a.bonus)
+    inverse = economy.charge(ctx, ch.id, a.action, a.bonus)
     out = {"character": ch.name, "action": economy.ACTIONS_RU.get(a.action, a.action), "bonus": a.bonus}
     if ki and ki_spent:
         inverse.append(before)
