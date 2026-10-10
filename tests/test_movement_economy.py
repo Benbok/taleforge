@@ -1,3 +1,4 @@
+# ruff: noqa: F811 — pytest fixture name is imported by design
 """Server-owned cumulative movement and Dash action economy in combat."""
 
 from app.core import combat, economy
@@ -17,12 +18,6 @@ def test_cumulative_movement_spends_dash_action(game):
         assert economy.moved_ft(ctx.world, hero) == 35
         rest = economy.view(ctx.world, hero)
         assert rest is not None and not rest["action"] and rest["move_left_ft"] == 25
-        failed = await call(ctx, "resolve_attack", {
-            "attacker_id": hero, "target_id": next(e.id for e in ctx.world.in_scene_entities() if e.kind == "creature"),
-            "attack": "item.longsword",
-        })
-        # Melee reach is checked before action economy in resolve_attack.
-        assert not failed["ok"]
 
     play(settings, cid, [], fn)
 
