@@ -358,7 +358,7 @@ function CompassRose({ x, y }: { x: number; y: number }) {
 /** Переходы без клетки проёма показываем отдельно от стен — как интерактивные
  * маркеры карты, но не как выдуманные физические двери на конкретной стороне.
  */
-function UnlocatedExitStrip({ m }: { m: MapState }) {
+export function UnlocatedExitStrip({ m }: { m: MapState }) {
   const exits = unlocatedBookExits(m);
   const open = useOpen();
   const insert = useDraft((s) => s.insert);
