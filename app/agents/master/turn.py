@@ -34,7 +34,13 @@ from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
 from app.tools import progress as progress_tools
 from app.tools import standing as standing_tools
-from app.tools.action_plan import approach_attack, execute_approach_attack, hostile_target
+from app.tools.action_plan import (
+    approach_attack,
+    approach_cast,
+    execute_action_plan,
+    hostile_cast_plan,
+    hostile_target,
+)
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.registry import ToolContext, execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -290,39 +296,44 @@ class TurnMixin:
         }
         # A declared hostile weapon strike or offensive spell begins initiative
         # before damage, saving the original action for its caster's legal turn.
-        # Compound actions remain with the master until the Action Plan phase.
+        # Ordered, unequivocal move+attack and move+cast actions use Action Plans.
         trace_calls: list[dict] = []
         routed: list[str] = []
         opening_actors: set[str] = set()
         opening_notes: list[str] = []
         blocked_actors: set[str] = set()
         if not combat.in_combat(ctx):
-            # Compound 'approach, then attack' is one ordered declaration:
-            # initiate combat now, execute both parts on the legal turn.
+            # Start initiative before either the movement or hostile action.
             for m in new:
-                plan = approach_attack(m.intent) if m.kind == "action" else None
+                if m.kind != "action":
+                    continue
+                plan = approach_attack(m.intent) or approach_cast(ctx, m.intent)
+                if plan is None:
+                    continue
+                spell_plan = plan.get("kind") == "cast"
+                actor = plan["caster_id"] if spell_plan else plan["attacker_id"]
+                hostile = hostile_cast_plan(ctx, plan) if spell_plan else hostile_target(ctx, plan)
                 if (
-                    not plan
-                    or not hostile_target(ctx, plan)
-                    or plan["attacker_id"] not in required
+                    not hostile
+                    or actor not in required
                     or m.seat_id not in char_by_seat
-                    or char_by_seat[m.seat_id].id != plan["attacker_id"]
+                    or char_by_seat[m.seat_id].id != actor
                 ):
                     continue
                 opened = await execute(ctx, "set_scene_mode", {"mode": "combat"}, key=f"{turn_id}:plan:initiative")
                 trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True, "routed": True})
                 if opened.get("ok"):
                     combat.queue_opening_plan(ctx, plan)
-                    opening_actors.add(plan["attacker_id"])
-                    ctx.closed.add(plan["attacker_id"])
+                    opening_actors.add(actor)
+                    ctx.closed.add(actor)
                     routed.append(
-                        f"{plan['attacker_id']}: движение и последующая атака поставлены в очередь "
-                        "инициативы; не вызывай их повторно"
+                        f"{actor}: движение и последующее действие сохранены до хода по инициативе; "
+                        "не исполняй их повторно"
                     )
                     await self._status(cid, "rolling")
                     opening_notes += await combat.run_until_hero(ctx, f"{turn_id}:plan", self._ask_reaction)
                 else:
-                    routed.append(f"{plan['attacker_id']}: начало боя отклонено: {opened.get('error')}")
+                    routed.append(f"{actor}: начало боя отклонено: {opened.get('error')}")
                 break
         if not combat.in_combat(ctx):
             for m in new:
@@ -381,12 +392,13 @@ class TurnMixin:
         for m in new:
             if m.seat_id in char_by_seat and char_by_seat[m.seat_id].id in opening_actors:
                 continue
-            plan = approach_attack(m.intent) if m.kind == "action" else None
-            if plan is not None and hostile_target(ctx, plan) and plan["attacker_id"] in required:
-                actor = plan["attacker_id"]
+            plan = (approach_attack(m.intent) or approach_cast(ctx, m.intent)) if m.kind == "action" else None
+            actor = (plan.get("caster_id") or plan.get("attacker_id")) if plan is not None else None
+            valid = plan is not None and (plan.get("kind") == "cast" or hostile_target(ctx, plan))
+            if valid and actor in required:
                 if combat.in_combat(ctx) and hero_turn is not None and hero_turn.id == actor:
                     await self._status(cid, "rolling")
-                    result = await execute_approach_attack(ctx, plan, f"{turn_id}:plan:{m.id}")
+                    result = await execute_action_plan(ctx, plan, f"{turn_id}:plan:{m.id}")
                     trace_calls.append({"tool": "action_plan", "args": plan, "result": result, "routed": True})
                     routed.append(
                         f"{actor}: составная заявка проверена сервером: {'; '.join(result['notes'])}. "
@@ -404,6 +416,9 @@ class TurnMixin:
                 args = None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
+                if args and any(a.get("verb") in intents.MOVE_VERBS for a in (m.intent or {}).get("actions") or []):
+                    # Never cast first and narrate an imaginary approach afterwards.
+                    args = None
             if args is None and m.kind == "action":
                 routed_call = intents.routable_tool_call(m.intent)
                 if routed_call:
