@@ -17,9 +17,7 @@ ELIGIBLE = frozenset({"item.club", "item.quarterstaff"})
 _DAMAGE = re.compile(r"^(\d+d\d+)([+-]\d+)?(.*)$")
 
 
-def active_shillelagh(
-    ch: Character, inventory: list[InventoryItem], game_time: int
-) -> dict[str, Any] | None:
+def active_shillelagh(ch: Character, inventory: list[InventoryItem], game_time: int) -> dict[str, Any] | None:
     state = (ch.resources or {}).get(SHILLELAGH)
     if not isinstance(state, dict) or int(state.get("expires_at") or 0) <= game_time:
         return None
