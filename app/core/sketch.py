@@ -123,7 +123,7 @@ def describe(sk: dict) -> str:
 
 def for_viewer(sk: dict, master: bool, visible_places: set[str]) -> dict:
     """Эскиз для карты: игрок не видит тайных выходов и предметов, а ссылку выхода — только на известное место."""
-    out = {k: sk[k] for k in ("shape", "cols", "rows", "party", "walls") if k in sk}
+    out = {k: sk[k] for k in ("shape", "cols", "rows", "party", "walls", "book") if k in sk}
     out["exits"] = [
         {**x, "to": x.get("to") if master or x.get("to") in visible_places else None}
         for x in sk.get("exits") or []
