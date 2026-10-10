@@ -3,6 +3,7 @@
 kind: item_template
 items:
   - id: item.club
+    visual_key: item:weapon
     name: Дубинка
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -15,6 +16,7 @@ items:
     weight: 2
     properties: [light]
   - id: item.dagger
+    visual_key: item:weapon
     name: Кинжал
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -28,6 +30,7 @@ items:
     properties: [finesse, light, thrown]
     range: {normal: 20, long: 60}
   - id: item.greatclub
+    visual_key: item:weapon
     name: Палица
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -40,6 +43,7 @@ items:
     weight: 10
     properties: [two_handed]
   - id: item.handaxe
+    visual_key: item:weapon
     name: Ручной топор
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -53,6 +57,7 @@ items:
     properties: [light, thrown]
     range: {normal: 20, long: 60}
   - id: item.javelin
+    visual_key: item:weapon
     name: Метательное копьё
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -66,6 +71,7 @@ items:
     properties: [thrown]
     range: {normal: 30, long: 120}
   - id: item.light_hammer
+    visual_key: item:weapon
     name: Лёгкий молот
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -79,6 +85,7 @@ items:
     properties: [light, thrown]
     range: {normal: 20, long: 60}
   - id: item.mace
+    visual_key: item:weapon
     name: Булава
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -91,6 +98,7 @@ items:
     weight: 4
     properties: []
   - id: item.quarterstaff
+    visual_key: item:weapon
     name: Боевой посох
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -104,6 +112,7 @@ items:
     properties: [versatile]
     versatile_damage: "1d8"
   - id: item.sickle
+    visual_key: item:weapon
     name: Серп
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -116,6 +125,7 @@ items:
     weight: 2
     properties: [light]
   - id: item.spear
+    visual_key: item:weapon
     name: Копьё
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -130,6 +140,7 @@ items:
     range: {normal: 20, long: 60}
     versatile_damage: "1d8"
   - id: item.light_crossbow
+    visual_key: item:weapon
     name: Лёгкий арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -143,6 +154,7 @@ items:
     properties: [ammunition, loading, two_handed]
     range: {normal: 80, long: 320}
   - id: item.dart
+    visual_key: item:weapon
     name: Дротик
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -156,6 +168,7 @@ items:
     properties: [finesse, thrown]
     range: {normal: 20, long: 60}
   - id: item.shortbow
+    visual_key: item:weapon
     name: Короткий лук
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -169,6 +182,7 @@ items:
     properties: [ammunition, two_handed]
     range: {normal: 80, long: 320}
   - id: item.sling
+    visual_key: item:weapon
     name: Праща
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -182,6 +196,7 @@ items:
     properties: [ammunition]
     range: {normal: 30, long: 120}
   - id: item.battleaxe
+    visual_key: item:weapon
     name: Боевой топор
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -195,6 +210,7 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.flail
+    visual_key: item:weapon
     name: Цеп
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -207,6 +223,7 @@ items:
     weight: 2
     properties: []
   - id: item.glaive
+    visual_key: item:weapon
     name: Глефа
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -219,6 +236,7 @@ items:
     weight: 6
     properties: [heavy, reach, two_handed]
   - id: item.greataxe
+    visual_key: item:weapon
     name: Секира
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -231,6 +249,7 @@ items:
     weight: 7
     properties: [heavy, two_handed]
   - id: item.greatsword
+    visual_key: item:weapon
     name: Двуручный меч
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -243,6 +262,7 @@ items:
     weight: 6
     properties: [heavy, two_handed]
   - id: item.halberd
+    visual_key: item:weapon
     name: Алебарда
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -255,6 +275,7 @@ items:
     weight: 6
     properties: [heavy, reach, two_handed]
   - id: item.lance
+    visual_key: item:weapon
     name: Длинное копьё
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -268,6 +289,7 @@ items:
     properties: [reach, special]
     description: Помеха при атаке цели в 5 футах. Без скакуна нужны две руки.
   - id: item.longsword
+    visual_key: item:weapon
     name: Длинный меч
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -281,6 +303,7 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.maul
+    visual_key: item:weapon
     name: Молот
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -293,6 +316,7 @@ items:
     weight: 10
     properties: [heavy, two_handed]
   - id: item.morningstar
+    visual_key: item:weapon
     name: Моргенштерн
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -305,6 +329,7 @@ items:
     weight: 4
     properties: []
   - id: item.pike
+    visual_key: item:weapon
     name: Пика
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -317,6 +342,7 @@ items:
     weight: 18
     properties: [heavy, reach, two_handed]
   - id: item.rapier
+    visual_key: item:weapon
     name: Рапира
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -329,6 +355,7 @@ items:
     weight: 2
     properties: [finesse]
   - id: item.scimitar
+    visual_key: item:weapon
     name: Скимитар
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -341,6 +368,7 @@ items:
     weight: 3
     properties: [finesse, light]
   - id: item.shortsword
+    visual_key: item:weapon
     name: Короткий меч
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -353,6 +381,7 @@ items:
     weight: 2
     properties: [finesse, light]
   - id: item.trident
+    visual_key: item:weapon
     name: Трезубец
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -367,6 +396,7 @@ items:
     range: {normal: 20, long: 60}
     versatile_damage: "1d8"
   - id: item.war_pick
+    visual_key: item:weapon
     name: Боевая кирка
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -379,6 +409,7 @@ items:
     weight: 2
     properties: []
   - id: item.warhammer
+    visual_key: item:weapon
     name: Боевой молот
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -392,6 +423,7 @@ items:
     properties: [versatile]
     versatile_damage: "1d10"
   - id: item.whip
+    visual_key: item:weapon
     name: Кнут
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -404,6 +436,7 @@ items:
     weight: 3
     properties: [finesse, reach]
   - id: item.blowgun
+    visual_key: item:weapon
     name: Духовая трубка
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -417,6 +450,7 @@ items:
     properties: [ammunition, loading]
     range: {normal: 25, long: 100}
   - id: item.hand_crossbow
+    visual_key: item:weapon
     name: Ручной арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -430,6 +464,7 @@ items:
     properties: [ammunition, light, loading]
     range: {normal: 30, long: 120}
   - id: item.heavy_crossbow
+    visual_key: item:weapon
     name: Тяжёлый арбалет
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -443,6 +478,7 @@ items:
     properties: [ammunition, heavy, loading, two_handed]
     range: {normal: 100, long: 400}
   - id: item.longbow
+    visual_key: item:weapon
     name: Длинный лук
     status: canon
     doc: "SRD 5.1: Weapons"
@@ -456,6 +492,7 @@ items:
     properties: [ammunition, heavy, two_handed]
     range: {normal: 150, long: 600}
   - id: item.net
+    visual_key: item:weapon
     name: Сеть
     status: canon
     doc: "SRD 5.1: Weapons"

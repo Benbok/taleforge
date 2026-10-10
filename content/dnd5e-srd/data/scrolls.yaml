@@ -5,6 +5,7 @@
 kind: item_template
 items:
 - id: item.scroll_magic_missile
+  visual_key: item:scroll
   name: 'Свиток: Волшебная стрела'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -23,6 +24,7 @@ items:
     spell_ref: spell.magic_missile
     slot_level: 1
 - id: item.scroll_cure_wounds
+  visual_key: item:scroll
   name: 'Свиток: Лечение ран'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -41,6 +43,7 @@ items:
     spell_ref: spell.cure_wounds
     slot_level: 1
 - id: item.scroll_shield
+  visual_key: item:scroll
   name: 'Свиток: Щит'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -59,6 +62,7 @@ items:
     spell_ref: spell.shield
     slot_level: 1
 - id: item.scroll_misty_step
+  visual_key: item:scroll
   name: 'Свиток: Туманный шаг'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -77,6 +81,7 @@ items:
     spell_ref: spell.misty_step
     slot_level: 2
 - id: item.scroll_lesser_restoration
+  visual_key: item:scroll
   name: 'Свиток: Малое восстановление'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -95,6 +100,7 @@ items:
     spell_ref: spell.lesser_restoration
     slot_level: 2
 - id: item.scroll_fireball
+  visual_key: item:scroll
   name: 'Свиток: Огненный шар'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -113,6 +119,7 @@ items:
     spell_ref: spell.fireball
     slot_level: 3
 - id: item.scroll_revivify
+  visual_key: item:scroll
   name: 'Свиток: Возрождение'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'
@@ -131,6 +138,7 @@ items:
     spell_ref: spell.revivify
     slot_level: 3
 - id: item.scroll_dispel_magic
+  visual_key: item:scroll
   name: 'Свиток: Рассеивание магии'
   status: canon
   doc: 'SRD 5.1: Magic Items (Spell Scroll)'

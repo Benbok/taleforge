@@ -3,16 +3,16 @@
 # им пользуются через проверки. Импровизированное оружие — для декораций, которые герой берёт в руки (ТЗ, раздел 8.1).
 kind: item_template
 items:
-  - {id: item.potion_of_healing, name: Зелье лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
+  - {id: item.potion_of_healing, visual_key: "item:potion", name: Зелье лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
      srd_ref: {type: item, name: Potion of Healing}, category: consumable, rarity: common, price: {gp: 50}, weight: 0.5,
      description: "Восстанавливает 2к4 + 2 хитов.", modifiers: [{op: resource, stat: hp, delta: "2d4+2"}]}
-  - {id: item.potion_of_greater_healing, name: Зелье большого лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
+  - {id: item.potion_of_greater_healing, visual_key: "item:potion", name: Зелье большого лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
      srd_ref: {type: item, name: Potion of Greater Healing}, category: consumable, rarity: uncommon, price: {gp: 150}, weight: 0.5,
      description: "Восстанавливает 4к4 + 4 хитов.", modifiers: [{op: resource, stat: hp, delta: "4d4+4"}]}
-  - {id: item.potion_of_superior_healing, name: Зелье превосходного лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
+  - {id: item.potion_of_superior_healing, visual_key: "item:potion", name: Зелье превосходного лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
      srd_ref: {type: item, name: Potion of Superior Healing}, category: consumable, rarity: rare, price: {gp: 450}, weight: 0.5,
      description: "Восстанавливает 8к4 + 8 хитов.", modifiers: [{op: resource, stat: hp, delta: "8d4+8"}]}
-  - {id: item.potion_of_supreme_healing, name: Зелье высшего лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
+  - {id: item.potion_of_supreme_healing, visual_key: "item:potion", name: Зелье высшего лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
      srd_ref: {type: item, name: Potion of Supreme Healing}, category: consumable, rarity: very_rare, price: {gp: 1350}, weight: 0.5,
      description: "Восстанавливает 10к4 + 20 хитов.", modifiers: [{op: resource, stat: hp, delta: "10d4+20"}]}
   - {id: item.improvised_weapon, name: Импровизированное оружие, status: canon, doc: "SRD 5.1: Improvised Weapons", tags: [weapon, improvised, srd],
