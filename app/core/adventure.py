@@ -179,7 +179,8 @@ def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogVie
 
     refs = (
         [x.room_ref for x in location_exits(entity, catalog, entities) if x.room_ref]
-        if entity is not None else room.get("exits") or []
+        if entity is not None
+        else room.get("exits") or []
     )
     for rid in refs:
         other = find_room(rec, rid)
