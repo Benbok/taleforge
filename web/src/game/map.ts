@@ -100,7 +100,7 @@ export interface MapBook {
   grid: { cols: number; rows: number; left: number; top: number; right: number; bottom: number } | null;
   here: string | null;
   rooms: { number: string; x: number; y: number; status: "here" | "visited" | "known"; name: string | null; cells?: number[][] }[];
-  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean }[];
+  tokens: { id: string; name: string; mine: boolean; room: string; x: number; y: number; down: boolean; type?: SceneTokenType }[];
 }
 
 /** Эскиз места, нарисованный мастером (app/core/sketch.py): клетки по 5 футов, (0, 0) — северо-западный угол. */
@@ -133,7 +133,21 @@ export interface Sketch {
   features: SketchFeature[];
 }
 
+export type SceneTokenType = "hero" | "creature" | "npc" | "item" | "landmark";
+
+export interface SceneTokenView {
+  id: string;
+  name: string;
+  type: SceneTokenType;
+  mine: boolean;
+  down: boolean;
+  zone: Zone | null;
+  bearing: Bearing | null;
+  cell?: [number, number] | null;
+}
+
 export interface MapState {
+  scene_view?: SceneTokenView[];
   book?: MapBook | null;
   sketch?: Sketch | null;
   here: { id: string; name: string; description: string | null } | null;
