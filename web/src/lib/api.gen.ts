@@ -4087,7 +4087,10 @@ export interface components {
              * @enum {string}
              */
             kind?: "passage" | "door" | "arch" | "stairs" | "hatch" | "gap" | "bars";
-            /** Side */
+            /**
+             * Side
+             * @enum {string}
+             */
             side: "n" | "e" | "s" | "w";
             /** To */
             to: string;
@@ -4943,6 +4946,7 @@ export type OrderEntry = components['schemas']['OrderEntry'];
 export type PackOut = components['schemas']['PackOut'];
 export type PartyMember = components['schemas']['PartyMember'];
 export type PartyPart = components['schemas']['PartyPart'];
+export type PassageMark = components['schemas']['PassageMark'];
 export type PasswordIn = components['schemas']['PasswordIn'];
 export type PendingReply = components['schemas']['PendingReply'];
 export type PersonaChoiceIn = components['schemas']['PersonaChoiceIn'];
