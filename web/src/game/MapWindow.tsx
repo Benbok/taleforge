@@ -7,7 +7,6 @@ import { TYPE_COLOR } from "./entities";
 import { useInspector } from "./inspector";
 import { fitLabel, GridLines, Token } from "./GridBoard";
 import {
-  CELL_FT,
   COVER_NAME,
   ELEVATION_NAME,
   GRID_R,
@@ -547,7 +546,7 @@ function Around({ m }: { m: MapState }) {
           </g>
         ))}
 
-        {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} visual={MAP_PRESETS.hero} label="отряд" ariaLabel="Отряд" />}
+        {layout.heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} visual={MAP_PRESETS.hero} label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row, placement }) => (
           <Token
             key={x.id ?? x.room_ref ?? x.name}
