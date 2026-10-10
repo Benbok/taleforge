@@ -136,13 +136,10 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     statuses = [(r["number"], r["status"]) for r in m["book"]["rooms"]]
     assert statuses == [("1", "visited"), ("2", "here")] and m["book"]["tokens"][0]["room"] == "2"
 
-
     # История исследования не создаёт физический выход из комнаты 2.
     # В старых сохранениях переходы движения уже могли добавить ложные state.links.
     async def explore_and_return(ctx):
-        other = await _ok(
-            ctx, "create_location", {"name": "Дальнее хранилище", "parent_id": crypt}
-        )
+        other = await _ok(ctx, "create_location", {"name": "Дальнее хранилище", "parent_id": crypt})
         await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": other["location_id"]})
         await _ok(ctx, "move", {"character_ids": [hero["id"]], "location_id": r2["room_id"]})
         return other["location_id"]
