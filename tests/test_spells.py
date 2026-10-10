@@ -337,8 +337,8 @@ def test_area_must_fit_and_lingering_zone_ticks(wizard_game):
 
 def test_hostile_spell_opener_waits_for_initiative(wizard_game):
     """A hostile spell is not cast before initiative and consumes a normal slot."""
-    from app.core import combat
     from app.agents.master.turn import _targets_hostile_with_spell
+    from app.core import combat
     from tests.test_combat import _fight
 
     settings, cid, wizard, _, _ = wizard_game
