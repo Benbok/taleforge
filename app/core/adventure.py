@@ -328,10 +328,7 @@ def book_map(
         existing = {t["id"] for t in tokens}
         extras = [t for t in scene_tokens if t["id"] not in existing]
         if extras:
-            positions = [
-                (t["id"], *Pos(t.get("zone"), t.get("bearing")).xy(None))
-                for t in extras
-            ]
+            positions = [(t["id"], *Pos(t.get("zone"), t.get("bearing")).xy(None)) for t in extras]
             spots = _token_spots(grid, mark, positions)
             for t in extras:
                 x, y = spots[t["id"]]
