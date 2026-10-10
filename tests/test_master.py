@@ -192,7 +192,11 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monke
 def test_failed_resolve_attack_cannot_be_narrated_as_hit(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
-        {"tool_calls": [("resolve_attack", {"attacker_id": hero["id"], "target_id": "en_missing", "attack": "unarmed"})]},
+        {
+            "tool_calls": [
+                ("resolve_attack", {"attacker_id": hero["id"], "target_id": "en_missing", "attack": "unarmed"})
+            ]
+        },
         DONE,
         DONE,
         {"text": "Бран попал по противнику и нанёс 20 урона."},
