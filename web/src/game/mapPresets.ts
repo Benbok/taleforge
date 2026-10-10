@@ -7,3 +7,15 @@ export const MAP_PRESETS = {
   location: { icon: "⌖", color: "#5f9e8f" },
   lore: { icon: "◇", color: "#a8a296" },
 } as const;
+
+/** Абстрактные пресеты проходов и деталей эскиза. */
+export const EXIT_PRESETS = {
+  door: "▯",
+  bars: "#",
+  window: "◫",
+  arch: "∩",
+  stairs: "≡",
+  hatch: "⊡",
+  gap: "⌇",
+  passage: "→",
+} as const;
