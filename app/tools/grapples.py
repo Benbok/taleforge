@@ -41,6 +41,7 @@ def _valid(ctx: ToolContext, row: dict) -> bool:
         and target.alive
         and w.actor_place(hid) == w.actor_place(tid)
         and w.distance_ft(holder, target) <= 5
+        and (hid not in w.characters or _equipped_hands(ctx, hid) + _held_count(ctx, hid) <= 2)
     )
 
 
@@ -113,8 +114,11 @@ async def refresh(ctx: ToolContext) -> list[str]:
     return messages
 
 
-def free_hand(ctx: ToolContext, character_id: str) -> bool:
-    """Проверка свободной руки по фактически экипированным оружию и щиту."""
+def _held_count(ctx: ToolContext, holder_id: str) -> int:
+    return sum(1 for row in links(ctx) if row["holder"] == holder_id)
+
+
+def _equipped_hands(ctx: ToolContext, character_id: str) -> int:
     hands = 0
     for it in ctx.world.inventory.get(character_id, []):
         if not it.equipped:
@@ -126,4 +130,9 @@ def free_hand(ctx: ToolContext, character_id: str) -> bool:
         elif item.get("category") == "weapon":
             props = item.get("properties") or []
             hands += 2 if "two_handed" in props or "two-handed" in props else 1
-    return hands < 2
+    return hands
+
+
+def free_hand(ctx: ToolContext, character_id: str) -> bool:
+    """На каждую удерживаемую цель нужна отдельная свободная рука."""
+    return _equipped_hands(ctx, character_id) + _held_count(ctx, character_id) < 2
