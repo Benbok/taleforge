@@ -14,13 +14,28 @@ class AdjudicationArgs(Contract):
 
 @tool(
     "adjudicate_action",
-    "Внебоевое решение: только по допуску сервера и указанной заявке; бой запрещён.",
+    "Внебоевое решение: fallback по допуску сервера, creative в проверенном свободном месте. Бой запрещён.",
     AdjudicationArgs,
     mutating=False,
     closes=False,
 )
 async def adjudicate_action(ctx: ToolContext, args: AdjudicationArgs) -> dict:
     proposal = args.proposal
+    if proposal.origin == "creative":
+        from app.tools.resolution.creative import validate_creative_proposal
+
+        admission = await validate_creative_proposal(ctx, proposal)
+        if admission.route != "ordinary":
+            raise ToolError("творческое решение недопустимо", code=admission.reason_code, category="rule_denial")
+        if max(1, len(proposal.operations)) > ctx.remaining_resolution_calls:
+            raise ToolError("недостаточно бюджета вызовов", code="resolution_budget_exceeded", category="rule_denial")
+        closed_before = set(ctx.closed)
+        result = await execute_resolution(ctx, proposal, admission)
+        if result.execution in {"applied", "repeated"}:
+            ctx.closed = closed_before
+            mark_resolved(ctx, proposal.ref)
+        await record_attempt(ctx, proposal.ref, "creative.neutral_npc", result)
+        return result.model_dump()
     grant = next(
         (
             g

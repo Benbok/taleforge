@@ -8,12 +8,23 @@ from app.tools.resolution.requests import action_key, eligible_adjudications, ma
 
 
 async def resolution_prompt(ctx: ToolContext) -> str:
+    from app.core.resolution.policy import admit
+    from app.tools.resolution.capabilities import CAPABILITIES
+    from app.tools.resolution.requests import load_action_context
+
     eligible = await eligible_adjudications(ctx)
-    if not eligible:
+    creative = []
+    for ref in ctx.required_actions:
+        context = await load_action_context(ctx, ref)
+        if admit(context, CAPABILITIES["creative.neutral_npc"], None).route == "ordinary":
+            creative.append(ref.model_dump())
+    if not eligible and not creative:
         return ""
     return (
         "\nДопуски к внебоевому решению (не переигрывают провал броска):\n"
         + json.dumps(eligible, ensure_ascii=False)
+        + "\nСсылки для творческого предложения (origin=creative, не аварийный допуск):\n"
+        + json.dumps(creative, ensure_ascii=False)
         + "\nСам выбери соразмерный исход и последствия через adjudicate_action. "
         "Не описывай изменение мира до успешного инструмента. Боевые правила обходить нельзя."
     )

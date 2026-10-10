@@ -33,7 +33,7 @@ CAPABILITIES = {
         "creative.neutral_npc",
         "noncombat",
         frozenset({"interact", "talk", "inspect", "search"}),
-        frozenset({"neutral_npc", "fact", "deed", "time"}),
+        frozenset({"neutral_npc", "fact", "story_hook", "deed", "time"}),
         True,
         False,
         False,
