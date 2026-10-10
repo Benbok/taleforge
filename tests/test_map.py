@@ -1,6 +1,8 @@
 # ruff: noqa: F811 — фикстуры импортируются из соседних модулей
 """Схема места и карта открытых мест: карта собирается из реестра, мастер пополняет её инструментами."""
 
+from app.core import combat, economy
+from app.core.positions import pos_of
 from app.db.models import Campaign, Entity
 from app.tools.registry import execute
 from app.tools.runtime import flush_outbox, open_context
@@ -216,8 +218,15 @@ def test_positions_distance_cover_and_areas(client, admin, settings):
         await _ok(ctx, "update_entity", {"entity_id": gob, "elevation": "high", "cover": "half"})
         assert ctx.world.distance_ft(ctx.world.actor(hid), ctx.world.actor(gob)) == 45
         await _ok(ctx, "set_scene_mode", {"mode": "combat"})
+        # Движение в бою разрешено только в начавшийся ход героя, а не сразу после броска инициативы.
+        w.scene.turn_order = sorted(w.scene.turn_order, key=lambda x: x["id"] != hid)
+        combat._begin_hero_turn(ctx, w.characters[hid])
+        before = pos_of(w, hid).public()
         far = await execute(ctx, "reposition", {"actor_id": hid, "zone": "far", "bearing": "w"})
-        assert not far["ok"] and "рывком" in far["error"]
+        assert not far["ok"] and "действие этого хода уже потрачено" in far["error"]
+        assert pos_of(w, hid).public() == before
+        assert economy.moved_ft(w, hid) == 0
+        assert economy.view(w, hid)["action"]
         await _ok(ctx, "update_entity", {"entity_id": gob, "cover": "total"})
         shot = await execute(ctx, "resolve_attack", {"attacker_id": hid, "target_id": gob, "attack": "item.longsword"})
         assert not shot["ok"] and "полным укрытием" in shot["error"]
@@ -248,9 +257,9 @@ def test_positions_distance_cover_and_areas(client, admin, settings):
 
     async def leave(ctx):
         docks = (await _ok(ctx, "create_location", {"name": "Доки"}))["location_id"]
+        await _ok(ctx, "set_scene_mode", {"mode": "free"})
         await _ok(ctx, "reposition", {"actor_id": hid, "zone": "near", "bearing": "s"})
         assert "positions" in ctx.world.scene.state
-        await _ok(ctx, "set_scene_mode", {"mode": "free"})
         await _ok(ctx, "move", {"character_ids": [hid], "location_id": docks})
         return "positions" in (ctx.world.scene.state or {})
 
