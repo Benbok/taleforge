@@ -339,6 +339,7 @@ def book_map(
         if num not in numbers or mark is None:
             continue
         from app.core.inspect import entity_type
+
         token_positions[e.id] = Pos(e.zone, st.get("bearing")).xy(None)
         x, y = mark["x"], mark["y"]
         tokens.append(
