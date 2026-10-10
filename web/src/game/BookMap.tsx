@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { useAuthedImage } from "../lib/authedImage";
 import { Token } from "./GridBoard";
-import { MAP_PRESETS } from "./mapPresets";
+import { entityVisual } from "./mapPresets";
 import { useInspector } from "./inspector";
 import { roomLabel, type MapBook } from "./map";
 
@@ -98,8 +98,7 @@ export default function BookMap({ book, where }: { book: MapBook; where?: string
             cx={t.x * W}
             cy={t.y * H}
             size={size}
-            color={MAP_PRESETS[t.type ?? "hero"].color}
-            icon={MAP_PRESETS[t.type ?? "hero"].icon}
+            visual={entityVisual(t.type ?? "hero", t.visual_key)}
             selected={selected === t.id}
             ring={t.mine}
             faded={t.down}

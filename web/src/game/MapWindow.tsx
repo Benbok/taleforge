@@ -1,8 +1,9 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
-import { EXIT_PRESETS, MAP_PRESETS } from "./mapPresets";
+import { entityVisual, EXIT_VISUALS, FEATURE_VISUALS, MAP_PRESETS } from "./mapPresets";
+import { MapGlyph } from "./MapGlyph";
 import { useDraft } from "./draft";
-import { TYPE_COLOR, TYPE_ICON } from "./entities";
+import { TYPE_COLOR } from "./entities";
 import { useInspector } from "./inspector";
 import { fitLabel, GridLines, Token } from "./GridBoard";
 import {
@@ -23,7 +24,6 @@ import {
   type MapState,
   type Sketch,
   type SketchExit,
-  type SketchFeature,
   type StepRequest,
   type CellStack,
   exitCell,
@@ -93,7 +93,6 @@ function viewOf(sk: Sketch | null | undefined): View {
   };
 }
 
-const EXIT_ICON: Record<SketchExit["kind"], string> = EXIT_PRESETS;
 const EXIT_KIND: Record<SketchExit["kind"], string> = {
   door: "дверь",
   bars: "решётка",
@@ -105,14 +104,6 @@ const EXIT_KIND: Record<SketchExit["kind"], string> = {
   passage: "проход",
 };
 const EXIT_STATE: Record<string, string> = { open: "открыто", closed: "закрыто", locked: "заперто" };
-const FEATURE_COLOR: Record<SketchFeature["kind"], string> = {
-  furniture: "var(--color-copper, #b07a4a)",
-  cover: "var(--color-muted, #a8a296)",
-  hazard: "var(--tf-ember, #c0563a)",
-  light: "var(--tf-accent, #c98a4b)",
-  object: "var(--tf-patina, #5f9e8f)",
-  nature: "var(--tf-patina, #5f9e8f)",
-};
 
 function posNote(elevation?: Elevation, cover?: Cover): string | null {
   const parts = [elevation && elevation !== "ground" ? ELEVATION_NAME[elevation] : null, cover && cover !== "none" ? COVER_NAME[cover] : null];
@@ -204,10 +195,16 @@ function SketchLayer({
           return (
             <g key={`${i}-${j}`} className="cursor-pointer" role="button" aria-label={ft.name} onClick={() => onPick({ name: ft.name, near: cells })}>
               <title>{ft.name}</title>
-              <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_COLOR[ft.kind]} fillOpacity={0.35} stroke={FEATURE_COLOR[ft.kind]} strokeWidth={1} />
+              <rect x={p.x + 1.5} y={p.y + 1.5} width={w - 3} height={h - 3} rx={2} fill={FEATURE_VISUALS[ft.kind].color} fillOpacity={0.17} stroke={FEATURE_VISUALS[ft.kind].color} strokeWidth={1} />
               {j === 0 && (
+                <MapGlyph name={FEATURE_VISUALS[ft.kind].glyph}
+                  x={p.x + 3} y={p.y + (h - Math.min(CELL - 6, 10)) / 2}
+                  width={Math.min(CELL - 6, 10)} height={Math.min(CELL - 6, 10)}
+                  color={FEATURE_VISUALS[ft.kind].color} className="pointer-events-none" />
+              )}
+              {j === 0 && w >= CELL * 2 && (
                 <text
-                  x={p.x + w / 2}
+                  x={p.x + w / 2 + 5}
                   y={p.y + h / 2 + 2.5}
                   textAnchor="middle"
                   fontSize={6.5}
@@ -229,7 +226,7 @@ function SketchLayer({
         const cx = px(c);
         const cy = py(r);
         const shut = x.state === "locked" || x.state === "closed";
-        const color = shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location;
+        const color = shut ? "var(--tf-ember, #c0563a)" : EXIT_VISUALS[x.kind].color;
         const label = `${x.name}: ${EXIT_KIND[x.kind]}${x.state ? `, ${EXIT_STATE[x.state]}` : ""}${x.beyond ? `, за ним ${x.beyond}` : ""}`;
         const title = x.beyond || x.name;
         const titleText = title ? short(title, 14) : "";
@@ -274,16 +271,10 @@ function SketchLayer({
               className="transition-all duration-150 group-hover:stroke-accent group-hover:brightness-110"
               style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}
             />
-            <text
-              x={isWest ? cx : isEast ? cx : isHoriz ? cx : pillX + 6.5}
-              y={cy + 3.5}
-              textAnchor="middle"
-              fontSize={9.5}
-              fill={color}
-              className="pointer-events-none select-none transition-colors duration-150 group-hover:fill-accent"
-            >
-              {EXIT_ICON[x.kind]}
-            </text>
+            <MapGlyph name={EXIT_VISUALS[x.kind].glyph}
+              x={(isHoriz ? cx : pillX + 6.5) - 5}
+              y={cy - 5} width={10} height={10}
+              color={color} className="pointer-events-none" />
             {titleText && (
               <text
                 x={isWest ? cx - CELL / 2 - 2.5 : isEast ? cx + CELL / 2 + 2.5 : pillX + 15}
@@ -453,15 +444,14 @@ function Around({ m }: { m: MapState }) {
           </g>
         ))}
 
-        {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} color="var(--tf-accent)" icon="★" label="отряд" ariaLabel="Отряд" />}
+        {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} visual={MAP_PRESETS.hero} label="отряд" ariaLabel="Отряд" />}
         {exits.map(({ item: x, col, row }) => (
           <Token
             key={x.id}
             cx={px(col)}
             cy={py(row)}
             size={CELL}
-            color={TYPE_COLOR.location}
-            icon={TYPE_ICON.location}
+            visual={MAP_PRESETS.location}
             label={fitLabel(x.name, occupied, col, row, false)}
             dashed={!x.visited}
             selected={isSelected(col, row)}
@@ -481,8 +471,7 @@ function Around({ m }: { m: MapState }) {
                   cx={px(st.col)}
                   cy={py(st.row)}
                   size={CELL}
-                  color={MAP_PRESETS[t.type].color}
-                  icon={MAP_PRESETS[t.type].icon}
+                  visual={entityVisual(t.type, t.visual_key)}
                   label={fitLabel(t.name, occupied, st.col, st.row, false)}
                   faded={t.condition === "мёртв"}
                   badge={badge(t.elevation, t.cover)}
@@ -498,8 +487,7 @@ function Around({ m }: { m: MapState }) {
                 cx={px(st.col)}
                 cy={py(st.row)}
                 size={CELL}
-                color={TYPE_COLOR[t.type]}
-                icon={TYPE_ICON[t.type]}
+                visual={entityVisual(t.type, t.visual_key)}
                 label={fitLabel(title, occupied, st.col, st.row, false)}
                 badge={`×${st.items.length}`}
                 selected={isSel}
@@ -514,8 +502,7 @@ function Around({ m }: { m: MapState }) {
             cx={px(col)}
             cy={py(row)}
             size={CELL}
-            color={MAP_PRESETS.hero.color}
-            icon={MAP_PRESETS.hero.icon}
+            visual={MAP_PRESETS.hero}
             label={fitLabel(h.name, occupied, col, row, true)}
             ring={h.mine}
             faded={h.down}
@@ -578,7 +565,7 @@ function Around({ m }: { m: MapState }) {
                 <span key={t.id}>
                   {i > 0 && ", "}
                   <button className="underline decoration-dotted underline-offset-4" style={{ color: TYPE_COLOR[t.type] }} onClick={open(t.id, t.name)}>
-                    {TYPE_ICON[t.type]} {t.name}
+                    <MapGlyph name={entityVisual(t.type, t.visual_key).glyph} width={13} height={13} color="currentColor" className="inline-block align-middle" /> {t.name}
                   </button>
                   {(t.bearing || posNote(t.elevation, t.cover)) && (
                     <span className="text-muted"> ({[t.bearing ? m.bearings[t.bearing] : null, posNote(t.elevation, t.cover)].filter(Boolean).join(", ")})</span>
@@ -596,7 +583,7 @@ function Around({ m }: { m: MapState }) {
               <span key={h.id}>
                 {i > 0 && ", "}
                 <button className="underline decoration-dotted underline-offset-4" style={{ color: "var(--tf-accent)" }} onClick={open(h.id, h.name)}>
-                  ★ {h.name}
+                  <MapGlyph name={MAP_PRESETS.hero.glyph} width={13} height={13} color="currentColor" className="inline-block align-middle" /> {h.name}
                 </button>
                 <span className="text-muted">
                   {" "}

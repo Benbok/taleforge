@@ -435,6 +435,7 @@ def book_map(
                 "y": y,
                 "down": bool(st.get("dead")),
                 "type": entity_type(e),
+                "visual_key": st.get("visual_key") if isinstance(st.get("visual_key"), str) else None,
             }
         )
     # Видимые маркеры текущей комнаты берём из общей проекции, уже
@@ -459,6 +460,7 @@ def book_map(
                     "y": mark["y"],
                     "down": t["down"],
                     "type": t["type"],
+                    "visual_key": t.get("visual_key"),
                 }
             )
     # Располагаем всех персонажей, существ и предметы комнаты вместе,
