@@ -154,6 +154,41 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
     assert rows(settings, Event, Event.tool == "spawn_entity") == []
 
 
+def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monkeypatch):
+    """Первый отказ не отменяет последующий вход и встречу в новой комнате."""
+    from app.agents import prelude
+    from tests.test_adventure import publish_sample
+
+    async def skip_intro(*_args):
+        return None
+
+    monkeypatch.setattr(prelude, "prepare_campaign_intro", skip_intro)
+    mid = publish_sample(settings)
+    c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
+    game_client.portal.call(game_client.app.state.master.wait_idle, None)
+
+    llm.replies += [
+        {"tool_calls": [("enter_room", {"room": "99", "character_ids": [hero["id"]]})]},
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "2", "character_ids": [hero["id"]]}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет"}),
+            ]
+        },
+        DONE,
+        {"text": "Бран входит в Восточную крипту; один скелет поднялся у гробницы."},
+    ]
+    msg = act(game_client, p1, c["id"], "Вхожу в комнату 2.")
+    (turn,) = rows(settings, MasterTurn)
+    calls = turn.trace["calls"]
+    assert calls[0]["tool"] == "enter_room" and calls[0]["result"]["ok"] is False
+    assert calls[1]["tool"] == "enter_room" and calls[1]["result"]["ok"] is True
+    assert calls[2]["tool"] == "spawn_entity" and calls[2]["result"]["ok"] is True
+    assert turn.trace["audit"]["transition_outcome"] == "success"
+    assert "Переход не состоялся" not in msg["content"]
+    assert len(rows(settings, Event, Event.tool == "spawn_entity")) == 1
+
+
 def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
     """Названные мастером враги не становятся настоящими без spawn_entity."""
     c, (p1,), _ = party(game_client, admin_g)
