@@ -130,9 +130,9 @@ def queue_opening_spell(ctx: ToolContext, args: dict[str, Any]) -> None:
     _set(ctx, opening_spells=pending)
 
 
-def queue_opening_plan(ctx: ToolContext, plan: dict[str, str]) -> None:
-    """Save a composite action until the declared attacker's initiative turn."""
-    hero_id = plan["attacker_id"]
+def queue_opening_plan(ctx: ToolContext, plan: dict[str, Any]) -> None:
+    """Save a move-and-attack or move-and-cast plan until its actor's legal turn."""
+    hero_id = plan.get("caster_id") if plan.get("kind") == "cast" else plan.get("attacker_id")
     if (
         not in_combat(ctx)
         or hero_id not in ctx.world.characters
@@ -342,10 +342,10 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
             pending_plans = dict(state(ctx).get("opening_plans") or {})
             plan = pending_plans.pop(cid, None)
             if plan is not None:
-                from app.tools.action_plan import execute_approach_attack
+                from app.tools.action_plan import execute_action_plan
 
                 _set(ctx, opening_plans=pending_plans)
-                outcome = await execute_approach_attack(ctx, plan, f"{key}:opening-plan:{cid}")
+                outcome = await execute_action_plan(ctx, plan, f"{key}:opening-plan:{cid}")
                 notes.extend(outcome["notes"])
                 if outcome["completed"]:
                     await _next(ctx, notes)

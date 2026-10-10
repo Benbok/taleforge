@@ -371,3 +371,46 @@ def test_natural_language_approach_attack_starts_combat_and_moves_first(game_cli
     assert [a["verb"] for a in msg.intent["actions"]] == ["move", "attack"]
     (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
+
+
+def test_natural_language_move_then_spell_starts_initiative_and_moves_first(game_client, admin_g, llm, dice, settings):
+    """A clear Russian move-and-cast command must not cast before movement."""
+    from app.tools.registry import execute
+    from tests.test_spells import WIZARD
+
+    c, heads, _ = party(game_client, admin_g, players=2)
+    cid = c["id"]
+    wizard = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
+    submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wizard['id']}/submit", headers=heads[1]))
+    assert submitted["status"] == "approved"
+
+    async def spawn(s):
+        campaign = await s.get(Campaign, cid)
+        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
+        r = await execute(
+            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
+        )
+        assert r["ok"], r
+        await s.commit()
+        return r["result"]["spawned"][0]["id"]
+
+    gob = run(settings, spawn)
+    llm.replies += [
+        intent(
+            {"verb": "move", "target_id": gob, "zone": "melee"},
+            {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": gob},
+        ),
+        DONE,
+        {"text": "Волшебница приблизилась и сотворила заклинание."},
+    ]
+    dice += [5, 20, 1, 1, 1, 1]
+    narrative = act(game_client, heads[1], cid, "Подбегаю к гоблину и выпускаю волшебную стрелу")
+    assert narrative["kind"] == "narration"
+    events = rows(settings, Event, Event.campaign_id == cid)
+    assert len([e for e in events if e.tool == "cast_spell" and e.actor_id == wizard["id"]]) == 1
+    assert len([e for e in events if e.tool == "step" and e.actor_id == wizard["id"]]) == 1
+    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
+    (msg,) = rows(settings, Message, Message.kind == "action")
+    assert [a["verb"] for a in msg.intent["actions"]] == ["move", "cast"]
+    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
+    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])

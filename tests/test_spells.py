@@ -381,3 +381,104 @@ def test_rejected_opening_spell_preserves_caster_turn(wizard_game):
 
     notes = play(settings, cid, [10, 10, 10], fn)
     assert any("заклинание не выполнено" in note for note in notes)
+
+
+def test_move_cast_plan_executes_step_before_spell(wizard_game):
+    """An opening spell follows a real approach and uses exactly one slot."""
+    from app.core import combat
+    from app.tools.action_plan import approach_cast
+    from tests.test_combat import _fight
+
+    settings, cid, wizard, _, _ = wizard_game
+
+    async def fn(ctx):
+        gob = await _fight(ctx, wizard, "creature.goblin", zone="near", first="hero")
+        intent = {
+            "character_id": wizard,
+            "confidence": 0.95,
+            "actions": [
+                {"verb": "move", "target_id": gob, "zone": "melee"},
+                {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": gob},
+            ],
+        }
+        plan = approach_cast(ctx, intent)
+        assert plan is not None
+        combat.queue_opening_plan(ctx, plan)
+        await combat.run_until_hero(ctx, "move-cast")
+        ev = [e for e in ctx.events if e.actor_id == wizard and e.tool in ("step", "cast_spell")]
+        assert [e.tool for e in ev] == ["step", "cast_spell"]
+        assert ev[0].payload["moved_ft"] > 0
+        assert ev[1].payload["spell_id"] == "spell.magic_missile"
+        assert not combat.state(ctx).get("opening_plans")
+        return ctx.world.characters[wizard].resources
+
+    resources = play(settings, cid, [1, 1, 1, 1, 1, 1], fn)
+    assert resources["slots_used"]["1"] == 1
+
+
+def test_move_cast_out_of_reach_does_not_consume_spell_slot(wizard_game):
+    """Out-of-range path is not a spellcast and must preserve the caster turn."""
+    from app.core import combat
+    from app.tools.action_plan import approach_cast
+    from tests.test_combat import _fight
+
+    settings, cid, wizard, _, _ = wizard_game
+
+    async def fn(ctx):
+        gob = await _fight(ctx, wizard, "creature.goblin", zone="far", first="hero")
+        intent = {
+            "character_id": wizard,
+            "confidence": 0.95,
+            "actions": [
+                {"verb": "move", "target_id": gob, "zone": "melee"},
+                {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": gob},
+            ],
+        }
+        plan = approach_cast(ctx, intent)
+        assert plan is not None
+        combat.queue_opening_plan(ctx, plan)
+        notes = await combat.run_until_hero(ctx, "blocked-cast")
+        assert combat.current_id(ctx) == wizard
+        assert combat.state(ctx)["deadline"] is not None
+        assert not [e for e in ctx.events if e.tool == "cast_spell" and e.actor_id == wizard]
+        assert not [e for e in ctx.events if e.tool == "step" and e.actor_id == wizard]
+        assert not combat.state(ctx).get("opening_plans")
+        return notes, ctx.world.characters[wizard].resources
+
+    notes, resources = play(settings, cid, [], fn)
+    assert any("сближение" in note or "подтверждения" in note for note in notes)
+    assert not resources.get("slots_used")
+
+
+def test_move_cast_parser_rejects_ambiguous_combinations(wizard_game):
+    from app.tools.action_plan import approach_cast
+
+    settings, cid, wizard, _, _ = wizard_game
+
+    async def fn(ctx):
+        ally = next(cid for cid in ctx.world.characters if cid != wizard)
+        base = {
+            "character_id": wizard,
+            "confidence": 0.95,
+            "actions": [
+                {"verb": "move", "zone": "melee"},
+                {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": ally},
+            ],
+        }
+        assert approach_cast(ctx, base) is not None
+        self_target = [base["actions"][0], {**base["actions"][1], "target_id": wizard}]
+        assert approach_cast(ctx, {**base, "actions": self_target}) is None
+        assert approach_cast(ctx, {**base, "actions": list(reversed(base["actions"]))}) is None
+        assert approach_cast(ctx, {**base, "confidence": 0.3}) is None
+        assert (
+            approach_cast(
+                ctx, {**base, "actions": [base["actions"][0], {**base["actions"][1], "spell_id": "spell.unknown"}]}
+            )
+            is None
+        )
+        assert (
+            approach_cast(ctx, {**base, "actions": [base["actions"][0], {**base["actions"][1], "target_id": None}]})
+            is None
+        )
+
+    play(settings, cid, [], fn)
