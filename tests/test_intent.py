@@ -280,9 +280,7 @@ def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g
     c, heads, _ = party(game_client, admin_g, players=2)
     cid = c["id"]
     wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
-    submitted = ok(
-        game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1])
-    )
+    submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
     assert submitted["status"] == "approved"
 
     async def spawn(s):
