@@ -69,12 +69,12 @@ def timeout_sec(ctx: ToolContext) -> int:
 
 def start_combat(ctx: ToolContext) -> None:
     """Вызывается после броска инициативы: первый в очереди получает ход."""
-    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={}, opening_spells={})
+    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={}, opening_spells={}, opening_plans={})
 
 
 def end_combat(ctx: ToolContext) -> None:
     st = state(ctx)
-    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells"):
+    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks", "opening_spells", "opening_plans"):
         st.pop(k, None)
     ctx.world.scene.state = st
 
@@ -109,6 +109,18 @@ def queue_opening_spell(ctx: ToolContext, args: dict[str, Any]) -> None:
     pending = dict(state(ctx).get("opening_spells") or {})
     pending[hero_id] = dict(args)
     _set(ctx, opening_spells=pending)
+
+
+def queue_opening_plan(ctx: ToolContext, plan: dict[str, str]) -> None:
+    """Save a composite action until the declared attacker's initiative turn."""
+    hero_id = plan["attacker_id"]
+    if not in_combat(ctx) or hero_id not in ctx.world.characters or not any(
+        entry["id"] == hero_id for entry in ctx.world.scene.turn_order or []
+    ):
+        raise WorldError("составное действие может ждать только героя в очереди инициативы")
+    pending = dict(state(ctx).get("opening_plans") or {})
+    pending[hero_id] = dict(plan)
+    _set(ctx, opening_plans=pending)
 
 
 def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
@@ -306,6 +318,19 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
                 await _next(ctx, notes)
                 continue
             _begin_hero_turn(ctx, ch)
+            pending_plans = dict(state(ctx).get("opening_plans") or {})
+            plan = pending_plans.pop(cid, None)
+            if plan is not None:
+                from app.tools.action_plan import execute_approach_attack
+
+                _set(ctx, opening_plans=pending_plans)
+                outcome = await execute_approach_attack(ctx, plan, f"{key}:opening-plan:{cid}")
+                notes.extend(outcome["notes"])
+                if outcome["completed"]:
+                    await _next(ctx, notes)
+                    continue
+                # An impassable route or risky movement is not a spent attack.
+                return notes
             pending_spells = dict(state(ctx).get("opening_spells") or {})
             spell = pending_spells.pop(cid, None)
             if spell is not None:
