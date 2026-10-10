@@ -183,3 +183,10 @@ class StreamFilter:
             safe = strip(line, self.names)
             if safe.strip():
                 await self.push(safe + ("\n" if line.endswith("\n") and not safe.endswith("\n") else ""))
+
+    async def finish(self) -> None:
+        """Выпустить проверенный хвост после завершения потока (текст без перевода строки)."""
+        safe = strip(self.pending, self.names)
+        self.pending = ""
+        if safe.strip() and safe.strip().lower().strip("\\\\") not in ("<center>", "</center>"):
+            await self.push(safe)
