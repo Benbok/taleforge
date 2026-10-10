@@ -460,3 +460,106 @@ def test_reckless_attack_uses_real_advantage_for_barbarian(game):
         return result["result"]
 
     assert play(settings, cid, [10, 10, 18, 3, 1], fn)["hit"]
+
+
+def test_grapple_success_creates_link_and_zero_speed(game):
+    from app.tools import grapples as gp
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        for item in ctx.world.inventory[hero]:
+            item.equipped = False
+        ctx.world.invalidate(hero)
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        result = await call(ctx, "resolve_grapple", {"attacker_id": hero, "target_id": goblin})
+        assert result["ok"], result
+        assert result["result"]["success"]
+        assert gp.holders(ctx, goblin) == [hero]
+        assert ctx.world.actor(goblin).speed == 0
+        assert any(rec.id == "condition.grappled" for _, rec in ctx.world.actor(goblin).effects)
+        again = await call(ctx, "resolve_grapple", {"attacker_id": hero, "target_id": goblin})
+        assert not again["ok"] and "уже удерживает" in again["error"]
+        return result["result"]
+
+    result = play(settings, cid, [10, 10, 18, 1], fn)
+    assert result["attacker_total"] > result["defender_total"]
+
+
+def test_grapple_escape_consumes_action_and_restores_speed(game):
+    from app.tools import grapples as gp
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        await gp.establish(ctx, goblin, hero)
+        assert ctx.world.actor(hero).speed == 0
+        result = await call(ctx, "escape_grapple", {"character_id": hero, "holder_id": goblin})
+        assert result["ok"], result
+        assert result["result"]["success"]
+        assert gp.holders(ctx, hero) == []
+        assert ctx.world.actor(hero).speed > 0
+        assert "действие потрачено" in result["result"]["left"]
+        return result["result"]
+
+    assert play(settings, cid, [10, 10, 18, 1], fn)["success"]
+
+
+def test_failed_grapple_escape_leaves_condition(game):
+    from app.tools import grapples as gp
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        await gp.establish(ctx, goblin, hero)
+        result = await call(ctx, "escape_grapple", {"character_id": hero})
+        assert result["ok"] and not result["result"]["success"]
+        assert gp.holders(ctx, hero) == [goblin]
+        assert ctx.world.actor(hero).speed == 0
+
+    play(settings, cid, [10, 10, 1, 20], fn)
+
+
+def test_grapple_breaks_on_distance_and_incapacitation(game):
+    from app.tools import grapples as gp
+
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        for item in ctx.world.inventory[hero]:
+            item.equipped = False
+        ctx.world.invalidate(hero)
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        grab = await call(ctx, "resolve_grapple", {"attacker_id": hero, "target_id": goblin})
+        assert grab["ok"] and grab["result"]["success"]
+        pos = ctx.world.scene.state["positions"][hero]["cell"]
+        dest = [pos[0] - 3, pos[1]]
+        moved = await call(ctx, "reposition", {"actor_id": hero, "cell": dest})
+        assert moved["ok"], moved
+        assert gp.holders(ctx, goblin) == []
+        assert ctx.world.actor(goblin).speed > 0
+        # New capture is linked to an alive holder; unconscious holders auto-release.
+        await gp.establish(ctx, hero, goblin)
+        assert gp.holders(ctx, goblin) == [hero]
+        ch = ctx.world.characters[hero]
+        ch.resources = {**ch.resources, "hp": 0}
+        ctx.world.invalidate(hero)
+        assert await gp.refresh(ctx)
+        assert gp.holders(ctx, goblin) == []
+        assert ctx.world.actor(goblin).speed > 0
+
+    play(settings, cid, [10, 10, 18, 1], fn)
+
+
+def test_grapple_requires_free_hand_and_melee(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        goblin = await _fight(ctx, hero, "creature.goblin", zone="far", first="hero")
+        far = await call(ctx, "resolve_grapple", {"attacker_id": hero, "target_id": goblin})
+        assert not far["ok"] and "5 футов" in far["error"]
+        return far
+
+    assert not play(settings, cid, [10, 10], fn)["ok"]
