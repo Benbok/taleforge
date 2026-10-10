@@ -444,7 +444,7 @@ function Around({ m }: { m: MapState }) {
   const isSelected = (c: number, r: number) => pick?.near?.some(([col, row]) => col === c && row === r) ?? false;
   const { step, stepTo, cancelStep } = useMapWindow();
   const go = (req: StepRequest) => stepTo(req);
-  const canWalk = heroes.some((h) => h.item.mine) && !step.busy;
+  const canWalk = layout.heroes.some((h) => h.item.mine) && !step.busy;
   const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
   // Только реальные клетки заняты механически; условные значки не блокируют маршрут.
   const mechanicalOccupied = new Set(
@@ -538,10 +538,11 @@ function Around({ m }: { m: MapState }) {
         <CompassRose x={W + 2} y={-4} />
 
         {areas.map(({ item: a, col, row }) => (
-          <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}`}>
-            <circle cx={px(col)} cy={py(row)} r={Math.max(0.5, a.radius_ft / CELL_FT) * CELL} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
-            <text x={px(col)} y={py(row) - Math.max(0.5, a.radius_ft / CELL_FT) * CELL + 9} textAnchor="middle" fontSize={8} fill="var(--tf-ember, #c0563a)">
-              {short(a.name, 20)} · {a.radius_ft} фт
+          <g key={a.id} className="cursor-pointer" onClick={open(a.id, a.name)} role="button" aria-label={`Область: ${a.name}, положение центра условное`}>
+            {/* Пока сервер передаёт только зону, размер значка НЕ имитирует физический радиус. */}
+            <circle cx={px(col)} cy={py(row)} r={CELL * 1.1} fill="var(--tf-ember, #c0563a)" fillOpacity={0.18} stroke="var(--tf-ember, #c0563a)" strokeDasharray="4 3" />
+            <text x={px(col)} y={py(row) - CELL * 1.1 + 9} textAnchor="middle" fontSize={8} fill="var(--tf-ember, #c0563a)">
+              {short(a.name, 20)} · радиус {a.radius_ft} фт, центр условный
             </text>
           </g>
         ))}
@@ -581,7 +582,7 @@ function Around({ m }: { m: MapState }) {
                   dashed={!allExact}
                   selected={isSel}
                   onClick={pickThing(t.id, t.name, st.col, st.row, precisionById.get(t.id) ?? "schematic")}
-                  ariaLabel={t.name}
+                  ariaLabel={`${t.name}${allExact ? "" : " (положение условное)"}`}
                 />
               );
             const title = stackTitle(st.items);
@@ -597,7 +598,7 @@ function Around({ m }: { m: MapState }) {
                 dashed={!allExact}
                 selected={isSel}
                 onClick={pickStack(st)}
-                ariaLabel={title}
+                ariaLabel={`${title}${allExact ? "" : " (положение условное)"}`}
               />
             );
           })}
@@ -615,7 +616,7 @@ function Around({ m }: { m: MapState }) {
             badge={badge(h.elevation, h.cover)}
             selected={isSelected(col, row)}
             onClick={open(h.id, h.name)}
-            ariaLabel={h.name}
+            ariaLabel={`${h.name}${placement === "mechanical" ? "" : " (положение условное)"}`}
           />
         ))}
         {/* вещи под ногами героя: метка в углу клетки, иначе значок героя их закроет */}
@@ -647,7 +648,7 @@ function Around({ m }: { m: MapState }) {
           )}
         </div>
       )}
-      {heroes.some((h) => h.item.mine) && !step.note && !step.error && !step.warnings && (
+      {layout.heroes.some((h) => h.item.mine) && !step.note && !step.error && !step.warnings && (
         <p className="text-center font-mono text-[11px] text-muted">Нажми свободную клетку — герой пойдёт туда. Нажми предмет или выход — подойти или взаимодействовать. Цифра — сколько вещей лежит на клетке.</p>
       )}
       {combat && (
