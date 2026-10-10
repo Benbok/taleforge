@@ -310,6 +310,7 @@ def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g
     (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
 
+
 def test_approach_attack_plan_preserves_order_and_confidence():
     plan = {
         "character_id": "ch_hero",
@@ -319,9 +320,7 @@ def test_approach_attack_plan_preserves_order_and_confidence():
             {"verb": "attack", "target_id": "en_goblin", "instrument_id": "inv_sword"},
         ],
     }
-    assert approach_attack(plan) == {
-        "attacker_id": "ch_hero", "target_id": "en_goblin", "attack": "inv_sword"
-    }
+    assert approach_attack(plan) == {"attacker_id": "ch_hero", "target_id": "en_goblin", "attack": "inv_sword"}
     assert approach_attack({**plan, "actions": list(reversed(plan["actions"]))}) is None
     assert approach_attack({**plan, "confidence": 0.5}) is None
     assert approach_attack({**plan, "actions": [{**plan["actions"][0], "zone": "far"}, plan["actions"][1]]}) is None
@@ -329,9 +328,7 @@ def test_approach_attack_plan_preserves_order_and_confidence():
     assert approach_attack({**plan, "actions": missing}) is None
 
 
-def test_natural_language_approach_attack_starts_combat_and_moves_first(
-    game_client, admin_g, llm, dice, settings
-):
+def test_natural_language_approach_attack_starts_combat_and_moves_first(game_client, admin_g, llm, dice, settings):
     """One Russian sentence becomes movement and one attack, following initiative."""
     from app.tools.registry import execute
 
