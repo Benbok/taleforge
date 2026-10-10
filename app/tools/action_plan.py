@@ -138,9 +138,12 @@ def approach_cast(ctx: ToolContext, intent: dict[str, Any] | None) -> dict[str, 
         return None
     if rules.target_kind(spell) == "area":
         return None
-    if args["caster_id"] not in ctx.world.characters:
+    if args["caster_id"] not in ctx.world.characters or target_id == args["caster_id"]:
         return None
-    if target_id not in ctx.world.characters and target_id not in ctx.world.entities:
+    target = ctx.world.entities.get(target_id)
+    if target_id not in ctx.world.characters and (target is None or target.kind != "creature"):
+        return None
+    if ctx.world.actor_place(args["caster_id"]) != ctx.world.actor_place(target_id):
         return None
     return {"kind": "cast", "caster_id": args["caster_id"], "target_id": target_id, "cast": args}
 
