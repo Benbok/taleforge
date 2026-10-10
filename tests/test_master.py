@@ -183,7 +183,6 @@ def test_unregistered_named_actors_accepts_russian_case_declensions():
     assert unregistered_named_actors("Иван бьёт Зомби 1.", world) == ["Зомби 1"]
 
 
-
 def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings):
     """Отказ входа прерывает batch: враги не появляются в прежней комнате."""
     mid = publish_sample(settings)
@@ -192,10 +191,12 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
     (before,) = rows(settings, Character, Character.id == hero["id"])
     initial = before.location_id
     llm.replies += [
-        {"tool_calls": [
-            ("enter_room", {"room": "99"}),
-            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
-        ]},
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "99"}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
+            ]
+        },
         DONE,
         DONE,
         {"text": "Вы вошли в комнату 99; скелет уже смотрит вам в глаза."},
@@ -218,14 +219,18 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
     llm.replies += [
-        {"tool_calls": [
-            ("enter_room", {"room": "99"}),
-            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Ненастоящий"}),
-        ]},
-        {"tool_calls": [
-            ("enter_room", {"room": "2"}),
-            ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
-        ]},
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "99"}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Ненастоящий"}),
+            ]
+        },
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "2"}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет 1"}),
+            ]
+        },
         DONE,
         {"text": "Герой входит в Восточную крипту. Здесь появился Скелет 1."},
     ]
