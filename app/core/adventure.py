@@ -400,7 +400,7 @@ def book_map(
         if room is None or e.kind == "location":
             continue
         st = e.state or {}
-        if st.get("hidden") or st.get("secret") or st.get("area"):
+        if st.get("area") or (shown is not None and (st.get("hidden") or st.get("secret"))):
             continue
         if shown is not None and room.id != (here.id if here is not None else None):
             continue
