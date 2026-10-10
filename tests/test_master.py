@@ -128,6 +128,32 @@ def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
     assert ev.target_id == hero["id"]
 
 
+def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings):
+    """Пакет enter_room + spawn_entity: отказ входа блокирует спавн и выдуманный рассказ."""
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "99", "character_ids": [hero["id"]]}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет"}),
+            ]
+        },
+        DONE,  # мастер получил сообщение об отказе и пропущенном spawn
+        DONE,
+        {"text": "Бран вошёл в мавзолей. Скелет напал на него."},
+    ]
+    n = act(game_client, p1, c["id"], "Вхожу в комнату 99 и осматриваюсь.")
+    assert "вошёл" not in n["content"]
+    assert "Переход не состоялся" in n["content"]
+    (turn,) = rows(settings, MasterTurn)
+    calls = turn.trace["calls"]
+    assert calls[0]["tool"] == "enter_room" and calls[0]["result"]["ok"] is False
+    assert calls[1]["tool"] == "spawn_entity" and calls[1]["result"]["ok"] is False
+    assert "не выполнено после ошибки перехода" in calls[1]["result"]["error"]
+    assert turn.trace["audit"]["transition_outcome"] == "failed"
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
+
+
 def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
     """Названные мастером враги не становятся настоящими без spawn_entity."""
     c, (p1,), _ = party(game_client, admin_g)
