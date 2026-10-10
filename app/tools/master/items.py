@@ -358,7 +358,9 @@ async def _put_in_scene(
         template_id=template_id,
         description=description or ((rec.data.get("description") or "") if rec else ""),
         state={
-            "item": True, "qty": qty, "display_name": display_name,
+            "item": True,
+            "qty": qty,
+            "display_name": display_name,
             **({"visual_key": visual_key} if visual_key is not None else {}),
         },
         location_id=place,
