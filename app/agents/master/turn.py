@@ -12,6 +12,7 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
+from app.agents.master.outcomes import TRANSITION_TOOLS, unresolved_transition
 from app.agents.master.helpers import (
     _batches,
     _heard_by,
@@ -311,6 +312,7 @@ class TurnMixin:
         done_calls = retries = written_rounds = 0
         nudged = False
         spawn_retry = False
+        transition_pending = unresolved_transition(trace_calls)
         allowed = decision_tools(ctx)
 
         async def run_call(name: str, args: dict, key: str) -> dict:
@@ -324,6 +326,9 @@ class TurnMixin:
             if name in ROLL_TOOLS:
                 await self._status(cid, "rolling")
             result = await execute(ctx, name, args, key=key)
+            if result.get("ok") and name == "enter_room":
+                # Пустой character_ids означает фактически перемещённую группу.
+                ctx.closed.update((result.get("result") or {}).get("moved") or [])
             if name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
                 done_calls += 1
             return result
@@ -353,7 +358,10 @@ class TurnMixin:
             if not reply.tool_calls:
                 # Отказ spawn_entity не должен незаметно перейти в повествование
                 # о несуществующих врагах (например, из-за бюджета встречи).
-                failed_spawns = [t for t in trace_calls if t["tool"] == "spawn_entity" and not t["result"].get("ok")]
+                failed_spawns = [
+                    t for t in trace_calls
+                    if t["tool"] == "spawn_entity" and not t["result"].get("ok") and not t["result"].get("skipped")
+                ]
                 if failed_spawns and not spawn_retry:
                     spawn_retry = True
                     issues = "; ".join(str(t["result"].get("error") or "вызов отклонён") for t in failed_spawns)
@@ -399,14 +407,44 @@ class TurnMixin:
                     )
                     continue
                 break
+            rejected_in_batch = False
             for call in reply.tool_calls:
-                result = await run_call(call.name, call.arguments, f"{turn_id}:{call.id}")
+                if rejected_in_batch:
+                    result = {
+                        "ok": False, "skipped": True,
+                        "error": "не выполнено после ошибки перехода; сначала исправь переход",
+                    }
+                elif transition_pending and call.name == "spawn_entity" and not (
+                    isinstance(call.arguments, dict) and call.arguments.get("location_id")
+                ):
+                    result = {
+                        "ok": False, "skipped": True,
+                        "error": "после отклонённого перехода укажи фактический location_id или исправь переход",
+                    }
+                else:
+                    result = await run_call(call.name, call.arguments, f"{turn_id}:{call.id}")
                 trace_calls.append({"tool": call.name, "args": call.arguments, "result": result})
+                if call.name in TRANSITION_TOOLS:
+                    transition_pending = not result.get("ok", False)
+                    if transition_pending:
+                        rejected_in_batch = True
                 msgs.append(
                     {
                         "role": "tool",
                         "tool_call_id": call.id,
                         "content": json.dumps(result, ensure_ascii=False, default=str),
+                    }
+                )
+            if rejected_in_batch:
+                msgs.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Переход НЕ состоялся. Последующие вызовы из этого пакета не исполнялись. "
+                            "Проверь фактическое место в таблице сцены и, если нужно, повтори переход "
+                            "к доступной комнате отдельным вызовом. "
+                            "Не описывай отменённые действия как события."
+                        ),
                     }
                 )
             if done_calls >= MAX_CALLS and all(not t["result"].get("ok") for t in trace_calls[-1:]):
@@ -441,7 +479,7 @@ class TurnMixin:
 
         # реплика для озвучки и синтез идут параллельно с повествованием, а не перед ним
         voice_task = None
-        if self._tts_ready(c):
+        if self._tts_ready(c) and not unresolved_transition(trace_calls):
             voice_task = asyncio.create_task(
                 self._voice(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes, news=news)
             )
@@ -484,6 +522,8 @@ class TurnMixin:
                 stream=stream,
                 stalled=bool(stall),
                 meet=meet,
+                tool_attempts=trace_calls,
+                affected_heroes=required or crew,
             )
         except BaseException:
             if voice_task is not None:
