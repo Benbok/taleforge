@@ -69,14 +69,28 @@ def timeout_sec(ctx: ToolContext) -> int:
 
 def start_combat(ctx: ToolContext) -> None:
     """Вызывается после броска инициативы: первый в очереди получает ход."""
-    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None)
+    _set(ctx, turn=0, submitted=False, reactions={}, deadline=None, actor=None, opening_attacks={})
 
 
 def end_combat(ctx: ToolContext) -> None:
     st = state(ctx)
-    for k in ("turn", "submitted", "reactions", "deadline", "actor"):
+    for k in ("turn", "submitted", "reactions", "deadline", "actor", "opening_attacks"):
         st.pop(k, None)
     ctx.world.scene.state = st
+
+
+def queue_opening_attack(ctx: ToolContext, args: dict[str, str]) -> None:
+    """Keep a declared opening attack until its owner wins a turn by initiative.
+
+    The declaration is not a free attack before combat: the normal resolve_attack tool
+    will charge the action only when the character becomes the active combatant.
+    """
+    hero_id = args["attacker_id"]
+    if hero_id not in ctx.world.characters or not in_combat(ctx):
+        raise WorldError("начальную атаку можно отложить только для героя в бою")
+    pending = dict(state(ctx).get("opening_attacks") or {})
+    pending[hero_id] = dict(args)
+    _set(ctx, opening_attacks=pending)
 
 
 def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
@@ -269,6 +283,21 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
                 await _next(ctx, notes)
                 continue
             _begin_hero_turn(ctx, ch)
+            pending = dict(state(ctx).get("opening_attacks") or {})
+            attack = pending.pop(cid, None)
+            if attack:
+                _set(ctx, opening_attacks=pending)
+                result = await execute(ctx, "resolve_attack", attack, key=f"{key}:opening:{cid}")
+                if result.get("ok"):
+                    hit = result["result"]
+                    notes.append(_attack_note(ch.name, hit.get("target", ""), hit))
+                    await _next(ctx, notes)
+                    continue
+                # A refused declaration never becomes a fictitious missed attack.
+                notes.append(
+                    f"{ch.name}: начальная атака не выполнена: {result.get('error', 'неизвестная ошибка')}. "
+                    "Ход остаётся за героем; выберите допустимое действие."
+                )
             return notes
         await creature_turn(ctx, act, f"{key}:{step}", notes, ask)
         await _next(ctx, notes)
