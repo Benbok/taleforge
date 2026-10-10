@@ -217,6 +217,8 @@ def book_sketch(room: Any, catalog: Any, entities: dict) -> dict | None:
     if adv is None or rec is None:
         return None
     mp = next((m for m in adv.data.get("maps") or [] if m.get("location_ref") == rec.id and m.get("grid")), None)
+    if mp is None:
+        return None
     from app.core.topology import location_exits
 
     marks = {str(m.get("number")): m for m in mp.get("marks") or []}
