@@ -393,11 +393,13 @@ def book_map(
                     "down": (ch.resources or {}).get("hp") == 0,
                 }
             )
+    from app.core.world_objects import is_nested
+
     # Существа и лежащие в мире предметы находятся в конкретных комнатах.
     # Игрок видит только сущности в своей комнате; мастер — во всех показанных.
     for e in entities or []:
         room = rooms_here.get(e.location_id or "")
-        if room is None or e.kind == "location":
+        if room is None or e.kind == "location" or is_nested(e):
             continue
         st = e.state or {}
         if st.get("area") or (shown is not None and (st.get("hidden") or st.get("secret"))):
