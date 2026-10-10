@@ -150,6 +150,7 @@ def _begin_hero_turn(ctx: ToolContext, ch: Character) -> None:
 
 async def _next(ctx: ToolContext, notes: list[str]) -> None:
     """Передаёт ход следующему. Новый раунд — плюс 6 секунд игрового времени и снятие истёкших эффектов."""
+    from app.tools import grapples as gp
     from app.tools.master.scene import expire_effects
     from app.tools.spells import turn_end_saves
 
@@ -157,6 +158,7 @@ async def _next(ctx: ToolContext, notes: list[str]) -> None:
     ending = current_id(ctx)
     if ending:
         await turn_end_saves(ctx, ending, notes)
+    notes.extend(await gp.refresh(ctx))
     i = int(state(ctx).get("turn", 0)) + 1
     if i >= len(sc.turn_order):
         i = 0
@@ -165,6 +167,7 @@ async def _next(ctx: ToolContext, notes: list[str]) -> None:
         gone = await expire_effects(ctx, [])
         if gone:
             notes.append("закончились эффекты: " + ", ".join(gone))
+        notes.extend(await gp.refresh(ctx))
         notes.append(f"раунд {sc.round}")
     _set(ctx, turn=i, submitted=False, actor=None, deadline=None)
 
