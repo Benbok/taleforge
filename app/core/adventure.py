@@ -72,15 +72,32 @@ def room_entity(entities: dict[str, Entity], place: Entity, rid: str) -> Entity 
 
 
 def new_room(campaign_id: str, place: Entity, rec: Entry, room: dict) -> Entity:
-    """Комната в реестре. Карточка для игроков — текст вслух из книги: там то, что герои видят с порога."""
+    """Комната в реестре: игрокам доступна только статическая обстановка, не сценарная встреча."""
     return Entity(
         campaign_id=campaign_id,
         kind="location",
         name=str(room.get("name") or room["id"]),
-        description=str(room.get("read_aloud") or "")[:2000],
+        description=str(room.get("scenery") or "")[:1500],
         state={"room": {"of": rec.id, "id": room["id"], "number": room.get("number")}},
         location_id=place.id,
     )
+
+
+def public_description(e: Entity, catalog: CatalogView) -> str | None:
+    """Публичная обстановка комнаты книги, не зависящая от сохранённого read_aloud.
+
+    В старых кампаниях Entity.description содержит копию read_aloud (включая возможных противников).
+    Не мигрируем и не разбираем этот текст: источник безопасной обстановки — только scenery из модуля.
+    Для обычных свободных локаций остаётся существующее Entity.description.
+    """
+    ref = room_of(e)
+    if ref is None:
+        return e.description or None
+    rec = catalog.find(ref["of"], "location_template")
+    book_room = find_room(rec, ref["id"]) if rec is not None else None
+    if book_room is None:
+        return None
+    return str(book_room.get("scenery") or "").strip() or None
 
 
 def public_name(e: Entity, visited: bool) -> str:
@@ -105,6 +122,8 @@ def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogVie
         lines.append(f"Текст вслух из книги (перескажи живо, по сути книги): {room['read_aloud']}")
     if room.get("description"):
         lines.append(f"Что здесь по книге: {room['description']}")
+    if room.get("scenery"):
+        lines.append(f"Постоянная обстановка, доступная игрокам: {room['scenery']}")
     checks = [c for c in room.get("checks") or [] if isinstance(c, dict)]
     if checks:
         lines.append("Проверки книги — сложность только эта, через roll_check с difficulty из скобок:")
