@@ -5316,6 +5316,13 @@
       "title": "Number",
       "type": "string"
      },
+     "passages": {
+      "items": {
+       "$ref": "#/components/schemas/PassageMark"
+      },
+      "title": "Passages",
+      "type": "array"
+     },
      "x": {
       "title": "X",
       "type": "number"
@@ -6679,6 +6686,52 @@
      "here"
     ],
     "title": "PartyPart",
+    "type": "object"
+   },
+   "PassageMark": {
+    "properties": {
+     "cell": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Cell",
+      "type": "array"
+     },
+     "kind": {
+      "default": "passage",
+      "enum": [
+       "passage",
+       "door",
+       "arch",
+       "stairs",
+       "hatch",
+       "gap",
+       "bars"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "side": {
+      "enum": [
+       "n",
+       "e",
+       "s",
+       "w"
+      ],
+      "title": "Side",
+      "type": "string"
+     },
+     "to": {
+      "title": "To",
+      "type": "string"
+     }
+    },
+    "required": [
+     "to",
+     "side",
+     "cell"
+    ],
+    "title": "PassageMark",
     "type": "object"
    },
    "PasswordIn": {
