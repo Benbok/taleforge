@@ -84,9 +84,7 @@ def test_new_tables_and_legacy_inventory_are_compatible(settings):
         await session.flush()
 
         legacy = InventoryItem(character_id=hero.id, item_template_id="item.dagger")
-        unique = InventoryItem(
-            character_id=hero.id, item_template_id="item.amulet", world_entity_id=artifact.id
-        )
+        unique = InventoryItem(character_id=hero.id, item_template_id="item.amulet", world_entity_id=artifact.id)
         generation = WorldGenerationState(
             campaign_id=campaign.id,
             target_entity_id=room.id,
@@ -127,18 +125,12 @@ def test_new_tables_and_legacy_inventory_are_compatible(settings):
         with pytest.raises(IntegrityError):
             async with session.begin_nested():
                 session.add(
-                    WorldGenerationState(
-                        campaign_id=campaign.id, target_entity_id=room.id, phase="location_initial"
-                    )
+                    WorldGenerationState(campaign_id=campaign.id, target_entity_id=room.id, phase="location_initial")
                 )
                 await session.flush()
         with pytest.raises(IntegrityError):
             async with session.begin_nested():
-                session.add(
-                    PlotAnchorBinding(
-                        campaign_id=campaign.id, anchor_id="clue.01", plot_ref="plot.other"
-                    )
-                )
+                session.add(PlotAnchorBinding(campaign_id=campaign.id, anchor_id="clue.01", plot_ref="plot.other"))
                 await session.flush()
 
     run(settings, exercise)
