@@ -245,6 +245,55 @@ class TurnMixin:
             and m.seat_id in char_by_seat
             and char_by_seat[m.seat_id].status in ("approved", "active")
         }
+        # A hostile opening attack begins initiative BEFORE its damage is rolled.
+        # Only a single, unambiguous weapon attack is queued here. Compound actions
+        # (move + attack, spell + attack) stay with the decision model for now.
+        trace_calls: list[dict] = []
+        routed: list[str] = []
+        opening_actors: set[str] = set()
+        opening_notes: list[str] = []
+        if not combat.in_combat(ctx):
+            for m in new:
+                attack = intents.routable_attack(m.intent) if m.kind == "action" else None
+                actions = (m.intent or {}).get("actions") or []
+                if (
+                    attack is None
+                    or len(actions) != 1
+                    or attack["attacker_id"] not in required
+                    or m.seat_id not in char_by_seat
+                    or char_by_seat[m.seat_id].id != attack["attacker_id"]
+                ):
+                    continue
+                enemy = ctx.world.entities.get(attack["target_id"])
+                if (
+                    enemy is None
+                    or enemy.kind != "creature"
+                    or (enemy.state or {}).get("dead")
+                    or (enemy.state or {}).get("attitude", "hostile") != "hostile"
+                    or ctx.world.actor_place(attack["attacker_id"]) != ctx.world.actor_place(enemy.id)
+                ):
+                    continue
+                opened = await execute(
+                    ctx, "set_scene_mode", {"mode": "combat"}, key=f"{turn_id}:opening:initiative"
+                )
+                trace_calls.append({"tool": "set_scene_mode", "result": opened, "automatic": True})
+                if opened.get("ok"):
+                    combat.queue_opening_attack(ctx, attack)
+                    opening_actors.add(attack["attacker_id"])
+                    ctx.closed.add(attack["attacker_id"])
+                    routed.append(
+                        f"{attack['attacker_id']}: атака заявлена; инициатива определена сервером, "
+                        "удар будет проведён в собственный ход героя (или уже проведён)"
+                    )
+                    await self._status(cid, "rolling")
+                    opening_notes += await combat.run_until_hero(
+                        ctx, f"{turn_id}:opening", self._ask_reaction
+                    )
+                else:
+                    routed.append(
+                        f"{attack['attacker_id']}: начать бой не удалось: {opened.get('error')}"
+                    )
+                break
         fighting = combat.in_combat(ctx) and ctx.world.fighting_here()  # бой другой группы этот ход не ведёт
         hero_turn = combat.current_character(ctx) if fighting else None  # в бою: чей ход закрывает ответ мастера
         combat_note = ""
@@ -256,9 +305,9 @@ class TurnMixin:
             )
 
         # Маршрутизатор механик (раздел 7): однозначную атаку оружием сервер проводит сам, модель её только опишет
-        trace_calls: list[dict] = []
-        routed: list[str] = []
         for m in new:
+            if m.seat_id in char_by_seat and char_by_seat[m.seat_id].id in opening_actors:
+                continue
             name, args = "resolve_attack", intents.routable_attack(m.intent) if m.kind == "action" else None
             if args is None and m.kind == "action":
                 name, args = "cast_spell", _routable_cast(ctx, m.intent)
@@ -422,9 +471,16 @@ class TurnMixin:
             )
             trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
 
-        combat_notes: list[str] = []
-        if fighting and combat.in_combat(ctx):
-            acted = hero_turn is not None and any(m.kind == "action" and m.seat_id == hero_turn.seat_id for m in new)
+        combat_notes: list[str] = list(opening_notes)
+        # An AI-initiated set_scene_mode can occur AFTER the initial fighting snapshot.
+        # Always bootstrap the live queue; only finish a previously active hero turn.
+        if combat.in_combat(ctx) and ctx.world.fighting_here():
+            acted = (
+                fighting
+                and hero_turn is not None
+                and hero_turn.id not in opening_actors
+                and any(m.kind == "action" and m.seat_id == hero_turn.seat_id for m in new)
+            )
             if acted and combat.current_id(ctx) == hero_turn.id:
                 await combat.finish_turn(ctx, combat_notes)
             await self._status(cid, "rolling")
