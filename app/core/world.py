@@ -156,7 +156,10 @@ def natural_ac(feats: list[dict], dex_mod: int) -> int | None:
 
 
 def character_actor(
-    ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list[ActiveEffect],
+    ch: Character,
+    cat: CatalogView,
+    inventory: list[InventoryItem],
+    effects: list[ActiveEffect],
     game_time: int = 0,
 ) -> Actor:
     sheet = ch.sheet or {}
@@ -347,8 +350,11 @@ class World:
             return self._actors[actor_id]
         if actor_id in self.characters:
             a = character_actor(
-                self.characters[actor_id], self.catalog, self.inventory.get(actor_id, []),
-                self.effects, self.scene.game_time,
+                self.characters[actor_id],
+                self.catalog,
+                self.inventory.get(actor_id, []),
+                self.effects,
+                self.scene.game_time,
             )
         elif actor_id in self.entities and self.entities[actor_id].kind == "creature":
             a = creature_actor(self.entities[actor_id], self.catalog, self.effects)
