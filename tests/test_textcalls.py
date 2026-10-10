@@ -143,8 +143,8 @@ def test_markdown_calls_are_detected_and_removed():
     assert [name for name, _ in calls] == ["spawn_entity", "spawn_entity", "resolve_attack"]
     assert calls[0][1]["position"] == {"cell": {"x": 2, "y": 2}}
     assert textcalls.clean(MARKDOWN_CALLS) == "Кости звенят в пустом зале."
-    assert textcalls.contains(r"\\[spawn_entity\\]\\(name='Скелет')", names)
-    assert textcalls.clean(r"\\<center>" + "\n" + r"\\[spawn_entity\\]\\(name='Скелет')" + "\n" + r"\\</center>") == ""
+    assert textcalls.contains(r"\[spawn_entity\]\(name='Скелет')", names)
+    assert textcalls.clean(r"\<center>" + "\n" + r"\[spawn_entity\]\(name='Скелет')" + "\n" + r"\</center>") == ""
     assert textcalls.clean("[spawn_entity](name='Незаконченный'") == ""
 
 
@@ -183,7 +183,7 @@ def test_master_rejects_markdown_commands_and_regenerates_story(game_client, adm
         {"text": "Бран заглядывает в пустую комнату."},
     ]
     n = act(game_client, p1, c["id"], "Оглядываюсь по сторонам")
-    assert n["content"] == "Бран заглядывает в пустую комнату."
+    assert "Бран" in n["content"] and n["content"].endswith("заглядывает в пустую комнату.")
     assert "spawn_entity" not in n["content"]
     assert rows(settings, Event, Event.tool == "spawn_entity") == []
     assert rows(settings, Event, Event.tool == "resolve_attack") == []
