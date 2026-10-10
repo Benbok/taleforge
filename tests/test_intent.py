@@ -4,7 +4,7 @@
 from sqlalchemy import select
 
 from app.agents import intent as intents
-from app.db.models import Campaign, InventoryItem, LlmCall, MasterTurn, Message
+from app.db.models import Campaign, Event, InventoryItem, LlmCall, MasterTurn, Message
 from app.tools.runtime import open_context
 from tests.game import QueueDice, ok, party, run
 from tests.test_combat import _fight, scene  # noqa: F401
@@ -270,3 +270,43 @@ def test_litellm_prompt_caching_injection(monkeypatch):
     # Для локальной модели — не трогаем (остаётся строкой)
     asyncio.run(client.complete(msgs, model="lm_studio/qwen2.5"))
     assert captured_kwargs["messages"][0]["content"] == long_sys
+
+
+def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g, llm, dice, settings):
+    """A natural-language offensive cast resolves only after initiative is rolled."""
+    from tests.test_spells import WIZARD
+    from app.tools.registry import execute
+
+    c, heads, _ = party(game_client, admin_g, players=2)
+    cid = c["id"]
+    wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
+    submitted = ok(
+        game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1])
+    )
+    assert submitted["status"] == "approved"
+
+    async def spawn(s):
+        campaign = await s.get(Campaign, cid)
+        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
+        result = await execute(
+            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
+        )
+        assert result["ok"], result
+        await s.commit()
+        return result["result"]["spawned"][0]["id"]
+
+    goblin = run(settings, spawn)
+    llm.replies += [
+        intent({"verb": "cast", "spell_id": "spell.magic_missile", "target_id": goblin}),
+        DONE,
+        {"text": "Заклинание нанесло урон по инициативе."},
+    ]
+    dice += [5, 20, 1, 2, 2, 2]  # fighter, wizard, goblin; wizard then 3 missiles
+    act(game_client, heads[1], cid, "Пускаю волшебную стрелу в гоблина")
+    events = rows(settings, Event, Event.campaign_id == cid)
+    start = next(e for e in events if e.tool == "set_scene_mode" and e.payload.get("mode") == "combat")
+    spell = next(e for e in events if e.tool == "cast_spell" and e.actor_id == wiz["id"])
+    assert start.created_at <= spell.created_at
+    assert spell.payload["spell_id"] == "spell.magic_missile"
+    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
+    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
