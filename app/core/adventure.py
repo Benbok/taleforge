@@ -295,6 +295,7 @@ def book_map(
         marks.append(out)
     numbers = {m["number"] for m in marks}
     tokens = []
+    token_positions: dict[str, tuple[float, float]] = {}
     groups: dict[str, list] = {}
     for ch, pid, pos in heroes:
         e = rooms_here.get(pid or "")
@@ -308,7 +309,8 @@ def book_map(
             mark,
             [(ch.id, *Pos(p.get("zone"), p.get("bearing")).xy(None)) for ch, p in members],
         )
-        for ch, _ in members:
+        for ch, pos in members:
+            token_positions[ch.id] = Pos(pos.get("zone"), pos.get("bearing")).xy(None)
             x, y = spots[ch.id]
             tokens.append(
                 {
@@ -337,13 +339,21 @@ def book_map(
         if num not in numbers or mark is None:
             continue
         from app.core.inspect import entity_type
-        from app.core.positions import Pos
-        x, y = _token_spots(grid, mark, [(e.id, *Pos(e.zone, st.get("bearing")).xy(None))])[e.id]
+        token_positions[e.id] = Pos(e.zone, st.get("bearing")).xy(None)
+        x, y = mark["x"], mark["y"]
         tokens.append({
             "id": e.id, "name": e.name, "mine": False, "room": num,
             "x": x, "y": y, "down": bool(st.get("dead")),
             "type": entity_type(e),
         })
+    # Располагаем всех персонажей, существ и предметы комнаты вместе,
+    # иначе каждый новый объект занимал бы одну и ту же клетку.
+    for num in {t["room"] for t in tokens}:
+        mark = next(m for m in mp["marks"] if str(m.get("number")) == num)
+        room_tokens = [t for t in tokens if t["room"] == num]
+        spots = _token_spots(grid, mark, [(t["id"], *token_positions[t["id"]]) for t in room_tokens])
+        for token in room_tokens:
+            token["x"], token["y"] = spots[token["id"]]
     return {
         "module_id": adv.data.get("module_id"),
         "map_id": mp["id"],
