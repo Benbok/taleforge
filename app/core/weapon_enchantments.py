@@ -40,8 +40,8 @@ def enchant_attack(attack: dict[str, Any], state: dict[str, Any], mods: dict[str
         return
     ability = state["ability"]
     spell_mod = mods[ability]
-    strength_mod = mods["str"]
-    attack["attack_bonus"] += spell_mod - strength_mod
+    previous_mod = mods[attack.get("ability", "str")]
+    attack["attack_bonus"] += spell_mod - previous_mod
     remainder = match.group(3)
     attack["damage"] = f"1d8{spell_mod:+d}" + remainder
     attack["ability"] = ability
