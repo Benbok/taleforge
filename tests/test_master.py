@@ -253,6 +253,7 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
 
 
 
+
 def test_failed_turn_rolls_back(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
