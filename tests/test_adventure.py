@@ -123,7 +123,8 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     # схема «Вокруг» комнаты построена по клеткам книги: колонна — стена, выход на восток в комнату 2
     sk = m["sketch"]
     assert (sk["cols"], sk["rows"]) == (4, 6) and [1, 2] in sk["walls"]
-    assert [(x["side"], x["name"]) for x in sk["exits"]] == [("e", "Комната 2")]
+    assert sk["exits"] == []  # нет размеченной двери — её координаты неизвестны
+    assert [x["name"] for x in sk["unplaced_exits"]] == ["Комната 2"]
 
     async def next_room(ctx):
         r2 = await _ok(ctx, "enter_room", {"room": "2"})
@@ -169,7 +170,7 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     m = _map(client, p1, cid)
     assert remote in {p["id"] for p in m["places"]}  # посещённая локация остаётся в «Местах»
     assert {e["id"] for e in m["exits"]} == {room["room_id"]}
-    assert {x["to"] for x in m["sketch"]["exits"] if x.get("to")} == {room["room_id"]}
+    assert {x["to"] for x in m["sketch"]["unplaced_exits"] if x.get("to")} == {room["room_id"]}
     assert not any(remote in (x["a"], x["b"]) for x in m["links"])
 
 
