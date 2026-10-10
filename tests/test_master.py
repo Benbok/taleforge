@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.agents import prelude
 from app.agents.llm import LLMError, ScriptedLLM
 from app.db.models import CampaignSecret, Character, Event, LlmCall, MasterTurn
 from app.main import create_app
@@ -183,8 +184,12 @@ def test_unregistered_named_actors_accepts_russian_case_declensions():
     assert unregistered_named_actors("Иван бьёт Зомби 1.", world) == ["Зомби 1"]
 
 
-def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings):
+def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings, monkeypatch):
     """Отказ входа прерывает batch: враги не появляются в прежней комнате."""
+    async def no_intro(*_args, **_kw):
+        return None
+
+    monkeypatch.setattr(prelude, "prepare_campaign_intro", no_intro)
     mid = publish_sample(settings)
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
@@ -213,8 +218,12 @@ def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g,
     assert initial in message["content"] or before.name in message["content"] or "остался" in message["content"]
 
 
-def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
+def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monkeypatch):
     """Ранний отказ не перечёркивает успешный повтор и спавн в НОВОЙ комнате."""
+    async def no_intro(*_args, **_kw):
+        return None
+
+    monkeypatch.setattr(prelude, "prepare_campaign_intro", no_intro)
     mid = publish_sample(settings)
     c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
     game_client.portal.call(game_client.app.state.master.wait_idle, None)
@@ -237,7 +246,8 @@ def test_transition_retry_can_succeed(game_client, admin_g, llm, settings):
     message = act(game_client, p1, c["id"], "Перехожу в комнату 2.")
     (hero_now,) = rows(settings, Character, Character.id == hero["id"])
     (turn,) = rows(settings, MasterTurn)
-    assert hero_now.location_id != ""
+    entered = rows(settings, Event, Event.tool == "enter_room")
+    assert len(entered) == 1 and hero_now.location_id == entered[0].target_id
     assert [c["tool"] for c in turn.trace["calls"][:4]] == [
         "enter_room",
         "spawn_entity",
