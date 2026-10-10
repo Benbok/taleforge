@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
-import { MAP_PRESETS } from "./mapPresets";
+import { EXIT_PRESETS, MAP_PRESETS } from "./mapPresets";
 import { useDraft } from "./draft";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
 import { useInspector } from "./inspector";
@@ -93,16 +93,7 @@ function viewOf(sk: Sketch | null | undefined): View {
   };
 }
 
-const EXIT_ICON: Record<SketchExit["kind"], string> = {
-  door: "▯",
-  bars: "#",
-  window: "◫",
-  arch: "∩",
-  stairs: "≡",
-  hatch: "⊡",
-  gap: "⌇",
-  passage: "→",
-};
+const EXIT_ICON: Record<SketchExit["kind"], string> = EXIT_PRESETS;
 const EXIT_KIND: Record<SketchExit["kind"], string> = {
   door: "дверь",
   bars: "решётка",
