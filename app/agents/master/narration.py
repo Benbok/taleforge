@@ -11,6 +11,7 @@ from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
+from app.agents.master.outcomes import attempt_note, safe_stay_message, unresolved_transition
 from app.core import combat
 from app.db.models import AgentConfig, Campaign, Scene
 from app.emotion import game as mood
@@ -41,12 +42,22 @@ class NarrationMixin:
         *,
         stalled: bool = False,
         meet: str = "",
+        tool_attempts: list[dict] | None = None,
+        affected_heroes: set[str] | None = None,
     ):
+        # Пока отказ перехода не исправлен, невозможно гарантировать корректность
+        # свободного повествования: не публикуем даже поток его черновика.
+        attempts = tool_attempts or []
+        if unresolved_transition(attempts):
+            return safe_stay_message(ctx, affected_heroes or set()), {
+                "regenerated": False, "stripped": [], "failed_transition": True
+            }
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
         prompt = render(
             "narrate.j2",
             results=results,
+            tool_attempts=attempt_note(attempts),
             scene=ctx.world.scene_table(),
             length=_narration_length(ctx, notes),
             check_only=_check_only(ctx, notes),
