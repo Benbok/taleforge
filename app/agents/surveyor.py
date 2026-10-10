@@ -132,7 +132,7 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
         s.add_all(calls)
         stored = False
         if data is not None:
-            place = await s.get(Entity, place_id)
+            place = await s.get(Entity, place_id, with_for_update=True)
             st = place.state or {}
             mine = st.get("sketch") or {}
             if (

@@ -517,6 +517,12 @@ def _validate_feature_bindings(w, place: Entity, data: dict) -> None:
             raise ToolError(f"«{feature['name']}»: entity_id {entity_id} не принадлежит открытому объекту этой комнаты")
 
 
+async def _lock_sketch_place(ctx: ToolContext, place: Entity) -> None:
+    """Serialize overlapping edits before checking edit_rev on PostgreSQL."""
+    await ctx.session.flush()
+    await ctx.session.refresh(place, with_for_update=True)
+
+
 def _verify_sketch_revision(current: dict, expected: int | None, *, replacing: bool = False) -> int:
     revision = int(current.get("edit_rev") or 0)
     if expected is not None and expected != revision:
@@ -540,6 +546,7 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     if w.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    await _lock_sketch_place(ctx, place)
     current = (place.state or {}).get("sketch") or {}
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=True)
     data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"})
@@ -603,6 +610,7 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     if w.scene.location_id is None:
         raise ToolError("у сцены нет места; сначала create_location с make_current")
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    await _lock_sketch_place(ctx, place)
     current = sketch.of_place(place, w.catalog, w.entities)
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
@@ -695,6 +703,7 @@ class BindSketchFeatureArgs(BaseModel):
 async def bind_sketch_feature(ctx: ToolContext, a: BindSketchFeatureArgs) -> dict:
     w = ctx.world
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
+    await _lock_sketch_place(ctx, place)
     current = (place.state or {}).get("sketch")
     if not isinstance(current, dict):
         raise ToolError("у места нет сохранённого эскиза")
