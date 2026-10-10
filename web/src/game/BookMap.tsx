@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { useAuthedImage } from "../lib/authedImage";
 import { Token } from "./GridBoard";
 import { useInspector } from "./inspector";
-import type { MapBook } from "./map";
+import { roomLabel, type MapBook } from "./map";
 
 const W = 1000; // ширина рисунка в единицах SVG; высота — по пропорциям картинки
 
@@ -27,7 +27,7 @@ export function tokenSize(book: MapBook, width: number): number {
 }
 
 /** Карта места из книги: комната отряда подсвечена, посещённые обведены, герои стоят на свободных клетках. */
-export default function BookMap({ book }: { book: MapBook }) {
+export default function BookMap({ book, where }: { book: MapBook; where?: string | null }) {
   const src = useAuthedImage(`/api/modules/${book.module_id}/maps/${book.map_id}`);
   const [ratio, setRatio] = useState<number | null>(null);
   const open = useInspector((s) => s.open);
@@ -46,6 +46,9 @@ export default function BookMap({ book }: { book: MapBook }) {
 
   return (
     <div className="flex flex-col gap-2">
+      <p className="font-heading text-sm font-semibold text-ink">
+        <span className="text-accent">⌖</span> {where ?? (here ? `${roomLabel(here)} · ${book.name}` : book.name)}
+      </p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full select-none rounded-md" role="img" aria-label={`Карта: ${book.name}`}>
         <image href={src} x={0} y={0} width={W} height={H} />
         {here?.cells &&
@@ -65,6 +68,24 @@ export default function BookMap({ book }: { book: MapBook }) {
           >
             <title>{`Комната ${r.number}${r.name ? ` «${r.name}»` : ""}`}</title>
           </circle>
+        ))}
+        {/* подписи комнат: номер, у знакомых — название; обводка фоном, чтобы читалось поверх рисунка */}
+        {book.rooms.map((r) => (
+          <text
+            key={`label-${r.number}`}
+            x={r.x * W}
+            y={r.y * H + size * 0.8 + 18}
+            textAnchor="middle"
+            fontSize={18}
+            fontWeight={r.status === "here" ? 700 : 500}
+            fill={r.status === "here" ? "var(--tf-accent)" : "var(--color-ink, #ddd)"}
+            stroke="var(--color-surface, #17181c)"
+            strokeWidth={5}
+            paintOrder="stroke"
+            aria-hidden="true"
+          >
+            {roomLabel(r)}
+          </text>
         ))}
         {book.tokens.map((t) => (
           <Token

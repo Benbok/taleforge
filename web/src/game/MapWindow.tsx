@@ -27,6 +27,7 @@ import {
   type CellStack,
   exitCell,
   sketchFrame,
+  whereTrail,
 } from "./map";
 
 const ZONES: [Zone, string][] = [
@@ -215,7 +216,7 @@ function SketchLayer({
             <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={10} fill={shut ? "var(--tf-ember, #c0563a)" : TYPE_COLOR.location}>
               {EXIT_ICON[x.kind]}
             </text>
-            {x.beyond && (
+            {(x.beyond || x.name) && (
               <text
                 x={cx + out[0] * CELL * 0.9}
                 y={cy + out[1] * CELL * 0.9 + 2.5}
@@ -224,7 +225,7 @@ function SketchLayer({
                 fontStyle="italic"
                 fill="var(--color-muted, #a8a296)"
               >
-                {short(x.beyond, 16)}
+                {short(x.beyond || x.name, 16)}
               </text>
             )}
           </g>
@@ -306,6 +307,9 @@ function Around({ m }: { m: MapState }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="font-heading text-sm font-semibold text-ink">
+        <span className="text-accent">⌖</span> {whereTrail(m)}
+      </p>
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
       <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
@@ -723,7 +727,7 @@ export default function MapWindow() {
           {!data ? (
             <p className="text-center font-mono text-xs text-muted">{error ?? "Загружаю карту…"}</p>
           ) : tab === "book" && data.book ? (
-            <BookMap book={data.book} />
+            <BookMap book={data.book} where={whereTrail(data)} />
           ) : tab === "around" || tab === "book" ? (
             data.here ? (
               <Around m={data} />
