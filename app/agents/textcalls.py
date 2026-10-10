@@ -1,9 +1,8 @@
 """Вызовы инструментов, которые модель написала текстом, а не через function calling.
 
-Слабые модели (техническая Gemini, локальные в LM Studio) иногда отвечают строками вида
-``action: spawn_entity(template_id='monster.skeleton', cell=(15, 20))`` или списком
-``* `advance_plot(node_id='n1', outcome='done')` ``. Мир от этого не меняется, а игрок видит код.
-Фаза решения разбирает такие строки в настоящие вызовы, повествование вычищает их из текста.
+Модели иногда выводят имитации вызовов вместо структурированных tool_calls.
+Разбор используется для обнаружения и удаления технического текста, но не даёт разрешение на исполнение.
+Поддерживаются также markdown-формы ``[spawn_entity](...)``.
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-_NAME = re.compile(r"\b([a-z][a-z0-9_]*)\s*\(")
+_NAME = re.compile(r"(?<![\w])(?:\\?\[\s*)?([a-z][a-z0-9_]*)(?:\s*\\?\])?\s*\\?\(")
 # строки, что остаются от списка вызовов: заголовок «Выполняю действия:», разделитель, пустой пункт, ограда кода
 _LEFTOVER = re.compile(
     r"^\s*(?:(?:выполняю|выполняем|выполнено|выполненные|вызываю|вызовы|действия|actions?|tool[ _]?calls?)"
@@ -72,7 +71,7 @@ def _find(text: str, names: Iterable[str]) -> list[tuple[int, int, str, str]]:
         if end is None:
             pos = m.end()
             continue
-        out.append((m.start(), end, name, text[m.start() : end]))
+        out.append((m.start(), end, name, name + text[m.end() - 1 : end]))
         pos = end
     return out
 
@@ -104,10 +103,11 @@ def parse(text: str, names: Iterable[str]) -> list[tuple[str, dict[str, Any]]]:
 
 def strip(text: str, names: Iterable[str]) -> str:
     """Убирает из текста для игроков строки с вызовами инструментов и то, что от их списка осталось."""
-    found = _find(text or "", names)
-    if not found:
+    known = set(names)
+    found = _find(text or "", known)
+    if not found and not _open(text or "", known):
         return text
-    cut = text
+    cut = text or ""
     for start, end, _, _ in reversed(found):
         # строка вызова целиком: «action: …», «* `…`», «- …» вместе с префиксом
         line_start = cut.rfind("\n", 0, start) + 1
@@ -121,6 +121,15 @@ def strip(text: str, names: Iterable[str]) -> str:
             cut = cut[:line_start] + cut[line_end + 1 :]
         else:
             cut = cut[:start] + cut[end:]
+    # Незакрытый вызов не может быть опубликован даже при обрыве ответа модели.
+    pending = [
+        m.start()
+        for m in _NAME.finditer(cut)
+        if m.group(1) in known and _span(cut, m.end() - 1) is None
+    ]
+    if pending:
+        cut = cut[: min(pending)]
+    cut = re.sub(r"</?center(?:\s[^>]*)?>", "", cut, flags=re.IGNORECASE)
     lines = [ln for ln in cut.split("\n") if not _LEFTOVER.fullmatch(ln) or not ln.strip()]
     out = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     return out
@@ -139,64 +148,42 @@ def clean(text: str) -> str:
     return strip(text, tool_names())
 
 
-# начало строки, которое ещё может стать вызовом или заголовком списка вызовов: такую строку держим до конца
-_MAYBE = re.compile(
-    r"\s*(?:[-*•]\s*)?(?:\d+[.)]\s*)?(?:[a-z_ ]{0,20}:\s*)?`*\s*[a-z0-9_]*\s*"
-    r"|\s*(?:[*_\-=`]{1,})\s*",
-    re.IGNORECASE,
-)
-_HEADS = ("выполн", "вызов", "вызыв", "действ", "action", "tool")
-
-
-def _maybe(line: str) -> bool:
-    """Недописанная строка ещё может оказаться вызовом или заголовком списка вызовов."""
-    low = line.lstrip().lower()
-    return bool(_MAYBE.fullmatch(line)) or any(h.startswith(low) or low.startswith(h) for h in _HEADS)
+def contains(text: str, names: Iterable[str]) -> bool:
+    """Есть ли в тексте попытка вызвать инструмент, включая незавершённый вызов."""
+    known = set(names)
+    return bool(_find(text or "", known)) or _open(text or "", known)
 
 
 class StreamFilter:
-    """Поток повествования без строк с вызовами инструментов: обычный текст идёт сразу, строка, похожая на вызов
-    или заголовок их списка, — только когда ясно, что это не вызов. Хвост в конце не нужен: финальный текст
-    сообщения всё равно заменит черновик."""
+    """Строковый барьер для публичного потока повествования.
+
+    До завершения строки и проверки её содержимого она не попадает игрокам.
+    Незавершённый вызов удерживается, даже если аргументы занимают несколько строк.
+    Неполный хвост не публикуется: после коммита его заменит проверенный финальный текст.
+    """
 
     def __init__(self, push, names: Iterable[str] | None = None) -> None:
         self.push = push
         self.names = set(names) if names is not None else tool_names()
-        self.line = ""  # недописанная строка, которую держим
-        self.passing = False  # текущая строка уже признана текстом и идёт сразу
-        self.held = ""  # заголовок вроде «Выполняю действия:» — ждёт, что за ним
+        self.pending = ""
 
     async def __call__(self, chunk: str) -> None:
-        for part in re.split(r"(\n)", chunk):
-            if not part:
+        self.pending += chunk
+        while True:
+            # Многострочный вызов удерживается до закрывающей скобки.
+            boundary = next(
+                (
+                    i + 1
+                    for i, char in enumerate(self.pending)
+                    if char == "\n" and not _open(self.pending[: i + 1], self.names)
+                ),
+                None,
+            )
+            if boundary is None:
+                return
+            line, self.pending = self.pending[:boundary], self.pending[boundary:]
+            if line.strip().lower() in ("<center>", "</center>"):
                 continue
-            if self.passing:
-                await self.push(part)
-                if part == "\n":
-                    self.passing = False
-                continue
-            self.line += part
-            if part == "\n" and not _open(self.line, self.names):
-                await self._decide(self.line)
-                self.line = ""
-            elif not _maybe(self.line) and not _open(self.line, self.names) and not _find(self.line, self.names):
-                await self._flush(self.line)
-                self.line, self.passing = "", True
-
-    async def _decide(self, line: str) -> None:
-        body = line.rstrip("\n")
-        if _find(body, self.names):
-            rest = strip(body, self.names)
-            self.held = ""
-            if rest.strip():
-                await self.push(rest + "\n")
-            return
-        if body.strip() and _LEFTOVER.fullmatch(body):
-            self.held += line
-            return
-        await self._flush(line)
-
-    async def _flush(self, text: str) -> None:
-        if self.held:
-            text, self.held = self.held + text, ""
-        await self.push(text)
+            safe = strip(line, self.names)
+            if safe.strip():
+                await self.push(safe + ("\n" if line.endswith("\n") and not safe.endswith("\n") else ""))
