@@ -100,7 +100,6 @@ def test_room_cells_and_obstacles_are_checked():
     assert "left < right" in modules.check_marks(bad_grid, draft)[1][0]
 
 
-
 def test_book_passages_require_authoritative_topology_and_boundary_cells():
     draft, _, _ = check(sample())
     source = {
@@ -118,9 +117,7 @@ def test_book_passages_require_authoritative_topology_and_boundary_cells():
 
     parsed, errors = validate()
     assert errors == []
-    assert parsed["marks"][0]["passages"] == [
-        {"to": "r2", "side": "e", "cell": [3, 1], "kind": "door"}
-    ]
+    assert parsed["marks"][0]["passages"] == [{"to": "r2", "side": "e", "cell": [3, 1], "kind": "door"}]
     assert "rooms[].exits" in " ".join(validate(passages=[{"to": "r99", "side": "e", "cell": [3, 1]}])[1])
     assert "не на стороне" in " ".join(validate(passages=[{"to": "r2", "side": "w", "cell": [3, 1]}])[1])
     assert "стене или вне пола" in " ".join(
