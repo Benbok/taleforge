@@ -410,7 +410,11 @@ class TurnMixin:
             for call in reply.tool_calls:
                 args = call.arguments
                 if failed_in_batch:
-                    result = {"ok": False, "skipped": True, "error": "не выполнено после ошибки перехода; исправь переход"}
+                    result = {
+                        "ok": False,
+                        "skipped": True,
+                        "error": "не выполнено после ошибки перехода; исправь переход",
+                    }
                 elif (
                     failed_transition
                     and call.name == "spawn_entity"
