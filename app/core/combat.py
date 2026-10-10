@@ -255,6 +255,11 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
         if await close_fronts(ctx, notes):
             return notes
         cid = current_id(ctx)
+        # This is already the current hero's initialized turn. Repeated syncs must
+        # not tick spell zones again or restart the five-minute deadline.
+        st = state(ctx)
+        if st.get("actor") == cid and st.get("deadline") is not None:
+            return notes
         try:
             act = ctx.world.actor(cid)
         except WorldError:
