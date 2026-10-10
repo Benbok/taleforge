@@ -486,7 +486,8 @@ def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
             return {}, [f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]"]
     if any(len(c) != 2 for c in a.walls):
         return {}, ["стена — клетка [c, r]"]
-    data = a.model_dump(exclude={"location_id", "expected_revision"}, exclude_none=True)
+    # Keep optional exit keys such as "to": None: link_exits relies on the original schema.
+    data = a.model_dump(exclude={"location_id", "expected_revision"})
     data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
     return data, sketch.check(data, places)
 
