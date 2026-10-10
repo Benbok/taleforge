@@ -137,9 +137,7 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
     _play(settings, cid, forget_legacy_links)
     m = _map(client, p1, cid)
     assert neighbor_id in {x["id"] for x in m["exits"]}
-    assert tuple(sorted((room["room_id"], neighbor_id))) in {
-        (x["a"], x["b"]) for x in m["links"]
-    }
+    assert tuple(sorted((room["room_id"], neighbor_id))) in {(x["a"], x["b"]) for x in m["links"]}
     assert m["exits"][0]["room_ref"] == "r2"
 
     # Та же вещь имеет один визуальный ключ на обеих картах: никаких новых
