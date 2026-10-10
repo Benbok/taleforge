@@ -592,7 +592,7 @@ class EditSketchArgs(BaseModel):
 def _find(items: list[dict], name: str, what: str) -> int:
     want = name.strip().lower()
     for i, x in enumerate(items):
-        if x["name"].strip().lower() == want:
+        if x.get("id") == name or x["name"].strip().lower() == want:
             return i
     have = ", ".join(f"«{x['name']}»" for x in items) or "нет"
     raise ToolError(f"в эскизе нет {what} «{name}»; есть: {have}")
@@ -615,7 +615,9 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     current = sketch.of_place(place, w.catalog, w.entities)
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
-    revision = _verify_sketch_revision(current, a.expected_revision)
+    revision = _verify_sketch_revision(
+        current, a.expected_revision, replacing=bool(sketch.linked_entity_ids(current))
+    )
     data = copy.deepcopy(current)
     exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
     note = ""
@@ -628,7 +630,7 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     else:
         if not a.target:
             raise ToolError("укажи target — название детали из эскиза")
-        names = [x["name"].strip().lower() for x in exits]
+        names = [x["name"].strip().lower() for x in exits] + [x.get("id") for x in exits]
         is_exit = a.target.strip().lower() in names
         if a.action in ("open", "close", "lock", "unlock") and not is_exit:
             _find(exits, a.target, "выхода")
