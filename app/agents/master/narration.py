@@ -71,7 +71,10 @@ class NarrationMixin:
             await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
-        unregistered = unregistered_named_actors(text, ctx.world)
+        # Псевдовызовы инструментов сначала очищает существующий textcalls-аудитор.
+        # Имена внутри их JSON-аргументов не являются художественным повествованием.
+        has_tool_text = textcalls.contains(text, textcalls.tool_names())
+        unregistered = [] if has_tool_text else unregistered_named_actors(text, ctx.world)
         if unknown or unregistered:
             audit["regenerated"] = True
             if unknown:
