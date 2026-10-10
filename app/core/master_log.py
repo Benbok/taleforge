@@ -44,6 +44,15 @@ def _call(raw: dict[str, Any], hidden_events: set[str]) -> dict[str, Any]:
     out: dict[str, Any] = {"tool": name, "secret": secret, "ok": bool(res.get("ok")), "args": _scalars(raw.get("args"))}
     if res.get("error"):
         out["error"] = _short(res["error"])
+    failure = res.get("failure") or {}
+    for source, target in (("code", "failure_code"), ("category", "failure_category")):
+        if failure.get(source):
+            out[target] = _short(failure[source])
+    if raw.get("request_key"):
+        out["request_key"] = raw["request_key"]
+    if name == "adjudicate_action":
+        out["resolution_origin"] = "fallback"
+        out["resolution_outcome"] = inner.get("game_outcome")
     if t is None or t.mutating:  # у читающих инструментов (сцена, лист, шаблон) результат — справка, не событие
         out["result"] = _scalars(inner)
     for k in ("routed", "auto"):

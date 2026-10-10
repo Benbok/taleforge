@@ -443,8 +443,8 @@ class TurnMixin:
                 continue
             await self._status(cid, "rolling")
             r = await execute(ctx, name, args, key=f"{turn_id}:route:{m.id}")
-            await capture_attempt(ctx, actor, r)
-            trace_calls.append({"tool": name, "args": args, "result": r, "routed": True})
+            request_key = await capture_attempt(ctx, actor, r)
+            trace_calls.append({"tool": name, "args": args, "result": r, "routed": True, "request_key": request_key})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
             else:
@@ -568,9 +568,11 @@ class TurnMixin:
             ctx.resolution_calls_used = 0
             result = await execute(ctx, name, args, key=key)
             if name != "adjudicate_action":
-                await capture_attempt(
+                request_key = await capture_attempt(
                     ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id"), result
                 )
+                if request_key:
+                    result = {**result, "request_key": request_key}
             if name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
                 done_calls += max(1, ctx.resolution_calls_used) if name == "adjudicate_action" else 1
             return result
@@ -671,7 +673,9 @@ class TurnMixin:
                     }
                 else:
                     result = await run_call(call.name, args, f"{turn_id}:{call.id}")
-                trace_calls.append({"tool": call.name, "args": args, "result": result})
+                trace_calls.append(
+                    {"tool": call.name, "args": args, "result": result, "request_key": result.get("request_key")}
+                )
                 msgs.append(
                     {
                         "role": "tool",
