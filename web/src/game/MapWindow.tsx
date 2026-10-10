@@ -12,6 +12,7 @@ import {
   ELEVATION_NAME,
   GRID_R,
   interactText,
+  inMapFrame,
   layoutGrid,
   unlocatedBookExits,
   stackCells,
@@ -27,6 +28,7 @@ import {
   type SketchExit,
   type StepRequest,
   type CellStack,
+  type CellPlacement,
   exitCell,
   sketchFrame,
   whereTrail,
@@ -115,6 +117,8 @@ function posNote(elevation?: Elevation, cover?: Cover): string | null {
 interface Pick {
   name: string;
   near: [number, number][];
+  /** Ложь — клетка нарисована условно, а не записана движком. */
+  precise?: boolean;
   exit?: SketchExit;
   /** несколько вещей на одной клетке: у каждой своя кнопка «Взаимодействовать» */
   items?: { id: string; name: string }[];
@@ -420,7 +424,18 @@ export function UnlocatedExitStrip({ m }: { m: MapState }) {
 
 function Around({ m }: { m: MapState }) {
   const open = useOpen();
-  const { things: allThings, exits, heroes, areas } = layoutGrid(m);
+  const layout = layoutGrid(m);
+  // Настоящие клетки за пределами рисунка не прижимаются к его краю.
+  const offMap = [...layout.heroes, ...layout.things].filter(
+    (token) => token.placement !== "schematic" && !inMapFrame(token, m.sketch),
+  );
+  const allThings = layout.things.filter((token) => inMapFrame(token, m.sketch));
+  const exits = layout.exits.filter((token) => inMapFrame(token, m.sketch));
+  const heroes = layout.heroes.filter((token) => inMapFrame(token, m.sketch));
+  const areas = layout.areas.filter((token) => inMapFrame(token, m.sketch));
+  const schematic = [...layout.heroes, ...layout.things, ...layout.exits].some(
+    (token) => token.placement !== "mechanical",
+  );
   // Geometry-backed entities already render as interactive sketch features.
   // Keep them in around for narrative/interaction, not as overlapping SVG tokens.
   const linked = new Set(m.sketch?.features.map((f) => f.entity_id).filter(Boolean) ?? []);
@@ -431,6 +446,11 @@ function Around({ m }: { m: MapState }) {
   const go = (req: StepRequest) => stepTo(req);
   const canWalk = heroes.some((h) => h.item.mine) && !step.busy;
   const occupied = new Set([...things, ...exits, ...heroes].map((x) => `${x.col},${x.row}`));
+  // Только реальные клетки заняты механически; условные значки не блокируют маршрут.
+  const mechanicalOccupied = new Set(
+    [...things, ...heroes].filter((x) => x.placement === "mechanical").map((x) => `${x.col},${x.row}`),
+  );
+  const precisionById = new Map(things.map((x) => [x.item.id, x.placement]));
   const combat = m.mode === "combat";
   const sk = m.sketch ?? null;
   const v = viewOf(sk);
@@ -443,19 +463,26 @@ function Around({ m }: { m: MapState }) {
   const frame = sk ? sketchFrame(sk) : null;
   const floor: [number, number][] = [];
   for (let c = v.c0; c < v.c0 + v.cols; c++)
-    for (let r = v.r0; r < v.r0 + v.rows; r++) if ((!frame || frame.allowed(c, r)) && !occupied.has(`${c},${r}`)) floor.push([c, r]);
-  const pickThing = (id: string, name: string, col: number, row: number) => (e: MouseEvent<Element>) => {
-    setPick({ name, near: [[col, row]] });
+    for (let r = v.r0; r < v.r0 + v.rows; r++) if ((!frame || frame.allowed(c, r)) && !mechanicalOccupied.has(`${c},${r}`)) floor.push([c, r]);
+  const pickThing = (id: string, name: string, col: number, row: number, placement: CellPlacement) => (e: MouseEvent<Element>) => {
+    setPick({ name, near: [[col, row]], precise: placement === "mechanical" });
     open(id, name)(e);
   };
   const stacks = stackCells(things, heroes);
   const pickStack = (st: CellStack) => () => {
     if (st.items.length === 1) {
       const t = st.items[0];
-      setPick({ name: t.name, near: [[st.col, st.row]], items: [{ id: t.id, name: t.name }] });
+      setPick({
+        name: t.name, near: [[st.col, st.row]], precise: precisionById.get(t.id) === "mechanical",
+        items: [{ id: t.id, name: t.name }],
+      });
       return;
     }
-    setPick({ name: stackTitle(st.items), near: [[st.col, st.row]], items: st.items.map((t) => ({ id: t.id, name: t.name })) });
+    setPick({
+      name: stackTitle(st.items), near: [[st.col, st.row]],
+      precise: st.items.every((t) => precisionById.get(t.id) === "mechanical"),
+      items: st.items.map((t) => ({ id: t.id, name: t.name })),
+    });
   };
 
   return (
@@ -465,6 +492,18 @@ function Around({ m }: { m: MapState }) {
       </p>
       {m.here?.description && <p className="font-narration text-sm leading-relaxed text-ink-2">{m.here.description}</p>}
       <UnlocatedExitStrip m={m} />
+      {schematic && (
+        <p className="text-xs text-muted" role="note">
+          Пунктирные значки размещены условно или по книге, но не закреплены игровой клеткой.
+          Их положение не определяет расстояние, путь или возможность атаки.
+        </p>
+      )}
+      {offMap.length > 0 && (
+        <p className="text-xs text-muted" role="status">
+          Вне границ схемы: {offMap.map((x) => `${x.item.name} — клетка (${x.col}, ${x.row})`).join("; ")}.
+          Точные координаты сохранены, значки не перенесены к краю.
+        </p>
+      )
       <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
         {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} onPick={setPick} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
@@ -508,7 +547,7 @@ function Around({ m }: { m: MapState }) {
         ))}
 
         {heroes.length === 0 && <Token cx={MX} cy={MY} size={CELL} visual={MAP_PRESETS.hero} label="отряд" ariaLabel="Отряд" />}
-        {exits.map(({ item: x, col, row }) => (
+        {exits.map(({ item: x, col, row, placement }) => (
           <Token
             key={x.id ?? x.room_ref ?? x.name}
             cx={px(col)}
@@ -516,9 +555,9 @@ function Around({ m }: { m: MapState }) {
             size={CELL}
             visual={MAP_PRESETS.location}
             label={fitLabel(x.name, occupied, col, row, false)}
-            dashed={!x.visited}
+            dashed={!x.visited || placement !== "mechanical"}
             selected={isSelected(col, row)}
-            onClick={x.id ? pickThing(x.id, x.name, col, row) : undefined}
+            onClick={x.id ? pickThing(x.id, x.name, col, row, placement) : undefined}
             ariaLabel={`Выход: ${x.name}`}
           />
         ))}
@@ -527,6 +566,7 @@ function Around({ m }: { m: MapState }) {
           .map((st) => {
             const t = st.items[0];
             const isSel = isSelected(st.col, st.row);
+            const allExact = st.items.every((x) => precisionById.get(x.id) === "mechanical");
             if (st.items.length === 1)
               return (
                 <Token
@@ -538,8 +578,9 @@ function Around({ m }: { m: MapState }) {
                   label={fitLabel(t.name, occupied, st.col, st.row, false)}
                   faded={t.condition === "мёртв"}
                   badge={badge(t.elevation, t.cover)}
+                  dashed={!allExact}
                   selected={isSel}
-                  onClick={pickThing(t.id, t.name, st.col, st.row)}
+                  onClick={pickThing(t.id, t.name, st.col, st.row, precisionById.get(t.id) ?? "schematic")}
                   ariaLabel={t.name}
                 />
               );
@@ -553,13 +594,14 @@ function Around({ m }: { m: MapState }) {
                 visual={entityVisual(t.type, t.visual_key)}
                 label={fitLabel(title, occupied, st.col, st.row, false)}
                 badge={`×${st.items.length}`}
+                dashed={!allExact}
                 selected={isSel}
                 onClick={pickStack(st)}
                 ariaLabel={title}
               />
             );
           })}
-        {heroes.map(({ item: h, col, row }) => (
+        {heroes.map(({ item: h, col, row, placement }) => (
           <Token
             key={h.id}
             cx={px(col)}
@@ -569,6 +611,7 @@ function Around({ m }: { m: MapState }) {
             label={fitLabel(h.name, occupied, col, row, true)}
             ring={h.mine}
             faded={h.down}
+            dashed={placement !== "mechanical"}
             badge={badge(h.elevation, h.cover)}
             selected={isSelected(col, row)}
             onClick={open(h.id, h.name)}
@@ -705,8 +748,18 @@ function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void
   return (
     <div className="flex flex-wrap items-center gap-2 rounded border border-line px-3 py-2 text-sm">
       <span className="font-heading text-ink">{pick.name}</span>
-      <button className="btn px-2 py-0.5 text-xs" onClick={() => go({ near: pick.near })}>
-        Подойти
+      <button
+        className="btn px-2 py-0.5 text-xs"
+        onClick={() => {
+          if (pick.precise === false) {
+            insert(`Подхожу к «${pick.name}».`);
+            onClose();
+          } else {
+            go({ near: pick.near });
+          }
+        }}
+      >
+        {pick.precise === false ? "Подойти словами" : "Подойти"}
       </button>
       {pick.items && pick.items.length > 1 ? (
         <ul className="flex w-full flex-col gap-1" aria-label="Что здесь лежит">
