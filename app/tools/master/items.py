@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.core import economy
 from app.core import positions as grid
 from app.core.world import is_scene_item
+from app.core.world_objects import container_parent, is_nested, read_world_object
 from app.db.models import Character, Entity, InventoryItem
 from app.tools import effects as fx
 from app.tools.master.base import (
@@ -98,7 +99,15 @@ class GiveItemArgs(BaseModel):
 async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
-    inv_id, inverse = await _add_to_inventory(ctx, ch, rec.id, a.display_name, a.qty)
+    unique = bool(rec.data.get("unique"))
+    if unique and a.qty != 1:
+        raise ToolError("уникальный экземпляр нельзя выдавать стопкой")
+    entity = await _new_unique_item(ctx, rec.id, a.display_name) if unique else None
+    inv_id, inverse = await _add_to_inventory(
+        ctx, ch, rec.id, a.display_name, a.qty, world_entity_id=entity.id if entity else None
+    )
+    if entity is not None:
+        inverse.append({"table": "entities", "op": "delete", "id": entity.id})
     result = {"character": ch.name, "item": a.display_name or rec.name, "qty": a.qty, "inventory_id": inv_id}
     await ctx.record(
         "give_item", target_id=ch.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
@@ -165,14 +174,81 @@ async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
     return result
 
 
+def _world_item_state() -> dict:
+    return {
+        "schema_version": 1,
+        "role": "item",
+        "capabilities": ["inspect", "take", "put"],
+        "unique": True,
+        "container_id": None,
+        "revision": 0,
+        "physical": "intact",
+    }
+
+
+def _object_state(entity: Entity, **changes: object) -> dict:
+    previous = dict((entity.state or {}).get("world_object") or {})
+    world_object = {**previous, **changes, "revision": int(previous.get("revision", 0)) + 1}
+    return {**(entity.state or {}), "world_object": world_object}
+
+
+async def _new_unique_item(ctx: ToolContext, template_id: str, display_name: str | None) -> Entity:
+    rec = ctx.world.catalog.get(template_id, "item_template")
+    key = rec.data.get("visual_key")
+    entity = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        template_id=template_id,
+        name=display_name or rec.name,
+        description=rec.data.get("description") or "",
+        location_id=None,
+        state={
+            "item": True,
+            "qty": 1,
+            "display_name": display_name,
+            "world_object": _world_item_state(),
+            **({"visual_key": key} if isinstance(key, str) else {}),
+        },
+    )
+    ctx.session.add(entity)
+    await ctx.session.flush()
+    ctx.world.entities[entity.id] = entity
+    return entity
+
+
+def _unique_inventory_entity(ctx: ToolContext, item: InventoryItem) -> Entity:
+    entity = ctx.world.entities.get(item.world_entity_id or "")
+    if entity is None or entity.campaign_id != ctx.campaign.id or not read_world_object(entity).unique:
+        raise ToolError("уникальный предмет не найден в текущей кампании")
+    if entity.location_id is not None or is_nested(entity):
+        raise ToolError("уникальный предмет уже размещён в мире")
+    return entity
+
+
 async def _add_to_inventory(
-    ctx: ToolContext, ch: Character, template_id: str, display_name: str | None, qty: int
+    ctx: ToolContext,
+    ch: Character,
+    template_id: str,
+    display_name: str | None,
+    qty: int,
+    *,
+    world_entity_id: str | None = None,
 ) -> tuple[str, list[dict]]:
     """Кладёт предметы в инвентарь: такой же неснаряжённый предмет складывается в стопку. Строка инвентаря живёт в
     БД, поэтому подобранное остаётся у героя между ходами и сессиями. Возвращает id строки и обратную дельту."""
     items = ctx.world.inventory.setdefault(ch.id, [])
+    if world_entity_id is not None and qty != 1:
+        raise ToolError("уникальный предмет не может быть стопкой")
     same = next(
-        (i for i in items if i.item_template_id == template_id and i.display_name == display_name and not i.equipped),
+        (
+            i
+            for i in items
+            if world_entity_id is None
+            and i.world_entity_id is None
+            and i.item_template_id == template_id
+            and i.display_name == display_name
+            and not i.equipped
+        ),
         None,
     )
     if same is not None:
@@ -180,7 +256,13 @@ async def _add_to_inventory(
         same.qty += qty
         ctx.world.invalidate(ch.id)
         return same.id, inverse
-    row = InventoryItem(character_id=ch.id, item_template_id=template_id, display_name=display_name, qty=qty)
+    row = InventoryItem(
+        character_id=ch.id,
+        item_template_id=template_id,
+        display_name=display_name,
+        qty=qty,
+        world_entity_id=world_entity_id,
+    )
     ctx.session.add(row)
     await ctx.session.flush()
     items.append(row)
@@ -189,6 +271,8 @@ async def _add_to_inventory(
 
 
 async def _remove_from_inventory(ctx: ToolContext, ch: Character, it: InventoryItem, qty: int) -> list[dict]:
+    if it.world_entity_id is not None and qty != 1:
+        raise ToolError("уникальный предмет переносится целиком")
     if qty > it.qty:
         raise ToolError(f"у {ch.name} только {it.qty} шт. «{ctx.world.item_name(it)}»")
     inverse = [
@@ -202,6 +286,7 @@ async def _remove_from_inventory(ctx: ToolContext, ch: Character, it: InventoryI
                 "item_template_id": it.item_template_id,
                 "display_name": it.display_name,
                 "equipped": it.equipped,
+                "world_entity_id": it.world_entity_id,
             },
         }
     ]
@@ -244,6 +329,10 @@ async def take_item(ctx: ToolContext, a: TakeItemArgs) -> dict:
     it = _own_item(ctx, ch, a.inventory_id)
     name = ctx.world.item_name(it)
     inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+    if it.world_entity_id is not None:
+        entity = _unique_inventory_entity(ctx, it)
+        inverse.append({"table": "entities", "id": entity.id, "field": "state", "before": copy.deepcopy(entity.state)})
+        entity.state = _object_state(entity, physical="destroyed")
     result = {"character": ch.name, "item": name, "qty": a.qty}
     await ctx.record("take_item", target_id=ch.id, payload={**result, "reason": a.reason}, inverse=inverse)
     return result
@@ -314,6 +403,8 @@ async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
     place = ctx.world.place_arg(a.location_id, "лежит предмет")
     cell = _floor(ctx, place or ctx.world.home(), a.cell)
+    if rec.data.get("unique") and a.qty != 1:
+        raise ToolError("уникальный предмет нельзя разместить стопкой")
     en, inverse = await _put_in_scene(ctx, rec.id, a.display_name, a.qty, a.zone, a.description, place, cell)
     result = {"entity_id": en.id, "item": en.name, "qty": a.qty}
     if a.cell is not None:
@@ -343,11 +434,14 @@ async def _put_in_scene(
     key = rec.data.get("visual_key") if rec else None
     visual_key = key if isinstance(key, str) and key else None
     place = place or ctx.world.home()
+    unique = bool(rec and rec.data.get("unique"))
+    if unique and qty != 1:
+        raise ToolError("уникальный предмет не может быть стопкой")
     for en in ctx.world.in_scene_entities(place):
         st = en.state or {}
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
         same = en.template_id == template_id and st.get("display_name") == display_name and here
-        if is_scene_item(en) and same:
+        if not unique and is_scene_item(en) and same and not read_world_object(en).unique:
             # Прежние стопки без визуального ключа получают его при пополнении.
             # Явный ключ уже существующего объекта не перезаписываем.
             visual = {"visual_key": visual_key} if visual_key and "visual_key" not in st else {}
@@ -364,6 +458,7 @@ async def _put_in_scene(
             "qty": qty,
             "display_name": display_name,
             **({"visual_key": visual_key} if visual_key is not None else {}),
+            **({"world_object": _world_item_state()} if unique else {}),
         },
         location_id=place,
         zone=zone,
@@ -409,20 +504,36 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     if not is_scene_item(en):
         raise ToolError(f"{en.name} — не предмет: его нельзя положить в инвентарь")
     st = dict(en.state or {})
+    if is_nested(en):
+        raise ToolError("сначала извлеките предмет из контейнера")
+    unique = read_world_object(en).unique
     have = int(st.get("qty") or 1)
+    if unique and (have != 1 or a.qty not in (None, 1)):
+        raise ToolError("уникальный предмет нельзя делить на части")
     qty = a.qty or have
     if qty > have:
         raise ToolError(f"здесь лежит только {have} шт. «{en.name}»")
     if en.template_id != FOUND_ITEM:
         ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
     inverse = [{"table": "entities", "op": "restore", "row": _entity_row(en)}]
-    inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
+    if unique:
+        if en.location_id is None:
+            raise ToolError("уникальный предмет уже перенесён")
+        # Identity stays in Entity, while InventoryItem links the current owner.
+        inv_id, inv = await _add_to_inventory(
+            ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id
+        )
+        inverse.append({"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id})
+        en.location_id = None
+        en.state = _object_state(en, container_id=None)
+    else:
+        inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
     inverse += inv
     result = {"character": ch.name, "item": en.name, "qty": qty, "inventory_id": inv_id, "left": have - qty}
     await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     many = f" ×{qty}" if qty > 1 else ""
     ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
-    if qty == have:
+    if qty == have and not unique:
         await ctx.session.delete(en)
         ctx.world.entities.pop(en.id, None)
     else:
@@ -460,10 +571,22 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
     it = _own_item(ctx, ch, a.inventory_id)
     template, display = it.item_template_id, it.display_name
     name = ctx.world.item_name(it)
-    inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
     where = grid.pos_of(ctx.world, ch.id).cell  # герой на клетке — вещь ложится у его ног
-    en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where)
-    inverse += inv
+    if it.world_entity_id is not None:
+        en = _unique_inventory_entity(ctx, it)
+        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        inverse.append({"table": "entities", "id": en.id, "field": "location_id", "before": None})
+        en.location_id = ctx.world.place_of(ch)
+        en.zone = "melee"
+        en.state = _object_state(en, container_id=None)
+        if where is not None:
+            grid.set_cell(ctx.world, en.id, where)
+    else:
+        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        en, inv = await _put_in_scene(
+            ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where
+        )
+        inverse += inv
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     return result
@@ -491,8 +614,21 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     it = _own_item(ctx, ch, a.inventory_id)
     template, display = it.item_template_id, it.display_name
     name = ctx.world.item_name(it)
-    inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-    inv_id, inv = await _add_to_inventory(ctx, to, template, display, a.qty)
+    if it.world_entity_id is not None:
+        _unique_inventory_entity(ctx, it)
+        if a.qty != 1:
+            raise ToolError("уникальный предмет передаётся целиком")
+        inverse = [{"table": "inventory", "id": it.id, "field": "character_id", "before": ch.id}]
+        ctx.world.inventory[ch.id].remove(it)
+        ctx.world.inventory.setdefault(to.id, []).append(it)
+        it.character_id = to.id
+        ctx.world.invalidate(ch.id)
+        ctx.world.invalidate(to.id)
+        inv_id = it.id
+        inv = []
+    else:
+        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        inv_id, inv = await _add_to_inventory(ctx, to, template, display, a.qty)
     result = {"from": ch.name, "to": to.name, "item": name, "qty": a.qty, "inventory_id": inv_id}
     await ctx.record("pass_item", actor_id=ch.id, target_id=to.id, payload=result, inverse=inverse + inv)
     ctx.outbox.append(
