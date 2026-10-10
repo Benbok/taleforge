@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.agents.llm import LLMError, ScriptedLLM
-from app.db.models import CampaignSecret, Event, LlmCall, MasterTurn
+from app.db.models import CampaignSecret, Entity, Event, LlmCall, MasterTurn
 from app.main import create_app
 from tests.conftest import login
 from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
@@ -126,6 +126,93 @@ def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
     assert "Не закрыты действия" in llm.requests[1]["messages"][-1]["content"]
     (ev,) = rows(settings, Event, Event.tool == "cancel_action")
     assert ev.target_id == hero["id"]
+
+
+def test_failed_enter_room_does_not_spawn_or_claim_arrival(game_client, admin_g, llm, settings):
+    """Пакет enter_room + spawn_entity: отказ входа блокирует спавн и выдуманный рассказ."""
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "99", "character_ids": [hero["id"]]}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет"}),
+            ]
+        },
+        DONE,  # мастер получил сообщение об отказе и пропущенном spawn
+        DONE,
+        {"text": "Бран вошёл в мавзолей. Скелет напал на него."},
+    ]
+    n = act(game_client, p1, c["id"], "Вхожу в комнату 99 и осматриваюсь.")
+    assert "вошёл" not in n["content"]
+    assert "Переход не состоялся" in n["content"]
+    (turn,) = rows(settings, MasterTurn)
+    calls = turn.trace["calls"]
+    assert calls[0]["tool"] == "enter_room" and calls[0]["result"]["ok"] is False
+    assert calls[1]["tool"] == "spawn_entity" and calls[1]["result"]["ok"] is False
+    assert "не выполнено после ошибки перехода" in calls[1]["result"]["error"]
+    assert turn.trace["audit"]["transition_outcome"] == "failed"
+    assert rows(settings, Event, Event.tool == "spawn_entity") == []
+
+
+def test_transition_retry_can_succeed(game_client, admin_g, llm, settings, monkeypatch):
+    """Первый отказ не отменяет последующий вход и встречу в новой комнате."""
+    from app.agents import prelude
+    from tests.test_adventure import publish_sample
+
+    async def skip_intro(*_args):
+        return None
+
+    monkeypatch.setattr(prelude, "prepare_campaign_intro", skip_intro)
+    mid = publish_sample(settings)
+    c, (p1,), hero = party(game_client, admin_g, module_id=mid, module_hook="board")
+    game_client.portal.call(game_client.app.state.master.wait_idle, None)
+    # Первая игровая реплика нового героя отдельно запускает introduce() и
+    # потребляет ответ ScriptedLLM: в этом тесте проверяем только фазу хода.
+    monkeypatch.setattr(game_client.app.state.master, "introduce", skip_intro)
+
+    llm.replies += [
+        {"tool_calls": [("enter_room", {"room": "99", "character_ids": [hero["id"]]})]},
+        {
+            "tool_calls": [
+                ("enter_room", {"room": "2", "character_ids": [hero["id"]]}),
+                ("spawn_entity", {"creature_template_id": "creature.skeleton", "name": "Скелет"}),
+            ]
+        },
+        DONE,
+        {"text": "Бран входит в Восточную крипту; один скелет поднялся у гробницы."},
+    ]
+    msg = act(game_client, p1, c["id"], "Осматриваю вход и жду решения мастера.")
+    (turn,) = rows(settings, MasterTurn)
+    calls = turn.trace["calls"]
+    attempts = [c for c in calls if c["tool"] == "enter_room"]
+    assert any(c.get("args", {}).get("room") == "99" and not c["result"]["ok"] for c in attempts), calls
+    assert any(c.get("args", {}).get("room") == "2" and c["result"]["ok"] for c in attempts), calls
+    assert any(c["tool"] == "spawn_entity" and c["result"]["ok"] for c in calls), calls
+    assert turn.trace["audit"]["transition_outcome"] == "success"
+    assert "Переход не состоялся" not in msg["content"]
+    spawned = rows(settings, Event, Event.tool == "spawn_entity", Event.turn_id == turn.id)
+    entered = rows(settings, Event, Event.tool == "enter_room", Event.turn_id == turn.id)
+    assert len(spawned) == len(entered) == 1
+    (skeleton,) = rows(settings, Entity, Entity.id == spawned[0].target_id)
+    assert skeleton.location_id == entered[0].target_id  # встреча именно в новой комнате
+
+
+def test_failed_resolve_attack_cannot_be_narrated_as_hit(game_client, admin_g, llm, settings):
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {
+            "tool_calls": [
+                ("resolve_attack", {"attacker_id": hero["id"], "target_id": "en_missing", "attack": "unarmed"})
+            ]
+        },
+        DONE,
+        DONE,
+        {"text": "Бран попал по противнику и нанёс 20 урона."},
+    ]
+    msg = act(game_client, p1, c["id"], "Бью несуществующего противника.")
+    assert "Атака не состоялась" in msg["content"]
+    assert "нанёс 20 урона" not in msg["content"]
+    assert rows(settings, Event, Event.tool == "resolve_attack") == []
 
 
 def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, llm, settings):
