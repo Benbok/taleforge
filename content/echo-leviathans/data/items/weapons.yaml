@@ -52,6 +52,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Dagger}
     category: weapon
+    visual_key: item:weapon
     weapon_type: simple_melee
     source: chitin
     damage: {dice: 1d4, type: piercing}
@@ -71,6 +72,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Shortsword}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d6, type: piercing}
@@ -89,6 +91,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Longsword}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d8, type: slashing, versatile: 1d10}
@@ -107,6 +110,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Rapier}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d8, type: piercing}
@@ -125,6 +129,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Battleaxe}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d8, type: slashing, versatile: 1d10}
@@ -143,6 +148,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Greataxe}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d12, type: slashing}
@@ -161,6 +167,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Spear}
     category: weapon
+    visual_key: item:weapon
     weapon_type: simple_melee
     source: chitin
     damage: {dice: 1d6, type: piercing, versatile: 1d8}
@@ -180,6 +187,7 @@ items:
     tags: [chitin, melee]
     srd_ref: {type: item, name: Warhammer}
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: chitin
     damage: {dice: 1d8, type: bludgeoning, versatile: 1d10}
@@ -199,6 +207,7 @@ items:
     doc: items.md#2.2
     tags: [melee, mine]
     category: weapon
+    visual_key: item:weapon
     weapon_type: simple_melee
     source: tech
     damage: {dice: 1d6, type: slashing}
@@ -215,6 +224,7 @@ items:
     doc: items.md#2.2
     tags: [melee, mine, climbing]
     category: weapon
+    visual_key: item:weapon
     weapon_type: simple_melee
     source: tech
     damage: {dice: 1d4, type: piercing}
@@ -231,6 +241,7 @@ items:
     doc: items.md#2.2
     tags: [melee]
     category: weapon
+    visual_key: item:weapon
     weapon_type: simple_melee
     source: tech
     damage: {dice: 1d4, type: bludgeoning}
@@ -247,6 +258,7 @@ items:
     doc: items.md#2.2
     tags: [melee]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 1d6, type: slashing}
@@ -265,6 +277,7 @@ items:
     doc: items.md#2.2
     tags: [melee]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 1d10, type: bludgeoning}
@@ -281,6 +294,7 @@ items:
     doc: items.md#2.2
     tags: [melee, fire, anti_swarm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 1d10, type: piercing}
@@ -299,6 +313,7 @@ items:
     doc: items.md#2.2
     tags: [melee, noise, anti_swarm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 1d8, type: bludgeoning}
@@ -319,6 +334,7 @@ items:
     doc: items.md#2.2
     tags: [melee, noise, tech]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 2d6, type: bludgeoning}
@@ -345,6 +361,7 @@ items:
     doc: items.md#2.2
     tags: [melee, noise, tech]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_melee
     source: tech
     damage: {dice: 1d12, type: slashing}
@@ -368,6 +385,7 @@ items:
     doc: rules.md#5.5
     tags: [firearm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -385,6 +403,7 @@ items:
     doc: rules.md#5.5
     tags: [firearm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -402,6 +421,7 @@ items:
     doc: rules.md#5.5
     tags: [firearm, grapple]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -422,6 +442,7 @@ items:
     doc: rules.md#5.5
     tags: [firearm, injector]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -446,6 +467,7 @@ items:
     doc: items.md#2.3
     tags: [firearm, mine]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: simple
     source: tech
@@ -463,6 +485,7 @@ items:
     doc: items.md#2.3
     tags: [firearm, fire, light_source]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: simple
     source: tech
@@ -485,6 +508,7 @@ items:
     doc: items.md#2.3
     tags: [firearm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -504,6 +528,7 @@ items:
     doc: items.md#2.3
     tags: [firearm, anti_swarm]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -524,6 +549,7 @@ items:
     doc: items.md#2.3
     tags: [firearm, cordon]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -543,6 +569,7 @@ items:
     doc: items.md#2.3
     tags: [firearm, grenade_launcher]
     category: weapon
+    visual_key: item:weapon
     weapon_type: firearm
     proficiency: firearms
     source: tech
@@ -564,6 +591,7 @@ items:
     doc: rules.md#5.6
     tags: [fire, anti_swarm, cordon]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_ranged
     proficiency: martial
     source: tech
@@ -588,6 +616,7 @@ items:
     doc: items.md#2.4
     tags: [fire, anti_swarm, cordon]
     category: weapon
+    visual_key: item:weapon
     weapon_type: martial_ranged
     proficiency: [subclass.line_warden, "martial + обучение Кордона"]
     source: tech
@@ -613,6 +642,7 @@ items:
     doc: items.md#2.4
     tags: [grenade, fire, anti_swarm, consumable]
     category: weapon
+    visual_key: item:weapon
     weapon_type: grenade
     consumable: true
     source: tech
@@ -639,6 +669,7 @@ items:
     doc: items.md#2.4
     tags: [grenade, noise, anti_swarm, consumable]
     category: weapon
+    visual_key: item:weapon
     weapon_type: grenade
     consumable: true
     source: tech
