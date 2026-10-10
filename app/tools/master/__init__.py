@@ -9,6 +9,7 @@
 from app.tools.master import read  # noqa: F401
 from app.tools.master import checks  # noqa: F401
 from app.tools.master import items  # noqa: F401
+from app.tools.master import generation  # noqa: F401
 from app.tools.master import entities  # noqa: F401
 from app.tools.master import places  # noqa: F401
 from app.tools.master import knowledge  # noqa: F401

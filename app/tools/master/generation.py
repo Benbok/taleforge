@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import secrets
 from datetime import timedelta
 from typing import Literal
@@ -238,7 +237,6 @@ async def resolve_container(ctx: ToolContext, a: ResolveContainerArgs) -> dict:
     for entry in chosen:
         item = await _create_loot(ctx, target, entry.id, record.id, container_id=target.id)
         items.append(item.id)
-    before = copy.deepcopy(target.state)
     target.state = {
         **(target.state or {}),
         "world_object": {
