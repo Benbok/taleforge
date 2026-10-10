@@ -83,7 +83,7 @@ describe("источник координат карты", () => {
     expect([moved.col, moved.row]).toEqual([2, -1]);
     expect(moved.placement).toBe("mechanical");
     expect(mechanicalNear(moved)).toEqual([[2, -1]]);
-    expect(inMapFrame(moved, sk)).toBe(false); // вне комнаты остаётся вне комнаты
+    expect(inMapFrame(moved, sk)).toBe(true); // эта точная клетка находится внутри комнаты
   });
 });
 
