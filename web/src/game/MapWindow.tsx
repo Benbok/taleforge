@@ -741,7 +741,7 @@ function Around({ m }: { m: MapState }) {
 
 /** Выбранная цель на схеме: подойти к ней или начать фразу о ней в поле ввода (решение Arty: что именно делать,
  * игрок дописывает сам, а мастер решает). */
-function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void; go: (r: StepRequest) => void }) {
+export function StepBar({ pick, onClose, go }: { pick: Pick | null; onClose: () => void; go: (r: StepRequest) => void }) {
   const insert = useDraft((s) => s.insert);
   const openCard = useOpen();
   if (!pick) return null;
