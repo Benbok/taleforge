@@ -974,7 +974,7 @@ def check_marks(raw: Any, draft: dict) -> tuple[dict | None, list[str]]:
         rects, blocked = _cells(m, grid, f"комната {n}", errors)
         if rects:
             mark["cells"], mark["blocked"] = rects, blocked
-        passages = _passages(m, grid, room_by_number.get(n) or {}, f"комната {n}", errors)
+        passages = _passages({**m, "cells": rects, "blocked": blocked}, grid, room_by_number.get(n) or {}, f"комната {n}", errors)
         if passages:
             mark["passages"] = passages
         marks.append(mark)
