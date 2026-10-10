@@ -89,8 +89,11 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     q = select(Character).where(Character.campaign_id == cid)
     all_chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
     view = visible_scene(
-        scene, {e.id: e for e in ents}, all_chars,
-        hero_id=hero.id if hero is not None else None, is_master=master,
+        scene,
+        {e.id: e for e in ents},
+        all_chars,
+        hero_id=hero.id if hero is not None else None,
+        is_master=master,
     )
     heroes = [hero] if hero is not None else list(view.heroes)
     here_id = view.current_location_id
@@ -312,7 +315,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         positions = (scene.state or {}).get("positions") or {}
         heroes_at = [
             (ch, place_of(ch, scene.location_id), positions.get(ch.id) or {})
-            for ch in all_chars.values() if ch.status in PLAYABLE
+            for ch in all_chars.values()
+            if ch.status in PLAYABLE
         ]
         book = adventure.book_map(
             catalog,
