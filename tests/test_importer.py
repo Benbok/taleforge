@@ -4,7 +4,7 @@ import shutil
 import pytest
 from sqlalchemy import func, select
 
-from app.content import PackError
+from app.content import PackError, load_pack
 from app.content.importer import import_pack, latest_version
 from app.db.models import ContentPack, ContentRecord
 from app.db.session import make_engine, make_sessionmaker
@@ -24,13 +24,14 @@ def run(settings, fn):
 
 
 def test_import_base_pack_once(settings):
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.5.3", "imported")]
-    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", "0.5.3", "unchanged")]
+    version = load_pack(BASE)[0].manifest.version
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", version, "imported")]
+    assert run(settings, lambda s: import_pack(s, BASE)) == [("dnd5e-srd", version, "unchanged")]
 
     async def check(s):
         n = await s.scalar(select(func.count()).select_from(ContentRecord).where(ContentRecord.kind == "dc_scale"))
         pack = await latest_version(s, "dnd5e-srd")
-        rec = await s.get(ContentRecord, ("dnd5e-srd", "0.5.3", "condition.exhaustion"))
+        rec = await s.get(ContentRecord, ("dnd5e-srd", version, "condition.exhaustion"))
         return n, pack, rec
 
     n, pack, rec = run(settings, check)
