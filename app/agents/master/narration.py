@@ -10,8 +10,8 @@ from app.agents import textcalls
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import unregistered_named_actors
-from app.agents.master.outcomes import public_attempts, transition_outcome
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
+from app.agents.master.outcomes import public_attempts, transition_outcome
 from app.core import combat
 from app.db.models import AgentConfig, Campaign, Scene
 from app.emotion import game as mood
