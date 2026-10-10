@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.agents import intent as intents
 from app.db.models import Campaign, Event, InventoryItem, LlmCall, MasterTurn, Message
+from app.tools.action_plan import approach_attack
 from app.tools.runtime import open_context
 from tests.game import QueueDice, ok, party, run
 from tests.test_combat import _fight, scene  # noqa: F401
@@ -306,5 +307,70 @@ def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g
     spell = next(e for e in events if e.tool == "cast_spell" and e.actor_id == wiz["id"])
     assert start.created_at <= spell.created_at
     assert spell.payload["spell_id"] == "spell.magic_missile"
+    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
+    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
+
+def test_approach_attack_plan_preserves_order_and_confidence():
+    plan = {
+        "character_id": "ch_hero",
+        "confidence": 0.95,
+        "actions": [
+            {"verb": "move", "target_id": "en_goblin", "zone": "melee"},
+            {"verb": "attack", "target_id": "en_goblin", "instrument_id": "inv_sword"},
+        ],
+    }
+    assert approach_attack(plan) == {
+        "attacker_id": "ch_hero", "target_id": "en_goblin", "attack": "inv_sword"
+    }
+    assert approach_attack({**plan, "actions": list(reversed(plan["actions"]))}) is None
+    assert approach_attack({**plan, "confidence": 0.5}) is None
+    assert approach_attack({**plan, "actions": [{**plan["actions"][0], "zone": "far"}, plan["actions"][1]]}) is None
+    missing = [plan["actions"][0], {**plan["actions"][1], "missing_item": True}]
+    assert approach_attack({**plan, "actions": missing}) is None
+
+
+def test_natural_language_approach_attack_starts_combat_and_moves_first(
+    game_client, admin_g, llm, dice, settings
+):
+    """One Russian sentence becomes movement and one attack, following initiative."""
+    from app.tools.registry import execute
+
+    c, (p1,), hero = party(game_client, admin_g)
+
+    async def setup(s):
+        campaign = await s.get(Campaign, c["id"])
+        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
+        sp = await execute(
+            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
+        )
+        assert sp["ok"], sp
+        weapon = (
+            await s.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.character_id == hero["id"], InventoryItem.item_template_id == "item.longsword"
+                )
+            )
+        ).first()
+        await s.commit()
+        return sp["result"]["spawned"][0]["id"], weapon.id
+
+    goblin, sword = run(settings, setup)
+    llm.replies += [
+        intent(
+            {"verb": "move", "target_id": goblin, "zone": "melee"},
+            {"verb": "attack", "target_id": goblin, "instrument_id": sword, "manner": "с размаху"},
+        ),
+        DONE,
+        {"text": "Воин подбежал к гоблину и нанёс один удар."},
+    ]
+    dice += [20, 1, 15, 1]
+    narration = act(game_client, p1, c["id"], "Подбегаю к гоблину и рублю его мечом с размаху")
+    assert narration["kind"] == "narration"
+    events = rows(settings, Event, Event.campaign_id == c["id"])
+    assert len([e for e in events if e.tool == "resolve_attack" and e.actor_id == hero["id"]]) == 1
+    assert any(e.tool == "step" and e.actor_id == hero["id"] for e in events)
+    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
+    (msg,) = rows(settings, Message, Message.kind == "action")
+    assert [a["verb"] for a in msg.intent["actions"]] == ["move", "attack"]
     (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
