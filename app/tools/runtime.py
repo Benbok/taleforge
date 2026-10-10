@@ -139,7 +139,11 @@ def scene_public(
     """Сцена из текущего мира по тем же правилам, что и карта и повторное подключение."""
     if place is not None and hero_id is None:
         hero_id = next(
-            (h.id for h in world.characters.values() if world.place_of(h) == place and h.status in ("approved", "active")),
+            (
+                h.id
+                for h in world.characters.values()
+                if world.place_of(h) == place and h.status in ("approved", "active")
+            ),
             None,
         )
     view = visible_scene(world.scene, world.entities, world.characters, hero_id=hero_id, is_master=is_master)
@@ -187,7 +191,11 @@ def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
     seats = world.campaign.seats
     if not seats:
         return [(None, scene_public(world))]
-    playable = {ch.seat_id: ch.id for ch in world.characters.values() if ch.seat_id and ch.status in ("approved", "active")}
+    playable = {
+        ch.seat_id: ch.id
+        for ch in world.characters.values()
+        if ch.seat_id and ch.status in ("approved", "active")
+    }
     out: dict[str, tuple[list[str], dict[str, Any]]] = {}
     for seat in seats:
         master = seat.role == "master"
