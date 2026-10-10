@@ -160,6 +160,20 @@ async def expire_effects(ctx: ToolContext, inverse: list) -> list[str]:
             ctx.world.invalidate(e.target_id)
             ctx.changed.add(e.target_id)
     for ch in ctx.world.characters.values():
+        ench = (ch.resources or {}).get("shillelagh")
+        if isinstance(ench, dict) and int(ench.get("expires_at") or 0) <= ctx.world.scene.game_time:
+            inverse.append(
+                {
+                    "table": "characters",
+                    "id": ch.id,
+                    "field": "resources",
+                    "before": copy.deepcopy(ch.resources),
+                }
+            )
+            ch.resources = {k: v for k, v in (ch.resources or {}).items() if k != "shillelagh"}
+            ctx.world.invalidate(ch.id)
+            ctx.changed.add(ch.id)
+            out.append(f"{ch.id}: заклинание «Дубинка» закончилось")
         conc = (ch.resources or {}).get("concentration")
         if isinstance(conc, dict) and conc.get("until") is not None and conc["until"] <= ctx.world.scene.game_time:
             inverse.append(snapshot(ctx.world.actor(ch.id)))

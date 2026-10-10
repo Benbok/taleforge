@@ -262,6 +262,10 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         "critical": critical,
         "mode": str(mode),
     }
+    if weapon.get("magical"):
+        result["magical"] = True
+        if weapon.get("enchantment"):
+            result["enchantment"] = weapon["enchantment"]
     if roll.roll.natural == 1:
         result["fumble"] = True  # натуральная 1: не просто промах, неудача оборачивается против атакующего
         if isinstance(att.obj, Character):
