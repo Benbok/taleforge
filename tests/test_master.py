@@ -161,6 +161,27 @@ def test_narration_blocks_repeated_unregistered_enemies(game_client, admin_g, ll
     assert turn.trace["audit"]["blocked_actors"] == ["Скелет 1"]
 
 
+def test_unregistered_named_actors_accepts_russian_case_declensions():
+    from types import SimpleNamespace
+
+    from app.agents.master.continuity import unregistered_named_actors
+
+    class FakeWorld:
+        def in_scene_entities(self):
+            return [SimpleNamespace(name="Скелет 1")]
+
+        characters = {"c1": SimpleNamespace(name="Иван")}
+        entities = {}
+
+    world = FakeWorld()
+    assert unregistered_named_actors("Иван атакует Скелета 1 посохом.", world) == []
+    assert unregistered_named_actors("Удар нанесён Скелету 1 в череп.", world) == []
+    assert unregistered_named_actors("Бой со Скелетом 1 продолжается.", world) == []
+    assert unregistered_named_actors("На Скелете 1 видны трещины.", world) == []
+    assert unregistered_named_actors("Скелет 2 поднимает меч.", world) == ["Скелет 2"]
+    assert unregistered_named_actors("Иван бьёт Зомби 1.", world) == ["Зомби 1"]
+
+
 def test_failed_turn_rolls_back(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [

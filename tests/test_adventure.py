@@ -165,3 +165,30 @@ def test_module_tools_stay_off_in_a_regular_campaign(client, admin, settings):
         return (await s.get(Campaign, c["id"])).settings
 
     assert "module" not in run(settings, campaign)
+
+
+def test_find_room_resilient_matching():
+    from app.content.catalog import Entry
+
+    rec = Entry(
+        id="location.davos_crypt",
+        kind="location_template",
+        status="active",
+        pack_id="pack1",
+        data={
+            "name": "Семейный склеп Давоса",
+            "rooms": [
+                {"id": "r1", "name": "Зал Мёртвых", "number": "1"},
+                {"id": "graveyard", "name": "Кладбище у мавзолея"},
+            ],
+        },
+    )
+    assert adventure.find_room(rec, "1")["id"] == "r1"
+    assert adventure.find_room(rec, "r1")["id"] == "r1"
+    assert adventure.find_room(rec, "Зал Мёртвых")["id"] == "r1"
+    assert adventure.find_room(rec, "комната 1")["id"] == "r1"
+    assert adventure.find_room(rec, "room 1")["id"] == "r1"
+    assert adventure.find_room(rec, "room_1")["id"] == "r1"
+    assert adventure.find_room(rec, "room_1_graveyard_at_the_mausoleum")["id"] == "r1"
+    assert adventure.find_room(rec, "graveyard")["id"] == "graveyard"
+    assert adventure.find_room(rec, "Кладбище у мавзолея")["id"] == "graveyard"
