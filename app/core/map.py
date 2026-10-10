@@ -130,15 +130,34 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         }
         for p in sorted((places[i] for i in shown), key=lambda e: e.created_at or 0)
     ]
+    here = places.get(here_id or "")
+    # В модуле настоящие переходы между комнатами определены книгой.
+    # state.links может содержать старые ссылки, добавленные при перемещениях.
+    has_book_rooms = any(adventure.room_of(places[pid]) for pid in shown)
+    needs_catalog = has_book_rooms or (here is not None and bool(here.template_id))
+    catalog = await campaign_catalog(session, viewer.campaign) if needs_catalog else None
+    book_destinations: dict[str, set[str]] = {}
+    if catalog is not None and has_book_rooms:
+        for pid in shown:
+            destinations = adventure.room_destinations(places[pid], catalog, places)
+            if destinations is not None:
+                book_destinations[pid] = destinations
+
     links, seen = [], set()
     for pid in shown:
         for x in _links(places[pid]):
-            key = tuple(sorted((pid, x["to"])))
+            other = x["to"]
+            forward = book_destinations.get(pid)
+            reverse = book_destinations.get(other)
+            if (forward is not None or reverse is not None) and (
+                other not in (forward or set()) and pid not in (reverse or set())
+            ):
+                continue
+            key = tuple(sorted((pid, other)))
             if x["to"] in shown and key not in seen:
                 seen.add(key)
                 links.append({"a": key[0], "b": key[1], "label": x.get("label")})
 
-    here = places.get(here_id or "")
     around: list[dict] = []
     exits: list[dict] = []
     party: list[dict] = []
@@ -201,6 +220,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             pid = p["id"]
             if pid == here.id:
                 continue
+            if here.id in book_destinations and pid not in book_destinations[here.id]:
+                continue
             link = next((x for x in _links(here) if x["to"] == pid), None)
             back = next((x for x in _links(places[pid]) if x["to"] == here.id), None)
             if link or back:
@@ -248,7 +269,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     ]
     book = sk = None
     if here is not None and (here.template_id or adventure.room_of(here)):  # карта книги — только у мест модуля
-        catalog = await campaign_catalog(session, viewer.campaign)
+        if catalog is None:
+            catalog = await campaign_catalog(session, viewer.campaign)
         positions = (scene.state or {}).get("positions") or {}
         q = select(Character).where(Character.campaign_id == cid, Character.status.in_(PLAYABLE))
         heroes_at = [
