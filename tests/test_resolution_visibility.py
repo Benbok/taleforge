@@ -19,6 +19,7 @@ def test_fallback_success_does_not_mask_other_failed_transition():
     assert transition_outcome(attempts) == "failed"
     public = public_attempts(attempts)
     assert "adjudicate_action" in public
+    assert "частичный исход" in public
     assert "secret" not in public
 
 

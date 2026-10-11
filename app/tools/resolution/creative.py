@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from app.core import adventure
 from app.core.resolution.contracts import Admission, ResolutionResult
 from app.core.resolution.policy import admit
-from app.db.models import Message
+from app.db.models import MasterTurn, Message
 from app.tools.registry import ToolContext
 from app.tools.resolution.capabilities import CAPABILITIES
 from app.tools.resolution.requests import latest_attempt, load_action_context
@@ -16,6 +16,29 @@ class CreativeOpportunity:
     place_id: str
     kind: str
     subject_id: str | None = None
+
+
+def autonomous_neutral_spawn_allowed(ctx: ToolContext, args, place_id: str | None) -> bool:
+    """Ordinary AI calls cannot bypass creative space admission."""
+    if any(op.place_id == place_id and op.kind == "new_neutral" for op in creative_opportunities(ctx)):
+        return True
+    place = ctx.world.entities.get(place_id or "")
+    module = adventure.module_place(place, ctx.world.catalog, ctx.world.entities)
+    room_ref = adventure.room_of(place)
+    room = adventure.find_room(module[1], room_ref["id"]) if module and room_ref else None
+    if room:
+        count = sum(
+            int(encounter.get("count") or 0)
+            for encounter in room.get("encounters") or []
+            if encounter.get("creature_ref") == args.creature_template_id
+        )
+        present = sum(
+            1
+            for entity in ctx.world.entities.values()
+            if entity.location_id == place_id and entity.template_id == args.creature_template_id
+        )
+        return present + args.count <= count
+    return False  # Existing plot sketches must use develop, not duplicate spawn.
 
 
 def creative_opportunities(ctx: ToolContext) -> list[CreativeOpportunity]:
@@ -60,6 +83,12 @@ async def validate_creative_proposal(ctx: ToolContext, proposal) -> Admission:
     message = await ctx.session.get(Message, proposal.ref.source_id)
     if message is None or message.turn_id != ctx.turn_id:
         return Admission("deny", "invalid_source")
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id)
+    if turn and any(
+        attempt["actor_id"] == proposal.ref.actor_id
+        for attempt in (turn.trace or {}).get("resolution_unbound_attempts", [])
+    ):
+        return Admission("deny", "ambiguous_action_part")
     latest = await latest_attempt(ctx, proposal.ref)
     if latest and ResolutionResult.model_validate(latest["result"]).execution in {"denied", "failed"}:
         return Admission("deny", "failed_action_requires_fallback")

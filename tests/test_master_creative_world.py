@@ -15,6 +15,34 @@ from tests.test_tools import play
 game = game_fixture
 
 
+def test_direct_autonomous_neutral_spawn_cannot_bypass_missing_module_canon(game):
+    from app.db.models import MasterTurn
+
+    settings, campaign_id, _ = game
+
+    async def check(ctx):
+        place = (await execute(ctx, "create_location", {"name": "Пустая крипта", "make_current": True}))["result"][
+            "location_id"
+        ]
+        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "module": {"id": "missing"}}
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        raw = await execute(
+            ctx,
+            "spawn_entity",
+            {
+                "creature_template_id": "creature.commoner",
+                "name": "Новый NPC",
+                "attitude": "neutral",
+                "location_id": place,
+            },
+        )
+        assert not raw["ok"] and raw["failure"]["category"] == "rule_denial"
+        assert not any(e.name == "Новый NPC" for e in ctx.world.entities.values())
+
+    play(settings, campaign_id, [], check)
+
+
 def test_neutral_npc_in_verified_free_place_is_registered(game):
     settings, campaign_id, hero = game
 

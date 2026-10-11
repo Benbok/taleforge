@@ -51,6 +51,15 @@ async def capture_attempt(ctx: ToolContext, actor_id: str | None, raw: dict) -> 
     refs = [ref for ref in ctx.required_actions if ref.actor_id == actor_id]
     # An ambiguous multi-part request must not borrow another part's failure.
     if len(refs) != 1:
+        if refs:
+            ctx.closed.discard(actor_id)
+            from app.db.models import MasterTurn
+
+            turn = await ctx.session.get(MasterTurn, ctx.turn_id)
+            entry = {"actor_id": actor_id, "result": normalize_result(raw, attempt_id="").model_dump()}
+            attempts = [*(turn.trace or {}).get("resolution_unbound_attempts", []), entry]
+            turn.trace = {**(turn.trace or {}), "resolution_unbound_attempts": attempts}
+            ctx.turn_diagnostics["resolution_unbound_attempts"] = attempts
         return
     result = normalize_result(raw, attempt_id="")
     await record_attempt(ctx, refs[0], "noncombat.interaction", result)

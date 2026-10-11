@@ -22,6 +22,11 @@ def deed_key(ref: ActionRef, subject_id: str) -> str:
 
 
 def bound_tool_key(ctx: ToolContext, name: str, args: dict, default: str) -> str:
+    if name == "roll_check":
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == args.get("character_id")]
+        if refs:
+            source = ":".join(sorted(action_key(ref) for ref in refs))
+            return hashlib.sha256(f"primary_check:{source}".encode()).hexdigest()
     if name != "record_deed":
         return default
     actors = set(args.get("character_ids") or [])

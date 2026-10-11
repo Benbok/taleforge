@@ -48,6 +48,44 @@ def publish_sample(settings) -> str:
     return run(settings, go)
 
 
+def test_autonomous_npc_spawn_preserves_empty_room_and_book_encounter(client, admin, settings):
+    from app.db.models import MasterTurn, new_id
+    from app.tools.registry import execute
+
+    import_base(settings)
+    mid = publish_sample(settings)
+    campaign, _, _ = party(client, admin, module_id=mid, module_hook="board")
+    cid = campaign["id"]
+    client.portal.call(client.app.state.master.wait_idle, None)
+
+    async def check(ctx):
+        ctx.turn_id = new_id("t")
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=cid, status="running"))
+        await ctx.session.flush()
+        await _ok(ctx, "enter_room", {"room": "1"})
+        denied = await execute(
+            ctx,
+            "spawn_entity",
+            {"creature_template_id": "creature.commoner", "name": "Случайный путник", "attitude": "neutral"},
+        )
+        assert not denied["ok"] and denied["failure"]["code"] == "canon_not_free"
+        await _ok(ctx, "enter_room", {"room": "2"})
+        allowed = await execute(
+            ctx,
+            "spawn_entity",
+            {"creature_template_id": "creature.skeleton", "name": "Скелет из книги", "attitude": "neutral", "count": 2},
+        )
+        assert allowed["ok"]
+        repeated = await execute(
+            ctx,
+            "spawn_entity",
+            {"creature_template_id": "creature.skeleton", "name": "Лишний скелет", "attitude": "neutral"},
+        )
+        assert not repeated["ok"]
+
+    _play(settings, cid, check)
+
+
 def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeypatch):
     intros = []
 

@@ -19,6 +19,24 @@ from tests.test_tools import play
 game = game_fixture
 
 
+def test_confirmed_ordinary_check_is_not_rerolled_with_new_call_id(game):
+    from app.tools.registry import execute
+    from app.tools.resolution.requests import bound_tool_key
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ctx.required_actions = [await prepare_action(ctx, hero, [{"verb": "interact"}])]
+        args = {"character_id": hero, "stat": "persuasion", "difficulty": "dc.easy", "reason": "разговор"}
+        first = await execute(ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, "first"))
+        assert first["ok"]
+        repeated = await execute(ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, "second"))
+        assert repeated.get("repeated") and repeated["result"] == first["result"]
+        assert ctx.dice.queue == [19]
+
+    play(settings, campaign_id, [4, 19], check)
+
+
 def test_committed_receipt_replays_in_new_session(game):
     settings, campaign_id, hero = game
 

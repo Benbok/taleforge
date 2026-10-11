@@ -33,7 +33,17 @@ def public_attempts(attempts: list[dict] | None) -> str:
         if name == "adjudicate_action":
             result = (entry.get("result") or {}).get("result") or {}
             executed = result.get("execution") in {"applied", "repeated"}
-            rows.append(f"- adjudicate_action: {'выполнен' if executed else 'не выполнен'}")
+            outcome = (
+                {"success": "успех", "partial": "частичный исход", "failure": "игровая неудача"}.get(
+                    result.get("game_outcome")
+                )
+                if executed
+                else None
+            )
+            rows.append(
+                f"- adjudicate_action: {'выполнен' if executed else 'не выполнен'}"
+                + (f"; {outcome}" if outcome else "")
+            )
             continue
         if name not in TRANSITIONS and name != "resolve_attack":
             continue

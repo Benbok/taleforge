@@ -13,6 +13,28 @@ from tests.test_tools import play
 game = game_fixture
 
 
+def test_ambiguous_ordinary_failure_cannot_be_rewritten_as_creative_success(game):
+    from app.agents.master.resolution import capture_attempt
+    from app.db.models import Message
+    from app.tools.resolution.creative import validate_creative_proposal
+    from app.tools.resolution.requests import bind_message_actions
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        ref = await prepare_action(ctx, hero, [{"verb": "inspect"}, {"verb": "talk"}])
+        ctx.required_actions = bind_message_actions(await ctx.session.get(Message, ref.source_id), hero)
+        ctx.closed.add(hero)
+        await capture_attempt(ctx, hero, {"ok": True, "result": {"success": False}})
+        assert hero not in ctx.closed
+        proposal = ResolutionProposal(ref=ref, origin="creative", outcome="success", reason="test")
+        assert (await validate_creative_proposal(ctx, proposal)).route == "deny"
+
+    play(settings, campaign_id, [], check)
+
+
 def test_invalid_arguments_get_only_one_repair(game):
     from app.agents.master.resolution import permit_repair
 
