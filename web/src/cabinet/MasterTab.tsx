@@ -211,24 +211,21 @@ export default function MasterTab({
 
         {/* Apply preset form */}
         {presets.data && presets.data.length > 0 ? (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-1">
+          <div className="flex flex-col gap-1 pt-1 text-sm">
+            <span>Применить сохранённый пресет к столу</span>
+            <div className="flex flex-col sm:flex-row items-stretch gap-3">
             <div className="flex-1 min-w-0">
-              <Field
-                label="Применить сохранённый пресет к столу"
-                hint="Заменит модель, тон нарратива и анкету характера мастера на настройки из пресета."
-              >
-                <CustomSelect
-                  value={selectedPresetId}
-                  options={presetOptions}
-                  onChange={setSelectedPresetId}
-                  placeholder="Выберите пресет мастера..."
-                  ariaLabel="Пресет мастера"
-                />
-              </Field>
+              <CustomSelect
+                value={selectedPresetId}
+                options={presetOptions}
+                onChange={setSelectedPresetId}
+                placeholder="Выберите пресет мастера..."
+                ariaLabel="Пресет мастера"
+              />
             </div>
             <ActionButton
               primary
-              className="font-mono text-xs tracking-wider whitespace-nowrap"
+              className="flex-1 font-mono text-xs tracking-wider whitespace-nowrap"
               run={async () => {
                 if (!selectedPresetId) throw new Error("Выберите пресет мастера");
                 const res = await api<{
@@ -256,6 +253,10 @@ export default function MasterTab({
             >
               ПРИМЕНИТЬ ПРЕСЕТ
             </ActionButton>
+            </div>
+            <span className="text-xs text-muted">
+              Заменит модель, тон нарратива и анкету характера мастера на настройки из пресета.
+            </span>
           </div>
         ) : (
           <p className="text-xs text-muted">
