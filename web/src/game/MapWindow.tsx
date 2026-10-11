@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
 import { entityVisual, EXIT_VISUALS, FEATURE_VISUALS, MAP_PRESETS } from "./mapPresets";
 import { MapGlyph } from "./MapGlyph";
+import { useMapZoom, ZoomBar } from "./MapZoom";
 import { useDraft } from "./draft";
 import { TYPE_COLOR } from "./entities";
 import { useInspector } from "./inspector";
@@ -451,6 +452,7 @@ function Around({ m }: { m: MapState }) {
   );
   const precisionById = new Map(things.map((x) => [x.item.id, x.placement]));
   const combat = m.mode === "combat";
+  const z = useMapZoom();
   const sk = m.sketch ?? null;
   const v = viewOf(sk);
   const W = v.cols * CELL;
@@ -503,7 +505,15 @@ function Around({ m }: { m: MapState }) {
           Точные координаты сохранены, значки не перенесены к краю.
         </p>
       )}
-      <svg viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} className="mx-auto w-full max-w-[30rem] select-none" role="img" aria-label="Схема места">
+      <ZoomBar z={z} />
+      <div ref={z.box} {...z.pan} className={`max-h-[65dvh] overflow-auto rounded-md ${z.zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}>
+      <svg
+        viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`}
+        style={{ width: `${z.zoom * 100}%`, maxWidth: `${z.zoom * 30}rem` }}
+        className="mx-auto block select-none"
+        role="img"
+        aria-label="Схема места"
+      >
         <rect x={0} y={0} width={W} height={H} fill="var(--color-surface, #17181c)" />
         {sk ? <SketchLayer sk={sk} px={px} py={py} onOpen={open} onPick={setPick} /> : <GridLines x={0} y={0} cols={SIDE} rows={SIDE} size={CELL} />}
 
@@ -631,6 +641,7 @@ function Around({ m }: { m: MapState }) {
             </g>
           ))}
       </svg>
+      </div>
       <StepBar pick={canWalk || step.busy ? pick : null} onClose={() => setPick(null)} go={go} />
       {(step.note || step.error || step.warnings) && (
         <div role="status" className={`rounded border px-3 py-2 text-sm ${step.error ? "border-ember text-ember" : "border-line text-ink-2"}`}>
