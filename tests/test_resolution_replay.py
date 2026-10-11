@@ -134,3 +134,48 @@ def test_concurrent_same_action_runs_hooks_once(game):
         assert hooks[0].id in receipts[0].payload["resolution"]["event_ids"]
 
     run(settings, concurrent)
+
+
+def test_concurrent_primary_check_rolls_once(game):
+    from app.tools.registry import execute
+    from app.tools.resolution.requests import bound_tool_key
+
+    settings, campaign_id, hero = game
+    if not settings.database_url.startswith("postgresql"):
+        pytest.skip("real concurrent row-lock test requires PostgreSQL")
+
+    async def prepare(ctx):
+        return await prepare_action(ctx, hero, [{"verb": "interact"}])
+
+    ref = play(settings, campaign_id, [], prepare)
+
+    async def concurrent(session):
+        factory = make_sessionmaker(session.bind)
+        loaded = 0
+        ready = asyncio.Event()
+        dice = QueueDice([4, 19])
+
+        async def worker(index):
+            nonlocal loaded
+            async with factory() as other:
+                ctx = await open_context(
+                    other, await other.get(Campaign, campaign_id), dice, turn_id=None, seat_id=None
+                )
+                ctx.required_actions = [ref]
+                loaded += 1
+                if loaded == 2:
+                    ready.set()
+                await ready.wait()
+                args = {"character_id": hero, "stat": "persuasion", "difficulty": "dc.easy", "reason": "test"}
+                result = await execute(
+                    ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, f"call{index}")
+                )
+                await other.commit()
+                return result
+
+        results = await asyncio.gather(worker(1), worker(2))
+        assert results[0]["result"] == results[1]["result"]
+        assert dice.queue == [19]
+        assert sum(bool(r.get("repeated")) for r in results) == 1
+
+    run(settings, concurrent)

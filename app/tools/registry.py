@@ -219,6 +219,17 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     t = REGISTRY.get(name)
     if t is None:
         return _failure(f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}", "unknown_tool", "unknown", key)
+    if name == "roll_check" and key:
+        from app.tools.resolution.context import refresh_world
+        from app.tools.resolution.requests import bound_tool_key, lock_resolution_source
+
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == (raw_args or {}).get("character_id")]
+        if refs and key == bound_tool_key(ctx, name, raw_args or {}, key):
+            # Serialize before reading the cached roll; a unique index alone
+            # prevents duplicate storage but cannot prevent a second dice roll.
+            for ref in sorted(refs, key=lambda ref: (ref.source_id, ref.part)):
+                await lock_resolution_source(ctx, ref)
+            await refresh_world(ctx)
     if key and t.mutating:
         q = select(Event).where(Event.campaign_id == ctx.campaign.id, Event.idempotency_key == key)
         prev = (await ctx.session.scalars(q)).first()
