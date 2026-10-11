@@ -71,9 +71,9 @@ Tasks 1–5: общий фундамент. Tasks 6–7: работающий ф
 
 - [ ] **Step 1 — failing tests.** Добавить `test_check_failure_is_execution_success`, `test_legacy_tool_error_denies_fallback`, `test_invalid_args_have_stable_code`, `test_contract_rejects_extra_fields`. Ключевая проверка:
   ```python
-  r = normalize_result({'ok': True, 'result': {'success': False}, 'event_id': 'ev_1'}, attempt_id='a_1')
-  assert r.execution == 'applied' and r.game_outcome == 'failure'
-  assert r.event_ids == ['ev_1']
+  r = normalize_result({"ok": True, "result": {"success": False}, "event_id": "ev_1"}, attempt_id="a_1")
+  assert r.execution == "applied" and r.game_outcome == "failure"
+  assert r.event_ids == ["ev_1"]
   ```
 - [ ] **Step 2 — red.** `pytest -n 0 tests/test_resolution_contracts.py -q`; новые проверки падают на отсутствующем контракте.
 - [ ] **Step 3 — implementation.** Pydantic `extra='forbid'`; добавить в отказ registry поле `failure`, сохранив `ok/error`. Валидация аргументов → `invalid_arguments`; неверный id → `rule_denial`; старые исключения → `unknown`. Не классифицировать по русскому тексту и не перехватывать неизвестные исключения как безопасные.
@@ -110,9 +110,9 @@ Tasks 1–5: общий фундамент. Tasks 6–7: работающий ф
 
 - [ ] **Step 1 — failing tests.** Таблица категорий из спека плюс `test_attack_before_initiative_denied`, `test_mixed_attack_and_social_action_denied`, `test_separate_noncombat_group_allowed`, `test_custom_or_parser_failure_is_not_permission`, `test_unknown_module_data_is_not_free_space`.
   ```python
-  assert admit(combat_context, noncombat_capability, unsupported).route == 'deny'
-  assert admit(free_context, noncombat_capability, unknown).route == 'deny'
-  assert admit(free_context, noncombat_capability, rule_denial).route == 'deny'
+  assert admit(combat_context, noncombat_capability, unsupported).route == "deny"
+  assert admit(free_context, noncombat_capability, unknown).route == "deny"
+  assert admit(free_context, noncombat_capability, rule_denial).route == "deny"
   ```
 - [ ] **Step 2 — red.** `pytest -n 0 tests/test_resolution_policy.py -q`.
 - [ ] **Step 3 — implementation.** Исключить боевые verbs `attack/cast/grapple/shove/dodge/dash/disengage`, боевые проверки и все затронутые стороны боя. `unsupported` допускается только описанием конкретной способности и подтверждённым серверным отсутствием её механической поддержки; отсутствие модели/цели/данных модуля не означает unsupported. Первый набор — `noncombat.interaction`, `creative.neutral_npc`, `standing.response`; последним двум аварийный допуск не нужен. Неподдерживаемый случай возвращает типизированный отказ только после обычной проверки целей/канона; неизвестные случаи закрыты. Весь `custom` автоматически не разрешать.
@@ -266,6 +266,26 @@ TEST_DATABASE_URL=postgresql+asyncpg://taleforge:taleforge@127.0.0.1:55432/talef
 генерация не должна создавать diff. Проверить, что каталог/замки/версия SRD не изменены.
 
 ## Критерий завершения и handoff
+
+### Выполнение
+
+Задачи 1–10 реализованы в `feat/master-resolution`; сквозная приёмка и review
+задачи 11 выполняются. Детальные чекбоксы выше оставлены как исходная матрица
+приёмки: некоторые сценарии объединены в параметризованные и интеграционные
+тесты, а не созданы отдельными функциями с исходными именами.
+
+Дополнительные регрессии при интеграции: сохранение focus/crew после отказа
+реестра; актуальный мир у конкурентного повторного вызова; запрет creative как
+обхода rule_denial; только одно исправление аргументов; сохранение дочерней
+диагностики после отката группы и failed turn; закрытый факт внутри общей группы;
+SQLite busy без последствий и без списания кубиков.
+
+Адаптер общего `unsupported` намеренно не выдаёт разрешения без конкретной
+серверной механики. Event-source не разрешён без проверенного адаптера. Это
+защитные ограничения первого выпуска, а не эвристики распознавания текста.
+Проверки миграций выполняются в отдельной одноразовой базе
+`taleforge_resolution_migrations`, поскольку pytest создаёт схему основной
+тестовой базы через metadata, без alembic-version.
 
 Результат — прошедшие сценарии общего механизма, отдельно работающий внебоевой
 фолбек и творческие возможности без рассинхрона текста и мира. Ошибки и

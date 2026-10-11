@@ -17,6 +17,20 @@ def action_key(ref: ActionRef) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def deed_key(ref: ActionRef, subject_id: str) -> str:
+    return hashlib.sha256(f"deed:{action_key(ref)}:{subject_id}".encode()).hexdigest()
+
+
+def bound_tool_key(ctx: ToolContext, name: str, args: dict, default: str) -> str:
+    if name != "record_deed":
+        return default
+    actors = set(args.get("character_ids") or [])
+    refs = [ref for ref in ctx.required_actions if ref.actor_id in actors]
+    if len(refs) != 1 or not args.get("subject_id"):
+        return default
+    return deed_key(refs[0], args["subject_id"])
+
+
 def bind_message_actions(message: Message, actor_id: str) -> list[ActionRef]:
     data = message.data or {}
     existing = data.get("resolution_actions")
@@ -111,7 +125,7 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         response = next((r for r in responses if r["id"] == ref.source_id), None)
         if response is None or response.get("status") != "ready" or ref.part != 0:
             raise denied()
-        if response.get("targets") and ref.actor_id not in response["targets"]:
+        if response.get("target_ids") and ref.actor_id not in response["target_ids"]:
             raise denied()
         actions = [{"verb": "standing_response", "target_id": response.get("subject_id")}]
         parsed = True
@@ -137,7 +151,12 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         combat_related=bool(set(verbs) & combat_verbs),
         completed_parts=completed_parts,
         module_data_known=module_known,
-        canonical_denial=any(t not in ctx.world.characters and t not in ctx.world.entities for t in targets),
+        canonical_denial=any(
+            t not in ctx.world.characters
+            and t not in ctx.world.entities
+            and not (ref.source_kind == "standing_response" and ctx.world.catalog.find(t, "faction"))
+            for t in targets
+        ),
     )
 
 
@@ -167,6 +186,7 @@ async def record_attempt(ctx: ToolContext, ref: ActionRef, capability_id: str, r
         }
     )
     turn.trace = {**(turn.trace or {}), "resolution_attempts": attempts}
+    ctx.turn_diagnostics["resolution_attempts"] = copy.deepcopy(attempts)
     if message is not None and result.execution in {"applied", "repeated"}:
         completed = dict((message.data or {}).get("resolution_completed") or {})
         completed.setdefault(str(ref.part), result.model_dump())
@@ -222,3 +242,30 @@ def mark_resolved(ctx: ToolContext, ref: ActionRef) -> None:
         ctx.closed.add(ref.actor_id)
     elif required:
         ctx.closed.discard(ref.actor_id)
+
+
+async def record_operations(ctx: ToolContext, operations: list[dict]) -> None:
+    """Keep child diagnostics even when the consequence savepoint was rolled back."""
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+    if turn is not None and turn.campaign_id == ctx.campaign.id:
+        turn.trace = {
+            **(turn.trace or {}),
+            "resolution_operations": [*(turn.trace or {}).get("resolution_operations", []), *operations],
+        }
+        ctx.turn_diagnostics["resolution_operations"] = copy.deepcopy(turn.trace["resolution_operations"])
+
+
+async def latest_attempt(ctx: ToolContext, ref: ActionRef) -> dict | None:
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+    return (
+        next(
+            (
+                a
+                for a in reversed((turn.trace or {}).get("resolution_attempts", []))
+                if action_key(ActionRef.model_validate(a["ref"])) == action_key(ref)
+            ),
+            None,
+        )
+        if turn
+        else None
+    )

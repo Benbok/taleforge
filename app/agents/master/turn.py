@@ -24,7 +24,7 @@ from app.agents.master.helpers import (
     _turn_messages,
     _unsettled_fails,
 )
-from app.agents.master.resolution import capture_attempt, resolution_prompt
+from app.agents.master.resolution import capture_attempt, permit_repair, resolution_prompt
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
@@ -45,7 +45,8 @@ from app.tools.action_plan import (
     shove_plan,
 )
 from app.tools.audio import AUDIO_TOOLS
-from app.tools.registry import ToolContext, execute, tool_specs
+from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
+from app.tools.resolution.requests import bound_tool_key
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
 log = logging.getLogger(__name__)
@@ -175,11 +176,12 @@ class TurnMixin:
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
         calls: list[LlmCall] = []
         drafts: list[str] = []  # черновики повествования, которые игроки видели по кускам
+        diagnostics: dict = {}
         replan = False
         await self._status(cid, "listening")
         try:
             async with self.maker() as s:
-                published = await self._play(s, cid, turn_id, calls, drafts)
+                published = await self._play(s, cid, turn_id, calls, drafts, diagnostics)
             if published["skipped"]:
                 return turn_id
             await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
@@ -194,7 +196,7 @@ class TurnMixin:
             async with self.maker() as s:
                 t = await s.get(MasterTurn, turn_id)
                 t.status, t.finished_at = "failed", now()
-                t.trace = {**(t.trace or {}), "error": f"{type(e).__name__}: {e}"}
+                t.trace = {**(t.trace or {}), **diagnostics, "rolled_back": True, "error": f"{type(e).__name__}: {e}"}
                 c = await s.get(Campaign, cid)
                 msg = await system_message(
                     s, c, "Мастер не смог завершить ход. Ничего не изменилось: повторите действие.", None
@@ -263,13 +265,17 @@ class TurnMixin:
         )
         return reply
 
-    async def _play(self, s, cid: str, turn_id: str, calls: list, drafts: list[str] | None = None) -> dict:
+    async def _play(
+        self, s, cid: str, turn_id: str, calls: list, drafts: list[str] | None = None, diagnostics: dict | None = None
+    ) -> dict:
         c = await s.get(Campaign, cid)
         turn = await s.get(MasterTurn, turn_id)
         seat = master_seat(c)
         cfg = await s.get(AgentConfig, seat.agent_config_id)
         place = (turn.trace or {}).get("place")
         ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=place)
+        if diagnostics is not None:
+            ctx.turn_diagnostics = diagnostics
         new = await _turn_messages(s, c, turn_id)
         names = await _names(s, c)
         if not new:  # все реплики пакета отменены, пока ход начинался: модель не зовём
@@ -307,6 +313,7 @@ class TurnMixin:
         # before damage, saving the original action for its caster's legal turn.
         # Ordered, unequivocal move+attack and move+cast actions use Action Plans.
         trace_calls: list[dict] = []
+        ctx.turn_diagnostics["calls"] = trace_calls
         routed: list[str] = []
         opening_actors: set[str] = set()
         opening_notes: list[str] = []
@@ -568,8 +575,26 @@ class TurnMixin:
                 await self._status(cid, "rolling")
             ctx.remaining_resolution_calls = MAX_CALLS - done_calls
             ctx.resolution_calls_used = 0
-            result = await execute(ctx, name, args, key=key)
-            if name != "adjudicate_action":
+            if (
+                name != "adjudicate_action"
+                and REGISTRY[name].mutating
+                and REGISTRY[name].closes_actions
+                and not await permit_repair(
+                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
+                )
+            ):
+                done_calls += 1
+                return {
+                    "ok": False,
+                    "error": "Лимит исправления аргументов этой заявки исчерпан; действие не выполнено.",
+                }
+            result = await execute(ctx, name, args, key=bound_tool_key(ctx, name, args, key))
+            if name == "adjudicate_action" and result.get("ok"):
+                from app.core.resolution.contracts import ActionRef
+                from app.tools.resolution.requests import action_key
+
+                result = {**result, "request_key": action_key(ActionRef.model_validate(args["proposal"]["ref"]))}
+            if name != "adjudicate_action" and REGISTRY[name].mutating and REGISTRY[name].closes_actions:
                 request_key = await capture_attempt(
                     ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id"), result
                 )
@@ -676,7 +701,13 @@ class TurnMixin:
                 else:
                     result = await run_call(call.name, args, f"{turn_id}:{call.id}")
                 trace_calls.append(
-                    {"tool": call.name, "args": args, "result": result, "request_key": result.get("request_key")}
+                    {
+                        "tool": call.name,
+                        "args": args,
+                        "result": result,
+                        "request_key": result.get("request_key"),
+                        "call_key": f"{turn_id}:{call.id}",
+                    }
                 )
                 msgs.append(
                     {

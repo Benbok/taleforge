@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, create_model
 from app.core.resolution.contracts import ActionRef, Contract
 from app.tools.master.checks import EffectArgs, HazardArgs
 from app.tools.master.entities import SpawnArgs, UpdateEntityArgs
-from app.tools.master.items import DropArgs, TakeItemArgs
+from app.tools.master.items import DropArgs, GiveItemArgs, TakeItemArgs
 from app.tools.master.knowledge import FactArgs
 from app.tools.master.places import EnterRoomArgs, MoveArgs, RepositionArgs
 from app.tools.master.scene import TimeArgs
@@ -30,6 +30,7 @@ OPERATION_TOOLS = {
     "response": ("resolve_response", ResolveArgs),
     "neutral_npc": ("spawn_entity", SpawnArgs),
     "story_hook": ("learn_fact", FactArgs),
+    "gift": ("give_item", GiveItemArgs),
 }
 
 

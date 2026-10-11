@@ -13,6 +13,54 @@ from tests.test_tools import play
 game = game_fixture
 
 
+def test_invalid_arguments_get_only_one_repair(game):
+    from app.agents.master.resolution import permit_repair
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        ref = await prepare_action(ctx, hero, [{"verb": "interact"}])
+        ctx.required_actions = [ref]
+        bad = ResolutionResult(
+            execution="denied",
+            failure=FailureInfo(
+                code="invalid_arguments", category="invalid_arguments", rolled_back=False, attempt_id=""
+            ),
+        )
+        await record_attempt(ctx, ref, "noncombat.interaction", bad)
+        assert await permit_repair(ctx, hero)
+        await record_attempt(ctx, ref, "noncombat.interaction", bad)
+        assert not await permit_repair(ctx, hero)
+
+    play(settings, campaign_id, [], check)
+
+
+def test_creative_cannot_bypass_rule_failure(game):
+    from app.tools.resolution.creative import validate_creative_proposal
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        ref = await prepare_action(ctx, hero, [{"verb": "interact"}])
+        await record_attempt(
+            ctx,
+            ref,
+            "noncombat.interaction",
+            ResolutionResult(
+                execution="denied",
+                failure=FailureInfo(code="denied", category="rule_denial", rolled_back=True, attempt_id=""),
+            ),
+        )
+        proposal = ResolutionProposal(ref=ref, origin="creative", outcome="success", reason="test")
+        assert (await validate_creative_proposal(ctx, proposal)).route == "deny"
+
+    play(settings, campaign_id, [], check)
+
+
 @pytest.mark.parametrize("category,allowed", [("unsupported", True), ("unknown", False), ("rule_denial", False)])
 def test_server_classified_failure_only(game, category, allowed):
     settings, campaign_id, hero = game
@@ -42,6 +90,9 @@ def test_server_classified_failure_only(game, category, allowed):
         if allowed:
             result = await adjudicate_action(ctx, AdjudicationArgs(proposal=proposed))
             assert result["execution"] == "applied"
+            assert ctx.world.scene.game_time == before + 60
+            replay = await adjudicate_action(ctx, AdjudicationArgs(proposal=proposed))
+            assert replay["execution"] == "repeated"
             assert ctx.world.scene.game_time == before + 60
         else:
             with pytest.raises(ToolError):

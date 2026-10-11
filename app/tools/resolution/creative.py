@@ -8,7 +8,7 @@ from app.core.resolution.policy import admit
 from app.db.models import Message
 from app.tools.registry import ToolContext
 from app.tools.resolution.capabilities import CAPABILITIES
-from app.tools.resolution.requests import load_action_context
+from app.tools.resolution.requests import latest_attempt, load_action_context
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ def creative_opportunities(ctx: ToolContext) -> list[CreativeOpportunity]:
                 opportunities.append(CreativeOpportunity(place_id, "reuse_actor", actor.id))
         plot_id = (place.state or {}).get("plot_id")
         for npc in world.plot.get("npcs") or []:
-            if npc.get("location_id") == plot_id and not npc.get("entity_id"):
+            if plot_id and npc.get("location_id") == plot_id and not npc.get("entity_id"):
                 opportunities.append(CreativeOpportunity(place_id, "reuse_sketch", npc["id"]))
         # Only procedural, untemplated places outside canonical plot/module
         # namespaces admit a new neutral NPC. Missing parents deny freedom.
@@ -60,6 +60,9 @@ async def validate_creative_proposal(ctx: ToolContext, proposal) -> Admission:
     message = await ctx.session.get(Message, proposal.ref.source_id)
     if message is None or message.turn_id != ctx.turn_id:
         return Admission("deny", "invalid_source")
+    latest = await latest_attempt(ctx, proposal.ref)
+    if latest and ResolutionResult.model_validate(latest["result"]).execution in {"denied", "failed"}:
+        return Admission("deny", "failed_action_requires_fallback")
     completed = (message.data or {}).get("resolution_completed", {}).get(str(proposal.ref.part))
     if completed and ResolutionResult.model_validate(completed).game_outcome != proposal.outcome:
         return Admission("deny", "confirmed_outcome_is_immutable")

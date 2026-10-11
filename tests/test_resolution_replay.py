@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.resolution.contracts import Admission
 from app.db.models import Campaign, Event
 from app.db.session import make_sessionmaker
+from app.tools.registry import AFTER_CALL
 from app.tools.resolution.executor import execute_resolution
 from app.tools.resolution.operations import ResolutionProposal
 from app.tools.resolution.requests import resolution_receipt
@@ -73,16 +74,32 @@ def test_concurrent_same_action_runs_hooks_once(game):
 
     async def concurrent(session):
         factory = make_sessionmaker(session.bind)
+        loaded = 0
+        ready = asyncio.Event()
+
+        async def counted_hook(ctx, result):
+            await ctx.record("resolution_test_hook", payload={"ran": True})
 
         async def worker():
+            nonlocal loaded
             async with factory() as other:
                 campaign = await other.get(Campaign, campaign_id)
                 ctx = await open_context(other, campaign, QueueDice([]), turn_id=None, seat_id=None)
+                loaded += 1
+                if loaded == 2:
+                    ready.set()
+                await ready.wait()
                 result = await execute_resolution(ctx, proposal, Admission("ordinary", "supported_action"))
                 await other.commit()
-                return result.execution
+                return result.execution, ctx.world.scene.game_time
 
-        assert sorted(await asyncio.gather(worker(), worker())) == ["applied", "repeated"]
+        AFTER_CALL.append(counted_hook)
+        try:
+            results = await asyncio.gather(worker(), worker())
+            assert sorted(result[0] for result in results) == ["applied", "repeated"]
+            assert len({result[1] for result in results}) == 1  # both callers see the committed world
+        finally:
+            AFTER_CALL.remove(counted_hook)
         receipts = (
             await session.scalars(select(Event).where(Event.campaign_id == campaign_id, Event.tool == "resolve_action"))
         ).all()
@@ -90,5 +107,12 @@ def test_concurrent_same_action_runs_hooks_once(game):
             await session.scalars(select(Event).where(Event.campaign_id == campaign_id, Event.tool == "advance_time"))
         ).all()
         assert len(receipts) == len(costs) == 1
+        hooks = (
+            await session.scalars(
+                select(Event).where(Event.campaign_id == campaign_id, Event.tool == "resolution_test_hook")
+            )
+        ).all()
+        assert len(hooks) == 1
+        assert hooks[0].id in receipts[0].payload["resolution"]["event_ids"]
 
     run(settings, concurrent)

@@ -38,6 +38,7 @@ export interface ToolResult {
 }
 
 export const TOOL_RU: Record<string, string> = {
+  adjudicate_action: "Внебоевое решение мастера",
   get_scene: "Сцена целиком",
   get_character: "Лист героя",
   lookup_template: "Найти шаблон",

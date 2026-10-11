@@ -78,6 +78,7 @@ class ToolContext:
     required_actions: list[ActionRef] = field(default_factory=list)
     remaining_resolution_calls: int = 0
     resolution_calls_used: int = 0
+    turn_diagnostics: dict = field(default_factory=dict)
 
     async def record(
         self,
@@ -246,10 +247,12 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
             return _failure(
                 f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}", "invalid_target", "rule_denial", key
             )
+    from app.tools.resolution.context import restore_context, snapshot_context
+
+    snapshot = snapshot_context(ctx)
     ctx.call_key = key
     ctx._first_event = None
     nested = await ctx.session.begin_nested()
-    outbox = len(ctx.outbox)
     try:
         result = await t.handler(ctx, args)
         if t.mutating:
@@ -257,11 +260,10 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
                 await hook(ctx, result)
     except (ToolError, WorldError, RulesError, DiceError, CatalogError) as e:
         await nested.rollback()
-        del ctx.outbox[outbox:]  # строки в чат от отменённого вызова не уходят
         # Откат точки сохранения сбрасывает изменённые объекты: перечитываем мир, чтобы следующий вызов видел БД
         await ctx.session.refresh(ctx.campaign)
         ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog)
-        ctx.events = [ev for ev in ctx.events if ev in ctx.session]
+        restore_context(ctx, snapshot)
         return _failure(
             str(e),
             e.code if isinstance(e, ToolError) else "unclassified",
@@ -276,8 +278,9 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     cid = getattr(args, "character_id", None)
     if t.closes_actions and cid:
         ctx.closed.add(cid)
-    for cid in getattr(args, "character_ids", None) or []:
-        ctx.closed.add(cid)
+    if t.closes_actions:
+        for cid in getattr(args, "character_ids", None) or []:
+            ctx.closed.add(cid)
     for f in ("attacker_id", "caster_id"):
         if t.closes_actions and getattr(args, f, None):
             ctx.closed.add(getattr(args, f))

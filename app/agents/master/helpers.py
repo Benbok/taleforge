@@ -220,11 +220,17 @@ def _narration_length(ctx: ToolContext, notes=()) -> str:
 def _render_results(ctx: ToolContext, *, public_only: bool = False) -> str:
     out = []
     for ev in ctx.events:
+        if ev.tool == "resolve_action":
+            continue  # internal source/attempt diagnostics never enter narration or voice
+        if ev.hidden and ev.tool == "learn_fact":
+            continue  # a fact learned by only part of the group is not common narration
         if ev.tool in AUDIO_TOOLS:
             continue
         if public_only and (ev.hidden or ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock"):
             continue
         res = ev.payload.get("result", ev.payload)
+        if isinstance(res, dict):
+            res = {key: value for key, value in res.items() if key not in {"request_ref", "resolution_origin"}}
         if ev.tool in plot_tools.PLOT_TOOLS or ev.tool == "threat_clock":
             mark = " [СЮЖЕТ: только для мастера, прямо не называй]"
         else:

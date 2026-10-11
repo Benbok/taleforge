@@ -31,3 +31,4 @@
 - [setting/echo-leviathans-review.md](setting/echo-leviathans-review.md) — разбор черновика.
 
 В обоих файлах «Матрица» — старое имя Резонанса (переименован 2026-09-28).
+- [master-resolution.md](master-resolution.md) — внебоевой фолбек, творческие решения, атомарные последствия и диагностика.

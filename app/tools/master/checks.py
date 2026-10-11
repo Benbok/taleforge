@@ -61,7 +61,9 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     from app.rules.dice import DiceError
 
     try:
-        res = (engine.saving_throw if a.kind == "save" else engine.check)(ctx.dice, bonus, dc, mode, critical_checks(ctx))
+        res = (engine.saving_throw if a.kind == "save" else engine.check)(
+            ctx.dice, bonus, dc, mode, critical_checks(ctx)
+        )
     except DiceError as error:
         # Only this validated check's typed dice failure is safe. Registry still
         # has to roll back (including inspiration) before granting admission.

@@ -42,7 +42,7 @@ CAPABILITIES = {
         "standing.response",
         "noncombat",
         frozenset({"standing_response"}),
-        OPERATIONS | {"response"},
+        OPERATIONS | {"response", "gift", "story_hook"},
         True,
         False,
         False,

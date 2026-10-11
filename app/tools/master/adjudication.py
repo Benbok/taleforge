@@ -1,11 +1,17 @@
 """Native noncombat fallback, authorized exclusively by server attempts."""
 
-from app.core.resolution.contracts import Admission, Contract
+from app.core.resolution.contracts import Admission, Contract, ResolutionResult
 from app.tools.registry import ToolContext, ToolError, tool
 from app.tools.resolution.capabilities import CAPABILITIES
 from app.tools.resolution.executor import execute_resolution
 from app.tools.resolution.operations import ResolutionProposal
-from app.tools.resolution.requests import action_key, eligible_adjudications, mark_resolved, record_attempt
+from app.tools.resolution.requests import (
+    action_key,
+    eligible_adjudications,
+    mark_resolved,
+    record_attempt,
+    resolution_receipt,
+)
 
 
 class AdjudicationArgs(Contract):
@@ -21,6 +27,32 @@ class AdjudicationArgs(Contract):
 )
 async def adjudicate_action(ctx: ToolContext, args: AdjudicationArgs) -> dict:
     proposal = args.proposal
+    if (
+        proposal.ref.campaign_id != ctx.campaign.id
+        or proposal.ref.actor_id not in ctx.world.characters
+        or (ctx.world.crew and proposal.ref.actor_id not in ctx.world.crew)
+    ):
+        raise ToolError("чужая заявка", code="invalid_source", category="rule_denial")
+    receipt = await resolution_receipt(ctx, proposal.ref)
+    if receipt is not None:
+        from app.tools.resolution.context import refresh_world
+
+        await refresh_world(ctx)
+        # A persisted receipt is a read-only answer, not a fresh admission.
+        return (
+            ResolutionResult.model_validate(receipt.payload["resolution"])
+            .model_copy(update={"execution": "repeated"})
+            .model_dump()
+        )
+    if proposal.origin == "normal" and proposal.ref.source_kind == "standing_response":
+        from app.tools.resolution.standing import validate_standing_proposal
+
+        admission = await validate_standing_proposal(ctx, proposal)
+        if admission.route != "ordinary":
+            raise ToolError("ответ мира недопустим", code=admission.reason_code, category="rule_denial")
+        if max(1, len(proposal.operations)) > ctx.remaining_resolution_calls:
+            raise ToolError("недостаточно бюджета вызовов", code="resolution_budget_exceeded", category="rule_denial")
+        return (await execute_resolution(ctx, proposal, admission)).model_dump()
     if proposal.origin == "creative":
         from app.tools.resolution.creative import validate_creative_proposal
 

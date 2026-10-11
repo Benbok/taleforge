@@ -3,9 +3,19 @@
 import copy
 from dataclasses import dataclass
 
+from app.core.world import load_world
 from app.tools.registry import ToolContext
 
 CHANNELS = ("changed", "closed", "signals", "carded", "outbox", "audio", "notices", "resolved_actions")
+
+
+async def refresh_world(ctx: ToolContext) -> None:
+    """Refresh after serialization without losing the current audience."""
+    focus, crew = ctx.world.focus, set(ctx.world.crew)
+    await ctx.session.flush()
+    await ctx.session.refresh(ctx.campaign)
+    ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog, refresh=True)
+    ctx.world.focus, ctx.world.crew = focus, crew
 
 
 @dataclass
