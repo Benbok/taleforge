@@ -120,7 +120,9 @@ export default function NewCampaignPage() {
     );
   }
 
-  // Options for World Pack select
+  // Старые версии пакета остаются в базе ради кампаний на них, а новая кампания берёт последнюю:
+  // в списке по одному пункту на пакет. API отдаёт версии по порядку импорта — последняя свежая.
+  const latestPacks = [...new Map((packs.data ?? []).map((p) => [p.id, p])).values()];
   const packOptions: SelectOption[] = [
     {
       value: "",
@@ -129,7 +131,7 @@ export default function NewCampaignPage() {
       badge: "SRD",
       badgeTone: "muted",
     },
-    ...(packs.data ?? []).map((p) => ({
+    ...latestPacks.map((p) => ({
       value: p.id,
       label: p.name,
       sublabel: `Версия ${p.version} · уникальный лор, классы и бестиарий`,
