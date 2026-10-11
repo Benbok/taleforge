@@ -56,7 +56,9 @@ def act(client, head, cid, text):
                 and e["payload"]["kind"] in ("narration", "system")
                 and not e["payload"].get("whisper")
             ):
-                if e["payload"]["kind"] == "system" and "повторите" not in e["payload"]["content"]:
+                text = e["payload"]["content"]
+                # конец хода: откат («повторите действие») или сохранённое действие без описания
+                if e["payload"]["kind"] == "system" and "повторите" not in text and "сохранено" not in text:
                     continue
                 # ход дописывает учёт вызовов модели уже после повествования: ждём, чтобы не спорить за SQLite
                 client.portal.call(client.app.state.master.wait_idle, cid)

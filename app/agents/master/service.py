@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agents import character, rhythm
 from app.agents.llm import LLM
+from app.agents.master.finish import FinishMixin
 from app.agents.master.helpers import _batches, _in_fight
 from app.agents.master.narration import NarrationMixin
 from app.agents.master.parsing import ParsingMixin
@@ -42,7 +43,9 @@ from app.tools.registry import ToolContext
 log = logging.getLogger(__name__)
 
 
-class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, ParsingMixin, StepwiseMixin, ReviewMixin):
+class MasterService(
+    WhisperMixin, TurnMixin, FinishMixin, NarrationMixin, RecallMixin, ParsingMixin, StepwiseMixin, ReviewMixin
+):
     """Очередь ходов ИИ-мастера по кампаниям. Один ход кампании за раз; реплики, пришедшие во время хода,
     уходят в следующий пакет."""
 
@@ -230,7 +233,8 @@ class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, Parsin
             self.players.after_narration(cid)
 
     async def stop(self) -> None:
-        tasks = [*self._tasks.values(), *self._background, *self._timers.values()]
+        recovery = getattr(self, "_recovery", None)
+        tasks = [*self._tasks.values(), *self._background, *self._timers.values(), *([recovery] if recovery else [])]
         for t in tasks:
             t.cancel()
         for t in tasks:

@@ -204,6 +204,8 @@ class Campaign(Base):
     settings: Mapped[dict[str, Any]] = mapped_column(default=dict)
     brief: Mapped[dict[str, Any]] = mapped_column(default=dict)  # анкета кампании (app/core/brief.py)
     last_seq: Mapped[int] = mapped_column(Integer, default=0)
+    # Версия мира кампании: растёт на каждой защищённой записи (app/core/world_tx.py)
+    world_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Цепочка пакетов кампании от базового к верхнему: [[id, version], ...]. Фиксируется при создании,
     # новая версия пакета идущую кампанию не меняет (раздел 3.2).
     content_chain: Mapped[list[Any]] = mapped_column(default=list)
@@ -428,6 +430,7 @@ class WorldGenerationState(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # запрос активировал резерв
 
 
 class PlotAnchorBinding(Base):
@@ -527,6 +530,8 @@ class MasterTurn(Base):
     upto_seq: Mapped[int] = mapped_column(Integer, default=0)  # реплики игроков до этого seq закрыты ходом
     trace: Mapped[dict[str, Any]] = mapped_column(default=dict)
     narration_message_id: Mapped[str | None] = mapped_column(String(32))
+    # Граница хода: действия зафиксированы, дальше подготовка и повествование (docs/world-objects-delivery2.md)
+    generation_checkpoint: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

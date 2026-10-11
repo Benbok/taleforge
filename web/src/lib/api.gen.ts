@@ -1047,6 +1047,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/generation/{operation_ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generation Status
+         * @description Только чтение: ничего не ставит в очередь. Мастер видит всё, игрок — только то, что видит его герой.
+         */
+        get: operations["generation_status_api_campaigns__campaign_id__generation__operation_ref__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/invites": {
         parameters: {
             query?: never;
@@ -1502,6 +1522,26 @@ export interface paths {
         get: operations["campaign_theme_api_campaigns__campaign_id__theme_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/turns/{turn_id}/narration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Narration
+         * @description Повтор описания хода, действия которого сохранены, а описание не удалось: тот же id сообщения.
+         */
+        post: operations["retry_narration_api_campaigns__campaign_id__turns__turn_id__narration_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3328,6 +3368,35 @@ export interface components {
             /** Unit */
             unit: string;
         };
+        /** GeneratedObject */
+        GeneratedObject: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** GenerationStatusOut */
+        GenerationStatusOut: {
+            /** Objects */
+            objects?: components["schemas"]["GeneratedObject"][] | null;
+            /** Operation Ref */
+            operation_ref: string;
+            /** Phase */
+            phase: string;
+            /** Quality */
+            quality?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unexamined" | "pending" | "ready" | "blocked";
+            /** Target Id */
+            target_id: string;
+        };
         /** Grid */
         Grid: {
             /** Bottom */
@@ -4488,6 +4557,11 @@ export interface components {
             /** Provider */
             provider: string;
         };
+        /** NarrationRetryOut */
+        NarrationRetryOut: {
+            /** Accepted */
+            accepted: boolean;
+        };
         /** NoteIn */
         NoteIn: {
             /** Cause */
@@ -5401,6 +5475,8 @@ export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
 export type FeatureUses = components['schemas']['FeatureUses'];
+export type GeneratedObject = components['schemas']['GeneratedObject'];
+export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
 export type Grid = components['schemas']['Grid'];
 export type HTTPValidationError = components['schemas']['HTTPValidationError'];
 export type HeroAttack = components['schemas']['HeroAttack'];
@@ -5462,6 +5538,7 @@ export type MessageRejected = components['schemas']['MessageRejected'];
 export type MessageState = components['schemas']['MessageState'];
 export type MessageWithdrawn = components['schemas']['MessageWithdrawn'];
 export type ModelCheckIn = components['schemas']['ModelCheckIn'];
+export type NarrationRetryOut = components['schemas']['NarrationRetryOut'];
 export type NoteIn = components['schemas']['NoteIn'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
@@ -7783,6 +7860,38 @@ export interface operations {
             };
         };
     };
+    generation_status_api_campaigns__campaign_id__generation__operation_ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                operation_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_invites_api_campaigns__campaign_id__invites_get: {
         parameters: {
             query?: never;
@@ -8861,6 +8970,38 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_narration_api_campaigns__campaign_id__turns__turn_id__narration_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrationRetryOut"];
                 };
             };
             /** @description Validation Error */

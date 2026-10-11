@@ -3937,6 +3937,99 @@
     "title": "FeatureUses",
     "type": "object"
    },
+   "GeneratedObject": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "GeneratedObject",
+    "type": "object"
+   },
+   "GenerationStatusOut": {
+    "properties": {
+     "objects": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/GeneratedObject"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Objects"
+     },
+     "operation_ref": {
+      "title": "Operation Ref",
+      "type": "string"
+     },
+     "phase": {
+      "title": "Phase",
+      "type": "string"
+     },
+     "quality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Quality"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "status": {
+      "enum": [
+       "unexamined",
+       "pending",
+       "ready",
+       "blocked"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "target_id": {
+      "title": "Target Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "operation_ref",
+     "status",
+     "revision",
+     "target_id",
+     "phase"
+    ],
+    "title": "GenerationStatusOut",
+    "type": "object"
+   },
    "Grid": {
     "properties": {
      "bottom": {
@@ -7691,6 +7784,19 @@
      "provider"
     ],
     "title": "ModelCheckIn",
+    "type": "object"
+   },
+   "NarrationRetryOut": {
+    "properties": {
+     "accepted": {
+      "title": "Accepted",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "accepted"
+    ],
+    "title": "NarrationRetryOut",
     "type": "object"
    },
    "NoteIn": {
@@ -14329,6 +14435,63 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/generation/{operation_ref}": {
+   "get": {
+    "description": "Только чтение: ничего не ставит в очередь. Мастер видит всё, игрок — только то, что видит его герой.",
+    "operationId": "generation_status_api_campaigns__campaign_id__generation__operation_ref__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "operation_ref",
+      "required": true,
+      "schema": {
+       "title": "Operation Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GenerationStatusOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Generation Status",
+    "tags": [
+     "generation"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/invites": {
    "get": {
     "operationId": "list_invites_api_campaigns__campaign_id__invites_get",
@@ -16121,6 +16284,63 @@
     "summary": "Campaign Theme",
     "tags": [
      "home"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/turns/{turn_id}/narration": {
+   "post": {
+    "description": "Повтор описания хода, действия которого сохранены, а описание не удалось: тот же id сообщения.",
+    "operationId": "retry_narration_api_campaigns__campaign_id__turns__turn_id__narration_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "turn_id",
+      "required": true,
+      "schema": {
+       "title": "Turn Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NarrationRetryOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Retry Narration",
+    "tags": [
+     "generation"
     ]
    }
   },

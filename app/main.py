@@ -29,6 +29,7 @@ from app.api import (
     voice,
 )
 from app.api import audio as audio_api
+from app.api import generation as generation_api
 from app.api import modules as modules_api
 from app.api.errors import validation_handler
 from app.config import Settings
@@ -95,6 +96,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             tts=app.state.tts,
         )
         await app.state.master.resume_timers()
+        app.state.master.start_recovery()  # ходы с сохранёнными действиями дописываются (поставка 2)
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
         app.state.master.players = PlayerAgents(app.state.master)
@@ -133,6 +135,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(library.router)
     app.include_router(models.router)
     app.include_router(modules_api.router)
+    app.include_router(generation_api.router)
     app.include_router(personas.router)
     app.include_router(plan.router)
     app.include_router(profile.router)

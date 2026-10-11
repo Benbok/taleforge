@@ -79,6 +79,8 @@ class ToolContext:
     remaining_resolution_calls: int = 0
     resolution_calls_used: int = 0
     turn_diagnostics: dict = field(default_factory=dict)
+    # подготовки мира, принятые вызовами этого хода: ход ждёт их перед повествованием (поставка 2)
+    operation_refs: set[str] = field(default_factory=set)
 
     async def record(
         self,
@@ -234,7 +236,14 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         q = select(Event).where(Event.campaign_id == ctx.campaign.id, Event.idempotency_key == key)
         prev = (await ctx.session.scalars(q)).first()
         if prev is not None:
-            return {"ok": True, "result": prev.payload.get("result", {}), "event_id": prev.id, "repeated": True}
+            out = {"ok": True, "result": prev.payload.get("result", {}), "event_id": prev.id, "repeated": True}
+            ref = out["result"].get("operation_ref") if isinstance(out["result"], dict) else None
+            if isinstance(ref, str):
+                from app.core import preparation
+
+                # квитанция неизменна, а статус — живой и идёт отдельным полем; Event.payload не меняется
+                out["status"] = await preparation.brief_status(ctx.session, ctx.campaign.id, ref)
+            return out
     try:
         args = t.args.model_validate(raw_args or {})
     except ValidationError as e:
@@ -286,6 +295,8 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     ev = ctx._first_event
     if ev is not None:
         ev.payload = {**ev.payload, "result": result}
+    if isinstance(result, dict) and isinstance(result.get("operation_ref"), str):
+        ctx.operation_refs.add(result["operation_ref"])
     cid = getattr(args, "character_id", None)
     if t.closes_actions and cid:
         ctx.closed.add(cid)

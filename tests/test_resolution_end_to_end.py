@@ -105,14 +105,14 @@ def test_pipeline_safe_failure_price_commit_reconnect_standing_and_replay(
         llm.replies.pop()
     narration = act(game_client, player, cid, "Предлагаю помощь путнику")
     if fail_narration:
-        assert narration["kind"] == "system"
+        # действия зафиксированы до повествования: сбой описания их не откатывает (docs/world-objects-delivery2.md)
+        assert narration["kind"] == "system" and "сохранено" in narration["content"]
+        assert "Ничего не изменилось" not in narration["content"]
         turn = next(t for t in rows(settings, MasterTurn) if t.status == "failed")
-        assert turn.trace["rolled_back"] is True
+        assert "rolled_back" not in turn.trace and turn.trace["narration_failed"] == "attempts"
+        assert turn.generation_checkpoint["attempts"] == 2
         assert turn.trace["resolution_attempts"][0]["result"]["failure"]["code"] == "check_dice_failure"
-        assert len(turn.trace["resolution_operations"]) == 3
-        assert not [e for e in rows(settings, Event) if e.tool == "resolve_action"]
-        log = game_client.get(f"/api/campaigns/{cid}/master-log", headers=admin_g).json()
-        assert all(not call["ok"] and call["rolled_back"] for call in log["turns"][0]["calls"])
+        assert [e for e in rows(settings, Event) if e.tool == "resolve_action"]
         return
     assert narration["kind"] == "narration"
     turn = next(t for t in rows(settings, MasterTurn) if t.status == "done")
