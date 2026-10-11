@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from app.core import combat, economy, steps
+from app.core import combat, economy, reach, steps
 from app.core import positions as grid
 from app.rules.dnd5e import modifiers as mod
 from app.tools import grapples as gp
@@ -47,7 +47,13 @@ async def hero_step(
     can_dash = bool(led) and led["actions"] < 1 + led["extra"]
     cap = base + (speed if can_dash else 0)
     left = max(0, cap - used) // 5 if fighting else None
-    if near:
+    sides = reach.approach_for_near(w, place, near) if near else None
+    if sides is not None:  # у детали эскиза есть стороны подхода: шкаф открывают спереди, не через заднюю стенку
+        route = steps.search(w, place, start, lambda c: c in sides, hero_id, left)
+        if route is None:
+            within = " в пределах хода" if fighting else ""
+            raise ToolError(f"подойти не получится: нет свободной клетки с доступной стороны{within}")
+    elif near:
         route = steps.beside(w, place, start, near, hero_id, left)
         if route is None:
             within = " в пределах хода" if fighting else ""

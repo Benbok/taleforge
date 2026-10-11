@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.core.object_policy import concealed
 from app.core.world import PLAYABLE, party_groups, viewer_places
 from app.core.world_objects import is_nested
 from app.db.models import Character, Entity, Scene
@@ -31,6 +32,7 @@ def visible_scene(
     *,
     hero_id: str | None,
     is_master: bool,
+    revealed: frozenset[str] = frozenset(),
 ) -> VisibleScene:
     """Возвращает разрешённые объекты; БД и каталог не загружаются повторно.
 
@@ -43,18 +45,13 @@ def visible_scene(
     current, places = viewer_places(characters.values(), scene, None if is_master else hero)
     allowed = set(places)
 
-    def hidden_by_sketch(e: Entity) -> bool:
-        room = entities.get(e.location_id or "")
-        features = ((room.state or {}).get("sketch") or {}).get("features") or [] if room is not None else []
-        return any(f.get("entity_id") == e.id and f.get("hidden") for f in features)
-
     filtered = tuple(
         e
         for e in entities.values()
         if e.kind != "location"
         and not is_nested(e)
         and (not allowed or e.location_id in allowed)
-        and (is_master or not ((e.state or {}).get("hidden") or (e.state or {}).get("secret") or hidden_by_sketch(e)))
+        and (is_master or not concealed(e, entities, revealed))  # общая policy: тайное, обнаруженное этим героем
     )
     heroes = tuple(
         ch

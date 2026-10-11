@@ -264,6 +264,8 @@ export interface EntityCard {
   facts?: string[];
   heard?: string[];
   error?: string;
+  /** Карточка по памяти: вещь сейчас не видна, нынешнего состояния, положения и действий нет. */
+  memory?: boolean;
 }
 
 export interface HeroAttack {

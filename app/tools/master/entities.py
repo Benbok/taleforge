@@ -196,6 +196,11 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     en = ctx.world.entities.get(a.entity_id)
     if en is None:
         raise ToolError(f"нет сущности {a.entity_id}")
+    if en.kind == "object" and (a.zone is not None or a.bearing is not None):
+        from app.core.reach import object_feature
+
+        if object_feature(ctx.world, en) is not None:
+            raise ToolError(f"«{en.name}» стоит деталью эскиза: двигай её в эскизе (sketch_place), а не зоной")
     inverse = [
         {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
         {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},

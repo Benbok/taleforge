@@ -110,6 +110,7 @@ export default function EntityPopover() {
       )}
       {card && !card.error && !card.hero && (
         <div className="flex flex-col gap-2">
+          {card.memory && <p className="text-xs text-muted">По памяти: сейчас этого не видно</p>}
           {card.kind_name && card.kind_name !== name && <p className="text-muted">{card.kind_name}</p>}
           {card.description && <p className="font-narration">{card.description}</p>}
           {card.lore && <p className="font-narration text-muted">{card.lore}</p>}
@@ -129,9 +130,9 @@ export default function EntityPopover() {
           {card.locked && card.locked.length > 0 && (
             <p className="text-xs text-muted">Скрыто: ещё можно узнать ({card.locked.join(", ")})</p>
           )}
-          {type === "creature" && <QuickAttack id={id} name={name} onDone={close} />}
+          {type === "creature" && !card.memory && <QuickAttack id={id} name={name} onDone={close} />}
           <div className="mt-1 flex flex-wrap gap-2">
-            {cardActions(type, name).map((a) => (
+            {(card.memory ? [] : cardActions(type, name)).map((a) => (
               <button
                 key={a.label}
                 className="btn px-2 py-1 text-xs"

@@ -15,7 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView, Entry
 from app.core.world_objects import is_nested
-from app.db.models import ActiveEffect, Campaign, CampaignSecret, Character, Entity, InventoryItem, Scene
+from app.db.models import (
+    ActiveEffect,
+    Campaign,
+    CampaignSecret,
+    Character,
+    Entity,
+    InventoryItem,
+    Knowledge,
+    Scene,
+)
 from app.rules.base import DeathSaves, HitPoints
 from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
@@ -353,6 +362,8 @@ class World:
     # место группы, ради которой идёт ход мастера, когда отряд разделён; None — весь отряд (design/party-split.md)
     focus: str | None = None
     crew: set[str] = field(default_factory=set)  # герои этой группы: куда бы они ни ушли за ход, сцена с ними
+    # что каждый герой явно обнаружил (Knowledge.revealed_at): персональные сцены показывают ему найденное тайное
+    revealed: dict[str, set[str]] = field(default_factory=dict)
     _actors: dict[str, Actor] = field(default_factory=dict)
 
     def actor(self, actor_id: str) -> Actor:
@@ -840,6 +851,13 @@ async def load_world(
         ).all()
     )
     secret = await session.get(CampaignSecret, campaign.id, populate_existing=refresh)
+    revealed: dict[str, set[str]] = {}
+    if ids:
+        q = select(Knowledge.character_id, Knowledge.entity_id).where(
+            Knowledge.character_id.in_(ids), Knowledge.revealed_at.is_not(None)
+        )
+        for hero_id, entity_id in (await session.execute(q)).all():
+            revealed.setdefault(hero_id, set()).add(entity_id)
     return World(
         campaign=campaign,
         catalog=catalog,
@@ -849,4 +867,5 @@ async def load_world(
         inventory=inventory,
         effects=effects,
         plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
+        revealed=revealed,
     )

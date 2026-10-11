@@ -313,6 +313,7 @@ class CharacterUpdated(_Strict):
 class EntityCard(_Open):
     id: str
     error: str = absent()
+    memory: bool = absent()  # карточка по памяти: вещь сейчас не видна, нынешнего состояния нет
 
 
 class KnowledgeRevealed(_Strict):
@@ -450,6 +451,7 @@ class MapSketchFeature(_Strict):
     cells: list[list[int]]
     cover: str | None = None
     hidden: bool = False
+    access_sides: list[Literal["n", "e", "s", "w"]] | None = None
 
 
 class MapUnplacedExit(_Strict):
@@ -460,6 +462,7 @@ class MapUnplacedExit(_Strict):
 
 class MapSketch(_Strict):
     edit_rev: int | None = None
+    placement_rev: int | None = None
     shape: str
     cols: int
     rows: int

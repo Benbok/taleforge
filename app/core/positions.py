@@ -116,6 +116,8 @@ def cell_problem(
             return f"клетка {shown} — стена"
         for f in sk.get("features") or []:
             if any(c0 <= c <= c1 and r0 <= r <= r1 for c0, r0, c1, r1 in f["cells"]):
+                if f.get("hidden"):
+                    return f"клетка {shown} занята"  # имя тайной детали не уходит игроку в ошибке шага
                 return f"на клетке {shown} стоит «{f['name']}»"
     for aid, name in _standing(world, place):
         if aid == actor_id:

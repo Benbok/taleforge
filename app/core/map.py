@@ -23,9 +23,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
-from app.core import adventure, sketch
+from app.core import adventure, reach, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.object_policy import concealed, revealed_to
+from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
@@ -79,6 +81,24 @@ async def _mentioned_ids(session: AsyncSession, viewer: Viewer, ids: list[str]) 
     return out
 
 
+def _footprint_zones(sk: dict | None, around: list[dict], entities: dict[str, Entity], here_id: str) -> None:
+    """Привязанный к эскизу объект стоит там, где его деталь: зона — от строя до ближайшей клетки footprint,
+    а не сохранённая точка (docs/world-objects-delivery1.md, §2.1). Смена строя её не сбивает."""
+    geometry = sketch.physical_geometry(sk, entities, here_id)
+    if not geometry:
+        return
+    ax, ay = int(geometry["party"][0]), int(geometry["party"][1])
+    for item in around:
+        f = reach.feature_of(geometry, item["id"])
+        if f is None:
+            continue
+        near = reach.nearest_rel({(c - ax, r - ay) for c, r in reach.footprint(f)})
+        item["zone"] = zone_of_cell(near)
+        item["zone_name"] = ZONE_NAMES.get(item["zone"], item["zone"])
+        item["bearing"] = bearing_of_cell(near)
+        item["cell"] = None  # одна позиция: деталь эскиза
+
+
 async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     cid = viewer.campaign.id
     scene = await get_scene(session, cid)
@@ -89,12 +109,14 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
 
     q = select(Character).where(Character.campaign_id == cid)
     all_chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
+    revealed = await revealed_to(session, hero.id if hero is not None else None)
     view = visible_scene(
         scene,
         {e.id: e for e in ents},
         all_chars,
         hero_id=hero.id if hero is not None else None,
         is_master=master,
+        revealed=revealed,
     )
     heroes = [hero] if hero is not None and hero.status in PLAYABLE else list(view.heroes)
     here_id = view.current_location_id
@@ -180,12 +202,13 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     party: list[dict] = []
     areas: list[dict] = []
     if here is not None:
+        by_id = {e.id: e for e in ents}
         for e in ents:
             if e.id not in allowed_entities or e.location_id != here.id or is_nested(e):
                 continue
             st = e.state or {}
-            if not master and (st.get("hidden") or st.get("secret")):
-                continue
+            if not master and concealed(e, by_id, revealed):
+                continue  # тайное само, тайная деталь эскиза: ни в одном поле ответа игроку
             area = st.get("area")
             if area:
                 if area.get("expires_at") is None or scene.game_time < int(area["expires_at"]):
@@ -282,15 +305,8 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                         "visited": passage.target_id in visited,
                     }
                 )
-    # Linked secret geometry must not reveal an entity through around or book tokens.
-    saved_sketch = (here.state or {}).get("sketch") if here is not None else None
-    hidden_linked = {
-        feature["entity_id"]
-        for feature in (saved_sketch or {}).get("features") or []
-        if feature.get("hidden") and isinstance(feature.get("entity_id"), str)
-    }
-    if not master and hidden_linked:
-        around = [item for item in around if item["id"] not in hidden_linked]
+    if here is not None:
+        _footprint_zones(sketch.of_place(here, catalog, places), around, {e.id: e for e in ents}, here.id)
 
     # The book receives unmodified scene tokens; Around renders bound Entity as a sketch feature.
     scene_view = [
@@ -343,8 +359,12 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     else:
         sk = sketch.of_place(here, None, places) if here is not None and (here.state or {}).get("sketch") else None
     projected_sketch = (
-        sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id) if sk and here else None
+        sketch.project_for_viewer(sk, master, shown, {e.id: e for e in ents}, here.id, revealed)
+        if sk and here
+        else None
     )
+    if projected_sketch is not None:
+        projected_sketch["placement_rev"] = int((here.state or {}).get("placement_rev") or 0)
     linked = sketch.linked_entity_ids(projected_sketch)
     scene_view = [token for token in scene_view if token["id"] not in linked]
     return {

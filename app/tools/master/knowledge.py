@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.db.models import Knowledge, KnownFact
+from app.core.object_policy import observe
+from app.db.models import Knowledge, KnownFact, now
 from app.tools.master.base import _character
 from app.tools.registry import ToolContext, ToolError, tool
 
@@ -13,6 +14,11 @@ class RevealArgs(BaseModel):
     character_id: str
     entity_id: str
     level: int = Field(ge=0, le=3, description="0 — видел, 1 — наслышан, 2 — изучил, 3 — знает всё")
+    discovered: bool = Field(
+        False,
+        description="true — герой нашёл сам тайный предмет или существо (тайник, скрытый шкаф): теперь видит его "
+        "на схеме. Слух и рассказ — false: знание без обнаружения",
+    )
 
 
 @tool(
@@ -26,6 +32,9 @@ async def reveal_knowledge(ctx: ToolContext, a: RevealArgs) -> dict:
     ch = _character(ctx, a.character_id)
     if a.entity_id not in ctx.world.entities:
         raise ToolError(f"нет сущности {a.entity_id}")
+    entity = ctx.world.entities[a.entity_id]
+    if a.discovered and (entity.kind not in ("object", "creature") or entity.location_id != ctx.world.place_of(ch)):
+        raise ToolError(f"{ch.name} может обнаружить только предмет или существо там, где стоит сам")
     row = await ctx.session.get(Knowledge, (ch.id, a.entity_id))
     before = row.level if row else None
     if row is None:
@@ -33,13 +42,21 @@ async def reveal_knowledge(ctx: ToolContext, a: RevealArgs) -> dict:
         ctx.session.add(row)
     else:
         row.level = max(row.level, a.level)
+    inverse: list = [{"table": "knowledge", "id": [ch.id, a.entity_id], "field": "level", "before": before}]
+    if a.discovered and row.revealed_at is None:
+        inverse.append({"table": "knowledge", "id": [ch.id, a.entity_id], "field": "revealed_at", "before": None})
+        row.revealed_at = now()
+        ctx.world.revealed.setdefault(ch.id, set()).add(entity.id)
     await ctx.session.flush()
+    if a.discovered:
+        await observe(ctx, entity.location_id, inverse, only=[entity.id])
+        ctx.signals.add("map.changed")
     await ctx.record(
         "reveal_knowledge",
         actor_id=ch.id,
         target_id=a.entity_id,
-        payload={"level": row.level},
-        inverse=[{"table": "knowledge", "id": [ch.id, a.entity_id], "field": "level", "before": before}],
+        payload={"level": row.level, **({"discovered": True} if a.discovered else {})},
+        inverse=inverse,
     )
     return {"character": ch.name, "entity": ctx.world.entities[a.entity_id].name, "level": row.level}
 
