@@ -169,6 +169,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
             "tts_voice": body.tts_voice,
+            **dict.fromkeys(request.app.state.settings.new_campaign_flags, True),
         },
         owner_plays=body.owner_plays,
         brief=body.brief.model_dump(exclude_defaults=True),

@@ -1,5 +1,9 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
+from app.config import _flags
 from tests.conftest import login
 
 
@@ -49,6 +53,20 @@ def test_create_campaign_seats_and_party_size(client, admin):
     r = client.post("/api/campaigns", json={"name": "x", "players": 7}, headers=admin)
     assert r.status_code == 422
     assert client.get("/api/party-size?difficulty=hard", headers=admin).json() == {"min": 3, "recommended": 4, "max": 6}
+
+
+def test_new_campaign_flags_from_server_settings(client, admin, settings):
+    off = make_campaign(client, admin)["settings"]
+    assert not any(off.get(k) for k in ("audio_enabled", "sfx_enabled", "scene_generation", "scene_generation_llm"))
+    client.app.state.settings = replace(settings, new_campaign_flags=("audio_enabled", "scene_generation"))
+    on = make_campaign(client, admin)
+    assert on["settings"]["audio_enabled"] is True and on["settings"]["scene_generation"] is True
+    assert not on["settings"].get("sfx_enabled")
+    # владелец по-прежнему выключает флаг сам
+    r = client.patch(f"/api/campaigns/{on['id']}", json={"audio_enabled": False}, headers=admin)
+    assert r.json()["settings"]["audio_enabled"] is False
+    with pytest.raises(ValueError, match="неизвестные флаги"):
+        _flags("audio_enabled, tts")
 
 
 def test_player_cannot_create_campaign(client, admin):

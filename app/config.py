@@ -31,6 +31,18 @@ def _env(name: str, default: str | None = None) -> str | None:
     return v if v not in (None, "") else default
 
 
+# флаги настроек кампании, которые можно включить новым кампаниям через NEW_CAMPAIGN_FLAGS
+CAMPAIGN_FLAGS = ("audio_enabled", "sfx_enabled", "scene_generation", "scene_generation_llm")
+
+
+def _flags(raw: str) -> tuple[str, ...]:
+    names = tuple(x.strip() for x in raw.split(",") if x.strip())
+    unknown = [x for x in names if x not in CAMPAIGN_FLAGS]
+    if unknown:
+        raise ValueError(f"NEW_CAMPAIGN_FLAGS: неизвестные флаги {unknown}; допустимы {', '.join(CAMPAIGN_FLAGS)}")
+    return names
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = "sqlite+aiosqlite:///./taleforge.db"
@@ -43,6 +55,8 @@ class Settings:
     content_dir: Path = ROOT / "content"
     media_dir: Path = ROOT / "media"  # голосовые реплики игроков
     audio_dir: Path = ROOT / "audio"  # библиотека звука: треки и tracks.yaml (design/audio-mixer.md)
+    # флаги, включённые у новой кампании сразу (NEW_CAMPAIGN_FLAGS через запятую); владелец выключит их в настройках
+    new_campaign_flags: tuple[str, ...] = ()
     # SFX inference runs in an isolated process; never imports torch into the web server.
     sfx_enabled: bool = False
     sfx_backend: str = "stable-audio-3"
@@ -106,6 +120,7 @@ class Settings:
             content_dir=Path(_env("CONTENT_DIR", str(ROOT / "content"))),
             media_dir=Path(_env("MEDIA_DIR", str(ROOT / "media"))),
             audio_dir=Path(_env("AUDIO_DIR", str(ROOT / "audio"))),
+            new_campaign_flags=_flags(_env("NEW_CAMPAIGN_FLAGS", "") or ""),
             sfx_enabled=(_env("SFX_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
             sfx_backend=_env("SFX_BACKEND", cls.sfx_backend),
             sfx_device=_env("SFX_DEVICE", cls.sfx_device),

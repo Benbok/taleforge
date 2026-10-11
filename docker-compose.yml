@@ -29,6 +29,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_DIR: /srv/media
       AUDIO_DIR: /srv/audio
+      # новые кампании сразу со звуком, эффектами и наполнением мест; владелец выключит в настройках
+      NEW_CAMPAIGN_FLAGS: ${NEW_CAMPAIGN_FLAGS:-audio_enabled,sfx_enabled,scene_generation,scene_generation_llm}
       SFX_ENABLED: ${SFX_ENABLED:-1}
       SFX_WORKER_EMBEDDED: "0"
       SFX_MODEL_DIR: /srv/models/sfx
