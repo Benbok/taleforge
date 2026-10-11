@@ -319,6 +319,7 @@ class CampaignPatchIn(BaseModel):
     collect_window_sec: int | None = Field(default=None, ge=0, le=300)
     excluded_themes: list[str] | None = Field(default=None, max_length=20)
     audio_enabled: bool | None = None  # звуковое сопровождение ИИ-мастера
+    sfx_enabled: bool | None = None  # локальная генерация; сохранённые эффекты доступны отдельно
     tts_provider: str | None = Field(default=None, max_length=32)
     tts_enabled: bool | None = None  # озвучка реплик мастера (TTS)
     tts_voice: str | None = Field(default=None, max_length=32)  # голос озвучки мастера (TTS)

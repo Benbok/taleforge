@@ -31,6 +31,7 @@ from app.api import (
 from app.api import audio as audio_api
 from app.api import generation as generation_api
 from app.api import modules as modules_api
+from app.api import sfx as sfx_api
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core import audio
@@ -78,11 +79,19 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     async def lifespan(app: FastAPI):
         engine = make_engine(settings.database_url)
         app.state.engine = engine
-        app.state.sessionmaker = make_sessionmaker(engine)
+        app.state.sessionmaker = make_sessionmaker(engine, info={"settings": settings})
         app.state.hub = hub = Hub()
         app.state.bus = RedisBus(hub, settings.redis_url) if settings.redis_url else MemoryBus(hub)
         await app.state.bus.start()
         await bootstrap_superadmin(app.state.sessionmaker, settings)
+        from app.sfx.playback import Delivery
+        from app.sfx.worker import Worker
+
+        app.state.sfx_delivery = Delivery(app.state.sessionmaker, settings, app.state.bus)
+        app.state.sfx_worker = Worker(app.state.sessionmaker, settings)
+        app.state.sfx_delivery.start()
+        if settings.sfx_enabled and settings.sfx_worker_embedded:
+            app.state.sfx_worker.start()
         app.state.dice_factory = dice_factory
         from app.agents.tts import TTSManager
 
@@ -112,6 +121,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             await app.state.rest.stop()
             await app.state.master.players.stop()
             await app.state.master.stop()
+            await app.state.sfx_worker.stop()
+            await app.state.sfx_delivery.stop()
             await app.state.bus.stop()
             await engine.dispose()
 
@@ -141,6 +152,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(profile.router)
     app.include_router(voice.router)
     app.include_router(audio_api.router)
+    app.include_router(sfx_api.router)
     app.include_router(ws.router)
 
     @app.get("/api/health")

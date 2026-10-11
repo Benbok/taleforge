@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from app.core.world import load_world
 from app.tools.registry import ToolContext
 
-CHANNELS = ("changed", "closed", "signals", "carded", "outbox", "audio", "notices", "resolved_actions")
+CHANNELS = ("changed", "closed", "signals", "carded", "outbox", "audio", "sfx_requests", "notices", "resolved_actions")
 
 
 async def refresh_world(ctx: ToolContext) -> None:

@@ -409,10 +409,8 @@ def pack_of(campaign) -> str | None:
 
 
 def enabled(campaign) -> bool:
-    """Звук в кампании: владелец включил его, и в библиотеке есть хоть один трек музыки."""
-    if not (campaign.settings or {}).get("audio_enabled"):
-        return False
-    return any(t.layer == "music" for t in library().for_pack(pack_of(campaign)))
+    """Sound effects also work in campaigns with no music tracks."""
+    return bool((campaign.settings or {}).get("audio_enabled"))
 
 
 def music_tracks(campaign) -> list[Track]:
@@ -755,13 +753,13 @@ def finalize(ctx) -> None:
         _store(ctx.world.scene, st)
         happened.append("place")
     for event in sorted(set(happened), key=CUES.index):
-        if len(ctx.audio) >= MAX_SFX:
+        if len(ctx.audio) + len(ctx.sfx_requests) >= MAX_SFX:
             break
         if t := for_event(ctx.campaign, event):
             cue(ctx, t)
 
 
-def prompt_block(campaign, scene, place: str | None = None) -> str:
+def prompt_block(campaign, scene, place: str | None = None, saved: list[dict] | None = None) -> str:
     """Блок «Звук» для системной инструкции мастера: что звучит, какие настроения есть и эффекты мастера."""
     if not enabled(campaign):
         return ""
@@ -776,4 +774,12 @@ def prompt_block(campaign, scene, place: str | None = None) -> str:
     if sfx:
         out.append("Эффекты:")
         out += [f"- {x.line(bool(pack and pack in x.packs))}" for x in sfx]
+    if saved:
+        out.append("Сохранённые эффекты: повторяй через request_sfx(sound_id), без новой генерации:")
+        out += [f"- {x['id']}: {x['title']} — {x['description']}" for x in saved]
+    if (campaign.settings or {}).get("sfx_enabled"):
+        out.append(
+            "request_sfx: новый редкий звук описывай по-английски, 1–4 секунды, без речи и музыки. "
+            "Максимум один запрос за ход. Боевые звуки ведёт движок; генерация может не успеть к сцене."
+        )
     return "\n".join(out)

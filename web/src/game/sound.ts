@@ -3,7 +3,7 @@
 // настраивает у себя, это хранится в браузере и на других не влияет.
 import { useSyncExternalStore } from "react";
 import { getToken } from "../lib/api";
-import type { AudioState, AudioTrack } from "../lib/types";
+import type { AudioSfxReady, AudioState, AudioTrack, Scene } from "../lib/types";
 
 export type Channel = "music" | "sfx";
 export const CHANNELS: Channel[] = ["music", "sfx"];
@@ -63,8 +63,42 @@ interface Voice {
 
 type Listener = () => void;
 
+/** Bounded deduplication plus a context guard that remains valid while audio is loading. */
+export class SfxGate {
+  private seen = new Set<string>();
+  private revision = 0;
+  private context: Pick<Scene, "mode" | "round" | "location" | "party"> | null = null;
+  private allPlaces = false;
+
+  scene(scene: Pick<Scene, "mode" | "round" | "location" | "party"> | null, allPlaces = false) {
+    this.context = scene;
+    this.allPlaces = allPlaces;
+    this.revision++;
+  }
+
+  accept(event: AudioSfxReady, now: number): ((now: number) => boolean) | null {
+    if (this.seen.has(event.event_id)) return null;
+    this.seen.add(event.event_id);
+    if (this.seen.size > 256) this.seen.delete(this.seen.values().next().value!);
+    const revision = this.revision;
+    const valid = (at: number) => {
+      const context = this.context;
+      const place = context?.location?.id ?? null;
+      const matches = event.place_id === place || (
+        this.allPlaces && context?.party?.some((p) => p.id === event.place_id)
+      );
+      return !!context && revision === this.revision && matches === true && at < event.expires_at
+        && context.mode === event.mode && context.round === event.round;
+    };
+    return valid(now) ? valid : null;
+  }
+
+  clear() { this.scene(null); this.seen.clear(); }
+}
+
 /** Один микшер на вкладку. Контекст звука создаётся только по нажатию: так требуют браузеры. */
 class SoundMixer {
+  private generatedGate = new SfxGate();
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Partial<Record<Channel, GainNode>> = {};
@@ -183,11 +217,13 @@ class SoundMixer {
   }
 
   /** Эффекты хода: один раз, поверх музыки. */
-  async cue(tracks: AudioTrack[]): Promise<void> {
-    if (!this.ctx || this.ctx.state !== "running" || !this.state?.enabled) return;
+  async cue(tracks: AudioTrack[], valid: () => boolean = () => true): Promise<void> {
+    if (!this.ctx || this.ctx.state !== "running" || !this.state?.enabled || this.prefs.muted) return;
+    const ctx = this.ctx;
     for (const t of tracks) {
       try {
         const buf = await this.load(t.url);
+        if (this.ctx !== ctx || ctx.state !== "running" || !this.state?.enabled || this.prefs.muted || !valid()) return;
         const src = this.ctx.createBufferSource();
         const g = this.ctx.createGain();
         src.buffer = buf;
@@ -198,6 +234,16 @@ class SoundMixer {
         this.report(`Звук: не играет «${t.title}»: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
+  }
+
+  setScene(scene: Scene | null, allPlaces = false) {
+    this.generatedGate.scene(scene, allPlaces);
+  }
+
+  async generated(event: AudioSfxReady): Promise<void> {
+    const now = () => Date.now() / 1000 + this.skew;
+    const valid = this.generatedGate.accept(event, now());
+    if (valid) await this.cue([event.track], () => valid(now()));
   }
 
   private report(text: string) {
@@ -219,6 +265,7 @@ class SoundMixer {
       })();
       p.catch(() => this.buffers.delete(url));
       this.buffers.set(url, p);
+      if (this.buffers.size > 32) this.buffers.delete(this.buffers.keys().next().value!);
     }
     return p;
   }
@@ -261,6 +308,7 @@ class SoundMixer {
     this.master = null;
     this.buses = {};
     this.buffers.clear();
+    this.generatedGate.clear();
     if (ctx) window.setTimeout(() => void ctx.close(), 800);
     this.changed();
   }

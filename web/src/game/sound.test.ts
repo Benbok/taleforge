@@ -1,9 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { cueList, suggestId, titleOf } from "../admin/AudioSection";
 import { useGame } from "../stores/game";
-import { dbToGain, DEFAULT_PREFS, loopOffset, parsePrefs } from "./sound";
+import { dbToGain, DEFAULT_PREFS, loopOffset, parsePrefs, SfxGate } from "./sound";
 
 describe("звук сцены", () => {
+  it("готовый эффект не повторяется и не играет после истечения срока или смены места", () => {
+    const gate = new SfxGate();
+    const scene = { mode: "free", round: 0, location: { id: "tower", name: "Башня" }, entities: [], turn: null } as const;
+    const event = { event_id: "sp_first", request_id: "sp_first", asset_id: "sa_first",
+      track: { id: "sa_first", title: "Гром", layer: "sfx", gain_db: -3, url: "/api/sound" },
+      duration_seconds: 3, place_id: "tower", mode: "free", round: 0, now: 100, expires_at: 115 };
+    gate.scene(scene);
+    const valid = gate.accept(event, 100);
+    expect(valid?.(101)).toBe(true);
+    expect(gate.accept(event, 101)).toBeNull();
+    expect(valid?.(116)).toBe(false);
+    gate.scene({ ...scene, location: { id: "forest", name: "Лес" } });
+    expect(valid?.(102)).toBe(false);
+    expect(gate.accept({ ...event, event_id: "sp_wrong" }, 102)).toBeNull();
+  });
   it("петля стартует с той же позиции, что у остальных", () => {
     expect(loopOffset(0, 38.4)).toBe(0);
     expect(loopOffset(40, 38.4)).toBeCloseTo(1.6);

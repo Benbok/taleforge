@@ -36,10 +36,10 @@ def make_engine(url: str) -> AsyncEngine:
     return engine
 
 
-def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+def make_sessionmaker(engine: AsyncEngine, **options) -> async_sessionmaker[AsyncSession]:
     import app.core.world_tx  # noqa: F401 — guard записи мира подключается ко всем сессиям (before_flush)
 
-    return async_sessionmaker(engine, expire_on_commit=False)
+    return async_sessionmaker(engine, expire_on_commit=False, **options)
 
 
 async def session_scope(maker: async_sessionmaker[AsyncSession]) -> AsyncIterator[AsyncSession]:

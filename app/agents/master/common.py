@@ -10,6 +10,7 @@ from typing import Any
 import jinja2
 
 from app.agents import intent as intents
+from app.config import Settings
 from app.core import adventure, audio, plot
 from app.core.chat import TURN_KINDS
 from app.tools import plot as plot_tools
@@ -53,6 +54,11 @@ def decision_tools(ctx: ToolContext) -> list[str]:
         off.add("enter_room")
     if not audio.enabled(ctx.campaign):
         off |= set(AUDIO_TOOLS)
+    cfg = ctx.session.info.get("settings", Settings())
+    if not (cfg.sfx_enabled and (ctx.campaign.settings or {}).get("sfx_enabled") or ctx.saved_sfx):
+        off.add("request_sfx")
+    if not audio.music_tracks(ctx.campaign):
+        off.add("set_music")
     off |= HOST_TOOLS  # подготовку места назначает ведущий, не модель
     return [n for n in REGISTRY if n != "review_character" and n not in off]
 

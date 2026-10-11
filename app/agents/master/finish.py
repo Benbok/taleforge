@@ -279,6 +279,21 @@ class FinishMixin:
         for m in told:
             await publish_message(self.bus, m, names)
         if told:
+            # Generated SFX belong after the recovered text, just as in the normal publish_changes path.
+            from app.sfx.playback import arm
+
+            async with self.maker() as s:
+                c = await s.get(Campaign, cid)
+                turn = await s.get(MasterTurn, turn_id)
+                ctx = await open_context(
+                    s,
+                    c,
+                    self.dice_factory(),
+                    turn_id=turn_id,
+                    seat_id=master_seat(c).id,
+                    focus=(turn.generation_checkpoint or {}).get("place"),
+                )
+            await arm(ctx)
             await self._states(cid, ids, "answered")
 
     async def recover(self, *, startup: bool = False) -> None:

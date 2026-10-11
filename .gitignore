@@ -18,3 +18,7 @@ web/node_modules
 tools/.cache/
 /media/
 audio/raw/
+audio/generated/
+audio/sfx-pilot/
+models/sfx/
+backups/

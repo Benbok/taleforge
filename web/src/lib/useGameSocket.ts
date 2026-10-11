@@ -18,6 +18,8 @@ export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
   if (resolveToolResult(e)) return;
   mapEvent(e);
   if (e.type === "state.snapshot" || e.type === "scene.updated") {
+    const game = useGame.getState();
+    sound.setScene(game.scene, game.snapshot?.me.role === "master");
     const mode = useGame.getState().scene?.mode ?? null;
     // бой начался: сразу показываем, кто где стоит (просьба Arty); закрыть схему можно как обычно
     if (e.type === "scene.updated" && mode === "combat" && lastMode !== null && lastMode !== "combat")
@@ -33,6 +35,7 @@ export function sideEffects(e: Envelope, sock: Pick<GameSocket, "send">): void {
     void sound.apply(a);
     if (a.cues?.length) void sound.cue(a.cues); // эффект — сразу, не дожидаясь загрузки новых петель
   }
+  if (e.type === "audio.sfx_ready") void sound.generated(e.payload);
   if (e.type === "error") {
     const p = e.payload;
     if (p.code !== "unauthorized") toast.error(p.message || "сервер отклонил действие");

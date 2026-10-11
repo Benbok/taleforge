@@ -38,6 +38,7 @@ export interface Room {
     spend_limit_usd?: number | null;
     excluded_themes?: string[];
     audio_enabled?: boolean;
+    sfx_enabled?: boolean;
     scene_generation?: boolean;
     scene_generation_llm?: boolean;
     tts_enabled?: boolean;

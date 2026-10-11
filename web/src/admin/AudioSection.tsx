@@ -4,6 +4,7 @@ import ActionButton from "../components/ActionButton";
 import { api, getToken } from "../lib/api";
 import { toast } from "../stores/toasts";
 import CustomSelect from "../components/CustomSelect";
+import SfxStatus from "./SfxStatus";
 
 export interface TrackCard {
   id: string;
@@ -365,6 +366,7 @@ export default function AudioSection() {
 
   return (
     <section className="card flex flex-col gap-5 border border-line bg-surface p-5 sm:p-6" aria-label="Звук">
+      <SfxStatus />
       <div>
         <h2 className="font-heading text-xl font-bold tracking-wide text-ink sm:text-2xl">Звук</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">

@@ -911,5 +911,5 @@ class TurnMixin:
             leveling=progress_tools.leveling(c),
             random_events=fortune_tools.random_events(c),
             critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
-            audio=audio.prompt_block(c, ctx.world.scene, audio.where(ctx)),
+            audio=audio.prompt_block(c, ctx.world.scene, audio.where(ctx), ctx.saved_sfx),
         )

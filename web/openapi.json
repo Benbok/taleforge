@@ -1,6 +1,71 @@
 {
  "components": {
   "schemas": {
+   "AudioSfxReady": {
+    "additionalProperties": false,
+    "properties": {
+     "asset_id": {
+      "title": "Asset Id",
+      "type": "string"
+     },
+     "duration_seconds": {
+      "title": "Duration Seconds",
+      "type": "number"
+     },
+     "event_id": {
+      "title": "Event Id",
+      "type": "string"
+     },
+     "expires_at": {
+      "title": "Expires At",
+      "type": "number"
+     },
+     "mode": {
+      "title": "Mode",
+      "type": "string"
+     },
+     "now": {
+      "title": "Now",
+      "type": "number"
+     },
+     "place_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Place Id"
+     },
+     "request_id": {
+      "title": "Request Id",
+      "type": "string"
+     },
+     "round": {
+      "title": "Round",
+      "type": "integer"
+     },
+     "track": {
+      "$ref": "#/components/schemas/AudioTrack"
+     }
+    },
+    "required": [
+     "event_id",
+     "request_id",
+     "asset_id",
+     "track",
+     "duration_seconds",
+     "place_id",
+     "mode",
+     "round",
+     "now",
+     "expires_at"
+    ],
+    "title": "AudioSfxReady",
+    "type": "object"
+   },
    "AudioState": {
     "additionalProperties": true,
     "properties": {
@@ -855,6 +920,17 @@
        }
       ],
       "title": "Scene Generation Llm"
+     },
+     "sfx_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sfx Enabled"
      },
      "spend_limit_usd": {
       "anyOf": [
@@ -2017,6 +2093,49 @@
      "message"
     ],
     "title": "Error",
+    "type": "object"
+   },
+   "Event_audio_sfx_ready": {
+    "additionalProperties": false,
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "payload": {
+      "$ref": "#/components/schemas/AudioSfxReady"
+     },
+     "seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seq"
+     },
+     "type": {
+      "const": "audio.sfx_ready",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "type",
+     "campaign_id",
+     "seq",
+     "payload"
+    ],
+    "title": "Event_audio_sfx_ready",
     "type": "object"
    },
    "Event_audio_state": {
@@ -9485,6 +9604,7 @@
    "ServerEvent": {
     "discriminator": {
      "mapping": {
+      "audio.sfx_ready": "#/components/schemas/Event_audio_sfx_ready",
       "audio.state": "#/components/schemas/Event_audio_state",
       "auth.ok": "#/components/schemas/Event_auth_ok",
       "campaign.deleted": "#/components/schemas/Event_campaign_deleted",
@@ -9533,6 +9653,9 @@
      "propertyName": "type"
     },
     "oneOf": [
+     {
+      "$ref": "#/components/schemas/Event_audio_sfx_ready"
+     },
      {
       "$ref": "#/components/schemas/Event_audio_state"
      },
@@ -9697,6 +9820,73 @@
     "title": "SessionSummary",
     "type": "object"
    },
+   "SfxInput": {
+    "additionalProperties": false,
+    "properties": {
+     "context": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Context",
+      "type": "string"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "maxLength": 300,
+        "minLength": 8,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "duration_seconds": {
+      "default": 3,
+      "maximum": 4.0,
+      "minimum": 1.0,
+      "title": "Duration Seconds",
+      "type": "number"
+     },
+     "sound_id": {
+      "anyOf": [
+       {
+        "pattern": "^sf_[a-f0-9]{16}$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sound Id"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "urgency": {
+      "default": "scene",
+      "enum": [
+       "scene",
+       "ambient"
+      ],
+      "title": "Urgency",
+      "type": "string"
+     }
+    },
+    "title": "SfxInput",
+    "type": "object"
+   },
    "SignupIn": {
     "properties": {
      "name": {
@@ -9827,6 +10017,36 @@
      "started_at"
     ],
     "title": "SnapshotSession",
+    "type": "object"
+   },
+   "SoundPatch": {
+    "properties": {
+     "pinned": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pinned"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "title": "SoundPatch",
     "type": "object"
    },
    "SpellsIn": {
@@ -11909,6 +12129,34 @@
     "summary": "Local Models",
     "tags": [
      "models"
+    ]
+   }
+  },
+  "/api/admin/sfx": {
+   "get": {
+    "operationId": "status_api_admin_sfx_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Status Api Admin Sfx Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Status",
+    "tags": [
+     "generated audio"
     ]
    }
   },
@@ -16297,6 +16545,339 @@
     "summary": "Control Session",
     "tags": [
      "campaigns"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/sfx": {
+   "get": {
+    "operationId": "sounds_api_campaigns__campaign_id__sfx_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Sounds Api Campaigns  Campaign Id  Sfx Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Sounds",
+    "tags": [
+     "generated audio"
+    ]
+   },
+   "post": {
+    "operationId": "generate_api_campaigns__campaign_id__sfx_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SfxInput"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Generate Api Campaigns  Campaign Id  Sfx Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Generate",
+    "tags": [
+     "generated audio"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/sfx/assets/{asset_id}": {
+   "get": {
+    "operationId": "generated_file_api_campaigns__campaign_id__sfx_assets__asset_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "asset_id",
+      "required": true,
+      "schema": {
+       "title": "Asset Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Generated File",
+    "tags": [
+     "generated audio"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/sfx/{sound_id}": {
+   "delete": {
+    "operationId": "delete_sound_api_campaigns__campaign_id__sfx__sound_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "sound_id",
+      "required": true,
+      "schema": {
+       "title": "Sound Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Delete Sound",
+    "tags": [
+     "generated audio"
+    ]
+   },
+   "patch": {
+    "operationId": "patch_sound_api_campaigns__campaign_id__sfx__sound_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "sound_id",
+      "required": true,
+      "schema": {
+       "title": "Sound Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SoundPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Patch Sound Api Campaigns  Campaign Id  Sfx  Sound Id  Patch",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Patch Sound",
+    "tags": [
+     "generated audio"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/sfx/{sound_id}/regenerate": {
+   "post": {
+    "operationId": "regenerate_api_campaigns__campaign_id__sfx__sound_id__regenerate_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "sound_id",
+      "required": true,
+      "schema": {
+       "title": "Sound Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Regenerate Api Campaigns  Campaign Id  Sfx  Sound Id  Regenerate Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Regenerate",
+    "tags": [
+     "generated audio"
     ]
    }
   },

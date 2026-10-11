@@ -3,6 +3,7 @@
 import type { Envelope } from "./types";
 
 export const EVENT_HANDLERS = {
+  "audio.sfx_ready": "lib/useGameSocket.ts, game/sound.ts (готовый локальный эффект)",
   "audio.state": "stores/game.ts, lib/useGameSocket.ts (звук)",
   "auth.ok": "lib/socket.ts (вход в кампанию)",
   "campaign.deleted": "lib/socket.ts (соединение закрывается)",

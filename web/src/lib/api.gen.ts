@@ -392,6 +392,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/sfx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_admin_sfx_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/spend": {
         parameters: {
             query?: never;
@@ -1508,6 +1525,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/sfx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sounds */
+        get: operations["sounds_api_campaigns__campaign_id__sfx_get"];
+        put?: never;
+        /** Generate */
+        post: operations["generate_api_campaigns__campaign_id__sfx_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/sfx/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generated File */
+        get: operations["generated_file_api_campaigns__campaign_id__sfx_assets__asset_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/sfx/{sound_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Sound */
+        delete: operations["delete_sound_api_campaigns__campaign_id__sfx__sound_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Sound */
+        patch: operations["patch_sound_api_campaigns__campaign_id__sfx__sound_id__patch"];
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/sfx/{sound_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_api_campaigns__campaign_id__sfx__sound_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/theme": {
         parameters: {
             query?: never;
@@ -2084,6 +2171,28 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AudioSfxReady */
+        AudioSfxReady: {
+            /** Asset Id */
+            asset_id: string;
+            /** Duration Seconds */
+            duration_seconds: number;
+            /** Event Id */
+            event_id: string;
+            /** Expires At */
+            expires_at: number;
+            /** Mode */
+            mode: string;
+            /** Now */
+            now: number;
+            /** Place Id */
+            place_id: string | null;
+            /** Request Id */
+            request_id: string;
+            /** Round */
+            round: number;
+            track: components["schemas"]["AudioTrack"];
+        };
         /** AudioState */
         AudioState: {
             /**
@@ -2388,6 +2497,8 @@ export interface components {
             scene_generation?: boolean | null;
             /** Scene Generation Llm */
             scene_generation_llm?: boolean | null;
+            /** Sfx Enabled */
+            sfx_enabled?: boolean | null;
             /** Spend Limit Usd */
             spend_limit_usd?: number | null;
             /** Tts Enabled */
@@ -2779,6 +2890,19 @@ export interface components {
             code: string;
             /** Message */
             message: string;
+        };
+        /** Event_audio_sfx_ready */
+        Event_audio_sfx_ready: {
+            /** Campaign Id */
+            campaign_id: string | null;
+            payload: components["schemas"]["AudioSfxReady"];
+            /** Seq */
+            seq: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "audio.sfx_ready";
         };
         /** Event_audio_state */
         Event_audio_state: {
@@ -5111,7 +5235,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        ServerEvent: components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
+        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
         /** SessionSummary */
         SessionSummary: {
             /** Events */
@@ -5120,6 +5244,31 @@ export interface components {
             quests: string[];
             /** Recap */
             recap: string;
+        };
+        /** SfxInput */
+        SfxInput: {
+            /**
+             * Context
+             * @default
+             */
+            context?: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Duration Seconds
+             * @default 3
+             */
+            duration_seconds?: number;
+            /** Sound Id */
+            sound_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * Urgency
+             * @default scene
+             * @enum {string}
+             */
+            urgency?: "scene" | "ambient";
         };
         /** SignupIn */
         SignupIn: {
@@ -5161,6 +5310,13 @@ export interface components {
             id: string;
             /** Started At */
             started_at: string;
+        };
+        /** SoundPatch */
+        SoundPatch: {
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Title */
+            title?: string | null;
         };
         /** SpellsIn */
         SpellsIn: {
@@ -5417,6 +5573,7 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type AudioSfxReady = components['schemas']['AudioSfxReady'];
 export type AudioState = components['schemas']['AudioState'];
 export type AudioTrack = components['schemas']['AudioTrack'];
 export type AuthOk = components['schemas']['AuthOk'];
@@ -5448,6 +5605,7 @@ export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
 export type Error = components['schemas']['Error'];
+export type Event_audio_sfx_ready = components['schemas']['Event_audio_sfx_ready'];
 export type Event_audio_state = components['schemas']['Event_audio_state'];
 export type Event_auth_ok = components['schemas']['Event_auth_ok'];
 export type Event_campaign_deleted = components['schemas']['Event_campaign_deleted'];
@@ -5595,10 +5753,12 @@ export type SeatState = components['schemas']['SeatState'];
 export type SecretsIn = components['schemas']['SecretsIn'];
 export type ServerEvent = components['schemas']['ServerEvent'];
 export type SessionSummary = components['schemas']['SessionSummary'];
+export type SfxInput = components['schemas']['SfxInput'];
 export type SignupIn = components['schemas']['SignupIn'];
 export type SnapshotCampaign = components['schemas']['SnapshotCampaign'];
 export type SnapshotMe = components['schemas']['SnapshotMe'];
 export type SnapshotSession = components['schemas']['SnapshotSession'];
+export type SoundPatch = components['schemas']['SoundPatch'];
 export type SpellsIn = components['schemas']['SpellsIn'];
 export type StandIn = components['schemas']['StandIn'];
 export type StandInChanged = components['schemas']['StandInChanged'];
@@ -6448,6 +6608,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_api_admin_sfx_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -8956,6 +9138,210 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sounds_api_campaigns__campaign_id__sfx_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_api_campaigns__campaign_id__sfx_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SfxInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generated_file_api_campaigns__campaign_id__sfx_assets__asset_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_sound_api_campaigns__campaign_id__sfx__sound_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                sound_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_sound_api_campaigns__campaign_id__sfx__sound_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                sound_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SoundPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_api_campaigns__campaign_id__sfx__sound_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                sound_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

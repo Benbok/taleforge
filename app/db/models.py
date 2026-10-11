@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -215,6 +216,87 @@ class Campaign(Base):
     seats: Mapped[list[Seat]] = relationship(
         back_populates="campaign", cascade="all, delete-orphan", order_by="Seat.position", lazy="selectin"
     )
+
+
+class SfxSound(Base):
+    """Campaign-scoped named cache entry; current_asset_id changes only after a successful render."""
+
+    __tablename__ = "sfx_sounds"
+    __table_args__ = (UniqueConstraint("campaign_id", "cache_key"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sf"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    cache_key: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(String(300))
+    parameters: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    current_asset_id: Mapped[str | None] = mapped_column(String(32))
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SfxAsset(Base):
+    __tablename__ = "sfx_assets"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sa"))
+    sound_id: Mapped[str] = mapped_column(ForeignKey("sfx_sounds.id", ondelete="CASCADE"), index=True)
+    duration_seconds: Mapped[float] = mapped_column(Float)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    seed: Mapped[int] = mapped_column(Integer)
+    digest: Mapped[str] = mapped_column(String(64))
+    parameters: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    cache_key: Mapped[str] = mapped_column(String(64), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SfxJob(Base):
+    __tablename__ = "sfx_jobs"
+    __table_args__ = (
+        Index(
+            "uq_sfx_jobs_active_sound",
+            "sound_id",
+            unique=True,
+            sqlite_where=text("status IN ('staged', 'queued', 'running')"),
+            postgresql_where=text("status IN ('staged', 'queued', 'running')"),
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sj"))
+    sound_id: Mapped[str] = mapped_column(ForeignKey("sfx_sounds.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="queued", index=True)
+    seed: Mapped[int] = mapped_column(Integer, default=0)
+    parameters: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    lease_token: Mapped[str | None] = mapped_column(String(32))
+    lease_until: Mapped[float] = mapped_column(Float, default=0)
+    next_attempt_at: Mapped[float] = mapped_column(Float, default=0)
+    error: Mapped[str | None] = mapped_column(String(500))
+    asset_id: Mapped[str | None] = mapped_column(String(32))
+    elapsed_seconds: Mapped[float | None] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SfxPlayback(Base):
+    """Persistent outbox; pending until the turn's text has been published."""
+
+    __tablename__ = "sfx_playbacks"
+    __table_args__ = (UniqueConstraint("campaign_id", "turn_id"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sp"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    sound_id: Mapped[str] = mapped_column(ForeignKey("sfx_sounds.id", ondelete="CASCADE"))
+    turn_id: Mapped[str | None] = mapped_column(String(32))
+    asset_id: Mapped[str | None] = mapped_column(String(32))
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    context: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    expires_at: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class SfxLock(Base):
+    """Single short SQL lock for admission/claim; a lease excludes overlapping subprocesses."""
+
+    __tablename__ = "sfx_lock"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lease_token: Mapped[str | None] = mapped_column(String(32))
+    lease_until: Mapped[float] = mapped_column(Float, default=0)
 
 
 class CampaignSecret(Base):

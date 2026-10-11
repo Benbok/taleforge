@@ -14,9 +14,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
+# Cache runtime dependencies independently from application source changes.
+RUN --mount=type=cache,target=/root/.cache/pip python -c "import subprocess,tomllib; subprocess.check_call(['pip','install',*tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']])"
 COPY app ./app
 COPY --from=web /dist ./app/web/dist
-RUN pip install --no-cache-dir .
+RUN --mount=type=cache,target=/root/.cache/pip pip install --no-deps .
 
 COPY alembic.ini ./
 COPY alembic ./alembic

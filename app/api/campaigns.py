@@ -253,6 +253,7 @@ async def patch_campaign(
         "collect_window_sec",
         "excluded_themes",
         "audio_enabled",
+        "sfx_enabled",
         "tts_provider",
         "tts_enabled",
         "tts_voice",

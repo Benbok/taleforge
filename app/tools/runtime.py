@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
@@ -17,7 +18,7 @@ from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
 from app.core.scene_view import VisibleScene, visible_scene
 from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
-from app.db.models import Campaign, Entity, Message
+from app.db.models import Campaign, Entity, Message, SfxPlayback, SfxSound
 from app.gateway.events import envelope, publish_message
 from app.rules.dice import Dice
 from app.tools import audio as _audio_tools  # noqa: F401 — звук сцены
@@ -49,6 +50,29 @@ async def open_context(
         world.focus = focus
         world.crew = {c.id for c in world.groups().get(focus, [])}
     game = await active_session(session, campaign.id)
+    pending = (
+        list(
+            (
+                await session.scalars(
+                    select(SfxPlayback.id).where(
+                        SfxPlayback.campaign_id == campaign.id,
+                        SfxPlayback.turn_id == turn_id,
+                        SfxPlayback.status.in_(("pending", "armed")),
+                    )
+                )
+            ).all()
+        )
+        if turn_id
+        else []
+    )
+    saved = (
+        await session.scalars(
+            select(SfxSound)
+            .where(SfxSound.campaign_id == campaign.id, SfxSound.current_asset_id.is_not(None))
+            .order_by(SfxSound.pinned.desc(), SfxSound.created_at.desc())
+            .limit(20)
+        )
+    ).all()
     return ToolContext(
         session=session,
         campaign=campaign,
@@ -57,6 +81,8 @@ async def open_context(
         game_session_id=game.id if game else None,
         turn_id=turn_id,
         actor_seat_id=seat_id,
+        sfx_requests=pending,
+        saved_sfx=[{"id": s.id, "title": s.title, "description": s.description} for s in saved],
     )
 
 
@@ -64,6 +90,10 @@ async def flush_outbox(session: AsyncSession, ctx: ToolContext) -> list[Message]
     """Карточки открытых бросков хода и сообщения, которые инструменты отложили до конца хода (шёпот), получают
     номера и пишутся в чат. Вызывается до повествования, поэтому числа в чате появляются раньше слов."""
     audio.finalize(ctx)  # короткие фразы на гибель героя и раскрытую тайну — до фиксации хода
+    if ctx.sfx_requests:
+        from app.sfx.playback import prepare_playbacks
+
+        await prepare_playbacks(ctx)
     out = []
     heroes = set(ctx.world.characters)
     for ev in ctx.events:
@@ -285,3 +315,7 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
             await bus.publish(cid, envelope("audio.state", cid, payload), seats)
         ctx.audio.clear()
         ctx.signals.discard("audio")
+    if ctx.sfx_requests:
+        from app.sfx.playback import arm
+
+        await arm(ctx)

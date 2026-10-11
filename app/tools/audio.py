@@ -1,19 +1,26 @@
 """Инструменты звука (design/audio-mixer.md): мастер называет настроение музыки, трек подбирает движок.
 
-Доступны, только когда владелец включил звук в кампании и в библиотеке есть музыка (``app.core.audio.enabled``).
+Доступность определяется флагами кампании; музыка выбирается из существующей библиотеки.
 """
 
 from __future__ import annotations
 
 import copy
 import time
+from dataclasses import replace
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
+from app.config import Settings
 from app.core import audio
+from app.db.models import SfxPlayback
+from app.sfx.contracts import SfxInput
+from app.sfx.playback import audience_of, context_of
+from app.sfx.service import enqueue
 from app.tools.registry import ToolContext, ToolError, tool
 
-AUDIO_TOOLS = ("set_music", "play_sfx")
+AUDIO_TOOLS = ("set_music", "play_sfx", "request_sfx")
 
 
 class MusicArgs(BaseModel):
@@ -27,7 +34,7 @@ class SfxArgs(BaseModel):
 
 def _need(ctx: ToolContext) -> None:
     if not audio.enabled(ctx.campaign):
-        raise ToolError("звук в этой кампании выключен или в библиотеке нет музыки")
+        raise ToolError("звук в этой кампании выключен")
 
 
 @tool(
@@ -81,8 +88,54 @@ async def play_sfx(ctx: ToolContext, a: SfxArgs) -> dict:
     t = audio.library().get(a.sfx)
     if t is None or a.sfx not in audio.choices(ctx.campaign, "sfx"):
         raise ToolError(f"нет эффекта {a.sfx}; допустимо: {', '.join(audio.choices(ctx.campaign, 'sfx'))}")
-    if len(ctx.audio) >= audio.MAX_SFX:
+    if len(ctx.audio) + len(ctx.sfx_requests) >= audio.MAX_SFX:
         raise ToolError(f"не больше {audio.MAX_SFX} эффектов за ход")
     audio.cue(ctx, t)
     await ctx.record("play_sfx", payload={"sfx": t.id})
     return {"sfx": t.id, "when": "вместе с текстом хода"}
+
+
+@tool(
+    "request_sfx",
+    "Редкий короткий эффект сцены: описание по-английски (без речи/музыки), 1–4 секунды. "
+    "Не жди результат и не запрашивай каждый удар: бой озвучивает движок. Один запрос за ход. "
+    "Для похожего сохранённого звука передай sound_id из библиотеки вместо description.",
+    SfxInput,
+    closes=False,
+)
+async def request_sfx(ctx: ToolContext, a: SfxInput) -> dict:
+    if not audio.enabled(ctx.campaign):
+        return {"status": "skipped", "reason": "звук выключен"}
+    if not a.sound_id and not (ctx.campaign.settings or {}).get("sfx_enabled"):
+        return {"status": "skipped", "reason": "генерация выключена в кампании"}
+    if ctx.sfx_requests or any(ev.tool == "request_sfx" for ev in ctx.events):
+        return {"status": "skipped", "reason": "не больше одного запроса за ход"}
+    if ctx.turn_id and await ctx.session.scalar(
+        select(SfxPlayback.id).where(SfxPlayback.campaign_id == ctx.campaign.id, SfxPlayback.turn_id == ctx.turn_id)
+    ):
+        return {"status": "skipped", "reason": "запрос этого хода уже сохранён"}
+    if len(ctx.audio) >= audio.MAX_SFX:
+        return {"status": "skipped", "reason": "лимит эффектов хода исчерпан"}
+    cfg = ctx.session.info.get("settings", Settings())
+    if not (ctx.campaign.settings or {}).get("sfx_enabled"):
+        cfg = replace(cfg, sfx_enabled=False)  # allow existing files, never repair a miss by generating when off
+    try:
+        receipt = await enqueue(ctx.session, cfg, ctx.campaign.id, a, staged=True)
+    except (audio.NotFound, audio.Conflict) as exc:
+        return {"status": "skipped", "reason": str(exc)}
+    if receipt["status"] == "skipped":
+        return receipt
+    context = context_of(ctx)
+    row = SfxPlayback(
+        campaign_id=ctx.campaign.id,
+        sound_id=receipt["sound_id"],
+        turn_id=ctx.turn_id,
+        asset_id=receipt.get("asset_id"),
+        context=context,
+        audience=audience_of(ctx, context),
+    )
+    ctx.session.add(row)
+    await ctx.session.flush()
+    ctx.sfx_requests.append(row.id)
+    await ctx.record("request_sfx", payload={"request_id": row.id, "sound_id": receipt["sound_id"]})
+    return {**receipt, "request_id": row.id, "playback": "asynchronous"}

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import { Field, Segmented } from "../components/Form";
 import BriefForm from "./BriefForm";
+import GeneratedSfx from "./GeneratedSfx";
 import { api } from "../lib/api";
 import {
   cleanBrief,
@@ -193,6 +194,8 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
         </div>
       </section>
 
+
+      <GeneratedSfx room={room} onRoom={onRoom} />
 
       {/* Scene generation */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Наполнение мест">

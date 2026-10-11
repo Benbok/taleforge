@@ -29,6 +29,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_DIR: /srv/media
       AUDIO_DIR: /srv/audio
+      SFX_ENABLED: ${SFX_ENABLED:-1}
+      SFX_WORKER_EMBEDDED: "0"
+      SFX_MODEL_DIR: /srv/models/sfx
+      SFX_MODEL_REVISION: ${SFX_MODEL_REVISION:-main}
+      SFX_DEVICE: cpu
       SILERO_API_BASE: ${SILERO_API_BASE:-http://silero:8001}
     ports:
       - "8000:8000"
@@ -36,12 +41,45 @@ services:
       - ./content:/srv/content:ro
       - media:/srv/media  # голосовые реплики игроков
       - ./audio:/srv/audio  # библиотека звука: на запись, админка кладёт треки прямо в папку проекта
+      - sfx-models:/srv/models:ro
       - ./app/web/dist:/srv/app/web/dist  # фронтенд веб-клиента
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
+      sfx:
+        condition: service_started
+
+  # Starts with Taleforge automatically. One CPU inference; GPU remains available to Whisper/Voice Studio.
+  # First startup downloads gated weights with HF_TOKEN; later startups use the persistent local snapshot.
+  sfx:
+    build:
+      context: .
+      dockerfile: docker/sfx/Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://taleforge:${POSTGRES_PASSWORD:-taleforge}@db/taleforge
+      AUDIO_DIR: /srv/audio
+      SFX_ENABLED: ${SFX_ENABLED:-1}
+      SFX_DEVICE: cpu
+      SFX_WORKER_EMBEDDED: "0"
+      SFX_MODEL_DIR: /srv/models/sfx
+      SFX_MODEL_REVISION: ${SFX_MODEL_REVISION:-main}
+      HF_HOME: /srv/models/huggingface
+      SFX_THREADS: ${SFX_THREADS:-2}
+    volumes:
+      - ./audio:/srv/audio
+      - sfx-models:/srv/models
+    cpus: ${SFX_CPUS:-2}
+    mem_limit: ${SFX_MEMORY_LIMIT:-6g}
+    depends_on:
+      db:
+        condition: service_healthy
 
   tunnel:
     image: cloudflare/cloudflared:latest
@@ -78,5 +116,6 @@ volumes:
   pgdata:
   media:
   whisper-models:
+  sfx-models:
   
 

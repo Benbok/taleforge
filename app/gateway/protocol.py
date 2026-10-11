@@ -195,6 +195,19 @@ class AudioState(_Open):
     cues: list[AudioTrack] = []
 
 
+class AudioSfxReady(_Strict):
+    event_id: str
+    request_id: str
+    asset_id: str
+    track: AudioTrack
+    duration_seconds: float
+    place_id: str | None
+    mode: str
+    round: int
+    now: float
+    expires_at: float
+
+
 class SeatState(_Strict):
     id: str
     role: Literal["master", "player"]
@@ -593,6 +606,7 @@ class VoteEnded(Vote):
 
 # Тип события → модель его payload. Порядок — по алфавиту, как события видит клиент.
 SERVER_EVENTS: dict[str, type[BaseModel]] = {
+    "audio.sfx_ready": AudioSfxReady,
     "audio.state": AudioState,
     "auth.ok": AuthOk,
     "campaign.deleted": Empty,

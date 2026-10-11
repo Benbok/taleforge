@@ -1,5 +1,6 @@
 // Формы данных сервера, которые читает клиент. Неизвестные поля клиент игнорирует.
 import type { ServerEvent } from "./api.gen";
+export type { AudioSfxReady } from "./api.gen";
 import type { Spellbook } from "./spells";
 
 export interface User {
