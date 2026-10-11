@@ -21,6 +21,7 @@ import {
   type ModuleShort,
 } from "../lib/modules";
 import { toast } from "../stores/toasts";
+import ModuleIntro from "./ModuleIntro";
 
 const COUNT_LABELS: Record<string, string> = {
   locations: "Места",
@@ -314,6 +315,8 @@ function ModuleDetail({ id, onGone }: { id: string; onGone: () => void }) {
       )}
 
       <MapsBlock m={m} onChange={refresh} />
+
+      {m.pack_id && <ModuleIntro moduleId={id} />}
 
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-1">

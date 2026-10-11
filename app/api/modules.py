@@ -11,14 +11,14 @@ from datetime import timedelta
 from typing import Any, Literal
 
 from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.agents import translator
+from app.agents import module_intro, translator
 from app.api.deps import SessionDep, UserDep
 from app.content.upload import PACKS_ROOT
-from app.core import modules
+from app.core import modules, voice
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
 from app.db.models import AdventureModule, as_utc, new_id, now
 
@@ -54,6 +54,13 @@ class Grid(BaseModel):
     top: float
     right: float
     bottom: float
+
+
+class IntroDraftIn(BaseModel):
+    hook_id: str | None = Field(default=None, max_length=32)
+    provider: str | None = Field(default=None, max_length=32)
+    voice: str | None = Field(default=None, max_length=64)
+    text: str | None = Field(default=None, max_length=8000, description="свой текст: только озвучить его")
 
 
 class MarksIn(BaseModel):
@@ -254,7 +261,7 @@ async def delete_map(module_id: str, map_id: str, request: Request, user: UserDe
 
 
 @router.post("/admin/modules/{module_id}/publish")
-async def publish(module_id: str, user: UserDep, session: SessionDep) -> dict:
+async def publish(module_id: str, request: Request, user: UserDep, session: SessionDep) -> dict:
     """Записать модуль пакетом в БД. Повторная публикация после правок — новая версия пакета."""
     _admin(user)
     m = await _get(session, module_id)
@@ -270,6 +277,9 @@ async def publish(module_id: str, user: UserDep, session: SessionDep) -> dict:
     m = await _get(session, module_id)  # импорт пакета закрыл транзакцию
     m.pack_id, m.pack_version, m.status, m.error, m.published_at = pack_id, version, "published", None, now()
     await session.commit()
+    svc = request.app.state.master
+    if svc.media_dir:  # общее вступление с голосом — один раз на модуль, кампании берут копию
+        svc._spawn(module_intro.prepare_module(svc, m.id))
     return _full(m)
 
 
@@ -284,6 +294,7 @@ async def delete_module(module_id: str, request: Request, user: UserDep, session
     await session.delete(m)
     await session.commit()
     shutil.rmtree(translator.folder(_settings(request).media_dir, module_id), ignore_errors=True)
+    module_intro.forget(_settings(request).media_dir, module_id)
 
 
 @router.get("/modules")
@@ -333,3 +344,72 @@ def _image_type(data: bytes) -> str | None:
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "image/webp"
     return None
+
+
+# --- общее вступление приключения (app/agents/module_intro.py) ---
+
+
+async def _intro_state(request: Request, m: AdventureModule) -> dict:
+    svc = request.app.state.master
+    data = module_intro.load(_settings(request).media_dir, m.id)
+    try:
+        hooks = await module_intro.hooks(svc, m.id)
+    except module_intro.IntroError:
+        hooks = []
+    return {"published": bool(m.pack_id), "hooks": hooks, "saved": data["saved"], "draft": data["draft"]}
+
+
+def _intro_call(fn, *args):
+    try:
+        return fn(*args)
+    except module_intro.IntroError as e:
+        raise Conflict(str(e)) from None
+
+
+@router.get("/admin/modules/{module_id}/intro")
+async def get_intro(module_id: str, request: Request, user: UserDep, session: SessionDep) -> dict:
+    """Вступление приключения: сохранённое по зацепкам (его берут новые кампании) и черновик на проверку."""
+    _admin(user)
+    return await _intro_state(request, await _get(session, module_id))
+
+
+@router.post("/admin/modules/{module_id}/intro/draft")
+async def make_intro_draft(
+    module_id: str, body: IntroDraftIn, request: Request, user: UserDep, session: SessionDep
+) -> dict:
+    """Создать или пересоздать черновик: текст пишет модель (или берётся свой), затем озвучка выбранным голосом."""
+    _admin(user)
+    m = await _get(session, module_id)
+    if not m.pack_id:
+        raise Conflict("сначала опубликуйте приключение: вступление пишется по опубликованной книге")
+    svc = request.app.state.master
+    media = _settings(request).media_dir
+    _intro_call(module_intro.start_draft, media, m.id, body.hook_id, body.provider, body.voice)
+    svc._spawn(module_intro.make_draft(svc, m.id, body.text))
+    return await _intro_state(request, m)
+
+
+@router.post("/admin/modules/{module_id}/intro/save")
+async def save_intro(module_id: str, request: Request, user: UserDep, session: SessionDep) -> dict:
+    """Черновик становится вступлением для новых кампаний по этой зацепке."""
+    _admin(user)
+    m = await _get(session, module_id)
+    _intro_call(module_intro.save_draft, _settings(request).media_dir, m.id)
+    return await _intro_state(request, m)
+
+
+@router.delete("/admin/modules/{module_id}/intro/draft")
+async def discard_intro(module_id: str, request: Request, user: UserDep, session: SessionDep) -> dict:
+    _admin(user)
+    m = await _get(session, module_id)
+    _intro_call(module_intro.discard_draft, _settings(request).media_dir, m.id)
+    return await _intro_state(request, m)
+
+
+@router.get("/admin/modules/{module_id}/intro/voice/{voice_id}")
+async def intro_voice(module_id: str, voice_id: str, request: Request, user: UserDep, session: SessionDep):
+    """Запись вступления для прослушивания в карточке приключения."""
+    _admin(user)
+    m = await _get(session, module_id)
+    meta, audio = voice.read(_settings(request).media_dir, module_intro.store(m.id), voice_id)
+    return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})
