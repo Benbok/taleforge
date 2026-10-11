@@ -117,6 +117,7 @@ class CampaignPersonaOut(Out):
     source: str | None  # profile | preset | custom | legacy
     settings: dict | None
     style: str | None
+    master_preset_id: str | None = None  # пресет мастера, применённый к столу или сохранённый из него
 
 
 class MasterCharacterIn(BaseModel):

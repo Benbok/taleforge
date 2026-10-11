@@ -31,6 +31,7 @@ interface CampaignPersona {
   name: string | null;
   source: "profile" | "preset" | "custom" | "legacy" | null;
   style: string | null;
+  master_preset_id?: string | null;
 }
 
 /** ИИ-мастер кампании: модель и характер. Меняются между ходами: следующий ход мастер сделает уже по-новому. */
@@ -83,6 +84,7 @@ export default function MasterTab({
       setPick("");
     }
     setStyle(cur.style ?? "");
+    setSelectedPresetId(cur.master_preset_id ?? "");
   }, [persona.data, opts.data, mine.data]);
 
   const problem = model.error ?? persona.error ?? opts.error;
@@ -187,11 +189,14 @@ export default function MasterTab({
                 className="font-mono text-xs whitespace-nowrap"
                 run={async () => {
                   if (!savePresetName.trim()) throw new Error("Укажите название пресета");
-                  await api<MasterPreset>(`/api/campaigns/${campaignId}/save-master-preset`, {
+                  const saved = await api<MasterPreset>(`/api/campaigns/${campaignId}/save-master-preset`, {
                     method: "POST",
                     body: { name: savePresetName.trim(), preset_id: saveOverwriteId || null },
                   });
                   await qc.invalidateQueries({ queryKey: ["master-presets"] });
+                  qc.setQueryData<CampaignPersona>(["master-persona", campaignId], (cur) =>
+                    cur ? { ...cur, master_preset_id: saved.id } : cur,
+                  );
                   setShowSavePreset(false);
                   setSavePresetName("");
                   setSaveOverwriteId("");

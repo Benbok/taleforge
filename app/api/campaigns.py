@@ -356,13 +356,23 @@ async def put_master_model(campaign_id: str, body: MasterModelIn, user: UserDep,
 
 
 def persona_out(agent: AgentConfig) -> CampaignPersonaOut:
-    meta = (agent.settings or {}).get("persona")
+    extra = agent.settings or {}
+    meta = extra.get("persona")
+    preset_id = extra.get("master_preset_id")
     if not meta:
         return CampaignPersonaOut(
-            name=None, source="legacy" if agent.persona else None, settings=None, style=agent.persona
+            name=None,
+            source="legacy" if agent.persona else None,
+            settings=None,
+            style=agent.persona,
+            master_preset_id=preset_id,
         )
     return CampaignPersonaOut(
-        name=meta.get("name"), source=meta.get("source"), settings=meta.get("settings"), style=meta.get("style")
+        name=meta.get("name"),
+        source=meta.get("source"),
+        settings=meta.get("settings"),
+        style=meta.get("style"),
+        master_preset_id=preset_id,
     )
 
 
@@ -542,7 +552,9 @@ async def save_campaign_master_preset(
             character=char_data,
         )
         session.add(preset)
+        await session.flush()
 
+    agent.settings = {**extra, "master_preset_id": preset.id}  # стол теперь работает по этому пресету
     await session.commit()
     return await preset_out(session, preset)
 

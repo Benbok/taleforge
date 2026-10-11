@@ -86,6 +86,9 @@ def test_master_presets_crud_and_apply(game_client, admin_g, settings, llm):
     char = ok(game_client.get(f"/api/campaigns/{cid}/master-character", headers=admin_g))
     assert char["persona"]["text"] == "Строгий инквизитор веры, ищет следы ереси."
     assert char["persona"]["fields"]["never"] == "никогда не прощает ложь"
+    # Стол помнит, по какому пресету он создан
+    pers = ok(game_client.get(f"/api/campaigns/{cid}/master-persona", headers=admin_g))
+    assert pers["master_preset_id"] == created["id"]
 
     # 7. Сохранение пресета прямо из существующей кампании
     # Изменим характер в кампании
@@ -106,6 +109,8 @@ def test_master_presets_crud_and_apply(game_client, admin_g, settings, llm):
     assert saved_from_camp["name"] == "Пресет из первой кампании"
     assert saved_from_camp["character"]["text"] == "Новый характер из игры"
     assert saved_from_camp["character"]["fields"]["tricks"] == "падающие люстры"
+    pers = ok(game_client.get(f"/api/campaigns/{cid}/master-persona", headers=admin_g))
+    assert pers["master_preset_id"] == saved_from_camp["id"]
 
     # 8. Применение пресета к другой кампании
     c2, _, _ = party(game_client, admin_g)
@@ -117,6 +122,9 @@ def test_master_presets_crud_and_apply(game_client, admin_g, settings, llm):
     )
     assert applied["ok"] is True
     assert applied["character"]["persona"]["text"] == "Новый характер из игры"
+    assert applied["persona"]["master_preset_id"] == saved_from_camp["id"]
+    pers = ok(game_client.get(f"/api/campaigns/{c2['id']}/master-persona", headers=admin_g))
+    assert pers["master_preset_id"] == saved_from_camp["id"]
 
     # 9. Удаление пресета
     del_res = game_client.delete(f"/api/me/master-presets/{created['id']}", headers=admin_g)

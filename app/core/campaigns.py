@@ -220,6 +220,7 @@ async def apply_master_preset(
             **(agent.settings or {}),
             "character": persona.normalize(preset.character, master=True),
         }
+    agent.settings = {**(agent.settings or {}), "master_preset_id": preset.id}
     return agent
 
 

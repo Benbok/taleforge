@@ -2536,6 +2536,8 @@ export interface components {
         };
         /** CampaignPersonaOut */
         CampaignPersonaOut: {
+            /** Master Preset Id */
+            master_preset_id: string | null;
             /** Name */
             name: string | null;
             /** Settings */

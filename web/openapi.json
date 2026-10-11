@@ -1150,6 +1150,17 @@
    },
    "CampaignPersonaOut": {
     "properties": {
+     "master_preset_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Master Preset Id"
+     },
      "name": {
       "anyOf": [
        {
@@ -1200,7 +1211,8 @@
      "name",
      "source",
      "settings",
-     "style"
+     "style",
+     "master_preset_id"
     ],
     "title": "CampaignPersonaOut",
     "type": "object"
