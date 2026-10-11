@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import re
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -29,6 +30,11 @@ LIMITS: dict[str, dict[str, tuple[int, int]]] = {
 MODULE = "module"
 MIN_CLUES = 3
 MIN_CLUE_PLACES = 2
+CLUE_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+
+
+def new_clue_id() -> str:
+    return f"clue_{secrets.token_hex(4)}"
 
 
 def _str(desc: str, max_len: int = 600) -> dict:
@@ -172,8 +178,33 @@ def tool_spec() -> dict:
                             "items": {
                                 "type": "object",
                                 "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "description": "id зацепки из каркаса: при пересмотре сохрани его; "
+                                        "у новой зацепки не указывай, сервер выдаст сам.",
+                                    },
                                     "at": {"type": "string", "description": "id локации или NPC каркаса."},
                                     "text": _str("Зацепка.", 300),
+                                    "carrier": {
+                                        "type": "object",
+                                        "description": "Только если зацепку находят как вещь в месте (письмо, "
+                                        "дневник, перстень): сервер положит её туда, когда место подготовят. "
+                                        "Разговор или наблюдение носителя не имеют.",
+                                        "properties": {
+                                            "name": _str("Название вещи.", 80),
+                                            "description": _str("Что видят герои, взяв вещь.", 400),
+                                            "template_id": {
+                                                "type": "string",
+                                                "description": "шаблон предмета (item....), если у вещи есть "
+                                                "механика; без него — записка без цены.",
+                                            },
+                                            "hidden": {
+                                                "type": "boolean",
+                                                "description": "лежит в контейнере места, а не на виду",
+                                            },
+                                        },
+                                        "required": ["name", "description"],
+                                    },
                                 },
                                 "required": ["at", "text"],
                             },
@@ -321,6 +352,36 @@ def check(
         seen[oid] = kind
         return oid
 
+    clue_ids: set[str] = set()
+
+    def clue_id(c: dict, rid: str) -> None:
+        """Стабильный id зацепки: выдаётся один раз и хранится, не выводится из индекса или текста (§8.1)."""
+        cid = c.get("id")
+        if cid in (None, ""):
+            cid = c["id"] = new_clue_id()
+        if not isinstance(cid, str) or not CLUE_ID.match(cid):
+            errors.append(f"тайна {rid}: неверный id зацепки {cid!r}")
+        elif cid in clue_ids:
+            errors.append(f"id зацепки {cid} повторяется")
+        clue_ids.add(cid)
+
+    def carrier(c: dict, rid: str) -> None:
+        raw = c.get("carrier")
+        if raw is None:
+            c.pop("carrier", None)
+            return
+        name, desc = raw.get("name") if isinstance(raw, dict) else None, None
+        if isinstance(raw, dict):
+            desc = raw.get("description")
+        if not isinstance(name, str) or not name.strip() or not isinstance(desc, str):
+            errors.append(f"тайна {rid}: у носителя зацепки нужны name и description")
+            return
+        out = {"name": name.strip()[:80], "description": desc.strip()[:400], "hidden": bool(raw.get("hidden"))}
+        if raw.get("template_id"):
+            template("item_template", raw["template_id"], f"носитель зацепки тайны {rid}", False)
+            out["template_id"] = str(raw["template_id"])
+        c["carrier"] = out
+
     def template(kind_name: str, tid: Any, where: str, required: bool) -> None:
         if tid in (None, ""):
             if required:
@@ -419,6 +480,10 @@ def check(
         if r.get("node_id") not in node_ids:
             errors.append(f"тайна {rid}: нет узла {r.get('node_id')}")
         clues = [c for c in r.get("clues") or [] if isinstance(c, dict)]
+        r["clues"] = clues
+        for c in clues:
+            clue_id(c, rid)
+            carrier(c, rid)
         bad = [c.get("at") for c in clues if c.get("at") not in places]
         if bad:
             errors.append(f"тайна {rid}: зацепки ведут в неизвестные места {bad}")
@@ -541,6 +606,13 @@ def poster(plan: dict) -> dict:
     return {"title": plan.get("title"), "tagline": plan.get("tagline"), "tags": plan.get("tags") or []}
 
 
+def clue_line(c: dict) -> str:
+    head = f"[{c['id']}] " if c.get("id") else ""
+    vessel = c.get("carrier") or {}
+    thing = f" (вещь: {vessel.get('name')}{', спрятана' if vessel.get('hidden') else ''})" if vessel else ""
+    return f"{head}{c.get('at')}: {c.get('text')}{thing}"
+
+
 def render(plan: dict) -> str:
     """Каркас текстом для мастера: компактнее JSON и не рвётся при обрезке."""
     lines = [f"Каркас кампании «{plan.get('title')}». Конфликт: {plan.get('conflict')} Ставки: {plan.get('stakes')}"]
@@ -581,7 +653,7 @@ def render(plan: dict) -> str:
             f"{npc.get('look')}" + (f" Детали: {npc['details']}" if npc.get("details") else "")
         )
     for r in plan.get("reveals") or []:
-        clues = "; ".join(f"{c.get('at')}: {c.get('text')}" for c in r.get("clues") or [])
+        clues = "; ".join(clue_line(c) for c in r.get("clues") or [])
         mark = f"раскрыта: {r.get('how')}" if r.get("revealed") else "не раскрыта"
         lines.append(f"Тайна {r.get('id')} ({mark}) → {r.get('node_id')}: {r.get('truth')} Зацепки: {clues}")
     if plan.get("endings"):
@@ -827,7 +899,7 @@ def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
     node_ids = {n["id"] for n in (act or {}).get("nodes") or []}
     open_reveals = [r for r in plan.get("reveals") or [] if not r.get("revealed") and r.get("node_id") in node_ids]
     for r in open_reveals:
-        clues = "; ".join(f"{c.get('at')}: {c.get('text')}" for c in r.get("clues") or [])
+        clues = "; ".join(clue_line(c) for c in r.get("clues") or [])
         lines.append(f"Тайна {r['id']} → {r.get('node_id')} (не раскрыта): {r.get('truth')} Зацепки: {clues}")
     found = [r for r in plan.get("reveals") or [] if r.get("revealed")]
     if found:

@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 
 from app.agents.llm import LLMError, model_for
 from app.content.catalog import campaign_catalog
-from app.core import knowledge, plot
+from app.core import knowledge, plot, plot_anchors
 from app.core.brief import brief_text
 from app.core.campaigns import default_model_profile, master_seat
 from app.db.models import AgentConfig, Campaign, CampaignPlan, CampaignSecret, ContentPack, GameSession, LlmCall
@@ -223,6 +223,7 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                     targets = set(plot.hook_targets(plan))
                     plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
                 secret.plot = plan
+                await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
                 settings = dict(c.settings or {})
                 settings["poster"] = plot.poster(plan)
                 if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
@@ -372,6 +373,7 @@ async def revise(svc, cid: str) -> str | None:
                 row = CampaignPlan(campaign_id=cid, version=version, content=merged, note=f"пересмотр: {summary}")
                 s.add(row)
                 secret.plot = merged
+                await plot_anchors.sync_bindings(s, cid, merged)  # созданные носители пересмотр не переписывает
                 # итог пересмотра — только в версии каркаса: настройки кампании видят и игроки
                 await set_status(s, c, version=version, revision={"status": "ready"})
                 await s.flush()

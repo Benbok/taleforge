@@ -36,6 +36,7 @@ class Slot:
     zone: str = "near"
     visual_key: str | None = None
     parent: str | None = None  # slot_ref контейнера внутри этого же плана
+    anchor_id: str | None = None  # сюжетный носитель: создаётся по привязке, имя — факт сюжета
 
 
 @dataclass
@@ -46,6 +47,7 @@ class Plan:
     slots: list[Slot] = field(default_factory=list)
     children: dict[str, dict[str, Any]] = field(default_factory=dict)  # slot_ref контейнера → его резерв
     spent: int = 0
+    notes: list[str] = field(default_factory=list)  # диагностика для ведущего, уходит в manifest
 
     def slot(self, ref: str) -> Slot | None:
         return next((s for s in self.slots if s.slot_ref == ref), None)
@@ -58,6 +60,7 @@ class ProposedObject:
     name: str
     description: str = ""
     template_id: str | None = None
+    anchor_id: str | None = None
 
 
 @dataclass(frozen=True)

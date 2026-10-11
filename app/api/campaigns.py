@@ -29,7 +29,7 @@ from app.api.schemas import (
 )
 from app.content.catalog import CatalogError, load_catalog, resolve_chain
 from app.content.importer import latest_version
-from app.core import adventure, audio, chat, master_log, plot
+from app.core import adventure, audio, chat, master_log, plot, plot_anchors
 from app.core import campaigns as svc
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import get_scene, party_groups
@@ -204,6 +204,7 @@ async def _start_module(session, campaign: Campaign, module: AdventureModule, ho
     session.add(CampaignPlan(campaign_id=campaign.id, version=1, content=plan, note="готовое приключение"))
     secret = await session.get(CampaignSecret, campaign.id)
     secret.plot = plan
+    await plot_anchors.sync_bindings(session, campaign.id, plan)
     settings = dict(campaign.settings or {})
     settings["module"] = {
         "id": module.id,
@@ -586,6 +587,7 @@ async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session:
         s.setting = body.setting
     if body.plot is not None:
         s.plot = body.plot
+        await plot_anchors.sync_bindings(session, campaign_id, body.plot)
     await session.commit()
     return {"setting": s.setting, "plot": s.plot}
 

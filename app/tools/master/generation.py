@@ -16,7 +16,7 @@ from app.tools.master.items import _accessible_container, _approach, container_c
 from app.tools.registry import ToolContext, ToolError, tool
 
 # Команды ведущего: ИИ-мастер их не видит (app/agents/master/common.py)
-HOST_TOOLS = frozenset({"resolve_location", "retry_preparation"})
+HOST_TOOLS = frozenset({"resolve_location", "retry_preparation", "bind_plot_anchor"})
 
 
 class ResolveLocationArgs(BaseModel):

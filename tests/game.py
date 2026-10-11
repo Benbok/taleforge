@@ -85,3 +85,15 @@ def party(client, admin, *, players=1, master=None, rules=None, **kw):
     assert res["status"] == "approved", res
     ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     return c, heads, ch
+
+
+def quiet(client) -> None:
+    """Дождаться фоновых задач мастера (открытие сессии пишет настройки кампании и двигает ревизию мира), чтобы
+    шаги теста не конфликтовали с ними по времени."""
+    master = client.app.state.master
+
+    async def wait():
+        while any(not t.done() for t in list(master._background)):
+            await asyncio.sleep(0.05)
+
+    client.portal.call(wait)
