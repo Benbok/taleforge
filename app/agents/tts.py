@@ -1,4 +1,5 @@
 import abc
+import asyncio
 import base64
 import io
 import logging
@@ -18,6 +19,10 @@ MARKUP_RE = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 MD_HEADER_RE = re.compile(r"^#+\s*", re.MULTILINE)
 MD_FORMAT_RE = re.compile(r"[*_~`]")
 SPACE_RE = re.compile(r"\s+")
+
+# одновременных синтезов на источник для всего сервера: локальная модель на одной видеокарте от параллели только
+# медленнее, облако держит несколько запросов
+PARALLEL = {"gemini": 3, "voicestudio": 1}
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -287,6 +292,7 @@ class TTSManager:
             ),
         }
         self.default_provider = settings.tts_provider
+        self.gates = {name: asyncio.Semaphore(PARALLEL.get(name, 1)) for name in self.engines}
 
     def get_engine(self, provider: str | None = None) -> TTSEngine:
         p = provider or self.default_provider
@@ -305,4 +311,6 @@ class TTSManager:
             return None
         if provider and provider not in ("gemini", "voicestudio"):
             voice_name = None
-        return await engine.voice_for_narration(media_dir, campaign_id, narration_text, voice_name)
+        name = next(k for k, e in self.engines.items() if e is engine)
+        async with self.gates[name]:
+            return await engine.voice_for_narration(media_dir, campaign_id, narration_text, voice_name)

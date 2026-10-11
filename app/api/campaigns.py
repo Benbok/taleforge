@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.agents import memory
+from app.agents import memory, voicing
 from app.agents.architect import now_iso
 from app.agents.llm import LLMError, model_for
 from app.api.deps import SessionDep, SettingsDep, UserDep
@@ -169,6 +169,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
             "tts_voice": body.tts_voice,
+            **body.model_dump(include=set(voicing.KEYS), exclude_none=True),
             **dict.fromkeys(request.app.state.settings.new_campaign_flags, True),
         },
         owner_plays=body.owner_plays,
@@ -258,6 +259,7 @@ async def patch_campaign(
         "tts_provider",
         "tts_enabled",
         "tts_voice",
+        *voicing.KEYS,
         "leveling",
         "random_events",
         "scene_generation",

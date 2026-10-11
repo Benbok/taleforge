@@ -68,6 +68,7 @@ def settings(tmp_path, database_url):
         public_url="http://play.test",
         superadmin_name="root",
         superadmin_password="rootpass",
+        voicestudio_api_base="",  # без локального Voice Studio: тесты не ходят в сеть за репликой
     )
 
 

@@ -2408,12 +2408,24 @@ export interface components {
              * @default true
              */
             tts_enabled?: boolean;
+            /** Tts Line Enabled */
+            tts_line_enabled?: boolean | null;
+            /** Tts Line Provider */
+            tts_line_provider?: ("gemini" | "voicestudio") | null;
+            /** Tts Line Voice */
+            tts_line_voice?: string | null;
             /**
              * Tts Provider
              * @description TTS Provider
              * @default gemini
              */
             tts_provider?: string;
+            /** Tts Text Enabled */
+            tts_text_enabled?: boolean | null;
+            /** Tts Text Provider */
+            tts_text_provider?: ("gemini" | "voicestudio") | null;
+            /** Tts Text Voice */
+            tts_text_voice?: string | null;
             /**
              * Tts Voice
              * @description голос озвучки мастера (TTS)
@@ -2503,8 +2515,20 @@ export interface components {
             spend_limit_usd?: number | null;
             /** Tts Enabled */
             tts_enabled?: boolean | null;
+            /** Tts Line Enabled */
+            tts_line_enabled?: boolean | null;
+            /** Tts Line Provider */
+            tts_line_provider?: ("gemini" | "voicestudio") | null;
+            /** Tts Line Voice */
+            tts_line_voice?: string | null;
             /** Tts Provider */
             tts_provider?: string | null;
+            /** Tts Text Enabled */
+            tts_text_enabled?: boolean | null;
+            /** Tts Text Provider */
+            tts_text_provider?: ("gemini" | "voicestudio") | null;
+            /** Tts Text Voice */
+            tts_text_voice?: string | null;
             /** Tts Voice */
             tts_voice?: string | null;
             /** Turn Timeout Sec */
@@ -3591,6 +3615,16 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Reason
+             * @default null
+             */
+            reason?: string | null;
+            /**
+             * Source
+             * @default null
+             */
+            source?: string | null;
             /** Stacks */
             stacks: number;
             /** Template */

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents import voicing
 from app.core import persona, personas
 from app.db.models import (
     AgentConfig,
@@ -34,6 +35,7 @@ DEFAULT_SETTINGS = {
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
     "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
+    **voicing.DEFAULTS,  # каналы озвучки: реплики локально, текст выключен
 }
 
 

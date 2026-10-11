@@ -199,6 +199,7 @@ def test_master_turn_attaches_voice_when_tts_enabled(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
+        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
         llm.replies += [
             {
                 "tool_calls": [
@@ -253,6 +254,7 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
+        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
         llm.replies += [
             {
                 "tool_calls": [
@@ -319,6 +321,7 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
+        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
 
         # Выключаем озвучку мастера через PATCH кампании
         patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": False}, headers=admin)
@@ -426,9 +429,9 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
         c, (p1,), ch = party(client, admin)
 
         # Меняем голос мастера на "Aoede" через PATCH кампании
-        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_voice": "Aoede"}, headers=admin)
+        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini", "tts_line_voice": "Aoede"}, headers=admin)
         assert patch_res.status_code == 200
-        assert patch_res.json()["settings"]["tts_voice"] == "Aoede"
+        assert patch_res.json()["settings"]["tts_line_voice"] == "Aoede"
 
         llm.replies += [
             {
@@ -448,7 +451,7 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
         assert "data" in narration_msg and "voice" in narration_msg["data"]
         # Проверяем, что запрос к Gemini ушёл с голосом Aoede
         client.portal.call(client.app.state.master.wait_idle, c["id"])
-        assert requested_voices == ["Aoede", "Aoede"]  # реплика и текст мастера одним голосом
+        assert requested_voices == ["Aoede"]  # озвучка текста по умолчанию выключена: звучит только реплика
 
 
 def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
@@ -506,6 +509,7 @@ def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
+        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini", "tts_text_enabled": True}, headers=admin)  # реплики облаком
 
         response = client.put(
             f"/api/campaigns/{c['id']}/master-persona",
@@ -613,3 +617,57 @@ def test_campaign_intro_voiced_in_parts(settings, tmp_path):
         for v in msg.data["voices"]:
             res = client.get(f"/api/campaigns/{cid}/voice/{v['id']}", headers=p1)
             assert res.status_code == 200 and res.content.startswith(b"RIFF")
+
+
+def test_text_channel_without_line_skips_voice_line_request(settings, tmp_path):
+    """Реплики выключены, текст мастера озвучивается облаком: модель реплику не пишет, голос — только у текста."""
+    from app.db.models import Message
+    from tests.conftest import login
+    from tests.game import import_base, party
+    from tests.test_master import act, rows
+
+    import_base(settings)
+    settings = dataclasses.replace(settings, media_dir=tmp_path / "media", gemini_tts_api_key="test-gemini-key")
+    spoken: list[tuple[str, str]] = []
+
+    def mock_tts_handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        voice_name = body["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"]
+        spoken.append((voice_name, body["contents"][0]["parts"][0]["text"]))
+        pcm = base64.b64encode(b"\x00\x00" * 24000).decode("ascii")
+        part = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": pcm}}
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [part]}}]})
+
+    llm = ScriptedLLM([])
+    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([15]))) as client:
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(mock_tts_handler)
+        root = login(client, "root", "rootpass")
+        client.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root)
+        admin = login(client, "Arty", "secret1")
+        c, (p1,), ch = party(client, admin)
+        res = client.patch(
+            f"/api/campaigns/{c['id']}",
+            json={"tts_line_enabled": False, "tts_text_enabled": True, "tts_text_provider": "gemini", "tts_text_voice": "Kore"},
+            headers=admin,
+        )
+        assert res.status_code == 200
+        llm.replies += [
+            {
+                "tool_calls": [
+                    (
+                        "roll_check",
+                        {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "река"},
+                    )
+                ]
+            },
+            {"tool_calls": []},
+            {"text": "Туман стелется над рекой."},
+        ]
+
+        msg = act(client, p1, c["id"], "Смотрю на реку.")
+        assert msg["data"]["voice_parts"] == 1  # одна часть: текст, реплики нет
+        client.portal.call(client.app.state.master.wait_idle, c["id"])
+        assert llm.voice_requests == []
+        assert spoken == [("Kore", "Туман стелется над рекой.")]
+        saved = next(m for m in rows(settings, Message, Message.id == msg["id"]))
+        assert len(saved.data["voices"]) == 1

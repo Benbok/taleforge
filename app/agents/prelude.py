@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.agents import textcalls, voiceover
+from app.agents import textcalls, voiceover, voicing
 from app.agents.llm import LLMError
 from app.content.catalog import campaign_catalog
 from app.core import adventure, bonds, plot
@@ -86,9 +86,10 @@ class StoryFeed:
         self.sent = view
 
 
-def _tts_on(svc, c: Campaign) -> bool:
-    ready = getattr(svc, "_tts_ready", None)
-    return ready is not None and ready(c)
+def _intro_voice(svc, c: Campaign):
+    """Озвучка подготовки к игре — всегда облако (app/agents/voicing.py); None — выключена или облако не подключено."""
+    tts_for = getattr(svc, "_tts_for", None)
+    return tts_for(c, voicing.INTRO) if tts_for is not None else None
 
 
 def _spawn(svc, coro) -> None:
@@ -516,15 +517,13 @@ async def _intro_text(
 
 
 def _voice_job(svc, c: Campaign, clean=clean_story) -> voiceover.VoiceJob | None:
-    """Озвучка вступления по частям тем же голосом, что и реплики мастера. Без озвучки кампании — None."""
-    if not _tts_on(svc, c):
+    """Озвучка подготовки к игре по частям облачным голосом кампании. Без озвучки — None."""
+    ch = _intro_voice(svc, c)
+    if ch is None:
         return None
-    st = c.settings or {}
 
     async def synth(part: str) -> dict | None:
-        return await svc.tts.voice_for_narration(
-            svc.media_dir, c.id, part, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
-        )
+        return await svc.tts.voice_for_narration(svc.media_dir, c.id, part, provider=ch.provider, voice_name=ch.voice)
 
     return voiceover.VoiceJob(synth, clean)
 
@@ -547,10 +546,10 @@ def _module_voices(svc, c: Campaign, entry: dict) -> list[dict] | None:
     (или записей нет), и текст озвучивается голосом кампании."""
     from app.agents import module_intro
 
-    if not _tts_on(svc, c):
+    ch = _intro_voice(svc, c)
+    if ch is None:
         return []
-    st = c.settings or {}
-    mine = module_intro.voice_of(svc, st.get("tts_provider"), st.get("tts_voice"))
+    mine = module_intro.voice_of(svc, ch.provider, ch.voice)
     theirs = module_intro.voice_of(svc, entry.get("provider"), entry.get("voice"))
     if mine != theirs or not entry.get("voices"):
         return None

@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any
 
-from app.agents import textcalls
+from app.agents import textcalls, voicing
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import invented_player_dialogue, unregistered_named_actors
@@ -230,25 +230,27 @@ class NarrationMixin:
             await stream.push(text)
         return text, audit
 
-    def _tts_ready(self, c: Campaign) -> bool:
-        st = c.settings or {}
+    def _tts_for(self, c: Campaign, kind: str) -> voicing.Channel | None:
+        """Канал озвучки кампании (voicing.LINE, TEXT или INTRO), если он включён и его источник подключён."""
         tts = getattr(self, "tts", None)
-        if tts is None or not getattr(self, "media_dir", None) or not st.get("tts_enabled", True):
-            return False
-        engine = tts.get_engine(st.get("tts_provider")) if hasattr(tts, "get_engine") else tts
-        return bool(engine.enabled)
+        if tts is None or not getattr(self, "media_dir", None):
+            return None
+        ch = voicing.intro(c.settings) if kind == voicing.INTRO else voicing.channel(c.settings, kind)
+        if ch is None:
+            return None
+        engine = tts.get_engine(ch.provider) if hasattr(tts, "get_engine") else tts
+        return ch if engine.enabled else None
 
     async def _voice(
-        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, *, news: str = ""
+        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, *, ch: voicing.Channel, news: str = ""
     ) -> tuple[str | None, dict | None]:
-        """Короткая реплика мастера и её озвучка. Сбой не мешает ходу: остаётся текст без голоса."""
-        st = c.settings or {}
+        """Короткая реплика мастера и её озвучка каналом реплик. Сбой не мешает ходу: остаётся текст без голоса."""
         try:
             line = await self._voice_line(calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, news=news)
             if not line:
                 return None, None
             data = await self.tts.voice_for_narration(
-                self.media_dir, c.id, line, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+                self.media_dir, c.id, line, provider=ch.provider, voice_name=ch.voice
             )
             return line, data
         except Exception:  # noqa: BLE001

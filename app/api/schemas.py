@@ -51,6 +51,7 @@ class UserCreateIn(BaseModel):
 
 
 Provider = Literal["claude", "gemini", "local"]
+TtsProvider = Literal["gemini", "voicestudio"]  # облачный и локальный синтез речи (app/agents/voicing.py)
 
 
 Amount = Literal["low", "mid", "high"]
@@ -308,6 +309,13 @@ class CampaignCreateIn(BaseModel):
     tts_provider: str = Field(default="gemini", description="TTS Provider")
     tts_enabled: bool = Field(default=True, description="TTS Enabled")
     tts_voice: str | None = Field(default=None, max_length=32, description="голос озвучки мастера (TTS)")
+    # каналы озвучки (app/agents/voicing.py): не заданы — умолчания кампании
+    tts_line_enabled: bool | None = None
+    tts_line_provider: TtsProvider | None = None
+    tts_line_voice: str | None = Field(default=None, max_length=32)
+    tts_text_enabled: bool | None = None
+    tts_text_provider: TtsProvider | None = None
+    tts_text_voice: str | None = Field(default=None, max_length=32)
 
 
 class CampaignPatchIn(BaseModel):
@@ -323,6 +331,13 @@ class CampaignPatchIn(BaseModel):
     tts_provider: str | None = Field(default=None, max_length=32)
     tts_enabled: bool | None = None  # озвучка реплик мастера (TTS)
     tts_voice: str | None = Field(default=None, max_length=32)  # голос озвучки мастера (TTS)
+    # каналы озвучки (app/agents/voicing.py): реплика и весь текст мастера, у каждого свой источник и голос
+    tts_line_enabled: bool | None = None
+    tts_line_provider: TtsProvider | None = None
+    tts_line_voice: str | None = Field(default=None, max_length=32)
+    tts_text_enabled: bool | None = None
+    tts_text_provider: TtsProvider | None = None
+    tts_text_voice: str | None = Field(default=None, max_length=32)
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None

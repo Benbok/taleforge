@@ -594,11 +594,87 @@
       "title": "Tts Enabled",
       "type": "boolean"
      },
+     "tts_line_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Enabled"
+     },
+     "tts_line_provider": {
+      "anyOf": [
+       {
+        "enum": [
+         "gemini",
+         "voicestudio"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Provider"
+     },
+     "tts_line_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Voice"
+     },
      "tts_provider": {
       "default": "gemini",
       "description": "TTS Provider",
       "title": "Tts Provider",
       "type": "string"
+     },
+     "tts_text_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Enabled"
+     },
+     "tts_text_provider": {
+      "anyOf": [
+       {
+        "enum": [
+         "gemini",
+         "voicestudio"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Provider"
+     },
+     "tts_text_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Voice"
      },
      "tts_voice": {
       "anyOf": [
@@ -955,6 +1031,44 @@
       ],
       "title": "Tts Enabled"
      },
+     "tts_line_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Enabled"
+     },
+     "tts_line_provider": {
+      "anyOf": [
+       {
+        "enum": [
+         "gemini",
+         "voicestudio"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Provider"
+     },
+     "tts_line_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Line Voice"
+     },
      "tts_provider": {
       "anyOf": [
        {
@@ -966,6 +1080,44 @@
        }
       ],
       "title": "Tts Provider"
+     },
+     "tts_text_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Enabled"
+     },
+     "tts_text_provider": {
+      "anyOf": [
+       {
+        "enum": [
+         "gemini",
+         "voicestudio"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Provider"
+     },
+     "tts_text_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Text Voice"
      },
      "tts_voice": {
       "anyOf": [
@@ -4295,6 +4447,30 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reason"
+     },
+     "source": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Source"
      },
      "stacks": {
       "title": "Stacks",

@@ -1,16 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
 import PersonaEditor from "../components/PersonaEditor";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
 import MasterTemperPicker from "./MasterTemper";
 import PersonaPicker from "./PersonaPicker";
+import { differentVoices, VoiceChannel } from "./VoiceChannels";
 import { api } from "../lib/api";
 import {
   personaBody,
   PROVIDER_RU,
-  TTS_VOICES,
   type CampaignOptions,
   type MasterPreset,
   type Persona,
@@ -264,8 +264,8 @@ export default function MasterTab({
         <div className="border-b border-line pb-3">
           <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
           <p className="text-xs text-muted">
-            Голосовой синтез речи (Gemini TTS) для реплик и описаний ИИ-мастера. Выключено — мастер отвечает только
-            текстом, без генерации аудиодорожек.
+            Голос ИИ-мастера: короткие реплики и весь текст ответа включаются отдельно, у каждого свой источник —
+            облачный Gemini или локальный Voice Studio. Выключено — мастер отвечает только текстом.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -274,7 +274,7 @@ export default function MasterTab({
           </span>
           <ActionButton
             className="btn-outline-copper"
-            done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена: реплики мастера будут озвучиваться"}
+            done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена"}
             run={async () => {
               const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
                 method: "PATCH",
@@ -288,163 +288,19 @@ export default function MasterTab({
         </div>
 
         {ttsEnabled && (
-          <>
-            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
-              <Field
-                label="Источник озвучки (TTS Provider)"
-                hint="Выберите сервис для синтеза речи (облачный Gemini или локальный Voice Studio / XTTS)."
-              >
-                <CustomSelect
-                  value={room?.settings?.tts_provider || "gemini"}
-                  options={[
-                    { value: "gemini", label: "Gemini TTS (Cloud)" },
-                    { value: "voicestudio", label: "Voice Studio (Local)" },
-                  ]}
-                  onChange={async (val) => {
-                    if (val === (room?.settings?.tts_provider || "gemini")) return;
-                    const nextVoice =
-                      val === "voicestudio"
-                        ? vsProfiles[0]?.id || "demo0001"
-                        : "Fenrir";
-                    const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
-                      method: "PATCH",
-                      body: {
-                        tts_provider: val,
-                        tts_voice: nextVoice,
-                      },
-                    });
-                    onRoom?.(updated);
-                  }}
-                  ariaLabel="Источник озвучки"
-                />
-              </Field>
-            </div>
-
-            <div className="pt-2 border-t border-line/60 flex flex-col gap-2">
-              {(() => {
-                const provider = room?.settings?.tts_provider || "gemini";
-                let voiceOptions: SelectOption[] = TTS_VOICES.map((v) => ({
-                  value: v.id,
-                  label: v.name,
-                  sublabel: `${v.gender} - ${v.description}`,
-                  badge: v.id === "Fenrir" ? "ПО УМОЛЧАНИЮ" : v.gender.toUpperCase(),
-                  badgeTone: v.id === "Fenrir" ? ("accent" as const) : ("patina" as const),
-                }));
-
-                if (provider === "voicestudio") {
-                  if (vsProfiles.length > 0) {
-                    voiceOptions = vsProfiles
-                      .map((p) => {
-                        const isDemo = Boolean(p.is_demo);
-                        const isDesign = p.kind === "design";
-                        const isClone = p.kind === "clone";
-
-                        let badge = "VOICESTUDIO";
-                        let badgeTone: "accent" | "patina" | "ember" | "muted" = "muted";
-
-                        if (isDemo) {
-                          badge = "ДЕМО";
-                          badgeTone = "muted";
-                        } else if (isDesign) {
-                          badge = "ДИЗАЙН";
-                          badgeTone = "accent";
-                        } else if (isClone) {
-                          badge = "КЛОН";
-                          badgeTone = "patina";
-                        }
-
-                        let sublabel = "";
-                        if (isDesign) {
-                          if (p.instruct) {
-                            const lang = p.language && p.language !== "Auto" ? `${p.language} · ` : "";
-                            sublabel = `${lang}${p.instruct}`;
-                          } else {
-                            sublabel = p.language ? `Дизайн · ${p.language}` : "Голосовой дизайн";
-                          }
-                        } else if (isClone) {
-                          if (p.description) {
-                            sublabel = p.description;
-                          } else if (p.ref_text) {
-                            const sample =
-                              p.ref_text.length > 55
-                                ? `${p.ref_text.slice(0, 55).trim()}…`
-                                : p.ref_text;
-                            sublabel = `«${sample}»`;
-                          } else if (p.language) {
-                            sublabel = `Клон · ${p.language}`;
-                          } else {
-                            sublabel = "Голосовой клон";
-                          }
-                        } else {
-                          sublabel = p.description || p.language || "Voice Studio";
-                        }
-
-                        return {
-                          value: p.id,
-                          label: p.name,
-                          sublabel,
-                          badge,
-                          badgeTone,
-                          rawKind: p.kind,
-                          isDemo,
-                        };
-                      })
-                      .sort((a, b) => {
-                        const getOrder = (item: typeof a) => {
-                          if (item.isDemo) return 3;
-                          if (item.rawKind === "clone") return 1;
-                          if (item.rawKind === "design") return 2;
-                          return 4;
-                        };
-                        const diff = getOrder(a) - getOrder(b);
-                        if (diff !== 0) return diff;
-                        return a.label.localeCompare(b.label, "ru");
-                      });
-                  } else {
-                    voiceOptions = [
-                      {
-                        value: "demo0001",
-                        label: "Демо-голос (demo0001)",
-                        sublabel: "Voice Studio не подключен или нет сохраненных профилей",
-                        badge: "НЕДОСТУПЕН",
-                        badgeTone: "muted" as const,
-                      },
-                    ];
-                  }
-                }
-
-                const currentVoice = room?.settings?.tts_voice;
-                const activeVoice =
-                  voiceOptions.some((o) => o.value === currentVoice)
-                    ? (currentVoice || "")
-                    : (voiceOptions[0]?.value || (provider === "voicestudio" ? "demo0001" : "Fenrir"));
-
-                return (
-                  <>
-                    <Field
-                      label={`Голос ИИ-мастера (${provider === "voicestudio" ? "Voice Studio" : "Gemini"})`}
-                      hint="Голос, которым озвучиваются описания сцен и реплики мастера в чате."
-                    >
-                      <CustomSelect
-                        value={activeVoice}
-                        options={voiceOptions}
-                        onChange={async (val) => {
-                          if (val === room?.settings?.tts_voice) return;
-                          const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
-                            method: "PATCH",
-                            body: { tts_voice: val },
-                          });
-                          onRoom?.(updated);
-                        }}
-                        ariaLabel="Голос мастера"
-                      />
-                    </Field>
-                    <TtsTestButton provider={provider} voice={activeVoice} />
-                  </>
-                );
-              })()}
-            </div>
-          </>
+          <div className="flex flex-col gap-3 border-t border-line/60 pt-3">
+            <VoiceChannel kind="line" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
+            <VoiceChannel kind="text" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
+            {differentVoices(room?.settings) && (
+              <p role="note" className="text-xs text-warn">
+                У реплик и текста разные голоса: в одном ответе мастер заговорит двумя голосами.
+              </p>
+            )}
+            <p className="text-xs text-muted">
+              Вступление кампании и знакомство героев всегда озвучивает Gemini — голосом облачного канала, если он
+              выбран, иначе голосом Gemini по умолчанию.
+            </p>
+          </div>
         )}
       </section>
 
@@ -513,68 +369,6 @@ export default function MasterTab({
         </div>
         <PersonaEditor key={characterRev} base={`/api/campaigns/${campaignId}/master-character`} master />
       </section>
-    </div>
-  );
-}
-
-
-function TtsTestButton({ provider, voice }: { provider: string; voice: string }) {
-  const [playing, setPlaying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const testAudio = async () => {
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
-      return;
-    }
-    
-    setPlaying(true);
-    setError(null);
-    try {
-      const { getToken } = await import('../lib/api');
-      const res = await fetch(`/api/voice/tts-test?provider=${provider}&voice=${voice}`, {
-        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.detail || 'Ошибка сети');
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setPlaying(false);
-      audio.onerror = () => {
-        setPlaying(false);
-        setError('Не удалось воспроизвести аудио');
-      };
-      audio.onpause = () => setPlaying(false);
-      await audio.play();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setPlaying(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
-
-  return (
-    <div className="mt-4 flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={testAudio}
-        className="flex items-center justify-center gap-2 rounded border border-line bg-surface text-ink px-4 py-2 text-sm font-semibold shadow-sm hover:bg-line/20 transition-colors w-max"
-      >
-        {playing ? "⏹ Остановить проверку" : "▶ Проверить озвучку"}
-      </button>
-      {error && <p className="text-warn text-xs">{error}</p>}
     </div>
   );
 }

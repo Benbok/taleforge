@@ -16,7 +16,7 @@ from typing import Any, Protocol
 
 from sqlalchemy import func, select
 
-from app.agents import voiceover
+from app.agents import voiceover, voicing
 from app.agents.master import checkpoint
 from app.agents.master.common import MARKUP
 from app.core import preparation
@@ -143,7 +143,7 @@ class FinishMixin:
             meet = f"{meet}\n\n{UNAVAILABLE}" if meet else UNAVAILABLE
         stream = Stream(self.bus, cid, head, to=self._audience_for(c, cp.get("audience")))
         voice_task = None
-        if self._tts_ready(c):
+        if (line := self._tts_for(c, voicing.LINE)) is not None:
             voice_task = asyncio.create_task(
                 self._voice(
                     calls,
@@ -154,6 +154,7 @@ class FinishMixin:
                     system,
                     ctx,
                     inputs.get("combat_notes") or [],
+                    ch=line,
                     news=inputs.get("news") or "",
                 )
             )
@@ -204,7 +205,8 @@ class FinishMixin:
             data = {"place": place} if msg.visible_to is not None and place is not None else {}
             voices = [{**voice_data, "text": voice_line}] if voice_data else []
             spoken = MARKUP.sub(r"\2", narration)
-            parts = voiceover.split(spoken) if self._tts_ready(c) else []
+            text_ch = self._tts_for(c, voicing.TEXT)
+            parts = voiceover.split(spoken) if text_ch is not None else []
             if voices or parts:
                 data.update(voiceover.data_of(voices, len(voices) + len(parts)))
             msg.data = data or None
@@ -214,17 +216,16 @@ class FinishMixin:
             turn.generation_checkpoint = {**cp, "stage": "done"}
             await s.commit()
         if parts:
-            self._spawn(voiceover.attach(self, msg, self._narration_voice(c).finish(spoken)))
+            self._spawn(voiceover.attach(self, msg, self._narration_voice(c, text_ch).finish(spoken)))
         return [msg, *party]
 
-    def _narration_voice(self, c: Campaign) -> voiceover.VoiceJob:
-        """Озвучка всего текста мастера после короткой реплики: идёт в фоне, когда ход уже сохранён, части
-        прикрепляются к показанному сообщению. Сбой части не трогает ни текст, ни следующий ход."""
-        st = c.settings or {}
+    def _narration_voice(self, c: Campaign, ch: voicing.Channel) -> voiceover.VoiceJob:
+        """Озвучка всего текста мастера каналом текста после короткой реплики: идёт в фоне, когда ход уже
+        сохранён, части прикрепляются к показанному сообщению. Сбой части не трогает ни текст, ни следующий ход."""
 
         async def synth(part: str) -> dict | None:
             return await self.tts.voice_for_narration(
-                self.media_dir, c.id, part, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+                self.media_dir, c.id, part, provider=ch.provider, voice_name=ch.voice
             )
 
         return voiceover.VoiceJob(synth)
