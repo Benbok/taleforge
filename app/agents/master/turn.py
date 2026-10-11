@@ -588,7 +588,7 @@ class TurnMixin:
                     "ok": False,
                     "error": "Лимит исправления аргументов этой заявки исчерпан; действие не выполнено.",
                 }
-            result = await execute(ctx, name, args, key=bound_tool_key(ctx, name, args, key))
+            result = await execute(ctx, name, args, key=await bound_tool_key(ctx, name, args, key))
             if name == "adjudicate_action" and result.get("ok"):
                 from app.core.resolution.contracts import ActionRef
                 from app.tools.resolution.requests import action_key

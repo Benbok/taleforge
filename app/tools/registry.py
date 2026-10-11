@@ -224,7 +224,7 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         from app.tools.resolution.requests import bound_tool_key, lock_resolution_source
 
         refs = [ref for ref in ctx.required_actions if ref.actor_id == (raw_args or {}).get("character_id")]
-        if refs and key == bound_tool_key(ctx, name, raw_args or {}, key):
+        if refs and key == await bound_tool_key(ctx, name, raw_args or {}, "unbound_check"):
             # Serialize before reading the cached roll; a unique index alone
             # prevents duplicate storage but cannot prevent a second dice roll.
             for ref in sorted(refs, key=lambda ref: (ref.source_id, ref.part)):

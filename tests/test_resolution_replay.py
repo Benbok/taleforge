@@ -28,9 +28,9 @@ def test_confirmed_ordinary_check_is_not_rerolled_with_new_call_id(game):
     async def check(ctx):
         ctx.required_actions = [await prepare_action(ctx, hero, [{"verb": "interact"}])]
         args = {"character_id": hero, "stat": "persuasion", "difficulty": "dc.easy", "reason": "разговор"}
-        first = await execute(ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, "first"))
+        first = await execute(ctx, "roll_check", args, key=await bound_tool_key(ctx, "roll_check", args, "first"))
         assert first["ok"]
-        repeated = await execute(ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, "second"))
+        repeated = await execute(ctx, "roll_check", args, key=await bound_tool_key(ctx, "roll_check", args, "second"))
         assert repeated.get("repeated") and repeated["result"] == first["result"]
         assert ctx.dice.queue == [19]
 
@@ -168,7 +168,7 @@ def test_concurrent_primary_check_rolls_once(game):
                 await ready.wait()
                 args = {"character_id": hero, "stat": "persuasion", "difficulty": "dc.easy", "reason": "test"}
                 result = await execute(
-                    ctx, "roll_check", args, key=bound_tool_key(ctx, "roll_check", args, f"call{index}")
+                    ctx, "roll_check", args, key=await bound_tool_key(ctx, "roll_check", args, f"call{index}")
                 )
                 await other.commit()
                 return result

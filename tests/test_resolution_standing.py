@@ -78,7 +78,7 @@ def test_ordinary_and_grouped_deed_count_once(game):
         ref = await prepare_action(ctx, hero, [{"verb": "interact", "target_id": npc}])
         ctx.required_actions = [ref]
         args = {"subject_id": npc, "character_ids": [hero], "effect": "help", "weight": "major", "reason": "помогли"}
-        ordinary = await execute(ctx, "record_deed", args, key=bound_tool_key(ctx, "record_deed", args, "old"))
+        ordinary = await execute(ctx, "record_deed", args, key=await bound_tool_key(ctx, "record_deed", args, "old"))
         assert ordinary["ok"]
         points_before = ctx.world.scene.state["standing"]["subjects"][npc]["points"]
         proposed = ResolutionProposal(
