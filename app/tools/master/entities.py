@@ -84,6 +84,22 @@ def encounter_budget(ctx: ToolContext, adding: list[dict], place: str | None = N
     return {"ok": adjusted <= cap, "adjusted_xp": int(adjusted), "cap": int(cap), "party": len(party)}
 
 
+def _budget_hint(ctx: ToolContext, rec, xp: int, count: int, place: str | None) -> str:
+    """Подсказка к отказу бюджета: сколько таких существ пройдёт и как урезать встречу книги в повествовании."""
+    from app.core import adventure
+
+    fit = next((n for n in range(count - 1, 0, -1) if encounter_budget(ctx, [{"xp": xp}] * n, place)["ok"]), 0)
+    hint = f"Бюджет пропускает не больше {fit}." if fit else "Даже одно такое существо не проходит бюджет."
+    book = adventure.book_encounter(ctx.world.entities.get(place or ""), ctx.world.catalog, ctx.world.entities, rec.id)
+    if book:
+        hint += (
+            f" Это встреча книги ({book} × {rec.name}), ослабь её для этого отряда: выставь, сколько пропускает "
+            "бюджет, и в повествовании покажи столько же, остальных не упоминай. Если о них уже говорилось, "
+            "объясни словами мира, куда они делись (ушли вглубь, обман теней)."
+        )
+    return hint
+
+
 class SpawnArgs(BaseModel):
     creature_template_id: str
     name: str = Field(max_length=128, description="имя экземпляра, например «Гоблин-лучник»")
@@ -125,12 +141,14 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
                     category="rule_denial",
                 )
     if a.attitude == "hostile":
-        b = encounter_budget(ctx, [{"xp": int(rec.data.get("xp") or 0)} for _ in range(a.count)], place)
+        xp = int(rec.data.get("xp") or 0)
+        b = encounter_budget(ctx, [{"xp": xp} for _ in range(a.count)], place)
         if not b["ok"]:
             raise ToolError(
                 f"встреча превышает бюджет сложности кампании ({ctx.campaign.difficulty}: "
                 f"{b['adjusted_xp']} > {b['cap']} опыта с поправкой на "
-                f"число существ, героев: {b['party']}). Выставьте меньше или слабее"
+                f"число существ, героев: {b['party']}). Выставьте меньше или слабее. "
+                + _budget_hint(ctx, rec, xp, a.count, place)
             )
     hp = int((rec.data.get("hp") or {}).get("average", 1))
     cells: list = [None] * a.count

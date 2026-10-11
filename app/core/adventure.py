@@ -50,6 +50,16 @@ def module_place(e: Entity | None, catalog: CatalogView, entities: dict[str, Ent
     return (e, rec) if rooms(rec) else None
 
 
+def book_encounter(e: Entity | None, catalog: CatalogView, entities: dict[str, Entity], template_id: str) -> int:
+    """Сколько существ этого шаблона книга ставит в комнату места реестра; 0 — не комната книги или их там нет."""
+    module = module_place(e, catalog, entities)
+    ref = room_of(e)
+    room = find_room(module[1], ref["id"]) if module and ref else None
+    return sum(
+        int(x.get("count") or 0) for x in (room or {}).get("encounters") or [] if x.get("creature_ref") == template_id
+    )
+
+
 def find_room(rec: Entry, ref: str) -> dict | None:
     """Комната по id из книги, номеру на карте или названию."""
     ref = str(ref).strip()

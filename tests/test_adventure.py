@@ -48,6 +48,34 @@ def publish_sample(settings) -> str:
     return run(settings, go)
 
 
+def test_budget_refusal_tells_master_how_to_cut_book_encounter(client, admin, settings):
+    """Встреча книги не влезает в бюджет: мастер узнаёт, сколько можно выставить и что остальных не показывать."""
+    from app.db.models import MasterTurn, new_id
+    from app.tools.registry import execute
+
+    import_base(settings)
+    mid = publish_sample(settings)
+    campaign, _, _ = party(client, admin, module_id=mid, module_hook="board")
+    cid = campaign["id"]
+    client.portal.call(client.app.state.master.wait_idle, None)
+    skeletons = {"creature_template_id": "creature.skeleton", "name": "Скелет", "count": 2}
+
+    async def check(ctx):
+        ctx.turn_id = new_id("t")
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=cid, status="running"))
+        await ctx.session.flush()
+        await _ok(ctx, "enter_room", {"room": "1"})
+        free = await execute(ctx, "spawn_entity", skeletons)
+        await _ok(ctx, "enter_room", {"room": "2"})
+        book = await execute(ctx, "spawn_entity", skeletons)
+        return free, book
+
+    free, book = _play(settings, cid, check)
+    assert not free["ok"] and "не больше 1" in free["error"] and "книги" not in free["error"]
+    assert not book["ok"] and "не больше 1" in book["error"]
+    assert "встреча книги (2 × Скелет)" in book["error"] and "покажи столько же" in book["error"]
+
+
 def test_autonomous_npc_spawn_preserves_empty_room_and_book_encounter(client, admin, settings):
     from app.db.models import MasterTurn, new_id
     from app.tools.registry import execute

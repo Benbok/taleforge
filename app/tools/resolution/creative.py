@@ -27,11 +27,7 @@ def autonomous_neutral_spawn_allowed(ctx: ToolContext, args, place_id: str | Non
     room_ref = adventure.room_of(place)
     room = adventure.find_room(module[1], room_ref["id"]) if module and room_ref else None
     if room:
-        count = sum(
-            int(encounter.get("count") or 0)
-            for encounter in room.get("encounters") or []
-            if encounter.get("creature_ref") == args.creature_template_id
-        )
+        count = adventure.book_encounter(place, ctx.world.catalog, ctx.world.entities, args.creature_template_id)
         present = sum(
             1
             for entity in ctx.world.entities.values()
