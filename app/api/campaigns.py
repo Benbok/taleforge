@@ -258,12 +258,19 @@ async def patch_campaign(
         "tts_voice",
         "leveling",
         "random_events",
+        "scene_generation",
+        "scene_generation_llm",
     ):
         if key in body.model_fields_set and (
-            key not in ("leveling", "random_events") or getattr(body, key) is not None
+            key not in ("leveling", "random_events", "scene_generation", "scene_generation_llm")
+            or getattr(body, key) is not None
         ):
             settings[key] = getattr(body, key)
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
+    if settings.get("scene_generation") and not (c.settings or {}).get("scene_generation"):
+        from app.core.preparation import preserve_seen_places
+
+        await preserve_seen_places(session, c.id)  # где отряд уже был, задним числом ничего не появится
     c.settings = settings
     if body.brief is not None:
         c.brief = body.brief.model_dump(exclude_defaults=True)

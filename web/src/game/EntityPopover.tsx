@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useGame } from "../stores/game";
+import type { ContainerState } from "../lib/types";
 import { Spinner } from "../components/ActionButton";
 import { useDraft } from "./draft";
 import { cardActions, TYPE_COLOR, TYPE_ICON, TYPE_NAME } from "./entities";
 import { useInspector } from "./inspector";
-import { attack } from "./quick";
+import { attack, sendQuick } from "./quick";
 import { signed } from "./hero";
 import { toast } from "../stores/toasts";
 import { computePopoverPosition } from "./popoverPosition";
@@ -130,6 +131,7 @@ export default function EntityPopover() {
           {card.locked && card.locked.length > 0 && (
             <p className="text-xs text-muted">Скрыто: ещё можно узнать ({card.locked.join(", ")})</p>
           )}
+          {card.container && !card.memory && <Container id={id} name={name} state={card.container} onDone={close} />}
           {type === "creature" && !card.memory && <QuickAttack id={id} name={name} onDone={close} />}
           <div className="mt-1 flex flex-wrap gap-2">
             {(card.memory ? [] : cardActions(type, name)).map((a) => (
@@ -209,6 +211,55 @@ function QuickAttack({ id, name, onDone }: { id: string; name: string; onDone: (
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+const CONTENTS: Record<ContainerState["contents"], string | null> = {
+  unexamined: "не исследован",
+  pending: "готовится…",
+  ready: null,
+  blocked: "недоступно",
+};
+
+/** Контейнер: доступ, состояние содержимого и действия «Открыть» и «Обыскать». Кнопка шлёт то же намерение, что и
+ *  фраза в чате: проверку доступа и подготовку содержимого делает сервер при действии, а не карточка. */
+export function Container({ id, name, state, onDone }: { id: string; name: string; state: ContainerState; onDone: () => void }) {
+  const canAct = useGame((s) => s.actions.includes("chat.play"));
+  const access = state.locked ? "заперт" : state.open ? "открыт" : "закрыт";
+  const contents = CONTENTS[state.contents];
+  const send = (text: string, verb: "interact" | "search") => {
+    const err = sendQuick(text, [{ verb, target_id: id }]);
+    if (err) toast.error(err);
+    else onDone();
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="rounded-full border border-line px-2 py-0.5">{access}</span>
+        {contents && (
+          <span className={`rounded-full border px-2 py-0.5 ${state.contents === "blocked" ? "border-bad text-bad" : "border-line text-muted"}`}>
+            {state.contents === "pending" && <Spinner />} {contents}
+          </span>
+        )}
+      </p>
+      {canAct && (
+        <div className="flex flex-wrap gap-2">
+          {!state.open && (
+            <button className="btn px-2 py-1 text-xs" onClick={() => send(`Открываю: ${name}`, "interact")}>
+              Открыть
+            </button>
+          )}
+          <button
+            className="btn px-2 py-1 text-xs"
+            disabled={state.contents === "pending"}
+            title={state.contents === "pending" ? "Содержимое ещё готовится" : undefined}
+            onClick={() => send(`Обыскиваю: ${name}`, "search")}
+          >
+            Обыскать
+          </button>
+        </div>
+      )}
     </div>
   );
 }

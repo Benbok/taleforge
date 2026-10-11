@@ -28,6 +28,7 @@ from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.object_policy import concealed, revealed_to
 from app.core.positions import bearing_of_cell, zone_of_cell
+from app.core.preparation import container_rows, container_view
 from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
 from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
@@ -203,6 +204,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     areas: list[dict] = []
     if here is not None:
         by_id = {e.id: e for e in ents}
+        boxes = await container_rows(session, cid)
         for e in ents:
             if e.id not in allowed_entities or e.location_id != here.id or is_nested(e):
                 continue
@@ -236,6 +238,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             }
             if e.kind == "creature":
                 item["condition"] = _condition(st)
+            box = container_view(e, boxes) if e.kind == "object" else None
+            if box is not None:
+                item["container"] = box
             around.append(item)
         # герои в этом месте: у кого нет позиции, тот в строю отряда, в центре схемы
         positions = (scene.state or {}).get("positions") or {}

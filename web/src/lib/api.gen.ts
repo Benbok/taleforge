@@ -2384,6 +2384,10 @@ export interface components {
             public_intro?: string | null;
             /** Random Events */
             random_events?: ("auto" | "manual") | null;
+            /** Scene Generation */
+            scene_generation?: boolean | null;
+            /** Scene Generation Llm */
+            scene_generation_llm?: boolean | null;
             /** Spend Limit Usd */
             spend_limit_usd?: number | null;
             /** Tts Enabled */
@@ -3885,6 +3889,18 @@ export interface components {
              */
             place_id?: string;
         };
+        /** MapContainer */
+        MapContainer: {
+            /**
+             * Contents
+             * @enum {string}
+             */
+            contents: "unexamined" | "pending" | "ready" | "blocked";
+            /** Locked */
+            locked: boolean;
+            /** Open */
+            open: boolean;
+        };
         /** MapExit */
         MapExit: {
             /** Bearing */
@@ -4164,6 +4180,8 @@ export interface components {
              * @default null
              */
             condition?: string | null;
+            /** @default null */
+            container?: components["schemas"]["MapContainer"] | null;
             /** Cover */
             cover: string;
             /** Elevation */
@@ -5499,6 +5517,7 @@ export type MapBook = components['schemas']['MapBook'];
 export type MapBookGrid = components['schemas']['MapBookGrid'];
 export type MapBookRoom = components['schemas']['MapBookRoom'];
 export type MapChanged = components['schemas']['MapChanged'];
+export type MapContainer = components['schemas']['MapContainer'];
 export type MapExit = components['schemas']['MapExit'];
 export type MapHere = components['schemas']['MapHere'];
 export type MapHero = components['schemas']['MapHero'];

@@ -268,6 +268,12 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
             if data.get(key):
                 stats[word] = [DAMAGE_RU.get(x, x) for x in data[key]]
         card["stats"] = stats
+    if e.kind == "object" and not memory:
+        from app.core.preparation import container_rows, container_view
+
+        box = container_view(e, await container_rows(session, viewer.campaign.id))
+        if box is not None:
+            card["container"] = box
     card["facts"] = await facts(session, viewer, e.id)
     card["heard"] = await heard(session, viewer, e.id)
     return card

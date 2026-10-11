@@ -115,3 +115,70 @@ async def _sight(session: AsyncSession, campaign_id: str, heroes: list[Character
         return False
 
     return sees
+
+
+async def container_rows(session: AsyncSession, campaign_id: str) -> dict[str, WorldGenerationState]:
+    """Строки подготовки содержимого контейнеров кампании: цель → строка."""
+    q = select(WorldGenerationState).where(
+        WorldGenerationState.campaign_id == campaign_id, WorldGenerationState.phase == "container_contents"
+    )
+    return {r.target_entity_id: r for r in await session.scalars(q)}
+
+
+def container_view(entity: Entity, rows: dict[str, WorldGenerationState]) -> dict[str, Any] | None:
+    """Что зритель видит о контейнере (поставка 6): открыт ли, заперт ли и состояние содержимого —
+    ``unexamined`` (не исследован), ``pending`` (готовится), ``ready`` или ``blocked``. Без строки подготовки
+    содержимое готово: ручной или старый контейнер читается как есть."""
+    try:
+        view = read_world_object(entity)
+    except ValueError:
+        return None
+    if view.role != "container" or view.metadata.get("physical") == "destroyed":
+        return None
+    access = view.metadata.get("access") or {}
+    row = rows.get(entity.id)
+    return {
+        "open": bool(access.get("open")),
+        "locked": bool(access.get("locked")),
+        "contents": public_status(row) if row is not None else "ready",
+    }
+
+
+async def preserve_seen_places(session: AsyncSession, campaign_id: str) -> int:
+    """Явное включение генерации (§8.3, поставка 6): места, где отряд уже был, фиксируются
+    ``ready/legacy_preserved`` и не наполняются задним числом. Ещё не посещённые места получат резерв при входе.
+    Вызывается в транзакции записи мира; возвращает, сколько мест зафиксировано."""
+    from app.core.world_generation.contracts import POLICY_VERSION
+    from app.core.world_tx import world_write
+    from app.db.models import now
+
+    have = set(
+        await session.scalars(
+            select(WorldGenerationState.target_entity_id).where(
+                WorldGenerationState.campaign_id == campaign_id, WorldGenerationState.phase == "location_initial"
+            )
+        )
+    )
+    places = await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "location"))
+    heroes = await session.scalars(select(Character.location_id).where(Character.campaign_id == campaign_id))
+    scene = await session.get(Scene, campaign_id)
+    here = {p for p in heroes if p} | ({scene.location_id} if scene is not None and scene.location_id else set())
+    seen = [p for p in places if p.id not in have and (p.id in here or (p.state or {}).get("visited_by"))]
+    if not seen:
+        return 0
+    await world_write(session, campaign_id)
+    t = now()
+    for p in seen:
+        session.add(
+            WorldGenerationState(
+                campaign_id=campaign_id,
+                target_entity_id=p.id,
+                phase="location_initial",
+                status="ready",
+                quality="legacy_preserved",
+                generator_version=POLICY_VERSION,
+                completed_at=t,
+                result_manifest={"objects": [], "notes": ["legacy_preserved"]},
+            )
+        )
+    return len(seen)
