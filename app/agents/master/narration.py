@@ -74,7 +74,8 @@ class NarrationMixin:
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
         if outcome is not None:
             audit["transition_outcome"] = outcome
-        can_stream = stream is not None and outcome != "failed" and not attack_rejected
+        has_resolution = any(ev.tool == "resolve_action" for ev in ctx.events)
+        can_stream = stream is not None and outcome != "failed" and not attack_rejected and not has_resolution
         push = textcalls.StreamFilter(stream.push) if can_stream else None
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
         if push is not None:

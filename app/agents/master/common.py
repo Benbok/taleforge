@@ -52,7 +52,7 @@ def decision_tools(ctx: ToolContext) -> list[str]:
         off.add("enter_room")
     if not audio.enabled(ctx.campaign):
         off |= set(AUDIO_TOOLS)
-    return [n for n in DECISION_TOOLS if n not in off]
+    return [n for n in REGISTRY if n != "review_character" and n not in off]
 
 
 _env = jinja2.Environment(

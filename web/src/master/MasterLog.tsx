@@ -13,6 +13,12 @@ interface Call {
   secret?: boolean;
   routed?: boolean;
   auto?: boolean;
+  request_key?: string;
+  failure_code?: string;
+  failure_category?: string;
+  resolution_origin?: string;
+  resolution_outcome?: string | null;
+  rolled_back?: boolean;
 }
 interface Llm {
   purpose: string;
@@ -85,6 +91,10 @@ function CallLine({ c }: { c: Call }) {
       {c.secret && <span className="ml-1 text-xs text-muted">[скрыто]</span>}
       {c.routed && <span className="ml-1 text-xs text-muted">[сервер]</span>}
       {c.auto && <span className="ml-1 text-xs text-muted">[авто]</span>}
+      {c.rolled_back && <span className="ml-1 text-xs text-bad">[ход отменён]</span>}
+      {c.failure_code && <span className="ml-1 text-xs text-muted">[{c.failure_category}: {c.failure_code}]</span>}
+      {c.resolution_origin && <span className="ml-1 text-xs text-muted">[{c.resolution_origin}: {c.resolution_outcome ?? "—"}]</span>}
+      {c.request_key && <span className="ml-1 text-xs text-muted" title={c.request_key}>[заявка {c.request_key.slice(0, 12)}]</span>}
     </li>
   );
 }

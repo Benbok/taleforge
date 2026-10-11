@@ -39,11 +39,28 @@ def _call(raw: dict[str, Any], hidden_events: set[str]) -> dict[str, Any]:
     name = raw.get("tool", "?")
     res = raw.get("result") or {}
     inner = res.get("result") if isinstance(res.get("result"), dict) else {}
-    secret = name in SECRET_TOOLS or bool(inner.get("hidden")) or res.get("event_id") in hidden_events
+    secret = bool((raw.get("args") or {}).get("hidden")) or (
+        bool(raw.get("secret"))
+        or name in SECRET_TOOLS
+        or bool(inner.get("hidden"))
+        or res.get("event_id") in hidden_events
+    )
     t = REGISTRY.get(name)
     out: dict[str, Any] = {"tool": name, "secret": secret, "ok": bool(res.get("ok")), "args": _scalars(raw.get("args"))}
     if res.get("error"):
         out["error"] = _short(res["error"])
+    failure = res.get("failure") or inner.get("failure") or {}
+    for source, target in (("code", "failure_code"), ("category", "failure_category")):
+        if failure.get(source):
+            out[target] = _short(failure[source])
+    if raw.get("request_key"):
+        out["request_key"] = raw["request_key"]
+    if name == "adjudicate_action":
+        out["ok"] = inner.get("execution") in {"applied", "repeated"}
+        out["resolution_origin"] = ((raw.get("args") or {}).get("proposal") or {}).get("origin", "fallback")
+        out["resolution_outcome"] = inner.get("game_outcome")
+    elif raw.get("resolution_origin"):
+        out["resolution_origin"] = raw["resolution_origin"]
     if t is None or t.mutating:  # у читающих инструментов (сцена, лист, шаблон) результат — справка, не событие
         out["result"] = _scalars(inner)
     for k in ("routed", "auto"):
@@ -100,7 +117,25 @@ async def build(s: AsyncSession, campaign_id: str, settings: Settings, limit: in
     out = []
     for t in turns:
         tr = t.trace or {}
-        calls = [_call(c, hidden) for c in tr.get("calls") or []]
+        children = list(tr.get("resolution_operations") or [])
+        ordered = []
+        for call in tr.get("calls") or []:
+            matched = [
+                child
+                for child in children
+                if child.get("parent_call_key") and child.get("parent_call_key") == call.get("call_key")
+            ]
+            ordered.extend(matched)
+            children = [child for child in children if child not in matched]
+            ordered.append(
+                {**call, "secret": bool(call.get("secret")) or any(child.get("secret") for child in matched)}
+            )
+        calls = [_call(c, hidden) for c in [*ordered, *children]]
+        if tr.get("rolled_back"):
+            for call in calls:
+                call.update(ok=False, rolled_back=True)
+                call.pop("result", None)
+                call.pop("resolution_outcome", None)
         out.append(
             {
                 "id": t.id,

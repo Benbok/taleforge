@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogError
+from app.core.resolution.contracts import ActionRef, FailureCategory, FailureInfo
 from app.core.world import World, WorldError, load_world
 from app.db.models import Campaign, Event
 from app.rules.dice import Dice, DiceError, DiceRoll
@@ -29,6 +30,28 @@ log = logging.getLogger(__name__)
 
 class ToolError(Exception):
     """Отказ инструмента с причиной и, если есть, допустимыми вариантами. Уходит модели."""
+
+    def __init__(self, message: str, *, code: str = "unclassified", category: FailureCategory = "unknown"):
+        super().__init__(message)
+        self.code = code
+        self.category = category
+
+
+class UnsupportedMechanicError(ToolError):
+    """Server-confirmed absence of a supported mechanic, never an inferred error."""
+
+    def __init__(self, message: str, *, code: str = "unsupported_mechanic"):
+        super().__init__(message, code=code, category="unsupported")
+
+
+def _failure(message: str, code: str, category: FailureCategory, key: str | None, *, rolled_back=False):
+    return {
+        "ok": False,
+        "error": message,
+        "failure": FailureInfo(
+            code=code, category=category, rolled_back=rolled_back, attempt_id=key or ""
+        ).model_dump(),
+    }
 
 
 @dataclass
@@ -51,6 +74,11 @@ class ToolContext:
     notices: list[tuple[str, dict[str, Any], list[str] | None]] = field(default_factory=list)
     call_key: str | None = None
     _first_event: Event | None = None
+    resolved_actions: set[str] = field(default_factory=set)
+    required_actions: list[ActionRef] = field(default_factory=list)
+    remaining_resolution_calls: int = 0
+    resolution_calls_used: int = 0
+    turn_diagnostics: dict = field(default_factory=dict)
 
     async def record(
         self,
@@ -190,7 +218,18 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     key = _fit_key(key)
     t = REGISTRY.get(name)
     if t is None:
-        return {"ok": False, "error": f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}"}
+        return _failure(f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}", "unknown_tool", "unknown", key)
+    if name == "roll_check" and key:
+        from app.tools.resolution.context import refresh_world
+        from app.tools.resolution.requests import bound_tool_key, lock_resolution_source
+
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == (raw_args or {}).get("character_id")]
+        if refs and key == await bound_tool_key(ctx, name, raw_args or {}, "unbound_check"):
+            # Serialize before reading the cached roll; a unique index alone
+            # prevents duplicate storage but cannot prevent a second dice roll.
+            for ref in sorted(refs, key=lambda ref: (ref.source_id, ref.part)):
+                await lock_resolution_source(ctx, ref)
+            await refresh_world(ctx)
     if key and t.mutating:
         q = select(Event).where(Event.campaign_id == ctx.campaign.id, Event.idempotency_key == key)
         prev = (await ctx.session.scalars(q)).first()
@@ -200,7 +239,7 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         args = t.args.model_validate(raw_args or {})
     except ValidationError as e:
         errs = "; ".join(f"{'.'.join(map(str, x['loc'])) or 'аргументы'}: {x['msg']}" for x in e.errors())
-        return {"ok": False, "error": f"неверные аргументы: {errs}"}
+        return _failure(f"неверные аргументы: {errs}", "invalid_arguments", "invalid_arguments", key)
     for fname, kind in t.id_fields.items():
         values = _enum_values(ctx.world, kind)
         val = getattr(args, fname, None)
@@ -216,11 +255,15 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
         ]
         if bad:
             hint = f"; допустимо: {', '.join(values[:30])}" if values else ""
-            return {"ok": False, "error": f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}"}
+            return _failure(
+                f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}", "invalid_target", "rule_denial", key
+            )
+    from app.tools.resolution.context import restore_context, snapshot_context
+
+    snapshot = snapshot_context(ctx)
     ctx.call_key = key
     ctx._first_event = None
     nested = await ctx.session.begin_nested()
-    outbox = len(ctx.outbox)
     try:
         result = await t.handler(ctx, args)
         if t.mutating:
@@ -228,12 +271,17 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
                 await hook(ctx, result)
     except (ToolError, WorldError, RulesError, DiceError, CatalogError) as e:
         await nested.rollback()
-        del ctx.outbox[outbox:]  # строки в чат от отменённого вызова не уходят
         # Откат точки сохранения сбрасывает изменённые объекты: перечитываем мир, чтобы следующий вызов видел БД
         await ctx.session.refresh(ctx.campaign)
         ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog)
-        ctx.events = [ev for ev in ctx.events if ev in ctx.session]
-        return {"ok": False, "error": str(e)}
+        restore_context(ctx, snapshot)
+        return _failure(
+            str(e),
+            e.code if isinstance(e, ToolError) else "unclassified",
+            e.category if isinstance(e, ToolError) else "unknown",
+            key,
+            rolled_back=True,
+        )
     await nested.commit()
     ev = ctx._first_event
     if ev is not None:
@@ -241,8 +289,9 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     cid = getattr(args, "character_id", None)
     if t.closes_actions and cid:
         ctx.closed.add(cid)
-    for cid in getattr(args, "character_ids", None) or []:
-        ctx.closed.add(cid)
+    if t.closes_actions:
+        for cid in getattr(args, "character_ids", None) or []:
+            ctx.closed.add(cid)
     for f in ("attacker_id", "caster_id"):
         if t.closes_actions and getattr(args, f, None):
             ctx.closed.add(getattr(args, f))

@@ -242,7 +242,7 @@ def character_actor(
         effects=effs,
         modifiers=mods_,
         zone="party",
-        speed=int(d.speed or 30),
+        speed=_effective_speed(int(d.speed), mods_),
         features=have,
         class_numbers=cf.numbers(cls.data, level) if cls else {},
         level=level,
@@ -316,8 +316,18 @@ def creature_actor(en: Entity, cat: CatalogView, effects: list[ActiveEffect]) ->
         modifiers=mods_,
         zone=en.zone,
         template_id=en.template_id,
-        speed=_walk_speed(rec.data.get("speed")),
+        speed=_effective_speed(_walk_speed(rec.data.get("speed")), mods_),
     )
+
+
+def _effective_speed(base: int, modifiers: mod.Modifiers) -> int:
+    """Ограничения скорости из эффектов применяются к героям и существам одинаково."""
+    limits = [
+        int(m["value"])
+        for _, m in modifiers.own("set")
+        if m.get("target") == "speed" and isinstance(m.get("value"), (int, float))
+    ]
+    return max(0, min([base, *limits]))
 
 
 def _walk_speed(v: Any) -> int:
@@ -783,8 +793,8 @@ def format_time(seconds: int) -> str:
     return f"день {days + 1}, {h:02d}:{m:02d}" + (f":{s:02d}" if s else "")
 
 
-async def get_scene(session: AsyncSession, campaign_id: str) -> Scene:
-    scene = await session.get(Scene, campaign_id)
+async def get_scene(session: AsyncSession, campaign_id: str, *, refresh: bool = False) -> Scene:
+    scene = await session.get(Scene, campaign_id, populate_existing=refresh)
     if scene is None:
         scene = Scene(campaign_id=campaign_id, mode="free", round=0, turn_order=[])
         session.add(scene)
@@ -792,22 +802,48 @@ async def get_scene(session: AsyncSession, campaign_id: str) -> Scene:
     return scene
 
 
-async def load_world(session: AsyncSession, campaign: Campaign, catalog: CatalogView) -> World:
-    chars = (await session.scalars(select(Character).where(Character.campaign_id == campaign.id))).all()
-    ents = (await session.scalars(select(Entity).where(Entity.campaign_id == campaign.id))).all()
+async def load_world(
+    session: AsyncSession, campaign: Campaign, catalog: CatalogView, *, refresh: bool = False
+) -> World:
+    chars = (
+        await session.scalars(
+            select(Character).where(Character.campaign_id == campaign.id).execution_options(populate_existing=refresh)
+        )
+    ).all()
+    ents = (
+        await session.scalars(
+            select(Entity).where(Entity.campaign_id == campaign.id).execution_options(populate_existing=refresh)
+        )
+    ).all()
     ids = [c.id for c in chars]
     inv_rows = (
-        (await session.scalars(select(InventoryItem).where(InventoryItem.character_id.in_(ids)))).all() if ids else []
+        (
+            await session.scalars(
+                select(InventoryItem)
+                .where(InventoryItem.character_id.in_(ids))
+                .execution_options(populate_existing=refresh)
+            )
+        ).all()
+        if ids
+        else []
     )
     inventory: dict[str, list[InventoryItem]] = {}
     for it in inv_rows:
         inventory.setdefault(it.character_id, []).append(it)
-    effects = list((await session.scalars(select(ActiveEffect).where(ActiveEffect.campaign_id == campaign.id))).all())
-    secret = await session.get(CampaignSecret, campaign.id)
+    effects = list(
+        (
+            await session.scalars(
+                select(ActiveEffect)
+                .where(ActiveEffect.campaign_id == campaign.id)
+                .execution_options(populate_existing=refresh)
+            )
+        ).all()
+    )
+    secret = await session.get(CampaignSecret, campaign.id, populate_existing=refresh)
     return World(
         campaign=campaign,
         catalog=catalog,
-        scene=await get_scene(session, campaign.id),
+        scene=await get_scene(session, campaign.id, refresh=refresh),
         characters={c.id: c for c in chars},
         entities={e.id: e for e in ents},
         inventory=inventory,

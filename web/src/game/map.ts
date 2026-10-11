@@ -374,10 +374,15 @@ export const CELL_FT = 5;
 export const ZONE_CELLS: Record<Zone, number> = { melee: 1, near: 6, far: 12 };
 export const GRID_R = 13; // схема — квадрат (2·13+1) клеток, центр отряда в клетке (0, 0)
 
+/** Механическая клетка записана движком; книжная — известна по модулю.
+ * Схематическая вычислена для рисунка и не является целью перемещения. */
+export type CellPlacement = "mechanical" | "book" | "schematic";
+
 export interface Cell<T> {
   item: T;
-  col: number; // от −GRID_R до GRID_R, восток вправо
-  row: number; // от −GRID_R до GRID_R, юг вниз
+  col: number; // восток вправо, точная клетка может оказаться за краем экрана
+  row: number; // юг вниз
+  placement: CellPlacement;
 }
 
 export interface GridLayout {
@@ -484,24 +489,23 @@ export function layoutGrid(m: MapState): GridLayout {
     }
     const [col, row] = freeCell(at[0], at[1], taken, limit, allowed);
     taken.add(`${col},${row}`);
-    return { item, col, row };
+    return { item, col, row, placement: "schematic" };
   };
-  // стоящие на клетке (бой на сетке) — ровно там, их клетки заняты раньше всех; без эскиза — в пределах схемы
-  const exact = <T>(item: T, [c, r]: [number, number]): Cell<T> => {
-    const col = frame ? c : Math.max(-GRID_R, Math.min(GRID_R, c));
-    const row = frame ? r : Math.max(-GRID_R, Math.min(GRID_R, r));
+  // Точная клетка не сдвигается к краю изображения: иначе меняется механическая дистанция.
+  // Книжная клетка известна геометрически, но необязательно записана в состоянии боя.
+  const exact = <T>(item: T, [col, row]: [number, number], placement: "mechanical" | "book"): Cell<T> => {
     taken.add(`${col},${row}`);
-    return { item, col, row };
+    return { item, col, row, placement };
   };
   const party = m.party ?? [];
   const placed = new Map<string, Cell<MapHero> | Cell<MapThing>>();
   for (const h of party) {
-    const cell = bookCells.get(h.id) ?? h.cell;
-    if (cell) placed.set(h.id, exact(h, cell));
+    const cell = h.cell ?? bookCells.get(h.id);
+    if (cell) placed.set(h.id, exact(h, cell, h.cell ? "mechanical" : "book"));
   }
   for (const t of m.around) {
-    const cell = bookCells.get(t.id) ?? t.cell;
-    if (cell) placed.set(t.id, exact(t, cell));
+    const cell = t.cell ?? bookCells.get(t.id);
+    if (cell) placed.set(t.id, exact(t, cell, t.cell ? "mechanical" : "book"));
   }
   // потом герои в строю — вокруг центра, потом все остальные по зонам; выходы — по краю схемы
   const heroes = [
@@ -523,9 +527,26 @@ export function layoutGrid(m: MapState): GridLayout {
   // область не занимает клетку: она лежит под значками
   const areas = (m.areas ?? []).map((a) => {
     const [col, row] = target(a.id, a.bearing, ZONE_CELLS[a.zone] ?? ZONE_CELLS.near);
-    return { item: a, col, row };
+    return { item: a, col, row, placement: "schematic" as const };
   });
   return { heroes, things, exits, areas };
+}
+
+/** Точная клетка за пределом видимой схемы не подменяется граничной. */
+export function inMapFrame(position: Pick<Cell<unknown>, "col" | "row">, sketch?: Sketch | null): boolean {
+  if (sketch) {
+    const frame = sketchFrame(sketch);
+    return (
+      position.col >= frame.minCol && position.col <= frame.maxCol &&
+      position.row >= frame.minRow && position.row <= frame.maxRow
+    );
+  }
+  return Math.abs(position.col) <= GRID_R && Math.abs(position.row) <= GRID_R;
+}
+
+/** Клик на условный значок не может стать точным запросом map.step. */
+export function mechanicalNear<T>(position: Cell<T>): [number, number][] {
+  return position.placement === "mechanical" ? [[position.col, position.row]] : [];
 }
 
 /** Эскиз в координатах схемы: отряд в клетке (0, 0), как в раскладке по зонам. */

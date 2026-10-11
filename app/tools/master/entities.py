@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.core import positions as grid
 from app.core.positions import areas_at
 from app.core.world import PLAYABLE
-from app.db.models import Entity
+from app.db.models import Entity, MasterTurn
 from app.tools.master.base import (
     BEARING_HINT,
     CELL_HINT,
@@ -113,6 +113,17 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     rec = ctx.world.catalog.get(a.creature_template_id, "creature_template")
     creature_stats(rec.data)  # без блока статов существо в сцену не выходит
     place = ctx.world.place_arg(a.location_id, "появляется существо")
+    if a.attitude != "hostile" and ctx.turn_id:
+        turn = await ctx.session.get(MasterTurn, ctx.turn_id)
+        if turn is not None and turn.status == "running":
+            from app.tools.resolution.creative import autonomous_neutral_spawn_allowed
+
+            if not autonomous_neutral_spawn_allowed(ctx, a, place):
+                raise ToolError(
+                    "Новому NPC нет подтверждённого свободного места; используй существующий канон или develop.",
+                    code="canon_not_free",
+                    category="rule_denial",
+                )
     if a.attitude == "hostile":
         b = encounter_budget(ctx, [{"xp": int(rec.data.get("xp") or 0)} for _ in range(a.count)], place)
         if not b["ok"]:

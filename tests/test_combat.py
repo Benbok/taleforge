@@ -532,6 +532,7 @@ def test_grapple_breaks_on_distance_and_incapacitation(game):
             item.equipped = False
         ctx.world.invalidate(hero)
         goblin = await _fight(ctx, hero, "creature.goblin", zone="melee", first="hero")
+        combat._begin_hero_turn(ctx, ctx.world.characters[hero])
         grab = await call(ctx, "resolve_grapple", {"attacker_id": hero, "target_id": goblin})
         assert grab["ok"] and grab["result"]["success"]
         pos = ctx.world.scene.state["positions"][hero]["cell"]

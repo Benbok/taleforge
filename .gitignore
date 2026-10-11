@@ -5,6 +5,7 @@ venv/
 .env
 .pytest_cache/
 .ruff_cache/
+.superpowers/
 .mypy_cache/
 *.egg-info/
 dist/
@@ -12,6 +13,7 @@ build/
 .coverage
 htmlcov/
 node_modules/
+web/node_modules
 *.db
 tools/.cache/
 /media/

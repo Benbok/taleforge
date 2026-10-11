@@ -218,7 +218,13 @@ def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, setti
     learn = {"character_ids": [hero["id"]], "subject_id": goblin, "fact": "Гоблин  боится огня."}
     about = {"character_ids": [hero["id"]], "subject_id": gimli["id"], "fact": "Гимли служил в страже."}
     llm.replies += [
-        {"tool_calls": [("learn_fact", learn), ("learn_fact", about)]},
+        {
+            "tool_calls": [
+                ("learn_fact", learn),
+                ("learn_fact", about),
+                ("auto_success", {"character_id": hero["id"], "reason": "Пленник ответил на вопросы"}),
+            ]
+        },
         DONE,
         {"text": "Гоблин-разведчик скалится на **Гимли**. Бран поднимает факел."},
     ]
