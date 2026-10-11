@@ -447,13 +447,16 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
         assert narration_msg["kind"] == "narration"
         assert "data" in narration_msg and "voice" in narration_msg["data"]
         # Проверяем, что запрос к Gemini ушёл с голосом Aoede
-        assert requested_voices == ["Aoede"]
+        client.portal.call(client.app.state.master.wait_idle, c["id"])
+        assert requested_voices == ["Aoede", "Aoede"]  # реплика и текст мастера одним голосом
 
 
-def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, tmp_path):
+def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
+    """Сначала звучит короткая реплика, за ней в фоне — весь окончательный текст мастера тем же сообщением."""
+    from app.db.models import Message
     from tests.conftest import login
     from tests.game import import_base, party
-    from tests.test_master import act
+    from tests.test_master import act, rows
 
     import_base(settings)
     settings = dataclasses.replace(
@@ -539,9 +542,13 @@ def test_master_turn_synthesizes_voice_line_instead_of_full_narration(settings, 
         assert msg["kind"] == "narration"
         assert "Длинный текст повествования" in msg["content"]
         assert "data" in msg and "voice" in msg["data"]
-        # Проверяем, что в TTS ушла короткая реплика, а не длинный нарратив
-        assert synthesized_texts == ["Отличный прыжок, храбрец!"]
         assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
+        assert msg["data"]["voice_parts"] == 2  # реплика и текст; текст показан, не дожидаясь своей озвучки
+        client.portal.call(client.app.state.master.wait_idle, c["id"])
+        assert synthesized_texts[0] == "Отличный прыжок, храбрец!"
+        assert len(synthesized_texts) == 2 and "Длинный текст повествования" in synthesized_texts[1]
+        saved = next(m for m in rows(settings, Message, Message.id == msg["id"]))
+        assert len(saved.data["voices"]) == 2 and saved.data["voice"]["text"] == "Отличный прыжок, храбрец!"
         voice_messages = llm.voice_requests[-1]["messages"]
         assert "Сочувствует смелым попыткам" in voice_messages[0]["content"]
         assert "Прыгаю через пропасть!" in voice_messages[1]["content"]

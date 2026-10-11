@@ -16,7 +16,9 @@ from typing import Any, Protocol
 
 from sqlalchemy import func, select
 
+from app.agents import voiceover
 from app.agents.master import checkpoint
+from app.agents.master.common import MARKUP
 from app.core import preparation
 from app.core.campaigns import master_seat
 from app.core.chat import next_seq, system_message
@@ -200,15 +202,32 @@ class FinishMixin:
             msg.visible_to = self._audience_for(c, cp.get("audience"))
             place = cp.get("place")
             data = {"place": place} if msg.visible_to is not None and place is not None else {}
-            if voice_data:
-                data["voice"] = {**voice_data, "text": voice_line}
+            voices = [{**voice_data, "text": voice_line}] if voice_data else []
+            spoken = MARKUP.sub(r"\2", narration)
+            parts = voiceover.split(spoken) if self._tts_ready(c) else []
+            if voices or parts:
+                data.update(voiceover.data_of(voices, len(voices) + len(parts)))
             msg.data = data or None
             party = [await system_message(s, c, text, None) for text in (cp.get("inputs") or {}).get("party_notes", [])]
             turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
             turn.trace = {**(turn.trace or {}), "audit": audit, "voice_line": voice_line}
             turn.generation_checkpoint = {**cp, "stage": "done"}
             await s.commit()
+        if parts:
+            self._spawn(voiceover.attach(self, msg, self._narration_voice(c).finish(spoken)))
         return [msg, *party]
+
+    def _narration_voice(self, c: Campaign) -> voiceover.VoiceJob:
+        """Озвучка всего текста мастера после короткой реплики: идёт в фоне, когда ход уже сохранён, части
+        прикрепляются к показанному сообщению. Сбой части не трогает ни текст, ни следующий ход."""
+        st = c.settings or {}
+
+        async def synth(part: str) -> dict | None:
+            return await self.tts.voice_for_narration(
+                self.media_dir, c.id, part, provider=st.get("tts_provider"), voice_name=st.get("tts_voice")
+            )
+
+        return voiceover.VoiceJob(synth)
 
     async def _narration_failed(self, cid: str, turn_id: str, reason: str) -> list[Message]:
         """Описание не удалось: действия остаются, строка повествования убирается, игроки узнают, что действие
