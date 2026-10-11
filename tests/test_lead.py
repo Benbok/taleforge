@@ -12,6 +12,11 @@ from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  
 from tests.test_plan import FakeCatalog, good_plan
 
 
+def last_turn(settings) -> MasterTurn:
+    # без ORDER BY PostgreSQL отдаёт строки в порядке хранения: обновлённый ход уезжает в конец
+    return sorted(rows(settings, MasterTurn), key=lambda t: t.started_at)[-1]
+
+
 def checked() -> dict:
     p, errors = plot.check(good_plan(), length="short", catalog=FakeCatalog(), excluded=[])
     assert errors == []
@@ -173,7 +178,7 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
         "итог — Герои видели" in replan["messages"][1]["content"] or "Герои видели" in replan["messages"][1]["content"]
     )
 
-    turn = rows(settings, MasterTurn)[-1]
+    turn = last_turn(settings)
     assert all(x["result"]["ok"] for x in turn.trace["calls"]), turn.trace["calls"]
 
     (secret,) = rows(settings, CampaignSecret)
@@ -210,6 +215,6 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
         {"text": "Ветер."},
     ]
     act(game_client, p1, cid, "Жду")
-    turn = rows(settings, MasterTurn)[-1]
+    turn = last_turn(settings)
     first = turn.trace["calls"][0]
     assert first["tool"] == "advance_plot" and not first["result"]["ok"] and "n_arrival" in first["result"]["error"]
