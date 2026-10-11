@@ -221,6 +221,7 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
         st.pop("cell", None)  # зона и сторона заменяют точную клетку
     if a.fled:
         en.location_id = None
+        st["fled"] = True  # бой и связывание сущностей узнают сбежавшего по этой пометке, а не по месту
         changes["fled"] = True
     en.state = st
     ctx.world.invalidate(en.id)

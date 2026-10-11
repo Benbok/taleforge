@@ -86,6 +86,29 @@ def test_cowardly_flees_and_opportunity_attack(game):
     assert mode == "free" and any("бой окончен" in n for n in notes)
 
 
+def test_fled_creature_leaves_fight_for_hero_with_own_place(game):
+    """Герой, вошедший в комнату, стоит в месте сцены явно; сбежавшее существо уходит со сцены, и бой кончается —
+    в этом же ходе и в следующем."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        r = await call(ctx, "create_location", {"name": "Крипта", "make_current": True})
+        assert r["ok"], r
+        ctx.world.characters[hero].location_id = ctx.world.scene.location_id
+        wolf = await _fight(ctx, hero, "creature.wolf", zone="melee", hp=4)
+        notes = await combat.run_until_hero(ctx, "k", lambda *_: asyncio.sleep(0, False))
+        assert any("бежит" in n for n in notes) and any("бой окончен" in n for n in notes)
+        return wolf
+
+    wolf = play(settings, cid, [], fn)
+
+    async def after(ctx):
+        en = ctx.world.entities[wolf]
+        return en.state.get("fled"), ctx.world.scene.mode
+
+    assert play(settings, cid, [], after) == (True, "free")
+
+
 def test_round_advance_expires_and_game_time(game):
     settings, cid, hero = game
 
