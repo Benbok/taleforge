@@ -1,211 +1,485 @@
-"""Генерация World Objects: транзакционная фиксация, бюджет, скрытое содержимое и сюжет."""
+# ruff: noqa: F811
+"""Подготовка исследуемых сцен, поставка 3 (docs/world-objects-delivery3.md, §3): профили, дерево бюджета,
+lease/CAS, атомарная материализация, исследование контейнера и ожидание подготовки в ходе."""
 
 from __future__ import annotations
 
+import asyncio
+from datetime import timedelta
+
+import pytest
 from sqlalchemy import select
 
 from app.content.catalog import Catalog, Entry
-from app.core import world_generation as gen
-from app.db.models import PlotAnchorBinding, WorldGenerationState
+from app.core import world_tx
+from app.core.world_generation import storage
+from app.core.world_generation.contracts import Blocked, Proposal, ProposedObject
+from app.core.world_generation.policy import build_plan, child_seed, root_reservation
+from app.core.world_generation.profiles import MINIMAL, ProfileError, eligible, load_profile, parse_profile
+from app.core.world_generation.service import Orchestrator
+from app.core.world_generation.validation import validate
+from app.db.models import Campaign, Character, Entity, Event, PlotAnchorBinding, WorldGenerationState, now
+from app.db.session import make_engine, make_sessionmaker
+from app.gateway.coordination import InMemoryCoordination
 from app.tools.registry import execute
-from tests.game import import_base, party
-from tests.test_map import _map, _ok, _play
+from tests.game import import_base, party, run
+from tests.test_map import _ok, _play
+from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры хода
+
+WGS = WorldGenerationState
 
 
-def test_generator_whitelist_budget_and_seed_are_deterministic():
-    def entry(eid: str, **fields) -> Entry:
-        return Entry(eid, "item_template", fields.pop("status", "canon"), "pack", fields)
-
-    good = entry("item.good", category="gear", price={"gp": 2})
-    candidate = entry("item.cheap", category="consumable", rarity="common", price={"sp": 8})
-    blocked = [
-        entry("item.unique", category="gear", unique=True, price={"gp": 1}),
-        entry("item.plot", category="gear", story_gate=True, price={"gp": 1}),
-        entry("item.rare", category="gear", rarity="rare", price={"gp": 1}),
-        entry("item.service", category="service", price={"gp": 1}),
-        entry("item.custom", category="gear", modifiers=[{"op": "custom"}], price={"gp": 1}),
-        entry("item.free", category="gear", status="proposal", price={"gp": 1}),
-        entry("item.unknown", category="gear", price={"fk": 20}),
-        entry("item.no_price", category="gear"),
-    ]
-    catalog = Catalog({e.id: e for e in [good, candidate, *blocked]}).view(allow_proposals=True)
-    profile = gen.LocationProfile(
-        (("Сундук", "item:chest"),), tuple(e.id for e in [good, candidate, *blocked]), 250, 3, 2
-    )
-    pool = gen.permitted_pool(catalog, profile)
-    assert {e.id for e in pool} == {"item.good", "item.cheap"}
-    seed = gen.stable_seed("camp", "room", "location_initial", "склад")
-    assert seed == gen.stable_seed("camp", "room", "location_initial", "склад")
-    assert seed != gen.stable_seed("camp", "other_room", "location_initial", "склад")
-    chosen = gen.choose_loot(pool, seed, profile.budget_cp, 3)
-    assert [e.id for e in chosen] == [e.id for e in gen.choose_loot(list(reversed(pool)), seed, 250, 3)]
-    assert sum(gen.item_price_cp(e) for e in chosen) <= 250
-    assert gen.choose_loot([], seed, 0, 2) == []
-    assert gen.choose_loot(pool, seed, 250, 0) == []
-    assert gen.source_snapshot(pool, "склад", "location_initial")[0] == ["pack"]
+@pytest.fixture(autouse=True)
+def _fast_retry(monkeypatch):
+    monkeypatch.setattr(storage, "RETRY_AFTER", timedelta(0))
 
 
-def test_location_and_container_generate_once_and_keep_persistent_ids(client, admin, settings):
+def _with_maker(settings, fn):
+    async def go():
+        engine = make_engine(settings.database_url)
+        try:
+            return await fn(make_sessionmaker(engine))
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(go())
+
+
+def _prepare(settings, cid, ref, orchestrator=None):
+    orch = orchestrator or Orchestrator(InMemoryCoordination())
+    return _with_maker(settings, lambda maker: orch.prepare(maker, cid, ref))
+
+
+def _row(settings, ref) -> WorldGenerationState:
+    return run(settings, lambda s: s.get(WGS, ref))
+
+
+def _generated(settings, ref) -> list[Entity]:
+    async def go(s):
+        found = (await s.scalars(select(Entity).where(Entity.kind == "object"))).all()
+        return [e for e in found if ((e.state or {}).get("world_object") or {}).get("generation_ref") == ref]
+
+    return run(settings, go)
+
+
+def _room(settings, cid, name="Склад", profile="scene_profile.warehouse"):
+    """Место, назначенный профиль и принятая подготовка."""
+
+    async def build(ctx):
+        room = (await _ok(ctx, "create_location", {"name": name, "make_current": True}))["location_id"]
+        out = await _ok(ctx, "resolve_location", {"location_id": room, "profile_id": profile})
+        return room, out["operation_ref"]
+
+    return _play(settings, cid, build)
+
+
+# --- профиль ---
+
+
+def _entry(eid: str, kind: str = "item_template", **data) -> Entry:
+    return Entry(eid, kind, data.pop("status", "canon"), "pack", data)
+
+
+def _profile(**over):
+    data = {
+        "schema_version": 1,
+        "loot_budget": 20,
+        "visible_share": 30,
+        "limits": {"max_generated_entities": 10, "max_item_units": 6, "max_containers": 3, "max_depth": 2},
+        "items": [{"template": "item.good", "generation_cost": 2}],
+        "containers": [{"slot": "chest", "name": "Сундук", "visual_key": "item:chest"}],
+        "inner_containers": [{"slot": "box", "name": "Шкатулка"}],
+    }
+    return _entry("scene_profile.test", "scene_profile", **(data | over))
+
+
+def _catalog(*extra: Entry):
+    good = _entry("item.good", category="gear")
+    entries = [good, _entry("item.rare", category="gear", rarity="rare"), *extra]
+    return Catalog({e.id: e for e in entries}).view(allow_proposals=False)
+
+
+def test_profile_is_strict_and_minimal_has_no_loot(settings):
+    catalog = _catalog()
+    profile = parse_profile(_profile(), catalog)
+    assert profile.budget == 20 and profile.items[0].cost == 2 and profile.limits.depth == 2
+    for bad in (
+        _profile(surprise=1),
+        _profile(items=[{"template": "item.good", "generation_cost": 0}]),
+        _profile(items=[{"template": "item.missing", "generation_cost": 1}]),
+        _profile(items=[{"template": "item.rare", "generation_cost": 1}]),
+        _profile(limits={"max_generated_entities": 1}),
+        _profile(schema_version=2),
+    ):
+        with pytest.raises(ProfileError):
+            parse_profile(bad, catalog)
+    assert load_profile(catalog, None) is MINIMAL and load_profile(catalog, "minimal") is MINIMAL
+    with pytest.raises(ProfileError):
+        load_profile(catalog, "scene_profile.unknown")
+    campaign = Campaign(id="c1", content_chain=[])
+    res = root_reservation(campaign, "room", MINIMAL, [])
+    plan = build_plan(res, MINIMAL, "room")
+    assert res["budget"] == 0 and plan.slots == [] and plan.children == {}
+
+    # базовый пакет: все профили проходят строгую проверку, шаблоны — только допустимая добыча
     import_base(settings)
-    campaign, (player,), hero = party(client, admin)
+
+    async def base(s):
+        from app.content.catalog import campaign_catalog
+
+        cat = await campaign_catalog(s, Campaign(id="probe", content_chain=[]))
+        found = cat.by_kind("scene_profile")
+        assert len(found) == 8
+        for entry in found:
+            p = parse_profile(entry, cat)
+            assert p.items and all(eligible(cat.get(r.template, "item_template")) for r in p.items)
+
+    run(settings, base)
+
+
+def _walk(res, profile, target="t", depth=0):
+    plan = build_plan(res, profile, target)
+    total = plan.spent + sum(int(c["budget"]) for c in plan.children.values())
+    assert total <= int(res["budget"])
+    out = [(res["path"], plan.spent, int(res["budget"]))]
+    for ref, child in plan.children.items():
+        assert int(child["budget"]) < int(res["budget"]) or int(res["budget"]) == 0
+        assert child["depth"] == res["depth"] - 1 and child["seed"] == child_seed(int(res["seed"]), ref)
+        out += _walk(child, profile, f"{target}/{ref}", depth + 1)
+    return out
+
+
+def test_budget_tree_shares_and_stable_seeds():
+    catalog = _catalog()
+    profile = parse_profile(_profile(loot_budget=40), catalog)
+    campaign = Campaign(id="camp", content_chain=[])
+    res = root_reservation(campaign, "room", profile, [])
+    tree = _walk(res, profile)
+    assert len(tree) > 2  # корень, контейнеры, вложенные
+    assert sum(spent for _path, spent, _budget in tree) <= 40
+    assert _walk(res, profile) == tree  # тот же резерв — тот же план, порядок обхода не важен
+    assert root_reservation(campaign, "other", profile, [])["seed"] != res["seed"]
+    # авторская добыча учитывается первой; шаблон вне профиля обнуляет остаток
+    assert root_reservation(campaign, "room", profile, ["item.good"])["budget"] == 38
+    unknown = root_reservation(campaign, "room", profile, ["item.dagger"])
+    assert unknown["budget"] == 0 and unknown["diagnostics"] == ["unknown_authored_cost"]
+
+
+def test_validation_accepts_only_plan_slots():
+    catalog = _catalog()
+    profile = parse_profile(_profile(loot_budget=40), catalog)
+    plan = build_plan(root_reservation(Campaign(id="c", content_chain=[]), "r", profile, []), profile, "r")
+    good = tuple(ProposedObject(s.slot_ref, s.role, s.name or "Вещь", "", s.template_id) for s in plan.slots)
+    validate(plan, Proposal(1, good))
+    item = next(o for o in good if o.role == "item")
+    for objects in (
+        (*good, ProposedObject("item:99", "item", "Лишнее", "", "item.good")),
+        tuple(o for o in good if o is not item),
+        tuple(ProposedObject(o.slot_ref, o.role, o.name, "", "item.rare") if o is item else o for o in good),
+        tuple(ProposedObject(o.slot_ref, o.role, "x" * 200, "", o.template_id) if o is item else o for o in good),
+    ):
+        with pytest.raises(Blocked):
+            validate(plan, Proposal(1, objects))
+
+
+# --- исполнение ---
+
+
+def test_location_prepares_once_with_reserves_for_children(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    room, ref = _room(settings, cid)
+    assert _row(settings, ref).requested_at is not None
+    assert _prepare(settings, cid, ref) == "ready"
+    row = _row(settings, ref)
+    assert row.status == "ready" and row.result_digest and row.attempt_count == 1
+    made = _generated(settings, ref)
+    assert {o["id"] for o in row.result_manifest["objects"]} == {e.id for e in made}
+    assert all(e.location_id == room for e in made)
+    children = run(settings, lambda s: s.scalars(select(WGS).where(WGS.phase == "container_contents")))
+    children = list(children)
+    assert children and set(row.result_manifest["children"].values()) == {c.id for c in children}
+    assert all(c.status == "unprepared" and c.requested_at is None for c in children)
+    total = row.result_manifest["spent"] + sum(c.reservation["budget"] for c in children)
+    assert total <= row.reservation["budget"]
+    assert _prepare(settings, cid, ref) == "ready"  # повтор ничего не создаёт
+    assert len(_generated(settings, ref)) == len(made)
+    events = rows(settings, Event, Event.tool == "prepare_scene")
+    assert len(events) == 1 and events[0].hidden
+
+
+def test_concurrent_preparation_makes_one_result(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+
+    async def both(maker):
+        a, b = Orchestrator(InMemoryCoordination()), Orchestrator(InMemoryCoordination())
+        return await asyncio.gather(a.prepare(maker, cid, ref), b.prepare(maker, cid, ref))
+
+    outcomes = _with_maker(settings, both)
+    assert "ready" in outcomes and set(outcomes) <= {"ready", "leased"}
+    row = _row(settings, ref)
+    assert {o["id"] for o in row.result_manifest["objects"]} == {e.id for e in _generated(settings, ref)}
+    assert len(rows(settings, Event, Event.tool == "prepare_scene")) == 1
+
+
+def test_expired_lease_is_taken_over_and_old_owner_cannot_write(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+    stale = _with_maker(settings, lambda maker: storage.claim(maker, cid, ref))
+    assert isinstance(stale, storage.Claim)
+    assert _prepare(settings, cid, ref) == "leased"  # живой lease чужой
+
+    async def expire(s):
+        (await s.get(WGS, ref)).lease_until = now() - timedelta(seconds=1)
+        await world_tx.world_write(s, cid)
+        await s.commit()
+
+    run(settings, expire)
+    assert _prepare(settings, cid, ref) == "ready"
+    row = _row(settings, ref)
+    assert row.attempt_count == 2  # счётчики не обнуляются при перехвате
+
+    async def late(maker):
+        orch = Orchestrator(InMemoryCoordination())
+        plan, proposal = await orch._plan(maker, stale)
+        with pytest.raises((storage.LeaseLost, world_tx.WorldConflict)):
+            await storage.commit_result(maker, orch.dice_factory, stale, plan, proposal)
+
+    _with_maker(settings, late)
+    assert len(rows(settings, Event, Event.tool == "prepare_scene")) == 1
+
+
+def test_failure_mid_insert_rolls_back_everything_and_retry_keeps_seed(client, admin, settings, monkeypatch):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+    reservation = dict(_row(settings, ref).reservation)
+
+    from app.tools.master import items
+
+    real = items._put_in_scene
+    calls = []
+
+    async def broken(*args, **kw):
+        calls.append(1)
+        if len(calls) == 1:  # обстановка уже вставлена, первая находка падает
+            raise RuntimeError("диск отвалился")
+        return await real(*args, **kw)
+
+    monkeypatch.setattr(items, "_put_in_scene", broken)
+    assert _prepare(settings, cid, ref) == "blocked"
+    row = _row(settings, ref)
+    assert row.last_error == "internal_error" and len(calls) == 1
+    assert _generated(settings, ref) == [] and rows(settings, WGS, WGS.phase == "container_contents") == []
+    monkeypatch.setattr(items, "_put_in_scene", real)
+
+    async def again(ctx):
+        return await _ok(ctx, "retry_preparation", {"operation_ref": ref})
+
+    assert _play(settings, cid, again)["operation_ref"] == ref
+    row = _row(settings, ref)
+    assert row.status == "unprepared" and row.reservation == reservation and row.seed == reservation["seed"]
+    assert _prepare(settings, cid, ref) == "ready"
+
+
+def test_world_change_conflicts_then_stale_context_and_retry(client, admin, settings, monkeypatch):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+    real = Orchestrator._plan
+    seen = []
+
+    async def racing(self, maker, claim):
+        out = await real(self, maker, claim)
+        seen.append(claim.ref)
+        async with maker() as s:  # кто-то изменил мир между снимком и записью
+            await world_tx.world_write(s, cid)
+            await s.commit()
+        return out
+
+    monkeypatch.setattr(Orchestrator, "_plan", racing)
+    assert _prepare(settings, cid, ref) == "blocked"
+    row = _row(settings, ref)
+    assert len(seen) == 2 and row.last_error == "stale_context" and row.conflict_count == 2
+    assert _generated(settings, ref) == []
+    monkeypatch.setattr(Orchestrator, "_plan", real)
+
+    async def again(ctx):
+        return await _ok(ctx, "retry_preparation", {"operation_ref": ref})
+
+    _play(settings, cid, again)
+    assert _row(settings, ref).conflict_count == 0
+    assert _prepare(settings, cid, ref) == "ready"
+
+
+def test_plot_anchor_blocks_preparation(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
     cid = campaign["id"]
 
-    async def first(ctx):
-        room = await _ok(ctx, "create_location", {"name": "Кладовая", "make_current": True})
-        room_id = room["location_id"]
-        manual = await _ok(ctx, "create_container", {"name": "Ручной сундук"})
-        assert not (await ctx.session.scalars(select(WorldGenerationState))).all()
-        before_entities = set(ctx.world.entities)
-        made = await _ok(ctx, "resolve_location", {"location_id": room_id, "profile": "склад"})
-        assert made["ready"] and not made["repeated"] and len(made["containers"]) == 3
-        assert set(made["containers"]).isdisjoint(before_entities)
-        for item_id in made["items"]:
-            obj = ctx.world.entities[item_id]
-            assert obj.location_id == room_id
-            assert obj.state["world_object"]["generation_ref"]
-            if obj.template_id:
-                rec = ctx.world.catalog.get(obj.template_id, "item_template")
-                assert gen.eligible(rec)
-                assert obj.state.get("visual_key") == rec.data.get("visual_key")
-        same = await _ok(ctx, "resolve_location", {"location_id": room_id, "profile": "склад"})
-        assert same["repeated"] and same["containers"] == made["containers"]
-        assert same["items"] == made["items"]
-        empty_manual = await _ok(ctx, "resolve_container", {"container_id": manual["container_id"]})
-        assert empty_manual["repeated"] and empty_manual["items"] == []
-        first_container = made["containers"][0]
-        assert ctx.world.entities[first_container].state["world_object"]["contents"]["status"] == "unprepared"
-        filled = await _ok(ctx, "resolve_container", {"container_id": first_container})
-        repeated = await _ok(ctx, "resolve_container", {"container_id": first_container})
-        assert filled["ready"] and not filled["repeated"]
-        assert repeated["repeated"] and repeated["items"] == filled["items"]
-        assert ctx.world.entities[first_container].state["world_object"]["contents"]["status"] == "ready"
-        for item_id in filled["items"]:
-            obj = ctx.world.entities[item_id]
-            assert obj.state["world_object"]["container_id"] == first_container
-        return room_id, made, first_container, filled
-
-    room_id, made, chest, filled = _play(settings, cid, first)
-    visible = _map(client, player, cid)
-    assert set(made["containers"]).issubset({x["id"] for x in visible["around"]})
-    seen_ids = {entry["id"] for entry in visible["around"]}
-    assert all(item_id not in seen_ids for item_id in filled["items"])
-
-    async def after(ctx):
-        row = await ctx.session.scalar(
-            select(WorldGenerationState).where(
-                WorldGenerationState.campaign_id == cid,
-                WorldGenerationState.target_entity_id == room_id,
-                WorldGenerationState.phase == "location_initial",
-            )
-        )
-        assert row.status == "ready"
-        assert row.seed is not None and row.context_digest and row.result_digest
-        opened = await _ok(ctx, "open_container", {"character_id": hero["id"], "container_id": chest})
-        assert opened["opened"]
-        contents = await _ok(ctx, "inspect_container", {"character_id": hero["id"], "container_id": chest})
-        assert {x["id"] for x in contents["contents"]} == set(filled["items"])
-        if filled["items"]:
-            moved = await _ok(
-                ctx,
-                "retrieve_object",
-                {"character_id": hero["id"], "container_id": chest, "object_id": filled["items"][0]},
-            )
-            assert moved["object_id"] == filled["items"][0]
-        repeat = await _ok(ctx, "resolve_container", {"container_id": chest})
-        assert repeat["repeated"] and repeat["items"] == filled["items"]
-        assert row.status == "ready"
-
-    _play(settings, cid, after)
-
-
-def test_story_anchor_materializes_once_but_missing_template_stays_reserved(client, admin, settings):
-    import_base(settings)
-    campaign, _, _ = party(client, admin)
-    cid = campaign["id"]
-
-    async def materialize(ctx):
-        room = await _ok(ctx, "create_location", {"name": "Склеп", "make_current": True})
-        rid = room["location_id"]
-        anchor = PlotAnchorBinding(
-            campaign_id=cid,
-            anchor_id="clue.handwritten-letter",
-            plot_ref="story.missing-person",
-            target_location_id=rid,
-            state="reserved",
-            source_snapshot={"item_template_id": "item.potion_of_healing"},
-        )
-        pending = PlotAnchorBinding(
-            campaign_id=cid,
-            anchor_id="clue.secret",
-            plot_ref="story.secret",
-            target_location_id=rid,
-            state="reserved",
-            source_snapshot={"text": "только намёк"},
-        )
-        lost = PlotAnchorBinding(
-            campaign_id=cid,
-            anchor_id="clue.lost",
-            plot_ref="story.lost",
-            target_location_id=rid,
-            state="lost",
-            source_snapshot={"item_template_id": "item.dagger"},
-        )
-        ctx.session.add_all([anchor, pending, lost])
-        await ctx.session.flush()
-        created = await _ok(ctx, "resolve_location", {"location_id": rid, "profile": "склеп"})
-        assert created["anchors"] == [anchor.anchor_id]
-        assert created["pending_anchors"] == [pending.anchor_id]
-        assert anchor.state == "materialized" and anchor.holder_entity_id
-        assert pending.state == "reserved" and pending.holder_entity_id is None
-        assert lost.state == "lost" and lost.holder_entity_id is None
-        created_id = anchor.holder_entity_id
-        obj = ctx.world.entities[created_id]
-        assert obj.state["world_object"]["unique"] is True
-        assert obj.state["visual_key"] == "item:potion"
-        again = await _ok(ctx, "resolve_location", {"location_id": rid, "profile": "таверна"})
-        assert again["repeated"] and again["anchors"] == [anchor.anchor_id]
-        assert anchor.holder_entity_id == created_id
-        return rid, created_id
-
-    rid, item_id = _play(settings, cid, materialize)
-
-    async def verify(ctx):
-        binding = await ctx.session.scalar(
-            select(PlotAnchorBinding).where(
-                PlotAnchorBinding.campaign_id == cid,
-                PlotAnchorBinding.anchor_id == "clue.handwritten-letter",
-            )
-        )
-        assert binding.holder_entity_id == item_id
-        assert ctx.world.entities[item_id].location_id == rid
-
-    _play(settings, cid, verify)
-
-
-def test_invalid_story_reservation_rolls_back_entire_generation(client, admin, settings):
-    import_base(settings)
-    campaign, _, _ = party(client, admin)
-    cid = campaign["id"]
-
-    async def exercise(ctx):
-        room = await _ok(ctx, "create_location", {"name": "Зал", "make_current": True})
-        rid = room["location_id"]
+    async def build(ctx):
+        room = (await _ok(ctx, "create_location", {"name": "Склеп", "make_current": True}))["location_id"]
         ctx.session.add(
             PlotAnchorBinding(
-                campaign_id=cid,
-                anchor_id="clue.invalid",
-                plot_ref="plot.invalid",
-                target_location_id=rid,
-                state="reserved",
-                source_snapshot={"item_template_id": "item.missing"},
+                campaign_id=cid, anchor_id="clue.1", plot_ref="plot.1", target_location_id=room, state="reserved"
             )
         )
-        await ctx.session.flush()
-        before = set(ctx.world.entities)
-        bad = await execute(ctx, "resolve_location", {"location_id": rid, "profile": "дом"})
-        assert not bad["ok"] and "сюжетный резерв" in bad["error"]
-        assert set(ctx.world.entities) == before
-        row = await ctx.session.scalar(select(WorldGenerationState).where(WorldGenerationState.target_entity_id == rid))
-        assert row is None
+        out = await _ok(ctx, "resolve_location", {"location_id": room, "profile_id": "scene_profile.crypt"})
+        return out["operation_ref"]
 
-    _play(settings, cid, exercise)
+    ref = _play(settings, cid, build)
+    assert _prepare(settings, cid, ref) == "blocked"
+    assert _row(settings, ref).last_error == "plot_conflict" and _generated(settings, ref) == []
+
+
+def test_recovery_prepares_only_requested_phases(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+    _with_maker(settings, lambda maker: Orchestrator(InMemoryCoordination()).run_due(maker))
+    assert _row(settings, ref).status == "ready"
+    _with_maker(settings, lambda maker: Orchestrator(InMemoryCoordination()).run_due(maker))
+    for child in rows(settings, WGS, WGS.phase == "container_contents"):
+        assert child.status == "unprepared" and child.requested_at is None  # закрытое неисследованное не трогаем
+
+
+# --- исследование контейнера ---
+
+
+def test_search_container_charges_once_and_reads_ready_contents(client, admin, settings, monkeypatch):
+    import_base(settings)
+    campaign, _heads, hero = party(client, admin)
+    cid, hid = campaign["id"], hero["id"]
+    room, ref = _room(settings, cid)
+
+    async def move_in(ctx):
+        await _ok(ctx, "move", {"character_ids": [hid], "location_id": room})
+
+    _play(settings, cid, move_in)
+    assert _prepare(settings, cid, ref) == "ready"
+    chest = next(o["id"] for o in _row(settings, ref).result_manifest["objects"] if o["slot_ref"].startswith("cont"))
+    child = run(settings, lambda s: s.scalar(select(WGS).where(WGS.target_entity_id == chest)))
+
+    from app.tools.master import generation
+
+    charged = []
+    real_charge = generation.economy.charge
+
+    def counting(ctx, hero_id, kind, bonus=False):
+        charged.append((hero_id, kind))
+        return real_charge(ctx, hero_id, kind, bonus)
+
+    monkeypatch.setattr(generation.economy, "charge", counting)
+
+    async def first(ctx):
+        await _ok(ctx, "open_container", {"character_id": hid, "container_id": chest})
+        peek = await _ok(ctx, "inspect_container", {"character_id": hid, "container_id": chest})
+        assert peek["contents"] is None and peek["note"] == "не исследован"
+        loose = await _ok(ctx, "place_item", {"item_template_id": "item.torch", "reason": "лежит на полу"})
+        stored = await execute(
+            ctx, "store_object", {"character_id": hid, "container_id": chest, "object_id": loose["entity_id"]}
+        )
+        assert not stored["ok"] and "не исследовано" in stored["error"]
+        a = await execute(ctx, "search_container", {"character_id": hid, "container_id": chest}, key="s:1")
+        assert a["ok"] and a["result"] == {"container_id": chest, "accepted": True, "operation_ref": child.id}
+        assert a["status"]["status"] == "pending" and child.id in ctx.operation_refs and hid in ctx.closed
+        b = await execute(ctx, "search_container", {"character_id": hid, "container_id": chest}, key="s:2")
+        assert b["result"] == a["result"]  # тот же герой, новый ключ: исходная квитанция
+
+        other = Character(
+            campaign_id=cid,
+            name="Другой",
+            status="approved",
+            location_id=room,
+            sheet=dict(ctx.world.characters[hid].sheet),
+        )
+        ctx.session.add(other)
+        await ctx.session.flush()
+        ctx.world.characters[other.id] = other
+        c = await _ok(ctx, "search_container", {"character_id": other.id, "container_id": chest})
+        assert c["status"] == "pending" and c["operation_ref"] == child.id
+        return other.id
+
+    _play(settings, cid, first)
+    assert charged == [(hid, "search")]
+    assert _prepare(settings, cid, child.id) == "ready"
+    items = {o["id"] for o in _row(settings, child.id).result_manifest["objects"]}
+
+    async def ready(ctx):
+        seen = await _ok(ctx, "search_container", {"character_id": hid, "container_id": chest})
+        assert seen["status"] == "ready" and {x["id"] for x in seen["contents"]} == items
+        peek = await _ok(ctx, "inspect_container", {"character_id": hid, "container_id": chest})
+        assert {x["id"] for x in peek["contents"]} == items
+        for item in items:
+            await _ok(ctx, "retrieve_object", {"character_id": hid, "container_id": chest, "object_id": item})
+        again = await _ok(ctx, "search_container", {"character_id": hid, "container_id": chest})
+        assert again["contents"] == []  # вынесли — новой добычи нет
+
+    _play(settings, cid, ready)
+    assert charged == [(hid, "search")]
+    assert _prepare(settings, cid, child.id) == "ready"
+    assert {e.id for e in _generated(settings, child.id)} == items
+
+
+def test_move_requests_preparation_only_with_campaign_flag(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, hero = party(client, admin)
+    cid, hid = campaign["id"], hero["id"]
+
+    async def go(ctx):
+        cellar = (await _ok(ctx, "create_location", {"name": "Погреб"}))["location_id"]
+        off = await _ok(ctx, "move", {"character_ids": [hid], "location_id": cellar})
+        assert "operation_ref" not in off
+        hall = (await _ok(ctx, "create_location", {"name": "Зал"}))["location_id"]
+        assert await storage.find(ctx.session, cid, hall, "location_initial") is None  # навигатор не активируется
+        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
+        on = await execute(ctx, "move", {"character_ids": [hid], "location_id": hall})
+        assert on["ok"] and on["result"]["preparation"]["accepted"] and on["status"]["status"] == "pending"
+        back = await _ok(ctx, "move", {"character_ids": [hid], "location_id": cellar})
+        again = await _ok(ctx, "move", {"character_ids": [hid], "location_id": hall})
+        assert "operation_ref" in back and "operation_ref" not in again
+        row = await storage.find(ctx.session, cid, hall, "location_initial")
+        assert row.profile_ref == "minimal"  # без профиля шаблона и ведущего
+        return row.id
+
+    ref = _play(settings, cid, go)
+    assert _prepare(settings, cid, ref) == "ready"
+    assert _row(settings, ref).result_manifest["objects"] == []
+
+
+def test_turn_waits_for_generated_scene_and_describes_it(game_client, admin_g, llm, settings):
+    c, (p1,), hero = party(game_client, admin_g)
+    cid, hid = c["id"], hero["id"]
+
+    async def build(ctx):
+        room = (await _ok(ctx, "create_location", {"name": "Таверна у моста"}))["location_id"]
+        ctx.world.entities[room].state = {
+            **(ctx.world.entities[room].state or {}),
+            "scene_profile": "scene_profile.tavern",
+        }
+        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
+        return room
+
+    room = _play(settings, cid, build)
+    llm.replies += [
+        {"tool_calls": [("move", {"character_ids": [hid], "location_id": room})]},
+        DONE,
+        {"text": "Таверна шумит."},
+    ]
+    told = act(game_client, p1, cid, "Захожу в таверну")
+    assert told["kind"] == "narration"
+    (row,) = rows(settings, WGS, WGS.phase == "location_initial")
+    assert row.status == "ready" and row.result_manifest["objects"]
+    names = {e.name for e in _generated(settings, row.id)}
+    narrate = llm.requests[-1]["messages"]
+    assert any(n in str(narrate) for n in names)  # описание видит уже готовую обстановку
+    assert "исследование пока недоступно" not in str(narrate)

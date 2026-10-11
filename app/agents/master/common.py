@@ -14,6 +14,7 @@ from app.core import adventure, audio, plot
 from app.core.chat import TURN_KINDS
 from app.tools import plot as plot_tools
 from app.tools.audio import AUDIO_TOOLS
+from app.tools.master.generation import HOST_TOOLS
 from app.tools.registry import REGISTRY, ToolContext
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ def decision_tools(ctx: ToolContext) -> list[str]:
         off.add("enter_room")
     if not audio.enabled(ctx.campaign):
         off |= set(AUDIO_TOOLS)
+    off |= HOST_TOOLS  # подготовку места назначает ведущий, не модель
     return [n for n in REGISTRY if n != "review_character" and n not in off]
 
 

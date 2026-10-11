@@ -902,6 +902,8 @@ async def store_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
     hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)
     if not read_world_object(container).metadata.get("access", {}).get("open"):
         raise ToolError("контейнер закрыт")
+    if await _unexplored(ctx, container) is not None:
+        raise ToolError("содержимое контейнера ещё не исследовано: сначала обыщите его")
     obj = ctx.world.entities.get(a.object_id)
     if obj is None:
         raise ToolError("объект не найден")
@@ -962,11 +964,28 @@ async def inspect_container(ctx: ToolContext, a: InspectContainerArgs) -> dict:
     if not read_world_object(container).metadata.get("access", {}).get("open"):
         raise ToolError("контейнер закрыт")
     _approach(ctx, hero, container, walk=False)  # только чтение: проверить, что дотянуться можно, никого не двигая
-    contents = [
+    unexplored = await _unexplored(ctx, container)
+    if unexplored is not None:  # неисследованное содержимое не «пусто»: его ещё нет
+        return {"container_id": container.id, "status": unexplored, "contents": None, "note": "не исследован"}
+    return {"container_id": container.id, "contents": container_contents(ctx, container, found)}
+
+
+def container_contents(ctx: ToolContext, container: Entity, found: frozenset[str]) -> list[dict]:
+    return [
         {"id": obj.id, "name": obj.name, "qty": (obj.state or {}).get("qty", 1)}
         for obj in ctx.world.entities.values()
         if container_parent(obj) == container.id
         and obj.campaign_id == ctx.campaign.id
         and not concealed(obj, ctx.world.entities, found)  # проверка для этого героя, не для всей кампании
     ]
-    return {"container_id": container.id, "contents": contents}
+
+
+async def _unexplored(ctx: ToolContext, container: Entity) -> str | None:
+    """Публичный статус подготовки содержимого, если оно ещё не готово; None — читать текущие предметы."""
+    from app.core.preparation import public_status
+    from app.core.world_generation import storage
+
+    row = await storage.find(ctx.session, ctx.campaign.id, container.id, "container_contents")
+    if row is None or row.status == "ready":
+        return None
+    return public_status(row)
