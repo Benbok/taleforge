@@ -344,6 +344,8 @@ class TurnMixin:
         trace_calls: list[dict] = []
         ctx.turn_diagnostics["calls"] = trace_calls
         routed: list[str] = []
+        # заклинания, уже сотворённые сервером по заявке: (герой, заклинание) -> ключ идемпотентности
+        routed_casts: dict[tuple[str, str], str] = {}
         opening_actors: set[str] = set()
         opening_notes: list[str] = []
         blocked_actors: set[str] = set()
@@ -486,6 +488,8 @@ class TurnMixin:
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True, "request_key": request_key})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
+                if name == "cast_spell":
+                    routed_casts[(actor, args["spell_id"])] = f"{turn_id}:route:{m.id}"
             else:
                 routed.append(f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании")
         route_note = ""
@@ -621,7 +625,11 @@ class TurnMixin:
                     "ok": False,
                     "error": "Лимит исправления аргументов этой заявки исчерпан; действие не выполнено.",
                 }
-            result = await execute(ctx, name, args, key=await bound_tool_key(ctx, name, args, key))
+            key = await bound_tool_key(ctx, name, args, key)
+            if name == "cast_spell":
+                # повтор заклинания, уже сотворённого по заявке, — прежний результат без второй ячейки
+                key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
+            result = await execute(ctx, name, args, key=key)
             if name == "adjudicate_action" and result.get("ok"):
                 from app.core.resolution.contracts import ActionRef
                 from app.tools.resolution.requests import action_key

@@ -315,6 +315,31 @@ def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g
     assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
 
 
+def test_master_repeat_of_routed_cast_spends_no_second_slot(game_client, admin_g, llm, dice, settings):
+    """Сервер уже сотворил заклинание по заявке; повтор того же вызова моделью не тратит вторую ячейку и не
+    прерывает концентрацию — возвращается прежний результат."""
+    from tests.test_spells import WIZARD
+
+    c, heads, _ = party(game_client, admin_g, players=2)
+    cid = c["id"]
+    prepared = ["spell.magic_missile", "spell.shield", "spell.detect_magic", "spell.mage_armor"]
+    body = {**WIZARD, "prepared": prepared}
+    wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=body, headers=heads[1]), 201)
+    ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
+    again = {"caster_id": wiz["id"], "spell_id": "spell.detect_magic", "slot_level": 1, "target_ids": []}
+    llm.replies += [
+        intent({"verb": "cast", "spell_id": "spell.detect_magic"}),
+        {"tool_calls": [("cast_spell", again)]},
+        DONE,
+        {"text": "Магия откликается слабым зудом."},
+    ]
+    act(game_client, heads[1], cid, "Творю обнаружение магии")
+    casts = [e for e in rows(settings, Event, Event.campaign_id == cid) if e.tool == "cast_spell"]
+    assert len(casts) == 1
+    sheet = ok(game_client.get(f"/api/campaigns/{cid}/characters/{wiz['id']}", headers=heads[1]))
+    assert sheet["spellbook"]["slots_left"] == {"1": 1}
+
+
 def test_approach_attack_plan_preserves_order_and_confidence():
     plan = {
         "character_id": "ch_hero",
