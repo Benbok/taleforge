@@ -64,15 +64,19 @@ class StoryFeed:
 
     def __init__(self, stream: Stream | None, job: voiceover.VoiceJob | None, clean=clean_story) -> None:
         self.stream, self.job, self.clean = stream, job, clean
-        self.raw, self.sent = "", ""
+        self.raw, self.sent, self.voiced = "", "", ""
 
     async def push(self, chunk: str) -> None:
         self.raw += chunk
+        safe_raw = textcalls.stream_prefix(self.raw)
         if self.job is not None:
-            self.job.feed(chunk)
+            # Do not feed a partial JSON key to speech synthesis; its identity
+            # is only known after more chunks arrive.
+            self.job.feed(safe_raw[len(self.voiced) :])
+            self.voiced = safe_raw
         if self.stream is None or ("\n" not in self.raw and len(self.raw) < 200):
             return
-        view = self.clean(_closed(self.raw))
+        view = self.clean(_closed(safe_raw))
         if view.startswith(self.sent):
             if len(view) > len(self.sent):
                 await self.stream.push(view[len(self.sent) :])
@@ -347,7 +351,7 @@ async def pending(s, c: Campaign) -> list[Character]:
     return [ch for ch in rows if ch.id not in done]
 
 
-async def _open_first_place(svc, cid: str, where: dict) -> None:
+async def _open_first_place(svc, cid: str, where: dict) -> bool:
     """Место первой сцены попадает в мир до вступления: у него появляется карточка, и имя в тексте становится
     ссылкой. Детали и тайна места остаются в каркасе, в карточку идёт только настроение («mood»)."""
     from app.tools.registry import execute
@@ -356,24 +360,61 @@ async def _open_first_place(svc, cid: str, where: dict) -> None:
     async with svc.maker() as s:
         c = await s.get(Campaign, cid)
         ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
-        details = where.get("mood") or where.get("name") or "место первой сцены"
-        result = await execute(ctx, "develop", {"sketch_id": where["id"], "details": details, "here": True})
-        if not result.get("ok"):
-            log.warning("место первой сцены не открылось: %s", result.get("error"))
-            await s.rollback()
-            return
+        # Read fresh plot state: campaign and hero introductions both prepare
+        # this scene, and callers may hold a stale copy of the opening sketch.
+        node, fresh_where = _first_scene(ctx.world.plot)
+        where = next((x for x in ctx.world.plot.get("locations") or [] if x["id"] == where["id"]), where)
+        place = ctx.world.entities.get(where.get("entity_id") or "")
+        created = place is None
+        if created:
+            details = where.get("mood") or where.get("name") or "место первой сцены"
+            result = await execute(ctx, "develop", {"sketch_id": where["id"], "details": details, "here": True})
+            if not result.get("ok"):
+                log.warning("место первой сцены не открылось: %s", result.get("error"))
+                await s.rollback()
+                return False
+            place = ctx.world.entities.get((result.get("result") or {}).get("entity_id") or "")
         # готовое приключение: отряд начинает в первой комнате книги, иначе героя нет на её карте, пока мастер
         # не вспомнит про enter_room
-        place = ctx.world.entities.get((result.get("result") or {}).get("entity_id") or "")
         found = adventure.module_place(place, ctx.world.catalog, ctx.world.entities)
-        if found is not None:
+        if found is not None and created:
             first = adventure.rooms(found[1])[0]
             entered = await execute(ctx, "enter_room", {"room": str(first.get("number") or first["id"])})
             if not entered.get("ok"):
                 log.warning("отряд не вошёл в первую комнату приключения: %s", entered.get("error"))
+                await s.rollback()
+                return False
+        # Only NPCs explicitly participating in the first node are visible at
+        # the opening. Other inhabitants and antagonists remain undisclosed.
+        if node and fresh_where and fresh_where["id"] == where["id"]:
+            for npc in ctx.world.plot.get("npcs") or []:
+                if npc["id"] not in (node.get("npc_ids") or []):
+                    continue
+                if npc.get("location_id") not in (None, where["id"]):
+                    continue
+                if npc.get("entity_id") in ctx.world.entities:
+                    continue
+                result = await execute(
+                    ctx,
+                    "develop",
+                    {
+                        "sketch_id": npc["id"],
+                        "details": npc.get("look") or npc["name"],
+                        "here": True,
+                        "attitude": "neutral",
+                        "location_id": ctx.world.scene.location_id,
+                    },
+                )
+                if not result.get("ok"):
+                    log.warning("NPC первой сцены не появился: %s", result.get("error"))
+                    await s.rollback()
+                    return False
         messages = await flush_outbox(s, ctx)
         await s.commit()
     await publish_changes(svc.bus, ctx, messages)
+    if ctx.operation_refs:
+        await svc._settle_preparation(cid, list(ctx.operation_refs))
+    return True
 
 
 INTRO_KEY = "campaign_intro"  # в тайнах кампании: готовое вступление {text, voices, version} до старта
@@ -403,6 +444,10 @@ def intro_messages(title: str, public_intro: str, persona: str | None, p: dict) 
         )
         if where:
             scene_hint += f" Место: {where.get('name')}, {where.get('mood')}"
+            scene_hint += (
+                " Герои начинают именно здесь. Не заменяй это место таверной или другой локацией. "
+                "NPC первой сцены перечислены в её каркасе; не добавляй других участников."
+            )
     intro = f"Кампания «{title}». Завязка: {public_intro}"
     system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {persona or ''}"
     return [
@@ -514,6 +559,13 @@ def _module_voices(svc, c: Campaign, entry: dict) -> list[dict] | None:
 
 
 async def prepare_campaign_intro(svc, cid: str) -> bool:
+    # Background preparation and session startup share the same lock; starting
+    # while the background model is running must reuse its completed intro.
+    async with svc.intro_lock(cid):
+        return await _prepare_campaign_intro(svc, cid)
+
+
+async def _prepare_campaign_intro(svc, cid: str) -> bool:
     """Готовит вступление ко всей кампании один раз, когда каркас готов: текст и голос ждут старта в тайнах,
     и игрокам не приходится ждать модель на первом ходу. Новый вариант каркаса готовит вступление заново."""
     async with svc.maker() as s:
@@ -522,6 +574,10 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
             return False
         cfg, p = await _ai_plan(s, c)
         if cfg is None:
+            return False
+        secret = await s.get(CampaignSecret, cid)
+        ready = ((secret.setting if secret else None) or {}).get(INTRO_KEY) or {}
+        if ready.get("text") and ready.get("version") == p.get("version"):
             return False
         seat_id = master_seat(c).id
     saved = _saved_module_intro(svc, c, p)
@@ -552,7 +608,8 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
 GREETING_TASK = (
     "Поприветствуй игроков за столом от первого лица, как живой мастер перед первой игрой: тепло и с "
     "предвкушением, 40–80 слов. Назови приключение, обратись к героям по именам, пообещай интересное и скажи, "
-    "что начинаем. Это слова мастера игрокам, а не повествование: сюжет и завязку не раскрывай. " + STORY_RULES
+    "что начинаем. Это слова мастера игрокам, а не повествование: сюжет и завязку не раскрывай. "
+    "Не описывай место героев, появление NPC, их диалоги и события мира: всё это будет во вступлении. " + STORY_RULES
 )
 
 
@@ -650,11 +707,13 @@ async def introduce_campaign(svc, cid: str) -> str | None:
     await _set_flag(svc, cid, True)
     try:
         _, where = _first_scene(p)
-        if where and not where.get("entity_id"):
+        if where:
             try:
-                await _open_first_place(svc, cid, where)
+                if not await _open_first_place(svc, cid, where):
+                    return None
             except Exception:
                 log.exception("не удалось открыть первое место до вступления кампании")
+                return None
 
         async with svc.maker() as s:
             msg = Message(
@@ -733,13 +792,35 @@ async def introduce(svc, cid: str) -> str | None:
     act = plot.active_act(p) or {}
     node = next((n for n in act.get("nodes") or [] if n.get("status") not in plot.CLOSED), None)
     where = next((x for x in p.get("locations") or [] if node and x["id"] == node.get("location_id")), None)
-    if first and where and not where.get("entity_id"):
+    if first and where:
         try:
-            await _open_first_place(svc, cid, where)
+            if not await _open_first_place(svc, cid, where):
+                return None
         except Exception:
             log.exception("не удалось открыть первое место до вступления героев")
+            return None
+    from app.tools.runtime import open_context
+
+    async with svc.maker() as s:
+        current = await s.get(Campaign, cid)
+        ctx = await open_context(s, current, svc.dice_factory(), turn_id=None, seat_id=seat_id)
+        factual_scene = ctx.world.scene_table()
+        previous = list(
+            await s.scalars(
+                select(Message)
+                .where(
+                    Message.campaign_id == cid,
+                    Message.kind == "narration",
+                    Message.visible_to.is_(None),
+                    Message.content != "",
+                )
+                .order_by(Message.seq.desc())
+                .limit(3)
+            )
+        )
+        previous_text = "\n".join(clean_story(m.content) for m in reversed(previous))[-8000:]
     scene_hint = ""
-    if node:
+    if first and node:
         scene_hint = (
             f"Первая сцена (тайно, покажи только то, что видят герои): {node.get('title')} — {node.get('summary')}"
         )
@@ -763,11 +844,14 @@ async def introduce(svc, cid: str) -> str | None:
             f"Кампания «{p.get('title')}». Завязка для игроков: {p.get('public_intro')}",
             adventure.hook_line(p) if first else "",
             scene_hint,
+            "Фактическая сцена (достовернее завязки и прошлых описаний):\n" + factual_scene,
+            "Уже рассказано игрокам:\n" + previous_text if previous_text else "",
             "Герои:\n" + heroes,
             ("Личные крючки (тайно, не раскрывай, можно намекнуть):\n" + hints) if hints else "",
             task
             + " Имена героев размечай как [[id|Имя]], других разметок не добавляй. Не решай за игроков, что делают "
-            "их герои дальше, закончи тем, что они видят. " + STORY_RULES,
+            "их герои дальше, закончи тем, что они видят. Продолжай уже рассказанное в фактическом месте; "
+            "не переноси отряд в другую локацию и не вводи незарегистрированных NPC. " + STORY_RULES,
         )
         if x
     )

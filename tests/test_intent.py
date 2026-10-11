@@ -260,10 +260,14 @@ def test_litellm_prompt_caching_injection(monkeypatch):
     client = LiteLLMClient()
     import asyncio
 
-    # Для gemini с длинным system prompt добавляется cache_control
+    # Gemini uses implicit caching: character count cannot prove its token minimum.
     long_sys = "Правила мира. " * 100
     msgs = [{"role": "system", "content": long_sys}, {"role": "user", "content": "Привет"}]
     asyncio.run(client.complete(msgs, model="gemini/gemini-2.5-flash"))
+    assert captured_kwargs["messages"][0]["content"] == long_sys
+
+    # Anthropic retains explicit ephemeral caching.
+    asyncio.run(client.complete(msgs, model="anthropic/claude-sonnet-4-5"))
     sys_content = captured_kwargs["messages"][0]["content"]
     assert isinstance(sys_content, list)
     assert sys_content[0]["cache_control"] == {"type": "ephemeral"}

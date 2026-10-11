@@ -300,9 +300,9 @@ def _clear_positions(ctx: ToolContext, hero_ids: set[str], inverse: list) -> Non
     )
 
 
-def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
+def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[Character]:
     """Сцена переходит в новое место вместе с героями, которые стояли в старом: место отмечается посещённым,
-    а старое и новое связываются на карте, если ещё не связаны."""
+    а старое и новое связываются на карте, если ещё не связаны. Возвращает героев, что пришли со сценой."""
     old_id = ctx.world.scene.location_id
     old = ctx.world.entities.get(old_id or "")
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
@@ -319,6 +319,14 @@ def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> None:
     ctx.world.scene.location_id = loc.id
     _visit(ctx, loc, going, inverse)
     ctx.signals.add("map.changed")
+    return going
+
+
+async def enter_current(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
+    """Место становится текущей сценой. Пришли герои — это вход, как при ``move``: место готовится к описанию."""
+    if not relocate_scene(ctx, loc, inverse):
+        return {}
+    return await request_preparation(ctx, loc, inverse)
 
 
 @tool(
@@ -355,15 +363,14 @@ async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
     for other in dict.fromkeys(a.link_to):
         if other != en.id:
             _link(en, other, a.via)
-    if a.make_current:
-        relocate_scene(ctx, en, inverse)
+    prepared = await enter_current(ctx, en, inverse) if a.make_current else {}
     await ctx.record(
         "create_location",
         target_id=en.id,
         payload={"name": a.name, "current": a.make_current, "parent": a.parent_id, "links": a.link_to},
         inverse=inverse,
     )
-    return {"location_id": en.id, "name": a.name, "current": a.make_current}
+    return {"location_id": en.id, "name": a.name, "current": a.make_current, **prepared}
 
 
 class LinkArgs(BaseModel):
@@ -865,7 +872,7 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     inverse: list = []
     dice: list = []
     joined = await move_heroes(ctx, [_character(ctx, cid) for cid in a.character_ids], loc, inverse, dice)
-    prepared = await _request_preparation(ctx, loc, inverse)
+    prepared = await request_preparation(ctx, loc, inverse)
     await ctx.record(
         "move",
         target_id=loc.id,
@@ -882,7 +889,7 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     }
 
 
-async def _request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
+async def request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
     """Вход героев в место: резерв корня и запрос подготовки в той же транзакции; ход ждёт её перед описанием.
     Без флага кампании ``scene_generation`` место готовится только ради сюжетных носителей, с профилем
     ``minimal`` (docs/world-objects-delivery3.md, §2.6; docs/world-objects-delivery4.md, §2.3)."""

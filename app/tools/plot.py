@@ -197,6 +197,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
     if sketch is None:
         raise ToolError(f"нет наброска {a.sketch_id}")
     inverse: list[dict] = []
+    arrived: list = []
     if kind == "location":
         tid = sketch.get("template_id")
         rec = ctx.world.catalog.find(tid, "location_template") if tid else None
@@ -215,7 +216,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         if a.here:
             from app.tools.master.places import relocate_scene
 
-            relocate_scene(ctx, en, inverse)
+            arrived = relocate_scene(ctx, en, inverse)
     else:
         rec = ctx.world.catalog.get(sketch["template_id"], "creature_template")
         creature_stats(rec.data)  # без блока статов существо в мир не выходит
@@ -235,18 +236,24 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         await ctx.session.flush()
     ctx.world.entities[en.id] = en
     inverse.insert(0, {"table": "entities", "op": "delete", "id": en.id})
+
+    def fn(p: dict) -> dict:
+        plot.develop_sketch(p, a.sketch_id, a.details, en.id)
+        return {"entity_id": en.id, "name": en.name, "kind": kind, "current": bool(a.here)}
+
+    # каркас раньше подготовки: резерв места фиксирует носителей зацепок, привязанных к нему в _change
+    result = await _change(ctx, "develop", fn, payload={"sketch_id": a.sketch_id, "entity_id": en.id}, target_id=en.id)
+    if arrived:  # отряд пришёл вместе со сценой — это вход в место, как при move
+        from app.tools.master.places import request_preparation
+
+        result |= await request_preparation(ctx, en, inverse)
     await ctx.record(
         "create_location" if kind == "location" else "spawn_entity",
         target_id=en.id,
         payload={"name": en.name, "plot_id": sketch["id"], "template": en.template_id},
         inverse=inverse,
     )
-
-    def fn(p: dict) -> dict:
-        plot.develop_sketch(p, a.sketch_id, a.details, en.id)
-        return {"entity_id": en.id, "name": en.name, "kind": kind, "current": bool(a.here)}
-
-    return await _change(ctx, "develop", fn, payload={"sketch_id": a.sketch_id, "entity_id": en.id}, target_id=en.id)
+    return result
 
 
 class ThreatArgs(BaseModel):

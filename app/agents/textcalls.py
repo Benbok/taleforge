@@ -15,12 +15,84 @@ from collections.abc import Iterable
 from typing import Any
 
 _NAME = re.compile(r"(?<![\w])(?:\\?\[\s*)?([a-z][a-z0-9_]*)(?:\s*\\?\])?\s*\\?\(")
+_CALL_KEYS = ("call", "tool", "tool_name", "function", "name")
+_ARG_KEYS = ("args", "arguments", "parameters", "params", "input")
+_JSON_CALL = re.compile(r'"(?:' + "|".join(_CALL_KEYS) + r')"\s*:\s*"([^"\\]*)"')
+_JSON_PARTIAL = re.compile(r'"(?:' + "|".join(_CALL_KEYS) + r')"\s*:\s*"?([^"\\]*)$')
 # строки, что остаются от списка вызовов: заголовок «Выполняю действия:», разделитель, пустой пункт, ограда кода
 _LEFTOVER = re.compile(
     r"^\s*(?:(?:выполняю|выполняем|выполнено|выполненные|вызываю|вызовы|действия|actions?|tool[ _]?calls?)"
-    r"[^:\n]{0,40}:\s*|[*_\-=]{3,}|[-*•]\s*`*\s*|`{3}[a-z_]*)\s*$",
+    r"[^:\n]{0,40}:\s*|[*_\-=]{3,}|[-*•]\s*`*\s*|(?:\\?`){3}[a-z_]*)\s*$",
     re.IGNORECASE,
 )
+
+
+def _json_containers(text: str) -> list[tuple[int, int, bool]]:
+    """Outer JSON-like containers, including an unfinished tail; no evaluation."""
+    out = []
+    start, depth, quoted, escaped = 0, 0, False, False
+    for i, char in enumerate(text):
+        if not depth:
+            if char in "[{":
+                start, depth = i, 1
+            continue
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quoted = False
+        elif char == '"':
+            quoted = True
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+            if not depth:
+                out.append((start, i + 1, True))
+    if depth:
+        out.append((start, len(text), False))
+    return out
+
+
+def _json_find(text: str, names: set[str]) -> list[tuple[int, int, str]]:
+    found = []
+    for start, end, closed in _json_containers(text):
+        source = text[start:end]
+        try:
+            value = json.loads(source)
+        except ValueError:
+            known = any(m.group(1) in names for m in _JSON_CALL.finditer(source))
+        else:
+            known = any(
+                any(isinstance(entry.get(key), str) and entry[key] in names for key in _CALL_KEYS)
+                and (any(key in entry for key in _CALL_KEYS[:-1]) or any(key in entry for key in _ARG_KEYS))
+                for entry in _json_entries(value)
+            )
+        partial = _JSON_PARTIAL.search(source) if not closed else None
+        if known or (partial and any(n.startswith(partial.group(1)) for n in names)):
+            found.append((start, end, source))
+    return found
+
+
+def _json_entries(value: Any) -> list[dict]:
+    if isinstance(value, dict) and isinstance(value.get("tool_calls"), list):
+        value = value["tool_calls"]
+    entries = value if isinstance(value, list) else [value]
+    return [
+        {"tool_name": entry["function"].get("name"), **entry["function"]}
+        if isinstance(entry.get("function"), dict)
+        else entry
+        for entry in entries
+        if isinstance(entry, dict)
+    ]
+
+
+def stream_prefix(text: str) -> str:
+    """Withhold unfinished containers before their tool discriminator is known."""
+    pending = [start for start, _, closed in _json_containers(text) if not closed]
+    return text[: min(pending)] if pending else text
 
 
 def _span(text: str, start: int) -> int | None:
@@ -59,79 +131,6 @@ def _plain(v: Any) -> Any:
     return v
 
 
-# JSON-форма вызова: имя инструмента — значение одного из этих ключей, аргументы — объект под другим
-_CALL_KEYS = ("call", "tool", "tool_name", "function", "name")
-_ARG_KEYS = ("args", "arguments", "parameters", "params", "input")
-_JSON_NAME = re.compile(r'"(?:' + "|".join(_CALL_KEYS) + r')"\s*:\s*"([a-z][a-z0-9_]*)"')
-_FENCE = re.compile(r"```[\w-]*[ \t]*\n?(.*?)```", re.S)
-# JSON с начала строки: «[» или «{», но не разметка сущности «[[id|текст]]»
-_JSON_START = re.compile(r"^[ \t]*(?:[-*•][ \t]*)?(\{|\[(?!\[))", re.M)
-
-
-def _json_calls(obj: Any, known: set[str]) -> list[tuple[str, dict[str, Any]]]:
-    if isinstance(obj, list):
-        return [c for x in obj for c in _json_calls(x, known)]
-    if not isinstance(obj, dict):
-        return []
-    for key in _CALL_KEYS:
-        v = obj.get(key)
-        if isinstance(v, dict):  # {"function": {"name": …, "arguments": …}} — форма OpenAI
-            return _json_calls(v, known)
-        if isinstance(v, str) and v in known:
-            args = next((obj[k] for k in _ARG_KEYS if k in obj), {})
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except ValueError:
-                    args = {}
-            return [(v, args if isinstance(args, dict) else {})]
-    return []
-
-
-def _json_blocks(text: str, known: set[str]) -> list[tuple[int, int, list[tuple[str, dict[str, Any]]]]]:
-    """(начало, конец, вызовы) каждого JSON-блока с вызовом известного инструмента: ограда кода или скобка
-    с начала строки. Блок с битым JSON всё равно технический текст — вызовы тогда пусты."""
-    out: list[tuple[int, int, list[tuple[str, dict[str, Any]]]]] = []
-
-    def take(start: int, end: int, body: str) -> None:
-        if not any(m.group(1) in known for m in _JSON_NAME.finditer(body)):
-            return
-        try:
-            calls = _json_calls(json.loads(body), known)
-        except ValueError:
-            calls = []
-        out.append((start, end, calls))
-
-    fences = [(m.start(), m.end()) for m in _FENCE.finditer(text)]
-    for m in _FENCE.finditer(text):
-        take(m.start(), m.end(), m.group(1).strip())
-    for m in _JSON_START.finditer(text):
-        start = m.start(1)
-        if any(s <= start < e for s, e in fences) or any(s <= start < e for s, e, _ in out):
-            continue
-        end = _span(text, start)
-        if end is not None:
-            take(start, end, text[start:end])
-    return sorted(out)
-
-
-def _json_open(text: str, known: set[str] | None = None) -> int | None:
-    """Начало незакрытого JSON-блока (ограды или скобки с начала строки). С ``known`` — только если в нём
-    уже видно имя известного инструмента; без него — любой: поток держит блок, пока не поймёт, что в нём."""
-    fences = [m.start() for m in re.finditer(r"```", text)]
-    starts = [fences[-1]] if len(fences) % 2 else []
-    closed = [(m.start(), m.end()) for m in _FENCE.finditer(text)]
-    for m in _JSON_START.finditer(text):
-        s = m.start(1)
-        if not any(a <= s < b for a, b in closed) and _span(text, s) is None:
-            starts.append(s)
-            break
-    for s in sorted(starts):
-        if known is None or any(x.group(1) in known for x in _JSON_NAME.finditer(text, s)):
-            return s
-    return None
-
-
 def _find(text: str, names: Iterable[str]) -> list[tuple[int, int, str, str]]:
     """(начало, конец, имя, исходник) каждого вызова известного инструмента в тексте."""
     known = set(names)
@@ -159,12 +158,12 @@ def _open(text: str, names: set[str]) -> bool:
 def parse(text: str, names: Iterable[str]) -> list[tuple[str, dict[str, Any]]]:
     """Вызовы инструментов из ``names``, записанные в тексте как ``name(key=value, …)`` или JSON-блоком.
     Значения — только литералы Python или JSON; вызов с позиционными или нелитеральными аргументами пропускается."""
-    known = set(names)
-    blocks = _json_blocks(text or "", known)
-    found: list[tuple[int, tuple[str, dict[str, Any]]]] = [(s, c) for s, _, cs in blocks for c in cs]
-    for start, _, name, src in _find(text or "", known):
-        if any(s <= start < e for s, e, _ in blocks):
-            continue  # строка внутри JSON-аргумента — не отдельный вызов
+    names = set(names)
+    calls: list[tuple[int, str, dict[str, Any]]] = []
+    json_spans = _json_find(text or "", names)
+    for start, _, name, src in _find(text or "", names):
+        if any(a <= start < b for a, b, _ in json_spans):
+            continue
         src = re.sub(r"\btrue\b", "True", re.sub(r"\bfalse\b", "False", re.sub(r"\bnull\b", "None", src)))
         try:
             node = ast.parse(src, mode="eval").body
@@ -176,28 +175,44 @@ def parse(text: str, names: Iterable[str]) -> list[tuple[str, dict[str, Any]]]:
             args = {k.arg: _value(k.value) for k in node.keywords}
         except (ValueError, TypeError, SyntaxError):
             continue
-        found.append((start, (name, args)))
-    return [c for _, c in sorted(found, key=lambda x: x[0])]
+        calls.append((start, name, args))
+    for start, _, src in json_spans:
+        try:
+            value = json.loads(src)
+        except ValueError:
+            continue  # damaged commands are still removed, never repaired or executed
+        for entry in _json_entries(value):
+            name = next(
+                (entry[key] for key in _CALL_KEYS if isinstance(entry.get(key), str) and entry[key] in names), None
+            )
+            args = next((entry[key] for key in _ARG_KEYS if key in entry), {})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except ValueError:
+                    continue
+            if isinstance(name, str) and name in names and isinstance(args, dict):
+                calls.append((start, name, args))
+    return [(name, args) for _, name, args in sorted(calls, key=lambda c: c[0])]
 
 
 def strip(text: str, names: Iterable[str]) -> str:
     """Убирает из текста для игроков строки с вызовами инструментов и то, что от их списка осталось."""
     known = set(names)
+    json_spans = _json_find(text or "", known)
+    if not json_spans and not _find(text or "", known) and not _open(text or "", known):
+        return text
     cut = text or ""
-    blocks = _json_blocks(cut, known)
-    for start, end, _ in reversed(blocks):
-        # блок, занявший строки целиком, уходит вместе с ними
+    for start, end, _ in reversed(json_spans):
         line_start = cut.rfind("\n", 0, start) + 1
         line_end = cut.find("\n", end)
         line_end = len(cut) if line_end == -1 else line_end
-        if re.fullmatch(r"[ \t]*(?:[-*•][ \t]*)?", cut[line_start:start]) and not cut[end:line_end].strip():
-            start, end = line_start, min(line_end + 1, len(cut))
-        cut = cut[:start] + cut[end:]
-    if (pending := _json_open(cut, known)) is not None:
-        cut = cut[:pending]  # оборванный JSON-вызов не публикуется
+        if re.fullmatch(r"\s*(?:[-*•]\s*)?", cut[line_start:start]) and not cut[end:line_end].strip():
+            cut = cut[:line_start] + cut[line_end + 1 :]
+        else:
+            cut = cut[:start] + cut[end:]
+    cut = re.sub(r"(?:\\?`){3}(?:json)?\s*(?:\\?`){3}", "", cut, flags=re.IGNORECASE)
     found = _find(cut, known)
-    if not blocks and pending is None and not found and not _open(cut, known):
-        return text
     for start, end, _, _ in reversed(found):
         # строка вызова целиком: «action: …», «* `…`», «- …» вместе с префиксом
         line_start = cut.rfind("\n", 0, start) + 1
@@ -237,10 +252,7 @@ def clean(text: str) -> str:
 def contains(text: str, names: Iterable[str]) -> bool:
     """Есть ли в тексте попытка вызвать инструмент, включая незавершённый вызов."""
     known = set(names)
-    text = text or ""
-    if _find(text, known) or _json_blocks(text, known):
-        return True
-    return _open(text, known) or _json_open(text, known) is not None
+    return bool(_find(text or "", known) or _json_find(text or "", known)) or _open(text or "", known)
 
 
 class StreamFilter:
@@ -259,15 +271,14 @@ class StreamFilter:
     async def __call__(self, chunk: str) -> None:
         self.pending += chunk
         while True:
-            # Многострочный вызов удерживается до закрывающей скобки, JSON-блок — пока не закроется:
-            # имя инструмента в нём может прийти позже первой строки.
+            # Многострочный вызов удерживается до закрывающей скобки.
             boundary = next(
                 (
                     i + 1
                     for i, char in enumerate(self.pending)
                     if char == "\n"
                     and not _open(self.pending[: i + 1], self.names)
-                    and _json_open(self.pending[: i + 1]) is None
+                    and not any(not closed for _, _, closed in _json_containers(self.pending[: i + 1]))
                 ),
                 None,
             )

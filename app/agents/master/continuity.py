@@ -4,6 +4,68 @@ from __future__ import annotations
 
 import re
 
+_SPEAKS = re.compile(
+    r"\b(?:отвечает|говорит|спрашивает|произносит|шепчет|добавляет|восклицает|бурчит|"
+    r"сказал[аи]?|ответил[аи]?|спросил[аи]?|прошептал[аи]?)\b",
+    re.IGNORECASE,
+)
+
+
+def invented_player_dialogue(text: str, players: dict[str, str], participants: dict[str, str], news: str) -> list[str]:
+    """Explicit attributed dialogue needs that player's submitted line.
+
+    This is deliberately limited to quoted speech with a reporting verb;
+    atmospheric narration or NPC dialogue must not be classified as a player turn.
+    """
+    text = re.sub(r"\[\[[^|\]]+\|([^\]]+)\]\]", r"\1", text)
+    patterns = {
+        cid: re.compile(r"(?<!\w)" + re.escape(name) + r"(?!\w)", re.IGNORECASE) for cid, name in participants.items()
+    }
+    submitted_lines: dict[str, list[str]] = {}
+    author = None
+    for line in news.splitlines():
+        header = re.match(r"^(?:- \[[^\]]+\] .*?)?\(([^,)]+)(?:,[^)]*)?\):\s*(.*)$", line)
+        if header:
+            author = header.group(1)
+            submitted_lines.setdefault(author, []).append(header.group(2))
+        elif line.startswith("- ["):
+            author = None  # A message from someone without a registered hero.
+        elif author and not line.startswith("  намерение (разбор парсера):"):
+            submitted_lines[author].append(line)
+    bad = set()
+    quotes = [(m.start(), m.end(), m.group(1) or m.group(2)) for m in re.finditer(r'«([^»\n]+)»|"([^"\n]+)"', text)]
+    quotes += [(m.start(), m.end(), m.group(1)) for m in re.finditer(r"(?:^|\n)[ \t]*[—–-][ \t]*([^\n]+)", text)]
+    for start, finish, words in quotes:
+        before = text[max(0, start - 180) : start].rstrip()
+        before = re.split(r'[.!?][»"]?\s+|;\s*', before)[-1]
+        after = text[finish : finish + 120]
+        speaker = None
+        candidates = [(m.end(), cid) for cid, pattern in patterns.items() for m in pattern.finditer(before)]
+        if candidates:
+            candidates.sort()
+            end, cid = candidates[0]
+            # An explicit pronoun starts a new clause ('к Emris, та отвечает').
+            # Otherwise the first named subject speaks, not the NPC's addressee.
+            if re.search(r",\s*(?:та|тот|он|она)\b|,\s*как\b", before, re.IGNORECASE):
+                end, cid = candidates[-1]
+            if _SPEAKS.search(before[end:]):
+                speaker = cid
+        if speaker is None:
+            said = _SPEAKS.match(re.sub(r"^[\s,.;—–-]+", "", after))
+            if said:
+                candidates = [(m.start(), cid) for cid, pattern in patterns.items() for m in pattern.finditer(after)]
+                if candidates:
+                    speaker = min(candidates)[1]
+        if speaker not in players:
+            continue
+        words = " ".join(words.casefold().split())
+        submitted = " ".join(submitted_lines.get(speaker, [])).casefold()
+        submitted = " ".join(submitted.split())
+        if not re.search(r"(?<!\w)" + re.escape(words) + r"(?!\w)", submitted):
+            bad.add(speaker)
+    return sorted(bad)
+
+
 # Явно пронумерованные персонажи («Скелет 1», «Страж 2») — экземпляры,
 # а не общие слова об атмосфере или слухах.
 NUMBERED_NAME = re.compile(r"(?<!\w)([А-ЯЁA-Z][а-яёa-z-]+\s+[1-9]\d*)(?!\w)")

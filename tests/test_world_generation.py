@@ -444,6 +444,31 @@ def test_move_requests_preparation_only_with_campaign_flag(client, admin, settin
     assert _row(settings, ref).result_manifest["objects"] == []
 
 
+def test_new_current_location_is_prepared_without_move(client, admin, settings):
+    """Мастер создаёт место сразу текущим — отряд уже там, отдельного ``move`` не будет."""
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    quiet(client)
+    cid = campaign["id"]
+
+    async def go(ctx):
+        off = await _ok(ctx, "create_location", {"name": "Пустырь", "make_current": True})
+        assert "operation_ref" not in off  # без флага кампании — как раньше
+        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
+        aside = (await _ok(ctx, "create_location", {"name": "Маяк"}))["location_id"]
+        assert await storage.find(ctx.session, cid, aside, "location_initial") is None  # не текущее — не готовится
+        docks = await _ok(
+            ctx, "create_location", {"name": "Доки", "template_id": "location.port", "make_current": True}
+        )
+        assert docks["preparation"]["accepted"]
+        return docks["operation_ref"]
+
+    ref = _play(settings, cid, go)
+    assert _prepare(settings, cid, ref) == "ready"
+    assert _row(settings, ref).profile_ref == "scene_profile.warehouse"  # профиль по шаблону места
+    assert _generated(settings, ref)
+
+
 def test_turn_waits_for_generated_scene_and_describes_it(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     cid, hid = c["id"], hero["id"]

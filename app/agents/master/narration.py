@@ -9,7 +9,7 @@ from typing import Any
 from app.agents import textcalls
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
-from app.agents.master.continuity import unregistered_named_actors
+from app.agents.master.continuity import invented_player_dialogue, unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
 from app.agents.master.outcomes import failed_attack, public_attempts, transition_outcome
 from app.core import combat
@@ -72,25 +72,47 @@ class NarrationMixin:
             },
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
+        human_seats = {seat.id for seat in c.seats if seat.occupant_type != "agent"}
+        players = {cid: ch.name for cid, ch in ctx.world.characters.items() if ch.seat_id in human_seats}
+        participants = {cid: ch.name for cid, ch in ctx.world.characters.items()}
+        participants.update({e.id: e.name for e in ctx.world.in_scene_entities()})
         audit: dict[str, Any] = {"regenerated": False, "stripped": []}
         if outcome is not None:
             audit["transition_outcome"] = outcome
         has_resolution = any(ev.tool == "resolve_action" for ev in ctx.events)
         can_stream = stream is not None and outcome != "failed" and not attack_rejected and not has_resolution
-        push = textcalls.StreamFilter(stream.push) if can_stream else None
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, stream_callback=push)
-        if push is not None:
-            await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
+        # Scene and player ownership checks require the whole response. Publish
+        # the checked draft only; a rejected first attempt must never reach chat.
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None)
         text = reply.text.strip()
-        unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
-        # «[[Группа Складов]]» без id: имя из реестра linker сам превратит в ссылку, выдуманное — повод переписать
-        registry = {x.name.casefold() for x in (*ctx.world.characters.values(), *ctx.world.entities.values())}
-        unnamed = sorted({n for m in BARE.finditer(text) if (n := m.group(1).strip()).casefold() not in registry})
+        rejected_names: set[str] = set()
+        known_names = {ch.name.casefold() for ch in ctx.world.characters.values()}
+        known_names.update(e.name.casefold() for e in ctx.world.entities.values())
+
+        def unknown_refs(draft: str) -> list[str]:
+            refs = set()
+            for m in MARKUP.finditer(textcalls.clean(draft)):
+                if m.group(1) not in known:
+                    refs.add(m.group(1))
+                    if m.group(2).casefold() not in known_names:
+                        rejected_names.add(m.group(2))
+            return sorted(refs)
+
+        unknown = unknown_refs(text)
+        # Bare entity markup also needs a name already present in the registry.
+        unnamed = sorted(
+            {
+                m.group(1).strip()
+                for m in BARE.finditer(textcalls.clean(text))
+                if m.group(1).strip().casefold() not in known_names
+            }
+        )
         # Псевдовызовы инструментов сначала очищает существующий textcalls-аудитор.
         # Имена внутри их JSON-аргументов не являются художественным повествованием.
         has_tool_text = textcalls.contains(text, textcalls.tool_names())
         unregistered = [] if has_tool_text else unregistered_named_actors(text, ctx.world)
-        if unknown or unregistered or unnamed:
+        player_dialogue = invented_player_dialogue(textcalls.clean(text), players, participants, news)
+        if unknown or unregistered or player_dialogue or unnamed:
             audit["regenerated"] = True
             if unknown:
                 audit["unknown_first"] = unknown
@@ -98,13 +120,19 @@ class NarrationMixin:
                 audit["unregistered_names"] = unnamed
             if unregistered:
                 audit["unregistered_actors"] = unregistered
+            if player_dialogue:
+                audit["player_dialogue"] = player_dialogue
             problems = []
             if unknown:
                 problems.append(f"неизвестные id: {', '.join(unknown)}")
-            if unregistered:
-                problems.append(f"не зарегистрированы в текущей сцене: {', '.join(unregistered)}")
             if unnamed:
                 problems.append(f"разметка без id, таких мест и сущностей нет в реестре: {', '.join(unnamed)}")
+            if unregistered:
+                problems.append(f"не зарегистрированы в текущей сцене: {', '.join(unregistered)}")
+            if player_dialogue:
+                problems.append(
+                    "придуманы реплики персонажей игроков: " + ", ".join(players[cid] for cid in player_dialogue)
+                )
             retry = [
                 *base,
                 {"role": "assistant", "content": text},
@@ -114,15 +142,18 @@ class NarrationMixin:
                         f"Нарушена достоверность сцены ({'; '.join(problems)}). Перепиши ответ: "
                         "возможны только участники и события, подтверждённые текущей таблицей сцены "
                         "и успешными вызовами инструментов. Не описывай незарегистрированных врагов как "
-                        "видимых или приближающихся. Если действие игрока не выполнено, объясни причину. "
-                        "Чего нет в реестре, называй обычными словами, без разметки [[...]]."
+                        "видимых или приближающихся. Не отвечай за персонажей игроков: их реплики берутся "
+                        "только из сообщений соответствующего игрока этого хода. Если вопрос обращён к "
+                        "другому герою, оставь ответ его игроку. Если действие игрока не выполнено, объясни причину."
+                        " Окружение без записи в реестре описывай без разметки [[...]], не добавляя новых участников."
                     ),
                 },
             ]
-            # без потока: стирать черновик и печатать его заново — то самое «текст исчез и появился снова».
-            # Игроки видят первый вариант, пока пишется исправленный; финальный текст заменит его на месте
+            # Rejected drafts stay private while the narrator rewrites them.
             reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
             text = reply.text.strip()
+
+        blocked_refs = unknown_refs(text)
 
         def strip(m: re.Match) -> str:
             if m.group(1) in known:
@@ -151,6 +182,7 @@ class NarrationMixin:
                     },
                 ]
                 reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+                blocked_refs = unknown_refs(reply.text)
                 text = MARKUP.sub(strip, reply.text.strip())
                 if textcalls.contains(text, tools):
                     audit["tool_text_retry"] = True
@@ -160,6 +192,9 @@ class NarrationMixin:
         # Очистка от оборванного незакрытого тега разметки в конце текста
         text = re.sub(r"\[\[[^\]]*$", "", text).rstrip()
         # Последний барьер: повторная галлюцинация не превращается в факт игрового мира.
+        blocked_names = sorted(
+            name for name in rejected_names if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text, re.IGNORECASE)
+        )
         unregistered = unregistered_named_actors(text, ctx.world)
         if unregistered:
             audit["blocked_actors"] = unregistered
@@ -168,6 +203,16 @@ class NarrationMixin:
                 "Они пока отсутствуют в реестре мира; для взаимодействия мастер должен сначала "
                 "добавить их в сцену."
             )
+        if blocked_refs or blocked_names:
+            if blocked_refs:
+                audit["blocked_refs"] = blocked_refs
+            if blocked_names:
+                audit["blocked_names"] = blocked_names
+            text = "Описание встречи не подтверждено текущей сценой."
+        blocked_dialogue = invented_player_dialogue(text, players, participants, news)
+        if blocked_dialogue:
+            audit["blocked_player_dialogue"] = blocked_dialogue
+            text = "Ответ персонажа игрока ещё не получен. Его реплику должен написать сам игрок."
         if outcome == "failed":
             # После окончательного отказа нельзя публиковать свободную прозу модели:
             # она может утверждать об успешном входе, несмотря на явный запрет.
@@ -177,7 +222,10 @@ class NarrationMixin:
         elif attack_rejected:
             audit["attack_fallback"] = True
             text = "Атака не состоялась: сервер отклонил действие."
-        return text or "…", audit
+        text = text or "…"
+        if can_stream:
+            await stream.push(text)
+        return text, audit
 
     def _tts_ready(self, c: Campaign) -> bool:
         st = c.settings or {}
@@ -266,5 +314,5 @@ class NarrationMixin:
         ]
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model)
         text = reply.text.strip().strip("\"'«»—–- ").strip()
-        text = MARKUP.sub(r"\2", text)
+        text = textcalls.clean(MARKUP.sub(r"\2", text))
         return text or "Вперёд!"

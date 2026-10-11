@@ -150,8 +150,10 @@ def test_anchor_cost_and_routing_do_not_change_loot():
 
 
 def _develop(settings, cid, sketch):
+    """Место развёрнуто, но отряд туда не пришёл: вход — отдельным шагом теста."""
+
     async def go(ctx):
-        return (await _ok(ctx, "develop", {"sketch_id": sketch, "details": "-"}))["entity_id"]
+        return (await _ok(ctx, "develop", {"sketch_id": sketch, "details": "-", "here": False}))["entity_id"]
 
     return _play(settings, cid, go)
 
@@ -194,6 +196,28 @@ def test_visible_carrier_without_generation_flag_and_lost_is_not_restored(client
     assert _bindings(settings, cid)[port_anchor].state == "lost"
     _play(settings, cid, enter)
     assert _generated(settings, ref) == []  # утраченный носитель не восстанавливается
+
+
+def test_developing_current_place_prepares_it_with_carriers(client, admin, settings):
+    """Мастер разворачивает место каркаса прямо под отрядом — отдельного ``move`` не будет: подготовка
+    запрашивается сразу, и в её резерве уже есть носитель зацепки этого места."""
+    import_base(settings)
+    campaign, _heads, _hero = _party(client, admin)
+    cid = campaign["id"]
+    p = _checked()
+    port_anchor, _lens = _anchor_ids(p)
+    _install(settings, cid, p)
+
+    async def go(ctx):
+        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
+        return await _ok(ctx, "develop", {"sketch_id": "loc_port", "details": "-"})
+
+    out = _play(settings, cid, go)
+    assert out["current"] and out["preparation"]["accepted"]
+    ref = out["operation_ref"]
+    assert [a["anchor_id"] for a in _row(settings, ref).reservation["anchors"]] == [port_anchor]
+    assert _prepare(settings, cid, ref) == "ready"
+    assert "Журнал смотрителя" in {e.name for e in _generated(settings, ref)}
 
 
 def test_hidden_carrier_goes_into_container_and_appears_on_search(client, admin, settings):

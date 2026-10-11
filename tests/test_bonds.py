@@ -136,7 +136,7 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     assert "50–100 слов" in llm.requests[6]["messages"][1]["content"]
     assert (
         "Гимли" in llm.requests[6]["messages"][1]["content"]
-        and "Бран (" not in llm.requests[6]["messages"][1]["content"]
+        and "Бран (" not in llm.requests[6]["messages"][1]["content"].split("Герои:\n")[-1]
     )
     purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle")]
     assert purposes[:9] == [

@@ -133,7 +133,10 @@ class LiteLLMClient:
         import litellm
 
         msgs = messages
-        if model.startswith("gemini/") or model.startswith("anthropic/"):
+        # Gemini rejects explicit caches below a model-specific token minimum.
+        # A character count cannot establish that minimum; leave caching to the
+        # provider instead of making short parser requests fail with HTTP 400.
+        if model.startswith("anthropic/"):
             cached_messages = []
             for m in messages:
                 if m.get("role") == "system" and isinstance(m.get("content"), str) and len(m["content"]) > 1000:

@@ -99,7 +99,8 @@ def test_turn_with_tool_and_markup_audit(game_client, admin_g, llm, dice, settin
     ]
     n = act(game_client, p1, c["id"], "Вышибаю дверь плечом")
     assert n["kind"] == "narration"
-    assert f"[[{hero['id']}|Бран]]" in n["content"] and "en_ghost" not in n["content"] and "призрак" in n["content"]
+    assert "en_ghost" not in n["content"] and "призрак" not in n["content"]
+    assert "не подтверждено" in n["content"]
 
     decide = llm.requests[0]
     assert any(t["function"]["name"] == "roll_check" for t in decide["tools"])
