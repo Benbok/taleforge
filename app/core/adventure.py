@@ -61,19 +61,20 @@ def find_room(rec: Entry, ref: str) -> dict | None:
     for r in all_rooms:
         if str(r.get("name") or "").lower() == low:
             return r
-    cleaned = re.sub(r"^(?:комната|room)[\s_-]*", "", low)
-    if cleaned:
-        for r in all_rooms:
-            if r["id"] == cleaned or str(r.get("number") or "") == cleaned:
-                return r
-            if str(r.get("name") or "").lower() == cleaned:
-                return r
-    m = re.search(r"(?:комната|room|r)?[_\s-]*([0-9]+)", low)
-    if m:
-        num = m.group(1)
-        for r in all_rooms:
-            if str(r.get("number") or "") == num or r["id"] == f"r{num}":
-                return r
+    if not low.startswith("en_"):
+        cleaned = re.sub(r"^(?:комната|room)[\s_-]*", "", low)
+        if cleaned:
+            for r in all_rooms:
+                if r["id"] == cleaned or str(r.get("number") or "") == cleaned:
+                    return r
+                if str(r.get("name") or "").lower() == cleaned:
+                    return r
+        m = re.match(r"^(?:комната|room|r)?[_\s-]*([0-9]+)(?:[_\s-].*)?$", low)
+        if m:
+            num = m.group(1)
+            for r in all_rooms:
+                if str(r.get("number") or "") == num or r["id"] == f"r{num}":
+                    return r
     for r in all_rooms:
         r_name = str(r.get("name") or "").lower()
         if r_name and (r_name in low or low in r_name):

@@ -127,6 +127,8 @@ def test_campaign_from_module_runs_room_by_room(client, admin, settings, monkeyp
         assert start.location_id == crypt and str(adventure.room_of(start)["number"]) == "1"
         assert "Комната 1 «Зал Мёртвых»" in adventure.master_block(ctx.world)
         room = await _ok(ctx, "enter_room", {"room": "1"})
+        room_by_en = await _ok(ctx, "enter_room", {"room": room["room_id"]})
+        assert room_by_en["room_id"] == room["room_id"]
         check = await _ok(
             ctx,
             "roll_check",
@@ -334,3 +336,5 @@ def test_find_room_resilient_matching():
     assert adventure.find_room(rec, "room_1_graveyard_at_the_mausoleum")["id"] == "r1"
     assert adventure.find_room(rec, "graveyard")["id"] == "graveyard"
     assert adventure.find_room(rec, "Кладбище у мавзолея")["id"] == "graveyard"
+    assert adventure.find_room(rec, "en_2dd6573b19591abd") is None
+    assert adventure.find_room(rec, "en_15aaca9f958785d2") is None

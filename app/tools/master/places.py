@@ -931,7 +931,14 @@ async def enter_room(ctx: ToolContext, a: EnterRoomArgs) -> dict:
     if found is None:
         raise ToolError("герои не в месте готового приключения: сначала разверни место каркаса через develop")
     place, rec = found
-    room = adventure.find_room(rec, a.room)
+    target_en = w.entities.get(a.room)
+    room = None
+    if target_en is not None:
+        r_meta = adventure.room_of(target_en)
+        if r_meta and r_meta.get("id"):
+            room = adventure.find_room(rec, r_meta["id"])
+    if room is None:
+        room = adventure.find_room(rec, a.room)
     if room is None:
         listed = "; ".join(adventure.room_title(r) for r in adventure.rooms(rec))
         raise ToolError(f"в месте «{rec.name}» нет комнаты {a.room}. Комнаты: {listed}")
