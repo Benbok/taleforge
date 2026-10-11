@@ -92,11 +92,16 @@ def test_library_hero_built_for_world(client, worlds):
 def test_copy_into_other_world_names_what_to_replace(client, admin, worlds):
     h = signup(client, "Леголас")
     elf = ok(client.post("/api/me/characters", json={**FIGHTER, "origin_id": "origin.elf_high"}, headers=h), 201)
-    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
+    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans", creation_rules={"review": "auto"})
     ok(client.post(f"/api/invites/{invite(client, admin, c['id'])['token']}/accept", headers=h))
     copy = ok(client.post(f"/api/campaigns/{c['id']}/characters/from-library/{elf['id']}", headers=h), 201)
     # класс в мире есть и переносится, эльфа — нет
     assert copy["sheet"]["class_id"] == "class.fighter" and "origin_id" not in copy["sheet"]
+    assert copy["name"] == FIGHTER["name"]
+    assert copy["public_bio"] == FIGHTER["public_bio"]
+    assert copy["private_backstory"] == FIGHTER["private_backstory"]
+    for key in ("abilities", "skills", "equipment_choices", "fighting_style"):
+        assert copy["sheet"][key] == FIGHTER[key]
     want = "происхождение «Высший эльф» не из мира этой кампании: выберите происхождение этого мира"
     assert copy["errors"][0] == want
     assert not any(e.startswith("происхождение не выбрано") for e in copy["errors"])
@@ -109,6 +114,11 @@ def test_copy_into_other_world_names_what_to_replace(client, admin, worlds):
     )
     assert fixed["sheet"]["foreign"] == {}
     assert ok(client.get(f"/api/campaigns/{c['id']}/characters/{copy['id']}", headers=h))["errors"] == []
+    sent = ok(client.post(f"/api/campaigns/{c['id']}/characters/{copy['id']}/submit", headers=h))
+    assert sent["status"] == "approved" and sent["errors"] == []
+    heroes = ok(client.get(f"/api/campaigns/{c['id']}/characters", headers=h))
+    assert [(ch["id"], ch["name"]) for ch in heroes] == [(copy["id"], FIGHTER["name"])]
+    assert ok(client.get(f"/api/me/characters/{elf['id']}", headers=h))["origin_id"] == "origin.elf_high"
 
 
 def test_threshold_gives_second_race_and_caste(client, admin, worlds, settings):

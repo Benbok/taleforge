@@ -173,7 +173,16 @@ export default function CampaignHeroPage() {
         packId={room.data?.pack_id ?? null}
         onNew={() => setBuilding(true)}
         onDone={refresh}
-        openBuilder={() => setBuilding(true)}
+        openBuilder={(copy) => {
+          // Копия уже сохранена сервером. Конструктор должен сразу получить её лист и id,
+          // иначе до окончания refresh он откроет пустую форму и попробует создать второго героя.
+          qc.setQueryData(["character", id, copy.id], copy);
+          qc.setQueryData<CampaignHero[]>(["characters", id], (heroes) => [
+            ...(heroes ?? []).filter((h) => h.id !== copy.id),
+            copy,
+          ]);
+          setBuilding(true);
+        }}
       />
     );
   }
@@ -239,7 +248,7 @@ function Choose({
   packId: string | null;
   onNew: () => void;
   onDone: () => Promise<unknown>;
-  openBuilder: () => void;
+  openBuilder: (copy: CampaignHero) => void;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -327,7 +336,7 @@ function Choose({
                     });
                     if (!r.errors.length) return onDone();
                   }
-                  openBuilder();
+                  openBuilder(copy);
                   await onDone();
                 }}
                 done="Копия добавлена в кампанию"
