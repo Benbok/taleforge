@@ -4490,6 +4490,61 @@
     "title": "ImportIn",
     "type": "object"
    },
+   "IntroDraftIn": {
+    "properties": {
+     "hook_id": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hook Id"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provider"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "maxLength": 8000,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "свой текст: только озвучить его",
+      "title": "Text"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     }
+    },
+    "title": "IntroDraftIn",
+    "type": "object"
+   },
    "InventoryRow": {
     "additionalProperties": false,
     "properties": {
@@ -9617,6 +9672,268 @@
      }
     ],
     "summary": "Reimport",
+    "tags": [
+     "modules"
+    ]
+   }
+  },
+  "/api/admin/modules/{module_id}/intro": {
+   "get": {
+    "description": "Вступление приключения: сохранённое по зацепкам (его берут новые кампании) и черновик на проверку.",
+    "operationId": "get_intro_api_admin_modules__module_id__intro_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "module_id",
+      "required": true,
+      "schema": {
+       "title": "Module Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Intro Api Admin Modules  Module Id  Intro Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get Intro",
+    "tags": [
+     "modules"
+    ]
+   }
+  },
+  "/api/admin/modules/{module_id}/intro/draft": {
+   "delete": {
+    "operationId": "discard_intro_api_admin_modules__module_id__intro_draft_delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "module_id",
+      "required": true,
+      "schema": {
+       "title": "Module Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Discard Intro Api Admin Modules  Module Id  Intro Draft Delete",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Discard Intro",
+    "tags": [
+     "modules"
+    ]
+   },
+   "post": {
+    "description": "Создать или пересоздать черновик: текст пишет модель (или берётся свой), затем озвучка выбранным голосом.",
+    "operationId": "make_intro_draft_api_admin_modules__module_id__intro_draft_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "module_id",
+      "required": true,
+      "schema": {
+       "title": "Module Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IntroDraftIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Make Intro Draft Api Admin Modules  Module Id  Intro Draft Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Make Intro Draft",
+    "tags": [
+     "modules"
+    ]
+   }
+  },
+  "/api/admin/modules/{module_id}/intro/save": {
+   "post": {
+    "description": "Черновик становится вступлением для новых кампаний по этой зацепке.",
+    "operationId": "save_intro_api_admin_modules__module_id__intro_save_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "module_id",
+      "required": true,
+      "schema": {
+       "title": "Module Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Save Intro Api Admin Modules  Module Id  Intro Save Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Save Intro",
+    "tags": [
+     "modules"
+    ]
+   }
+  },
+  "/api/admin/modules/{module_id}/intro/voice/{voice_id}": {
+   "get": {
+    "description": "Запись вступления для прослушивания в карточке приключения.",
+    "operationId": "intro_voice_api_admin_modules__module_id__intro_voice__voice_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "module_id",
+      "required": true,
+      "schema": {
+       "title": "Module Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "voice_id",
+      "required": true,
+      "schema": {
+       "title": "Voice Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Intro Voice",
     "tags": [
      "modules"
     ]

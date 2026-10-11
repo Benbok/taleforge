@@ -475,27 +475,33 @@ def _voice_job(svc, c: Campaign, clean=clean_story) -> voiceover.VoiceJob | None
     return voiceover.VoiceJob(synth, clean)
 
 
-async def _module_intro(svc, c: Campaign, p: dict, seat_id: str) -> tuple[str, list[dict]]:
-    """Готовое приключение: общее вступление модуля (app/agents/module_intro.py) — из кэша или, если его ещё
-    нет, пишется этой кампанией и кладётся в кэш для следующих. Записи копируются в папку кампании."""
+def _module_of(svc, c: Campaign) -> str | None:
+    mod = (c.settings or {}).get("module") or {}
+    return mod.get("id") if mod.get("id") and getattr(svc, "media_dir", None) else None
+
+
+def _saved_module_intro(svc, c: Campaign, p: dict) -> dict | None:
+    """Сохранённое админом вступление готового приключения для зацепки кампании (app/agents/module_intro.py)."""
     from app.agents import module_intro
 
-    st, mod = c.settings or {}, (c.settings or {})["module"]
-    text, voices = await module_intro.ensure(
-        svc,
-        mod["id"],
-        mod["version"],
-        p,
-        title=p.get("title") or c.name,
-        tts=_tts_on(svc, c),
-        provider=st.get("tts_provider"),
-        voice=st.get("tts_voice"),
-        campaign_id=c.id,
-        seat_id=seat_id,
-    )
-    if text and voices and _tts_on(svc, c):
-        return text, module_intro.copy_voices(svc.media_dir, mod["id"], c.id, voices)
-    return text, []
+    mid = _module_of(svc, c)
+    return module_intro.saved_for(svc.media_dir, mid, module_intro.hook_of(p)) if mid else None
+
+
+def _module_voices(svc, c: Campaign, entry: dict) -> list[dict] | None:
+    """Записи сохранённого вступления в папку кампании, если голос кампании тот же; None — голос другой
+    (или записей нет), и текст озвучивается голосом кампании."""
+    from app.agents import module_intro
+
+    if not _tts_on(svc, c):
+        return []
+    st = c.settings or {}
+    mine = module_intro.voice_of(svc, st.get("tts_provider"), st.get("tts_voice"))
+    theirs = module_intro.voice_of(svc, entry.get("provider"), entry.get("voice"))
+    if mine != theirs or not entry.get("voices"):
+        return None
+    voices = module_intro.copy_voices(svc.media_dir, _module_of(svc, c), c.id, entry["voices"])
+    return voices if len(voices) == len(entry["voices"]) else None
 
 
 async def prepare_campaign_intro(svc, cid: str) -> bool:
@@ -509,11 +515,13 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
         if cfg is None:
             return False
         seat_id = master_seat(c).id
-    mod = (c.settings or {}).get("module") or {}
-    if mod.get("id") and mod.get("version") and svc.media_dir:
-        text, voices = await _module_intro(svc, c, p, seat_id)
-        if not text:
-            return False
+    saved = _saved_module_intro(svc, c, p)
+    if saved:  # готовое приключение: вступление, проверенное админом, одно на все кампании
+        text = saved["text"]
+        voices = _module_voices(svc, c, saved)
+        if voices is None:
+            job = _voice_job(svc, c)
+            voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
     else:
         job = _voice_job(svc, c)
         text = await _intro_text(svc, c, cfg, p, seat_id, job=job)
@@ -653,20 +661,14 @@ async def introduce_campaign(svc, cid: str) -> str | None:
             msg_id = msg.id
         text = ready.get("text") or ""
         voices = ready.get("voices") or ([ready["voice"]] if ready.get("voice") else [])
-        mod = (c.settings or {}).get("module") or {}
-        if (
-            not text and mod.get("id") and mod.get("version") and svc.media_dir
-        ):  # заготовка не успела, а у модуля вступление есть
-            from app.agents import module_intro
-
-            st = c.settings or {}
-            hook = ((p.get("module_hook") or {}).get("id")) or "-"
-            text, cached = module_intro.cached(
-                svc.media_dir, mod["id"], mod["version"], hook, st.get("tts_provider"), st.get("tts_voice")
-            )
-            if text and cached and _tts_on(svc, c):
-                voices = module_intro.copy_voices(svc.media_dir, mod["id"], cid, cached)
         tasks: list[asyncio.Task] = []
+        saved = _saved_module_intro(svc, c, p)
+        if saved and saved["text"] != text:  # админ сохранил вступление приключения позже заготовки кампании
+            text = saved["text"]
+            voices = _module_voices(svc, c, saved)
+            if voices is None:
+                voices, job = [], _voice_job(svc, c)
+                tasks = job.finish(text) if job is not None else []
         if not text:
             job = _voice_job(svc, c)  # части озвучиваются, пока модель ещё пишет: первая готова раньше всех
             text = await _intro_text(svc, c, cfg, p, seat_id, stream=Stream(svc.bus, cid, msg), job=job)

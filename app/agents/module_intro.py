@@ -1,11 +1,12 @@
-"""Общее вступление готового приключения: одно на все кампании по модулю.
+"""Общее вступление готового приключения: одно на все кампании по модулю, проверенное админом.
 
 Вступление ко всей кампании героев не касается (о них — знакомство отряда при старте сессии, prelude.introduce),
-поэтому у кампаний по одному модулю оно одинаковое. Текст и голос пишутся один раз — сразу после публикации
-модуля — и лежат в папке модуля; новая кампания получает копию, не тратя ни вызова модели, ни синтеза.
+поэтому у кампаний по одному модулю оно одинаковое. Админ в карточке приключения создаёт черновик (текст и
+голос), читает и слушает его, пересоздаёт при желании и сохраняет. Кампании берут только сохранённое: без него
+вступление пишет сама кампания, как раньше.
 
-Кэш — ``media/modules/<id>/intro.json``: ``version`` — версия пакета модуля (новая публикация сбрасывает кэш),
-``texts`` — текст по зацепке книги, ``voices`` — записи по зацепке и голосу (``зацепка|провайдер|голос``).
+Хранится в ``media/modules/<id>/intro.json``: ``saved`` — сохранённое по зацепке книги
+``{text, provider, voice, voices}``, ``draft`` — черновик ``{hook_id, provider, voice, text, voices, status, error}``.
 Записи лежат как голос «кампании» ``module-<id>`` и при выдаче копируются в папку кампании под теми же id.
 Характер мастера в общий текст не входит: он у каждой кампании свой.
 """
@@ -16,6 +17,7 @@ import asyncio
 import json
 import logging
 import shutil
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.agents import prelude, voiceover
@@ -30,7 +32,22 @@ log = logging.getLogger(__name__)
 
 CACHE = "intro.json"
 DEFAULT_PROVIDER = "gemini"  # озвучка новой кампании по умолчанию (CampaignIn.tts_provider)
-_locks: dict[str, asyncio.Lock] = {}
+NO_HOOK = "-"
+
+
+STALE_MIN = 30  # черновик «в работе» дольше этого — прерван перезапуском сервера
+
+
+def now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def _ago(minutes: int) -> str:
+    return (datetime.now(UTC) - timedelta(minutes=minutes)).isoformat(timespec="seconds")
+
+
+class IntroError(Exception):
+    pass
 
 
 def store(module_id: str) -> str:
@@ -42,17 +59,18 @@ def _path(media_dir: Path, module_id: str) -> Path:
     return Path(media_dir) / "modules" / module_id / CACHE
 
 
-def _load(media_dir: Path, module_id: str, version: str) -> dict:
+def load(media_dir: Path, module_id: str) -> dict:
     try:
         data = json.loads(_path(media_dir, module_id).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         data = {}
-    if data.get("version") != version:
-        return {"version": version, "texts": {}, "voices": {}}
-    return data
+    draft = data.get("draft")
+    if draft and draft.get("status") == "working" and (draft.get("started_at") or "") < _ago(STALE_MIN):
+        draft = {**draft, "status": "failed", "error": "создание прервалось (сервер перезапускали): создайте заново"}
+    return {"saved": data.get("saved") or {}, "draft": draft}
 
 
-def _save(media_dir: Path, module_id: str, data: dict) -> None:
+def _write(media_dir: Path, module_id: str, data: dict) -> None:
     path = _path(media_dir, module_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -60,82 +78,33 @@ def _save(media_dir: Path, module_id: str, data: dict) -> None:
     tmp.replace(path)
 
 
-def _voice_key(hook: str, provider: str | None, voice: str | None) -> str:
-    return f"{hook}|{provider or DEFAULT_PROVIDER}|{voice or ''}"
+def _drop_voices(media_dir: Path, module_id: str, voices: list[dict] | None) -> None:
+    folder = voice_dir(Path(media_dir), store(module_id))
+    for v in voices or []:
+        for f in folder.glob(f"{v.get('id')}.*"):
+            f.unlink(missing_ok=True)
 
 
 def forget(media_dir: Path, module_id: str) -> None:
-    """Удалённый модуль уносит и своё вступление."""
+    """Удалённый модуль уносит и записи своего вступления."""
     shutil.rmtree(voice_dir(Path(media_dir), store(module_id)), ignore_errors=True)
 
 
-def cached(media_dir: Path, module_id: str, version: str, hook: str, provider: str | None, voice: str | None):
-    """(текст, записи) из кэша без генерации: записи — None, если голоса с такими настройками ещё нет."""
-    data = _load(media_dir, module_id, version)
-    return data["texts"].get(hook) or "", data["voices"].get(_voice_key(hook, provider, voice))
+def hook_of(plan: dict | None) -> str:
+    return ((plan or {}).get("module_hook") or {}).get("id") or NO_HOOK
 
 
-async def ensure(
-    svc,
-    module_id: str,
-    version: str,
-    plan: dict,
-    *,
-    title: str,
-    tts: bool,
-    provider: str | None,
-    voice: str | None,
-    campaign_id: str | None = None,
-    seat_id: str | None = None,
-) -> tuple[str, list[dict]]:
-    """Вступление модуля для зацепки каркаса и голоса: из кэша, а чего нет — пишется и кладётся в кэш.
-    Под замком модуля: две кампании, созданные разом, не пишут его дважды."""
-    hook = ((plan.get("module_hook") or {}).get("id")) or "-"
-    key = _voice_key(hook, provider, voice)
-    lock = _locks.setdefault(module_id, asyncio.Lock())
-    async with lock:
-        data = _load(svc.media_dir, module_id, version)
-        if not data["texts"]:
-            forget(svc.media_dir, module_id)  # записи прошлой версии модуля: у кампаний свои копии
-        text = data["texts"].get(hook) or ""
-        voices = data["voices"].get(key)
-        if text and (voices is not None or not tts):
-            return text, voices or []
+def voice_of(svc, provider: str | None, voice: str | None) -> tuple[str, str | None]:
+    """Провайдер и голос с подставленными умолчаниями: «голос не выбран» и голос по умолчанию — один голос."""
+    tts = getattr(svc, "tts", None)
+    p = provider or getattr(tts, "default_provider", None) or DEFAULT_PROVIDER
+    engine = tts.get_engine(p) if tts is not None and hasattr(tts, "get_engine") else None
+    return p, voice or getattr(engine, "voice", None)
 
-        job = None
-        if tts:
-            sid = store(module_id)
 
-            async def synth(part: str) -> dict | None:
-                return await svc.tts.voice_for_narration(svc.media_dir, sid, part, provider=provider, voice_name=voice)
-
-            job = voiceover.VoiceJob(synth, prelude.clean_story)
-
-        if not text:
-            async with svc.maker() as s:
-                p = await default_model_profile(s)
-            model, api_base, temperature = (
-                (model_for(p.provider, p.model or None), p.api_base, p.temperature) if p else (model_for(), None, 0.8)
-            )
-            if campaign_id:  # первая кампания пишет текст на модели своего мастера
-                from app.agents.architect import model_of
-                from app.db.models import Campaign
-
-                async with svc.maker() as s:
-                    _, model, api_base, temperature = await model_of(s, await s.get(Campaign, campaign_id))
-            call = LlmCall(campaign_id=campaign_id, seat_id=seat_id, purpose="module_intro", model=model)
-            msgs = prelude.intro_messages(title, plan.get("public_intro") or "", None, plan)
-            text = await prelude.write_intro(svc, msgs, call, api_base, temperature, job=job)
-            if not text:
-                if job is not None:
-                    job.cancel()
-                return "", []
-        voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
-        data["texts"][hook] = text
-        if job is not None and voices:  # неудачный синтез не кэшируем: следующая кампания попробует снова
-            data["voices"][key] = voices
-        _save(svc.media_dir, module_id, data)
-        return text, voices
+def saved_for(media_dir: Path, module_id: str, hook: str) -> dict | None:
+    entry = load(media_dir, module_id)["saved"].get(hook)
+    return entry if entry and entry.get("text") else None
 
 
 def copy_voices(media_dir: Path, module_id: str, campaign_id: str, voices: list[dict]) -> list[dict]:
@@ -154,33 +123,133 @@ def copy_voices(media_dir: Path, module_id: str, campaign_id: str, voices: list[
     return out
 
 
-async def prepare_module(svc, module_id: str) -> bool:
-    """После публикации: вступление для зацепки книги по умолчанию и голоса новой кампании по умолчанию."""
+async def _adventure(svc, module_id: str):
+    async with svc.maker() as s:
+        m = await s.get(AdventureModule, module_id)
+        if m is None or not m.pack_id:
+            raise IntroError("приключение ещё не опубликовано")
+        pack = await s.get(ContentPack, (m.pack_id, m.pack_version))
+        catalog = (await load_catalog(s, await resolve_chain(s, pack))).view(False)
+        title = m.title
+    adv = adventure.adventure_of(catalog)
+    if adv is None:
+        raise IntroError("в пакете приключения нет записи adventure: опубликуйте его заново")
+    return adv, title
+
+
+async def hooks(svc, module_id: str) -> list[dict]:
+    adv, _ = await _adventure(svc, module_id)
+    return [{"id": h["id"], "title": h.get("title") or h["id"]} for h in adventure.hooks(adv)]
+
+
+def start_draft(media_dir: Path, module_id: str, hook_id: str | None, provider: str | None, voice: str | None) -> dict:
+    """Черновик «в работе»: старый несохранённый черновик и его записи уходят."""
+    data = load(media_dir, module_id)
+    old = data["draft"] or {}
+    if old.get("status") == "working":
+        raise IntroError("черновик вступления ещё готовится: дождитесь его")
+    _drop_voices(media_dir, module_id, old.get("voices"))
+    data["draft"] = {
+        "hook_id": hook_id,
+        "provider": provider,
+        "voice": voice,
+        "text": "",
+        "voices": [],
+        "status": "working",
+        "error": None,
+        "started_at": now_iso(),
+    }
+    _write(media_dir, module_id, data)
+    return data
+
+
+async def make_draft(svc, module_id: str, text: str | None = None) -> None:
+    """Пишет черновик, заведённый start_draft: текст (если админ не дал свой) и голос по частям."""
+    media_dir = Path(svc.media_dir)
+    draft = dict(load(media_dir, module_id)["draft"] or {})
     try:
-        async with svc.maker() as s:
-            m = await s.get(AdventureModule, module_id)
-            if m is None or not m.pack_id:
-                return False
-            title, version = m.title, m.pack_version
-            pack = await s.get(ContentPack, (m.pack_id, m.pack_version))
-            catalog = (await load_catalog(s, await resolve_chain(s, pack))).view(False)
-            adv = adventure.adventure_of(catalog)
-        if adv is None:
-            return False
-        plan, _ = adventure.start_plan(adv, None)
+        adv, title = await _adventure(svc, module_id)
+        plan, hook = adventure.start_plan(adv, draft.get("hook_id"))
+        draft["hook_id"] = hook["id"] if hook else NO_HOOK
+        provider, voice = voice_of(svc, draft.get("provider"), draft.get("voice"))
+        draft["provider"], draft["voice"] = provider, voice
         tts = getattr(svc, "tts", None)
-        on = bool(tts and svc.media_dir and tts.get_engine(DEFAULT_PROVIDER).enabled)
-        text, _ = await ensure(
-            svc,
-            module_id,
-            version,
-            plan,
-            title=plan.get("title") or title,
-            tts=on,
-            provider=DEFAULT_PROVIDER,
-            voice=None,
-        )
-        return bool(text)
-    except Exception:  # noqa: BLE001 — без заготовки кампания напишет вступление сама
-        log.exception("вступление модуля %s не подготовлено", module_id)
-        return False
+        job = None
+        if tts is not None and tts.get_engine(provider).enabled:
+            sid = store(module_id)
+
+            async def synth(part: str) -> dict | None:
+                return await tts.voice_for_narration(media_dir, sid, part, provider=provider, voice_name=voice)
+
+            job = voiceover.VoiceJob(synth, prelude.clean_story)
+        text = (text or "").strip()
+        if not text:
+            async with svc.maker() as s:
+                p = await default_model_profile(s)
+            model, api_base, temperature = (
+                (model_for(p.provider, p.model or None), p.api_base, p.temperature) if p else (model_for(), None, 0.8)
+            )
+            call = LlmCall(campaign_id=None, purpose="module_intro", model=model)
+            msgs = prelude.intro_messages(plan.get("title") or title, plan.get("public_intro") or "", None, plan)
+            text = await prelude.write_intro(svc, msgs, call, api_base, temperature, job=job)
+            if not text:
+                raise IntroError(f"модель не написала вступление: {call.error or 'пустой ответ'}"[:500])
+        voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
+        draft.update(text=text, voices=voices, status="ready")
+        if job is None:
+            draft["error"] = "озвучка выключена: у выбранного источника нет ключа или он не подключён"
+        elif len(voices) < len(voiceover.split(text)):
+            draft["error"] = "часть записей не озвучилась: пересоздайте голос"
+    except IntroError as e:
+        draft.update(status="failed", error=str(e))
+    except Exception as e:  # noqa: BLE001 — сбой черновика не должен ронять сервер
+        log.exception("черновик вступления модуля %s не готов", module_id)
+        draft.update(status="failed", error=f"внутренняя ошибка: {e}"[:500])
+    data = load(media_dir, module_id)
+    data["draft"] = draft
+    _write(media_dir, module_id, data)
+
+
+def save_draft(media_dir: Path, module_id: str) -> dict:
+    """Черновик становится вступлением своей зацепки для новых кампаний; прежнее уходит (у кампаний копии)."""
+    data = load(media_dir, module_id)
+    d = data["draft"] or {}
+    if d.get("status") != "ready" or not d.get("text"):
+        raise IntroError("сохранять нечего: сначала создайте вступление и дождитесь его")
+    hook = d.get("hook_id") or NO_HOOK
+    _drop_voices(media_dir, module_id, (data["saved"].get(hook) or {}).get("voices"))
+    data["saved"][hook] = {
+        "text": d["text"],
+        "provider": d.get("provider"),
+        "voice": d.get("voice"),
+        "voices": d.get("voices") or [],
+        "saved_at": now_iso(),
+    }
+    data["draft"] = None
+    _write(media_dir, module_id, data)
+    return data
+
+
+def discard_draft(media_dir: Path, module_id: str) -> dict:
+    data = load(media_dir, module_id)
+    d = data["draft"] or {}
+    if d.get("status") == "working":
+        raise IntroError("черновик ещё готовится: дождитесь его")
+    _drop_voices(media_dir, module_id, d.get("voices"))
+    data["draft"] = None
+    _write(media_dir, module_id, data)
+    return data
+
+
+async def prepare_module(svc, module_id: str) -> None:
+    """После первой публикации: черновик для зацепки и голоса по умолчанию — админу остаётся прочитать,
+    послушать и сохранить."""
+    media_dir = Path(svc.media_dir)
+    data = load(media_dir, module_id)
+    if data["saved"] or data["draft"]:
+        return
+    try:
+        start_draft(media_dir, module_id, None, DEFAULT_PROVIDER, None)
+    except IntroError:
+        return
+    await make_draft(svc, module_id)
