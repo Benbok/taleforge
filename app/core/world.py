@@ -364,6 +364,8 @@ class World:
     crew: set[str] = field(default_factory=set)  # герои этой группы: куда бы они ни ушли за ход, сцена с ними
     # что каждый герой явно обнаружил (Knowledge.revealed_at): персональные сцены показывают ему найденное тайное
     revealed: dict[str, set[str]] = field(default_factory=dict)
+    # ревизия мира, от которой прочитан этот снимок (app/core/world_tx.py)
+    revision: int = 0
     _actors: dict[str, Actor] = field(default_factory=dict)
 
     def actor(self, actor_id: str) -> Actor:
@@ -816,6 +818,11 @@ async def get_scene(session: AsyncSession, campaign_id: str, *, refresh: bool = 
 async def load_world(
     session: AsyncSession, campaign: Campaign, catalog: CatalogView, *, refresh: bool = False
 ) -> World:
+    from app.core import world_tx
+
+    # ревизия читается до данных: чужая запись после этого чтения даст конфликт, а не тихую перезапись
+    revision = await world_tx.read_revision(session, campaign.id)
+    world_tx.remember_base(session, campaign.id, revision, fresh=refresh)
     chars = (
         await session.scalars(
             select(Character).where(Character.campaign_id == campaign.id).execution_options(populate_existing=refresh)
@@ -868,4 +875,5 @@ async def load_world(
         effects=effects,
         plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
         revealed=revealed,
+        revision=revision if (base := world_tx.base_revision(session, campaign.id)) is None else base,
     )

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 
@@ -11,6 +10,7 @@ from sqlalchemy import func, select
 from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
+from app.agents.master import checkpoint
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
 from app.agents.master.creative import creative_context, creative_note
 from app.agents.master.helpers import (
@@ -29,9 +29,9 @@ from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
-from app.core.linker import link_text
+from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
-from app.gateway.events import Stream, envelope, publish_message
+from app.gateway.events import envelope, publish_message
 from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
 from app.tools import progress as progress_tools
@@ -175,16 +175,28 @@ class TurnMixin:
         await self._states(cid, ids, "processing")
         await self.introduce(cid)  # новичок за столом: мастер сначала представляет его
         calls: list[LlmCall] = []
-        drafts: list[str] = []  # черновики повествования, которые игроки видели по кускам
         diagnostics: dict = {}
         replan = False
+        committed = False  # действия хода зафиксированы: дальше откатывать нечего (docs/world-objects-delivery2.md)
         await self._status(cid, "listening")
         try:
-            async with self.maker() as s:
-                published = await self._play(s, cid, turn_id, calls, drafts, diagnostics)
+            for attempt in range(2):
+                try:
+                    async with self.maker() as s:
+                        published = await self._play(s, cid, turn_id, calls, diagnostics)
+                    break
+                except WorldConflict:
+                    if attempt:
+                        raise
+                    # мир изменился между чтением и первой записью хода: ход целиком переигрывается по свежему миру
+                    log.info("ход мастера %s: мир изменился, ход переигрывается", turn_id)
+                    diagnostics["world_conflict_retry"] = True
+            committed = True
             if published["skipped"]:
                 return turn_id
-            await publish_changes(self.bus, published["ctx"], published["messages"], published["names"])
+            await self._save_calls(calls)
+            told = await self._narrate_turn(cid, turn_id)
+            await publish_changes(self.bus, published["ctx"], [*published["messages"], *told], published["names"])
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
@@ -193,31 +205,48 @@ class TurnMixin:
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
-            async with self.maker() as s:
-                t = await s.get(MasterTurn, turn_id)
-                t.status, t.finished_at = "failed", now()
-                t.trace = {**(t.trace or {}), **diagnostics, "rolled_back": True, "error": f"{type(e).__name__}: {e}"}
-                c = await s.get(Campaign, cid)
-                msg = await system_message(
-                    s, c, "Мастер не смог завершить ход. Ничего не изменилось: повторите действие.", None
-                )
-                sc = await s.get(Scene, cid)
-                if sc is not None and (sc.state or {}).get("submitted"):
-                    sc.state = {**sc.state, "submitted": False}  # заявку можно повторить
-                await s.commit()
-            for draft in drafts:  # ход откатился: недописанный текст мастера убираем из чата
-                await self.bus.publish(cid, envelope("message.withdrawn", cid, {"id": draft}), None)
-            await publish_message(self.bus, msg)
-            await self._states(cid, ids, "failed")
+            if committed:
+                self.signal_recovery()  # действия сохранены: описание допишет восстановитель
+            else:
+                conflict = isinstance(e, WorldConflict)
+                async with self.maker() as s:
+                    t = await s.get(MasterTurn, turn_id)
+                    t.status, t.finished_at = "failed", now()
+                    t.trace = {
+                        **(t.trace or {}),
+                        **diagnostics,
+                        "rolled_back": True,
+                        "error": f"{type(e).__name__}: {e}",
+                    }
+                    c = await s.get(Campaign, cid)
+                    text = (
+                        "Мастер не смог завершить ход: мир изменился, пока он думал. Ничего не изменилось: "
+                        "повторите действие."
+                        if conflict
+                        else "Мастер не смог завершить ход. Ничего не изменилось: повторите действие."
+                    )
+                    msg = await system_message(s, c, text, None)
+                    sc = await s.get(Scene, cid)
+                    if sc is not None and (sc.state or {}).get("submitted"):
+                        sc.state = {**sc.state, "submitted": False}  # заявку можно повторить
+                    await s.commit()
+                await publish_message(self.bus, msg)
+                await self._states(cid, ids, "failed")
         finally:
             await self._status(cid, "idle")
-            if calls:
-                async with self.maker() as s:
-                    s.add_all(calls)
-                    await s.commit()
+            await self._save_calls(calls)
         if replan:
             self.schedule_replan(cid)  # после учёта вызовов: пересмотр пишет в ту же кампанию
         return turn_id
+
+    async def _save_calls(self, calls: list) -> None:
+        if not calls:
+            return
+        rows = list(calls)
+        calls.clear()
+        async with self.maker() as s:
+            s.add_all(rows)
+            await s.commit()
 
     async def _ask(
         self,
@@ -265,9 +294,9 @@ class TurnMixin:
         )
         return reply
 
-    async def _play(
-        self, s, cid: str, turn_id: str, calls: list, drafts: list[str] | None = None, diagnostics: dict | None = None
-    ) -> dict:
+    async def _play(self, s, cid: str, turn_id: str, calls: list, diagnostics: dict | None = None) -> dict:
+        """Фаза действий хода: всё, что меняет мир, одной транзакцией. Повествование — после её коммита
+        (``_narrate_turn``), по checkpoint, без повторного вызова инструментов."""
         c = await s.get(Campaign, cid)
         turn = await s.get(MasterTurn, turn_id)
         seat = master_seat(c)
@@ -777,72 +806,30 @@ class TurnMixin:
         audio.regroup(ctx)  # сошлись — общий звук места встречи
         audio.autopilot(ctx)  # мастер забыл про звук: мелодия под место или бой
         await self._status(cid, "describing")
-        system += await self._mood(s, calls, cfg, c, seat.id, turn_id, ctx, new, char_by_seat)
-
-        # реплика для озвучки и синтез идут параллельно с повествованием, а не перед ним
-        voice_task = None
-        if self._tts_ready(c):
-            voice_task = asyncio.create_task(
-                self._voice(calls, cfg, c, seat.id, turn_id, system, ctx, combat_notes, news=news)
-            )
+        mood_note = await self._mood(s, calls, cfg, c, seat.id, turn_id, ctx, new, char_by_seat)
 
         whispers = await flush_outbox(s, ctx)  # карточки бросков и шёпоты встают в чат раньше повествования
         heard = _heard_by(ctx, crew)  # отряд разделён: ответ и броски видят герои этой группы
         for m in whispers:
             if m.kind == "roll" and heard is not None:
                 m.visible_to = heard
+        # строка повествования резервируется один раз на ход; пока текста нет, её не видит никто
         msg = Message(
             campaign_id=cid,
             session_id=ctx.game_session_id,
             seq=await next_seq(s, cid),
             seat_id=seat.id,
             kind="narration",
-            visible_to=heard,
+            visible_to=[],
             content="",
-            data={"place": place} if heard is not None and place is not None else None,
+            data={"pending": True},
         )
         s.add(msg)
         await s.flush()
-        # черновик: игроки видят текст по кускам, а само сообщение уходит в чат только после коммита хода
-        stream = Stream(self.bus, cid, msg, to=heard)
-        if drafts is not None:
-            drafts.append(msg.id)
-
-        try:
-            narration, audit = await self._narrate(
-                calls,
-                cfg,
-                c,
-                seat.id,
-                turn_id,
-                system,
-                convo,
-                news,
-                ctx,
-                combat_notes,
-                plot_notes,
-                stream=stream,
-                stalled=bool(stall),
-                meet=meet,
-                tool_attempts=trace_calls,
-            )
-        except BaseException:
-            if voice_task is not None:
-                voice_task.cancel()
-            raise
-        voice_line_text, voice_data = await voice_task if voice_task is not None else (None, None)
-        if voice_data:
-            msg.data = {**(msg.data or {}), "voice": {**voice_data, "text": voice_line_text}}
-
-        msg.content = await link_text(s, cid, narration)
-        party_msgs = [await system_message(s, c, text, None) for text in party_notes]
-        turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
         turn.trace = {
             **(turn.trace or {}),
             "calls": trace_calls,
             "text_call_rejections": written_rounds,
-            "audit": audit,
-            "voice_line": voice_line_text,
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,
@@ -850,14 +837,25 @@ class TurnMixin:
             "world": world_note,
             "stalled": bool(stall),
         }
+        turn.generation_checkpoint = checkpoint.effects_committed(
+            events=[ev.id for ev in ctx.events],
+            operation_refs=sorted(ctx.operation_refs),
+            narration_message_id=msg.id,
+            audience=heard,
+            place=place,
+            inputs={
+                "convo": convo,
+                "news": news,
+                "mood": mood_note,
+                "combat_notes": combat_notes,
+                "plot_notes": plot_notes,
+                "party_notes": party_notes,
+                "stalled": bool(stall),
+                "meet": meet,
+            },
+        )
         await s.commit()
-        return {
-            "ctx": ctx,
-            "messages": [*whispers, msg, *party_msgs],
-            "names": names,
-            "ids": [m.id for m in new],
-            "skipped": False,
-        }
+        return {"ctx": ctx, "messages": whispers, "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
         secret = await s.get(CampaignSecret, c.id)

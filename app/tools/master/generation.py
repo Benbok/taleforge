@@ -269,3 +269,25 @@ async def resolve_container(ctx: ToolContext, a: ResolveContainerArgs) -> dict:
     ctx.changed.add(target.id)
     # Не публикуем список тайного содержимого в публичной карте; inspect_container проверяет открытие.
     return {"container_id": target.id, "ready": True, "repeated": False, **result}
+
+
+class GenerationStatusArgs(BaseModel):
+    operation_ref: str = Field(description="operation_ref из квитанции принятого исследования")
+
+
+@tool(
+    "generation_status",
+    "Только чтение: текущий статус подготовки мира по operation_ref из квитанции — unexamined, pending, ready "
+    "или blocked с причиной; после ready — созданные объекты. Ничего не запускает и не меняет.",
+    GenerationStatusArgs,
+    mutating=False,
+    closes=False,
+)
+async def generation_status(ctx: ToolContext, a: GenerationStatusArgs) -> dict:
+    from app.core import preparation
+    from app.core.campaigns import NotFound
+
+    try:
+        return await preparation.generation_status(ctx.session, ctx.campaign.id, a.operation_ref, None)
+    except NotFound as e:
+        raise ToolError(str(e)) from e

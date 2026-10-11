@@ -37,6 +37,8 @@ def make_engine(url: str) -> AsyncEngine:
 
 
 def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    import app.core.world_tx  # noqa: F401 — guard записи мира подключается ко всем сессиям (before_flush)
+
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
