@@ -13,6 +13,7 @@ from app.agents.master.continuity import unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
 from app.agents.master.outcomes import failed_attack, public_attempts, transition_outcome
 from app.core import combat
+from app.core.linker import BARE
 from app.db.models import AgentConfig, Campaign, Scene
 from app.emotion import game as mood
 from app.emotion.analyzers import LLMAnalyzer
@@ -82,14 +83,19 @@ class NarrationMixin:
             await push.finish()  # фрагмент без перевода строки тоже должен попасть в безопасный черновик
         text = reply.text.strip()
         unknown = sorted({m.group(1) for m in MARKUP.finditer(text) if m.group(1) not in known})
+        # «[[Группа Складов]]» без id: имя из реестра linker сам превратит в ссылку, выдуманное — повод переписать
+        registry = {x.name.casefold() for x in (*ctx.world.characters.values(), *ctx.world.entities.values())}
+        unnamed = sorted({n for m in BARE.finditer(text) if (n := m.group(1).strip()).casefold() not in registry})
         # Псевдовызовы инструментов сначала очищает существующий textcalls-аудитор.
         # Имена внутри их JSON-аргументов не являются художественным повествованием.
         has_tool_text = textcalls.contains(text, textcalls.tool_names())
         unregistered = [] if has_tool_text else unregistered_named_actors(text, ctx.world)
-        if unknown or unregistered:
+        if unknown or unregistered or unnamed:
             audit["regenerated"] = True
             if unknown:
                 audit["unknown_first"] = unknown
+            if unnamed:
+                audit["unregistered_names"] = unnamed
             if unregistered:
                 audit["unregistered_actors"] = unregistered
             problems = []
@@ -97,6 +103,8 @@ class NarrationMixin:
                 problems.append(f"неизвестные id: {', '.join(unknown)}")
             if unregistered:
                 problems.append(f"не зарегистрированы в текущей сцене: {', '.join(unregistered)}")
+            if unnamed:
+                problems.append(f"разметка без id, таких мест и сущностей нет в реестре: {', '.join(unnamed)}")
             retry = [
                 *base,
                 {"role": "assistant", "content": text},
@@ -106,7 +114,8 @@ class NarrationMixin:
                         f"Нарушена достоверность сцены ({'; '.join(problems)}). Перепиши ответ: "
                         "возможны только участники и события, подтверждённые текущей таблицей сцены "
                         "и успешными вызовами инструментов. Не описывай незарегистрированных врагов как "
-                        "видимых или приближающихся. Если действие игрока не выполнено, объясни причину."
+                        "видимых или приближающихся. Если действие игрока не выполнено, объясни причину. "
+                        "Чего нет в реестре, называй обычными словами, без разметки [[...]]."
                     ),
                 },
             ]

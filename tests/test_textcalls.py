@@ -191,3 +191,104 @@ def test_master_rejects_markdown_commands_and_regenerates_story(game_client, adm
     assert turn.trace["text_call_rejections"] == 1
     assert turn.trace["audit"]["regenerated"]
     assert "spawn_entity" in turn.trace["audit"]["tool_text"]
+
+
+# Ответ из живой кампании: модель вывела вызовы JSON-блоком, а не через function calling.
+JSON_SAMPLE = """Он снова указывает тростью на север, в сторону складов. «Время тикает».
+
+```json
+[
+  {"call": "describe_place", "args": {"id": "en_1", "description": "[[en_1|Грязные Доки]] — лабиринт причалов. К северу склад.", "coordinates": [50,50,0], "secret": false}},
+  {"call": "add_landmark", "args": {"location_id": "en_1", "name": "Группа Складов", "kind": "building", "secret": false}}
+]
+```
+"""
+
+
+def test_json_calls_are_detected_parsed_and_removed():
+    names = textcalls.tool_names()
+    assert textcalls.contains(JSON_SAMPLE, names)
+    calls = textcalls.parse(JSON_SAMPLE, names)
+    assert [n for n, _ in calls] == ["describe_place", "add_landmark"]
+    assert calls[1][1]["name"] == "Группа Складов" and calls[0][1]["secret"] is False
+    assert textcalls.clean(JSON_SAMPLE) == "Он снова указывает тростью на север, в сторону складов. «Время тикает»."
+    # другие формы: один объект без ограды, ключи tool/arguments и name/parameters
+    bare = 'Тишина.\n{"tool": "add_landmark", "arguments": {"name": "Лавка"}}\nДождь.'
+    assert textcalls.parse(bare, names) == [("add_landmark", {"name": "Лавка"})]
+    assert textcalls.clean(bare) == "Тишина.\nДождь."
+    named = '```\n{"name": "spawn_entity", "parameters": {"name": "Крыса"}}\n```\nКрыса пищит.'
+    assert textcalls.parse(named, names) == [("spawn_entity", {"name": "Крыса"})]
+    assert textcalls.clean(named) == "Крыса пищит."
+    # обычный JSON и разметка в начале строки — не вызовы
+    for plain in (
+        "[[en_1|Грязные Доки]] — лабиринт причалов.",
+        'Он прочёл: {"name": "Иван", "age": 3}.',
+        "```\nстих\n```",
+    ):
+        assert not textcalls.contains(plain, names), plain
+        assert textcalls.clean(plain) == plain
+
+
+def test_stream_filter_hides_json_calls_in_any_chunking():
+    for seed in range(40):
+        rnd = random.Random(seed)
+        out: list[str] = []
+
+        async def push(chunk, out=out):
+            out.append(chunk)
+
+        async def feed(rnd=rnd):
+            f = textcalls.StreamFilter(push)
+            i = 0
+            while i < len(JSON_SAMPLE):
+                n = rnd.randint(1, 15)
+                await f(JSON_SAMPLE[i : i + n])
+                i += n
+            await f.finish()
+
+        asyncio.run(feed())
+        text = "".join(out)
+        assert "call" not in text and "```" not in text and "{" not in text, text
+        assert text.startswith("Он снова указывает")
+
+
+def test_autolink_unwraps_markup_without_id():
+    from app.core.linker import autolink
+
+    names = {"en_1": "Грязные Доки"}
+    text = "Он указывает на [[Группа Складов]] и [[Грязные Доки]]."
+    assert autolink(text, names) == "Он указывает на Группа Складов и [[en_1|Грязные Доки]]."
+
+
+def test_decide_rejects_json_calls_and_asks_for_native(game_client, admin_g, llm, settings):  # noqa: F811
+    """JSON-блок вместо tool_calls на фазе решения не исполняется: мастер получает просьбу повторить настоящими вызовами."""
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {"text": JSON_SAMPLE},
+        DONE,
+        DONE,
+        {"text": "Бран оглядывается."},
+    ]
+    n = act(game_client, p1, c["id"], "Оглядываюсь")
+    assert n["content"].endswith("оглядывается.")
+    note = llm.requests[1]["messages"][-1]["content"]
+    assert "НЕ выполнил" in note
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["text_call_rejections"] == 1
+    assert rows(settings, Event, Event.tool == "add_landmark") == []
+
+
+def test_narration_rewrites_markup_of_unregistered_place(game_client, admin_g, llm, settings):  # noqa: F811
+    c, (p1,), hero = party(game_client, admin_g)
+    llm.replies += [
+        DONE,
+        DONE,
+        {"text": "Капитан указывает на [[Группа Складов]]."},
+        {"text": "Капитан указывает на склады к северу."},
+    ]
+    n = act(game_client, p1, c["id"], "Куда идти?")
+    assert n["content"] == "Капитан указывает на склады к северу."
+    retry = next(r["messages"][-1]["content"] for r in llm.requests if "Нарушена" in r["messages"][-1]["content"])
+    assert "Группа Складов" in retry and "без разметки" in retry
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["audit"]["unregistered_names"] == ["Группа Складов"]

@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Character, Entity, Knowledge, Scene
 
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
+# разметка без id («[[Группа Складов]]»): модель сослалась на имя, а не на сущность из реестра
+BARE = re.compile(r"\[\[([^|\[\]]+)\]\]")
 BOLD = re.compile(r"\*\*(.+?)\*\*|__(.+?)__", re.S)
 WORD = re.compile(r"[\w-]+")
 LETTERS = "а-яёa-z"
@@ -99,6 +101,8 @@ def autolink(text: str, names: dict[str, str]) -> str:
 
     # жирный шрифт модели снимаем: выделение имени — ссылка, прочее выделение в чате не нужно
     text = BOLD.sub(lambda m: m.group(1) or m.group(2) or "", text)
+    # скобки без id снимаем: известное имя ниже станет ссылкой, выдуманное — просто словом
+    text = BARE.sub(lambda m: m.group(1).strip(), text)
     out, pos = [], 0
     for m in MARKUP.finditer(text):
         out.append(link_plain(text[pos : m.start()]))
