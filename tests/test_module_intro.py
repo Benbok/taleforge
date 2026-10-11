@@ -122,6 +122,35 @@ def test_campaign_without_saved_intro_writes_its_own(settings, tmp_path):
         assert module_intro.load(settings.media_dir, mid)["saved"] == {}
 
 
+def test_new_campaign_takes_voice_of_saved_intro(settings, tmp_path):
+    """Голос вступления не выбран — новая кампания берёт голос сохранённого вступления и его записи, без синтеза."""
+    settings, client, llm, spoken, tts = _app(settings, tmp_path)
+    with client:
+        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(tts)
+        admin = _login(client)
+        mid = publish_sample(settings)
+        master = client.app.state.master
+        idle = lambda: client.portal.call(master.wait_idle, None)  # noqa: E731
+        url = f"/api/admin/modules/{mid}/intro"
+        mine = "Туман над склепом. Перед вами — ворота."
+        ok(client.post(f"{url}/draft", json={"hook_id": "noble", "text": mine, "voice": "Kore"}, headers=admin))
+        idle()
+        saved = ok(client.post(f"{url}/save", headers=admin))["saved"]["noble"]
+        voiced = len(spoken)
+
+        c = party(client, admin, 0, module_id=mid)
+        idle()
+        assert c["settings"]["tts_intro_voice"] == "Kore"
+        msgs = rows(settings, Message, Message.campaign_id == c["id"])
+        intro = next(m for m in msgs if "Туман над склепом" in m.content)
+        assert intro.data["voices"] == saved["voices"]
+        assert not any("Туман над склепом" in x for x in spoken[voiced:])
+
+        # свой голос вступления владельца не перебивается
+        own = party(client, admin, 1, start=False, module_id=mid, tts_intro_voice="Puck")
+        assert own["settings"]["tts_intro_voice"] == "Puck"
+
+
 def test_saved_intro_replaces_one_prepared_by_an_older_campaign(settings, tmp_path):
     """Кампания создана до сохранения: при первом старте играет уже сохранённое вступление, голосом кампании."""
     settings, client, llm, spoken, tts = _app(settings, tmp_path)

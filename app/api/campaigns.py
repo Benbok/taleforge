@@ -182,7 +182,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             raise Conflict(str(e)) from None
         # без пакета мира цепочка — базовый пакет правил; если он ещё не импортирован, её найдут при первой игре
     if module is not None:
-        await _start_module(session, campaign, module, body.module_hook)
+        await _start_module(session, campaign, module, body.module_hook, request.app.state.settings.media_dir)
     await session.commit()
     if module is not None:
         from app.agents import prelude
@@ -192,9 +192,12 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
     return await campaign_out(session, campaign, user)
 
 
-async def _start_module(session, campaign: Campaign, module: AdventureModule, hook_id: str | None) -> None:
+async def _start_module(session, campaign: Campaign, module: AdventureModule, hook_id: str | None, media_dir) -> None:
     """Кампания по готовому приключению: каркас книги сразу готов (архитектор не нужен), опыт по вехам книги,
-    пересмотр актов выключен — мастер ведёт по книге."""
+    пересмотр актов выключен — мастер ведёт по книге. Голос вступления не выбран — берётся голос сохранённого
+    вступления зацепки, и кампания получает его записи без нового синтеза."""
+    from app.agents import module_intro
+
     catalog = (await load_catalog(session, campaign.content_chain)).view(False)
     adv = adventure.adventure_of(catalog)
     if adv is None:
@@ -225,6 +228,9 @@ async def _start_module(session, campaign: Campaign, module: AdventureModule, ho
         campaign.public_intro = plan.get("public_intro") or adv.data.get("description") or ""
         settings["intro_from_plan"] = True
     settings["plan"] = {"status": "ready", "version": 1, "error": None, "updated_at": now_iso()}
+    saved = module_intro.saved_for(media_dir, module.id, module_intro.hook_of(plan))
+    if saved and saved.get("provider") == voicing.CLOUD and saved.get("voice") and not settings.get("tts_intro_voice"):
+        settings["tts_intro_voice"] = saved["voice"]
     campaign.settings = settings
 
 
