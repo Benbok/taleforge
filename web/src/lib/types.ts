@@ -266,6 +266,15 @@ export interface EntityCard {
   error?: string;
   /** Карточка по памяти: вещь сейчас не видна, нынешнего состояния, положения и действий нет. */
   memory?: boolean;
+  /** Контейнер: открыт ли, заперт ли и что с содержимым (готовится по первому обыску). */
+  container?: ContainerState;
+}
+
+/** Состояние содержимого: unexamined — никто не заглядывал, pending — сервер готовит, blocked — недоступно. */
+export interface ContainerState {
+  open: boolean;
+  locked: boolean;
+  contents: "unexamined" | "pending" | "ready" | "blocked";
 }
 
 export interface HeroAttack {

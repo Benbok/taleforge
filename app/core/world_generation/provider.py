@@ -14,8 +14,10 @@ class DeterministicProvider:
         objects = []
         for slot in plan.slots:
             name = slot.name
-            if slot.role == "item":
+            if slot.role == "item" and slot.anchor_id is None:
                 rec = catalog.find(slot.template_id or "", "item_template")
                 name = rec.name if rec is not None else slot.template_id or "Предмет"
-            objects.append(ProposedObject(slot.slot_ref, slot.role, name, slot.description, slot.template_id))
+            objects.append(
+                ProposedObject(slot.slot_ref, slot.role, name, slot.description, slot.template_id, slot.anchor_id)
+            )
         return Proposal(schema_version=1, objects=tuple(objects))

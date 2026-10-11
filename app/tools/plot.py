@@ -12,14 +12,15 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
-from app.core import plot
+from app.core import plot, plot_anchors
 from app.core.world import creature_stats
-from app.db.models import CampaignSecret, Entity
+from app.db.models import CampaignSecret, Entity, PlotAnchorBinding
 from app.tools import progress
 from app.tools.registry import ToolContext, ToolError, tool
 
-PLOT_TOOLS = ("get_plot", "advance_plot", "plot_reveal", "end_act", "develop", "threat_tick")
+PLOT_TOOLS = ("get_plot", "advance_plot", "plot_reveal", "end_act", "develop", "threat_tick", "bind_plot_anchor")
 
 
 def length_of(ctx: ToolContext) -> str:
@@ -46,6 +47,7 @@ async def _change(
         raise ToolError(str(e)) from e
     secret.plot = new
     ctx.world.plot = copy.deepcopy(new)
+    await plot_anchors.sync_bindings(ctx.session, ctx.campaign.id, new)  # носители зацепок следуют за каркасом
     await ctx.record(
         name,
         target_id=target_id,
@@ -288,3 +290,56 @@ async def run_clock(ctx: ToolContext) -> list[str]:
             inverse=[{"table": "campaign_secrets", "id": ctx.campaign.id, "field": "plot", "before": before}],
         )
     return notes
+
+
+class BindAnchorArgs(BaseModel):
+    anchor_id: str = Field(description="id зацепки каркаса (clue_…)")
+    entity_id: str = Field(description="предмет или объект мира, который становится её носителем")
+
+
+@tool(
+    "bind_plot_anchor",
+    "Команда ведущего: существующий предмет или объект мира становится носителем зацепки каркаса — без копии. "
+    "Так привязывают зацепки старых каркасов и вещи, созданные вручную.",
+    BindAnchorArgs,
+    closes=False,
+)
+async def bind_plot_anchor(ctx: ToolContext, a: BindAnchorArgs) -> dict:
+    secret = await _secret(ctx)
+    found = plot_anchors.find_clue(secret.plot, a.anchor_id)
+    if found is None:
+        raise ToolError(f"в каркасе нет зацепки {a.anchor_id}")
+    reveal, clue = found
+    en = ctx.world.entities.get(a.entity_id)
+    if en is None or en.campaign_id != ctx.campaign.id or en.kind != "object":
+        raise ToolError("носителем может быть только предмет или объект этой кампании")
+    q = select(PlotAnchorBinding).where(
+        PlotAnchorBinding.campaign_id == ctx.campaign.id, PlotAnchorBinding.anchor_id == a.anchor_id
+    )
+    binding = await ctx.session.scalar(q)
+    if binding is not None and binding.holder_entity_id not in (None, en.id):
+        raise ToolError("у зацепки уже есть носитель в мире")
+    if binding is None:
+        binding = PlotAnchorBinding(campaign_id=ctx.campaign.id, anchor_id=a.anchor_id, plot_ref=reveal["id"])
+        ctx.session.add(binding)
+    snap = {
+        "reveal_id": reveal["id"],
+        "text": clue.get("text"),
+        "carrier": {"name": en.name, "description": en.description or ""},
+    }
+    binding.source_snapshot = snap
+    binding.plot_ref = reveal["id"]
+    binding.holder_entity_id = en.id
+    binding.target_location_id = en.location_id
+    binding.state = "revealed" if reveal.get("revealed") else "materialized"
+    before = copy.deepcopy(en.state)
+    en.state = {**(en.state or {}), "plot_anchor": a.anchor_id}
+    result = {"anchor_id": a.anchor_id, "entity_id": en.id, "state": binding.state}
+    await ctx.record(
+        "bind_plot_anchor",
+        target_id=en.id,
+        payload=result,
+        hidden=True,
+        inverse=[{"table": "entities", "id": en.id, "field": "state", "before": before}],
+    )
+    return result

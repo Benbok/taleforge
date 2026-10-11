@@ -834,6 +834,28 @@
       ],
       "title": "Random Events"
      },
+     "scene_generation": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scene Generation"
+     },
+     "scene_generation_llm": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scene Generation Llm"
+     },
      "spend_limit_usd": {
       "anyOf": [
        {
@@ -5618,6 +5640,36 @@
     "title": "MapChanged",
     "type": "object"
    },
+   "MapContainer": {
+    "additionalProperties": false,
+    "properties": {
+     "contents": {
+      "enum": [
+       "unexamined",
+       "pending",
+       "ready",
+       "blocked"
+      ],
+      "title": "Contents",
+      "type": "string"
+     },
+     "locked": {
+      "title": "Locked",
+      "type": "boolean"
+     },
+     "open": {
+      "title": "Open",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "open",
+     "locked",
+     "contents"
+    ],
+    "title": "MapContainer",
+    "type": "object"
+   },
    "MapExit": {
     "additionalProperties": false,
     "properties": {
@@ -6466,6 +6518,17 @@
       ],
       "default": null,
       "title": "Condition"
+     },
+     "container": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapContainer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
      },
      "cover": {
       "title": "Cover",

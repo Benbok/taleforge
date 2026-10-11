@@ -70,7 +70,7 @@ class MasterService(
         # больше одного (app/gateway/coordination.py)
         self.coordination = coordination or InMemoryCoordination()
         # исполнитель подготовок мира: ход ждёт его перед описанием, восстановитель доводит активированные фазы
-        self.preparer = Orchestrator(self.coordination, bus, dice_factory=dice_factory)
+        self.preparer = Orchestrator(self.coordination, bus, dice_factory=dice_factory, llm=llm)
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._background: set[asyncio.Task] = set()

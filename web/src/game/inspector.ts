@@ -17,8 +17,9 @@ export const useInspector = create<InspectorState>((set) => ({
   open(id, label, el) {
     const game = useGame.getState();
     const cached = game.cards[id];
-    if (!cached || cached.error) {
-      if (cached) useGame.setState((st) => ({ cards: Object.fromEntries(Object.entries(st.cards).filter(([k]) => k !== id)) }));
+    // у контейнера состояние меняется по ходу игры (открыли, обыскали): карточку перезапрашиваем
+    if (!cached || cached.error || cached.container) {
+      if (cached?.error) useGame.setState((st) => ({ cards: Object.fromEntries(Object.entries(st.cards).filter(([k]) => k !== id)) }));
       const sent = game.socket?.send("entity.inspect", { entity_id: id });
       if (!sent) {
         game.apply({

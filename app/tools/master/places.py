@@ -883,19 +883,27 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
 
 
 async def _request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
-    """Вход героев в место при включённой генерации сцен: резерв корня и запрос подготовки в той же транзакции;
-    ход ждёт её перед описанием. Без флага кампании ничего не происходит (docs/world-objects-delivery3.md, §2.6)."""
+    """Вход героев в место: резерв корня и запрос подготовки в той же транзакции; ход ждёт её перед описанием.
+    Без флага кампании ``scene_generation`` место готовится только ради сюжетных носителей, с профилем
+    ``minimal`` (docs/world-objects-delivery3.md, §2.6; docs/world-objects-delivery4.md, §2.3)."""
+    from app.core import plot_anchors
     from app.core.preparation import receipt
     from app.core.world_generation import storage
 
-    if not (ctx.campaign.settings or {}).get("scene_generation"):
-        return {}
+    flag = bool((ctx.campaign.settings or {}).get("scene_generation"))
     row = await storage.find(ctx.session, ctx.campaign.id, loc.id, "location_initial")
+    if row is not None and row.status == "ready":  # поздние зацепки готового места — сразу, в этой транзакции
+        made = await plot_anchors.materialize_late(ctx, loc, row.id)
+        if made:
+            await observe(ctx, loc.id, inverse, only=made)
+        return {"plot_anchors": made} if made else {}
     if row is None:
-        row = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, loc)
+        if not flag and not await plot_anchors.reserved_for(ctx.session, ctx.campaign.id, loc.id):
+            return {}
+        row = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, loc, minimal=not flag)
         inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
     if not storage.activate(row):
-        return {}  # место уже готовится или готово: квитанция была у первого входа
+        return {}  # место уже готовится: квитанция была у первого входа
     return {"preparation": receipt(row.id), "operation_ref": row.id}
 
 

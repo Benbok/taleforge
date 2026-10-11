@@ -193,7 +193,63 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
         </div>
       </section>
 
-      
+
+      {/* Scene generation */}
+      <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-3" aria-label="Наполнение мест">
+        <div className="border-b border-line pb-3">
+          <h2 className="font-heading text-xl font-bold text-ink">Наполнение мест</h2>
+          <p className="text-xs text-muted">
+            Когда отряд впервые входит в место, сервер расставляет обстановку и контейнеры по профилю места, а
+            содержимое шкафа или сундука готовит при первом обыске. Места, где отряд уже был, останутся как есть.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${st.scene_generation ? "text-patina-hi" : "text-muted"}`}>
+            {st.scene_generation ? "● включено" : "○ выключено"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={
+              st.scene_generation
+                ? "Наполнение выключено: новые места останутся пустыми, уже созданное сохранится"
+                : "Наполнение включено: новые места наполнятся при первом входе"
+            }
+            run={async () =>
+              onRoom(
+                await api<Room>(`/api/campaigns/${room.id}`, {
+                  method: "PATCH",
+                  body: { scene_generation: !st.scene_generation },
+                }),
+              )
+            }
+          >
+            {st.scene_generation ? "Выключить наполнение" : "Включить наполнение"}
+          </ActionButton>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${st.scene_generation_llm ? "text-patina-hi" : "text-muted"}`}>
+            {st.scene_generation_llm ? "● имена от модели" : "○ имена по шаблону"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={
+              st.scene_generation_llm
+                ? "Имена и описания снова берутся из шаблонов места"
+                : "Имена и описания придумывает модель; если ответ не подойдёт, сервер возьмёт шаблон"
+            }
+            run={async () =>
+              onRoom(
+                await api<Room>(`/api/campaigns/${room.id}`, {
+                  method: "PATCH",
+                  body: { scene_generation_llm: !st.scene_generation_llm },
+                }),
+              )
+            }
+          >
+            {st.scene_generation_llm ? "Брать имена из шаблонов" : "Имена от модели"}
+          </ActionButton>
+        </div>
+      </section>
 
       {/* Brief Form */}
       <section className="card p-5 sm:p-6 border border-line bg-surface flex flex-col gap-4">

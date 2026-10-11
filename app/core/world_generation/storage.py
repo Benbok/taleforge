@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.world_generation.contracts import POLICY_VERSION, Plan, Proposal, digest
 from app.core.world_generation.policy import root_reservation
-from app.core.world_generation.profiles import ProfileError, load_profile, profile_ref_for
+from app.core.world_generation.profiles import MINIMAL_REF, ProfileError, load_profile, profile_ref_for
 from app.core.world_objects import read_world_object
 from app.core.world_tx import world_write
 from app.db.models import Campaign, Entity, PlotAnchorBinding, WorldGenerationState, as_utc, now
@@ -75,12 +75,18 @@ async def find(session: AsyncSession, campaign_id: str, target_id: str, phase: s
     )
 
 
-async def reserve_root(session: AsyncSession, campaign: Campaign, world: Any, location: Entity) -> WorldGenerationState:
-    """Корень места: резерв фиксируется один раз. Неверный профиль — сразу ``blocked/unsupported_source``."""
+async def reserve_root(
+    session: AsyncSession, campaign: Campaign, world: Any, location: Entity, *, minimal: bool = False
+) -> WorldGenerationState:
+    """Корень места: резерв фиксируется один раз, вместе с носителями зарезервированных зацепок цели.
+    ``minimal`` — генерация сцен выключена, место готовится только ради сюжетных носителей.
+    Неверный профиль — сразу ``blocked/unsupported_source``."""
+    from app.core.plot_anchors import anchor_reserve, reserved_for
+
     row = await find(session, campaign.id, location.id, "location_initial")
     if row is not None:
         return row
-    ref = profile_ref_for(location, world.catalog)
+    ref = MINIMAL_REF if minimal else profile_ref_for(location, world.catalog)
     try:
         profile = load_profile(world.catalog, ref)
     except ProfileError as e:
@@ -95,7 +101,10 @@ async def reserve_root(session: AsyncSession, campaign: Campaign, world: Any, lo
             result_manifest={"blocked": "unsupported_source", "detail": str(e)},
         )
     else:
-        reservation = root_reservation(campaign, location.id, profile, authored_templates(world.entities, location.id))
+        anchors = [anchor_reserve(b) for b in await reserved_for(session, campaign.id, location.id)]
+        reservation = root_reservation(
+            campaign, location.id, profile, authored_templates(world.entities, location.id), anchors
+        )
         row = WGS(
             campaign_id=campaign.id,
             target_entity_id=location.id,
@@ -140,17 +149,6 @@ def retry(row: WorldGenerationState) -> None:
 # --- исполнитель ---
 
 
-async def _plot_conflict(session: AsyncSession, row: WorldGenerationState) -> bool:
-    """Сюжетные обязательства — поставка 4: зарезервированная зацепка у цели не игнорируется."""
-    q = select(PlotAnchorBinding.id).where(
-        PlotAnchorBinding.campaign_id == row.campaign_id,
-        PlotAnchorBinding.state == "reserved",
-        (PlotAnchorBinding.target_location_id == row.target_entity_id)
-        | (PlotAnchorBinding.holder_entity_id == row.target_entity_id),
-    )
-    return (await session.scalar(q)) is not None
-
-
 def due(row: WorldGenerationState, t: datetime | None = None) -> bool:
     t = t or now()
     if row.status == "unprepared":
@@ -175,27 +173,10 @@ async def claim(maker, campaign_id: str, ref: str) -> Claim | str:
         if not due(row, t):
             return "later" if row.status == "unprepared" else "leased"
         base = row.revision  # ORM-UPDATE ниже синхронизирует объект сессии: ревизию запоминаем до него
-        conflict = await _plot_conflict(s, row)
         world = await world_write(s, campaign_id)
         if world is None:
             return "unknown"
         cas = (WGS.id == ref) & (WGS.revision == base) & (WGS.status == row.status)
-        if conflict:
-            values: dict[str, Any] = {
-                "status": "blocked",
-                "last_error": "plot_conflict",
-                "lease_token": None,
-                "lease_until": None,
-                "result_manifest": {"blocked": "plot_conflict", "detail": "у цели зарезервирована сюжетная зацепка"},
-                "revision": WGS.revision + 1,
-                "updated_at": t,
-            }
-            done = await s.execute(update(WGS).where(cas).values(**values))
-            if done.rowcount != 1:
-                await s.rollback()
-                return "busy"
-            await s.commit()
-            return "blocked"
         token = secrets.token_hex(16)
         until = t + LEASE
         done = await s.execute(
@@ -283,9 +264,40 @@ def _object_state(role: str, ref: str, parent: str | None, visual_key: str | Non
     }
 
 
-async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal) -> dict[str, Any]:
+async def reserve_llm_call(maker, claim: Claim, limit: int) -> Claim | None:
+    """Занять вызов модели до сетевого запроса: условная запись по токену и ревизии владения. None — лимит фазы
+    исчерпан (рестарты и повтор ведущего его не обнуляют); ``LeaseLost`` — строку ведёт другой владелец.
+    Меняется только строка фазы: мир не трогается и guard не берётся (§6.3)."""
+    async with maker() as s:
+        if now() >= claim.lease_until:
+            raise LeaseLost(claim.ref)
+        mine = (
+            (WGS.id == claim.ref)
+            & (WGS.lease_token == claim.token)
+            & (WGS.revision == claim.revision)
+            & (WGS.status == "preparing")
+        )
+        done = await s.execute(
+            update(WGS)
+            .where(mine & (WGS.llm_attempt_count < limit))
+            .values(llm_attempt_count=WGS.llm_attempt_count + 1, revision=WGS.revision + 1, updated_at=now())
+        )
+        if done.rowcount == 1:
+            await s.commit()
+            return replace(claim, revision=claim.revision + 1)
+        held = await s.scalar(select(WGS.id).where(mine))
+        await s.rollback()
+        if held is None:
+            raise LeaseLost(claim.ref)
+        return None
+
+
+async def commit_result(
+    maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal, *, quality: str = "normal"
+) -> dict[str, Any]:
     """Записать результат одной транзакцией. ``WorldConflict`` — мир изменился после снимка; ``LeaseLost`` —
     строку ведёт другой владелец; ``Blocked`` — цель исчезла. Во всех случаях ничего не записано."""
+    from app.core import plot_anchors
     from app.core.object_policy import observe
     from app.core.world_generation.contracts import Blocked
     from app.tools.master.items import _container_state, _put_in_scene
@@ -320,12 +332,24 @@ async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal:
 
         made: dict[str, str] = {}
         children: dict[str, str] = {}
+        notes = list(plan.notes)
+        lost = await plot_anchors.mark_lost(s, campaign.id)
+        notes += [f"anchor_lost:{a}" for a in lost]
+        bindings = {b.anchor_id: b for b in await s.scalars(select(PlotAnchorBinding).where(
+            PlotAnchorBinding.campaign_id == campaign.id))}  # fmt: skip
         by_slot = {o.slot_ref: o for o in proposal.objects}
         for slot in plan.slots:
             obj = by_slot.get(slot.slot_ref)
             if obj is None:
                 continue  # обстановку предложение может опустить
-            if slot.role == "item":
+            if slot.anchor_id is not None:
+                # привязка перепроверяется в финальной транзакции: пересмотр, раскрытие или перенос — пропуск
+                b = bindings.get(slot.anchor_id)
+                if b is None or b.state != "reserved" or b.holder_entity_id or b.target_location_id != place:
+                    notes.append(f"anchor_skipped:{slot.anchor_id}:{b.state if b else 'missing'}")
+                    continue
+                en = await plot_anchors.place(ctx, b, place_id=place, parent=parent, zone=slot.zone, ref=row.id)
+            elif slot.role == "item":
                 rec = ctx.world.catalog.find(slot.template_id or "", "item_template")
                 shown = None if rec is not None and obj.name == rec.name else obj.name
                 en, _ = await _put_in_scene(
@@ -382,6 +406,15 @@ async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal:
                 await s.flush()
                 children[slot.slot_ref] = child.id
 
+        if root:  # привязки, появившиеся после резерва корня: на виду, вне бюджета
+            listed = {a["anchor_id"] for a in plan.reservation.get("anchors") or []}
+            skip = listed | await plot_anchors.routed(s, campaign.id)
+            for b in await plot_anchors.reserved_for(s, campaign.id, target.id):
+                if b.anchor_id in skip:
+                    continue
+                en = await plot_anchors.place(ctx, b, place_id=place, parent=None, zone="near", ref=row.id)
+                made[f"anchor:{b.anchor_id}"] = en.id
+                notes.append(f"late_anchor:{b.anchor_id}")
         if not root:
             st = dict(target.state or {})
             wo = dict(st.get("world_object") or {})
@@ -395,10 +428,11 @@ async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal:
             "objects": [{"slot_ref": k, "id": v} for k, v in made.items()],
             "children": children,
             "spent": plan.spent,
+            "notes": notes,
         }
         t = now()
         row.status = "ready"
-        row.quality = "normal"
+        row.quality = quality
         row.lease_token = None
         row.lease_until = None
         row.last_error = None

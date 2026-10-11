@@ -63,6 +63,7 @@ class SceneProfile:
     containers: tuple[Furnishing, ...] = ()
     inner: tuple[Furnishing, ...] = ()
     decor: tuple[Furnishing, ...] = ()
+    themes: tuple[str, ...] = ()
 
     def cost_of(self, template_id: str | None) -> int | None:
         return next((r.cost for r in self.items if r.template == template_id), None)
@@ -152,6 +153,7 @@ def parse_profile(entry: Entry, catalog: CatalogView) -> SceneProfile:
         containers=_furnishings(data.get("containers"), "containers"),
         inner=_furnishings(data.get("inner_containers"), "inner_containers"),
         decor=_furnishings(data.get("decor"), "decor"),
+        themes=tuple(str(t) for t in data.get("theme_tags") or [] if isinstance(t, str)),
     )
 
 

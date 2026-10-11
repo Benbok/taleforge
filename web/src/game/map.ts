@@ -2,7 +2,7 @@
 // (app/core/map.py): запрос сокетом map.get, ответ событием map.state. Пока окно открыто, карта обновляется
 // после каждого хода мастера (scene.updated).
 import { create } from "zustand";
-import type { EntityType, Envelope } from "../lib/types";
+import type { ContainerState, EntityType, Envelope } from "../lib/types";
 import type { MapState as GeneratedMapState } from "../lib/api.gen";
 import { useGame } from "../stores/game";
 
@@ -25,6 +25,7 @@ export interface MapThing {
   condition?: string | null;
   /** Клетка от строя отряда, если мастер поставил точно (в бою — всегда). */
   cell?: [number, number] | null;
+  container?: ContainerState | null;
 }
 
 /** Герой в этом месте. zone = null — в строю отряда, в центре схемы. */

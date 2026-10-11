@@ -31,18 +31,38 @@ def child_seed(seed: int, slot_ref: str) -> int:
     return _seed(POLICY_VERSION, str(seed), slot_ref)
 
 
+def anchor_cost(profile: SceneProfile, template_id: str | None) -> int | None:
+    """Записка без механики стоит 0; предмет — по профилю места; иначе стоимость неизвестна."""
+    from app.core.plot_anchors import NOTE
+
+    if template_id in (None, NOTE):
+        return 0
+    return profile.cost_of(template_id)
+
+
 def root_reservation(
-    campaign: Any, target_id: str, profile: SceneProfile, authored: list[str | None]
+    campaign: Any,
+    target_id: str,
+    profile: SceneProfile,
+    authored: list[str | None],
+    anchors: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Корень места. Авторская добыча (шаблоны предметов, уже лежащих в месте) учитывается первой; шаблон вне
-    профиля обнуляет случайный остаток с диагностикой."""
+    """Корень места. Авторская добыча (шаблоны предметов, уже лежащих в месте) и сюжетные носители учитываются
+    первыми; неизвестная стоимость обнуляет случайный остаток с диагностикой, но обязательное не отбрасывается."""
     diagnostics: list[str] = []
+    fixed = [
+        dict(a, cost=anchor_cost(profile, a.get("template_id")))
+        for a in sorted(anchors or [], key=lambda a: a["anchor_id"])
+    ]
     costs = [profile.cost_of(t) for t in authored]
     if any(c is None for c in costs):
-        budget = 0
         diagnostics.append("unknown_authored_cost")
+    if any(a["cost"] is None for a in fixed):
+        diagnostics.append("unknown_anchor_cost")
+    used = sum(c for c in costs if c is not None) + sum(a["cost"] or 0 for a in fixed)
+    if diagnostics:
+        budget = 0
     else:
-        used = sum(c for c in costs if c is not None)
         budget = max(0, profile.budget - used)
         if used > profile.budget:
             diagnostics.append("authored_over_budget")
@@ -59,7 +79,8 @@ def root_reservation(
         "budget": budget,
         "limits": {"entities": lim.entities, "item_units": lim.item_units, "containers": lim.containers},
         "depth": lim.depth,
-        "authored_cost": None if budget == 0 and "unknown_authored_cost" in diagnostics else profile.budget - budget,
+        "authored_cost": used,  # известная часть; неизвестная — в diagnostics
+        "anchors": fixed,
         "diagnostics": diagnostics,
     }
 
@@ -137,5 +158,33 @@ def build_plan(reservation: dict[str, Any], profile: SceneProfile, target_id: st
                 "depth": depth - 1,
                 "diagnostics": [],
             }
+    _place_anchors(plan, reservation, chosen_refs=list(plan.children) if root else None)
     assert plan.spent + sum(int(c["budget"]) for c in plan.children.values()) <= budget  # инвариант §4.5
     return plan
+
+
+def _place_anchors(plan: Plan, reservation: dict[str, Any], chosen_refs: list[str] | None) -> None:
+    """Сюжетные носители (§8.1): обязательны, вне случайного бюджета (их стоимость уже вычтена в корне) и вне
+    лимитов. Скрытый носитель уходит в резерв одного из контейнеров плана; выбор — отдельный генератор от seed и
+    id зацепки, поэтому добыча и seed контейнеров от носителей не меняются. В фазе контейнера (``chosen_refs`` —
+    None) носители его резерва ложатся в него самого."""
+    seed = int(reservation["seed"])
+    for a in reservation.get("anchors") or []:
+        if a.get("hidden") and chosen_refs:
+            pick = random.Random(child_seed(seed, f"anchor:{a['anchor_id']}")).randrange(len(chosen_refs))
+            plan.children[chosen_refs[pick]].setdefault("anchors", []).append(a)
+            continue
+        if a.get("hidden") and chosen_refs is not None:
+            plan.notes.append(f"anchor_visible_no_container:{a['anchor_id']}")
+        zone = random.Random(child_seed(seed, f"zone:{a['anchor_id']}")).choice(("near", "far"))
+        plan.slots.append(
+            Slot(
+                f"anchor:{a['anchor_id']}",
+                "item",
+                a["name"],
+                a.get("description") or "",
+                template_id=a.get("template_id"),
+                zone=zone,
+                anchor_id=a["anchor_id"],
+            )
+        )

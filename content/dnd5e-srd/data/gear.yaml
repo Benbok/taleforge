@@ -18,6 +18,9 @@ items:
   - {id: item.improvised_weapon, name: Импровизированное оружие, status: canon, doc: "SRD 5.1: Improvised Weapons", tags: [weapon, improvised, srd],
      category: weapon, weapon_group: improvised, price: {cp: 0}, damage: {dice: "1d4", type: bludgeoning}, weight: 1, properties: [],
      description: "Ножка стула, камень, бутылка. Без владения: к атаке не прибавляется бонус мастерства."}
+  - {id: item.plot_note, name: Записка, status: canon, doc: "Taleforge: носитель сюжетной зацепки", tags: [gear, plot],
+     category: gear, price: {cp: 0}, weight: 0, not_loot: true, visual_key: "item:scroll",
+     description: "Письмо, страница дневника или клочок бумаги. Что в нём — пишет сюжет."}
   - {id: item.torch, name: Факел, status: canon, doc: "SRD 5.1: Adventuring Gear", tags: [gear, light, srd], srd_ref: {type: item, name: Torch},
      category: gear, price: {cp: 1}, weight: 1, description: "Горит 1 час: яркий свет на 20 футов и тусклый ещё на 20."}
   - {id: item.rope_hempen, name: Пеньковая верёвка (50 футов), status: canon, doc: "SRD 5.1: Adventuring Gear", tags: [gear, srd],

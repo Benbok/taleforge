@@ -23,6 +23,8 @@ def validate(plan: Plan, proposal: Proposal) -> None:
         seen.add(obj.slot_ref)
         if obj.role != slot.role or obj.template_id != slot.template_id:
             raise Blocked("invalid_proposal", f"слот {obj.slot_ref}: роль или шаблон не совпадают с планом")
+        if obj.anchor_id != slot.anchor_id or (slot.anchor_id is not None and obj.name != slot.name):
+            raise Blocked("invalid_proposal", f"слот {obj.slot_ref}: сюжетный носитель изменён")
         if not obj.name or len(obj.name) > MAX_NAME or len(obj.description) > MAX_DESCRIPTION:
             raise Blocked("invalid_proposal", f"слот {obj.slot_ref}: имя или описание вне лимитов")
     missing = [s.slot_ref for s in plan.slots if s.role != "prop" and s.slot_ref not in seen]

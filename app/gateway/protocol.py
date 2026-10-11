@@ -366,6 +366,12 @@ class MapHero(_Strict):
     down: bool
 
 
+class MapContainer(_Strict):
+    open: bool
+    locked: bool
+    contents: Literal["unexamined", "pending", "ready", "blocked"]
+
+
 class MapThing(_Strict):
     id: str
     name: str
@@ -378,6 +384,7 @@ class MapThing(_Strict):
     cover: str
     cell: tuple[int, int] | None
     condition: str | None = None
+    container: MapContainer | None = absent()  # контейнер: доступ и состояние содержимого (поставка 6)
 
 
 class MapArea(_Strict):

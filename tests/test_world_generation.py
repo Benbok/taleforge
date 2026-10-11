@@ -18,11 +18,11 @@ from app.core.world_generation.policy import build_plan, child_seed, root_reserv
 from app.core.world_generation.profiles import MINIMAL, ProfileError, eligible, load_profile, parse_profile
 from app.core.world_generation.service import Orchestrator
 from app.core.world_generation.validation import validate
-from app.db.models import Campaign, Character, Entity, Event, PlotAnchorBinding, WorldGenerationState, now
+from app.db.models import Campaign, Character, Entity, Event, WorldGenerationState, now
 from app.db.session import make_engine, make_sessionmaker
 from app.gateway.coordination import InMemoryCoordination
 from app.tools.registry import execute
-from tests.game import import_base, party, run
+from tests.game import import_base, party, quiet, run
 from tests.test_map import _ok, _play
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры хода
 
@@ -188,6 +188,7 @@ def test_validation_accepts_only_plan_slots():
 def test_location_prepares_once_with_reserves_for_children(client, admin, settings):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     room, ref = _room(settings, cid)
     assert _row(settings, ref).requested_at is not None
@@ -212,6 +213,7 @@ def test_location_prepares_once_with_reserves_for_children(client, admin, settin
 def test_concurrent_preparation_makes_one_result(client, admin, settings):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     _room_id, ref = _room(settings, cid)
 
@@ -229,6 +231,7 @@ def test_concurrent_preparation_makes_one_result(client, admin, settings):
 def test_expired_lease_is_taken_over_and_old_owner_cannot_write(client, admin, settings):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     _room_id, ref = _room(settings, cid)
     stale = _with_maker(settings, lambda maker: storage.claim(maker, cid, ref))
@@ -247,9 +250,9 @@ def test_expired_lease_is_taken_over_and_old_owner_cannot_write(client, admin, s
 
     async def late(maker):
         orch = Orchestrator(InMemoryCoordination())
-        plan, proposal = await orch._plan(maker, stale)
+        draft = await orch._plan(maker, stale)
         with pytest.raises((storage.LeaseLost, world_tx.WorldConflict)):
-            await storage.commit_result(maker, orch.dice_factory, stale, plan, proposal)
+            await storage.commit_result(maker, orch.dice_factory, stale, draft.plan, draft.proposal)
 
     _with_maker(settings, late)
     assert len(rows(settings, Event, Event.tool == "prepare_scene")) == 1
@@ -258,6 +261,7 @@ def test_expired_lease_is_taken_over_and_old_owner_cannot_write(client, admin, s
 def test_failure_mid_insert_rolls_back_everything_and_retry_keeps_seed(client, admin, settings, monkeypatch):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     _room_id, ref = _room(settings, cid)
     reservation = dict(_row(settings, ref).reservation)
@@ -292,6 +296,7 @@ def test_failure_mid_insert_rolls_back_everything_and_retry_keeps_seed(client, a
 def test_world_change_conflicts_then_stale_context_and_retry(client, admin, settings, monkeypatch):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     _room_id, ref = _room(settings, cid)
     real = Orchestrator._plan
@@ -320,29 +325,10 @@ def test_world_change_conflicts_then_stale_context_and_retry(client, admin, sett
     assert _prepare(settings, cid, ref) == "ready"
 
 
-def test_plot_anchor_blocks_preparation(client, admin, settings):
-    import_base(settings)
-    campaign, _heads, _hero = party(client, admin)
-    cid = campaign["id"]
-
-    async def build(ctx):
-        room = (await _ok(ctx, "create_location", {"name": "Склеп", "make_current": True}))["location_id"]
-        ctx.session.add(
-            PlotAnchorBinding(
-                campaign_id=cid, anchor_id="clue.1", plot_ref="plot.1", target_location_id=room, state="reserved"
-            )
-        )
-        out = await _ok(ctx, "resolve_location", {"location_id": room, "profile_id": "scene_profile.crypt"})
-        return out["operation_ref"]
-
-    ref = _play(settings, cid, build)
-    assert _prepare(settings, cid, ref) == "blocked"
-    assert _row(settings, ref).last_error == "plot_conflict" and _generated(settings, ref) == []
-
-
 def test_recovery_prepares_only_requested_phases(client, admin, settings):
     import_base(settings)
     campaign, _heads, _hero = party(client, admin)
+    quiet(client)
     cid = campaign["id"]
     _room_id, ref = _room(settings, cid)
     _with_maker(settings, lambda maker: Orchestrator(InMemoryCoordination()).run_due(maker))
@@ -358,6 +344,7 @@ def test_recovery_prepares_only_requested_phases(client, admin, settings):
 def test_search_container_charges_once_and_reads_ready_contents(client, admin, settings, monkeypatch):
     import_base(settings)
     campaign, _heads, hero = party(client, admin)
+    quiet(client)
     cid, hid = campaign["id"], hero["id"]
     room, ref = _room(settings, cid)
 
@@ -433,6 +420,7 @@ def test_search_container_charges_once_and_reads_ready_contents(client, admin, s
 def test_move_requests_preparation_only_with_campaign_flag(client, admin, settings):
     import_base(settings)
     campaign, _heads, hero = party(client, admin)
+    quiet(client)
     cid, hid = campaign["id"], hero["id"]
 
     async def go(ctx):
