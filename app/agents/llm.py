@@ -240,6 +240,7 @@ class ScriptedLLM:
         self.parser_requests: list[dict[str, Any]] = []
         self.voice_requests: list[dict[str, Any]] = []
         self.intro_requests: list[dict[str, Any]] = []
+        self.greeting_requests: list[dict[str, Any]] = []
 
     async def complete(
         self,
@@ -273,6 +274,14 @@ class ScriptedLLM:
             scripted = next((r for r in self.replies if isinstance(r, dict) and r.get("voice_line")), None)
             if scripted is None:
                 return LLMReply(text="Осторожнее на выступе!", model=model, tokens_in=10, tokens_out=5)
+            self.replies.remove(scripted)
+            return LLMReply(text=scripted.get("text", ""), model=model, tokens_in=10, tokens_out=5)
+        if _is_greeting(messages):
+            # приветствие мастера перед первой сессией: как вступление, сценарный ответ с пометкой greeting
+            self.greeting_requests.append(req)
+            scripted = next((r for r in self.replies if isinstance(r, dict) and r.get("greeting")), None)
+            if scripted is None:
+                return LLMReply(text="Добро пожаловать за стол, друзья!", model=model, tokens_in=10, tokens_out=5)
             self.replies.remove(scripted)
             return LLMReply(text=scripted.get("text", ""), model=model, tokens_in=10, tokens_out=5)
         if _is_campaign_intro(messages):
@@ -352,6 +361,10 @@ def _is_emotion(messages: list[dict[str, Any]]) -> bool:
         if isinstance(c, str) and "анализатор эмоций" in c:
             return True
     return False
+
+
+def _is_greeting(messages: list[dict[str, Any]]) -> bool:
+    return any(isinstance(m.get("content"), str) and "Поприветствуй игроков" in m["content"] for m in messages)
 
 
 def _is_campaign_intro(messages: list[dict[str, Any]]) -> bool:

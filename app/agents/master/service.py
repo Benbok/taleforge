@@ -117,6 +117,8 @@ class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, Parsin
         async def run() -> None:
             await self._status(campaign_id, "describing")
             try:
+                # 0. Приветствие мастера игрокам отдельным голосовым (один раз, перед первой игрой)
+                await self.greet(campaign_id)
                 # 1. Интро всей кампании (только один раз в самом начале)
                 await self.introduce_campaign(campaign_id)
                 # 2. Вступление для непредставленных героев
@@ -156,6 +158,17 @@ class MasterService(WhisperMixin, TurnMixin, NarrationMixin, RecallMixin, Parsin
         except Exception:  # noqa: BLE001 — ритм сессии не должен ронять сервер
             log.exception("%s не удалось", what)
             return None
+
+    async def greet(self, campaign_id: str) -> str | None:
+        """Приветствие мастера игрокам перед первой игрой кампании."""
+        from app.agents import prelude
+
+        async with self.intro_lock(campaign_id):
+            try:
+                return await prelude.greet(self, campaign_id)
+            except Exception:  # noqa: BLE001 — без приветствия игра всё равно идёт
+                log.exception("приветствие мастера в кампании %s не удалось", campaign_id)
+                return None
 
     async def introduce_campaign(self, campaign_id: str) -> str | None:
         """Вступление ко всей кампании (2–4 абзаца о мире, ситуации и месте); одно на кампанию."""

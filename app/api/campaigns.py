@@ -208,6 +208,7 @@ async def _start_module(session, campaign: Campaign, module: AdventureModule, ho
     settings["module"] = {
         "id": module.id,
         "title": module.title,
+        "version": module.pack_version,  # общее вступление модуля берётся из кэша этой версии
         "adventure_id": adv.id,
         "hook_id": hook["id"] if hook else None,
     }

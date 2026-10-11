@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.agents import translator
+from app.agents import module_intro, translator
 from app.api.deps import SessionDep, UserDep
 from app.content.upload import PACKS_ROOT
 from app.core import modules
@@ -246,7 +246,7 @@ async def delete_map(module_id: str, map_id: str, request: Request, user: UserDe
 
 
 @router.post("/admin/modules/{module_id}/publish")
-async def publish(module_id: str, user: UserDep, session: SessionDep) -> dict:
+async def publish(module_id: str, request: Request, user: UserDep, session: SessionDep) -> dict:
     """Записать модуль пакетом в БД. Повторная публикация после правок — новая версия пакета."""
     _admin(user)
     m = await _get(session, module_id)
@@ -262,6 +262,9 @@ async def publish(module_id: str, user: UserDep, session: SessionDep) -> dict:
     m = await _get(session, module_id)  # импорт пакета закрыл транзакцию
     m.pack_id, m.pack_version, m.status, m.error, m.published_at = pack_id, version, "published", None, now()
     await session.commit()
+    svc = request.app.state.master
+    if svc.media_dir:  # общее вступление с голосом — один раз на модуль, кампании берут копию
+        svc._spawn(module_intro.prepare_module(svc, m.id))
     return _full(m)
 
 
@@ -276,6 +279,7 @@ async def delete_module(module_id: str, request: Request, user: UserDep, session
     await session.delete(m)
     await session.commit()
     shutil.rmtree(translator.folder(_settings(request).media_dir, module_id), ignore_errors=True)
+    module_intro.forget(_settings(request).media_dir, module_id)
 
 
 @router.get("/modules")

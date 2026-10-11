@@ -384,7 +384,8 @@ def _first_scene(p: dict) -> tuple[dict | None, dict | None]:
     return node, where
 
 
-def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
+def intro_messages(title: str, public_intro: str, persona: str | None, p: dict) -> list[dict]:
+    """Запрос вступления ко всей кампании. Героев в нём нет: о них — знакомство отряда при старте (introduce)."""
     node, where = _first_scene(p)
     scene_hint = ""
     if node:
@@ -393,9 +394,8 @@ def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
         )
         if where:
             scene_hint += f" Место: {where.get('name')}, {where.get('mood')}"
-    title = p.get("title") or c.name
-    intro = f"Кампания «{title}». Завязка: {p.get('public_intro') or c.public_intro}"
-    system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {cfg.persona or ''}"
+    intro = f"Кампания «{title}». Завязка: {public_intro}"
+    system = f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {persona or ''}"
     return [
         {"role": "system", "content": system},
         {
@@ -405,29 +405,27 @@ def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
     ]
 
 
-async def _intro_text(
+def _intro_messages(c: Campaign, cfg: AgentConfig, p: dict) -> list[dict]:
+    return intro_messages(p.get("title") or c.name, p.get("public_intro") or c.public_intro, cfg.persona, p)
+
+
+async def write_intro(
     svc,
-    c: Campaign,
-    cfg: AgentConfig,
-    p: dict,
-    seat_id: str,
+    msgs: list[dict],
+    call: LlmCall,
+    api_base: str | None,
+    temperature: float,
     stream: Stream | None = None,
     job: voiceover.VoiceJob | None = None,
 ) -> str:
     """Текст вступления на основной модели без скрытых рассуждений (они съедают лимит и обрывают текст);
     вызов пишется в расходы. Куски потока идут в чат и в озвучку. Пустая строка — модель не ответила."""
     feed = StoryFeed(stream, job)
-
-    from app.agents.architect import model_of
-
-    async with svc.maker() as s:
-        _, model, api_base, temperature = await model_of(s, await s.get(Campaign, c.id))
-    call = LlmCall(campaign_id=c.id, seat_id=seat_id, turn_id=None, purpose="campaign_intro", model=model)
     text = ""
     try:
         reply = await svc.llm.complete(
-            _intro_messages(c, cfg, p),
-            model=model,
+            msgs,
+            model=call.model,
             tools=None,
             max_tokens=4000,
             temperature=temperature,
@@ -446,6 +444,23 @@ async def _intro_text(
     return text
 
 
+async def _intro_text(
+    svc,
+    c: Campaign,
+    cfg: AgentConfig,
+    p: dict,
+    seat_id: str,
+    stream: Stream | None = None,
+    job: voiceover.VoiceJob | None = None,
+) -> str:
+    from app.agents.architect import model_of
+
+    async with svc.maker() as s:
+        _, model, api_base, temperature = await model_of(s, await s.get(Campaign, c.id))
+    call = LlmCall(campaign_id=c.id, seat_id=seat_id, turn_id=None, purpose="campaign_intro", model=model)
+    return await write_intro(svc, _intro_messages(c, cfg, p), call, api_base, temperature, stream, job)
+
+
 def _voice_job(svc, c: Campaign, clean=clean_story) -> voiceover.VoiceJob | None:
     """Озвучка вступления по частям тем же голосом, что и реплики мастера. Без озвучки кампании — None."""
     if not _tts_on(svc, c):
@@ -460,6 +475,29 @@ def _voice_job(svc, c: Campaign, clean=clean_story) -> voiceover.VoiceJob | None
     return voiceover.VoiceJob(synth, clean)
 
 
+async def _module_intro(svc, c: Campaign, p: dict, seat_id: str) -> tuple[str, list[dict]]:
+    """Готовое приключение: общее вступление модуля (app/agents/module_intro.py) — из кэша или, если его ещё
+    нет, пишется этой кампанией и кладётся в кэш для следующих. Записи копируются в папку кампании."""
+    from app.agents import module_intro
+
+    st, mod = c.settings or {}, (c.settings or {})["module"]
+    text, voices = await module_intro.ensure(
+        svc,
+        mod["id"],
+        mod["version"],
+        p,
+        title=p.get("title") or c.name,
+        tts=_tts_on(svc, c),
+        provider=st.get("tts_provider"),
+        voice=st.get("tts_voice"),
+        campaign_id=c.id,
+        seat_id=seat_id,
+    )
+    if text and voices and _tts_on(svc, c):
+        return text, module_intro.copy_voices(svc.media_dir, mod["id"], c.id, voices)
+    return text, []
+
+
 async def prepare_campaign_intro(svc, cid: str) -> bool:
     """Готовит вступление ко всей кампании один раз, когда каркас готов: текст и голос ждут старта в тайнах,
     и игрокам не приходится ждать модель на первом ходу. Новый вариант каркаса готовит вступление заново."""
@@ -471,13 +509,19 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
         if cfg is None:
             return False
         seat_id = master_seat(c).id
-    job = _voice_job(svc, c)
-    text = await _intro_text(svc, c, cfg, p, seat_id, job=job)
-    if not text:
-        if job is not None:
-            job.cancel()
-        return False
-    voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
+    mod = (c.settings or {}).get("module") or {}
+    if mod.get("id") and mod.get("version") and svc.media_dir:
+        text, voices = await _module_intro(svc, c, p, seat_id)
+        if not text:
+            return False
+    else:
+        job = _voice_job(svc, c)
+        text = await _intro_text(svc, c, cfg, p, seat_id, job=job)
+        if not text:
+            if job is not None:
+                job.cancel()
+            return False
+        voices = [v for v in await asyncio.gather(*job.finish(text)) if v] if job is not None else []
     async with svc.maker() as s:
         secret = await s.get(CampaignSecret, cid)
         if secret is None:
@@ -486,6 +530,77 @@ async def prepare_campaign_intro(svc, cid: str) -> bool:
         secret.setting = {**(secret.setting or {}), INTRO_KEY: ready}
         await s.commit()
     return True
+
+
+GREETING_TASK = (
+    "Поприветствуй игроков за столом от первого лица, как живой мастер перед первой игрой: тепло и с "
+    "предвкушением, 40–80 слов. Назови приключение, обратись к героям по именам, пообещай интересное и скажи, "
+    "что начинаем. Это слова мастера игрокам, а не повествование: сюжет и завязку не раскрывай. " + STORY_RULES
+)
+
+
+async def greet(svc, cid: str) -> str | None:
+    """Приветствие мастера перед первой игрой кампании: отдельное голосовое сообщение до вступления.
+    Пишется при старте сессии (знает героев за столом), один раз на кампанию, озвучивается по частям."""
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        st = (c.settings or {}) if c else {}
+        if c is None or st.get("campaign_intro_played") or st.get("master_greeted"):
+            return None
+        cfg, p = await _ai_plan(s, c)
+        game = await active_session(s, cid)
+        if cfg is None or game is None:
+            return None
+        heroes = [await _hero(s, c, ch, private=False) for ch in await pending(s, c)]
+        seat_id = master_seat(c).id
+        from app.agents.architect import model_of
+
+        _, model, api_base, temperature = await model_of(s, c)
+    title = p.get("title") or c.name
+    user = "\n\n".join(
+        x
+        for x in (
+            f"Приключение «{title}».",
+            ("Герои за столом:\n" + "\n\n".join(heroes)) if heroes else "",
+            GREETING_TASK + " Разметку [[...]] не используй.",
+        )
+        if x
+    )
+    msgs = [
+        {
+            "role": "system",
+            "content": f"Ты — мастер ролевой игры «{title}» по D&D 5e на русском языке. {cfg.persona or ''}",
+        },
+        {"role": "user", "content": user},
+    ]
+    await _set_flag(svc, cid, True)  # реплики ждут вводной: снимет вступление кампании или конец старта сессии
+    call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="greeting", model=model)
+    job = _voice_job(svc, c)
+    text = await write_intro(svc, msgs, call, api_base, temperature, job=job)
+    tasks = job.finish(text) if job is not None and text else []
+    if job is not None and not tasks:
+        job.cancel()
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        c.settings = {**(c.settings or {}), "master_greeted": True}  # и при сбое: игра не ждёт приветствия
+        if not text:
+            await s.commit()
+            return None
+        msg = Message(
+            campaign_id=cid,
+            session_id=game.id,
+            seq=await next_seq(s, cid),
+            seat_id=seat_id,
+            kind="narration",
+            content=text,
+            data={"greeting": True, **(voiceover.data_of([], len(tasks)) if tasks else {})},
+        )
+        s.add(msg)
+        await s.commit()
+        await publish_message(svc.bus, msg)
+    if tasks:
+        _spawn(svc, voiceover.attach(svc, msg, tasks))
+    return msg.id
 
 
 async def _set_flag(svc, cid: str, on: bool) -> None:
@@ -538,6 +653,19 @@ async def introduce_campaign(svc, cid: str) -> str | None:
             msg_id = msg.id
         text = ready.get("text") or ""
         voices = ready.get("voices") or ([ready["voice"]] if ready.get("voice") else [])
+        mod = (c.settings or {}).get("module") or {}
+        if (
+            not text and mod.get("id") and mod.get("version") and svc.media_dir
+        ):  # заготовка не успела, а у модуля вступление есть
+            from app.agents import module_intro
+
+            st = c.settings or {}
+            hook = ((p.get("module_hook") or {}).get("id")) or "-"
+            text, cached = module_intro.cached(
+                svc.media_dir, mod["id"], mod["version"], hook, st.get("tts_provider"), st.get("tts_voice")
+            )
+            if text and cached and _tts_on(svc, c):
+                voices = module_intro.copy_voices(svc.media_dir, mod["id"], cid, cached)
         tasks: list[asyncio.Task] = []
         if not text:
             job = _voice_job(svc, c)  # части озвучиваются, пока модель ещё пишет: первая готова раньше всех

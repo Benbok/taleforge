@@ -588,7 +588,7 @@ def test_campaign_intro_voiced_in_parts(settings, tmp_path):
         parts = voiceover.split(story)
         assert len(parts) > 1 and msg.data["voice_parts"] == len(parts) == len(msg.data["voices"])
         assert msg.data["voice"] == msg.data["voices"][0]
-        intro_spoken = sorted(x for x in spoken if "Бран" not in x)
+        intro_spoken = sorted(x for x in spoken if "Бран" not in x and "Добро пожаловать" not in x)
         assert intro_spoken == sorted(" ".join(p.split()) for p in parts)  # озвучена вся вводная
         heroes = next(m for m in rows(settings, Message, Message.campaign_id == cid) if "сходит на берег" in m.content)
         assert heroes.data["voice_parts"] == 1  # знакомство отряда — тоже часть вводной
