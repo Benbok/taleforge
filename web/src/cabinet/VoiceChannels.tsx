@@ -5,7 +5,8 @@ import { Field } from "../components/Form";
 import { api } from "../lib/api";
 import { TTS_VOICES, type Room, type VoiceStudioProfile } from "../lib/campaign";
 
-export type ChannelKind = "line" | "text";
+export type ChannelKind = "line" | "text" | "intro";
+const KINDS: ChannelKind[] = ["line", "text", "intro"];
 type Settings = Room["settings"];
 
 const PROVIDERS: SelectOption[] = [
@@ -15,19 +16,38 @@ const PROVIDERS: SelectOption[] = [
 const ABOUT: Record<ChannelKind, { title: string; hint: string }> = {
   line: { title: "Реплики мастера", hint: "Короткая реакция мастера на ход. Звучит первой, пока игроки читают текст." },
   text: { title: "Текст мастера", hint: "Весь ответ хода. Озвучивается в фоне после реплики, текст показывается сразу." },
+  intro: {
+    title: "Вступление и знакомство героев",
+    hint: "Подготовка к игре: вступление кампании, знакомство героев, приветствие. Всегда облако Gemini.",
+  },
 };
 
-/** Канал как его читает сервер (app/agents/voicing.py): у кампании до раздельных каналов — общие tts_provider и
- * tts_voice, реплики включены, текст выключен. */
+/** Канал как его читает сервер (app/agents/voicing.py). У кампании до раздельных каналов — общие tts_provider и
+ * tts_voice, реплики включены, текст выключен; её tts_enabled = false глушит все каналы. */
 export function channelOf(st: Settings | undefined, kind: ChannelKind) {
   const s = (st ?? {}) as Record<string, unknown>;
   const key = `tts_${kind}_`;
+  const on = s.tts_enabled !== false && ((s[`${key}enabled`] as boolean | undefined) ?? kind !== "text");
+  if (kind === "intro") return { enabled: on, provider: "gemini", voice: (s.tts_intro_voice as string | null) ?? null };
   const own = `${key}provider` in s;
   return {
-    enabled: (s[`${key}enabled`] as boolean | undefined) ?? kind === "line",
+    enabled: on,
     provider: ((own ? s[`${key}provider`] : s.tts_provider) as string | null) || "gemini",
     voice: ((own ? s[`${key}voice`] : s.tts_voice) as string | null) ?? null,
   };
+}
+
+/** Тело PATCH для включения или выключения канала. Старый общий выключатель снимается при включении любого канала,
+ * остальные каналы при этом остаются выключенными, как их и видел владелец. */
+export function toggleBody(st: Settings | undefined, kind: ChannelKind): Record<string, unknown> {
+  const ch = channelOf(st, kind);
+  const body: Record<string, unknown> = { [`tts_${kind}_enabled`]: !ch.enabled };
+  if (kind !== "intro") Object.assign(body, { [`tts_${kind}_provider`]: ch.provider, [`tts_${kind}_voice`]: ch.voice });
+  if (!ch.enabled && (st as Record<string, unknown> | undefined)?.tts_enabled === false) {
+    body.tts_enabled = true;
+    for (const other of KINDS) if (other !== kind) body[`tts_${other}_enabled`] = false;
+  }
+  return body;
 }
 
 function geminiVoices(): SelectOption[] {
@@ -110,7 +130,7 @@ export function VoiceChannel({
         <ActionButton
           className="btn-outline-copper"
           done={ch.enabled ? `${ABOUT[kind].title}: озвучка выключена` : `${ABOUT[kind].title}: озвучка включена`}
-          run={() => save({ [`${key}enabled`]: !ch.enabled, [`${key}provider`]: ch.provider, [`${key}voice`]: ch.voice })}
+          run={() => save(toggleBody(room?.settings, kind))}
         >
           {ch.enabled ? "Выключить" : "Включить"}
         </ActionButton>
@@ -118,6 +138,9 @@ export function VoiceChannel({
       {ch.enabled && (
         <>
           <Field label="Источник">
+            {kind === "intro" ? (
+              <p className="text-sm text-ink-2">Gemini TTS (облако)</p>
+            ) : (
             <CustomSelect
               value={ch.provider}
               options={PROVIDERS}
@@ -129,13 +152,15 @@ export function VoiceChannel({
               }}
               ariaLabel={`Источник: ${ABOUT[kind].title}`}
             />
+            )}
           </Field>
           <Field label="Голос">
             <CustomSelect
               value={voice}
               options={options}
               onChange={async (val) => {
-                if (val !== ch.voice) await save({ [`${key}provider`]: ch.provider, [`${key}voice`]: val });
+                if (val === ch.voice) return;
+                await save(kind === "intro" ? { tts_intro_voice: val } : { [`${key}provider`]: ch.provider, [`${key}voice`]: val });
               }}
               ariaLabel={`Голос: ${ABOUT[kind].title}`}
             />

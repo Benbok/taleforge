@@ -40,3 +40,9 @@ def test_intro_always_cloud_with_cloud_channel_voice():
     assert voicing.intro({"tts_line_provider": "voicestudio", "tts_line_voice": "clone01"}) == Channel("gemini", None)
     st = {"tts_line_provider": "gemini", "tts_line_voice": "Puck", "tts_text_provider": "gemini", "tts_text_voice": "Aoede"}
     assert voicing.intro(st) == Channel("gemini", "Aoede")  # голос текста ближе к вступлению, чем голос реплики
+
+
+def test_intro_has_own_switch_and_voice():
+    assert voicing.intro({"tts_intro_enabled": False}) is None
+    st = {"tts_intro_voice": "Charon", "tts_text_provider": "gemini", "tts_text_voice": "Aoede"}
+    assert voicing.intro(st) == Channel("gemini", "Charon")

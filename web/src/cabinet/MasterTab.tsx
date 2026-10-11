@@ -68,7 +68,6 @@ export default function MasterTab({
   const [savePresetName, setSavePresetName] = useState("");
   const [saveOverwriteId, setSaveOverwriteId] = useState("");
   const [characterRev, setCharacterRev] = useState(0);
-  const ttsEnabled = (room?.settings?.tts_enabled ?? true) !== false;
 
   useEffect(() => {
       }, [model.data?.model_profile_id]);
@@ -270,44 +269,20 @@ export default function MasterTab({
         <div className="border-b border-line pb-3">
           <h2 className="font-heading text-xl font-bold text-ink">Озвучка мастера</h2>
           <p className="text-xs text-muted">
-            Голос ИИ-мастера: короткие реплики и весь текст ответа включаются отдельно, у каждого свой источник —
-            облачный Gemini или локальный Voice Studio. Выключено — мастер отвечает только текстом.
+            Каждый вид озвучки включается отдельно: короткие реплики, весь текст ответа, вступление. Всё выключено —
+            мастер отвечает только текстом.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`font-mono text-xs ${ttsEnabled ? "text-patina-hi" : "text-muted"}`}>
-            {ttsEnabled ? "● включено" : "○ выключено"}
-          </span>
-          <ActionButton
-            className="btn-outline-copper"
-            done={ttsEnabled ? "Озвучка мастера выключена" : "Озвучка мастера включена"}
-            run={async () => {
-              const updated = await api<Room>(`/api/campaigns/${campaignId}`, {
-                method: "PATCH",
-                body: { tts_enabled: !ttsEnabled },
-              });
-              onRoom?.(updated);
-            }}
-          >
-            {ttsEnabled ? "Выключить озвучку" : "Включить озвучку"}
-          </ActionButton>
-        </div>
-
-        {ttsEnabled && (
-          <div className="flex flex-col gap-3 border-t border-line/60 pt-3">
-            <VoiceChannel kind="line" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
-            <VoiceChannel kind="text" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
-            {differentVoices(room?.settings) && (
-              <p role="note" className="text-xs text-warn">
-                У реплик и текста разные голоса: в одном ответе мастер заговорит двумя голосами.
-              </p>
-            )}
-            <p className="text-xs text-muted">
-              Вступление кампании и знакомство героев всегда озвучивает Gemini — голосом облачного канала, если он
-              выбран, иначе голосом Gemini по умолчанию.
+        <div className="flex flex-col gap-3">
+          <VoiceChannel kind="line" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
+          <VoiceChannel kind="text" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
+          {differentVoices(room?.settings) && (
+            <p role="note" className="text-xs text-warn">
+              У реплик и текста разные голоса: в одном ответе мастер заговорит двумя голосами.
             </p>
-          </div>
-        )}
+          )}
+          <VoiceChannel kind="intro" campaignId={campaignId} room={room} onRoom={onRoom} profiles={vsProfiles} />
+        </div>
       </section>
 
       {/* Persona and Tone */}

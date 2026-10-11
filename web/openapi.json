@@ -594,6 +594,29 @@
       "title": "Tts Enabled",
       "type": "boolean"
      },
+     "tts_intro_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Intro Enabled"
+     },
+     "tts_intro_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Intro Voice"
+     },
      "tts_line_enabled": {
       "anyOf": [
        {
@@ -1030,6 +1053,29 @@
        }
       ],
       "title": "Tts Enabled"
+     },
+     "tts_intro_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Intro Enabled"
+     },
+     "tts_intro_voice": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tts Intro Voice"
      },
      "tts_line_enabled": {
       "anyOf": [

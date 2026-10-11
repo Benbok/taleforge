@@ -2408,6 +2408,10 @@ export interface components {
              * @default true
              */
             tts_enabled?: boolean;
+            /** Tts Intro Enabled */
+            tts_intro_enabled?: boolean | null;
+            /** Tts Intro Voice */
+            tts_intro_voice?: string | null;
             /** Tts Line Enabled */
             tts_line_enabled?: boolean | null;
             /** Tts Line Provider */
@@ -2515,6 +2519,10 @@ export interface components {
             spend_limit_usd?: number | null;
             /** Tts Enabled */
             tts_enabled?: boolean | null;
+            /** Tts Intro Enabled */
+            tts_intro_enabled?: boolean | null;
+            /** Tts Intro Voice */
+            tts_intro_voice?: string | null;
             /** Tts Line Enabled */
             tts_line_enabled?: boolean | null;
             /** Tts Line Provider */

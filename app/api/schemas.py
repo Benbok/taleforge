@@ -317,6 +317,8 @@ class CampaignCreateIn(BaseModel):
     tts_text_enabled: bool | None = None
     tts_text_provider: TtsProvider | None = None
     tts_text_voice: str | None = Field(default=None, max_length=32)
+    tts_intro_enabled: bool | None = None  # вступление и знакомство героев, всегда облако
+    tts_intro_voice: str | None = Field(default=None, max_length=32)
 
 
 class CampaignPatchIn(BaseModel):
@@ -339,6 +341,8 @@ class CampaignPatchIn(BaseModel):
     tts_text_enabled: bool | None = None
     tts_text_provider: TtsProvider | None = None
     tts_text_voice: str | None = Field(default=None, max_length=32)
+    tts_intro_enabled: bool | None = None  # вступление и знакомство героев, всегда облако
+    tts_intro_voice: str | None = Field(default=None, max_length=32)
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None
