@@ -22,6 +22,7 @@ export const MAP_PRESETS: Record<EntityType, MapVisualPreset> = {
   landmark: { family: "landmark", glyph: "landmark", color: "var(--tf-entity-location)", shape: "square", label: "Объект" },
   location: { family: "location", glyph: "pin", color: "var(--tf-entity-location)", shape: "hex", label: "Место" },
   lore: { family: "lore", glyph: "book", color: "var(--tf-entity-lore)", shape: "diamond", label: "Знание" },
+  effect: { family: "effect", glyph: "alert", color: "var(--tf-ember)", shape: "diamond", label: "Эффект" },
 };
 
 /** Специализация по стабильному визуальному ключу, НЕ по отображаемому названию.

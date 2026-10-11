@@ -13,7 +13,7 @@ from app.agents.master.continuity import invented_player_dialogue, unregistered_
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
 from app.agents.master.outcomes import failed_attack, public_attempts, transition_outcome
 from app.core import combat
-from app.core.linker import BARE
+from app.core.linker import BARE, effect_names
 from app.db.models import AgentConfig, Campaign, Scene
 from app.emotion import game as mood
 from app.emotion.analyzers import LLMAnalyzer
@@ -72,6 +72,8 @@ class NarrationMixin:
             },
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
+        rules = effect_names(ctx.world.catalog)
+        known.update(rules)
         human_seats = {seat.id for seat in c.seats if seat.occupant_type != "agent"}
         players = {cid: ch.name for cid, ch in ctx.world.characters.items() if ch.seat_id in human_seats}
         participants = {cid: ch.name for cid, ch in ctx.world.characters.items()}
@@ -88,6 +90,7 @@ class NarrationMixin:
         rejected_names: set[str] = set()
         known_names = {ch.name.casefold() for ch in ctx.world.characters.values()}
         known_names.update(e.name.casefold() for e in ctx.world.entities.values())
+        known_names.update(name.casefold() for name in rules.values())
 
         def unknown_refs(draft: str) -> list[str]:
             refs = set()

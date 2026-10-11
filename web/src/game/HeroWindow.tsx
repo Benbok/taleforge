@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { create } from "zustand";
 import type { HeroAttack, HeroSheet } from "../lib/types";
 import { useGame } from "../stores/game";
+import { useInspector } from "./inspector";
 import { toast } from "../stores/toasts";
 import {
   ABILITIES,
@@ -260,6 +261,7 @@ function Xp({ h }: { h: HeroSheet }) {
 }
 
 function State({ h }: { h: HeroSheet }) {
+  const inspect = useInspector((s) => s.open);
   const r = h.resources;
   const [s, f] = r.death_saves ?? [0, 0];
   const effects = h.derived?.effects ?? [];
@@ -298,8 +300,15 @@ function State({ h }: { h: HeroSheet }) {
           <ul className="flex flex-col gap-1">
             {effects.map((e) => (
               <li key={e.id}>
-                {e.name}
-                {e.stacks > 1 ? ` ×${e.stacks}` : ""}
+                <button
+                  type="button"
+                  className="underline decoration-dotted underline-offset-4 hover:text-accent"
+                  onClick={(event) => inspect(e.template, e.name, event.currentTarget)}
+                  title="Описание состояния / эффекта"
+                >
+                  {e.name}
+                  {e.stacks > 1 ? ` ×${e.stacks}` : ""}
+                </button>
               </li>
             ))}
           </ul>
@@ -422,6 +431,7 @@ export default function HeroWindow() {
     const onKey = (e: KeyboardEvent) =>
       e.key === "Escape" &&
       !document.querySelector('[aria-label="Почему такое число"]') &&
+      !useInspector.getState().id &&
       hide();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

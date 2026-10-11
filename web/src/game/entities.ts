@@ -10,6 +10,7 @@ export const TYPE_COLOR: Record<EntityType, string> = {
   landmark: "var(--tf-entity-location)",
   lore: "var(--tf-entity-lore)",
   hero: "var(--tf-accent)",
+  effect: "var(--tf-ember)",
 };
 
 export const TYPE_ICON: Record<EntityType, string> = {
@@ -20,6 +21,7 @@ export const TYPE_ICON: Record<EntityType, string> = {
   landmark: "▲",
   lore: "❖",
   hero: "★",
+  effect: "◈",
 };
 
 export const TYPE_NAME: Record<EntityType, string> = {
@@ -30,6 +32,7 @@ export const TYPE_NAME: Record<EntityType, string> = {
   landmark: "Примета",
   lore: "Знание",
   hero: "Герой",
+  effect: "Состояние / эффект",
 };
 
 /** Что игрок может сделать с сущностью из карточки: текст подставляется в поле ввода, отправляет игрок сам. */

@@ -3,6 +3,7 @@ import { useGame } from "../stores/game";
 import DeathSaves from "./DeathSaves";
 import { useExplain } from "./hero";
 import { useHeroWindow } from "./HeroWindow";
+import { useInspector } from "./inspector";
 
 /** Полоса героя над полем ввода: хиты, КД, эффекты и спасброски от смерти. Каждое число — кнопка с разбором.
  *  Потеря хитов вспыхивает красным с величиной урона, лечение — зелёным. */
@@ -10,6 +11,7 @@ export default function HeroHud() {
   const sheet = useGame((s) => s.sheet);
   const explain = useExplain((s) => s.open);
   const showWindow = useHeroWindow((s) => s.show);
+  const inspect = useInspector((s) => s.open);
   const [flash, setFlash] = useState<{ delta: number; key: number } | null>(null);
   const prev = useRef<number | null>(null);
   const hp = sheet?.resources.hp ?? null;
@@ -76,7 +78,8 @@ export default function HeroHud() {
             <button
               key={e.id}
               className="rounded-full border border-line px-2 py-0.5 text-xs hover:border-accent"
-              onClick={() => showWindow("state")}
+              onClick={(event) => inspect(e.template, e.name, event.currentTarget)}
+              title="Описание состояния / эффекта"
             >
               {e.name}
               {e.stacks > 1 ? ` ×${e.stacks}` : ""}

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import plot
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
-from app.core.linker import link_text
+from app.core.linker import autolink, link_text
 from app.core.world import get_scene, party_groups
 from app.db.models import Campaign, Character, GameSession, MasterTurn, Message, now
 
@@ -32,14 +32,20 @@ def visible(msg: Message, seat_id: str | None) -> bool:
     return msg.visible_to is None or (seat_id is not None and seat_id in msg.visible_to)
 
 
-def message_payload(msg: Message, names: dict[str, str] | None = None, state: str | None = None) -> dict[str, Any]:
+def message_payload(
+    msg: Message,
+    names: dict[str, str] | None = None,
+    state: str | None = None,
+    *, effects: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    content = autolink(msg.content, {}, effects=effects) if effects and msg.kind == "narration" else msg.content
     return {
         "id": msg.id,
         "seq": msg.seq,
         "kind": msg.kind,
         "seat_id": msg.seat_id,
         "author": (names or {}).get(msg.author_user_id or "", None),
-        "content": msg.content,
+        "content": content,
         "whisper": msg.visible_to is not None,
         "data": msg.data,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,

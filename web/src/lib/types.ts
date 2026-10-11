@@ -244,6 +244,7 @@ export type EntityType =
   | "location"
   | "landmark"
   | "lore"
+  | "effect"
   | "hero";
 
 export interface EntityCard {

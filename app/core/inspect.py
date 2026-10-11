@@ -192,6 +192,10 @@ def _condition(state: dict[str, Any]) -> str | None:
 
 
 async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> dict[str, Any]:
+    catalog = await campaign_catalog(session, viewer.campaign) if viewer.campaign.content_chain else None
+    effect = catalog.find(entity_id, "effect_template") if catalog is not None else None
+    if effect is not None:
+        return {"id": effect.id, "type": "effect", "name": effect.name, "description": effect.data.get("description")}
     ch = await session.get(Character, entity_id)
     if ch is not None and ch.campaign_id == viewer.campaign.id:
         if ch.status in ("draft", "submitted", "rejected"):
@@ -300,4 +304,9 @@ async def types_for(session: AsyncSession, viewer: Viewer, ids: list[str]) -> di
     rows = await session.scalars(select(Character.id).where(Character.campaign_id == cid, Character.id.in_(ids)))
     for i in rows.all():
         out[i] = "hero"
+    if viewer.campaign.content_chain:
+        catalog = await campaign_catalog(session, viewer.campaign)
+        for i in ids:
+            if catalog.find(i, "effect_template") is not None:
+                out[i] = "effect"
     return out

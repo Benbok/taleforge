@@ -14,7 +14,8 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Character, Entity, Knowledge, Scene
+from app.content.catalog import CatalogView, campaign_catalog
+from app.db.models import Campaign, Character, Entity, Knowledge, Scene
 
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
 # разметка без id («[[Группа Складов]]»): модель сослалась на имя, а не на сущность из реестра
@@ -66,15 +67,25 @@ def _aliases(name: str) -> list[tuple[str, bool]]:
     return out
 
 
-def autolink(text: str, names: dict[str, str]) -> str:
-    """Размечает известные имена в тексте. ``names``: id → имя. Готовая разметка не трогается."""
+def effect_names(catalog: CatalogView, *, conditions_only: bool = False) -> dict[str, str]:
+    """Общедоступные правила состояний и эффектов из пакетов этой кампании."""
+    return {
+        e.id: e.name for e in catalog.by_kind("effect_template")
+        if not conditions_only or e.id.startswith("condition.") or "condition" in (e.data.get("tags") or [])
+    }
+
+
+def autolink(text: str, names: dict[str, str], *, effects: dict[str, str] | None = None) -> str:
+    """Размечает имена и состояния. Исправляет ссылку на героя, если её подпись — название состояния."""
     if not text:
         return text
+    effects = effects or {}
     owners: dict[str, set[str]] = {}
     strict_of: dict[str, bool] = {}
-    for eid, name in names.items():
+    for eid, name in {**effects, **names}.items():
         if name and name.strip():
-            for a, strict in _aliases(name.strip()):
+            # Эффекты связываем по полному названию: «Сильный шум» не превращает любой «шум» в статус.
+            for a, strict in ([(name.strip(), False)] if eid in effects else _aliases(name.strip())):
                 owners.setdefault(a.lower(), set()).add(eid)
                 strict_of[a.lower()] = strict_of.get(a.lower(), True) and strict
     aliases = sorted(((a, next(iter(ids))) for a, ids in owners.items() if len(ids) == 1), key=lambda x: -len(x[0]))
@@ -106,7 +117,14 @@ def autolink(text: str, names: dict[str, str]) -> str:
     out, pos = [], 0
     for m in MARKUP.finditer(text):
         out.append(link_plain(text[pos : m.start()]))
-        out.append(m.group(0))
+        replacement = m.group(0)
+        # Карточки предметов и других сущностей сохраняем даже при совпадении имени со статусом.
+        if m.group(1).startswith("ch_"):
+            for rx, eid, _ in compiled:
+                if eid in effects and rx.fullmatch(m.group(2).strip()):
+                    replacement = f"[[{eid}|{m.group(2)}]]"
+                    break
+        out.append(replacement)
         pos = m.end()
     out.append(link_plain(text[pos:]))
     return "".join(out)
@@ -137,4 +155,8 @@ async def linkable(session: AsyncSession, campaign_id: str) -> dict[str, str]:
 
 
 async def link_text(session: AsyncSession, campaign_id: str, text: str) -> str:
-    return autolink(text, await linkable(session, campaign_id))
+    campaign = await session.get(Campaign, campaign_id)
+    effects = (
+        effect_names(await campaign_catalog(session, campaign), conditions_only=True) if campaign.content_chain else {}
+    )
+    return autolink(text, await linkable(session, campaign_id), effects=effects)

@@ -26,9 +26,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.stt import STTError
+from app.content.catalog import campaign_catalog
 from app.core import chat, combat, voice
 from app.core.actions import available
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, get_viewer, stand_in_seats
+from app.core.linker import effect_names
 from app.core.security import read_token
 from app.db.models import Campaign, Character, Entity, User
 from app.gateway import rest as rest_votes
@@ -60,6 +62,7 @@ async def _snapshot(
     owner = await session.get(User, c.owner_id)
     names[c.owner_id] = owner.name
     msgs = await chat.history(session, viewer, last_seq, history_limit)
+    effects = effect_names(await campaign_catalog(session, c), conditions_only=True) if c.content_chain else {}
     states = await chat.message_states(session, c, msgs)
     game = await chat.active_session(session, c.id)
     seat_id = viewer.seat.id if viewer.seat else None
@@ -103,7 +106,7 @@ async def _snapshot(
             "scene": scene,
             "audio": await _audio(session, c, viewer),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
-            "messages": [chat.message_payload(m, names, states.get(m.id)) for m in msgs],
+            "messages": [chat.message_payload(m, names, states.get(m.id), effects=effects) for m in msgs],
             "replay": last_seq is not None,
             "collect_window_sec": int((c.settings or {}).get("collect_window_sec", 60)),
         },
