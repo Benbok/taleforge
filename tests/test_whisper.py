@@ -33,6 +33,7 @@ def test_whisper_answered_privately_without_turn(game_client, admin_g, llm, sett
     assert len(llm.requests) == 1 and llm.requests[0]["tools"] is None
     prompt = llm.requests[0]["messages"][1]["content"]
     assert "мастер, тут есть ловушки?" in prompt and "строго на этот вопрос" in prompt
+    assert "только языком мира" in prompt and "состоянием сцены" not in prompt  # без служебных слов в ответе
     assert rows(settings, MasterTurn, MasterTurn.campaign_id == c["id"]) == []
     assert [x.purpose for x in rows(settings, LlmCall, LlmCall.campaign_id == c["id"])] == ["whisper"]
     w = rows(settings, Message, Message.id == mine["id"])[0]
