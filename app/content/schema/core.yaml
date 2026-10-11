@@ -62,7 +62,35 @@ kinds:
   event_table: {required: [dice, rows]}
   standing_table: {required: [faction_ref]}
   faction: {required: [goal]}
-  location_template: {}
+  location_template: {properties: {scene_profile: {type: string, pattern: "^scene_profile\\.[a-z0-9_]+$"}}}
+  # профиль наполнения исследуемой сцены (docs/world-objects-delivery3.md); строгая проверка —
+  # app/core/world_generation/profiles.py
+  scene_profile:
+    required: [schema_version, loot_budget, limits, items]
+    properties:
+      schema_version: {const: 1}
+      theme_tags: {type: array, items: {type: string}}
+      loot_budget: {type: integer, minimum: 0}
+      visible_share: {type: integer, minimum: 0, maximum: 100}
+      limits:
+        type: object
+        required: [max_generated_entities, max_item_units, max_containers, max_depth]
+        properties:
+          max_generated_entities: {type: integer, minimum: 0}
+          max_item_units: {type: integer, minimum: 0}
+          max_containers: {type: integer, minimum: 0}
+          max_depth: {type: integer, minimum: 0}
+      items:
+        type: array
+        items:
+          type: object
+          required: [template, generation_cost]
+          properties:
+            template: {type: string}
+            generation_cost: {type: integer, minimum: 1}
+      containers: {type: array, items: {type: object, required: [slot, name]}}
+      inner_containers: {type: array, items: {type: object, required: [slot, name]}}
+      decor: {type: array, items: {type: object, required: [slot, name]}}
   lore_fact: {required: [text, knowledge]}
   rule_section: {required: [text]}
   plot_structure: {required: [beats, pillars]}

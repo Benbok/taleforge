@@ -43,6 +43,8 @@ class Preparer(Protocol):
 
     async def settle(self, maker, campaign_id: str, refs: list[str]) -> None: ...
 
+    async def run_due(self, maker) -> None: ...
+
 
 class FinishMixin:
     """Часть MasterService (app/agents/master/service.py)."""
@@ -314,6 +316,12 @@ class FinishMixin:
                 await self._resume(cid, turn_id)
             except Exception:  # noqa: BLE001
                 log.exception("восстановление хода %s не удалось", turn_id)
+        run_due = getattr(self.preparer, "run_due", None)
+        if run_due is not None:  # активированные подготовки без хода: исследование с панели, прерванный lease
+            try:
+                await run_due(self.maker)
+            except Exception:  # noqa: BLE001
+                log.exception("подготовка мира не удалась")
 
     def start_recovery(self) -> None:
         self._recovery_signal = asyncio.Event()

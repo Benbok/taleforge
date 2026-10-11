@@ -35,6 +35,7 @@ from app.agents.master.turn import TurnMixin
 from app.agents.master.whispers import WhisperMixin
 from app.core.campaigns import master_seat
 from app.core.chat import active_session
+from app.core.world_generation.service import Orchestrator
 from app.db.models import Campaign, Character, Scene, as_utc
 from app.gateway.coordination import Coordination, InMemoryCoordination
 from app.rules.dice import Dice
@@ -68,6 +69,8 @@ class MasterService(
         # замки кампаний и открытые кнопки реакций: единственное место, которое меняется, когда серверов станет
         # больше одного (app/gateway/coordination.py)
         self.coordination = coordination or InMemoryCoordination()
+        # исполнитель подготовок мира: ход ждёт его перед описанием, восстановитель доводит активированные фазы
+        self.preparer = Orchestrator(self.coordination, bus, dice_factory=dice_factory)
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._background: set[asyncio.Task] = set()

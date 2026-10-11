@@ -306,7 +306,13 @@ async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, 
     for f in ("attacker_id", "caster_id"):
         if t.closes_actions and getattr(args, f, None):
             ctx.closed.add(getattr(args, f))
-    return {"ok": True, "result": result, "event_id": ev.id if ev else None}
+    out = {"ok": True, "result": result, "event_id": ev.id if ev else None}
+    if isinstance(result, dict) and isinstance(result.get("operation_ref"), str):
+        from app.core import preparation
+
+        # живой статус рядом с квитанцией, как у повтора по ключу: квитанция в Event.payload не меняется
+        out["status"] = await preparation.brief_status(ctx.session, ctx.campaign.id, result["operation_ref"])
+    return out
 
 
 def dice_json(roll: Any) -> dict[str, Any]:

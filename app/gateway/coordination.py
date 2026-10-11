@@ -33,6 +33,10 @@ class Coordination(Protocol):
         """Замок ответов на шёпот: мастер отвечает на шёпоты кампании по одному."""
         ...
 
+    def generation_lock(self, campaign_id: str) -> asyncio.Lock:
+        """Замок подготовки мира: фазы кампании готовятся по одной, не под замком хода."""
+        ...
+
     def open_prompt(self, prompt_id: str, campaign_id: str, seat_id: str) -> asyncio.Future:
         """Открыть кнопку реакции и получить ожидание ответа."""
         ...
@@ -71,6 +75,9 @@ class InMemoryCoordination:
 
     def whisper_lock(self, campaign_id: str) -> asyncio.Lock:
         return self._lock("whisper", campaign_id)
+
+    def generation_lock(self, campaign_id: str) -> asyncio.Lock:
+        return self._lock("generation", campaign_id)
 
     def open_prompt(self, prompt_id: str, campaign_id: str, seat_id: str) -> asyncio.Future:
         fut: asyncio.Future = asyncio.get_running_loop().create_future()

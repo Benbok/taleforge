@@ -1,0 +1,367 @@
+# Профили наполнения исследуемых сцен (docs/world-objects-delivery3.md). Бюджет и generation_cost — условные
+# единицы наполнения, не цена; механика вещей — только шаблоны каталога. Профиль не содержит сюжетных зацепок.
+kind: scene_profile
+items:
+- id: scene_profile.tavern
+  name: Таверна
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - settlement
+  - social
+  loot_budget: 12
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.rations
+    generation_cost: 2
+  - template: item.waterskin
+    generation_cost: 1
+  - template: item.torch
+    generation_cost: 1
+  - template: item.club
+    generation_cost: 1
+  - template: item.rope_hempen
+    generation_cost: 2
+  containers:
+  - slot: cupboard
+    name: Шкаф припасов
+    visual_key: item:container
+  - slot: counter_box
+    name: Ящик под стойкой
+    visual_key: item:container
+  - slot: host_chest
+    name: Сундук хозяина
+    visual_key: item:chest
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: table
+    name: Длинный стол
+    description: Исцарапанный стол на дюжину гостей.
+  - slot: hearth
+    name: Очаг
+    description: Закопчённый очаг с котлом на крюке.
+- id: scene_profile.house
+  name: Жилой дом
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - settlement
+  loot_budget: 12
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.bedroll
+    generation_cost: 2
+  - template: item.rations
+    generation_cost: 2
+  - template: item.waterskin
+    generation_cost: 1
+  - template: item.torch
+    generation_cost: 1
+  - template: item.backpack
+    generation_cost: 3
+  containers:
+  - slot: chest
+    name: Домашний сундук
+    visual_key: item:chest
+  - slot: wardrobe
+    name: Платяной шкаф
+    visual_key: item:container
+  - slot: pantry_box
+    name: Ящик в кладовой
+    visual_key: item:container
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: bed
+    name: Кровать
+    description: Узкая кровать под шерстяным одеялом.
+  - slot: stove
+    name: Печь
+    description: Печь с остывшей золой.
+- id: scene_profile.warehouse
+  name: Склад
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - settlement
+  - trade
+  loot_budget: 16
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.rope_hempen
+    generation_cost: 2
+  - template: item.torch
+    generation_cost: 1
+  - template: item.rations
+    generation_cost: 2
+  - template: item.backpack
+    generation_cost: 3
+  - template: item.crowbar
+    generation_cost: 3
+  containers:
+  - slot: crate
+    name: Товарный ящик
+    visual_key: item:container
+  - slot: big_chest
+    name: Большой сундук
+    visual_key: item:chest
+  - slot: bin
+    name: Закрытый ларь
+    visual_key: item:chest
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: sacks
+    name: Мешки с зерном
+    description: Штабель мешков у стены.
+  - slot: barrels
+    name: Бочки
+    description: Пустые бочки с выжженными клеймами.
+- id: scene_profile.laboratory
+  name: Лаборатория
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - knowledge
+  loot_budget: 30
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.potion_of_healing
+    generation_cost: 10
+  - template: item.healers_kit
+    generation_cost: 5
+  - template: item.torch
+    generation_cost: 1
+  - template: item.waterskin
+    generation_cost: 1
+  containers:
+  - slot: reagents
+    name: Шкаф реактивов
+    visual_key: item:container
+  - slot: locked_box
+    name: Запертый ящик
+    visual_key: item:chest
+  - slot: desk
+    name: Стол с отделениями
+    visual_key: item:container
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: alembic
+    name: Перегонный куб
+    description: Стеклянные колбы и медные трубки.
+  - slot: shelves
+    name: Полки с книгами
+    description: Записи, исписанные мелким почерком.
+- id: scene_profile.crypt
+  name: Склеп
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - underground
+  - sacred
+  loot_budget: 10
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.torch
+    generation_cost: 1
+  - template: item.dagger
+    generation_cost: 3
+  - template: item.club
+    generation_cost: 1
+  - template: item.rope_hempen
+    generation_cost: 2
+  containers:
+  - slot: casket
+    name: Погребальный ларец
+    visual_key: item:chest
+  - slot: sarcophagus
+    name: Каменный саркофаг
+    visual_key: item:container
+  - slot: niche
+    name: Ниша с крышкой
+    visual_key: item:container
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: altar
+    name: Каменный алтарь
+    description: Плита с выбитыми именами.
+  - slot: bones
+    name: Груда костей
+    description: Старые кости в углу.
+- id: scene_profile.cave
+  name: Пещера
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - underground
+  - wild
+  loot_budget: 10
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.torch
+    generation_cost: 1
+  - template: item.rope_hempen
+    generation_cost: 2
+  - template: item.rations
+    generation_cost: 2
+  - template: item.bedroll
+    generation_cost: 2
+  - template: item.waterskin
+    generation_cost: 1
+  containers:
+  - slot: pack
+    name: Потерянный ранец
+    visual_key: item:container
+  - slot: expedition_box
+    name: Ящик экспедиции
+    visual_key: item:container
+  - slot: stash
+    name: Старый тайник
+    visual_key: item:chest
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: campfire
+    name: Старое кострище
+    description: Угли давно остыли.
+  - slot: stalagmites
+    name: Сталагмиты
+    description: Мокрые каменные столбы.
+- id: scene_profile.workshop
+  name: Мастерская
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - settlement
+  - craft
+  loot_budget: 16
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.crowbar
+    generation_cost: 3
+  - template: item.rope_hempen
+    generation_cost: 2
+  - template: item.torch
+    generation_cost: 1
+  - template: item.light_hammer
+    generation_cost: 3
+  - template: item.dagger
+    generation_cost: 3
+  containers:
+  - slot: toolbox
+    name: Ящик инструментов
+    visual_key: item:container
+  - slot: cabinet
+    name: Шкаф мастера
+    visual_key: item:container
+  - slot: orders
+    name: Сундук заказов
+    visual_key: item:chest
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: workbench
+    name: Верстак
+    description: Верстак в стружке и зарубках.
+  - slot: anvil
+    name: Наковальня
+    description: Тяжёлая наковальня на пне.
+- id: scene_profile.barracks
+  name: Казарма
+  status: canon
+  schema_version: 1
+  theme_tags:
+  - military
+  loot_budget: 18
+  visible_share: 30
+  limits:
+    max_generated_entities: 10
+    max_item_units: 6
+    max_containers: 3
+    max_depth: 2
+  items:
+  - template: item.spear
+    generation_cost: 2
+  - template: item.dagger
+    generation_cost: 3
+  - template: item.club
+    generation_cost: 1
+  - template: item.rations
+    generation_cost: 2
+  - template: item.bedroll
+    generation_cost: 2
+  - template: item.torch
+    generation_cost: 1
+  containers:
+  - slot: arms_chest
+    name: Оружейный сундук
+    visual_key: item:chest
+  - slot: ammo_cabinet
+    name: Шкаф амуниции
+    visual_key: item:container
+  - slot: rations_box
+    name: Ящик пайков
+    visual_key: item:container
+  inner_containers:
+  - slot: casket
+    name: Шкатулка
+    visual_key: item:chest
+  decor:
+  - slot: bunks
+    name: Нары
+    description: Ряд двухъярусных нар.
+  - slot: rack
+    name: Стойка для оружия
+    description: Пустые гнёзда для копий.

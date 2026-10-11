@@ -865,6 +865,7 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     inverse: list = []
     dice: list = []
     joined = await move_heroes(ctx, [_character(ctx, cid) for cid in a.character_ids], loc, inverse, dice)
+    prepared = await _request_preparation(ctx, loc, inverse)
     await ctx.record(
         "move",
         target_id=loc.id,
@@ -872,7 +873,30 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
         dice=dice or None,
         inverse=inverse,
     )
-    return {"moved": a.character_ids, "location": loc.name, "scene_location": ctx.world.scene.location_id, **joined}
+    return {
+        "moved": a.character_ids,
+        "location": loc.name,
+        "scene_location": ctx.world.scene.location_id,
+        **joined,
+        **prepared,
+    }
+
+
+async def _request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
+    """Вход героев в место при включённой генерации сцен: резерв корня и запрос подготовки в той же транзакции;
+    ход ждёт её перед описанием. Без флага кампании ничего не происходит (docs/world-objects-delivery3.md, §2.6)."""
+    from app.core.preparation import receipt
+    from app.core.world_generation import storage
+
+    if not (ctx.campaign.settings or {}).get("scene_generation"):
+        return {}
+    row = await storage.find(ctx.session, ctx.campaign.id, loc.id, "location_initial")
+    if row is None:
+        row = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, loc)
+        inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
+    if not storage.activate(row):
+        return {}  # место уже готовится или готово: квитанция была у первого входа
+    return {"preparation": receipt(row.id), "operation_ref": row.id}
 
 
 class EnterRoomArgs(BaseModel):

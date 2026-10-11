@@ -431,6 +431,12 @@ class WorldGenerationState(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # запрос активировал резерв
+    # исполнение (docs/world-objects-delivery3.md): когда снова пробовать, сколько было вызовов модели и
+    # конфликтов мира; закрытый результат с назначенными id, неизменный после ready
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    llm_attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    conflict_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    result_manifest: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
 
 
 class PlotAnchorBinding(Base):
