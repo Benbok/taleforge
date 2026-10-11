@@ -38,6 +38,7 @@ VERBS = (
     "dash",  # рывок
     "disengage",  # отход без атак по возможности
     "grapple",  # захват: отдельный манёвр с проверкой противодействия
+    "escape_grapple",  # освобождение действием из существующего захвата
     "shove",  # толкнуть врага с места или опрокинуть его
     "rest",  # отдых
     "talk",  # говорить с NPC без проверки
@@ -60,7 +61,9 @@ PARSER_SYSTEM = (
     "из книги героя и target_id цели; не переставляй cast перед move. "
     "«Толкаю существо, чтобы сбить с ног» — verb=shove и maneuver=prone; "
     "«отталкиваю на пять футов» — verb=shove и maneuver=push; цель обязательна. "
-    "«Хватаю и удерживаю противника» — verb=grapple; не подменяй захват проверкой со случайной Сл. "
+    "«Хватаю и удерживаю противника» — verb=grapple с target_id; сервер проверит свободную руку, "
+    "дистанцию, размер и противоборство. «Вырваться из захвата» — verb=escape_grapple, "
+    "target_id удерживающего, если он назван; не объявляй освобождение без результата сервера. "
     "Флаги reckless и stunning_strike выставляй только когда игрок ЯВНО называет «безрассудную атаку» "
     "или «оглушающий удар» и заявляет attack; они проверяются сервером по классу. "
     "Не подменяй перемещение атакой и не добавляй второй удар, преимущество или двойной урон из-за "
@@ -368,6 +371,15 @@ def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, An
         return None
 
     verb = a.get("verb")
+    if verb == "grapple" and a.get("target_id"):
+        return "resolve_grapple", {"attacker_id": char_id, "target_id": a["target_id"]}
+    if verb == "escape_grapple":
+        args: dict[str, Any] = {"character_id": char_id}
+        if a.get("target_id"):
+            args["holder_id"] = a["target_id"]
+        if a.get("skill") in ("athletics", "acrobatics"):
+            args["skill"] = a["skill"]
+        return "escape_grapple", args
     if verb == "shove" and a.get("target_id") and a.get("maneuver") in ("prone", "push"):
         return "resolve_shove", {
             "attacker_id": char_id,

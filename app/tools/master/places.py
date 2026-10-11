@@ -13,6 +13,7 @@ from app.core.positions import Pos, active_areas, areas_at, distance, hero_posit
 from app.core.world import PLAYABLE
 from app.core.world_objects import is_nested
 from app.db.models import Character, Entity
+from app.tools import grapples as gp
 from app.tools.master.base import (
     BEARING_HINT,
     CELL_HINT,
@@ -51,6 +52,7 @@ class RepositionArgs(BaseModel):
     closes=False,
 )
 async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
+    await gp.refresh(ctx)
     w = ctx.world
     act = w.actor(a.actor_id)
     before = pos_of(w, act.id)
@@ -89,6 +91,8 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
         moved = distance(before, after)
     out: dict = {"who": act.name, "position": after.public(), "moved_ft": moved}
     if combat.in_combat(ctx) and ctx.world.in_fight(act.id) and moved:
+        if act.speed <= 0:
+            raise ToolError(f"{act.name}: скорость 0, добровольное перемещение невозможно")
         if act.kind == "character":
             if economy.charge_movement(ctx, act.id, moved):
                 out["note"] = "рывок: общая дистанция за ход превысила скорость, действие потрачено"
@@ -126,6 +130,7 @@ async def reposition(ctx: ToolContext, a: RepositionArgs) -> dict:
     hit = await enter_areas(ctx, act.id, was)
     if hit:
         out["areas"] = hit
+    await gp.refresh(ctx)
     return out
 
 

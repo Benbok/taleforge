@@ -209,20 +209,31 @@ async def execute_approach_cast(ctx: ToolContext, plan: dict[str, Any], key: str
     }
 
 
-def shove_plan(intent: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Single explicit shove, with no silently skipped movement or second action."""
+def maneuver_plan(intent: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Single explicit physical maneuver; never silently skip declared movement."""
     from app.agents import intent as intents
 
     if not intent or len(intent.get("actions") or []) != 1:
         return None
     routed = intents.routable_tool_call(intent)
-    if routed is None or routed[0] != "resolve_shove":
+    if routed is None or routed[0] not in ("resolve_shove", "resolve_grapple"):
         return None
-    return {"kind": "shove", **routed[1]}
+    return {"kind": "shove" if routed[0] == "resolve_shove" else "grapple", **routed[1]}
 
 
 async def execute_action_plan(ctx: ToolContext, plan: dict[str, Any], key: str) -> dict[str, Any]:
     """Dispatch a persisted ordered plan; legacy weapon plans remain supported."""
+    if plan.get("kind") == "grapple":
+        result = await execute(ctx, "resolve_grapple", {k: plan[k] for k in ("attacker_id", "target_id")}, key=key)
+        if not result.get("ok"):
+            return {"completed": False, "notes": [f"Захват не выполнен: {result.get('error')}"]}
+        row = result["result"]
+        note = (
+            f"{row['attacker']} удерживает {row['target']} (состояние «Схваченный»)"
+            if row["success"]
+            else f"{row['target']} вырывается из попытки захвата {row['attacker']}"
+        )
+        return {"completed": True, "notes": [note], "maneuver_result": row}
     if plan.get("kind") == "shove":
         result = await execute(
             ctx,

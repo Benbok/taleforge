@@ -242,7 +242,7 @@ def character_actor(
         effects=effs,
         modifiers=mods_,
         zone="party",
-        speed=int(d.speed or 30),
+        speed=_effective_speed(int(d.speed), mods_),
         features=have,
         class_numbers=cf.numbers(cls.data, level) if cls else {},
         level=level,
@@ -316,8 +316,18 @@ def creature_actor(en: Entity, cat: CatalogView, effects: list[ActiveEffect]) ->
         modifiers=mods_,
         zone=en.zone,
         template_id=en.template_id,
-        speed=_walk_speed(rec.data.get("speed")),
+        speed=_effective_speed(_walk_speed(rec.data.get("speed")), mods_),
     )
+
+
+def _effective_speed(base: int, modifiers: mod.Modifiers) -> int:
+    """Ограничения скорости из эффектов применяются к героям и существам одинаково."""
+    limits = [
+        int(m["value"])
+        for _, m in modifiers.own("set")
+        if m.get("target") == "speed" and isinstance(m.get("value"), (int, float))
+    ]
+    return max(0, min([base, *limits]))
 
 
 def _walk_speed(v: Any) -> int:

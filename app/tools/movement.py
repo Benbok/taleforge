@@ -9,6 +9,7 @@ from typing import Any
 from app.core import combat, economy, steps
 from app.core import positions as grid
 from app.rules.dnd5e import modifiers as mod
+from app.tools import grapples as gp
 from app.tools.registry import ToolContext, ToolError, execute
 
 
@@ -26,6 +27,7 @@ async def hero_step(
     """Ведёт героя на клетку ``goal`` (от строя отряда) или, с ``near``, к ближайшей свободной клетке рядом с этими
     клетками (подойти к предмету, существу, выходу). Без ``confirm`` рывок и атаки по возможности только
     предупреждают: ответ с ``confirm_needed`` — ничего не сделано."""
+    await gp.refresh(ctx)
     w = ctx.world
     hero = w.actor(hero_id)
     if not hero.alive or hero.hp.current <= 0:
@@ -115,4 +117,5 @@ async def hero_step(
     if fighting:
         out["left_ft"] = base + (speed if dash else 0) - used - ft
     await ctx.record("step", actor_id=hero_id, target_id=hero_id, payload=out, inverse=inverse)
+    await gp.refresh(ctx)
     return out
