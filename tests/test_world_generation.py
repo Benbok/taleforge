@@ -250,9 +250,9 @@ def test_expired_lease_is_taken_over_and_old_owner_cannot_write(client, admin, s
 
     async def late(maker):
         orch = Orchestrator(InMemoryCoordination())
-        plan, proposal = await orch._plan(maker, stale)
+        draft = await orch._plan(maker, stale)
         with pytest.raises((storage.LeaseLost, world_tx.WorldConflict)):
-            await storage.commit_result(maker, orch.dice_factory, stale, plan, proposal)
+            await storage.commit_result(maker, orch.dice_factory, stale, draft.plan, draft.proposal)
 
     _with_maker(settings, late)
     assert len(rows(settings, Event, Event.tool == "prepare_scene")) == 1

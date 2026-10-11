@@ -9,29 +9,33 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy import select
 
 from app.content.catalog import campaign_catalog
 from app.core.world_generation import storage
-from app.core.world_generation.contracts import Blocked
+from app.core.world_generation.contracts import Blocked, Plan, Proposal
 from app.core.world_generation.policy import build_plan, check_reservation
 from app.core.world_generation.profiles import ProfileError, load_profile
 from app.core.world_generation.provider import DeterministicProvider
 from app.core.world_generation.validation import validate
 from app.core.world_tx import WorldConflict
-from app.db.models import Campaign, WorldGenerationState, now
+from app.db.models import Campaign, Entity, LlmCall, WorldGenerationState, now
 from app.gateway.events import envelope
 from app.rules.dice import Dice
 
 log = logging.getLogger(__name__)
 
+LLM_LIMIT = 2  # вызовов модели за всю жизнь фазы: один и одна корректирующая попытка (§6.3)
 MAX_STEPS = 6  # захватов на одну фазу за вызов: два конфликта и ожидание повтора укладываются
 
 
 class Orchestrator:
-    def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice):
+    def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice, llm=None):
         self.coordination = coordination
+        self.llm = llm  # техническая модель (app/agents/world_generator.py); без неё — только детерминированно
         self.bus = bus
         self.provider = provider or DeterministicProvider()
         self.dice_factory = dice_factory
@@ -70,7 +74,8 @@ class Orchestrator:
                     return status
             return "pending"
 
-    async def _plan(self, maker, claim: storage.Claim):
+    async def _plan(self, maker, claim: storage.Claim) -> Draft:
+        """План и детерминированное предложение из резерва; снимок места для модели, если она включена."""
         async with maker() as s:
             campaign = await s.get(Campaign, claim.campaign_id)
             row = await s.get(WorldGenerationState, claim.ref)
@@ -83,13 +88,66 @@ class Orchestrator:
                 raise Blocked("unsupported_source", str(e)) from e
             plan = build_plan(reservation, profile, row.target_entity_id)
             proposal = self.provider.propose(plan, catalog)
+            draft = Draft(plan, proposal, catalog)
+            if self.llm is not None and (campaign.settings or {}).get("scene_generation_llm") and plan.slots:
+                draft.place = await _place(s, campaign.id, row.target_entity_id, profile)
+                draft.model = await _model_of(s, campaign)
         validate(plan, proposal)
-        return plan, proposal
+        return draft
+
+    async def _propose(self, maker, claim: storage.Claim, draft: Draft) -> tuple[Proposal, str, storage.Claim]:
+        """Предложение модели в пределах лимита вызовов фазы; иначе детерминированный fallback."""
+        from app.agents import world_generator
+
+        if draft.model is None:
+            return draft.proposal, "normal", claim
+        model, api_base, seat_id = draft.model
+        msgs: list = []
+        calls: list[LlmCall] = []
+        reason = "llm_failed"
+        try:
+            while True:
+                held = await storage.reserve_llm_call(maker, claim, LLM_LIMIT)
+                if held is None:
+                    reason = reason if calls else "llm_limit"  # лимит после отклонённого ответа — причина в ответе
+                    break
+                claim = held
+                got, attempt, retry = await world_generator.ask(
+                    self.llm, draft.plan, draft.place, draft.catalog, model=model, api_base=api_base, msgs=msgs
+                )
+                calls.append(
+                    LlmCall(
+                        campaign_id=claim.campaign_id,
+                        seat_id=seat_id,
+                        turn_id=None,
+                        purpose=world_generator.PURPOSE,
+                        model=attempt.model,
+                        tokens_in=attempt.tokens_in,
+                        tokens_out=attempt.tokens_out,
+                        cost=attempt.cost,
+                        latency_ms=attempt.latency_ms,
+                        error=attempt.error,
+                    )
+                )
+                if got is not None:
+                    return got, "normal", claim
+                if retry is None:
+                    break  # сбой модели, а не ошибка ответа: корректировать нечего
+                reason = "invalid_proposal"
+        finally:
+            if calls:
+                async with maker() as s:
+                    s.add_all(calls)
+                    await s.commit()
+        log.info("подготовка %s: fallback (%s)", claim.ref, reason)
+        draft.plan.notes.append(f"fallback:{reason}")
+        return draft.proposal, "fallback", claim
 
     async def _run(self, maker, claim: storage.Claim) -> str:
         try:
-            plan, proposal = await self._plan(maker, claim)
-            await storage.commit_result(maker, self.dice_factory, claim, plan, proposal)
+            draft = await self._plan(maker, claim)
+            proposal, quality, claim = await self._propose(maker, claim, draft)
+            await storage.commit_result(maker, self.dice_factory, claim, draft.plan, proposal, quality=quality)
         except Blocked as e:
             await storage.block(maker, claim, e.reason, e.detail)
             return "blocked"
@@ -104,3 +162,42 @@ class Orchestrator:
         if self.bus is not None:
             await self.bus.publish(claim.campaign_id, envelope("map.changed", claim.campaign_id, {}), None)
         return "ready"
+
+
+@dataclass
+class Draft:
+    plan: Plan
+    proposal: Proposal
+    catalog: Any
+    place: dict[str, Any] = field(default_factory=dict)
+    model: tuple[str, str | None, str | None] | None = None  # (модель, api_base, место для учёта)
+
+
+async def _place(s, campaign_id: str, target_id: str, profile) -> dict[str, Any]:
+    """Минимальный снимок для модели (§4.2): место, контейнер, тон и что уже стоит; без тайного каркаса."""
+    target = await s.get(Entity, target_id)
+    place = target if target.kind == "location" else await s.get(Entity, target.location_id)
+    present = await s.scalars(
+        select(Entity.name).where(
+            Entity.campaign_id == campaign_id, Entity.location_id == place.id, Entity.kind == "object"
+        )
+    )
+    return {
+        "name": place.name,
+        "description": place.description or "",
+        "container": target.name if target.kind != "location" else None,
+        "themes": list(profile.themes),
+        "present": sorted(set(present))[:20],
+    }
+
+
+async def _model_of(s, campaign) -> tuple[str, str | None, str | None] | None:
+    from app.agents.character import _model
+    from app.agents.llm import parser_model_for
+    from app.core.campaigns import Conflict
+
+    try:
+        _, _, api_base, _, seat_id = await _model(s, campaign, None)
+    except Conflict:
+        return None
+    return parser_model_for(), api_base, seat_id

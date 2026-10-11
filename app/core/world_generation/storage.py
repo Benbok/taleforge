@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -264,7 +264,37 @@ def _object_state(role: str, ref: str, parent: str | None, visual_key: str | Non
     }
 
 
-async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal) -> dict[str, Any]:
+async def reserve_llm_call(maker, claim: Claim, limit: int) -> Claim | None:
+    """Занять вызов модели до сетевого запроса: условная запись по токену и ревизии владения. None — лимит фазы
+    исчерпан (рестарты и повтор ведущего его не обнуляют); ``LeaseLost`` — строку ведёт другой владелец.
+    Меняется только строка фазы: мир не трогается и guard не берётся (§6.3)."""
+    async with maker() as s:
+        if now() >= claim.lease_until:
+            raise LeaseLost(claim.ref)
+        mine = (
+            (WGS.id == claim.ref)
+            & (WGS.lease_token == claim.token)
+            & (WGS.revision == claim.revision)
+            & (WGS.status == "preparing")
+        )
+        done = await s.execute(
+            update(WGS)
+            .where(mine & (WGS.llm_attempt_count < limit))
+            .values(llm_attempt_count=WGS.llm_attempt_count + 1, revision=WGS.revision + 1, updated_at=now())
+        )
+        if done.rowcount == 1:
+            await s.commit()
+            return replace(claim, revision=claim.revision + 1)
+        held = await s.scalar(select(WGS.id).where(mine))
+        await s.rollback()
+        if held is None:
+            raise LeaseLost(claim.ref)
+        return None
+
+
+async def commit_result(
+    maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal, *, quality: str = "normal"
+) -> dict[str, Any]:
     """Записать результат одной транзакцией. ``WorldConflict`` — мир изменился после снимка; ``LeaseLost`` —
     строку ведёт другой владелец; ``Blocked`` — цель исчезла. Во всех случаях ничего не записано."""
     from app.core import plot_anchors
@@ -402,7 +432,7 @@ async def commit_result(maker, dice_factory, claim: Claim, plan: Plan, proposal:
         }
         t = now()
         row.status = "ready"
-        row.quality = "normal"
+        row.quality = quality
         row.lease_token = None
         row.lease_until = None
         row.last_error = None
