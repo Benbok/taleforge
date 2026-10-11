@@ -198,6 +198,7 @@ def test_time_expires_effects_and_whisper(game):
                 "effect_template_id": "condition.poisoned",
                 "duration_value": 1,
                 "duration_unit": "minute",
+                "reason": "отравленная игла",
             },
         )
         t = await call(ctx, "advance_time", {"amount": 2, "unit": "minute", "reason": "ждут"})
@@ -229,3 +230,44 @@ def test_combat_initiative(game):
     assert r["ok"], r
     order = r["result"]["turn_order"] if "turn_order" in r["result"] else r["result"]
     assert order
+
+
+def test_effect_keeps_source_and_reason_for_master_and_sheet(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        sp = await call(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
+        gob = sp["result"]["spawned"][0]["id"]
+        base = {"target_id": hero, "effect_template_id": "condition.frightened"}
+        no_reason = await call(ctx, "apply_effect", base)
+        no_source = await call(ctx, "apply_effect", {**base, "reason": "провалил спасбросок Мудрости"})
+        ok = await call(ctx, "apply_effect", {**base, "reason": "провалил спасбросок Мудрости", "source": gob})
+        return no_reason, no_source, ok, ctx.world.scene_table()
+
+    no_reason, no_source, ok, table = play(settings, cid, [], fn)
+    assert not no_reason["ok"] and "reason" in no_reason["error"]
+    assert not no_source["ok"] and "source" in no_source["error"]
+    assert ok["ok"], ok
+    assert ok["result"]["source"] == "Гоблин" and ok["result"]["reason"] == "провалил спасбросок Мудрости"
+    line = next(x for x in table.splitlines() if x.startswith(hero))
+    assert "Испуганный (источник: Гоблин; провалил спасбросок Мудрости)" in line
+    # мастер видит суть правила, а не только название: отступать от источника испуганный может
+    assert "Испуганный — " in table and "отходить" in table
+
+    async def check(s):
+        return (await s.scalars(select(ActiveEffect).where(ActiveEffect.target_id == hero))).one()
+
+    eff = run(settings, check)
+    assert (eff.source, eff.reason) == ("Гоблин", "провалил спасбросок Мудрости")
+
+
+def test_effect_without_source_rule_needs_no_source(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        args = {"target_id": hero, "effect_template_id": "condition.poisoned", "reason": "выпил из фляги"}
+        return await call(ctx, "apply_effect", args)
+
+    r = play(settings, cid, [], fn)
+    assert r["ok"], r
+    assert "source" not in r["result"]

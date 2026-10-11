@@ -555,7 +555,17 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
                 "pb": a.pb,
                 "speed": a.speed,
                 "attacks": a.attacks,
-                "effects": [{"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks} for e, r in a.effects],
+                "effects": [
+                    {
+                        "id": e.id,
+                        "template": r.id,
+                        "name": r.name,
+                        "stacks": e.stacks,
+                        "source": e.source,
+                        "reason": e.reason,
+                    }
+                    for e, r in a.effects
+                ],
             }
             out["features"] = uses_view(ch, cat, a.mods, a.pb)
             out["class_features"] = sheet_rows(ch, cat, out["features"])

@@ -330,7 +330,7 @@ export interface HeroSheet extends HeroPublic {
     pb: number;
     speed?: number;
     attacks: HeroAttack[];
-    effects: { id: string; template: string; name: string; stacks: number }[];
+    effects: { id: string; template: string; name: string; stacks: number; source?: string | null; reason?: string | null }[];
   };
   inventory: {
     id: string;

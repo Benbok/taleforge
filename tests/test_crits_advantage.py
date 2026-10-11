@@ -107,7 +107,7 @@ def test_initiative_is_dex_check_with_effects(game):
     settings, cid, hero = game
 
     async def fn(ctx):
-        await call(ctx, "apply_effect", {"target_id": hero, "effect_template_id": "condition.poisoned"})
+        await call(ctx, "apply_effect", {"target_id": hero, "effect_template_id": "condition.poisoned", "reason": "отравлен"})
         await call(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
         return await call(ctx, "set_scene_mode", {"mode": "combat"})
 

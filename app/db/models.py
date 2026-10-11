@@ -558,6 +558,8 @@ class ActiveEffect(Base):
     stacks: Mapped[int] = mapped_column(Integer, default=1)
     expires_at: Mapped[int | None] = mapped_column(Integer)  # игровое время, секунды; None — пока не снимут
     source_event_id: Mapped[str | None] = mapped_column(String(32))
+    source: Mapped[str | None] = mapped_column(String(120))  # кто или что наложил: имя существа или явление
+    reason: Mapped[str | None] = mapped_column(String(200))  # почему — видят игрок и мастер
 
 
 class Knowledge(Base):

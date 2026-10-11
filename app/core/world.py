@@ -611,6 +611,8 @@ class World:
                 "Отряд разделён: существо, предмет или примету ставь с location_id нужного места; описывай каждому "
                 "месту только то, что видят стоящие там герои."
             )
+        ids = {ch.id for ch in shown} | {e.id for e in self.in_scene_entities(None)}
+        lines += self._condition_rules(ids)
         if apart:
             lines.append(
                 "Отряд разделён, этот ход — только для героев выше. Другие части отряда (не описывай их, они услышат "
@@ -622,6 +624,18 @@ class World:
         if others:
             lines.append("Известные локации: " + ", ".join(f"{e.id} {e.name}" for e in others))
         return "\n".join(lines)
+
+    def _condition_rules(self, ids: set[str]) -> list[str]:
+        """Суть правил состояний, действующих в сцене: по одному названию модель путает испуг с параличом."""
+        seen: dict[str, str] = {}
+        for e in self.effects:
+            if e.target_id in ids and e.effect_template_id.startswith("condition."):
+                rec = self.catalog.find(e.effect_template_id)
+                if rec is not None and rec.data.get("description"):
+                    seen.setdefault(rec.name, rec.data["description"])
+        if not seen:
+            return []
+        return ["Правила действующих состояний:"] + [f"  {name} — {text}" for name, text in seen.items()]
 
     def _hero_lines(self, chars: list[Character]) -> list[str]:
         lines = []
@@ -796,7 +810,12 @@ def _pos_note(w: World, actor_id: str, zone: bool = True) -> str:
 def _effects_note(a: Actor) -> str:
     if not a.effects:
         return ""
-    return "  [" + ", ".join(rec.name + (f" ×{e.stacks}" if e.stacks > 1 else "") for e, rec in a.effects) + "]"
+    return "  [" + ", ".join(_effect_label(e, rec) for e, rec in a.effects) + "]"
+
+
+def _effect_label(e: ActiveEffect, rec: Entry) -> str:
+    why = "; ".join(x for x in (f"источник: {e.source}" if e.source else "", e.reason or "") if x)
+    return rec.name + (f" ×{e.stacks}" if e.stacks > 1 else "") + (f" ({why})" if why else "")
 
 
 def format_time(seconds: int) -> str:

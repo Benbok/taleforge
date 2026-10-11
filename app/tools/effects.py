@@ -45,7 +45,14 @@ def resolve_dc(ctx: ToolContext, value: Any) -> int:
 
 
 async def add_effect(
-    ctx: ToolContext, target: Actor, rec: Entry, duration: int | None, source_event_id: str | None = None
+    ctx: ToolContext,
+    target: Actor,
+    rec: Entry,
+    duration: int | None,
+    source_event_id: str | None = None,
+    *,
+    source: str | None = None,
+    reason: str | None = None,
 ) -> tuple[ActiveEffect | None, str]:
     """Накладывает эффект. Иммунитет к состоянию — отказ без ошибки; нестакающийся эффект обновляет длительность."""
     name = rec.id.removeprefix("condition.")
@@ -58,6 +65,8 @@ async def add_effect(
             existing.stacks = min(existing.stacks + 1, 6)
         if expires and (existing.expires_at is None or existing.expires_at < expires):
             existing.expires_at = expires
+        if reason:  # повторное наложение — свежая причина и источник
+            existing.source, existing.reason = source, reason
         ctx.world.invalidate(target.id)
         return existing, f"{target.name}: {rec.name} ×{existing.stacks}"
     e = ActiveEffect(
@@ -67,6 +76,8 @@ async def add_effect(
         stacks=1,
         expires_at=expires,
         source_event_id=source_event_id,
+        source=source,
+        reason=reason,
     )
     ctx.session.add(e)
     await ctx.session.flush()

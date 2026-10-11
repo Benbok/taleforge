@@ -79,7 +79,7 @@ export default function HeroHud() {
               key={e.id}
               className="rounded-full border border-line px-2 py-0.5 text-xs hover:border-accent"
               onClick={(event) => inspect(e.template, e.name, event.currentTarget)}
-              title="Описание состояния / эффекта"
+              title={[e.source && `Источник: ${e.source}`, e.reason].filter(Boolean).join(". ") || "Описание состояния / эффекта"}
             >
               {e.name}
               {e.stacks > 1 ? ` ×${e.stacks}` : ""}

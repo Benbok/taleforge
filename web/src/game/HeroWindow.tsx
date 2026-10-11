@@ -309,6 +309,11 @@ function State({ h }: { h: HeroSheet }) {
                   {e.name}
                   {e.stacks > 1 ? ` ×${e.stacks}` : ""}
                 </button>
+                {(e.source || e.reason) && (
+                  <span className="ml-2 text-sm text-muted">
+                    {[e.source && `источник: ${e.source}`, e.reason].filter(Boolean).join(" · ")}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

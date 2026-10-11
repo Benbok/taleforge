@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 from app.core import adventure, economy
 from app.core import positions as grid
 from app.core.positions import COVER_AC, areas_at, pos_of
-from app.core.world import PLAYABLE, ZONE_NAMES, Actor, format_time
+from app.core.world import PLAYABLE, ZONE_NAMES, Actor, WorldError, format_time
 from app.db.models import Character, Entity
 from app.rules.dnd5e import features as cf
 from app.rules.dnd5e import modifiers as mod
@@ -852,11 +853,19 @@ class EffectArgs(BaseModel):
     effect_template_id: str = Field(description="шаблон эффекта или состояния, например condition.prone")
     duration_value: int | None = Field(None, ge=1, le=1000)
     duration_unit: Literal["round", "minute", "hour", "day"] | None = None
+    reason: str = Field(min_length=3, max_length=200, description="почему наложено — увидят игрок и мастер")
+    source: str | None = Field(
+        None,
+        max_length=120,
+        description="кто или что наложил: id существа из таблицы сцены или короткое имя явления. Обязателен "
+        "для состояний, чьи правила завязаны на источник (испуг, очарование)",
+    )
 
 
 @tool(
     "apply_effect",
-    "Накладывает эффект или состояние из шаблона. Без длительности — длительность шаблона или пока не снимут.",
+    "Накладывает эффект или состояние из шаблона. Без длительности — длительность шаблона или пока не снимут. "
+    "Сначала проверь правило состояния: испуганный не может приближаться к источнику, но отходить ему можно.",
     EffectArgs,
     ids={"target_id": "combatants"},
 )
@@ -868,8 +877,11 @@ async def apply_effect(ctx: ToolContext, a: EffectArgs) -> dict:
         if a.duration_unit
         else fx.duration_seconds(rec.data.get("duration") or rec.data.get("default_duration"))
     )
-    eff, note = await fx.add_effect(ctx, tgt, rec, dur)
-    result = {"target": tgt.name, "effect": rec.name, "note": note}
+    source = _effect_source(ctx, rec, a.source)
+    eff, note = await fx.add_effect(ctx, tgt, rec, dur, source=source, reason=a.reason)
+    result = {"target": tgt.name, "effect": rec.name, "note": note, "reason": a.reason}
+    if source:
+        result["source"] = source
     if eff is not None:
         result["effect_id"] = eff.id
         if eff.expires_at is not None:
@@ -879,6 +891,20 @@ async def apply_effect(ctx: ToolContext, a: EffectArgs) -> dict:
     if eff is not None and eff.source_event_id is None:
         eff.source_event_id = ev.id
     return result
+
+
+def _effect_source(ctx: ToolContext, rec, source: str | None) -> str | None:
+    """Имя источника эффекта: id существа превращается в имя. Состояние, чьи правила смотрят на источник, без него
+    не накладывается — иначе ни игрок, ни мастер потом не поймут, к кому нельзя приближаться."""
+    if source and source.strip():
+        try:
+            return ctx.world.actor(source.strip()).name
+        except WorldError:
+            ent = ctx.world.entities.get(source.strip())
+            return ent.name if ent is not None else source.strip()
+    if "source" in json.dumps(rec.data.get("modifiers") or [], ensure_ascii=False):
+        raise ToolError(f"у состояния {rec.name} правила завязаны на источник: укажите source — кто или что его вызвал")
+    return None
 
 
 class RemoveEffectArgs(BaseModel):

@@ -28,7 +28,7 @@ def test_crit_fail_must_leave_a_mark_on_hero(game_client, admin_g, llm, dice, se
     dice += [1]
     check = {"character_id": hero["id"], "stat": "sleight_of_hand", "difficulty": "dc.hard", "reason": "штаны"}
     effect = {"target_id": hero["id"], "effect_template_id": "condition.prone", "duration_value": 1,
-              "duration_unit": "round"}  # fmt: skip
+              "duration_unit": "round", "reason": "запутался в штанах"}  # fmt: skip
     llm.replies += [
         {"tool_calls": [("roll_check", check)]},
         DONE,  # модель забыла о последствии — сервер переспрашивает

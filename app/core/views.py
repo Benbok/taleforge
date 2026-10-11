@@ -67,6 +67,8 @@ class HeroEffect(Strict):
     template: str
     name: str
     stacks: int
+    source: str | None = None
+    reason: str | None = None
 
 
 class Derived(Strict):

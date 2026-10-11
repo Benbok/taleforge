@@ -54,7 +54,10 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         "saves": act.saves,
         "skills": act.skills,
         "attacks": act.attacks,
-        "effects": [{"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks} for e, r in act.effects],
+        "effects": [
+            {"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks, "source": e.source, "reason": e.reason}
+            for e, r in act.effects
+        ],
         "inventory": [
             {
                 "id": it.id,
