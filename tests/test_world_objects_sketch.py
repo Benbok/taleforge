@@ -139,10 +139,13 @@ def test_sketch_binding_rejects_nested_object_and_duplicate_reference(client, ad
             "store_object",
             {"character_id": hero["id"], "container_id": chest["container_id"], "object_id": obj["entity_id"]},
         )
+        # Вложение снимает связь и footprint в той же транзакции (спецификация §5): деталь ушла, ревизия выросла.
+        stored = ctx.world.entities[ctx.world.home()].state["sketch"]
+        assert first not in {f["id"] for f in stored["features"]} and stored["edit_rev"] == 3
         other = await execute(
             ctx,
             "bind_sketch_feature",
-            {"feature_id": first, "entity_id": obj["entity_id"], "expected_revision": 2},
+            {"feature_id": second, "entity_id": obj["entity_id"], "expected_revision": 3},
         )
         assert not other["ok"] and "не принадлежит" in other["error"]
 

@@ -145,7 +145,11 @@ async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     ents = {e.id: e for e in (await session.scalars(select(Entity).where(Entity.campaign_id == c.id))).all()}
     chars = {ch.id: ch for ch in (await session.scalars(select(Character).where(Character.campaign_id == c.id))).all()}
     hero = None if viewer.is_master else await viewer_hero(session, viewer)
-    view = visible_scene(sc, ents, chars, hero_id=hero.id if hero is not None else None, is_master=viewer.is_master)
+    from app.core.object_policy import revealed_to
+
+    hero_id = hero.id if hero is not None else None
+    found = await revealed_to(session, hero_id)
+    view = visible_scene(sc, ents, chars, hero_id=hero_id, is_master=viewer.is_master, revealed=found)
     return scene_payload(sc, ents, chars, view)
 
 

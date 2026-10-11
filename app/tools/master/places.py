@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.core import adventure, audio, combat, economy, sketch
 from app.core import positions as grid
+from app.core.object_policy import observe
 from app.core.positions import Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import PLAYABLE
 from app.core.world_objects import is_nested
@@ -466,6 +467,19 @@ class SketchFeature(BaseModel):
     )
     cover: Literal["none", "half", "three_quarters", "total"] = "none"
     hidden: bool = Field(False, description="игроки не видят, пока не найдут")
+    access_sides: list[Literal["n", "e", "s", "w"]] | None = Field(
+        None,
+        max_length=4,
+        description='стороны, с которых к предмету подходят (шкаф открывается спереди — ["s"]); '
+        "пусто — с любой стороны",
+    )
+
+
+def _feature_dump(f: SketchFeature) -> dict:
+    data = f.model_dump()
+    if not data.get("access_sides"):
+        data.pop("access_sides", None)
+    return data
 
 
 class SketchArgs(BaseModel):
@@ -484,8 +498,9 @@ class SketchArgs(BaseModel):
     )
 
 
-def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
-    """Эскиз из аргументов и ошибки для того, кто его нарисовал (мастер или техническая модель)."""
+def sketch_data(a: SketchArgs, places: set[str], *, reach: bool = False) -> tuple[dict, list[str]]:
+    """Эскиз из аргументов и ошибки для того, кто его нарисовал (мастер или техническая модель). ``reach`` —
+    правка мастера: мебель не должна отрезать выходы и привязанные объекты."""
     for f in a.features:
         if any(len(c) != 4 for c in f.cells):
             return {}, [f"«{f.name}»: каждая клетка предмета — [c0, r0, c1, r1]"]
@@ -493,8 +508,9 @@ def sketch_data(a: SketchArgs, places: set[str]) -> tuple[dict, list[str]]:
         return {}, ["стена — клетка [c, r]"]
     # Keep optional exit keys such as "to": None: link_exits relies on the original schema.
     data = a.model_dump(exclude={"location_id", "expected_revision"})
+    data["features"] = [_feature_dump(f) for f in a.features]
     data["walls"] = [list(x) for x in dict.fromkeys(tuple(c) for c in a.walls)]
-    return data, sketch.check(data, places)
+    return data, sketch.check(data, places, reach=reach)
 
 
 def link_exits(place: Entity, data: dict, entities: dict) -> None:
@@ -538,6 +554,50 @@ def _verify_sketch_revision(current: dict, expected: int | None, *, replacing: b
     return revision
 
 
+def _links(sk: dict | None) -> dict[str, dict]:
+    return {f["entity_id"]: f for f in (sk or {}).get("features") or [] if f.get("entity_id")}
+
+
+def _settle_links(ctx: ToolContext, place: Entity, old: dict | None, new: dict, inverse: list) -> None:
+    """После правки эскиза у каждого объекта одна позиция (спецификация, §5).
+
+    Привязанный объект теряет точную клетку токена: его место — footprint. Объект, чью деталь мастер убрал или
+    отвязал, остаётся в мире несвязанной вещью на ближайшей к строю клетке прежнего footprint. Любое изменение
+    связанного размещения повышает ``placement_rev`` места (независимо от ``layout_rev`` описания)."""
+    from app.core import reach
+
+    w = ctx.world
+    before, after = _links(old), _links(new)
+    for eid in after:
+        entity = w.entities.get(eid)
+        if entity is None or "cell" not in (entity.state or {}):
+            continue
+        inverse.append({"table": "entities", "id": entity.id, "field": "state", "before": copy.deepcopy(entity.state)})
+        st = dict(entity.state)
+        st.pop("cell", None)
+        entity.state = st
+        w.invalidate(entity.id)
+    ax, ay = int(new["party"][0]), int(new["party"][1])
+    for eid, feature in before.items():
+        entity = w.entities.get(eid)
+        if eid in after or entity is None or entity.location_id != place.id or is_nested(entity):
+            continue
+        cells = {(c - ax, r - ay) for c, r in reach.footprint(feature)}
+        if not cells:
+            continue
+        inverse += [
+            {"table": "entities", "id": entity.id, "field": "state", "before": copy.deepcopy(entity.state)},
+            {"table": "entities", "id": entity.id, "field": "zone", "before": entity.zone},
+        ]
+        grid.set_cell(w, entity.id, reach.nearest_rel(cells))
+
+    def placement(links: dict[str, dict]) -> dict:
+        return {k: (sorted(reach.footprint(f)), sorted(f.get("access_sides") or [])) for k, f in links.items()}
+
+    if placement(before) != placement(after):
+        place.state = {**(place.state or {}), "placement_rev": int((place.state or {}).get("placement_rev") or 0) + 1}
+
+
 @tool(
     "sketch_place",
     "Эскиз места для схемы игроков: форма и размер в клетках по 5 футов, где стоит отряд, входы и выходы (дверь, "
@@ -555,7 +615,7 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     await _lock_sketch_place(ctx, place)
     current = (place.state or {}).get("sketch") or {}
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=True)
-    data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"})
+    data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"}, reach=True)
     if errors:
         raise ToolError("; ".join(errors[:8]))
     _validate_feature_bindings(w, place, data)
@@ -566,11 +626,13 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     link_exits(place, data, w.entities)
     data["rev"] = int((place.state or {}).get("layout_rev") or 0)  # нарисован после этого описания: фон не заменит
     place.state = {**(place.state or {}), "sketch": data}
+    inverse: list = [{"table": "entities", "id": place.id, "field": "state", "before": before}]
+    _settle_links(ctx, place, current, data, inverse)
     await ctx.record(
         "sketch_place",
         target_id=place.id,
         payload={"place": place.name, "size": [a.cols, a.rows], "exits": len(a.exits), "features": len(a.features)},
-        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+        inverse=inverse,
     )
     return {"place": place.name, "sketch": sketch.describe(data)}
 
@@ -628,7 +690,9 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
         part = a.feature if a.action == "add_feature" else a.exit
         if part is None:
             raise ToolError(f"{a.action}: нужен {'feature' if a.action == 'add_feature' else 'exit'}")
-        (feats if a.action == "add_feature" else exits).append(part.model_dump())
+        (feats if a.action == "add_feature" else exits).append(
+            _feature_dump(part) if a.action == "add_feature" else part.model_dump()
+        )
         note = part.name
     else:
         if not a.target:
@@ -672,21 +736,24 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
         note = a.rename or a.target
     data["exits"], data["features"] = exits, feats
     data = sketch.with_feature_ids(data)
-    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"})
+    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"}, reach=True)
     if errors:
         raise ToolError("; ".join(errors[:8]))
     _validate_feature_bindings(w, place, data)
     data["edit_rev"] = revision + 1
     before = copy.deepcopy(place.state)
+    saved = (place.state or {}).get("sketch")
     link_exits(place, data, w.entities)
     data["auto"] = False  # правка мастера: фоновая перерисовка по старому описанию её не заменит
     data["rev"] = int((place.state or {}).get("layout_rev") or 0)
     place.state = {**(place.state or {}), "sketch": data}
+    inverse: list = [{"table": "entities", "id": place.id, "field": "state", "before": before}]
+    _settle_links(ctx, place, saved, data, inverse)  # убранная деталь снимает связь, вещь остаётся в мире
     await ctx.record(
         "edit_sketch",
         target_id=place.id,
         payload={"place": place.name, "action": a.action, "target": note},
-        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
+        inverse=inverse,
     )
     return {"place": place.name, "sketch": sketch.describe(data)}
 
@@ -723,7 +790,7 @@ async def bind_sketch_feature(ctx: ToolContext, a: BindSketchFeatureArgs) -> dic
         feature["entity_id"] = a.entity_id
     else:
         feature.pop("entity_id", None)
-    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"})
+    errors = sketch.check(data, {e.id for e in w.entities.values() if e.kind == "location"}, reach=True)
     if errors:
         raise ToolError("; ".join(errors[:8]))
     _validate_feature_bindings(w, place, data)
@@ -732,12 +799,9 @@ async def bind_sketch_feature(ctx: ToolContext, a: BindSketchFeatureArgs) -> dic
     data["auto"] = False
     place.state = {**(place.state or {}), "sketch": data}
     result = {"feature_id": a.feature_id, "entity_id": a.entity_id, "revision": data["edit_rev"]}
-    await ctx.record(
-        "bind_sketch_feature",
-        target_id=place.id,
-        payload=result,
-        inverse=[{"table": "entities", "id": place.id, "field": "state", "before": before}],
-    )
+    inverse: list = [{"table": "entities", "id": place.id, "field": "state", "before": before}]
+    _settle_links(ctx, place, current, data, inverse)
+    await ctx.record("bind_sketch_feature", target_id=place.id, payload=result, inverse=inverse)
     return result
 
 
@@ -899,6 +963,7 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
         ch.location_id = loc.id
         moved.append(ch)
     _visit(ctx, loc, moved, inverse)
+    await observe(ctx, loc.id, inverse)  # вошедшие запоминают видимую обстановку (спецификация §8.2)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if not all(c.location_id == loc.id for c in party):
         _clear_positions(ctx, {ch.id for ch in moved}, inverse)

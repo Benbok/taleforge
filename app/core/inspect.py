@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -28,9 +29,9 @@ from app.content.catalog import campaign_catalog
 from app.core import adventure
 from app.core.campaigns import Viewer
 from app.core.characters import public_view
+from app.core.object_policy import concealed, revealed_to
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
 from app.core.world import get_scene
-from app.core.world_objects import container_parent
 from app.db.models import Character, Entity, Knowledge, KnownFact, Message
 
 LEVELS = {0: "видел", 1: "наслышан", 2: "изучил", 3: "знает всё"}
@@ -77,40 +78,48 @@ async def _mentioned(session: AsyncSession, viewer: Viewer, entity_id: str) -> b
     return any(v is None or seat in v for v in (await session.scalars(q)).all())
 
 
-async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> int | None:
-    """Уровень знаний зрителя о сущности или None, если он её не видел."""
+@dataclass(frozen=True)
+class Sight:
+    """Что зритель знает о сущности (``level``) и видит ли её сейчас. ``memory`` — только по памяти: нынешнее
+    описание, состояние, положение и действия не раскрываются; ``seen`` — снимок последнего наблюдения."""
+
+    level: int
+    memory: bool = False
+    seen: dict | None = None
+
+
+async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> Sight | None:
+    """Знание, видимость сейчас и доступ решаются отдельно (app/core/object_policy.py, спецификация §8.2).
+
+    Строка знаний, факт или видимое прошлое сообщение о вещи, которую сейчас не видно (в закрытом шкафу, за тайной
+    деталью эскиза, в другой комнате), дают карточку по памяти. Тайный объект становится видимым только после
+    явного обнаружения этим героем (``Knowledge.revealed_at``); слух его не раскрывает."""
     if viewer.seat is not None and viewer.seat.role == "master":
-        return 3
+        return Sight(3)
     hero = await viewer_hero(session, viewer)
-    if hero is not None:
-        row = await session.get(Knowledge, (hero.id, e.id))
-        if row is not None:
-            return row.level
-    # Nested objects are not visible simply because their effective room matches the hero.
-    # They only become directly inspectable after every containing box is opened.
-    seen = {e.id}
-    parent_id = container_parent(e)
-    while parent_id:
-        if parent_id in seen:
-            return None
-        seen.add(parent_id)
-        container = await session.get(Entity, parent_id)
-        if container is None or container.campaign_id != viewer.campaign.id:
-            return None
-        state = (container.state or {}).get("world_object") or {}
-        if not state.get("access", {}).get("open"):
-            return None
-        parent_id = container_parent(container)
+    if e.kind == "object":
+        rows = await session.scalars(select(Entity).where(Entity.campaign_id == viewer.campaign.id))
+        entities = {x.id: x for x in rows.all()}
+    else:
+        entities = {}
+    hidden = concealed(e, entities, await revealed_to(session, hero.id if hero is not None else None))
     scene = await get_scene(session, viewer.campaign.id)
     spot = (hero.location_id if hero is not None else None) or scene.location_id  # своё место героя
-    if spot and e.kind == "object" and e.location_id == spot:
-        room = await session.get(Entity, spot)
-        features = ((room.state or {}).get("sketch") or {}).get("features") or [] if room is not None else []
-        if any(f.get("entity_id") == e.id and f.get("hidden") for f in features):
-            return None  # unrevealed geometry must not grant a direct inspector-card bypass
-    here = spot and (e.id == spot or e.location_id == spot)
+    here = bool(spot) and (e.id == spot or e.location_id == spot)
+    memory = hidden or (e.kind == "object" and not here)
+    row = await session.get(Knowledge, (hero.id, e.id)) if hero is not None else None
+    if row is not None:
+        return Sight(row.level, memory, row.observed_snapshot if memory else None)
+    if hidden or memory:
+        fact = None
+        if hero is not None:
+            q = select(KnownFact.id).where(KnownFact.character_id == hero.id, KnownFact.subject_id == e.id)
+            fact = await session.scalar(q.limit(1))
+        if fact is not None or await _mentioned(session, viewer, e.id):
+            return Sight(0, True)
+        return None
     if here or await _mentioned(session, viewer, e.id):
-        return 0
+        return Sight(0)
     return None
 
 
@@ -204,20 +213,27 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
     e = await session.get(Entity, entity_id)
     if e is None or e.campaign_id != viewer.campaign.id:
         raise InspectError("такого в мире нет")
-    level = await level_for(session, viewer, e)
-    if level is None:
+    sight = await level_for(session, viewer, e)
+    if sight is None:
         raise InspectError("такого в мире нет")
-    card: dict[str, Any] = {
-        "id": e.id,
-        "type": entity_type(e),
-        "name": e.name,
-        "level": level,
-        "level_name": LEVELS[level],
-        "description": (
+    level, memory, seen = sight.level, sight.memory, sight.seen or {}
+    if memory:
+        # Изменяемое описание не выдаётся за воспоминание: только снимок того, что герой видел.
+        name, description = seen.get("name") or e.name, seen.get("description")
+    else:
+        name = e.name
+        description = (
             adventure.public_description(e, await campaign_catalog(session, viewer.campaign))
             if adventure.room_of(e)
             else e.description or None
-        ),
+        )
+    card: dict[str, Any] = {
+        "id": e.id,
+        "type": entity_type(e),
+        "name": name,
+        "level": level,
+        "level_name": LEVELS[level],
+        "description": description,
         "locked": [LEVELS[i] for i in range(level + 1, 4)],  # что ещё можно узнать
     }
     rec = None
@@ -233,13 +249,15 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         profile = (data.get("behavior") or {}).get("profile")
         if profile in BEHAVIOR_RU:
             card["habits"] = BEHAVIOR_RU[profile]
-    if e.kind == "creature" and level >= 2:
+    if memory:
+        card["memory"] = True  # по памяти: без нынешнего состояния, положения и действий
+    if e.kind == "creature" and level >= 2 and not memory:
         card["condition"] = _condition(st)
         card["attacks"] = [a.get("name") for a in data.get("actions") or [] if a.get("kind") != "multiattack"][:6]
         vul = data.get("damage_vulnerabilities") or []
         if vul:
             card["vulnerable"] = [DAMAGE_RU.get(x, x) for x in vul]
-    if e.kind == "creature" and level >= 3:
+    if e.kind == "creature" and level >= 3 and not memory:
         stats: dict[str, Any] = {"ac": data.get("ac"), "hp": st.get("hp"), "hp_max": st.get("hp_max")}
         abil = data.get("abilities")
         if isinstance(abil, dict) and abil:
@@ -262,7 +280,16 @@ async def types_for(session: AsyncSession, viewer: Viewer, ids: list[str]) -> di
     if not ids:
         return out
     cid = viewer.campaign.id
-    for e in (await session.scalars(select(Entity).where(Entity.campaign_id == cid, Entity.id.in_(ids)))).all():
+    master = viewer.seat is not None and viewer.seat.role == "master"
+    hero = None if master else await viewer_hero(session, viewer)
+    found_ids = await revealed_to(session, hero.id if hero is not None else None)
+    found = (await session.scalars(select(Entity).where(Entity.campaign_id == cid, Entity.id.in_(ids)))).all()
+    entities: dict[str, Entity] = {}
+    if not master and any(e.kind == "object" for e in found):
+        entities = {x.id: x for x in (await session.scalars(select(Entity).where(Entity.campaign_id == cid))).all()}
+    for e in found:
+        if not master and concealed(e, entities, found_ids):
+            continue  # тайное не выдаёт себя даже цветом разметки
         out[e.id] = entity_type(e)
     rows = await session.scalars(select(Character.id).where(Character.campaign_id == cid, Character.id.in_(ids)))
     for i in rows.all():

@@ -477,6 +477,12 @@ class Knowledge(Base):
     character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), primary_key=True)
     entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
     level: Mapped[int] = mapped_column(Integer, default=0)
+    # Явное обнаружение физического объекта этим героем (спецификация генерации сцен, §8.2): только оно делает
+    # hidden/secret объект видимым герою. Упоминания и learn_fact его не заполняют; уровень знаний — не видимость.
+    revealed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Что герой видел при последнем разрешённом наблюдении: {schema_version, name, description, observed_at}.
+    # Карточка «по памяти» строится из него, а не из нынешнего Entity.description.
+    observed_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
 
 
 class KnownFact(Base):

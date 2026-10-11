@@ -2633,6 +2633,11 @@ export interface components {
             error?: string;
             /** Id */
             id: string;
+            /**
+             * Memory
+             * @default null
+             */
+            memory?: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -3843,6 +3848,11 @@ export interface components {
                 number,
                 number
             ];
+            /**
+             * Placement Rev
+             * @default null
+             */
+            placement_rev?: number | null;
             /** Rows */
             rows: number;
             /** Shape */
@@ -3896,6 +3906,11 @@ export interface components {
         };
         /** MapSketchFeature */
         MapSketchFeature: {
+            /**
+             * Access Sides
+             * @default null
+             */
+            access_sides?: ("n" | "e" | "s" | "w")[] | null;
             /** Cells */
             cells: number[][];
             /**

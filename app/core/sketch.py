@@ -55,9 +55,10 @@ def side_len(sk: dict, side: str) -> int:
     return sk["cols"] if side in ("n", "s") else sk["rows"]
 
 
-def check(sk: dict, place_ids: set[str]) -> list[str]:
+def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
     """Ошибки эскиза для мастера: всё в пределах места, выходы на краю, предметы не налезают на стены и друг на
-    друга, строй отряда на свободной клетке."""
+    друга, строй отряда на свободной клетке. ``reach`` — ещё и мебель не отрезает выходы и привязанные объекты
+    (app/core/reach.py); фоновый эскиз без привязок так не проверяется."""
     errors: list[str] = []
     cols, rows = sk["cols"], sk["rows"]
     inside = lambda c, r: 0 <= c < cols and 0 <= r < rows  # noqa: E731
@@ -86,6 +87,11 @@ def check(sk: dict, place_ids: set[str]) -> list[str]:
                 errors.append(f"сущность {entity_id} уже привязана к другой детали")
             else:
                 entity_ids.add(entity_id)
+        access = f.get("access_sides")
+        if access is not None and (
+            not isinstance(access, list) or any(x not in SIDES for x in access) or len(set(access)) != len(access)
+        ):
+            errors.append(f"«{f['name']}»: access_sides — стороны подхода из n, e, s, w без повторов")
         for c0, r0, c1, r1 in f["cells"]:
             if c1 < c0 or r1 < r0:
                 errors.append(f"«{f['name']}»: клетки [c0, r0, c1, r1] — от северо-западного угла к юго-восточному")
@@ -115,6 +121,10 @@ def check(sk: dict, place_ids: set[str]) -> list[str]:
         errors.append(f"отряд ({c}, {r}) за пределами места {cols}×{rows}")
     elif (c, r) in walls or (c, r) in taken:
         errors.append(f"отряд ({c}, {r}) стоит на стене или предмете")
+    if reach and not errors:
+        from app.core.reach import reach_errors
+
+        errors.extend(reach_errors(sk))
     return errors
 
 
@@ -137,7 +147,15 @@ def describe(sk: dict) -> str:
     if unplaced:
         parts.append("выходы без точных координат на карте: " + "; ".join(unplaced))
     feats = [
-        f"{f['name']} {f['cells'][0][:2]}" + (" (тайное)" if f.get("hidden") else "") for f in sk.get("features") or []
+        f"{f['name']} {f['cells'][0][:2]}"
+        + (" (тайное)" if f.get("hidden") else "")
+        + (
+            f" (подход: {', '.join(SIDES[x] for x in f['access_sides'] if x in SIDES)})"
+            if f.get("access_sides")
+            else ""
+        )
+        + (" [объект]" if f.get("entity_id") else "")
+        for f in sk.get("features") or []
     ]
     if feats:
         parts.append("предметы: " + "; ".join(feats))
@@ -207,12 +225,23 @@ def project_for_viewer(
     visible_places: set[str],
     entities: dict[str, Any],
     location_id: str,
+    revealed: frozenset[str] = frozenset(),
 ) -> dict:
-    """Единая проверка физического состояния, видимости и связи с реестром на стороне сервера."""
+    """Единая проверка физического состояния, видимости и связи с реестром на стороне сервера (общая policy,
+    app/core/object_policy.py). Тайная деталь объекта, который этот герой явно обнаружил, ему видна; у
+    необнаруженной не выдаётся ни геометрия, ни ``entity_id``."""
     from app.core.inspect import entity_type
+    from app.core.object_policy import concealed
     from app.core.world_objects import is_nested
 
     out = for_viewer(sk, master, visible_places)
+    if not master:
+        shown = {id(f) for f in out["features"]}
+        out["features"] = [
+            f
+            for f in sk.get("features") or []
+            if id(f) in shown or (f.get("hidden") and f.get("entity_id") in revealed)
+        ]
     features = []
     for feature in out["features"]:
         f = dict(feature)
@@ -224,7 +253,7 @@ def project_for_viewer(
             st = entity.state or {}
             if st.get("world_object", {}).get("physical") == "destroyed":
                 continue
-            if not master and (st.get("hidden") or st.get("secret")):
+            if not master and concealed(entity, entities, revealed):
                 continue
             f["name"] = entity.name
             f["entity_type"] = entity_type(entity)

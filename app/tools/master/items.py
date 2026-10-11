@@ -8,8 +8,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core import economy
+from app.core import economy, reach
 from app.core import positions as grid
+from app.core.object_policy import concealed, hidden_feature, observe, revealed_to
 from app.core.weapon_enchantments import release_weapon
 from app.core.world import is_scene_item
 from app.core.world_objects import container_chain, container_parent, is_nested, read_world_object
@@ -553,6 +554,9 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     st = dict(en.state or {})
     if is_nested(en):
         raise ToolError("сначала извлеките предмет из контейнера")
+    if concealed(en, ctx.world.entities, await revealed_to(ctx.session, ch.id)):
+        raise ToolError(f"предмета {a.entity_id} не видно: сначала его находят")
+    room_id = en.location_id
     unique = read_world_object(en).unique
     have = int(st.get("qty") or 1)
     if unique and (have != 1 or a.qty not in (None, 1)):
@@ -594,6 +598,8 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     else:
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
     inverse += inv
+    if unique or qty == have:
+        inverse += detach_feature(ctx, en.id, room_id)
     result = {"character": ch.name, "item": en.name, "qty": qty, "inventory_id": inv_id, "left": have - qty}
     await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     many = f" ×{qty}" if qty > 1 else ""
@@ -656,6 +662,7 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
         inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
         en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where)
         inverse += inv
+    await observe(ctx, en.location_id, inverse, only=[en.id])
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     return result
@@ -770,7 +777,44 @@ async def create_container(ctx: ToolContext, a: CreateContainerArgs) -> dict:
     return result
 
 
-def _accessible_container(ctx: ToolContext, character_id: str, container_id: str) -> tuple[Character, Entity]:
+def detach_feature(ctx: ToolContext, entity_id: str, room_id: str | None) -> list[dict]:
+    """Объект ушёл с пола комнаты целиком (поднят, убран в контейнер): его деталь эскиза уходит вместе с ним в той
+    же транзакции, иначе вернувшаяся вещь всплыла бы на старом месте мебели (docs/world-objects-delivery1.md, §2.3)."""
+    room = ctx.world.entities.get(room_id or "")
+    sk = (room.state or {}).get("sketch") if room is not None else None
+    if not isinstance(sk, dict) or not any(f.get("entity_id") == entity_id for f in sk.get("features") or []):
+        return []
+    before = copy.deepcopy(room.state)
+    features = [f for f in sk.get("features") or [] if f.get("entity_id") != entity_id]
+    sketch_now = {**sk, "features": features, "edit_rev": int(sk.get("edit_rev") or 0) + 1, "auto": False}
+    placement_rev = int((room.state or {}).get("placement_rev") or 0) + 1
+    room.state = {**(room.state or {}), "sketch": sketch_now, "placement_rev": placement_rev}
+    return [{"table": "entities", "id": room.id, "field": "state", "before": before}]
+
+
+def _approach(ctx: ToolContext, hero: Character, container: Entity, *, walk: bool) -> list[dict]:
+    """Дотянуться до привязанного к эскизу контейнера: с клетки подхода, с доступной стороны. Вне боя герой
+    подходит сам (``walk``) — клетка меняется, обратная запись в том же событии."""
+    from app.core import combat
+
+    w = ctx.world
+    fighting = combat.in_combat(ctx) and combat.fights(w.scene, w.characters, w.entities, hero.id)
+    problem, route = reach.approach_route(w, hero.id, container, fighting=fighting)
+    if problem:
+        raise ToolError(problem)
+    if not route or not walk:
+        return []
+    inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}]
+    grid.set_cell(w, hero.id, route[-1])
+    ctx.changed.add(hero.id)
+    return inverse
+
+
+async def _accessible_container(
+    ctx: ToolContext, character_id: str, container_id: str
+) -> tuple[Character, Entity, frozenset[str]]:
+    """Общая policy (спецификация §8.2): принадлежность, присутствие, обнаружение тайного этим героем, открытые
+    предки. Подход проверяет ``_approach``. Возвращает и то, что герой обнаружил, — для фильтра содержимого."""
     hero = _character(ctx, character_id)
     _can_handle(ctx, hero)
     container = ctx.world.entities.get(container_id)
@@ -785,13 +829,15 @@ def _accessible_container(ctx: ToolContext, character_id: str, container_id: str
         raise ToolError("объект недоступен как контейнер")
     if container.location_id != ctx.world.place_of(hero):
         raise ToolError("контейнер находится в другой комнате")
+    found = await revealed_to(ctx.session, hero.id)
     for other in [container, *ancestors]:
         st = other.state or {}
-        if st.get("secret") or st.get("hidden"):
+        room = ctx.world.entities.get(other.location_id or "")
+        if (st.get("secret") or st.get("hidden") or hidden_feature(room, other.id)) and other.id not in found:
             raise ToolError("контейнер скрыт")
     if any(not (parent.state or {}).get("world_object", {}).get("access", {}).get("open") for parent in ancestors):
         raise ToolError("сначала откройте внешний контейнер")
-    return hero, container
+    return hero, container, found
 
 
 class ContainerAccessArgs(BaseModel):
@@ -807,13 +853,19 @@ class ContainerAccessArgs(BaseModel):
     ids={"character_id": "characters"},
 )
 async def open_container(ctx: ToolContext, a: ContainerAccessArgs) -> dict:
-    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)
     wo = read_world_object(container).metadata
     access = dict(wo.get("access") or {})
     if a.opened and access.get("locked"):
         raise ToolError("контейнер заперт")
-    inverse = [{"table": "entities", "id": container.id, "field": "state", "before": copy.deepcopy(container.state)}]
+    inverse = _approach(ctx, hero, container, walk=True)
+    inverse.append(
+        {"table": "entities", "id": container.id, "field": "state", "before": copy.deepcopy(container.state)}
+    )
     container.state = _object_state(container, access={**access, "open": a.opened})
+    if a.opened:  # открытое содержимое видно присутствующим — снимок наблюдения
+        inside = [o.id for o in ctx.world.entities.values() if container_parent(o) == container.id]
+        await observe(ctx, container.location_id, inverse, only=inside)
     result = {"container_id": container.id, "opened": a.opened}
     await ctx.record("open_container", actor_id=hero.id, target_id=container.id, payload=result, inverse=inverse)
     return result
@@ -847,7 +899,7 @@ def _validate_container_move(ctx: ToolContext, container: Entity, obj: Entity) -
     ids={"character_id": "characters"},
 )
 async def store_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
-    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)
     if not read_world_object(container).metadata.get("access", {}).get("open"):
         raise ToolError("контейнер закрыт")
     obj = ctx.world.entities.get(a.object_id)
@@ -856,7 +908,9 @@ async def store_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
     if is_nested(obj):
         raise ToolError("объект уже находится внутри контейнера")
     _validate_container_move(ctx, container, obj)
-    inverse = [{"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)}]
+    inverse = _approach(ctx, hero, container, walk=True)
+    inverse.append({"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)})
+    inverse += detach_feature(ctx, obj.id, obj.location_id)
     if (obj.state or {}).get("world_object") is None:
         role = "item" if is_scene_item(obj) else "prop"
         base = {"schema_version": 1, "role": role, "unique": False, "capabilities": [], "revision": 0}
@@ -874,14 +928,18 @@ async def store_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
     ids={"character_id": "characters"},
 )
 async def retrieve_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
-    hero, container = _accessible_container(ctx, a.character_id, a.container_id)
+    hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)
     if not read_world_object(container).metadata.get("access", {}).get("open"):
         raise ToolError("контейнер закрыт")
     obj = ctx.world.entities.get(a.object_id)
     if obj is None or obj.campaign_id != ctx.campaign.id or container_parent(obj) != container.id:
         raise ToolError("этого объекта нет в контейнере")
-    inverse = [{"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)}]
+    if concealed(obj, ctx.world.entities, found):
+        raise ToolError("этого объекта нет в контейнере")  # тайное внутри не выдаёт себя
+    inverse = _approach(ctx, hero, container, walk=True)
+    inverse.append({"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)})
     obj.state = _object_state(obj, container_id=None)
+    await observe(ctx, obj.location_id, inverse, only=[obj.id])
     result = {"object_id": obj.id, "container_id": container.id}
     await ctx.record("retrieve_object", actor_id=hero.id, target_id=obj.id, payload=result, inverse=inverse)
     return result
@@ -900,12 +958,15 @@ class InspectContainerArgs(BaseModel):
     mutating=False,
 )
 async def inspect_container(ctx: ToolContext, a: InspectContainerArgs) -> dict:
-    _, container = _accessible_container(ctx, a.character_id, a.container_id)
+    hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)
     if not read_world_object(container).metadata.get("access", {}).get("open"):
         raise ToolError("контейнер закрыт")
+    _approach(ctx, hero, container, walk=False)  # только чтение: проверить, что дотянуться можно, никого не двигая
     contents = [
         {"id": obj.id, "name": obj.name, "qty": (obj.state or {}).get("qty", 1)}
         for obj in ctx.world.entities.values()
-        if container_parent(obj) == container.id and obj.campaign_id == ctx.campaign.id
+        if container_parent(obj) == container.id
+        and obj.campaign_id == ctx.campaign.id
+        and not concealed(obj, ctx.world.entities, found)  # проверка для этого героя, не для всей кампании
     ]
     return {"container_id": container.id, "contents": contents}

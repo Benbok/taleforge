@@ -156,7 +156,14 @@ def scene_public(
             ),
             None,
         )
-    view = visible_scene(world.scene, world.entities, world.characters, hero_id=hero_id, is_master=is_master)
+    view = visible_scene(
+        world.scene,
+        world.entities,
+        world.characters,
+        hero_id=hero_id,
+        is_master=is_master,
+        revealed=frozenset(world.revealed.get(hero_id or "", ())),
+    )
     return scene_payload(world.scene, world.entities, world.characters, view)
 
 
@@ -207,12 +214,14 @@ def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
     out: dict[str, tuple[list[str], dict[str, Any]]] = {}
     for seat in seats:
         master = seat.role == "master"
+        hero_id = None if master else playable.get(seat.id)
         view = visible_scene(
             world.scene,
             world.entities,
             world.characters,
-            hero_id=None if master else playable.get(seat.id),
+            hero_id=hero_id,
             is_master=master,
+            revealed=frozenset(world.revealed.get(hero_id or "", ())),
         )
         payload = scene_payload(world.scene, world.entities, world.characters, view)
         key = json.dumps(payload, sort_keys=True, ensure_ascii=False)
