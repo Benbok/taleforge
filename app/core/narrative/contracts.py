@@ -7,7 +7,7 @@ This module is isolated from DB, tools, agents, frameworks, and LLM providers.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -443,4 +443,28 @@ class WorkClaim(NarrativeContractModel):
     draft: AdaptationProposal | None = None
     capacity_slot: int | None = None
     status: str = "preparing"
+
+
+class DirectorInput(NarrativeContractModel):
+    """Packed prompt and tool schema for director LLM call."""
+
+    messages: tuple[dict[str, Any], ...] = ()
+    tool_schema: dict[str, Any]
+    permitted_refs: tuple[str, ...] = ()
+    complete_for_edit: bool = True
+    estimated_input_tokens: int = 0
+
+
+class AuthorCallReport(NarrativeContractModel):
+    """Runtime report of an author LLM invocation."""
+
+    source: NarrativeSource
+    author_attempt: int
+    model: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost: float = 0.0
+    latency_ms: int = 0
+    error: str | None = None
+
 
