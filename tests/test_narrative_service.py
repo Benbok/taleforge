@@ -19,9 +19,11 @@ class FakeReader:
     def __init__(self, snap: NarrativeSnapshot | None = None) -> None:
         self.snap = snap or snapshot()
         self.calls = 0
+        self.last_request: SnapshotRequest | None = None
 
     async def snapshot(self, request: SnapshotRequest) -> NarrativeSnapshot:
         self.calls += 1
+        self.last_request = request
         return self.snap
 
 
@@ -243,5 +245,56 @@ def test_service_run_due_batches():
         assert len(reports) == 2
         assert reports[0].work_id == "w-1"
         assert reports[1].work_id == "w-2"
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R11 — service builds SnapshotRequest from claim, not empty defaults
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_snapshot_request_built_from_claim_context():
+    """R11: service.prepare_once must pass evidence/audience/focus from claim to reader.
+
+    Before the fix, service.py hardcoded empty tuples. After the fix, the
+    SnapshotRequest the reader receives must exactly reflect the claim fields.
+    """
+    from app.core.narrative.contracts import EvidenceRef
+
+    clock = FakeClock()
+    snap = snapshot()
+
+    ev = EvidenceRef(campaign_id="camp-1", kind="event", source_id="evt-99")
+    author_claim = WorkClaim(
+        work_id="work-ctx-test",
+        campaign_id="camp-1",
+        source=snap.source,
+        proposal_id=snap.proposal_id,
+        lease_token="lease-ctx",
+        lease_until=clock(),
+        session_budget_ref="sess-ctx",
+        phase="author",
+        # Boundary context that must reach the reader
+        evidence_refs=(ev,),
+        audience=("hero-a", "hero-b"),
+        focus="dungeon-entrance",
+    )
+    jobs = FakeJobs([author_claim])
+    reader = FakeReader(snap)
+    author = FakeAuthor(proposal(snap, operations=()))  # no_change to avoid apply
+    applier = FakeApplier()
+
+    service = NarrativeService(reader, author, applier, jobs, clock)
+
+    async def _test():
+        report = await service.prepare_once()
+        assert report is not None
+        assert report.status == "no_change"
+
+        req = reader.last_request
+        assert req is not None, "reader.snapshot was never called"
+        assert req.evidence_refs == (ev,), "evidence_refs not passed to SnapshotRequest"
+        assert req.audience == ("hero-a", "hero-b"), "audience not passed"
+        assert req.focus == "dungeon-entrance", "focus not passed"
 
     asyncio.run(_test())

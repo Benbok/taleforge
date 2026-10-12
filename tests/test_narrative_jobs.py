@@ -453,3 +453,152 @@ def test_job_operations_do_not_increase_world_revision(
             assert rev_end == rev_start
 
     asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R11 — claim carries boundary evidence, audience and focus (not empty defaults)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_claim_carries_evidence_audience_focus(session_maker):
+    """R11: WorkClaim must propagate evidence_refs, audience and focus from the saved job.
+
+    The SnapshotRequest built in service.py must not silently discard the
+    alliance event, character scope and scene focus that triggered the job.
+    """
+    from app.core.narrative.contracts import EvidenceRef
+
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-boundary-ctx")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        ev_ref = EvidenceRef(
+            campaign_id="camp-boundary-ctx",
+            kind="event",
+            source_id="alliance-evt-1",
+        )
+        b = boundary(
+            campaign_id="camp-boundary-ctx",
+            source_id="alliance-1",
+            kind="alliance",
+            evidence_refs=(ev_ref,),
+            audience=("hero-1", "hero-2"),
+            focus="guild-hall",
+        )
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None, "claim must succeed"
+
+        # Boundary context must survive the round-trip through the DB
+        assert len(claim.evidence_refs) == 1, "evidence_refs must not be empty"
+        assert claim.evidence_refs[0].source_id == "alliance-evt-1"
+        assert claim.audience == ("hero-1", "hero-2"), "audience lost in claim"
+        assert claim.focus == "guild-hall", "focus lost in claim"
+
+        # source.source_id must be the stable work id, not the raw boundary source_id
+        assert claim.source.source_id == claim.work_id, (
+            "source_id must equal work_id for stable receipt identity"
+        )
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R13 — two boundaries with identical source_id but different kind
+#            must produce different receipt source_key values
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_boundary_kinds_produce_distinct_receipt_sources(session_maker):
+    """R13: choice:npc-1 and relationship:npc-1 are separate jobs with distinct identities.
+
+    After each job is processed, their NarrativeSource.source_key() values must
+    differ so that receipts for the two operations never collide.
+    """
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-r13")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        b_choice = boundary(
+            campaign_id="camp-r13",
+            source_id="npc-1",
+            kind="choice",
+        )
+        b_rel = boundary(
+            campaign_id="camp-r13",
+            source_id="npc-1",
+            kind="relationship",
+        )
+        id_choice = await jobs.enqueue(b_choice)
+        id_rel = await jobs.enqueue(b_rel)
+
+        assert id_choice != id_rel, "distinct boundary kinds must create distinct jobs"
+
+        # Claim and finish the first job, then claim the second.
+        # (One campaign can only author one job at a time.)
+        claim_a = await jobs.claim(clock())
+        assert claim_a is not None
+
+        key_a = claim_a.source.source_key()
+        assert claim_a.source.source_id == claim_a.work_id, (
+            "source_id must be the stable work id, not the raw boundary source_id"
+        )
+
+        # Finish job A so the campaign slot is freed for job B
+        prop_a = proposal(summary="Choice draft")
+        await jobs.save_draft(claim_a, prop_a, clock())
+        apply_a = await jobs.claim(clock())
+        assert apply_a is not None and apply_a.phase == "apply"
+        await jobs.finish(apply_a, AdaptationResult(status="applied", reason_code="ok"), clock())
+
+        # Now claim job B
+        claim_b = await jobs.claim(clock())
+        assert claim_b is not None, "second job must be claimable after first is done"
+        assert claim_b.work_id != claim_a.work_id
+
+        key_b = claim_b.source.source_key()
+        assert claim_b.source.source_id == claim_b.work_id, (
+            "source_id must be the stable work id for job B"
+        )
+        assert key_a != key_b, (
+            f"receipt source_key must differ for different jobs: {key_a!r} == {key_b!r}"
+        )
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R11 — enqueue → claim round-trip preserves evidence_refs
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_enqueue_claim_roundtrip_preserves_evidence(session_maker):
+    """R11: evidence_refs stored via enqueue must survive the DB round-trip into claim."""
+    from app.core.narrative.contracts import EvidenceRef
+
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-evrt")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        ev = EvidenceRef(campaign_id="camp-evrt", kind="event", source_id="evt-rt")
+        b = boundary(
+            campaign_id="camp-evrt",
+            source_id="turn-rt",
+            kind="turn",
+            evidence_refs=(ev,),
+            audience=("hero-x",),
+            focus="temple",
+        )
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+        assert len(claim.evidence_refs) == 1, "evidence_refs must survive enqueue→claim"
+        assert claim.evidence_refs[0].source_id == "evt-rt"
+        assert claim.audience == ("hero-x",), "audience must survive enqueue→claim"
+        assert claim.focus == "temple", "focus must survive enqueue→claim"
+        # Stable identity: source_id is the internal work id
+        assert claim.source.source_id == claim.work_id
+
+    asyncio.run(_test())

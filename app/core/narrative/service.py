@@ -49,14 +49,14 @@ class NarrativeService:
             return None
 
         if claim.phase == "author":
-            # 1. Assemble snapshot
+            # 1. Assemble snapshot from saved boundary context (R11)
             req = SnapshotRequest(
                 source=claim.source,
-                focus=None,
-                audience=(),
-                evidence_refs=(),
-                mutable_subject_refs=(),
-                feedback=(),
+                focus=claim.focus,
+                audience=claim.audience,
+                evidence_refs=claim.evidence_refs,
+                mutable_subject_refs=claim.mutable_subject_refs,
+                feedback=claim.feedback,
             )
             snapshot = await self._reader.snapshot(req)
 

@@ -13,6 +13,7 @@ from app.core.narrative.contracts import (
     AdaptationProposal,
     AdaptationResult,
     BoundaryRecord,
+    EvidenceRef,
     LeaseLost,
     NarrativeSource,
     WorkClaim,
@@ -24,6 +25,13 @@ def _as_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt
+
+
+def _evidence_refs(raw: list[dict] | None) -> tuple[EvidenceRef, ...]:
+    """Deserialise evidence_refs from the JSON column into EvidenceRef objects."""
+    if not raw:
+        return ()
+    return tuple(EvidenceRef.model_validate(r) for r in raw if isinstance(r, dict))
 
 
 class SqlNarrativeJobs:
@@ -176,7 +184,7 @@ class SqlNarrativeJobs:
                             campaign_id=prepared_job.campaign_id,
                             scope=prepared_job.scope,  # type: ignore
                             source_kind="work",
-                            source_id=prepared_job.source_id,
+                            source_id=prepared_job.id,  # stable work identity (R13)
                             stable_part=0,
                         ),
                         proposal_id=prepared_job.proposal_id,
@@ -189,6 +197,9 @@ class SqlNarrativeJobs:
                         draft=draft_prop,
                         capacity_slot=None,
                         status="prepared",
+                        evidence_refs=_evidence_refs(prepared_job.evidence_refs),
+                        audience=tuple(prepared_job.audience or ()),
+                        focus=prepared_job.focus,
                     )
 
             # 3. Priority B: author jobs (capacity slots 0..max_author_slots-1)
@@ -271,7 +282,7 @@ class SqlNarrativeJobs:
                                 campaign_id=candidate.campaign_id,
                                 scope=candidate.scope,  # type: ignore
                                 source_kind="work",
-                                source_id=candidate.source_id,
+                                source_id=candidate.id,  # stable work identity (R13)
                                 stable_part=0,
                             ),
                             proposal_id=candidate.proposal_id,
@@ -283,6 +294,9 @@ class SqlNarrativeJobs:
                             phase="author",
                             capacity_slot=chosen_slot,
                             status="preparing",
+                            evidence_refs=_evidence_refs(candidate.evidence_refs),
+                            audience=tuple(candidate.audience or ()),
+                            focus=candidate.focus,
                         )
                 except IntegrityError:
                     await session.rollback()

@@ -498,6 +498,12 @@ class WorkClaim(NarrativeContractModel):
     draft: AdaptationProposal | None = None
     capacity_slot: int | None = None
     status: str = "preparing"
+    # Boundary context preserved from the saved job (R11)
+    evidence_refs: tuple[EvidenceRef, ...] = ()
+    audience: tuple[str, ...] = ()
+    focus: str | None = None
+    mutable_subject_refs: tuple[str, ...] = ()
+    feedback: tuple[Violation, ...] = ()
 
 
 class DirectorInput(NarrativeContractModel):
