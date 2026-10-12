@@ -8175,6 +8175,47 @@
     "title": "MePatchIn",
     "type": "object"
    },
+   "MenuMusicPreferences": {
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "volume": {
+      "default": 0.2,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Volume",
+      "type": "number"
+     }
+    },
+    "required": [
+     "enabled",
+     "volume"
+    ],
+    "title": "MenuMusicPreferences",
+    "type": "object"
+   },
+   "MenuMusicPreferencesPatch": {
+    "additionalProperties": false,
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "volume": {
+      "default": 0.2,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Volume",
+      "type": "number"
+     }
+    },
+    "title": "MenuMusicPreferencesPatch",
+    "type": "object"
+   },
    "MessageChunk": {
     "additionalProperties": false,
     "properties": {
@@ -11006,6 +11047,9 @@
       "title": "Id",
       "type": "string"
      },
+     "menu_music": {
+      "$ref": "#/components/schemas/MenuMusicPreferences"
+     },
      "name": {
       "title": "Name",
       "type": "string"
@@ -11023,7 +11067,8 @@
     "required": [
      "id",
      "name",
-     "platform_role"
+     "platform_role",
+     "menu_music"
     ],
     "title": "UserOut",
     "type": "object"
@@ -18559,6 +18604,52 @@
     ]
    }
   },
+  "/api/me/menu-music": {
+   "patch": {
+    "operationId": "patch_menu_music_api_me_menu_music_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MenuMusicPreferencesPatch"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MenuMusicPreferences"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Patch Menu Music",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
   "/api/me/password": {
    "post": {
     "operationId": "change_password_api_me_password_post",
@@ -18653,6 +18744,64 @@
     "summary": "List Worlds",
     "tags": [
      "profile"
+    ]
+   }
+  },
+  "/api/menu-music": {
+   "get": {
+    "operationId": "menu_theme_api_menu_music_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/AudioTrack"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "title": "Response Menu Theme Api Menu Music Get"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Menu Theme",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
+  "/api/menu-music/file": {
+   "get": {
+    "operationId": "menu_theme_file_api_menu_music_file_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Menu Theme File",
+    "tags": [
+     "audio"
     ]
    }
   },

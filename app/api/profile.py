@@ -8,7 +8,15 @@ from sqlalchemy import delete, func, select
 
 from app.api.auth import user_out
 from app.api.deps import SessionDep, UserDep
-from app.api.schemas import MePatchIn, PasswordIn, ProfileOut, UserOut, UserRoleIn
+from app.api.schemas import (
+    MenuMusicPreferences,
+    MenuMusicPreferencesPatch,
+    MePatchIn,
+    PasswordIn,
+    ProfileOut,
+    UserOut,
+    UserRoleIn,
+)
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
 from app.core.security import hash_password, verify_password
 from app.db.models import Campaign, Invite, LibraryCharacter, LlmCall, Seat, User
@@ -63,6 +71,19 @@ async def rename(body: MePatchIn, user: UserDep, session: SessionDep) -> UserOut
     user.name = body.name
     await session.commit()
     return user_out(user)
+
+
+@router.patch("/me/menu-music")
+async def patch_menu_music(
+    body: MenuMusicPreferencesPatch, user: UserDep, session: SessionDep
+) -> MenuMusicPreferences:
+    changes = body.model_dump(exclude_unset=True)
+    if "enabled" in changes:
+        user.menu_music_enabled = changes["enabled"]
+    if "volume" in changes:
+        user.menu_music_volume = changes["volume"]
+    await session.commit()
+    return MenuMusicPreferences(enabled=user.menu_music_enabled, volume=user.menu_music_volume)
 
 
 @router.post("/me/password", status_code=204)

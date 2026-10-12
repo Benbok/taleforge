@@ -1956,6 +1956,23 @@ export interface paths {
         patch: operations["patch_preset_api_me_master_presets__preset_id__patch"];
         trace?: never;
     };
+    "/api/me/menu-music": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Menu Music */
+        patch: operations["patch_menu_music_api_me_menu_music_patch"];
+        trace?: never;
+    };
     "/api/me/password": {
         parameters: {
             query?: never;
@@ -2002,6 +2019,40 @@ export interface paths {
          * @description Миры, для которых можно собрать героя профиля: базовые правила и загруженные пакеты миров.
          */
         get: operations["list_worlds_api_me_worlds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/menu-music": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Menu Theme */
+        get: operations["menu_theme_api_menu_music_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/menu-music/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Menu Theme File */
+        get: operations["menu_theme_file_api_menu_music_file_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4737,6 +4788,32 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** MenuMusicPreferences */
+        MenuMusicPreferences: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Volume
+             * @default 0.2
+             */
+            volume: number;
+        };
+        /** MenuMusicPreferencesPatch */
+        MenuMusicPreferencesPatch: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled?: boolean;
+            /**
+             * Volume
+             * @default 0.2
+             */
+            volume?: number;
+        };
         /** MessageChunk */
         MessageChunk: {
             /** Chunk */
@@ -5606,6 +5683,7 @@ export interface components {
         UserOut: {
             /** Id */
             id: string;
+            menu_music: components["schemas"]["MenuMusicPreferences"];
             /** Name */
             name: string;
             /**
@@ -5849,6 +5927,8 @@ export type MasterStatus = components['schemas']['MasterStatus'];
 export type MasterTemperIn = components['schemas']['MasterTemperIn'];
 export type MasterToolResult = components['schemas']['MasterToolResult'];
 export type MePatchIn = components['schemas']['MePatchIn'];
+export type MenuMusicPreferences = components['schemas']['MenuMusicPreferences'];
+export type MenuMusicPreferencesPatch = components['schemas']['MenuMusicPreferencesPatch'];
 export type MessageChunk = components['schemas']['MessageChunk'];
 export type MessageNotice = components['schemas']['MessageNotice'];
 export type MessageRejected = components['schemas']['MessageRejected'];
@@ -10322,6 +10402,39 @@ export interface operations {
             };
         };
     };
+    patch_menu_music_api_me_menu_music_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MenuMusicPreferencesPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuMusicPreferences"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_password_api_me_password_post: {
         parameters: {
             query?: never;
@@ -10391,6 +10504,46 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+        };
+    };
+    menu_theme_api_menu_music_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioTrack"] | null;
+                };
+            };
+        };
+    };
+    menu_theme_file_api_menu_music_file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

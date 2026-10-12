@@ -57,6 +57,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(64), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     platform_role: Mapped[str] = mapped_column(String(16), default="player")  # super_admin | admin | player
+    menu_music_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"), nullable=False)
+    menu_music_volume: Mapped[float] = mapped_column(Float, default=0.2, server_default=text("0.2"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

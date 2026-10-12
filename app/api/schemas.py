@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat
 
 Name = Field(min_length=2, max_length=64, pattern=r"^[\w .\-]+$")
 Password = Field(min_length=6, max_length=128)
@@ -42,6 +42,19 @@ class UserOut(Out):
     id: str
     name: str
     platform_role: Literal["super_admin", "admin", "player"]
+    menu_music: MenuMusicPreferences
+
+
+class MenuMusicPreferences(Out):
+    enabled: bool = True
+    volume: float = Field(default=0.2, ge=0, le=1)
+
+
+class MenuMusicPreferencesPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = True
+    volume: StrictFloat = Field(default=0.2, ge=0, le=1)
 
 
 class UserCreateIn(BaseModel):
