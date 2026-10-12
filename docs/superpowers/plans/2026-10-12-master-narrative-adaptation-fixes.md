@@ -311,13 +311,13 @@ SnapshotRequest строится из этого claim, не из пустых d
 Schema_version меняется/мигрируется совместимо; уже применённые legacy
 квитанции не теряют identity при переходе на новую форму.
 
-- [ ] Добавить choice:npc-1 и relationship:npc-1: два job, два source-key,
+- [x] Добавить choice:npc-1 и relationship:npc-1: два job, два source-key,
   две разные receipt после применения.
-- [ ] Добавить production enqueue → SQL claim → reader → author spy:
+- [x] Добавить production enqueue → SQL claim → reader → author spy:
   реальное событие союза/аудитория/место не потерялись.
-- [ ] Добавить restart/coalesce сохранённых grounds и legacy receipt replay.
-- [ ] Обновить claim DTO и оба пути claim, source binding, request composition.
-- [ ] Прогнать jobs/service/architect/replay; коммит
+- [x] Добавить restart/coalesce сохранённых grounds и legacy receipt replay.
+- [x] Обновить claim DTO и оба пути claim, source binding, request composition.
+- [x] Прогнать jobs/service/architect/replay; коммит
   fix(narrative): preserve work identity and boundary evidence.
 
 ### F8. Довести workflow, lease и публикацию
