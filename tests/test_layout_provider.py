@@ -68,3 +68,22 @@ def test_intent_rejects_forward_references_and_unknown_band():
     data["approaches"][0]["band"] = "river"
     with pytest.raises(ValidationError):
         LayoutIntent.model_validate(data)
+
+
+@pytest.mark.parametrize("rect", [[1, 2], [0, 0, 10**9, 10**9], [3, 0, 2, 0], [-1, 0, 1, 1]])
+def test_intent_rejects_malformed_detail_rects(rect):
+    data = pilot_intent().model_dump()
+    data["parts"][3]["details"][0]["cells"] = [rect]
+    with pytest.raises(ValidationError):
+        LayoutIntent.model_validate(data)
+
+
+def test_intent_rejects_duplicate_anchor_and_detail_ref():
+    data = pilot_intent().model_dump()
+    data["parts"][5]["anchors"] = ["relic"]  # та же зацепка уже в часовне
+    with pytest.raises(ValidationError, match="зацепка"):
+        LayoutIntent.model_validate(data)
+    data = pilot_intent().model_dump()
+    data["parts"][3]["details"][1]["detail_ref"] = "pillar0"
+    with pytest.raises(ValidationError, match="detail_ref"):
+        LayoutIntent.model_validate(data)

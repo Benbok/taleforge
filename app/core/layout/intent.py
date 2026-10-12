@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.core.layout.contracts import MAX_SIDE
 
 REF = r"^[a-z][a-z0-9_]{0,31}$"
 Side = Literal["n", "e", "s", "w"]
@@ -22,6 +24,17 @@ class DetailIntent(BaseModel):
     cells: list[list[int]] = Field(min_length=1, max_length=4, description="[c0, r0, c1, r1] в клетках части")
     solid: bool = Field(False, description="колонна, валун: непроходимая геометрия, не предмет")
     hidden: bool = False
+
+    @field_validator("cells")
+    @classmethod
+    def _cells(cls, rects: list[list[int]]) -> list[list[int]]:
+        for r in rects:
+            if len(r) != 4:
+                raise ValueError("прямоугольник детали: ровно четыре числа [c0, r0, c1, r1]")
+            c0, r0, c1, r1 = r
+            if not (0 <= c0 <= c1 < MAX_SIDE and 0 <= r0 <= r1 < MAX_SIDE):
+                raise ValueError(f"прямоугольник детали вне части: 0 <= c0 <= c1 < {MAX_SIDE}, то же для рядов")
+        return rects
 
 
 class PartIntent(BaseModel):
@@ -89,6 +102,14 @@ class LayoutIntent(BaseModel):
             if p.connects_to is not None and p.connects_to not in seen:
                 raise ValueError(f"{p.part_ref}: connects_to должен ссылаться на часть выше по списку")
             seen.add(p.part_ref)
+        anchor_owner: dict[str, str] = {}
+        for p in self.parts:
+            for a in p.anchors:
+                if anchor_owner.setdefault(a, p.part_ref) != p.part_ref:
+                    raise ValueError(f"зацепка {a} указана в двух частях")
+            drefs = [d.detail_ref for d in p.details]
+            if len(set(drefs)) != len(drefs):
+                raise ValueError(f"{p.part_ref}: detail_ref повторяется")
         bands = {b.band_ref for b in self.bands}
         for a in self.approaches:
             if a.part_ref not in seen:

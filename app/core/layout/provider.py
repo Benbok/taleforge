@@ -119,9 +119,6 @@ class DeterministicLayoutProvider:
         passages: list[Passage] = []
         errors: list[str] = []
 
-        def take(ref: str, side: str, start: int, width: int) -> None:
-            taken.setdefault((ref, side), []).append((start, start + width))
-
         prev: PartIntent | None = None
         for part in parts:
             cols, rows = _dims(part)
