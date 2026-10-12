@@ -6,6 +6,7 @@ import CampaignCardView from "../components/CampaignCardView";
 import Recap from "../components/Recap";
 import Header from "../components/Header";
 import LeviathanEchoArt from "../components/LeviathanEchoArt";
+import DndHeroArt from "../components/DndHeroArt";
 import Avatar, { hue, initials } from "../components/Avatar";
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
@@ -382,8 +383,12 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
         isLight ? "bg-[#f5f0e6]" : "bg-[#0d0f12]"
       }`}
     >
-      {/* Архивная навигационная векторная графика: Левиафан, Кормчие, Монолит и глифы */}
-      <LeviathanEchoArt mode={mode} />
+      {/* Архивная навигационная графика: Левиафан или D&D */}
+      {isEcho ? (
+        <LeviathanEchoArt mode={mode} />
+      ) : (
+        <DndHeroArt mode={mode} />
+      )}
 
       {/* Мягкая подсветка/градиент под текстом слева для идеальной читаемости */}
       <div
