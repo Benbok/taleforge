@@ -70,7 +70,7 @@ export default function SoundControl() {
         <span className="hidden truncate sm:inline">{muted ? "звук выключен" : (music?.title ?? "тишина")}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-40 flex w-72 flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-lg">
+        <div className="absolute right-0 top-10 z-50 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="font-heading text-sm text-ink">Звук сцены</span>
             <button
