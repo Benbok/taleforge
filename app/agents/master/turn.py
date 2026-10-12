@@ -205,6 +205,7 @@ class TurnMixin:
             if self.players is not None:
                 self.players.reset_round(cid)
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
+            self.signal_recovery()
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
             if committed:
@@ -855,6 +856,38 @@ class TurnMixin:
             "stalled": bool(stall),
         }
         adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
+        try:
+            from app.core.narrative.contracts import EvidenceRecord, EvidenceRef, NarrativePolicy, TurnBoundaryState
+            from app.core.narrative.triggers import derive_boundaries, enqueue_boundaries
+            from app.db.narrative import ensure_state
+
+            ev_recs = [
+                EvidenceRecord(
+                    ref=EvidenceRef(campaign_id=cid, kind="event", source_id=ev.id),
+                    status="applied",
+                    subject_refs=(ev.actor_id,) if ev.actor_id else (),
+                    audience=tuple(heard or ()),
+                    game_time=getattr(ev, "game_time", 0) or 0,
+                    applied_result=ev.tool,
+                )
+                for ev in ctx.events
+            ]
+            t_bound = TurnBoundaryState(
+                id=turn_id,
+                phase="turn",
+                session_id=getattr(game, "id", None) if "game" in locals() and game else None,
+                focus=place,
+                audience=tuple(heard or ()),
+                external_boundary=False,
+            )
+            n_st = await ensure_state(s, cid)
+            pol = NarrativePolicy(mode=n_st.mode, version=n_st.policy_version)
+            bounds = derive_boundaries(tuple(ev_recs), t_bound, pol)
+            if bounds:
+                await enqueue_boundaries(ctx, bounds)
+        except Exception:
+            log.exception("ошибка вычисления границ адаптации хода %s", turn_id)
+
         turn.generation_checkpoint = checkpoint.effects_committed(
             events=[ev.id for ev in ctx.events],
             operation_refs=sorted(ctx.operation_refs),

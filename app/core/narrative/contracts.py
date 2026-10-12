@@ -468,3 +468,21 @@ class AuthorCallReport(NarrativeContractModel):
     error: str | None = None
 
 
+class PreparationReport(NarrativeContractModel):
+    """Execution report from director narrative service."""
+
+    work_id: str
+    status: str
+    reason_code: str
+    calls_reserved: int = 0
+
+
+class TurnBoundaryState(NarrativeContractModel):
+    """Context state of the turn when evaluating narrative boundaries."""
+
+    id: str
+    phase: str = "turn"
+    session_id: str | None = None
+    focus: str | None = None
+    audience: tuple[str, ...] | None = None
+    external_boundary: bool = False

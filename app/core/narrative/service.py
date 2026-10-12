@@ -38,13 +38,13 @@ class NarrativeService:
         self._jobs = jobs
         self._clock = clock
 
-    async def prepare_once(self) -> PreparationReport | None:
+    async def prepare_once(self, campaign_id: str | None = None) -> PreparationReport | None:
         """Executes a single director work unit.
 
         Returns PreparationReport or None if queue is idle.
         """
         now = self._clock()
-        claim = await self._jobs.claim(now)
+        claim = await self._jobs.claim(now, campaign_id=campaign_id)
         if claim is None:
             return None
 
@@ -98,7 +98,7 @@ class NarrativeService:
             await self._jobs.save_draft(reserved, proposal, now)
 
             # 6. Immediately attempt apply phase
-            apply_claim = await self._jobs.claim(now)
+            apply_claim = await self._jobs.claim(now, campaign_id=claim.campaign_id)
             if apply_claim is not None and apply_claim.phase == "apply":
                 app_result = await self._applier.apply(proposal)
                 await self._jobs.finish(apply_claim, app_result, now)

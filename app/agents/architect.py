@@ -295,6 +295,43 @@ async def revise(svc, cid: str) -> str | None:
                 return None
             if not plot.open_acts(secret.plot):
                 return None
+            from app.db.narrative import ensure_state
+            n_state = await ensure_state(s, cid)
+            is_adaptive = n_state.mode == "adaptive"
+            policy_ver = n_state.policy_version
+            if is_adaptive:
+                act = plot.active_act(secret.plot)
+                act_id = act["id"] if act else "act"
+                await s.rollback()
+
+        if is_adaptive:
+            from app.core.narrative.contracts import BoundaryRecord
+            from app.db.narrative_jobs import SqlNarrativeJobs
+
+            boundary = BoundaryRecord(
+                campaign_id=cid,
+                kind="act_closed",
+                source_id=f"act_closed_{act_id}",
+                scope="future",
+                evidence_refs=(),
+                audience=(),
+                session_budget_ref=f"sess_{cid}",
+                policy_version=policy_ver,
+            )
+            jobs = SqlNarrativeJobs(svc.maker)
+            work_id = await jobs.enqueue(boundary)
+            if hasattr(svc, "narrative_preparer") and svc.narrative_preparer is not None:
+                report = await svc.narrative_preparer.prepare_once(cid)
+                if report and report.status in ("applied", "prepared"):
+                    return work_id
+            if hasattr(svc, "signal_recovery"):
+                svc.signal_recovery()
+            return work_id
+
+        async with svc.maker() as s:
+            c = await s.get(Campaign, cid)
+            secret = await s.get(CampaignSecret, cid)
+            seat = master_seat(c)
             provider, model, api_base, temperature = await model_of(s, c)
             catalog = await campaign_catalog(s, c)
             length = length_of(c)
