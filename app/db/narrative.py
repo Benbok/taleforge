@@ -10,10 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.narrative.contracts import (
     FactRef,
     FactState,
+    NarrativeSource,
     SnapshotRef,
     ThreadState,
 )
-from app.db.models import NarrativeFact, NarrativeState, NarrativeThread
+from app.db.models import Event, NarrativeFact, NarrativeState, NarrativeThread
 
 
 async def ensure_state(session: AsyncSession, campaign_id: str) -> NarrativeState:
@@ -252,4 +253,22 @@ async def load_threads(
                 break
 
     return tuple(matched)
+
+
+def narrative_key(source: NarrativeSource) -> str:
+    """Stable SHA-256 idempotency key for narrative adaptations."""
+    import hashlib
+
+    return hashlib.sha256(source.source_key().encode("utf-8")).hexdigest()
+
+
+async def find_receipt(session: AsyncSession, source: NarrativeSource) -> Event | None:
+    """Find existing durable receipt event for a narrative source."""
+    key = narrative_key(source)
+    stmt = select(Event).where(
+        Event.campaign_id == source.campaign_id,
+        Event.idempotency_key == key,
+        Event.tool == "adapt_story",
+    )
+    return await session.scalar(stmt)
 

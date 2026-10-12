@@ -137,10 +137,14 @@ async def load_snapshot(
         read_set.append(ReadRef(kind="thread", id=th.id, version=th.version))
 
     # 7. Budgets
+    counters = st.budget_counters or {}
+    used_scene = counters.get("novelty_scene", 0)
+    used_session = counters.get("novelty_session", 0)
     budgets = {
-        "novelty_scene": policy.max_novelty_scene,
-        "novelty_session": policy.max_novelty_session,
+        "novelty_scene": max(0, policy.max_novelty_scene - used_scene),
+        "novelty_session": max(0, policy.max_novelty_session - used_session),
         "operations": policy.max_operations,
+        "combat_active": 1 if (ctx.world.scene.mode == "combat" or ctx.world.in_fight()) else 0,
     }
 
     permissions = NarrativePermissions(
