@@ -711,6 +711,7 @@ async def _edit_passage(ctx: ToolContext, place: Entity, x: dict, a: EditSketchA
     root = store.root_of(ctx.world.entities, place)
     if root is None:
         raise ToolError("комплекс этого участка не найден")
+    await _lock_sketch_place(ctx, root)
     key, value = PASSAGE_ACTIONS[a.action]
     before = copy.deepcopy(root.state)
     passages = dict((root.state or {}).get("passages") or {})

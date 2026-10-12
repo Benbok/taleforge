@@ -72,6 +72,32 @@ def test_secret_door_revealed_once_for_both_sides(client, admin, settings):
     assert _play(settings, cid, go) == (True, False)
 
 
+def test_hidden_passage_not_in_player_projection(client, admin, settings):
+    cid, _h, hid, _v, _t, ids = _built(client, admin, settings, "sacristy", "vault")
+
+    def seen(w, area):
+        sk = sketch.of_place(w.entities[area], w.catalog, w.entities)
+        out = sketch.project_for_viewer(sk, master=False, visible_places=set(), entities=w.entities, location_id=area)
+        return [x for x in out.get("exits") or [] if x.get("passage_ref") == "p_vault"], str(out)
+
+    async def go(ctx):
+        w = ctx.world
+        await _enter(ctx, hid, ids["sacristy"])
+        res = [[seen(w, ids["sacristy"]), seen(w, ids["vault"])]]
+        args = {"target": "Тайная дверь", "location_id": ids["sacristy"]}
+        await _ok(ctx, "edit_sketch", {"action": "reveal", **args})
+        res.append([seen(w, ids["sacristy"]), seen(w, ids["vault"])])
+        await _ok(ctx, "edit_sketch", {"action": "hide", **args})
+        res.append([seen(w, ids["sacristy"]), seen(w, ids["vault"])])
+        return res
+
+    hidden, shown, again = _play(settings, cid, go)
+    for exits, text in hidden + again:
+        assert exits == [] and "p_vault" not in text
+    for exits, _text in shown:
+        assert len(exits) == 1
+
+
 def test_surveyor_and_redraw_do_not_replace_blueprint_sketch(client, admin, settings):
     cid, _h, hid, _v, _t, ids = _built(client, admin, settings, "road")
 
