@@ -230,6 +230,8 @@ def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod
     assert m["status"] == "published" and m["pack_id"] == "module-unquiet-dead" and m["pack_version"] == "1.0.0"
     # модуль не попадает в список пакетов мира
     assert all(p["id"] != "module-unquiet-dead" for p in ok(client.get("/api/packs", headers=admin_m)))
+    # и в миры героя профиля тоже: модуль — приключение, а не мир
+    assert all(w["id"] != "module-unquiet-dead" for w in ok(client.get("/api/me/worlds", headers=admin_m)))
 
     async def catalog(s):
         cat = (await load_catalog(s, [["dnd5e-srd", BASE_VERSION], ["module-unquiet-dead", "1.0.0"]])).view(False)

@@ -43,6 +43,11 @@ def _is_base(p: ContentPack) -> bool:
     return p.id == BASE_PACK_ID or p.manifest.get("provides") == BASE_RULES
 
 
+def _not_world(p: ContentPack) -> bool:
+    """Базовые правила и готовые приключения — пакеты, но не миры героя."""
+    return _is_base(p) or (p.manifest or {}).get("kind") == "module"
+
+
 async def base_catalog(session: AsyncSession) -> CatalogView:
     cat = await load_catalog(session, await resolve_chain(session, None))
     return cat.view(False)
@@ -53,7 +58,7 @@ async def worlds(session: AsyncSession) -> list[dict[str, Any]]:
     latest: dict[str, ContentPack] = {}
     base_name = "Базовые правила D&D 5e"
     for p in (await session.scalars(select(ContentPack))).all():
-        if _is_base(p):
+        if _not_world(p):
             continue
         if p.id not in latest or version_tuple(p.version) > version_tuple(latest[p.id].version):
             latest[p.id] = p
@@ -65,7 +70,7 @@ async def world(session: AsyncSession, pack_id: str | None) -> World:
     if not pack_id:
         return World(None, "Базовые правила D&D 5e", await base_catalog(session), LIBRARY_RULES)
     pack = await latest_version(session, pack_id)
-    if pack is None or _is_base(pack):
+    if pack is None or _not_world(pack):
         raise NotFound(f"мир «{pack_id}» не загружен: выберите другой или попросите админа загрузить пакет")
     cat = await load_catalog(session, await resolve_chain(session, pack))
     cap = min(20, int(pack.manifest.get("level_cap") or 20))
