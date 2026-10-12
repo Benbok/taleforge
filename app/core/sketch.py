@@ -4,8 +4,8 @@
 таблица сцены напоминает о нём. Комната готового приключения получает эскиз сама — по клеткам пола и стенам с карты
 книги. Хранится в ``entities.state.sketch`` места:
 
-    {shape, cols, rows, party: [c, r], walls: [[c, r]],
-     exits: [{side, at, kind, state, name, to, beyond, hidden}],
+    {shape, cols, rows, party: [c, r], walls: [[c, r]], mask: ["..#"],
+     exits: [{side, at, width, cells, kind, state, name, to, beyond, hidden}],
      features: [{name, kind, cells: [[c0, r0, c1, r1]], cover, hidden}]}
 
 Клетка (0, 0) — северо-западный угол, столбцы растут на восток, строки — на юг. ``party`` — где стоит строй отряда:
@@ -55,6 +55,45 @@ def side_len(sk: dict, side: str) -> int:
     return sk["cols"] if side in ("n", "s") else sk["rows"]
 
 
+def encode_mask(floor: set[tuple[int, int]], cols: int, rows: int) -> list[str]:
+    """Маска пола участка неправильной формы: строка на ряд, «.» — пол, «#» — вне участка."""
+    return ["".join("." if (c, r) in floor else "#" for c in range(cols)) for r in range(rows)]
+
+
+def floor_cells(sk: dict | None) -> set[tuple[int, int]] | None:
+    """Клетки пола по маске; None — маски нет, пол — весь прямоугольник (старые эскизы и комнаты книги)."""
+    mask = (sk or {}).get("mask")
+    if not mask:
+        return None
+    return {(c, r) for r, row in enumerate(mask) for c, ch in enumerate(row) if ch == "."}
+
+
+def solid_cells(sk: dict | None) -> set[tuple[int, int]]:
+    """Непроходимые клетки рамки: стены и всё вне маски пола. Одна мера для шага, пути, прямой видимости и карты."""
+    if not sk:
+        return set()
+    out = {(int(x[0]), int(x[1])) for x in sk.get("walls") or []}
+    floor = floor_cells(sk)
+    if floor is not None:
+        out |= {(c, r) for c in range(sk["cols"]) for r in range(sk["rows"]) if (c, r) not in floor}
+    return out
+
+
+def exit_cells(sk: dict, x: dict) -> list[tuple[int, int]]:
+    """Клетки места у выхода, с которых в него входят. Проход комплекса хранит их сам (маска может отодвинуть пол
+    от края); у обычного выхода — клетки края на ширине ``width``."""
+    if x.get("cells"):
+        return [(int(c[0]), int(c[1])) for c in x["cells"]]
+    at, side, width = int(x["at"]), x["side"], int(x.get("width") or 1)
+    if side == "n":
+        return [(at + i, 0) for i in range(width)]
+    if side == "s":
+        return [(at + i, sk["rows"] - 1) for i in range(width)]
+    if side == "w":
+        return [(0, at + i) for i in range(width)]
+    return [(sk["cols"] - 1, at + i) for i in range(width)]
+
+
 def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
     """Ошибки эскиза для мастера: всё в пределах места, выходы на краю, предметы не налезают на стены и друг на
     друга, строй отряда на свободной клетке. ``reach`` — ещё и мебель не отрезает выходы и привязанные объекты
@@ -62,6 +101,11 @@ def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
     errors: list[str] = []
     cols, rows = sk["cols"], sk["rows"]
     inside = lambda c, r: 0 <= c < cols and 0 <= r < rows  # noqa: E731
+    mask = sk.get("mask")
+    if mask is not None and (len(mask) != rows or any(len(row) != cols or set(row) - {".", "#"} for row in mask)):
+        errors.append(f"маска пола: {rows} строк по {cols} символов «.» или «#»")
+        mask = None
+    void = solid_cells({**sk, "walls": []}) if mask is not None else set()
     walls = set()
     for c, r in sk.get("walls") or []:
         if not inside(c, r):
@@ -101,7 +145,7 @@ def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
                 continue
             for c in range(c0, c1 + 1):
                 for r in range(r0, r1 + 1):
-                    if (c, r) in walls:
+                    if (c, r) in walls or (c, r) in void:
                         errors.append(f"«{f['name']}» стоит на стене ({c}, {r})")
                     elif (c, r) in taken and taken[(c, r)] != f["name"]:
                         errors.append(f"«{f['name']}» и «{taken[(c, r)]}» в одной клетке ({c}, {r})")
@@ -109,17 +153,19 @@ def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
     seen: set[tuple[str, int]] = set()
     for x in sk.get("exits") or []:
         n = side_len(sk, x["side"])
-        if not 0 <= x["at"] < n:
-            errors.append(f"выход «{x['name']}»: at от 0 до {n - 1} на стороне {SIDES[x['side']]}")
-        if (x["side"], x["at"]) in seen:
-            errors.append(f"два выхода в одной клетке стороны {SIDES[x['side']]} ({x['at']})")
-        seen.add((x["side"], x["at"]))
+        width = int(x.get("width") or 1)
+        if width < 1 or not 0 <= x["at"] <= n - width:
+            errors.append(f"выход «{x['name']}»: at от 0 до {n - width} на стороне {SIDES[x['side']]}")
+        cells = {(x["side"], x["at"] + i) for i in range(max(width, 1))}
+        if cells & seen:
+            errors.append(f"два выхода в одной клетке стороны {SIDES[x['side']]} ({min(a for _, a in cells & seen)})")
+        seen |= cells
         if x.get("to") and x["to"] not in place_ids:
             errors.append(f"выход «{x['name']}»: нет места {x['to']}; сначала create_location")
     c, r = sk["party"]
     if not inside(c, r):
         errors.append(f"отряд ({c}, {r}) за пределами места {cols}×{rows}")
-    elif (c, r) in walls or (c, r) in taken:
+    elif (c, r) in walls or (c, r) in taken or (c, r) in void:
         errors.append(f"отряд ({c}, {r}) стоит на стене или предмете")
     if reach and not errors:
         from app.core.reach import reach_errors
@@ -164,7 +210,23 @@ def describe(sk: dict) -> str:
 
 def for_viewer(sk: dict, master: bool, visible_places: set[str]) -> dict:
     """Эскиз для карты: игрок не видит тайных выходов и предметов, а ссылку выхода — только на известное место."""
-    out = {k: sk[k] for k in ("shape", "cols", "rows", "party", "walls", "book") if k in sk}
+    out = {
+        k: sk[k]
+        for k in (
+            "shape",
+            "cols",
+            "rows",
+            "party",
+            "walls",
+            "book",
+            "mask",
+            "edges",
+            "terrain",
+            "material",
+            "environment",
+        )
+        if k in sk
+    }
     out["exits"] = [
         {**x, "to": x.get("to") if master or x.get("to") in visible_places else None}
         for x in sk.get("exits") or []

@@ -33,7 +33,9 @@ def _inside(sk: dict, c: Cell) -> bool:
 
 
 def _walls(sk: dict) -> set[Cell]:
-    return {(int(x[0]), int(x[1])) for x in sk.get("walls") or []}
+    from app.core import sketch
+
+    return sketch.solid_cells(sk)
 
 
 def blocked_cells(sk: dict) -> set[Cell]:
@@ -116,9 +118,12 @@ def reach_errors(sk: dict) -> list[str]:
         for cell in footprint(f):
             taken.setdefault(cell, f["name"])
     for x in sk.get("exits") or []:
-        cell = exit_cell(sk, x)
-        if not _inside(sk, cell) or cell not in baseline or cell in region:
+        from app.core import sketch
+
+        cells = [c for c in sketch.exit_cells(sk, x) if _inside(sk, c)]
+        if not any(c in baseline for c in cells) or any(c in region for c in cells):
             continue
+        cell = next(c for c in cells if c in baseline)
         if cell in taken:
             errors.append(f"«{taken[cell]}» загораживает выход «{x['name']}»")
         else:
