@@ -165,7 +165,11 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
-            "narrative_mode": body.narrative_mode,
+            "narrative_mode": body.narrative.mode if body.narrative else body.narrative_mode,
+            "narrative": {
+                "mode": body.narrative.mode if body.narrative else body.narrative_mode,
+                "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
+            },
             "leveling": body.leveling,
             "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
@@ -278,11 +282,21 @@ async def patch_campaign(
             or getattr(body, key) is not None
         ):
             settings[key] = getattr(body, key)
-    if body.narrative_mode is not None:
+    new_mode = None
+    if body.narrative is not None:
+        new_mode = body.narrative.mode
+    elif body.narrative_mode is not None:
+        new_mode = body.narrative_mode
+    if new_mode is not None:
+        settings["narrative_mode"] = new_mode
+        settings["narrative"] = {
+            "mode": new_mode,
+            "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
+        }
         from app.db.narrative import ensure_state
 
         st = await ensure_state(session, c.id)
-        st.mode = body.narrative_mode
+        st.mode = new_mode
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     if settings.get("scene_generation") and not (c.settings or {}).get("scene_generation"):
         from app.core.preparation import preserve_seen_places

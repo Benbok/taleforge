@@ -11,10 +11,12 @@ from sqlalchemy import func, select
 
 from app.agents import architect
 from app.api.deps import SessionDep, UserDep
+from app.api.schemas import NarrativePreparationStatusOut
 from app.content.catalog import campaign_catalog
 from app.core import adventure, plot
 from app.core import campaigns as svc
 from app.core.campaigns import AccessDenied, Conflict, NotFound
+from app.core.narrative.contracts import to_narrative_preparation_status
 from app.db.models import CampaignPlan, CampaignSecret, User
 
 router = APIRouter(prefix="/api", tags=["plan"])
@@ -50,8 +52,10 @@ async def plan_out(session, v) -> dict:
         select(func.count()).select_from(CampaignPlan).where(CampaignPlan.campaign_id == c.id)
     )
     status, error = plot.status(st)
+    prep_status = to_narrative_preparation_status(status, error)
     out = {
         "status": status,
+        "narrative_status": prep_status.status,
         "error": error,
         "version": (st.get("plan") or {}).get("version"),
         "versions": int(versions or 0),
@@ -73,6 +77,16 @@ async def plan_out(session, v) -> dict:
 @router.get("/campaigns/{campaign_id}/plan")
 async def get_plan(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
     return await plan_out(session, await _manager(session, user, campaign_id))
+
+
+@router.get("/campaigns/{campaign_id}/narrative/status", response_model=NarrativePreparationStatusOut)
+async def get_narrative_status(campaign_id: str, user: UserDep, session: SessionDep) -> NarrativePreparationStatusOut:
+    """Безопасный статус подготовки сюжета (только status/error, без спойлеров и закрытых причин)."""
+    v = await _manager(session, user, campaign_id)
+    c = v.campaign
+    st = c.settings or {}
+    status, error = plot.status(st)
+    return to_narrative_preparation_status(status, error)
 
 
 @router.get("/campaigns/{campaign_id}/plan/options")

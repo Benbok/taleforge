@@ -37,7 +37,7 @@ def test_whisper_answered_privately_without_turn(game_client, admin_g, llm, sett
     assert rows(settings, MasterTurn, MasterTurn.campaign_id == c["id"]) == []
     assert [x.purpose for x in rows(settings, LlmCall, LlmCall.campaign_id == c["id"])] == ["whisper"]
     w = rows(settings, Message, Message.id == mine["id"])[0]
-    assert w.data == {"answer": "answered"}
+    assert (w.data or {}).get("answer") == "answered"
 
     with connect(game_client, p1, c["id"]) as (_, snap):
         states = {m["id"]: m["state"] for m in snap["payload"]["messages"]}

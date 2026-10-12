@@ -1317,6 +1317,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/narrative/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Narrative Status
+         * @description Безопасный статус подготовки сюжета (только status/error, без спойлеров и закрытых причин).
+         */
+        get: operations["get_narrative_status_api_campaigns__campaign_id__narrative_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/party-roles": {
         parameters: {
             query?: never;
@@ -2453,6 +2473,7 @@ export interface components {
             module_id?: string | null;
             /** Name */
             name: string;
+            narrative?: components["schemas"]["NarrativeSettingsIn"] | null;
             /**
              * Narrative Mode
              * @description Режим адаптации сюжета
@@ -2588,6 +2609,7 @@ export interface components {
             leveling?: ("xp" | "milestone") | null;
             /** Name */
             name?: string | null;
+            narrative?: components["schemas"]["NarrativeSettingsIn"] | null;
             /**
              * Narrative Mode
              * @description Режим адаптации сюжета
@@ -4900,6 +4922,27 @@ export interface components {
             /** Accepted */
             accepted: boolean;
         };
+        /** NarrativePreparationStatusOut */
+        NarrativePreparationStatusOut: {
+            /** Error */
+            error: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "preparing" | "ready" | "failed";
+        };
+        /** NarrativeSettingsIn */
+        NarrativeSettingsIn: {
+            /**
+             * Mode
+             * @default strict
+             * @enum {string}
+             */
+            mode?: "strict" | "adaptive";
+            /** Policy Version */
+            policy_version?: string | null;
+        };
         /** NoteIn */
         NoteIn: {
             /** Cause */
@@ -5936,6 +5979,8 @@ export type MessageState = components['schemas']['MessageState'];
 export type MessageWithdrawn = components['schemas']['MessageWithdrawn'];
 export type ModelCheckIn = components['schemas']['ModelCheckIn'];
 export type NarrationRetryOut = components['schemas']['NarrationRetryOut'];
+export type NarrativePreparationStatusOut = components['schemas']['NarrativePreparationStatusOut'];
+export type NarrativeSettingsIn = components['schemas']['NarrativeSettingsIn'];
 export type NoteIn = components['schemas']['NoteIn'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
@@ -8878,6 +8923,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_narrative_status_api_campaigns__campaign_id__narrative_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativePreparationStatusOut"];
                 };
             };
             /** @description Validation Error */

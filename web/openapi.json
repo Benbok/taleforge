@@ -554,6 +554,16 @@
       "title": "Name",
       "type": "string"
      },
+     "narrative": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NarrativeSettingsIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "narrative_mode": {
       "default": "strict",
       "description": "Режим адаптации сюжета",
@@ -1011,6 +1021,16 @@
        }
       ],
       "title": "Name"
+     },
+     "narrative": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NarrativeSettingsIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "narrative_mode": {
       "anyOf": [
@@ -8438,6 +8458,63 @@
      "accepted"
     ],
     "title": "NarrationRetryOut",
+    "type": "object"
+   },
+   "NarrativePreparationStatusOut": {
+    "properties": {
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "status": {
+      "enum": [
+       "pending",
+       "preparing",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "error"
+    ],
+    "title": "NarrativePreparationStatusOut",
+    "type": "object"
+   },
+   "NarrativeSettingsIn": {
+    "properties": {
+     "mode": {
+      "default": "strict",
+      "enum": [
+       "strict",
+       "adaptive"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "policy_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Policy Version"
+     }
+    },
+    "title": "NarrativeSettingsIn",
     "type": "object"
    },
    "NoteIn": {
@@ -16229,6 +16306,54 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/narrative/status": {
+   "get": {
+    "description": "Безопасный статус подготовки сюжета (только status/error, без спойлеров и закрытых причин).",
+    "operationId": "get_narrative_status_api_campaigns__campaign_id__narrative_status_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NarrativePreparationStatusOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get Narrative Status",
+    "tags": [
+     "plan"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/party-roles": {
    "get": {
     "description": "Каких ролей не хватает отряду и какие классы их закроют — подсказка перед тем, как сажать ИИ-игрока.",
@@ -18770,11 +18895,6 @@
       "description": "Successful Response"
      }
     },
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
     "summary": "Menu Theme",
     "tags": [
      "audio"
@@ -18794,11 +18914,6 @@
       "description": "Successful Response"
      }
     },
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
     "summary": "Menu Theme File",
     "tags": [
      "audio"

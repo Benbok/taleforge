@@ -538,3 +538,27 @@ class TurnBoundaryState(NarrativeContractModel):
     focus: str | None = None
     audience: tuple[str, ...] | None = None
     external_boundary: bool = False
+
+
+class NarrativePreparationStatusOut(NarrativeContractModel):
+    """Safe preparation status exposed to campaign managers without spoilers or private reasons."""
+
+    status: Literal["pending", "preparing", "ready", "failed"]
+    error: str | None = None
+
+
+def to_narrative_preparation_status(
+    status_str: str | None,
+    error: str | None = None,
+) -> NarrativePreparationStatusOut:
+    """Map domain preparation status into a safe public status."""
+    st = (status_str or "").lower()
+    if st in ("ready", "active", "done", "completed"):
+        mapped = "ready"
+    elif st in ("generating", "preparing", "in_progress", "busy"):
+        mapped = "preparing"
+    elif st in ("failed", "error"):
+        mapped = "failed"
+    else:
+        mapped = "pending"
+    return NarrativePreparationStatusOut(status=mapped, error=error)

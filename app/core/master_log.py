@@ -146,8 +146,8 @@ async def build(s: AsyncSession, campaign_id: str, settings: Settings, limit: in
                 "seq": [tr.get("from_seq"), t.upto_seq],
                 "calls": [c if show or not c["secret"] else redact(c) for c in calls],
                 "combat": tr.get("combat") or [],
-                "advance": tr.get("advance"),
-                "audit": tr.get("audit"),
+                "advance": tr.get("advance") if show else None,
+                "audit": tr.get("audit") if show else None,
                 "error": _short(tr.get("error")),
                 "llm": llm_by_turn.get(t.id, []),
             }
