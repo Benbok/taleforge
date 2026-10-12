@@ -11,6 +11,7 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
 from app.agents.master import checkpoint
+from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
 from app.agents.master.creative import creative_context, creative_note
 from app.agents.master.helpers import (
@@ -512,6 +513,7 @@ class TurnMixin:
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"{await resolution_prompt(ctx)}"
                     f"\n{creative_note(creative_context(ctx))}\n"
+                    f"{await adaptation_prompt(ctx)}\n"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -763,7 +765,7 @@ class TurnMixin:
                     else:
                         failed_transition = True
                         failed_in_batch = True
-            admission_note = await resolution_prompt(ctx)
+            admission_note = (await resolution_prompt(ctx)) + (await adaptation_prompt(ctx))
             if admission_note:
                 msgs.append({"role": "user", "content": admission_note})
             if failed_in_batch:
@@ -845,6 +847,7 @@ class TurnMixin:
             "world": world_note,
             "stalled": bool(stall),
         }
+        adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
         turn.generation_checkpoint = checkpoint.effects_committed(
             events=[ev.id for ev in ctx.events],
             operation_refs=sorted(ctx.operation_refs),
@@ -860,7 +863,9 @@ class TurnMixin:
                 "party_notes": party_notes,
                 "stalled": bool(stall),
                 "meet": meet,
+                "adaptation_notes": [e.description for e in adapt_effects],
             },
+            adaptation_effects=[e.model_dump() for e in adapt_effects],
         )
         await s.commit()
         return {"ctx": ctx, "messages": whispers, "names": names, "ids": [m.id for m in new], "skipped": False}

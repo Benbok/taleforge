@@ -304,6 +304,7 @@ class CampaignCreateIn(BaseModel):
         default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
     )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
+    narrative_mode: Literal["strict", "adaptive"] = Field(default="strict", description="Режим адаптации сюжета")
     module_id: str | None = Field(default=None, description="готовое приключение вместо анкеты и пакета мира")
     module_hook: str | None = Field(default=None, max_length=32, description="зацепка книги для вступления")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
@@ -324,6 +325,7 @@ class CampaignCreateIn(BaseModel):
 class CampaignPatchIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     public_intro: str | None = Field(default=None, max_length=10000)
+    narrative_mode: Literal["strict", "adaptive"] | None = Field(default=None, description="Режим адаптации сюжета")
     difficulty: Literal["easy", "normal", "hard", "deadly"] | None = None
     turn_timeout_sec: int | None = Field(default=None, ge=30, le=300)
     spend_limit_usd: float | None = Field(default=None, ge=0)

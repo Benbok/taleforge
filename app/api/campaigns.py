@@ -165,6 +165,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
+            "narrative_mode": body.narrative_mode,
             "leveling": body.leveling,
             "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
@@ -262,6 +263,7 @@ async def patch_campaign(
         "excluded_themes",
         "audio_enabled",
         "sfx_enabled",
+        "narrative_mode",
         "tts_provider",
         "tts_enabled",
         "tts_voice",
@@ -276,6 +278,11 @@ async def patch_campaign(
             or getattr(body, key) is not None
         ):
             settings[key] = getattr(body, key)
+    if body.narrative_mode is not None:
+        from app.db.narrative import ensure_state
+
+        st = await ensure_state(session, c.id)
+        st.mode = body.narrative_mode
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     if settings.get("scene_generation") and not (c.settings or {}).get("scene_generation"):
         from app.core.preparation import preserve_seen_places

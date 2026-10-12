@@ -205,3 +205,91 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
         },
     )
     return {"ok": True, "front_id": src_id, "new_intent": args.new_intent, "event_id": ev.id}
+
+
+class AdaptStoryArgs(BaseModel):
+    slot_ref: int = Field(ge=0, le=2, description="Номер слота адаптации текущего хода (0, 1 или 2)")
+    grounds: list[dict[str, Any]] = Field(default_factory=list, description="Основания адаптации")
+    summary: str = Field(description="Краткое объяснение адаптации")
+    operations: list[dict[str, Any]] = Field(default_factory=list, description="Типизированные операции")
+
+
+@tool("adapt_story", "Apply narrative adaptation in scene", AdaptStoryArgs)
+async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
+    import secrets
+
+    from pydantic import TypeAdapter
+
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        Ground,
+        NarrativePolicy,
+        Operation,
+        VersionSet,
+    )
+    from app.db.narrative import ensure_state
+    from app.tools.narrative.executor import apply_in_context
+    from app.tools.narrative.sources import bind_scene_sources
+
+    slots = await bind_scene_sources(ctx)
+    if args.slot_ref < 0 or args.slot_ref >= len(slots):
+        raise ToolError("неверный номер слота адаптации", code="invalid_slot")
+
+    source = slots[args.slot_ref]
+    state = await ensure_state(ctx.session, ctx.campaign.id)
+    if state.mode != "adaptive":
+        raise ToolError("адаптивный режим выключен", code="policy_strict_mode")
+
+    policy = NarrativePolicy(mode="adaptive")
+    op_adapter = TypeAdapter(Operation)
+
+    try:
+        # Normalize missing campaign_id in evidence_refs
+        normalized_grounds = []
+        for g in args.grounds:
+            g_dict = dict(g)
+            ev_refs = []
+            for ev in g_dict.get("evidence_refs", []):
+                ev_dict = dict(ev)
+                if not ev_dict.get("campaign_id"):
+                    ev_dict["campaign_id"] = ctx.campaign.id
+                ev_refs.append(ev_dict)
+            g_dict["evidence_refs"] = ev_refs
+            normalized_grounds.append(Ground.model_validate(g_dict))
+
+        grounds = tuple(normalized_grounds)
+        operations = tuple(op_adapter.validate_python(o) for o in args.operations)
+    except Exception as e:
+        raise ToolError(f"неверный формат аргументов адаптации: {e}", code="invalid_args") from e
+
+    plot_ver = ctx.world.plot.get("version", 1) if isinstance(ctx.world.plot, dict) else 1
+    base = VersionSet(
+        world_revision=ctx.world.revision,
+        plan_version=plot_ver,
+        narrative_revision=state.revision,
+        policy_version=policy.version,
+        operation_schema_version=1,
+    )
+    proposal_id = f"prop_{secrets.token_hex(8)}"
+    proposal = AdaptationProposal(
+        schema_version=1,
+        proposal_id=proposal_id,
+        source=source,
+        base=base,
+        grounds=grounds,
+        summary=args.summary,
+        operations=operations,
+    )
+
+    result = await apply_in_context(ctx, proposal, policy=policy)
+    if result.status in ("denied", "failed", "stale", "deferred"):
+        raise ToolError(f"адаптация не принята: {result.reason_code}", code=result.reason_code)
+
+    return {
+        "ok": True,
+        "status": result.status,
+        "reason_code": result.reason_code,
+        "event_ids": list(result.event_ids),
+        "created_ids": list(result.created_ids),
+        "budgets_used": result.budgets_used,
+    }

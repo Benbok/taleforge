@@ -39,6 +39,7 @@ class NarrationMixin:
         ctx: ToolContext,
         notes=(),
         plot_notes=(),
+        adaptation_notes=(),
         stream=None,
         *,
         stalled: bool = False,
@@ -60,6 +61,7 @@ class NarrationMixin:
             check_only=_check_only(ctx, notes),
             combat_notes=list(notes),
             plot_notes=list(plot_notes),
+            adaptation_notes=list(adaptation_notes),
             next_turn=turn["name"] if turn else None,
             stalled=stalled,
         )

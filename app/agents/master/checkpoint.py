@@ -27,6 +27,7 @@ def effects_committed(
     place: str | None,
     inputs: dict[str, Any],
     reserved_fact_refs: list[str] | None = None,
+    adaptation_effects: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "version": VERSION,
@@ -39,6 +40,7 @@ def effects_committed(
         "attempts": 0,
         "inputs": inputs,
         "reserved_fact_refs": reserved_fact_refs or [],
+        "adaptation_effects": adaptation_effects or [],
     }
 
 

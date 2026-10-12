@@ -35,6 +35,7 @@ DEFAULT_SETTINGS = {
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
     "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
+    "narrative_mode": "strict",  # режим адаптации сюжета: strict / adaptive
     **voicing.DEFAULTS,  # каналы озвучки: реплики локально, текст выключен
 }
 
@@ -310,6 +311,11 @@ async def create_campaign(
     session.add(campaign)
     await session.flush()
     session.add(CampaignSecret(campaign_id=campaign.id))
+    await session.flush()
+    from app.db.narrative import ensure_state
+
+    st = await ensure_state(session, campaign.id)
+    st.mode = campaign.settings.get("narrative_mode", "strict")
     await session.flush()
     return campaign
 

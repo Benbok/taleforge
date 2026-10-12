@@ -175,6 +175,7 @@ class FinishMixin:
                 stalled=bool(inputs.get("stalled")),
                 meet=meet,
                 tool_attempts=tool_attempts,
+                adaptation_notes=inputs.get("adaptation_notes") or [],
             )
         except BaseException:
             if voice_task is not None:
