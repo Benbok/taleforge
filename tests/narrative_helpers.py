@@ -51,7 +51,6 @@ def policy(**overrides: Any) -> NarrativePolicy:
     return NarrativePolicy(**overrides)
 
 
-
 def fact(**overrides: Any) -> FactState:
     """Factory for FactState with defaults."""
     ref_overrides = overrides.pop("ref", None)
@@ -158,6 +157,9 @@ def snapshot(**overrides: Any) -> NarrativeSnapshot:
                 "upsert_thread",
                 "transition_thread",
                 "reveal_fact",
+                "introduce_actor",
+                "settle_standing_response",
+                "revise_draft_fact",
             ),
             supplement_scopes=("future",),
         ),
@@ -244,5 +246,3 @@ class FakeClock:
 
     def advance(self, seconds: int) -> None:
         self._current += timedelta(seconds=seconds)
-
-

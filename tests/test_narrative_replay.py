@@ -14,7 +14,7 @@ from app.core.narrative.contracts import (
     Ground,
     NarrativeSource,
 )
-from app.db.models import Campaign, Event
+from app.db.models import Campaign, Event, Message
 from app.db.session import make_sessionmaker
 from app.tools.narrative.executor import apply_in_context, narrative_key
 from app.tools.runtime import open_context
@@ -55,6 +55,9 @@ def replay_scenario(settings, client, admin):
 
     async def first_turn(ctx):
         nonlocal first_result
+        msg = Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Сообщение игрока")
+        ctx.session.add(msg)
+        await ctx.session.flush()
         prop = _make_prop(
             cid,
             hero["id"],
@@ -78,9 +81,7 @@ def replay_scenario(settings, client, admin):
             ctx.world.revision,
             src,
             summary="Completely different author proposal",
-            operations=(
-                op("develop_actor_role", entity_id=hero["id"], new_role="blacksmith"),
-            ),
+            operations=(op("develop_actor_role", entity_id=hero["id"], new_role="blacksmith"),),
         )
         repeated_result = await apply_in_context(ctx, prop2, policy=policy())
 
@@ -91,10 +92,14 @@ def replay_scenario(settings, client, admin):
     async def count_receipts(ctx):
         nonlocal receipt_count
         key = narrative_key(src)
-        stmt = select(func.count()).select_from(Event).where(
-            Event.campaign_id == cid,
-            Event.idempotency_key == key,
-            Event.tool == "adapt_story",
+        stmt = (
+            select(func.count())
+            .select_from(Event)
+            .where(
+                Event.campaign_id == cid,
+                Event.idempotency_key == key,
+                Event.tool == "adapt_story",
+            )
         )
         receipt_count = await ctx.session.scalar(stmt) or 0
 
@@ -129,6 +134,9 @@ def test_no_change_retry_returns_original_receipt(settings, client, admin):
 
     async def first_turn(ctx):
         nonlocal first_result
+        msg = Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Сообщение игрока")
+        ctx.session.add(msg)
+        await ctx.session.flush()
         prop = _make_prop(cid, hero["id"], ctx.world.revision, src, operations=())
         first_result = await apply_in_context(ctx, prop, policy=policy())
 

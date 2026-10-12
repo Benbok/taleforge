@@ -6,6 +6,7 @@ import secrets
 
 from sqlalchemy import select
 
+from app.core.modules import parse_narrative_permissions
 from app.core.narrative.contracts import (
     EvidenceRecord,
     FrontRef,
@@ -18,7 +19,8 @@ from app.core.narrative.contracts import (
     ThreadState,
     VersionSet,
 )
-from app.db.models import Event, NarrativeThread
+from app.core.narrative.operations import ACTIVE_OPERATION_KINDS
+from app.db.models import Event, Message, NarrativeThread
 from app.db.narrative import ensure_state, load_subject_facts
 from app.tools.registry import ToolContext
 
@@ -48,30 +50,141 @@ async def load_snapshot(
     # 1. Evidence
     evidence_records: list[EvidenceRecord] = []
     if request.evidence_refs:
+        scene_state = ctx.world.scene.state if isinstance(ctx.world.scene.state, dict) else {}
         for ev_ref in request.evidence_refs:
+            if ev_ref.campaign_id != cid:
+                continue
+
             if ev_ref.kind == "event":
                 stmt = select(Event).where(Event.campaign_id == cid, Event.id == ev_ref.source_id)
                 res = await ctx.session.execute(stmt)
                 ev_row = res.scalar_one_or_none()
-                if ev_row:
-                    evidence_records.append(
-                        EvidenceRecord(
-                            ref=ev_ref,
-                            status="applied",
-                            subject_refs=(ev_row.actor_id,) if ev_row.actor_id else (),
-                            audience=("party",),
-                            game_time=ev_row.game_time,
-                            applied_result=ev_row.tool,
-                        )
-                    )
-            else:
+                if not ev_row:
+                    continue
+                if ev_row.tool in ("adapt_story", "narrative_fact_snapshot") or (
+                    ev_row.tool and ev_row.tool.startswith("apply_narrative_")
+                ):
+                    continue
+
+                if ev_row.hidden:
+                    payload = ev_row.payload if isinstance(ev_row.payload, dict) else {}
+                    aud = payload.get("audience")
+                    if isinstance(aud, (list, tuple)):
+                        audience = tuple(aud)
+                    elif isinstance(aud, str):
+                        audience = (aud,)
+                    elif ev_row.actor_id:
+                        audience = (ev_row.actor_id,)
+                    else:
+                        audience = ()
+                else:
+                    audience = ("party",)
+
                 evidence_records.append(
                     EvidenceRecord(
                         ref=ev_ref,
                         status="applied",
-                        audience=("party",),
+                        subject_refs=(ev_row.actor_id,) if ev_row.actor_id else (),
+                        audience=audience,
+                        game_time=ev_row.game_time,
+                        applied_result=ev_row.tool,
                     )
                 )
+
+            elif ev_ref.kind == "message":
+                stmt = select(Message).where(Message.campaign_id == cid, Message.id == ev_ref.source_id)
+                res = await ctx.session.execute(stmt)
+                msg = res.scalar_one_or_none()
+                if not msg:
+                    continue
+
+                if msg.visible_to is not None:
+                    audience = tuple(msg.visible_to)
+                else:
+                    audience = ("party",)
+
+                content_str = (msg.content or "").strip()
+                intent_dict = msg.intent if isinstance(msg.intent, dict) else {}
+                if content_str.endswith("?") or intent_dict.get("kind") == "question_to_master":
+                    status = "question"
+                else:
+                    status = "stated"
+
+                subject_refs = (msg.author_user_id,) if msg.author_user_id else ()
+                evidence_records.append(
+                    EvidenceRecord(
+                        ref=ev_ref,
+                        status=status,
+                        subject_refs=subject_refs,
+                        audience=audience,
+                        game_time=0,
+                        utterance_text=msg.content,
+                    )
+                )
+
+            elif ev_ref.kind == "standing_response":
+                standing = scene_state.get("standing") if isinstance(scene_state, dict) else {}
+                responses = standing.get("responses", []) if isinstance(standing, dict) else []
+                matched_resp = None
+                for r in responses:
+                    if isinstance(r, dict) and r.get("id") == ev_ref.source_id:
+                        matched_resp = r
+                        break
+
+                if matched_resp and matched_resp.get("state") == "ready":
+                    participants = matched_resp.get("participants") or matched_resp.get("actor_ids") or ()
+                    if isinstance(participants, (list, tuple)):
+                        sub_refs = tuple(participants)
+                    elif isinstance(participants, str):
+                        sub_refs = (participants,)
+                    else:
+                        sub_refs = ()
+
+                    aud = matched_resp.get("audience")
+                    if isinstance(aud, (list, tuple)):
+                        audience = tuple(aud)
+                    elif isinstance(aud, str):
+                        audience = (aud,)
+                    else:
+                        audience = ("party",)
+
+                    evidence_records.append(
+                        EvidenceRecord(
+                            ref=ev_ref,
+                            status="applied",
+                            subject_refs=sub_refs,
+                            audience=audience,
+                        )
+                    )
+
+            elif ev_ref.kind == "time_interval":
+                found_interval = False
+                antagonists = plot_data.get("antagonists", []) if isinstance(plot_data, dict) else []
+                fronts = plot_data.get("fronts", []) if isinstance(plot_data, dict) else []
+                timers = plot_data.get("timers", {}) if isinstance(plot_data, dict) else {}
+                scene_timers = scene_state.get("timers", {}) if isinstance(scene_state, dict) else {}
+
+                for ant in antagonists:
+                    if isinstance(ant, dict) and ant.get("id") == ev_ref.source_id:
+                        found_interval = True
+                        break
+                if not found_interval:
+                    for fr in fronts:
+                        if isinstance(fr, dict) and fr.get("id") == ev_ref.source_id:
+                            found_interval = True
+                            break
+                if not found_interval:
+                    if ev_ref.source_id in timers or ev_ref.source_id in scene_timers:
+                        found_interval = True
+
+                if found_interval:
+                    evidence_records.append(
+                        EvidenceRecord(
+                            ref=ev_ref,
+                            status="elapsed",
+                            audience=("party",),
+                        )
+                    )
 
     # 2. Facts
     subject_ids = set(request.mutable_subject_refs)
@@ -147,11 +260,64 @@ async def load_snapshot(
         "combat_active": 1 if (ctx.world.scene.mode == "combat" or ctx.world.in_fight()) else 0,
     }
 
+    # 8. Permissions
+    mod_perms = None
+    adventure_rec = None
+    if hasattr(ctx.world, "catalog") and hasattr(ctx.world.catalog, "all"):
+        try:
+            advs = ctx.world.catalog.all("adventure")
+            if advs:
+                adventure_rec = advs[0].data
+        except Exception:
+            pass
+
+    if adventure_rec is None and isinstance(ctx.campaign.settings, dict):
+        if "narrative_permissions" in ctx.campaign.settings:
+            adventure_rec = ctx.campaign.settings
+        elif "adventure" in ctx.campaign.settings and isinstance(ctx.campaign.settings["adventure"], dict):
+            adventure_rec = ctx.campaign.settings["adventure"]
+
+    if adventure_rec is None and isinstance(plot_data, dict) and "narrative_permissions" in plot_data:
+        adventure_rec = plot_data
+
+    raw_np = None
+    if adventure_rec:
+        raw_np = adventure_rec.get("narrative_permissions")
+        if raw_np is None:
+            raw_np = adventure_rec.get("permissions")
+        if raw_np is not None and isinstance(raw_np, dict):
+            try:
+                mod_perms = parse_narrative_permissions(adventure_rec)
+            except Exception:
+                mod_perms = None
+
+    if mod_perms is not None:
+        anchors = mod_perms.anchors
+        mutable_fact_addresses = mod_perms.mutable_fact_addresses
+        if raw_np and "operation_kinds" in raw_np:
+            op_kinds = tuple(
+                sorted(
+                    set(ACTIVE_OPERATION_KINDS) & set(policy.allowed_operation_kinds) & set(mod_perms.operation_kinds)
+                )
+            )
+        else:
+            op_kinds = tuple(sorted(set(ACTIVE_OPERATION_KINDS) & set(policy.allowed_operation_kinds)))
+
+        if raw_np and "supplement_scopes" in raw_np:
+            sup_scopes = tuple(sorted(set(policy.allowed_scopes) & set(mod_perms.supplement_scopes)))
+        else:
+            sup_scopes = tuple(policy.allowed_scopes)
+    else:
+        anchors = ()
+        mutable_fact_addresses = ()
+        op_kinds = tuple(sorted(set(ACTIVE_OPERATION_KINDS) & set(policy.allowed_operation_kinds)))
+        sup_scopes = tuple(policy.allowed_scopes)
+
     permissions = NarrativePermissions(
-        anchors=(),
-        mutable_fact_addresses=tuple(f"{f.ref.namespace}:{f.ref.subject_id}:{f.ref.key}" for f in facts),
-        operation_kinds=policy.allowed_operation_kinds,
-        supplement_scopes=policy.allowed_scopes,
+        anchors=anchors,
+        mutable_fact_addresses=mutable_fact_addresses,
+        operation_kinds=op_kinds,
+        supplement_scopes=sup_scopes,
     )
 
     content_chain = ()

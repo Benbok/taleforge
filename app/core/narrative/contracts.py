@@ -32,6 +32,9 @@ class NarrativePolicy(NarrativeContractModel):
         "upsert_thread",
         "transition_thread",
         "reveal_fact",
+        "introduce_actor",
+        "settle_standing_response",
+        "revise_draft_fact",
     )
     max_operations: int = 8
     max_grounds: int = 8

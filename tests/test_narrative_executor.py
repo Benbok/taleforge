@@ -12,7 +12,7 @@ from app.core.narrative.contracts import (
     SnapshotRef,
 )
 from app.core.narrative.ports import NarrativeApplier
-from app.db.models import Entity, NarrativeState
+from app.db.models import Entity, Message, NarrativeState
 from app.db.session import make_sessionmaker
 from app.tools.narrative.executor import (
     ContextNarrativeApplier,
@@ -90,6 +90,10 @@ def test_apply_in_context_success(settings, client, admin):
     cid = c["id"]
 
     async def scenario(ctx):
+        msg = Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Игрок действует")
+        ctx.session.add(msg)
+        await ctx.session.flush()
+
         src = NarrativeSource(
             campaign_id=cid,
             scope="future",
@@ -140,6 +144,10 @@ def test_apply_in_context_no_change(settings, client, admin):
     cid = c["id"]
 
     async def scenario(ctx):
+        msg = Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Игрок действует")
+        ctx.session.add(msg)
+        await ctx.session.flush()
+
         src = NarrativeSource(
             campaign_id=cid,
             scope="future",
@@ -252,6 +260,8 @@ def test_apply_in_context_denied_nonlocal_actor(settings, client, admin):
             location_id="distant_cave",
             state={},
         )
+        msg = Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Игрок действует")
+        ctx.session.add(msg)
         ctx.session.add(distant_ent)
         await ctx.session.flush()
         ctx.world.entities[distant_ent.id] = distant_ent

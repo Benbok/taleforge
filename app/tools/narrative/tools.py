@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.narrative.contracts import FutureSituationPatch
 from app.core.narrative.plan_patch import patch_future_plan
-from app.db.models import CampaignSecret, NarrativeFact, NarrativeThread
+from app.db.models import CampaignSecret, Message, NarrativeFact, NarrativeThread
 from app.db.narrative import load_subject_facts
 from app.tools.registry import ToolContext, ToolError, tool
 
@@ -447,7 +447,15 @@ async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
     op_adapter = TypeAdapter(Operation)
 
     try:
-        # Normalize missing campaign_id in evidence_refs
+        # Normalize missing campaign_id in evidence_refs and resolve turn message if needed
+        turn_msg = None
+        if ctx.turn_id:
+            turn_msg = await ctx.session.scalar(
+                select(Message)
+                .where(Message.campaign_id == ctx.campaign.id, Message.turn_id == ctx.turn_id)
+                .order_by(Message.seq.desc())
+            )
+
         normalized_grounds = []
         for g in args.grounds:
             g_dict = dict(g)
@@ -456,6 +464,10 @@ async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
                 ev_dict = dict(ev)
                 if not ev_dict.get("campaign_id"):
                     ev_dict["campaign_id"] = ctx.campaign.id
+                if ev_dict.get("kind") == "message" and turn_msg is not None:
+                    existing_msg = await ctx.session.get(Message, ev_dict.get("source_id"))
+                    if existing_msg is None:
+                        ev_dict["source_id"] = turn_msg.id
                 ev_refs.append(ev_dict)
             g_dict["evidence_refs"] = ev_refs
             normalized_grounds.append(Ground.model_validate(g_dict))

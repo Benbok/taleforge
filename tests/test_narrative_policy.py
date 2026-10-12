@@ -254,3 +254,69 @@ def test_operation_specs_and_novelty_cost():
         op("develop_actor_role", entity_id="npc-1", new_role="ally"),
     )
     assert novelty_cost(ops) == 1
+
+
+def test_empty_policy_denies_operation():
+    snap = snapshot()
+    prop = proposal(
+        snap,
+        operations=(op("develop_actor_role", entity_id="npc-1", new_role="ally"),),
+    )
+    pol = policy().model_copy(update={"allowed_operation_kinds": ()})
+    decision = admit_adaptation(snap, prop, pol)
+    assert decision.status == "denied"
+    assert decision.reason_code == "operation_not_available"
+
+
+def test_module_disallows_operation():
+    from app.core.narrative.contracts import NarrativePermissions
+
+    snap = snapshot(
+        permissions=NarrativePermissions(
+            operation_kinds=("revise_draft_fact",),
+        )
+    )
+    prop = proposal(
+        snap,
+        operations=(op("develop_actor_role", entity_id="npc-1", new_role="ally"),),
+    )
+    decision = admit_adaptation(snap, prop, policy())
+    assert decision.status == "denied"
+    assert decision.reason_code == "operation_not_available"
+
+
+def test_question_is_interest_not_alliance():
+    snap = snapshot(evidence_status="question")
+    # 1. Question used for relationship (alliance) -> DENIED
+    prop_alliance = proposal(
+        snap,
+        grounds=(
+            Ground(
+                kind="relationship",
+                evidence_refs=(snap.evidence[0].ref,),
+                subject_refs=("npc-1",),
+                confidence="explicit",
+            ),
+        ),
+        operations=(op("develop_actor_role", entity_id="npc-1", new_role="ally"),),
+    )
+    dec_alliance = admit_adaptation(snap, prop_alliance, policy())
+    assert dec_alliance.status == "denied"
+    assert dec_alliance.reason_code == "source_not_applied"
+
+    # 2. Question used for interest -> ALLOWED as an inquiry basis
+    prop_interest = proposal(
+        snap,
+        grounds=(
+            Ground(
+                kind="interest",
+                evidence_refs=(snap.evidence[0].ref,),
+                subject_refs=("npc-1",),
+                confidence="explicit",
+            ),
+        ),
+        operations=(op("develop_actor_role", entity_id="npc-1", new_role="ally"),),
+    )
+    dec_interest = admit_adaptation(snap, prop_interest, policy())
+    assert dec_interest.status == "allowed"
+    assert dec_interest.reason_code == "ok"

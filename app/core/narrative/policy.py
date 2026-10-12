@@ -143,7 +143,21 @@ def admit_adaptation(
                     violations=(Violation(code="evidence_not_found", target_ref=ev_ref.source_id),),
                     read_set=snapshot.read_set,
                 )
-            if ev_rec.status in ("question", "rejected"):
+            if ev_rec.status == "question":
+                if ground.kind != "interest":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="source_not_applied",
+                        violations=(
+                            Violation(
+                                code="source_not_applied",
+                                target_ref=ev_rec.ref.source_id,
+                                actual=ev_rec.status,
+                            ),
+                        ),
+                        read_set=snapshot.read_set,
+                    )
+            elif ev_rec.status == "rejected":
                 return AdaptationAdmission(
                     status="denied",
                     reason_code="source_not_applied",
@@ -178,8 +192,12 @@ def admit_adaptation(
     active_offered_thread_ids = {t.id for t in snapshot.threads if t.status in ("offered", "active")}
     new_thread_ids: set[str] = set()
 
+    allowed_operations = (
+        set(ACTIVE_OPERATION_KINDS) & set(policy.allowed_operation_kinds) & set(snapshot.permissions.operation_kinds)
+    )
+
     for op_item in proposal.operations:
-        if op_item.kind not in ACTIVE_OPERATION_KINDS:
+        if op_item.kind not in allowed_operations:
             return AdaptationAdmission(
                 status="denied",
                 reason_code="operation_not_available",
