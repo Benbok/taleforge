@@ -31,7 +31,7 @@ export function Segmented<T extends string>({
           type="button"
           role="radio"
           aria-checked={value === k}
-          className={`btn px-3 py-1 text-sm ${value === k ? "btn-primary" : ""}`}
+          className={`btn px-3 py-1 text-sm transition-colors duration-150 ease-out ${value === k ? "btn-primary" : ""}`}
           onClick={() => onChange(k)}
         >
           {text}
@@ -61,7 +61,7 @@ export function Tabs<T extends string>({
           key={t}
           role="tab"
           aria-selected={value === t}
-          className={`-mb-px shrink-0 border-b-2 ${compact ? "px-2" : "px-3"} py-2 text-sm ${value === t ? "border-accent font-semibold text-ink" : "border-transparent text-muted hover:text-ink"}`}
+          className={`-mb-px shrink-0 border-b-2 ${compact ? "px-2" : "px-3"} py-2 text-sm transition-colors duration-150 ease-out ${value === t ? "border-accent font-semibold text-ink" : "border-transparent text-muted hover:text-ink"}`}
           onClick={() => onChange(t)}
         >
           {text}

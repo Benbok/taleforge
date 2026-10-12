@@ -260,6 +260,19 @@ input[type="checkbox"]:disabled {
   animation: tf-pop 180ms ease-out;
 }
 
+/* Плавная смена содержимого вкладок: мягкое появление без сдвигов и размытия шрифтов */
+@keyframes tf-tab-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.tf-tab-content {
+  animation: tf-tab-enter 120ms ease-out;
+}
+
 /* Последние 15 секунд хода: кольцо мигает. */
 @keyframes tf-blink {
   50% {
@@ -281,7 +294,9 @@ input[type="checkbox"]:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tf-blink {
+  .tf-blink,
+  .tf-tab-content,
+  .tf-pop {
     animation: none;
   }
 }

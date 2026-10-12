@@ -229,7 +229,7 @@ export default function GamePage() {
         {TABS.map(([t, name]) => (
           <button
             key={t}
-            className={`py-3 text-center transition ${
+            className={`py-3 text-center transition-colors duration-150 ease-out ${
               tab === t
                 ? "border-t-2 border-accent bg-raised/50 font-bold text-accent"
                 : "border-t-2 border-transparent text-muted hover:text-ink"

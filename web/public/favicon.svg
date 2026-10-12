@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34">
+  <!-- знак из шапки, упрощённый для вкладки: тёмная плашка, медное кольцо и «око» -->
+  <rect width="34" height="34" rx="8" fill="#17181c"/>
+  <circle cx="17" cy="17" r="12.5" fill="none" stroke="#c98a4b" stroke-width="2.4"/>
+  <path d="M6.5 20.5 C 11 14, 21.5 13, 27.5 17 C 23.5 20.5, 14 22.8, 6.5 20.5 Z" fill="#c98a4b"/>
+  <circle cx="23.2" cy="17.4" r="1.7" fill="#17181c"/>
+</svg>

@@ -163,7 +163,7 @@ export default function ManagePage() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setParams({ tab: t.id }, { replace: true })}
-                className={`group flex items-center gap-2 whitespace-nowrap rounded-t-[10px] border-b-2 px-3.5 py-2.5 text-xs sm:text-sm font-medium transition ${
+                className={`group flex items-center gap-2 whitespace-nowrap rounded-t-[10px] border-b-2 px-3.5 py-2.5 text-xs sm:text-sm font-medium transition-colors duration-150 ease-out ${
                   isActive
                     ? "border-accent bg-raised/80 text-ink shadow-sm"
                     : "border-transparent text-muted hover:bg-raised/40 hover:text-ink"
@@ -177,7 +177,7 @@ export default function ManagePage() {
         </nav>
 
         {/* Tab Content */}
-        <div className="flex flex-col gap-6">
+        <div key={tab} className="tf-tab-content flex flex-col gap-6">
           {tab === "plot" && <PlotTab campaignId={id} />}
           {tab === "players" && <PlayersTab room={r} onRoom={setRoom} />}
           {tab === "master" && <MasterTab campaignId={id} room={r} onRoom={setRoom} />}

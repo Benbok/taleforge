@@ -73,59 +73,60 @@ export default function Home() {
         )}
       </Header>
 
-      {activeTab === "tables" && (
-        <>
-          {/* СЕКЦИЯ HERO: «ВАХТА ПРОДОЛЖАЕТСЯ» */}
-          {featured ? (
-            <HeroSection campaign={featured} />
-          ) : (
-            <EmptyHeroSection isAdmin={isAdmin} />
-          )}
+      <div key={activeTab} className="tf-tab-content flex flex-1 flex-col">
+        {activeTab === "tables" && (
+          <>
+            {/* СЕКЦИЯ HERO: «ВАХТА ПРОДОЛЖАЕТСЯ» */}
+            {featured ? (
+              <HeroSection campaign={featured} />
+            ) : (
+              <EmptyHeroSection isAdmin={isAdmin} />
+            )}
 
-          {/* ОСНОВНОЙ ДАШБОРД: СТОЛЫ СЛЕВА + ГЕРОИ И ТЕЛЕГРАФ СПРАВА */}
-          <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-4 py-10 md:px-12 lg:flex-row">
-            {/* Левая колонка: Ваши столы */}
-            <div className="flex flex-1 flex-col gap-6 min-w-0">
-              <div className="flex flex-wrap items-baseline justify-between gap-4">
-                <h2 className="font-heading text-3xl font-semibold text-ink">
-                  Ваши столы
-                </h2>
-                <div className="flex items-center gap-2 text-sm font-ui">
-                  <button
-                    type="button"
-                    onClick={() => setFilter("all")}
-                    className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
-                      filter === "all"
-                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                        : "border border-line bg-transparent text-muted hover:text-ink"
-                    }`}
-                  >
-                    Все · {list.length}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilter("master")}
-                    className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
-                      filter === "master"
-                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                        : "border border-line bg-transparent text-muted hover:text-ink"
-                    }`}
-                  >
-                    Я мастер · {masterCount}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilter("player")}
-                    className={`h-9 rounded-full px-3.5 transition text-xs font-medium ${
-                      filter === "player"
-                        ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                        : "border border-line bg-transparent text-muted hover:text-ink"
-                    }`}
-                  >
-                    Я игрок · {playerCount}
-                  </button>
+            {/* ОСНОВНОЙ ДАШБОРД: СТОЛЫ СЛЕВА + ГЕРОИ И ТЕЛЕГРАФ СПРАВА */}
+            <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-4 py-10 md:px-12 lg:flex-row">
+              {/* Левая колонка: Ваши столы */}
+              <div className="flex flex-1 flex-col gap-6 min-w-0">
+                <div className="flex flex-wrap items-baseline justify-between gap-4">
+                  <h2 className="font-heading text-3xl font-semibold text-ink">
+                    Ваши столы
+                  </h2>
+                  <div className="flex items-center gap-2 text-sm font-ui">
+                    <button
+                      type="button"
+                      onClick={() => setFilter("all")}
+                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
+                        filter === "all"
+                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
+                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
+                      }`}
+                    >
+                      Все · {list.length}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilter("master")}
+                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
+                        filter === "master"
+                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
+                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
+                      }`}
+                    >
+                      Я мастер · {masterCount}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilter("player")}
+                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
+                        filter === "player"
+                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
+                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
+                      }`}
+                    >
+                      Я игрок · {playerCount}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
               {cardsQuery.isLoading && (
                 <div className="card p-8 text-center text-muted">
@@ -307,13 +308,14 @@ export default function Home() {
           <WorldsSection isAdmin={isAdmin} />
         </main>
       )}
+      </div>
 
       {/* МОБИЛЬНАЯ НАВИГАЦИЯ (НИЖНЯЯ ПАНЕЛЬ) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-line bg-raised md:hidden">
         <button
           type="button"
           onClick={() => setActiveTab("tables")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
+          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
             activeTab === "tables" ? "text-accent" : "text-muted"
           }`}
         >
@@ -325,7 +327,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setActiveTab("heroes")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
+          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
             activeTab === "heroes" ? "text-accent" : "text-muted"
           }`}
         >
@@ -338,7 +340,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setActiveTab("worlds")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium ${
+          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
             activeTab === "worlds" ? "text-accent" : "text-muted"
           }`}
         >

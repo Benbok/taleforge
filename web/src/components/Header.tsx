@@ -68,7 +68,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           <button
             type="button"
             onClick={() => onTabChange("tables")}
-            className={`h-[72px] px-1 transition border-b-2 font-medium ${
+            className={`h-[72px] px-1 transition-colors duration-150 ease-out border-b-2 font-medium ${
               activeTab === "tables"
                 ? "border-accent text-ink"
                 : "border-transparent text-muted hover:text-ink"
@@ -79,7 +79,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           <button
             type="button"
             onClick={() => onTabChange("heroes")}
-            className={`h-[72px] px-1 transition border-b-2 font-medium ${
+            className={`h-[72px] px-1 transition-colors duration-150 ease-out border-b-2 font-medium ${
               activeTab === "heroes"
                 ? "border-accent text-ink"
                 : "border-transparent text-muted hover:text-ink"
@@ -90,7 +90,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           <button
             type="button"
             onClick={() => onTabChange("worlds")}
-            className={`h-[72px] px-1 transition border-b-2 font-medium ${
+            className={`h-[72px] px-1 transition-colors duration-150 ease-out border-b-2 font-medium ${
               activeTab === "worlds"
                 ? "border-accent text-ink"
                 : "border-transparent text-muted hover:text-ink"

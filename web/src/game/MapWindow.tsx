@@ -937,14 +937,16 @@ export default function MapWindow() {
           ).map(([t, name]) => (
             <button
               key={t}
-              className={`shrink-0 border-b-2 px-3 py-2 text-sm ${tab === t ? "border-accent text-ink" : "border-transparent text-muted"}`}
+              className={`shrink-0 border-b-2 px-3 py-2 text-sm transition-colors duration-150 ease-out ${
+                tab === t ? "border-accent text-ink font-semibold" : "border-transparent text-muted hover:text-ink"
+              }`}
               onClick={() => setTab(t)}
             >
               {name}
             </button>
           ))}
         </nav>
-        <div className="overflow-y-auto p-4">
+        <div key={tab} className="tf-tab-content overflow-y-auto p-4">
           {!data ? (
             <p className="text-center font-mono text-xs text-muted">{error ?? "Загружаю карту…"}</p>
           ) : tab === "book" && data.book ? (
