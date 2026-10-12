@@ -4086,19 +4086,44 @@ export interface components {
         MapExit: {
             /** Bearing */
             bearing: string | null;
+            /**
+             * Cells
+             * @default null
+             */
+            cells?: number[][] | null;
             /** Id */
             id: string | null;
+            /**
+             * Kind
+             * @default null
+             */
+            kind?: string | null;
             /** Name */
             name: string;
+            /**
+             * Passage Ref
+             * @default null
+             */
+            passage_ref?: string | null;
             /**
              * Room Ref
              * @default null
              */
             room_ref?: string | null;
+            /**
+             * State
+             * @default null
+             */
+            state?: string | null;
             /** Via */
             via: string | null;
             /** Visited */
             visited: boolean;
+            /**
+             * Width
+             * @default null
+             */
+            width?: number | null;
         };
         /** MapHere */
         MapHere: {
@@ -4133,6 +4158,38 @@ export interface components {
             /** Zone */
             zone: string | null;
         };
+        /** MapKnownArea */
+        MapKnownArea: {
+            /**
+             * Disclosed To
+             * @default null
+             */
+            disclosed_to?: string[] | null;
+            /** Id */
+            id: string;
+            /** Level */
+            level: number;
+            /** Name */
+            name: string;
+            /**
+             * Observed At
+             * @default null
+             */
+            observed_at?: string | null;
+            /** Offset */
+            offset: [
+                number,
+                number
+            ];
+            /** Revision */
+            revision: number;
+            sketch: components["schemas"]["MapSketch"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "here" | "remembered" | "prepared";
+        };
         /** MapLink */
         MapLink: {
             /** A */
@@ -4141,6 +4198,15 @@ export interface components {
             b: string;
             /** Label */
             label: string | null;
+        };
+        /** MapLocationPlan */
+        MapLocationPlan: {
+            /** Areas */
+            areas: components["schemas"]["MapKnownArea"][];
+            /** Here Id */
+            here_id: string | null;
+            /** Root Id */
+            root_id: string;
         };
         /** MapPlace */
         MapPlace: {
@@ -4199,7 +4265,7 @@ export interface components {
              * Edges
              * @default null
              */
-            edges?: unknown[] | null;
+            edges?: components["schemas"]["MapSketchEdge"][] | null;
             /**
              * Edit Rev
              * @default null
@@ -4242,7 +4308,7 @@ export interface components {
              * Terrain
              * @default null
              */
-            terrain?: unknown[] | null;
+            terrain?: components["schemas"]["MapSketchTerrain"][] | null;
             /**
              * Unplaced Exits
              * @default null
@@ -4250,6 +4316,23 @@ export interface components {
             unplaced_exits?: components["schemas"]["MapUnplacedExit"][];
             /** Walls */
             walls: number[][];
+        };
+        /** MapSketchEdge */
+        MapSketchEdge: {
+            /** Length */
+            length: number;
+            /**
+             * Meaning
+             * @enum {string}
+             */
+            meaning: "obstacle" | "continuation" | "boundary";
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "n" | "e" | "s" | "w";
+            /** Start */
+            start: number;
         };
         /** MapSketchExit */
         MapSketchExit: {
@@ -4349,12 +4432,27 @@ export interface components {
              */
             visual_key?: string | null;
         };
+        /** MapSketchTerrain */
+        MapSketchTerrain: {
+            /** Cells */
+            cells: number[][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "road" | "path" | "stream" | "bridge";
+        };
         /** MapState */
         MapState: {
             /** Areas */
             areas: components["schemas"]["MapArea"][];
             /** Around */
             around: components["schemas"]["MapThing"][];
+            /**
+             * As Seat
+             * @default null
+             */
+            as_seat?: string | null;
             /** Bearings */
             bearings: {
                 [key: string]: string;
@@ -4365,6 +4463,8 @@ export interface components {
             here: components["schemas"]["MapHere"] | null;
             /** Links */
             links: components["schemas"]["MapLink"][];
+            /** @default null */
+            location_map?: components["schemas"]["MapLocationPlan"] | null;
             /**
              * Mode
              * @enum {string}
@@ -4374,6 +4474,11 @@ export interface components {
             party: components["schemas"]["MapHero"][];
             /** Places */
             places: components["schemas"]["MapPlace"][];
+            /**
+             * Request Id
+             * @default null
+             */
+            request_id?: string | null;
             /** Scene View */
             scene_view: components["schemas"]["MapSceneToken"][];
             sketch: components["schemas"]["MapSketch"] | null;
@@ -4464,8 +4569,54 @@ export interface components {
         };
         /** MapTraverseResult */
         MapTraverseResult: {
+            /**
+             * Area
+             * @default null
+             */
+            area?: string | null;
+            /**
+             * Area Id
+             * @default null
+             */
+            area_id?: string | null;
+            /**
+             * Cell
+             * @default null
+             */
+            cell?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Error
+             * @default null
+             */
+            error?: string | null;
+            /**
+             * From Cell
+             * @default null
+             */
+            from_cell?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Moved
+             * @default false
+             */
+            moved?: boolean;
             /** Ok */
             ok: boolean;
+            /**
+             * Passage
+             * @default null
+             */
+            passage?: string | null;
+            /**
+             * Reason
+             * @default null
+             */
+            reason?: string | null;
             /** Request Id */
             request_id: string | null;
         } & {
@@ -5786,12 +5937,16 @@ export type MapContainer = components['schemas']['MapContainer'];
 export type MapExit = components['schemas']['MapExit'];
 export type MapHere = components['schemas']['MapHere'];
 export type MapHero = components['schemas']['MapHero'];
+export type MapKnownArea = components['schemas']['MapKnownArea'];
 export type MapLink = components['schemas']['MapLink'];
+export type MapLocationPlan = components['schemas']['MapLocationPlan'];
 export type MapPlace = components['schemas']['MapPlace'];
 export type MapSceneToken = components['schemas']['MapSceneToken'];
 export type MapSketch = components['schemas']['MapSketch'];
+export type MapSketchEdge = components['schemas']['MapSketchEdge'];
 export type MapSketchExit = components['schemas']['MapSketchExit'];
 export type MapSketchFeature = components['schemas']['MapSketchFeature'];
+export type MapSketchTerrain = components['schemas']['MapSketchTerrain'];
 export type MapState = components['schemas']['MapState'];
 export type MapStepResult = components['schemas']['MapStepResult'];
 export type MapThing = components['schemas']['MapThing'];

@@ -23,9 +23,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
-from app.core import adventure, reach, sketch
+from app.core import adventure, map_memory, reach, sketch
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.layout import store as layout_store
+from app.core.map_projection import location_plan
 from app.core.object_policy import concealed, revealed_to
 from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.preparation import container_rows, container_view
@@ -157,6 +159,11 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 near.add(p.location_id)  # группировка; не выход из комнаты книги
             shown |= {n for n in near if n in places and not (places[n].state or {}).get("secret")}
 
+    if hero is not None:
+        opened = await map_memory.opened_areas(session, hero.id)
+        shown = {pid for pid in shown if not layout_store.complex_of(places[pid]) or pid in opened or pid == here_id}
+        shown |= {pid for pid in opened if pid in places}
+
     def status(pid: str) -> str:
         if pid == here_id:
             return "here"
@@ -169,7 +176,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             "parent_id": p.location_id if p.location_id in shown else None,
             "status": status(p.id),
         }
-        for p in sorted((places[i] for i in shown), key=lambda e: e.created_at or 0)
+        for p in sorted((places[i] for i in shown), key=lambda e: (e.created_at or 0, e.id))  # id — при равном времени
     ]
     here = places.get(here_id or "")
     # В модуле настоящие переходы между комнатами определены книгой.
@@ -397,6 +404,63 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         projected_sketch["placement_rev"] = int((here.state or {}).get("placement_rev") or 0)
     linked = sketch.linked_entity_ids(projected_sketch)
     scene_view = [token for token in scene_view if token["id"] not in linked]
+    location_map = await location_plan(
+        session, hero if not master else None, {e.id: e for e in ents}, here_id, blueprint_cache
+    )
+    if here is not None:
+        grants = await map_memory.known_passages(session, hero.id, here.id) if hero else frozenset()
+        visible_refs = set()
+        passage_exits = []
+        for root in places.values():
+            if root.id not in blueprint_cache:
+                blueprint_cache[root.id] = layout_store.blueprint_of(root)
+            bp = blueprint_cache[root.id]
+            if bp is None:
+                continue
+            ids = layout_store.area_ids(root)
+            for p in bp.passages:
+                if not master and p.hidden and (root.id, p.passage_ref) not in grants:
+                    continue
+                live = layout_store.passage_live(root, p.passage_ref)
+                for index, end in enumerate(p.ends):
+                    source = ids.get(end.area_ref) if end.area_ref else end.place_id
+                    if source != here.id:
+                        continue
+                    other = p.ends[1 - index]
+                    target = ids.get(other.area_ref) if other.area_ref else other.place_id
+                    visible_refs.add(p.passage_ref)
+                    known = target in shown
+                    passage_exits.append(
+                        {
+                            "id": target if known else None,
+                            "room_ref": None,
+                            "name": places[target].name if known else p.public_name,
+                            "via": p.public_name,
+                            "bearing": end.side,
+                            "visited": target in visited,
+                            "passage_ref": p.passage_ref,
+                            "kind": p.kind,
+                            "state": live.get("state", p.state),
+                            "width": end.width,
+                            "cells": next(
+                                (
+                                    x.get("cells")
+                                    for x in (sk or {}).get("exits", [])
+                                    if x.get("passage_ref") == p.passage_ref
+                                ),
+                                None,
+                            ),
+                        }
+                    )
+        if projected_sketch is not None:
+            projected_sketch["exits"] = [
+                x
+                for x in projected_sketch.get("exits", [])
+                if not x.get("passage_ref") or x["passage_ref"] in visible_refs
+            ]
+        if passage_exits:
+            exits = [x for x in exits if not x.get("id") or not layout_store.complex_of(places[x["id"]])]
+            exits.extend(passage_exits)
     return {
         "book": book,
         "sketch": projected_sketch,
@@ -418,4 +482,5 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         "places": out_places,
         "links": links,
         "bearings": BEARING_NAMES,
+        "location_map": location_map,
     }

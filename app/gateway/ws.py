@@ -612,6 +612,7 @@ async def _map(maker, user: User, conn: Connection, payload: dict) -> None:
         except NotFound as e:
             await conn.send(_error("not_found", str(e), conn.campaign_id))
             return
+    out.update(request_id=payload.get("request_id"), as_seat=payload.get("as_seat") or None)
     await conn.send(envelope("map.state", conn.campaign_id, out))
 
 
@@ -681,12 +682,16 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
 
     request_id = payload.get("request_id")
     ref = payload.get("passage_ref")
+    source_id = payload.get("source_id")
 
     async def answer(body: dict) -> None:
         await conn.send(envelope("map.traverse.result", conn.campaign_id, {"request_id": request_id, **body}))
 
     if not isinstance(ref, str) or not 0 < len(ref) <= 64:
         await answer({"ok": False, "error": "passage_ref — строка"})
+        return
+    if source_id is not None and (not isinstance(source_id, str) or not 0 < len(source_id) <= 64):
+        await answer({"ok": False, "error": "source_id — строка"})
         return
     try:
         async with app.state.sessionmaker() as session:
@@ -703,6 +708,7 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
                 conn.campaign_id,
                 hero_id,
                 ref,
+                expected_source_id=source_id,
             )
     except NotFound as e:
         out, published = {"ok": False, "error": str(e)}, []

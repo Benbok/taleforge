@@ -6080,6 +6080,24 @@
       ],
       "title": "Bearing"
      },
+     "cells": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "type": "integer"
+         },
+         "type": "array"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cells"
+     },
      "id": {
       "anyOf": [
        {
@@ -6091,9 +6109,33 @@
       ],
       "title": "Id"
      },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Kind"
+     },
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "passage_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Passage Ref"
      },
      "room_ref": {
       "anyOf": [
@@ -6106,6 +6148,18 @@
       ],
       "default": null,
       "title": "Room Ref"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "State"
      },
      "via": {
       "anyOf": [
@@ -6121,6 +6175,18 @@
      "visited": {
       "title": "Visited",
       "type": "boolean"
+     },
+     "width": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Width"
      }
     },
     "required": [
@@ -6249,6 +6315,92 @@
     "title": "MapHero",
     "type": "object"
    },
+   "MapKnownArea": {
+    "additionalProperties": false,
+    "properties": {
+     "disclosed_to": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Disclosed To"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "level": {
+      "title": "Level",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "observed_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Observed At"
+     },
+     "offset": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "integer"
+       }
+      ],
+      "title": "Offset",
+      "type": "array"
+     },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "sketch": {
+      "$ref": "#/components/schemas/MapSketch"
+     },
+     "status": {
+      "enum": [
+       "here",
+       "remembered",
+       "prepared"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "offset",
+     "level",
+     "status",
+     "revision",
+     "sketch"
+    ],
+    "title": "MapKnownArea",
+    "type": "object"
+   },
    "MapLink": {
     "additionalProperties": false,
     "properties": {
@@ -6278,6 +6430,40 @@
      "label"
     ],
     "title": "MapLink",
+    "type": "object"
+   },
+   "MapLocationPlan": {
+    "additionalProperties": false,
+    "properties": {
+     "areas": {
+      "items": {
+       "$ref": "#/components/schemas/MapKnownArea"
+      },
+      "title": "Areas",
+      "type": "array"
+     },
+     "here_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Here Id"
+     },
+     "root_id": {
+      "title": "Root Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "root_id",
+     "here_id",
+     "areas"
+    ],
+    "title": "MapLocationPlan",
     "type": "object"
    },
    "MapPlace": {
@@ -6435,7 +6621,9 @@
      "edges": {
       "anyOf": [
        {
-        "items": {},
+        "items": {
+         "$ref": "#/components/schemas/MapSketchEdge"
+        },
         "type": "array"
        },
        {
@@ -6547,7 +6735,9 @@
      "terrain": {
       "anyOf": [
        {
-        "items": {},
+        "items": {
+         "$ref": "#/components/schemas/MapSketchTerrain"
+        },
         "type": "array"
        },
        {
@@ -6586,6 +6776,46 @@
      "features"
     ],
     "title": "MapSketch",
+    "type": "object"
+   },
+   "MapSketchEdge": {
+    "additionalProperties": false,
+    "properties": {
+     "length": {
+      "title": "Length",
+      "type": "integer"
+     },
+     "meaning": {
+      "enum": [
+       "obstacle",
+       "continuation",
+       "boundary"
+      ],
+      "title": "Meaning",
+      "type": "string"
+     },
+     "side": {
+      "enum": [
+       "n",
+       "e",
+       "s",
+       "w"
+      ],
+      "title": "Side",
+      "type": "string"
+     },
+     "start": {
+      "title": "Start",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "side",
+     "start",
+     "length",
+     "meaning"
+    ],
+    "title": "MapSketchEdge",
     "type": "object"
    },
    "MapSketchExit": {
@@ -6834,6 +7064,37 @@
     "title": "MapSketchFeature",
     "type": "object"
    },
+   "MapSketchTerrain": {
+    "additionalProperties": false,
+    "properties": {
+     "cells": {
+      "items": {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      "title": "Cells",
+      "type": "array"
+     },
+     "kind": {
+      "enum": [
+       "road",
+       "path",
+       "stream",
+       "bridge"
+      ],
+      "title": "Kind",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "cells"
+    ],
+    "title": "MapSketchTerrain",
+    "type": "object"
+   },
    "MapState": {
     "additionalProperties": false,
     "properties": {
@@ -6850,6 +7111,18 @@
       },
       "title": "Around",
       "type": "array"
+     },
+     "as_seat": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "As Seat"
      },
      "bearings": {
       "additionalProperties": {
@@ -6892,6 +7165,17 @@
       "title": "Links",
       "type": "array"
      },
+     "location_map": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MapLocationPlan"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
      "mode": {
       "enum": [
        "free",
@@ -6913,6 +7197,18 @@
       },
       "title": "Places",
       "type": "array"
+     },
+     "request_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Request Id"
      },
      "scene_view": {
       "items": {
@@ -7194,9 +7490,118 @@
    "MapTraverseResult": {
     "additionalProperties": true,
     "properties": {
+     "area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Area"
+     },
+     "area_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Area Id"
+     },
+     "cell": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cell"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Error"
+     },
+     "from_cell": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "From Cell"
+     },
+     "moved": {
+      "default": false,
+      "title": "Moved",
+      "type": "boolean"
+     },
      "ok": {
       "title": "Ok",
       "type": "boolean"
+     },
+     "passage": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Passage"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reason"
      },
      "request_id": {
       "anyOf": [

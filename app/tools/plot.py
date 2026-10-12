@@ -216,7 +216,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         if a.here:
             from app.tools.master.places import relocate_scene
 
-            arrived = relocate_scene(ctx, en, inverse)
+            arrived = await relocate_scene(ctx, en, inverse)
     else:
         rec = ctx.world.catalog.get(sketch["template_id"], "creature_template")
         creature_stats(rec.data)  # без блока статов существо в мир не выходит

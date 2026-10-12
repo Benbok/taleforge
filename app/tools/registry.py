@@ -95,6 +95,11 @@ class ToolContext:
         inverse: list[Any] | None = None,
         hidden: bool = False,
     ) -> Event:
+        # Снимок карты фиксируется в тех же границах транзакции, что и событие.
+        # Helper ничего не пишет в журнал и не вызывает record повторно.
+        from app.core.map_memory import observe_present
+
+        await observe_present(self, inverse)
         ev = Event(
             campaign_id=self.campaign.id,
             session_id=self.game_session_id,

@@ -33,6 +33,7 @@ from app.db.models import (
     InventoryItem,
     Knowledge,
     KnownFact,
+    MapMemory,
     PlotAnchorBinding,
     Scene,
     Seat,
@@ -54,7 +55,7 @@ _BY_CAMPAIGN = (
     PlotAnchorBinding,
     Seat,
 )
-_BY_CHARACTER = (InventoryItem, Knowledge)
+_BY_CHARACTER = (InventoryItem, Knowledge, MapMemory)
 # поля кампании, которые меняют разрешённый контент и правила; last_seq и updated_at — нет
 CAMPAIGN_FIELDS = (
     "settings",

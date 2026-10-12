@@ -65,6 +65,11 @@ export interface MapExit {
   via: string | null;
   bearing: Bearing | null;
   visited: boolean;
+  kind?: string | null;
+  state?: string | null;
+  width?: number | null;
+  passage_ref?: string | null;
+  cells?: number[][] | null;
 }
 
 export interface MapPlace {
@@ -118,6 +123,21 @@ export interface SketchExit {
   room_ref?: string | null;
   beyond?: string | null;
   hidden?: boolean;
+  width?: number | null;
+  passage_ref?: string | null;
+  cells?: number[][] | null;
+}
+
+export interface SketchEdge {
+  side: "n" | "e" | "s" | "w";
+  start: number;
+  length: number;
+  meaning: "obstacle" | "continuation" | "boundary";
+}
+
+export interface SketchTerrain {
+  kind: "road" | "path" | "stream" | "bridge";
+  cells: number[][];
 }
 
 export interface SketchFeature {
@@ -141,6 +161,11 @@ export interface Sketch {
   walls: number[][];
   exits: SketchExit[];
   features: SketchFeature[];
+  mask?: string[] | null;
+  edges?: SketchEdge[] | null;
+  terrain?: SketchTerrain[] | null;
+  material?: string | null;
+  environment?: string | null;
   book?: boolean; // эскиз построен непосредственно из размеченной сетки книги
   unplaced_exits?: { name: string; to?: string | null; room_ref?: string | null }[]; // выход есть в книге, но клетка двери неизвестна
 }
@@ -170,6 +195,27 @@ export interface MapState extends Pick<GeneratedMapState, "here" | "places" | "l
   areas?: MapArea[];
   mode?: "free" | "combat";
   exits: MapExit[];
+  location_map?: MapLocationPlan | null;
+  request_id?: string | null;
+  as_seat?: string | null;
+}
+
+export interface MapKnownArea {
+  id: string;
+  name: string;
+  offset: [number, number];
+  level: number;
+  status: "here" | "remembered" | "prepared";
+  revision: number;
+  observed_at?: string | null;
+  sketch: Sketch;
+  disclosed_to?: string[] | null;
+}
+
+export interface MapLocationPlan {
+  root_id: string;
+  here_id: string | null;
+  areas: MapKnownArea[];
 }
 
 const ZONES: Zone[] = ["melee", "near", "far"];
@@ -208,6 +254,10 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
       cover: feature.cover ? listed(feature.cover, COVERS, "none") : undefined,
     })),
   } : null;
+  const locationMap = data.location_map ? {
+    ...data.location_map,
+    areas: data.location_map.areas.map((area) => ({ ...area, offset: [area.offset[0], area.offset[1]] as [number, number], sketch: area.sketch as Sketch })),
+  } : null;
   return {
     here: data.here,
     places: data.places,
@@ -236,6 +286,9 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
     })),
     areas: data.areas.map((a) => ({ ...a, zone: listed(a.zone, ZONES, "near"), bearing: safeBearing(a.bearing) })),
     exits: data.exits.map((e) => ({ ...e, bearing: safeBearing(e.bearing) })),
+    location_map: locationMap,
+    request_id: data.request_id,
+    as_seat: data.as_seat,
     scene_view: data.scene_view.map((t) => ({
       ...t,
       zone: t.zone == null ? null : listed(t.zone, ZONES, "near"),
@@ -274,6 +327,21 @@ export interface StepState {
   pending: StepRequest | null; // ждёт подтверждения игрока
 }
 
+export interface TraverseResult {
+  request_id?: string | null;
+  ok: boolean;
+  moved?: boolean;
+  reason?: string | null;
+  error?: string | null;
+}
+
+export interface TraverseState {
+  busy: boolean;
+  request_id: string | null;
+  reason: string | null;
+  error: string | null;
+}
+
 const NO_STEP: StepState = { busy: false, note: null, error: null, warnings: null, pending: null };
 
 /** Строка о шаге для игрока: сколько прошёл, сколько осталось в бою, что случилось по дороге. */
@@ -291,10 +359,15 @@ interface MapWindowState {
   data: MapState | null;
   loading: boolean;
   error: string | null;
+  mapRequest: string | null;
   show(tab?: Tab): void;
   hide(): void;
   setTab(tab: Tab): void;
   request(): void;
+  traverse: TraverseState;
+  traverseTo(passage_ref: string, source_id?: string | null): void;
+  traverseResult(result: TraverseResult): void;
+  resetForViewer(): void;
   receive(data: MapState): void;
   step: StepState;
   stepTo(req: StepRequest, confirm?: boolean): void;
@@ -303,6 +376,8 @@ interface MapWindowState {
 }
 
 let stepSeq = 0;
+let traverseSeq = 0;
+let mapSeq = 0;
 
 export const useMapWindow = create<MapWindowState>((set, get) => ({
   open: false,
@@ -321,15 +396,45 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
     set({ tab });
   },
   request() {
-    const sent = useGame.getState().socket?.send("map.get") ?? false;
+    const request_id = `m${++mapSeq}`;
+    const as_seat = useGame.getState().playAs;
+    const payload = { request_id, ...(as_seat ? { as_seat } : {}) };
+    const sent = useGame.getState().socket?.send("map.get", payload) ?? false;
+    set({ mapRequest: sent ? request_id : null });
     set(sent ? { loading: true, error: null } : { loading: false, error: "нет связи с сервером: карта обновится, когда соединение вернётся" });
   },
   receive(data) {
     set({ data, loading: false, error: null });
   },
+  mapRequest: null,
+  traverse: { busy: false, request_id: null, reason: null, error: null },
+  traverseTo(passage_ref, source_id) {
+    const current = get().traverse;
+    if (current.busy) return;
+    const request_id = `t${++traverseSeq}`;
+    const as_seat = useGame.getState().playAs;
+    const sent = useGame.getState().socket?.send("map.traverse", {
+      passage_ref,
+      ...(source_id ? { source_id } : {}),
+      request_id,
+      ...(as_seat ? { as_seat } : {}),
+    }) ?? false;
+    set({ traverse: { busy: sent, request_id: sent ? request_id : null, reason: null, error: sent ? null : "переход не отправлен" } });
+  },
+  traverseResult(result) {
+    const current = get().traverse;
+    if (!current.busy || result.request_id !== current.request_id) return;
+    const moved = result.moved ?? result.ok;
+    set({ traverse: { busy: false, request_id: null, reason: moved ? null : result.reason ?? "переход не удался", error: result.error ?? null } });
+    get().request();
+  },
+  resetForViewer() {
+    set({ data: null, loading: false, error: null, mapRequest: null, traverse: { busy: false, request_id: null, reason: null, error: null } });
+  },
   step: NO_STEP,
   stepTo(req, confirm = false) {
-    const sent = useGame.getState().socket?.send("map.step", { ...req, confirm, request_id: `s${++stepSeq}` }) ?? false;
+    const as_seat = useGame.getState().playAs;
+    const sent = useGame.getState().socket?.send("map.step", { ...req, confirm, request_id: `s${++stepSeq}`, ...(as_seat ? { as_seat } : {}) }) ?? false;
     set({ step: sent ? { ...NO_STEP, busy: true, note: "Иду…", pending: req } : { ...NO_STEP, error: "нет связи с сервером: шаг не отправлен" } });
   },
   stepResult(r) {
@@ -348,10 +453,24 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
 export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
-  if (e.type === "map.state") w.receive(mapForDisplay(e.payload));
+  if (e.type === "map.state") {
+    if ((e.payload.as_seat ?? null) !== useGame.getState().playAs) return;
+    if (w.mapRequest && e.payload.request_id !== w.mapRequest) return;
+    w.receive(mapForDisplay(e.payload));
+  }
   else if (e.type === "map.step.result") w.stepResult(e.payload);
+  else if (e.type === "map.traverse.result") w.traverseResult(e.payload);
   else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
+
+useGame.subscribe((state, previous) => {
+  if (state.playAs !== previous.playAs || state.snapshot?.campaign.id !== previous.snapshot?.campaign.id || state.socket !== previous.socket) {
+    const map = useMapWindow.getState();
+    map.resetForViewer();
+    map.cancelStep();
+    if (map.open) map.request();
+  }
+});
 
 const BEARINGS: Bearing[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 
@@ -578,8 +697,9 @@ export function sketchFrame(sk: Sketch): SketchFrame {
   const minRow = -dr;
   const maxCol = sk.cols - 1 - dc;
   const maxRow = sk.rows - 1 - dr;
+  const floor = sk.mask ? new Set(sk.mask.flatMap((row, r) => [...row].flatMap((cell, c) => cell === "." ? [`${c - dc},${r - dr}`] : []))) : null;
   const allowed = (c: number, r: number) =>
-    c >= minCol && c <= maxCol && r >= minRow && r <= maxRow && !walls.has(`${c},${r}`) && !solid.has(`${c},${r}`);
+    c >= minCol && c <= maxCol && r >= minRow && r <= maxRow && (!floor || floor.has(`${c},${r}`)) && !walls.has(`${c},${r}`) && !solid.has(`${c},${r}`);
   const reach = Math.max(-minCol, maxCol, -minRow, maxRow, 1);
   return { dc, dr, minCol, minRow, maxCol, maxRow, walls, solid, allowed, reach };
 }
@@ -591,6 +711,16 @@ export function exitCell(sk: Sketch, x: SketchExit): [number, number] {
   if (x.side === "s") return [x.at - dc, sk.rows - dr];
   if (x.side === "w") return [-1 - dc, x.at - dr];
   return [sk.cols - dc, x.at - dr];
+}
+
+/** Клетки прохода в механических координатах; сохранённые клетки надёжнее ширины. */
+export function exitCells(sk: Sketch, x: SketchExit): [number, number][] {
+  if (x.cells?.length) {
+    const [dc, dr] = sk.party;
+    return x.cells.map(([c, r]) => [c - dc, r - dr]);
+  }
+  const cell = exitCell(sk, x);
+  return [cell];
 }
 
 // --- раскладка «Места» ---
