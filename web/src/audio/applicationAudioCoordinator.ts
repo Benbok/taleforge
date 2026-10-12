@@ -56,7 +56,9 @@ export class ApplicationAudioCoordinator {
     if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
     if (this.theme === undefined) {
       this.themeRequest ??= api<AudioTrack | null>("/api/menu-music").catch(() => null);
-      this.theme = await this.themeRequest;
+      const theme = await this.themeRequest;
+      if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
+      this.theme = theme;
     }
     if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
     await this.mixer.setMenuMusic(surface === "menu" ? this.theme ?? null : null, prefs);

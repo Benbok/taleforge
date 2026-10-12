@@ -35,7 +35,7 @@ describe("поверхность звука приложения", () => {
 
   it("запрашивает метаданные темы один раз и не скачивает MP3", async () => {
     vi.mocked(api).mockResolvedValue(theme);
-    const m = mixer();
+    const m = { setSurface: vi.fn(), setMenuMusic: vi.fn(async () => {}), stop: vi.fn() };
     const coordinator = new ApplicationAudioCoordinator(m);
     await coordinator.reconcile("/", user("u1"), { enabled: true, volume: 0.2 });
     await coordinator.reconcile("/profile", user("u1"), { enabled: true, volume: 0.2 });
@@ -44,20 +44,21 @@ describe("поверхность звука приложения", () => {
   });
 
   it("не применяет позднюю тему после смены аккаунта", async () => {
-    let firstResolve!: (value: typeof theme) => void;
+    let firstResolve!: (value: typeof theme | null) => void;
     vi.mocked(api)
       .mockImplementationOnce(() => new Promise(resolve => { firstResolve = resolve; }))
       .mockResolvedValueOnce({ ...theme, id: "menu_second" });
-    const m = mixer();
+    const m = { setSurface: vi.fn(), setMenuMusic: vi.fn(async () => {}), stop: vi.fn() };
     const coordinator = new ApplicationAudioCoordinator(m);
     const first = coordinator.reconcile("/", user("u1"), { enabled: true, volume: 0.2 });
     await Promise.resolve();
     const second = coordinator.reconcile("/", user("u2"), { enabled: false, volume: 0.5 });
     await Promise.resolve();
-    firstResolve(theme);
+    firstResolve(null);
     await Promise.all([first, second]);
-    expect(m.setMenuMusic).toHaveBeenCalledTimes(1);
-    expect(m.setMenuMusic).toHaveBeenCalledWith({ ...theme, id: "menu_second" }, { enabled: false, volume: 0.5 });
+    await coordinator.reconcile("/profile", user("u2"), { enabled: false, volume: 0.5 });
+    expect(m.setMenuMusic).toHaveBeenCalledTimes(2);
+    expect(m.setMenuMusic).toHaveBeenLastCalledWith({ ...theme, id: "menu_second" }, { enabled: false, volume: 0.5 });
   });
 
   it("выход во время запроса останавливает звук и не применяет тему", async () => {
@@ -97,4 +98,5 @@ describe("поверхность звука приложения", () => {
     expect(api).toHaveBeenCalledOnce();
     expect(m.setMenuMusic).toHaveBeenCalledWith(theme, { enabled: true, volume: 0.8 });
   });
+
 });
