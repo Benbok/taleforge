@@ -23,6 +23,24 @@ def test_blueprint_json_round_trip_and_version():
     assert [p.passage_ref for p, _ in bp.ends_of("hall")] == ["p_cell", "in_hall_w"]
 
 
+@pytest.mark.parametrize("payload", [[1], "x", None])
+def test_from_json_rejects_non_object_payload(payload):
+    with pytest.raises(LayoutError):
+        Blueprint.from_json(payload)
+
+
+def test_from_json_rejects_non_numeric_schema_version():
+    with pytest.raises(LayoutError):
+        Blueprint.from_json({**two_rooms().to_json(), "schema_version": "abc"})
+
+
+def test_from_json_rejects_malformed_nested_element():
+    data = two_rooms().to_json()
+    data["passages"][0]["ends"][0] = None
+    with pytest.raises(LayoutError):
+        Blueprint.from_json(data)
+
+
 def test_boundary_and_runs():
     hall = two_rooms().area("hall")
     assert boundary_cells(hall, "e", 1, 2) == [(5, 1), (5, 2)]

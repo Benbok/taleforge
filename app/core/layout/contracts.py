@@ -142,11 +142,16 @@ class Blueprint:
 
     @classmethod
     def from_json(cls, d: dict[str, Any]) -> Blueprint:
-        if not isinstance(d, dict) or int(d.get("schema_version") or 0) != SCHEMA_VERSION:
-            raise LayoutError([f"blueprint: неизвестная версия схемы {(d or {}).get('schema_version')}"])
+        if not isinstance(d, dict):
+            raise LayoutError([f"blueprint: ожидался объект, получено {type(d).__name__}"])
         try:
+            version = int(d.get("schema_version") or 0)
+            if version != SCHEMA_VERSION:
+                raise LayoutError([f"blueprint: неизвестная версия схемы {d.get('schema_version')}"])
             return cls._parse(d)
-        except (KeyError, TypeError, ValueError, IndexError) as e:
+        except LayoutError:
+            raise
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError) as e:
             raise LayoutError([f"blueprint: {type(e).__name__}: {e}"]) from e
 
     @classmethod
@@ -155,8 +160,9 @@ class Blueprint:
             return tuple(tuple(int(v) for v in x) for x in xs or ())  # type: ignore[misc]
 
         def end(e: dict) -> End:
-            return End(e.get("area_ref"), e.get("side"), int(e.get("start") or 0), int(e.get("width") or 1),
-                       e.get("place_id"))  # fmt: skip
+            return End(
+                e.get("area_ref"), e.get("side"), int(e.get("start") or 0), int(e.get("width") or 1), e.get("place_id")
+            )
 
         areas = tuple(
             Area(
@@ -181,7 +187,7 @@ class Blueprint:
                         rects(x["cells"]),
                         bool(x.get("solid")),
                         bool(x.get("hidden")),
-                    )  # fmt: skip
+                    )
                     for x in a.get("details") or ()
                 ),
                 terrain=tuple(Terrain(x["kind"], rects(x["cells"])) for x in a.get("terrain") or ()),
@@ -200,7 +206,7 @@ class Blueprint:
                 (end(p["ends"][0]), end(p["ends"][1])),
                 p.get("state") or "open",
                 bool(p.get("hidden")),
-            )  # fmt: skip
+            )
             for p in d["passages"]
         )
         return cls(
