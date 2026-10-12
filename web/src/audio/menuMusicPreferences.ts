@@ -89,8 +89,11 @@ export const useMenuMusicPreferences = create<MenuMusicState>((set, get) => ({
   },
 
   update(patch) {
-    if (!get().userId) return;
     const prefs = { ...get().prefs, ...patch };
+    if (!get().userId) {
+      set({ prefs, saveState: "saved" });
+      return;
+    }
     pending = { ...pending, ...patch };
     set({ prefs, saveState: "saving" });
     schedule(get, set);

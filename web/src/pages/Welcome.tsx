@@ -1,4 +1,5 @@
 import { ThemeToggle } from "../components/Header";
+import MenuMusicControl from "../audio/MenuMusicControl";
 import AuthForm from "../components/AuthForm";
 
 export default function Welcome() {
@@ -28,7 +29,10 @@ export default function Welcome() {
             TALEFORGE
           </span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <MenuMusicControl />
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Narrative Intro */}

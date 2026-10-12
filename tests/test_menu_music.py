@@ -31,10 +31,11 @@ def _client(settings, tmp_path):
     return TestClient(create_app(configured))
 
 
-def test_menu_theme_requires_login(settings, tmp_path):
+def test_menu_theme_accessible_without_login_but_patch_requires_login(settings, tmp_path):
     with _client(settings, tmp_path) as client:
-        assert client.get("/api/menu-music").status_code == 401
-        assert client.get("/api/menu-music/file").status_code == 401
+        # Публичные эндпоинты для страницы логина
+        assert client.get("/api/menu-music").status_code == 200
+        # Настройки пользователя требуют авторизации
         assert client.patch("/api/me/menu-music", json={}).status_code == 401
 
 

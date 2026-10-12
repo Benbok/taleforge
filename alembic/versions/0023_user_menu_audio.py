@@ -17,7 +17,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("menu_music_enabled", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+    op.add_column("users", sa.Column("menu_music_enabled", sa.Boolean(), nullable=False, server_default=sa.true()))
     op.add_column("users", sa.Column("menu_music_volume", sa.Float(), nullable=False, server_default=sa.text("0.2")))
 
 

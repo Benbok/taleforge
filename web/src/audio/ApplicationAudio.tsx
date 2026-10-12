@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { ApplicationAudioCoordinator, installVisibilityListener } from "./applicationAudioCoordinator";
+import { ApplicationAudioCoordinator, audioSurfaceFor, installAutoUnlock, installVisibilityListener } from "./applicationAudioCoordinator";
 import { DEFAULT_MENU_MUSIC, useMenuMusicPreferences } from "./menuMusicPreferences";
 import { useSession } from "../stores/session";
 import { sound } from "../game/sound";
@@ -18,6 +18,13 @@ export default function ApplicationAudio() {
   }, [location.pathname, user, prefs]);
 
   useEffect(() => installVisibilityListener(sound), []);
+
+  useEffect(() => {
+    return installAutoUnlock(
+      sound,
+      () => Boolean(prefs.enabled && prefs.volume > 0 && audioSurfaceFor(location.pathname, Boolean(user)) === "menu"),
+    );
+  }, [user, prefs.enabled, prefs.volume, location.pathname]);
 
   useEffect(() => () => { void coordinator.current?.reconcile("/", null, DEFAULT_MENU_MUSIC); }, []);
   return null;

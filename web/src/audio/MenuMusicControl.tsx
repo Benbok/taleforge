@@ -20,6 +20,7 @@ export default function MenuMusicControl() {
       update({ enabled: !prefs.enabled });
       return;
     }
+    if (!prefs.enabled) update({ enabled: true });
     setBusy(true);
     const attempt = sound.unlock();
     try {

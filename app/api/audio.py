@@ -31,12 +31,12 @@ def _admin(user) -> None:
 
 
 @router.get("/menu-music")
-async def menu_theme(request: Request, user: UserDep) -> AudioTrack | None:
+async def menu_theme(request: Request) -> AudioTrack | None:
     return menu_music.theme_track(request.app.state.settings.audio_dir)
 
 
 @router.get("/menu-music/file")
-async def menu_theme_file(request: Request, user: UserDep) -> FileResponse:
+async def menu_theme_file(request: Request) -> FileResponse:
     path = menu_music.theme_path(request.app.state.settings.audio_dir)
     if not path.is_file():
         raise NotFound("тема главного меню не найдена")

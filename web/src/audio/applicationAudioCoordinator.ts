@@ -14,13 +14,33 @@ export function installVisibilityListener(
   return () => document.removeEventListener("visibilitychange", onVisibilityChange);
 }
 
+export function installAutoUnlock(
+  mixer: Pick<SoundMixer, "unlock"> & { unlocked: boolean },
+  shouldUnlock: () => boolean,
+): () => void {
+  const tryUnlock = () => {
+    if (!mixer.unlocked && shouldUnlock()) {
+      void mixer.unlock().catch(() => {});
+    }
+  };
+  tryUnlock();
+  const onInteraction = () => {
+    tryUnlock();
+  };
+  window.addEventListener("pointerdown", onInteraction, { passive: true });
+  window.addEventListener("keydown", onInteraction, { passive: true });
+  return () => {
+    window.removeEventListener("pointerdown", onInteraction);
+    window.removeEventListener("keydown", onInteraction);
+  };
+}
+
 export function audioSurfaceFor(pathname: string, signedIn: boolean): AudioSurface {
-  if (!signedIn) return "silent";
   const path = pathname.split(/[?#]/, 1)[0] || "/";
-  if (path === "/" || path === "/new" || path === "/profile"
+  if (/^\/c\/[^/]+$/.test(path)) return signedIn ? "scene" : "silent";
+  if (path === "/" || path === "/admin" || path === "/new" || path === "/profile"
     || /^\/heroes\/[^/]+$/.test(path)
     || /^\/c\/[^/]+\/(manage|hero)$/.test(path)) return "menu";
-  if (/^\/c\/[^/]+$/.test(path)) return "scene";
   return "silent";
 }
 
@@ -35,32 +55,28 @@ export class ApplicationAudioCoordinator {
 
   async reconcile(pathname: string, user: User | null, prefs: MenuMusicPreferences): Promise<void> {
     const reconcileGeneration = ++this.reconcileGeneration;
-    if (!user) {
-      this.generation++;
-      this.userId = null;
-      this.theme = undefined;
-      this.themeRequest = null;
-      this.mixer.stop();
-      return;
-    }
-    if (this.userId !== user.id) {
+    const nextUserId = user ? user.id : null;
+    if (this.userId !== nextUserId) {
       if (this.userId !== null) this.mixer.stop();
       this.generation++;
-      this.userId = user.id;
+      this.userId = nextUserId;
       this.theme = undefined;
       this.themeRequest = null;
     }
     const mine = this.generation;
-    const surface = audioSurfaceFor(pathname, true);
+    const surface = audioSurfaceFor(pathname, Boolean(user));
     await this.mixer.setSurface(surface);
-    if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
+    if (mine !== this.generation || this.userId !== nextUserId || reconcileGeneration !== this.reconcileGeneration) return;
+    if (surface === "silent") {
+      return;
+    }
     if (this.theme === undefined) {
       this.themeRequest ??= api<AudioTrack | null>("/api/menu-music").catch(() => null);
       const theme = await this.themeRequest;
-      if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
+      if (mine !== this.generation || this.userId !== nextUserId || reconcileGeneration !== this.reconcileGeneration) return;
       this.theme = theme;
     }
-    if (mine !== this.generation || this.userId !== user.id || reconcileGeneration !== this.reconcileGeneration) return;
+    if (mine !== this.generation || this.userId !== nextUserId || reconcileGeneration !== this.reconcileGeneration) return;
     await this.mixer.setMenuMusic(surface === "menu" ? this.theme ?? null : null, prefs);
   }
 
