@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -9,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.narrative.contracts import FutureSituationPatch
 from app.core.narrative.plan_patch import patch_future_plan
-from app.db.models import NarrativeFact, NarrativeThread
+from app.db.models import CampaignSecret, NarrativeFact, NarrativeThread
 from app.db.narrative import load_subject_facts
 from app.tools.registry import ToolContext, ToolError, tool
 
@@ -150,12 +151,17 @@ class ApplyFutureSituationArgs(BaseModel):
 @tool("apply_future_situation", "Apply patch to open future campaign situations", ApplyFutureSituationArgs)
 async def apply_future_situation(ctx: ToolContext, args: ApplyFutureSituationArgs) -> dict[str, Any]:
     patch_obj = FutureSituationPatch.model_validate(args.patch)
-    plan = dict(ctx.campaign.settings.get("plan") or {})
+    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
     facts = await load_subject_facts(ctx.session, args.campaign_id, subject_ids=(), limit=100)
     res = patch_future_plan(plan, patch_obj, facts)
     if res.violations:
         raise ToolError(f"plan patch failed: {res.violations[0]}", code="plan_patch_violation")
 
+    if secret is not None:
+        secret.plot = copy.deepcopy(res.plan)
+    if hasattr(ctx.world, "plot"):
+        ctx.world.plot = copy.deepcopy(res.plan)
     ctx.campaign.settings = {**ctx.campaign.settings, "plan": res.plan}
     ctx.changed.add("plan")
 
@@ -179,7 +185,8 @@ class ApplyFrontIntentArgs(BaseModel):
 
 @tool("apply_existing_front_intent", "Update antagonist front intent", ApplyFrontIntentArgs)
 async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentArgs) -> dict[str, Any]:
-    plan = dict(ctx.campaign.settings.get("plan") or {})
+    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
     antagonists = list(plan.get("antagonists") or [])
     src_id = args.front_ref.get("source_id")
     found = False
@@ -192,6 +199,10 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
             break
     if found:
         plan["antagonists"] = antagonists
+        if secret is not None:
+            secret.plot = copy.deepcopy(plan)
+        if hasattr(ctx.world, "plot"):
+            ctx.world.plot = copy.deepcopy(plan)
         ctx.campaign.settings = {**ctx.campaign.settings, "plan": plan}
         ctx.changed.add("plan")
 
