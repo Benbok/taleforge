@@ -517,6 +517,9 @@ class AdaptStoryArgs(BaseModel):
     operations: list[dict[str, Any]] = Field(default_factory=list, description="Типизированные операции")
 
 
+CURRENT_MESSAGE = "current"  # source_id реплики игрока текущего хода: сервер подставит её настоящий id
+
+
 @tool("adapt_story", "Apply narrative adaptation in scene", AdaptStoryArgs)
 async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
     import secrets
@@ -564,10 +567,11 @@ async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
                 ev_dict = dict(ev)
                 if not ev_dict.get("campaign_id"):
                     ev_dict["campaign_id"] = ctx.campaign.id
-                if ev_dict.get("kind") == "message" and turn_msg is not None:
-                    existing_msg = await ctx.session.get(Message, ev_dict.get("source_id"))
-                    if existing_msg is None:
-                        ev_dict["source_id"] = turn_msg.id
+                # только явный маркер реплики этого хода; выдуманный id не подменяется и будет отклонён допуском
+                if ev_dict.get("kind") == "message" and ev_dict.get("source_id") in (None, "", CURRENT_MESSAGE):
+                    if turn_msg is None:
+                        raise ToolError("в этом ходе нет реплики игрока для основания", code="evidence_not_found")
+                    ev_dict["source_id"] = turn_msg.id
                 ev_refs.append(ev_dict)
             g_dict["evidence_refs"] = ev_refs
             normalized_grounds.append(Ground.model_validate(g_dict))

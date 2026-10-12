@@ -271,7 +271,7 @@ def test_turn_reserves_public_claims_before_narration(game_client, admin_g, llm,
         "grounds": [
             {
                 "kind": "divergence",
-                "evidence_refs": [{"campaign_id": cid, "kind": "message", "source_id": "msg-dummy"}],
+                "evidence_refs": [{"campaign_id": cid, "kind": "message", "source_id": "current"}],
                 "confidence": "explicit",
             }
         ],

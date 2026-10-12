@@ -145,7 +145,7 @@ def run_alliance_story_scenario(game_client, admin_g, llm, settings, monkeypatch
                                     {
                                         "campaign_id": cid,
                                         "kind": "message",
-                                        "source_id": "msg-alliance",
+                                        "source_id": "current",
                                     }
                                 ],
                                 "confidence": "explicit",

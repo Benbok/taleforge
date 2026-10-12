@@ -36,6 +36,8 @@ async def adaptation_prompt(ctx: ToolContext) -> str:
         "Правила адаптации:\n"
         "- Провал броска НЕЛЬЗЯ отменять или компенсировать успехом; "
         "можно предложить альтернативную нить (upsert_thread со статусом offered).\n"
+        '- Основание — реплика игрока этого хода: evidence_refs [{"kind": "message", "source_id": "current"}]; '
+        "другие сообщения и события — только по их настоящему id.\n"
         "- Развитие роли существующего NPC: develop_actor_role.\n"
         "- Новый устойчивый факт: add_campaign_fact.\n"
         "- Новая цель или подозрение фракции: change_front_intent.\n"

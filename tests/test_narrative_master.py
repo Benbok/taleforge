@@ -77,7 +77,7 @@ def failed_check_with_new_opportunity(game_client, admin_g, llm, settings):
                                     {
                                         "campaign_id": cid,
                                         "kind": "message",
-                                        "source_id": "msg-dummy",
+                                        "source_id": "current",
                                     }
                                 ],
                                 "confidence": "explicit",
@@ -171,3 +171,50 @@ def test_fake_slot_ref_rejected(settings, client, admin):
 
     play(settings, cid, [], scenario)
 
+
+def _adapt_with_message(game_client, admin_g, llm, source_id: str, thread_id: str):
+    c, (p1,), _hero = party(game_client, admin_g, narrative_mode="adaptive")
+    cid = c["id"]
+    adapt = {
+        "slot_ref": 0,
+        "grounds": [
+            {
+                "kind": "divergence",
+                "evidence_refs": [{"campaign_id": cid, "kind": "message", "source_id": source_id}],
+                "confidence": "explicit",
+            }
+        ],
+        "summary": "Новая возможность из разговора",
+        "operations": [
+            {
+                "kind": "upsert_thread",
+                "thread": {"id": thread_id, "version": 1, "status": "offered", "audience": ["party"]},
+            }
+        ],
+    }
+    llm.replies += [{"tool_calls": [("adapt_story", adapt)]}, DONE, {"text": "Разговор идёт дальше."}]
+    act(game_client, p1, cid, "Расспрашиваю трактирщика о дороге")
+    return cid
+
+
+def test_adapt_story_rejects_invented_message_ref(game_client, admin_g, llm, settings):
+    """Выдуманная ссылка на сообщение отклоняется, а не подменяется сообщением хода (Review Focus 2)."""
+    cid = _adapt_with_message(game_client, admin_g, llm, "msg-invented-by-model", "th-invented")
+
+    async def thread(s):
+        q = select(NarrativeThread).where(NarrativeThread.campaign_id == cid)
+        return await s.scalar(q.where(NarrativeThread.thread_id == "th-invented"))
+
+    assert run(settings, thread) is None
+
+
+def test_adapt_story_binds_current_message_marker(game_client, admin_g, llm, settings):
+    """Явный маркер current — реплика игрока этого хода, проверяемый сервером источник."""
+    cid = _adapt_with_message(game_client, admin_g, llm, "current", "th-current")
+
+    async def thread(s):
+        q = select(NarrativeThread).where(NarrativeThread.campaign_id == cid)
+        return await s.scalar(q.where(NarrativeThread.thread_id == "th-current"))
+
+    row = run(settings, thread)
+    assert row is not None and row.status == "offered"
