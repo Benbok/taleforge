@@ -149,6 +149,7 @@ export class SoundMixer {
 
   get menuStatus(): MenuStatus { return this._menuStatus; }
   get menuError(): string | null { return this._menuError; }
+  get menuTheme(): AudioTrack | null { return this.menuTrack; }
   get audioSurface(): AudioSurface { return this.surface; }
 
   subscribe = (fn: Listener) => {

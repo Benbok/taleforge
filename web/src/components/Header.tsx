@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "../stores/session";
+import MenuMusicControl from "../audio/MenuMusicControl";
 
 
 export function ThemeToggle() {
@@ -110,6 +111,8 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
       )}
 
       <ThemeToggle />
+
+      <MenuMusicControl />
 
       {user && (
         <div className="flex items-center gap-3 shrink-0">
