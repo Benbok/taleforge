@@ -700,3 +700,73 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --- Повествовательная адаптация ---
+
+
+class NarrativeState(Base):
+    """Повествовательное состояние кампании: режим, ревизия, счетчики и границы."""
+
+    __tablename__ = "narrative_states"
+
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    policy_version: Mapped[int] = mapped_column(Integer, default=1)
+    mode: Mapped[str] = mapped_column(String(16), default="strict")  # strict | adaptive
+    recent_boundaries: Mapped[list[Any]] = mapped_column(default=list)
+    budget_counters: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    initialized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class NarrativeFact(Base):
+    """Текущее состояние метаданных фактов: истинность, временная семантика, закрепленность и аудитория."""
+
+    __tablename__ = "narrative_facts"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "namespace", "subject_id", "key"),
+        Index("ix_narrative_facts_subject", "campaign_id", "namespace", "subject_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("nf"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(16))  # plan | module | campaign
+    subject_id: Mapped[str] = mapped_column(String(64))
+    key: Mapped[str] = mapped_column(String(32))  # role | motivation | relationship | secret_truth | situation_premise
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    kind: Mapped[str] = mapped_column(String(16))  # truth | testimony | intent
+    temporal_semantics: Mapped[str] = mapped_column(String(16))  # historical | current_state
+    freedom: Mapped[str] = mapped_column(String(16))  # draft | committed
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    depends_on: Mapped[list[Any]] = mapped_column(default=list)
+    source_refs: Mapped[list[Any]] = mapped_column(default=list)
+    snapshot_ref: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class NarrativeThread(Base):
+    """Сюжетная нить кампании: жизненный цикл, внимание и связи."""
+
+    __tablename__ = "narrative_threads"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "thread_id"),
+        Index("ix_narrative_threads_status", "campaign_id", "status", "last_developed_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("nth"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    thread_id: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), default="offered"
+    )  # offered | active | resolved | abandoned | dormant | hidden
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    subject_refs: Mapped[list[Any]] = mapped_column(default=list)
+    plan_refs: Mapped[list[Any]] = mapped_column(default=list)
+    parent_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_refs: Mapped[list[Any]] = mapped_column(default=list)
+    last_developed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
