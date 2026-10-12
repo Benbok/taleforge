@@ -8,8 +8,8 @@ from app.core.layout import store
 from app.core.topology import location_exits
 from app.db.models import Entity, PlotAnchorBinding
 from tests.game import run
-from tests.test_layout_passages import _built
-from tests.test_layout_preparation import _areas, _setup
+from tests.test_layout_passages import _built, _enter
+from tests.test_layout_preparation import _activate, _areas, _complex, _setup
 from tests.test_map import _map, _ok, _play
 from tests.test_world_generation import _fast_retry, _prepare  # noqa: F401 — фикстура
 
@@ -72,3 +72,55 @@ def test_root_anchor_follows_its_area(client, admin, settings):
 
     here, at_root = run(settings, check)
     assert here["chapel"] == ["relic"] and here["road"] == ["note"] and here["nave"] == [] and at_root == []
+
+
+def test_player_map_exits_follow_passages(client, admin, settings):
+    cid, heads, hid, village, temple, ids = _built(client, admin, settings, "road", "sacristy")
+
+    exits_road = _exits_at(settings, client, heads, cid, hid, ids["road"])
+    assert exits_road[ids["brook"]] == "Луг" and exits_road[ids["narthex"]] == "Двери храма"
+    assert exits_road[village] == "Дорога в деревню" and temple not in exits_road
+    exits_sacristy = _exits_at(settings, client, heads, cid, hid, ids["sacristy"])
+    assert ids["vault"] not in exits_sacristy and temple not in exits_sacristy
+
+
+def _exits_at(settings, client, heads, cid, hid, area):
+    async def go(ctx):
+        await _enter(ctx, hid, area)
+
+    _play(settings, cid, go)
+    return {x["id"]: x["via"] for x in _map(client, heads[0], cid)["exits"]}
+
+
+def test_player_map_accepts_non_rect_area(client, admin, settings):
+    cid, heads, hid = _setup(client, admin, settings)
+
+    def circle(intent):
+        next(p for p in intent["parts"] if p["part_ref"] == "sacristy")["shape"] = "circle"
+
+    _village, temple, ref = _complex(settings, cid, circle)
+    _prepare(settings, cid, ref)
+    sacristy = _areas(settings, temple)["sacristy"].id
+    _prepare(settings, cid, _activate(settings, cid, sacristy))
+
+    async def go(ctx):
+        await _enter(ctx, hid, sacristy)
+
+    _play(settings, cid, go)
+    sk = _map(client, heads[0], cid)["sketch"]
+    assert sk["mask"] and len(sk["mask"]) == sk["rows"]
+
+
+def test_revealed_passage_becomes_neighbour(client, admin, settings):
+    cid, _h, hid, _v, _t, ids = _built(client, admin, settings, "sacristy", "vault")
+    ents = _entities(settings)
+    assert ids["vault"] not in {x.target_id for x in location_exits(ents[ids["sacristy"]], None, ents)}
+
+    async def go(ctx):
+        await _enter(ctx, hid, ids["sacristy"])
+        await _ok(ctx, "edit_sketch", {"action": "reveal", "target": "Тайная дверь", "location_id": ids["sacristy"]})
+
+    _play(settings, cid, go)
+    ents = _entities(settings)
+    assert ids["vault"] in {x.target_id for x in location_exits(ents[ids["sacristy"]], None, ents)}
+    assert ids["sacristy"] in {x.target_id for x in location_exits(ents[ids["vault"]], None, ents)}

@@ -491,6 +491,7 @@ class MapSketch(_Strict):
     rows: int
     party: tuple[int, int]
     walls: list[list[int]]
+    mask: list[str] | None = None
     edges: list[Any] | None = None
     terrain: list[Any] | None = None
     material: str | None = None

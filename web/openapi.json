@@ -6440,6 +6440,21 @@
       "title": "Features",
       "type": "array"
      },
+     "mask": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Mask"
+     },
      "material": {
       "anyOf": [
        {

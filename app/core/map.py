@@ -100,6 +100,12 @@ def _footprint_zones(sk: dict | None, around: list[dict], entities: dict[str, En
         item["cell"] = None  # одна позиция: деталь эскиза
 
 
+def _in_complex(place: Entity) -> bool:
+    from app.core.layout import store
+
+    return store.complex_of(place) is not None or store.blueprint_of(place) is not None
+
+
 async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     cid = viewer.campaign.id
     scene = await get_scene(session, cid)
@@ -271,7 +277,14 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 continue
             link = next((x for x in _links(here) if x["to"] == pid), None)
             back = next((x for x in _links(places[pid]) if x["to"] == here.id), None)
-            if link or back:
+            if _in_complex(here) or _in_complex(places[pid]):
+                # комплекс: соседи и подписи — по проходам blueprint; вложенность и старые links прохода не дают
+                found = next((x for x in location_exits(here, catalog, places) if x.target_id == pid), None)
+                if found is None:
+                    continue
+                link = {"bearing": found.bearing}
+                via = found.label
+            elif link or back:
                 via = (link or back).get("label")
             elif places[pid].location_id == here.id:
                 via = "внутри"
