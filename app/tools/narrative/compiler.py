@@ -135,4 +135,54 @@ def compile_operations(
                 )
             )
 
+        elif op.kind == "introduce_actor":
+            if op.mode == "materialize":
+                calls.append(
+                    CompiledCall(
+                        tool="spawn_entity",
+                        args={
+                            "creature_template_id": op.template_id,
+                            "name": op.public_description,
+                            "attitude": op.attitude,
+                            "description": op.public_description,
+                            "location_id": op.place_ref,
+                            "actor_slot": op.actor_slot,
+                        },
+                        call_key=call_key,
+                        local_binding=op.actor_slot,
+                        metadata={"operation": op.kind, "actor_slot": op.actor_slot},
+                    )
+                )
+            else:
+                calls.append(
+                    CompiledCall(
+                        tool="apply_narrative_actor_sketch",
+                        args={
+                            "campaign_id": snapshot.source.campaign_id,
+                            "actor_slot": op.actor_slot,
+                            "template_id": op.template_id,
+                            "place_ref": op.place_ref,
+                            "attitude": op.attitude,
+                            "public_description": op.public_description,
+                        },
+                        call_key=call_key,
+                        local_binding=op.actor_slot,
+                        metadata={"operation": op.kind, "actor_slot": op.actor_slot},
+                    )
+                )
+
+        elif op.kind == "settle_standing_response":
+            how_text = "; ".join(op.settled_effects) if op.settled_effects else proposal.summary
+            calls.append(
+                CompiledCall(
+                    tool="resolve_response",
+                    args={
+                        "response_id": op.response_id,
+                        "how": how_text or "разрешено в ходе адаптации сюжета",
+                    },
+                    call_key=call_key,
+                    metadata={"operation": op.kind, "response_id": op.response_id},
+                )
+            )
+
     return tuple(calls)

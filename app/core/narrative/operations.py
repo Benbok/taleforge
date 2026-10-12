@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.core.narrative.contracts import Operation
+from app.core.narrative.contracts import LocalRef, Operation
 
 
 class OperationSpec(BaseModel):
@@ -33,6 +33,21 @@ GATE_A_ACTIVE_KINDS: frozenset[str] = frozenset(
         "reveal_fact",
     }
 )
+
+ACTIVE_OPERATION_KINDS: frozenset[str] = frozenset(
+    GATE_A_ACTIVE_KINDS
+    | {
+        "introduce_actor",
+        "settle_standing_response",
+    }
+)
+
+
+def resolve_local_ref(bindings: dict[str, str], ref: LocalRef) -> str:
+    """Resolve a LocalRef actor_slot against already executed batch entity bindings."""
+    if ref.actor_slot not in bindings:
+        raise ValueError(f"LocalRef actor_slot '{ref.actor_slot}' not found in executed bindings")
+    return bindings[ref.actor_slot]
 
 _OPERATION_SPECS: tuple[OperationSpec, ...] = (
     OperationSpec(

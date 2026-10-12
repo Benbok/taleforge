@@ -203,6 +203,14 @@ class LocalRef(NarrativeContractModel):
     actor_slot: str
 
 
+class ActorAdmission(NarrativeContractModel):
+    """Result of authorizing an actor slot for introduction or reuse."""
+
+    allowed: bool
+    reason_code: str
+    existing_entity_id: str | None = None
+
+
 class NarrativePermissions(NarrativeContractModel):
     """Explicit narrative permissions loaded from validated module metadata."""
 

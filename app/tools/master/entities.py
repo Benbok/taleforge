@@ -100,6 +100,9 @@ def _budget_hint(ctx: ToolContext, rec, xp: int, count: int, place: str | None) 
     return hint
 
 
+from app.core.narrative.contracts import ActorAdmission
+
+
 class SpawnArgs(BaseModel):
     creature_template_id: str
     name: str = Field(max_length=128, description="имя экземпляра, например «Гоблин-лучник»")
@@ -115,6 +118,43 @@ class SpawnArgs(BaseModel):
         "не пиши",
     )
     location_id: str | None = Field(None, description=PLACE_HINT)
+    actor_slot: str | None = Field(None, description="уникальный слот персонажа в сюжете для дедупликации")
+
+
+async def authorize_actor_slot(ctx: ToolContext, slot_id: str, args: SpawnArgs) -> ActorAdmission:
+    """Authorize an actor slot for introduction, deduplication or encounter budget."""
+    for en in ctx.world.entities.values():
+        st = en.state or {}
+        if st.get("actor_slot") == slot_id or st.get("slot") == slot_id:
+            if st.get("dead") or st.get("hp", 1) <= 0:
+                return ActorAdmission(
+                    allowed=False,
+                    reason_code="actor_already_dead",
+                    existing_entity_id=en.id,
+                )
+            return ActorAdmission(
+                allowed=True,
+                reason_code="existing_actor",
+                existing_entity_id=en.id,
+            )
+
+    if args.attitude == "hostile":
+        rec = ctx.world.catalog.find(args.creature_template_id, "creature_template")
+        xp = int((rec.data.get("xp") if rec else 0) or 0)
+        place = ctx.world.place_arg(args.location_id, "появляется существо")
+        b = encounter_budget(ctx, [{"xp": xp} for _ in range(args.count)], place)
+        if not b["ok"]:
+            return ActorAdmission(
+                allowed=False,
+                reason_code="encounter_budget_exceeded",
+                existing_entity_id=None,
+            )
+
+    return ActorAdmission(
+        allowed=True,
+        reason_code="ok",
+        existing_entity_id=None,
+    )
 
 
 @tool(
@@ -129,6 +169,28 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     rec = ctx.world.catalog.get(a.creature_template_id, "creature_template")
     creature_stats(rec.data)  # без блока статов существо в сцену не выходит
     place = ctx.world.place_arg(a.location_id, "появляется существо")
+
+    if a.actor_slot:
+        adm = await authorize_actor_slot(ctx, a.actor_slot, a)
+        if not adm.allowed:
+            raise ToolError(
+                f"Слот персонажа '{a.actor_slot}' не разрешён: {adm.reason_code}",
+                code=adm.reason_code,
+                category="rule_denial",
+            )
+        if adm.existing_entity_id:
+            existing = ctx.world.entities[adm.existing_entity_id]
+            if place and existing.location_id != place:
+                existing.location_id = place
+                ctx.changed.add(existing.id)
+            return {
+                "spawned": [{"id": existing.id, "name": existing.name}],
+                "template": existing.template_id,
+                "hp": (existing.state or {}).get("hp", 1),
+                "ac": rec.data.get("ac"),
+                "reused": True,
+            }
+
     if a.attitude != "hostile" and ctx.turn_id:
         turn = await ctx.session.get(MasterTurn, ctx.turn_id)
         if turn is not None and turn.status == "running":
@@ -163,13 +225,21 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     created = []
     for i in range(a.count):
         name = a.name if a.count == 1 else f"{a.name} {i + 1}"
+        state_dict = {
+            "hp": hp,
+            "hp_max": hp,
+            "attitude": a.attitude,
+            **({"bearing": a.bearing} if a.bearing else {}),
+        }
+        if a.actor_slot:
+            state_dict["actor_slot"] = a.actor_slot
         en = Entity(
             campaign_id=ctx.campaign.id,
             kind="creature",
             name=name,
             template_id=rec.id,
             description=a.description,
-            state={"hp": hp, "hp_max": hp, "attitude": a.attitude, **({"bearing": a.bearing} if a.bearing else {})},
+            state=state_dict,
             location_id=place,
             zone=a.zone,
         )

@@ -218,6 +218,61 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
     return {"ok": True, "front_id": src_id, "new_intent": args.new_intent, "event_id": ev.id}
 
 
+class ApplyNarrativeActorSketchArgs(BaseModel):
+    campaign_id: str
+    actor_slot: str
+    template_id: str
+    place_ref: str
+    attitude: str = "neutral"
+    public_description: str
+
+
+@tool(
+    "apply_narrative_actor_sketch",
+    "Persist narrative actor sketch without spawning in scene",
+    ApplyNarrativeActorSketchArgs,
+)
+async def apply_narrative_actor_sketch(ctx: ToolContext, args: ApplyNarrativeActorSketchArgs) -> dict[str, Any]:
+    plan = copy.deepcopy(
+        ctx.world.plot if isinstance(ctx.world.plot, dict) else (ctx.campaign.settings or {}).get("plan") or {}
+    )
+    npcs = list(plan.get("npcs") or [])
+
+    existing_idx = next((i for i, n in enumerate(npcs) if n.get("id") == args.actor_slot), None)
+    sketch_entry = {
+        "id": args.actor_slot,
+        "name": args.public_description,
+        "location_id": args.place_ref,
+        "template_id": args.template_id,
+        "attitude": args.attitude,
+        "status": "sketch",
+        "description": args.public_description,
+    }
+    if existing_idx is not None:
+        npcs[existing_idx] = {**npcs[existing_idx], **sketch_entry}
+    else:
+        npcs.append(sketch_entry)
+
+    plan["npcs"] = npcs
+    if hasattr(ctx.world, "plot"):
+        ctx.world.plot = plan
+    ctx.campaign.settings = {**(ctx.campaign.settings or {}), "plan": plan}
+    ctx.changed.add("plan")
+
+    ev = await ctx.record(
+        "apply_narrative_actor_sketch",
+        hidden=True,
+        payload={
+            "campaign_id": args.campaign_id,
+            "actor_slot": args.actor_slot,
+            "template_id": args.template_id,
+            "place_ref": args.place_ref,
+            "attitude": args.attitude,
+        },
+    )
+    return {"ok": True, "actor_slot": args.actor_slot, "status": "sketch", "event_id": ev.id}
+
+
 class AdaptStoryArgs(BaseModel):
     slot_ref: int = Field(ge=0, le=2, description="Номер слота адаптации текущего хода (0, 1 или 2)")
     grounds: list[dict[str, Any]] = Field(default_factory=list, description="Основания адаптации")

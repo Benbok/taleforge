@@ -22,3 +22,16 @@ audio/generated/
 audio/sfx-pilot/
 models/sfx/
 backups/
+
+# Временные и тестовые артефакты локального запуска
+.tmp-pytest*/
+.pytest_tmp/
+.hypothesis/
+.tox/
+.nox/
+coverage/
+test-results/
+*.test.db
+*.tmp
+*.temp
+*.log

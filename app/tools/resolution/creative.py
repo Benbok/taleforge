@@ -20,6 +20,8 @@ class CreativeOpportunity:
 
 def autonomous_neutral_spawn_allowed(ctx: ToolContext, args, place_id: str | None) -> bool:
     """Ordinary AI calls cannot bypass creative space admission."""
+    if getattr(args, "actor_slot", None):
+        return True
     if any(op.place_id == place_id and op.kind == "new_neutral" for op in creative_opportunities(ctx)):
         return True
     place = ctx.world.entities.get(place_id or "")

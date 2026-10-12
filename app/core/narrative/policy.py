@@ -12,6 +12,7 @@ from app.core.narrative.contracts import (
 )
 from app.core.narrative.operations import (
     _OPERATION_SPECS,
+    ACTIVE_OPERATION_KINDS,
     GATE_A_ACTIVE_KINDS,
     novelty_cost,
     operation_specs,
@@ -179,7 +180,7 @@ def admit_adaptation(
     new_thread_ids: set[str] = set()
 
     for op_item in proposal.operations:
-        if op_item.kind not in GATE_A_ACTIVE_KINDS:
+        if op_item.kind not in ACTIVE_OPERATION_KINDS:
             return AdaptationAdmission(
                 status="denied",
                 reason_code="operation_not_available",
