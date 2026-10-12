@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import logging
+import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -133,6 +134,39 @@ class Tool:
     # поле → какой список допустимых id подставить в схему (ключ World.valid_ids или "dc", "templates:<kind>")
     id_fields: dict[str, str] = field(default_factory=dict)
     closes_actions: bool = True  # вызов с character_id закрывает действие этого персонажа (контракт намерения)
+    internal: bool = False
+
+
+ToolSpec = Tool
+
+
+@dataclass
+class InternalGrant:
+    """Server-issued authorization required to execute internal tools."""
+
+    campaign_id: str
+    allowed_calls: tuple[tuple[str, str | None], ...]
+    token: str = field(default_factory=lambda: secrets.token_hex(16))
+    consumed: set[int] = field(default_factory=set)
+
+    def consume(self, tool_name: str, key: str | None) -> bool:
+        for idx, (t, k) in enumerate(self.allowed_calls):
+            if idx in self.consumed:
+                continue
+            if t == tool_name and (k is None or k == key or _fit_key(k) == key):
+                self.consumed.add(idx)
+                return True
+        return False
+
+
+def issue_internal_grant(campaign_id: str, calls: tuple[Any, ...]) -> InternalGrant:
+    """Issue a scoped single-group InternalGrant for compiled calls."""
+    allowed = []
+    for c in calls:
+        tool_name = getattr(c, "tool", None) or (c.get("tool") if isinstance(c, dict) else str(c))
+        call_key = getattr(c, "call_key", None) or (c.get("call_key") if isinstance(c, dict) else None)
+        allowed.append((tool_name, call_key))
+    return InternalGrant(campaign_id=campaign_id, allowed_calls=tuple(allowed))
 
 
 REGISTRY: dict[str, Tool] = {}
@@ -141,9 +175,18 @@ REGISTRY: dict[str, Tool] = {}
 AFTER_CALL: list[Callable[[ToolContext, dict[str, Any]], Awaitable[None]]] = []
 
 
-def tool(name: str, description: str, args: type[BaseModel], *, mutating: bool = True, ids=None, closes=True):
+def tool(
+    name: str,
+    description: str,
+    args: type[BaseModel],
+    *,
+    mutating: bool = True,
+    ids=None,
+    closes=True,
+    internal: bool = False,
+):
     def deco(fn: Handler) -> Handler:
-        REGISTRY[name] = Tool(name, description, args, fn, mutating, dict(ids or {}), closes)
+        REGISTRY[name] = Tool(name, description, args, fn, mutating, dict(ids or {}), closes, internal)
         return fn
 
     return deco
@@ -196,6 +239,8 @@ def tool_specs(world: World, names: list[str] | None = None) -> list[dict[str, A
     """Описания инструментов в формате function calling (OpenAI/LiteLLM)."""
     out = []
     for t in REGISTRY.values():
+        if t.internal:
+            continue
         if names is not None and t.name not in names:
             continue
         out.append(
@@ -217,12 +262,41 @@ def _fit_key(key: str | None) -> str | None:
     return "h:" + hashlib.sha256(key.encode()).hexdigest()[: KEY_LEN - 2]
 
 
-async def execute(ctx: ToolContext, name: str, raw_args: dict[str, Any] | None, key: str | None = None) -> dict:
+async def execute(
+    ctx: ToolContext,
+    name: str,
+    raw_args: dict[str, Any] | None,
+    key: str | None = None,
+    *,
+    grant: InternalGrant | None = None,
+) -> dict:
     """Выполняет вызов. Повтор с тем же ключом идемпотентности возвращает прежний результат и ничего не меняет."""
     key = _fit_key(key)
     t = REGISTRY.get(name)
     if t is None:
         return _failure(f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}", "unknown_tool", "unknown", key)
+    if t.internal:
+        if grant is None:
+            return _failure(
+                f"инструмент {name} является внутренним и требует разрешения",
+                "internal_tool_denied",
+                "rule_denial",
+                key,
+            )
+        if grant.campaign_id != ctx.campaign.id:
+            return _failure(
+                "граница кампании нарушена",
+                "campaign_boundary_violation",
+                "rule_denial",
+                key,
+            )
+        if not grant.consume(name, key):
+            return _failure(
+                f"вызов {name} не авторизован выданным разрешением",
+                "internal_tool_unauthorized",
+                "rule_denial",
+                key,
+            )
     if name == "roll_check" and key:
         from app.tools.resolution.context import refresh_world
         from app.tools.resolution.requests import bound_tool_key, lock_resolution_source

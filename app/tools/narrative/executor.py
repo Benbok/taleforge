@@ -27,7 +27,7 @@ from app.rules.dice import Dice
 from app.tools.narrative.compiler import compile_operations
 from app.tools.narrative.context import load_snapshot
 from app.tools.operation_group import CompiledCall, run_operation_group
-from app.tools.registry import ToolContext, ToolError
+from app.tools.registry import ToolContext, ToolError, issue_internal_grant
 from app.tools.runtime import open_context
 
 
@@ -65,6 +65,34 @@ async def write_fact_snapshots(ctx: ToolContext, changed: tuple[FactState, ...])
     )
 
 
+def validate_proposal_campaign_boundary(proposal: AdaptationProposal, campaign_id: str) -> bool:
+    """Recursively verify all campaign references in proposal belong to active campaign."""
+    if proposal.source.campaign_id != campaign_id:
+        return False
+    for g in proposal.grounds:
+        for ev in g.evidence_refs:
+            if ev.campaign_id != campaign_id:
+                return False
+    for op in proposal.operations:
+        if op.kind == "add_campaign_fact":
+            if op.fact.ref.campaign_id != campaign_id:
+                return False
+            for dep in op.fact.depends_on:
+                if dep.campaign_id != campaign_id:
+                    return False
+        elif op.kind == "revise_draft_fact":
+            if op.target_ref.campaign_id != campaign_id:
+                return False
+        elif op.kind == "reveal_fact":
+            if op.fact_ref.campaign_id != campaign_id:
+                return False
+        elif op.kind in ("change_front_intent", "advance_front"):
+            fc = getattr(op.front_ref, "campaign_id", None)
+            if fc is not None and fc != campaign_id:
+                return False
+    return True
+
+
 async def apply_in_context(
     ctx: ToolContext,
     proposal: AdaptationProposal,
@@ -80,6 +108,14 @@ async def apply_in_context(
     4. Compile operations and run atomically via shared operation group runner.
     5. Save state revision, novelty budgets, fact snapshots, and durable parent receipt.
     """
+    # 0. Campaign boundary check
+    if not validate_proposal_campaign_boundary(proposal, ctx.campaign.id):
+        return AdaptationResult(
+            status="denied",
+            reason_code="campaign_boundary_violation",
+            budgets_used={},
+        )
+
     # 1. Receipt check
     receipt = await find_receipt(ctx.session, proposal.source)
     if receipt is not None:
@@ -204,8 +240,12 @@ async def apply_in_context(
 
     # 5. Compile and execute operations group
     calls = compile_operations(snapshot, proposal)
+    grant = issue_internal_grant(ctx.campaign.id, calls)
 
     def validate_step(c_ctx: ToolContext, call: CompiledCall, bindings: dict[str, Any]) -> None:
+        if call.args.get("campaign_id") and call.args["campaign_id"] != c_ctx.campaign.id:
+            raise ToolError("граница кампании нарушена", code="campaign_boundary_violation", category="rule_denial")
+
         # Combat scope lock check
         if c_ctx.world.scene.mode == "combat" or (proposal.source.scope == "scene" and c_ctx.world.in_fight()):
             raise ToolError("адаптация во время боя", code="combat_scope_locked", category="rule_denial")
@@ -236,6 +276,7 @@ async def apply_in_context(
         calls,
         validate_step=validate_step,
         annotate_event=annotate_event,
+        grant=grant,
     )
 
     if not group_res.ok:

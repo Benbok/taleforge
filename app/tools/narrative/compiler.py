@@ -24,7 +24,7 @@ def compile_operations(
                 CompiledCall(
                     tool="apply_narrative_fact",
                     args={
-                        "campaign_id": op.fact.ref.campaign_id,
+                        "campaign_id": snapshot.source.campaign_id,
                         "namespace": op.fact.ref.namespace,
                         "subject_id": op.fact.ref.subject_id,
                         "key": op.fact.ref.key,
@@ -46,7 +46,7 @@ def compile_operations(
                 CompiledCall(
                     tool="apply_narrative_fact",
                     args={
-                        "campaign_id": op.target_ref.campaign_id,
+                        "campaign_id": snapshot.source.campaign_id,
                         "namespace": op.target_ref.namespace,
                         "subject_id": op.target_ref.subject_id,
                         "key": op.target_ref.key,

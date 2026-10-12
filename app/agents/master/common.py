@@ -43,7 +43,7 @@ ROLL_TOOLS = (
     "use_item",
 )
 MARKUP = re.compile(r"\[\[([^|\]]+)\|([^\]]+)\]\]")
-DECISION_TOOLS = [n for n in REGISTRY if n != "review_character"]
+DECISION_TOOLS = [n for n in REGISTRY if n != "review_character" and not REGISTRY[n].internal]
 
 
 def decision_tools(ctx: ToolContext) -> list[str]:
@@ -60,7 +60,7 @@ def decision_tools(ctx: ToolContext) -> list[str]:
     if not audio.music_tracks(ctx.campaign):
         off.add("set_music")
     off |= HOST_TOOLS  # подготовку места назначает ведущий, не модель
-    return [n for n in REGISTRY if n != "review_character" and n not in off]
+    return [n for n in REGISTRY if n != "review_character" and not REGISTRY[n].internal and n not in off]
 
 
 _env = jinja2.Environment(

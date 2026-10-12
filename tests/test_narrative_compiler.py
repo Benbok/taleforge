@@ -125,9 +125,7 @@ def test_compiled_calls_execute_successfully(settings, client, admin):
     c, _heads, hero = party(client, admin)
     cid = c["id"]
 
-    snap = snapshot(
-        source=proposal(snapshot()).source.model_copy(update={"campaign_id": cid})
-    )
+    snap = snapshot(source=proposal(snapshot()).source.model_copy(update={"campaign_id": cid}))
     t = thread(id="th-caravan", status="offered")
     prop = proposal(
         snap,
@@ -139,7 +137,10 @@ def test_compiled_calls_execute_successfully(settings, client, admin):
     calls = compile_operations(snap, prop)
 
     async def scenario(ctx):
-        res = await run_operation_group(ctx, calls)
+        from app.tools.registry import issue_internal_grant
+
+        grant = issue_internal_grant(cid, calls)
+        res = await run_operation_group(ctx, calls, grant=grant)
         assert res.ok
         assert len(res.event_ids) >= 2
 

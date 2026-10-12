@@ -8,7 +8,7 @@ from typing import Any
 
 from app.core.world import load_world
 from app.db.models import Event
-from app.tools.registry import ToolContext, ToolError, execute
+from app.tools.registry import InternalGrant, ToolContext, ToolError, execute
 from app.tools.resolution.context import restore_context, snapshot_context
 
 
@@ -42,6 +42,7 @@ async def run_operation_group(
     *,
     validate_step: Callable[[ToolContext, CompiledCall, dict[str, Any]], None] | None = None,
     annotate_event: Callable[[Event, CompiledCall], None] | None = None,
+    grant: InternalGrant | None = None,
 ) -> GroupResult:
     """Execute a sequence of compiled tool calls atomically in a savepoint.
 
@@ -72,7 +73,7 @@ async def run_operation_group(
 
             key = call.call_key
             event_start = len(ctx.events)
-            raw = await execute(ctx, call.tool, actual_args, key=key)
+            raw = await execute(ctx, call.tool, actual_args, key=key, grant=grant)
 
             if call.hidden:
                 for event in ctx.events[event_start:]:

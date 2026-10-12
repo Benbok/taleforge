@@ -29,10 +29,34 @@ class ApplyNarrativeFactArgs(BaseModel):
     snapshot_ref: dict[str, Any] = Field(default_factory=dict)
 
 
-@tool("apply_narrative_fact", "Persist narrative fact adaptation", ApplyNarrativeFactArgs)
+@tool("apply_narrative_fact", "Persist narrative fact adaptation", ApplyNarrativeFactArgs, internal=True)
 async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -> dict[str, Any]:
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+    for dep in args.depends_on:
+        if isinstance(dep, dict) and dep.get("campaign_id") and dep["campaign_id"] != ctx.campaign.id:
+            raise ToolError(
+                "граница кампании нарушена в зависимости факта",
+                code="campaign_boundary_violation",
+                category="rule_denial",
+            )
+    if (
+        isinstance(args.snapshot_ref, dict)
+        and args.snapshot_ref.get("campaign_id")
+        and args.snapshot_ref["campaign_id"] != ctx.campaign.id
+    ):
+        raise ToolError(
+            "граница кампании нарушена в snapshot_ref факта",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+
     stmt = select(NarrativeFact).where(
-        NarrativeFact.campaign_id == args.campaign_id,
+        NarrativeFact.campaign_id == ctx.campaign.id,
         NarrativeFact.namespace == args.namespace,
         NarrativeFact.subject_id == args.subject_id,
         NarrativeFact.key == args.key,
@@ -42,7 +66,7 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
 
     if existing is None:
         f = NarrativeFact(
-            campaign_id=args.campaign_id,
+            campaign_id=ctx.campaign.id,
             namespace=args.namespace,
             subject_id=args.subject_id,
             key=args.key,
@@ -70,7 +94,7 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
         "apply_narrative_fact",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "namespace": args.namespace,
             "subject_id": args.subject_id,
             "key": args.key,
@@ -87,14 +111,20 @@ class ApplyNarrativeThreadArgs(BaseModel):
     target_status: str | None = None
 
 
-@tool("apply_narrative_thread", "Persist narrative thread changes", ApplyNarrativeThreadArgs)
+@tool("apply_narrative_thread", "Persist narrative thread changes", ApplyNarrativeThreadArgs, internal=True)
 async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArgs) -> dict[str, Any]:
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
     tid = (args.thread or {}).get("id") or args.thread_id
     if not tid:
         raise ToolError("missing thread identifier", code="invalid_args")
 
     stmt = select(NarrativeThread).where(
-        NarrativeThread.campaign_id == args.campaign_id,
+        NarrativeThread.campaign_id == ctx.campaign.id,
         NarrativeThread.thread_id == tid,
     )
     res = await ctx.session.execute(stmt)
@@ -104,7 +134,7 @@ async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArg
         th_data = args.thread
         if existing is None:
             new_th = NarrativeThread(
-                campaign_id=args.campaign_id,
+                campaign_id=ctx.campaign.id,
                 thread_id=tid,
                 version=th_data.get("version", 1),
                 status=th_data.get("status", "offered"),
@@ -135,7 +165,7 @@ async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArg
         "apply_narrative_thread",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "thread_id": tid,
             "status": (args.thread or {}).get("status") or args.target_status,
         },
@@ -148,12 +178,23 @@ class ApplyFutureSituationArgs(BaseModel):
     patch: dict[str, Any]
 
 
-@tool("apply_future_situation", "Apply patch to open future campaign situations", ApplyFutureSituationArgs)
+@tool(
+    "apply_future_situation",
+    "Apply patch to open future campaign situations",
+    ApplyFutureSituationArgs,
+    internal=True,
+)
 async def apply_future_situation(ctx: ToolContext, args: ApplyFutureSituationArgs) -> dict[str, Any]:
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
     patch_obj = FutureSituationPatch.model_validate(args.patch)
-    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    secret = await ctx.session.get(CampaignSecret, ctx.campaign.id)
     plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
-    facts = await load_subject_facts(ctx.session, args.campaign_id, subject_ids=(), limit=100)
+    facts = await load_subject_facts(ctx.session, ctx.campaign.id, subject_ids=(), limit=100)
     res = patch_future_plan(plan, patch_obj, facts)
     if res.violations:
         raise ToolError(f"plan patch failed: {res.violations[0]}", code="plan_patch_violation")
@@ -169,7 +210,7 @@ async def apply_future_situation(ctx: ToolContext, args: ApplyFutureSituationArg
         "apply_future_situation",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "changed_refs": list(res.changed_refs),
         },
     )
@@ -183,9 +224,25 @@ class ApplyFrontIntentArgs(BaseModel):
     status: str | None = None
 
 
-@tool("apply_existing_front_intent", "Update antagonist front intent", ApplyFrontIntentArgs)
+@tool("apply_existing_front_intent", "Update antagonist front intent", ApplyFrontIntentArgs, internal=True)
 async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentArgs) -> dict[str, Any]:
-    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+    if (
+        isinstance(args.front_ref, dict)
+        and args.front_ref.get("campaign_id")
+        and args.front_ref["campaign_id"] != ctx.campaign.id
+    ):
+        raise ToolError(
+            "граница кампании нарушена в front_ref",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+    secret = await ctx.session.get(CampaignSecret, ctx.campaign.id)
     plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
     antagonists = list(plan.get("antagonists") or [])
     src_id = args.front_ref.get("source_id") or args.front_ref.get("id")
@@ -219,7 +276,7 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
         "apply_existing_front_intent",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "front_id": src_id,
             "new_intent": args.new_intent,
             "status": args.status,
@@ -235,9 +292,25 @@ class ApplyAdvanceFrontArgs(BaseModel):
     ground_ref: str | None = None
 
 
-@tool("apply_advance_front", "Advance antagonist or campaign front", ApplyAdvanceFrontArgs)
+@tool("apply_advance_front", "Advance antagonist or campaign front", ApplyAdvanceFrontArgs, internal=True)
 async def apply_advance_front(ctx: ToolContext, args: ApplyAdvanceFrontArgs) -> dict[str, Any]:
-    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+    if (
+        isinstance(args.front_ref, dict)
+        and args.front_ref.get("campaign_id")
+        and args.front_ref["campaign_id"] != ctx.campaign.id
+    ):
+        raise ToolError(
+            "граница кампании нарушена в front_ref",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
+    secret = await ctx.session.get(CampaignSecret, ctx.campaign.id)
     plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
     src_id = args.front_ref.get("source_id") or args.front_ref.get("id")
     found = False
@@ -267,7 +340,7 @@ async def apply_advance_front(ctx: ToolContext, args: ApplyAdvanceFrontArgs) -> 
         "apply_advance_front",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "front_id": src_id,
             "steps": args.steps,
         },
@@ -288,8 +361,15 @@ class ApplyNarrativeActorSketchArgs(BaseModel):
     "apply_narrative_actor_sketch",
     "Persist narrative actor sketch without spawning in scene",
     ApplyNarrativeActorSketchArgs,
+    internal=True,
 )
 async def apply_narrative_actor_sketch(ctx: ToolContext, args: ApplyNarrativeActorSketchArgs) -> dict[str, Any]:
+    if args.campaign_id != ctx.campaign.id:
+        raise ToolError(
+            "граница кампании нарушена",
+            code="campaign_boundary_violation",
+            category="rule_denial",
+        )
     plan = copy.deepcopy(
         ctx.world.plot if isinstance(ctx.world.plot, dict) else (ctx.campaign.settings or {}).get("plan") or {}
     )
@@ -320,7 +400,7 @@ async def apply_narrative_actor_sketch(ctx: ToolContext, args: ApplyNarrativeAct
         "apply_narrative_actor_sketch",
         hidden=True,
         payload={
-            "campaign_id": args.campaign_id,
+            "campaign_id": ctx.campaign.id,
             "actor_slot": args.actor_slot,
             "template_id": args.template_id,
             "place_ref": args.place_ref,
