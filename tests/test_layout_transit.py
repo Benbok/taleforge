@@ -105,3 +105,29 @@ def test_walking_to_the_door_happens_before_preparation(client, admin, settings)
 
     cell, place = _play(settings, cid, go)
     assert cell == (6, 0) and place == ids["road"]  # у дверей, но ещё не внутри
+
+
+def test_incapacitated_hero_cannot_pass(client, admin, settings, monkeypatch):
+    cid, heads, hid, _v, _t, ids = _built(client, admin, settings)
+    monkeypatch.setattr(transit.mod, "can_act", lambda _m: "condition.stunned")
+    out = _go(client, heads[0], cid, "in_road_w")
+    assert not out["ok"] and "не может двигаться" in out["error"]
+    assert _place(settings, hid) != ids["road"]
+
+
+def test_finish_rechecks_the_hero(client, admin, settings, monkeypatch):
+    cid, heads, hid, _v, _t, ids = _built(client, admin, settings)
+
+    async def begin(ctx):
+        return (await transit.begin(ctx, [hid], "in_road_w", [], by_player=True)).to_json()
+
+    req = _play(settings, cid, begin)
+    assert req["by_player"]
+    monkeypatch.setattr(transit.mod, "can_act", lambda _m: "condition.stunned")
+
+    async def finish(ctx):
+        return await transit.finish(ctx, transit.Request.from_json(req))
+
+    out = _play(settings, cid, finish)
+    assert not out["moved"] and "не может двигаться" in out["reason"]
+    assert _place(settings, hid) != ids["road"]

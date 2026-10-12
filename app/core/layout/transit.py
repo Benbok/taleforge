@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -18,7 +19,10 @@ from app.core import positions as grid
 from app.core.layout import store
 from app.core.layout.contracts import Blueprint, End, Passage
 from app.db.models import Campaign, Entity
+from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolError
+
+log = logging.getLogger(__name__)
 
 QUEUE = "transits"
 STATE_NAMES = {"closed": "закрыт", "locked": "заперт"}
@@ -35,6 +39,7 @@ class Request:
     blueprint_rev: int
     refs: tuple[str, ...]
     lane: int = 0
+    by_player: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return {**asdict(self), "hero_ids": list(self.hero_ids), "refs": list(self.refs)}
@@ -42,7 +47,8 @@ class Request:
     @classmethod
     def from_json(cls, d: dict[str, Any]) -> Request:
         return cls(tuple(d["hero_ids"]), d["passage_ref"], d["root_id"], d["source_id"], d["dest_id"],
-                   int(d["blueprint_rev"]), tuple(d.get("refs") or ()), int(d.get("lane") or 0))  # fmt: skip
+                   int(d["blueprint_rev"]), tuple(d.get("refs") or ()), int(d.get("lane") or 0),
+                   bool(d.get("by_player")))  # fmt: skip
 
 
 def find_passage(world, place_id: str | None, passage_ref: str) -> tuple[Entity, Blueprint, Passage, End, End]:
@@ -81,6 +87,21 @@ def check(world, hero_ids: list[str], passage_ref: str) -> tuple[str, Entity, Bl
     if live["state"] != "open":
         raise ToolError(f"«{p.public_name}» {STATE_NAMES.get(live['state'], live['state'])}: сначала откройте")
     return here, root, bp, p, end, other
+
+
+def check_heroes(ctx, hero_ids, by_player: bool) -> None:
+    """Те же запреты, что у шага героя: сознание, недееспособность и (для игрока) очередь хода в бою."""
+    w = ctx.world
+    for h in hero_ids:
+        hero = w.actor(h)
+        if not hero.alive or hero.hp.current <= 0:
+            raise ToolError(f"{hero.name} без сознания и не может идти")
+        blocked = mod.can_act(hero.modifiers)
+        if blocked:
+            raise ToolError(f"{hero.name} не может двигаться: {blocked}")
+        if by_player and combat.in_combat(ctx) and combat.fights(w.scene, w.characters, w.entities, h):
+            if combat.current_id(ctx) != h:
+                raise ToolError("в бою ходят по очереди: дождись своего хода")
 
 
 def endpoint_cells(world, area_id: str, passage_ref: str) -> list[tuple[int, int]] | None:
@@ -131,12 +152,9 @@ async def request_area(ctx, area: Entity, inverse: list) -> list[str]:
     return refs
 
 
-async def begin(ctx, hero_ids: list[str], passage_ref: str, inverse: list) -> Request:
+async def begin(ctx, hero_ids: list[str], passage_ref: str, inverse: list, *, by_player: bool = False) -> Request:
     w = ctx.world
-    for h in hero_ids:
-        hero = w.actor(h)
-        if not hero.alive or hero.hp.current <= 0:
-            raise ToolError(f"{hero.name} без сознания и не может идти")
+    check_heroes(ctx, hero_ids, by_player)
     here, root, bp, p, end, other = check(w, hero_ids, passage_ref)
     lane = _approach(ctx, hero_ids[0], here, end, p, inverse)
     dest_id = store.area_ids(root).get(other.area_ref) if other.area_ref else other.place_id
@@ -144,7 +162,7 @@ async def begin(ctx, hero_ids: list[str], passage_ref: str, inverse: list) -> Re
     if dest is None:
         raise ToolError(f"за «{p.public_name}» пока ничего нет")
     refs = await request_area(ctx, dest, inverse)
-    return Request(tuple(hero_ids), passage_ref, root.id, here, dest.id, bp.revision, tuple(refs), lane)
+    return Request(tuple(hero_ids), passage_ref, root.id, here, dest.id, bp.revision, tuple(refs), lane, by_player)
 
 
 async def _geometry_ready(ctx, dest: Entity) -> str | None:
@@ -156,7 +174,7 @@ async def _geometry_ready(ctx, dest: Entity) -> str | None:
     row = await storage.find(ctx.session, ctx.campaign.id, dest.id, "location_geometry")
     if row is not None and row.status == "ready":
         return None
-    return row.last_error if row is not None and row.status == "blocked" else "участок ещё готовится"
+    return "участок не удалось подготовить" if row is not None and row.status == "blocked" else "участок ещё готовится"
 
 
 async def finish(ctx, req: Request, inverse: list | None = None) -> dict[str, Any]:
@@ -164,6 +182,7 @@ async def finish(ctx, req: Request, inverse: list | None = None) -> dict[str, An
 
     w = ctx.world
     try:
+        check_heroes(ctx, req.hero_ids, req.by_player)
         here, root, bp, p, end, other = check(w, list(req.hero_ids), req.passage_ref)
     except ToolError as e:
         return {"moved": False, "reason": str(e)}
@@ -210,29 +229,36 @@ def _arrive(ctx, heroes, dest: Entity, p: Passage, other: End, lane: int, invers
 
 
 async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str, passage_ref: str):
-    """Переход по действию игрока: подготовка принята → дождаться её вне транзакции → проверить и перейти."""
+    """Переход по действию игрока: подготовка принята → дождаться её вне транзакции → проверить и перейти.
+    Возвращает ответ и список ``(ctx, messages)`` закоммиченных транзакций для публикации изменений."""
     from app.tools.runtime import flush_outbox, open_context
 
     async with maker() as s:
         c = await s.get(Campaign, campaign_id)
-        ctx = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
+        ctx1 = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
         inverse: list = []
         try:
-            req = await begin(ctx, [hero_id], passage_ref, inverse)
+            req = await begin(ctx1, [hero_id], passage_ref, inverse, by_player=True)
         except ToolError as e:
             await s.rollback()
-            return {"ok": False, "error": str(e)}, None, []
-        await ctx.record("request_passage", actor_id=hero_id, target_id=req.dest_id,
-                         payload={"passage_ref": passage_ref, "refs": list(req.refs)}, inverse=inverse,
-                         hidden=True)  # fmt: skip
-        await flush_outbox(s, ctx)
+            return {"ok": False, "error": str(e)}, []
+        await ctx1.record("request_passage", actor_id=hero_id, target_id=req.dest_id,
+                          payload={"passage_ref": passage_ref, "refs": list(req.refs)}, inverse=inverse,
+                          hidden=True)  # fmt: skip
+        messages1 = await flush_outbox(s, ctx1)
         await s.commit()
-    if req.refs and preparer is not None:
-        await preparer.settle(maker, campaign_id, list(req.refs))
-    async with maker() as s:
-        c = await s.get(Campaign, campaign_id)
-        ctx = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
-        out = await finish(ctx, req)
-        messages = await flush_outbox(s, ctx)
-        await s.commit()
-    return {"ok": True, **out}, ctx, messages
+    published = [(ctx1, messages1)]
+    try:
+        if req.refs and preparer is not None:
+            await preparer.settle(maker, campaign_id, list(req.refs))
+        async with maker() as s:
+            c = await s.get(Campaign, campaign_id)
+            ctx = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
+            out = await finish(ctx, req)
+            messages = await flush_outbox(s, ctx)
+            await s.commit()
+        published.append((ctx, messages))
+    except Exception:
+        log.exception("переход через проход %s не удался", passage_ref)
+        return {"ok": False, "error": "переход не удался"}, published
+    return {"ok": True, **out}, published

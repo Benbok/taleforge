@@ -317,7 +317,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 continue
 
             if kind == "map.traverse":
-                await _traverse(app, user, conn, payload)
+                _background(_traverse(app, user, conn, payload))
                 continue
 
             if kind == "stat.explain":
@@ -688,14 +688,15 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
             await answer({"ok": False, "error": "у тебя нет героя в этой кампании"})
             return
         hero_id = hero.id
-    out, ctx, messages = await transit.traverse(
+    out, published = await transit.traverse(
         app.state.sessionmaker, app.state.master.preparer, app.state.dice_factory, conn.campaign_id, hero_id, ref
     )
     await answer(out)
-    if ctx is not None:
+    for ctx, messages in published:
         await publish_changes(app.state.bus, ctx, messages)
+    if published:
         await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
-        await _publish_turn(app, ctx)
+        await _publish_turn(app, published[-1][0])
 
 
 async def _publish_turn(app, ctx) -> None:
