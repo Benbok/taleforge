@@ -581,6 +581,19 @@ class Knowledge(Base):
     observed_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
 
 
+class MapMemory(Base):
+    """Персональный снимок геометрии участка и выданных проходов."""
+
+    __tablename__ = "map_memories"
+
+    character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), primary_key=True)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    discovered_passages: Mapped[list[Any]] = mapped_column(JSONType, default=list, server_default="[]")
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 class KnownFact(Base):
     """Факт, который герой узнал о сущности, месте или другом герое (просьба Arty, этап 7): карточка по клику
     показывает ровно то, что этот герой знает. Пишет мастер инструментом ``learn_fact``."""

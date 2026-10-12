@@ -23,6 +23,7 @@ from app.db.models import (
     Entity,
     InventoryItem,
     Knowledge,
+    MapMemory,
     Scene,
 )
 from app.rules.base import DeathSaves, HitPoints
@@ -364,6 +365,8 @@ class World:
     crew: set[str] = field(default_factory=set)  # герои этой группы: куда бы они ни ушли за ход, сцена с ними
     # что каждый герой явно обнаружил (Knowledge.revealed_at): персональные сцены показывают ему найденное тайное
     revealed: dict[str, set[str]] = field(default_factory=dict)
+    # Кэш открытых участков для быстрой фильтрации сетевых представлений.
+    map_known: dict[str, set[str]] = field(default_factory=dict)
     # ревизия мира, от которой прочитан этот снимок (app/core/world_tx.py)
     revision: int = 0
     _actors: dict[str, Actor] = field(default_factory=dict)
@@ -884,6 +887,13 @@ async def load_world(
         )
         for hero_id, entity_id in (await session.execute(q)).all():
             revealed.setdefault(hero_id, set()).add(entity_id)
+    map_known: dict[str, set[str]] = {}
+    if ids:
+        q = select(MapMemory.character_id, MapMemory.entity_id).where(
+            MapMemory.character_id.in_(ids), MapMemory.snapshot.is_not(None)
+        )
+        for hero_id, entity_id in (await session.execute(q)).all():
+            map_known.setdefault(hero_id, set()).add(entity_id)
     return World(
         campaign=campaign,
         catalog=catalog,
@@ -894,5 +904,6 @@ async def load_world(
         effects=effects,
         plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
         revealed=revealed,
+        map_known=map_known,
         revision=revision if (base := world_tx.base_revision(session, campaign.id)) is None else base,
     )
