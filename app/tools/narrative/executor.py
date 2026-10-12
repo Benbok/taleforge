@@ -308,8 +308,34 @@ async def apply_in_context(
     state = await ensure_state(ctx.session, ctx.campaign.id)
     state.revision += 1
     counters = dict(state.budget_counters or {})
-    counters["novelty_scene"] = counters.get("novelty_scene", 0) + admission.novelty_cost
-    counters["novelty_session"] = counters.get("novelty_session", 0) + admission.novelty_cost
+
+    scene_ref = getattr(ctx.world.scene, "boundary_id", None) or f"scene:{ctx.world.scene.location_id or 'default'}"
+    session_ref = ctx.game_session_id or f"session:{ctx.campaign.id}:default"
+
+    scene_spent_map = dict(counters.get("scene_spent") or {})
+    session_spent_map = dict(counters.get("session_spent") or {})
+    spent_actor_slots = list(counters.get("spent_actor_slots") or [])
+
+    if proposal.source.scope == "scene":
+        scene_spent_map[scene_ref] = scene_spent_map.get(scene_ref, 0) + admission.novelty_cost
+        counters["novelty_scene"] = scene_spent_map[scene_ref]
+    else:
+        counters["novelty_scene"] = scene_spent_map.get(scene_ref, counters.get("novelty_scene", 0))
+
+    session_spent_map[session_ref] = session_spent_map.get(session_ref, 0) + admission.novelty_cost
+    counters["novelty_session"] = session_spent_map[session_ref]
+
+    for op_item in proposal.operations:
+        if op_item.kind == "introduce_actor" and getattr(op_item, "actor_slot", None):
+            if op_item.actor_slot not in spent_actor_slots:
+                spent_actor_slots.append(op_item.actor_slot)
+
+    counters["scene_boundary_ref"] = scene_ref
+    counters["session_budget_ref"] = session_ref
+    counters["scene_spent"] = scene_spent_map
+    counters["session_spent"] = session_spent_map
+    counters["spent_actor_slots"] = spent_actor_slots
+
     state.budget_counters = counters
     await ctx.session.flush()
 

@@ -188,10 +188,16 @@ async def load_snapshot(
 
     # 2. Facts
     subject_ids = set(request.mutable_subject_refs)
-    for ent_id in ctx.world.entities:
+    for ent_id, ent in ctx.world.entities.items():
         subject_ids.add(ent_id)
+        slot = (ent.state or {}).get("actor_slot")
+        if slot:
+            subject_ids.add(slot)
     for ch_id in ctx.world.characters:
         subject_ids.add(ch_id)
+    counters = st.budget_counters or {}
+    for slot in counters.get("spent_actor_slots", []):
+        subject_ids.add(slot)
 
     facts = await load_subject_facts(ctx.session, cid, tuple(subject_ids), limit=policy.max_snapshot_records)
 
@@ -251,8 +257,26 @@ async def load_snapshot(
 
     # 7. Budgets
     counters = st.budget_counters or {}
-    used_scene = counters.get("novelty_scene", 0)
-    used_session = counters.get("novelty_session", 0)
+    scene_ref = getattr(ctx.world.scene, "boundary_id", None) or f"scene:{ctx.world.scene.location_id or 'default'}"
+    session_ref = ctx.game_session_id or f"session:{ctx.campaign.id}:default"
+
+    scene_spent_map = counters.get("scene_spent") or {}
+    session_spent_map = counters.get("session_spent") or {}
+
+    if scene_ref in scene_spent_map:
+        used_scene = scene_spent_map[scene_ref]
+    elif not scene_spent_map and "novelty_scene" in counters:
+        used_scene = counters.get("novelty_scene", 0)
+    else:
+        used_scene = 0
+
+    if session_ref in session_spent_map:
+        used_session = session_spent_map[session_ref]
+    elif not session_spent_map and "novelty_session" in counters:
+        used_session = counters.get("novelty_session", 0)
+    else:
+        used_session = 0
+
     budgets = {
         "novelty_scene": max(0, policy.max_novelty_scene - used_scene),
         "novelty_session": max(0, policy.max_novelty_session - used_session),

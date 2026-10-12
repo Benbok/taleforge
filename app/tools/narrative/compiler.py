@@ -188,7 +188,7 @@ def compile_operations(
                             "name": op.public_description,
                             "attitude": op.attitude,
                             "description": op.public_description,
-                            "location_id": op.place_ref,
+                            "location_id": op.place_ref or None,
                             "actor_slot": op.actor_slot,
                         },
                         call_key=call_key,

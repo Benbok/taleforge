@@ -169,14 +169,37 @@ async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArg
     res = await ctx.session.execute(stmt)
     existing = res.scalar_one_or_none()
 
+    from app.core.narrative.threads import _VALID_TRANSITIONS
+
+    before_status = existing.status if existing is not None else None
+    before_version = existing.version if existing is not None else None
+    inverse_payload: dict[str, Any] = (
+        {
+            "status": existing.status,
+            "version": existing.version,
+            "audience": copy.deepcopy(existing.audience),
+            "subject_refs": copy.deepcopy(existing.subject_refs),
+            "plan_refs": copy.deepcopy(existing.plan_refs),
+        }
+        if existing is not None
+        else {"delete": True, "thread_id": tid}
+    )
+
     if args.thread is not None:
         th_data = args.thread
+        new_status = th_data.get("status", "offered")
         if existing is None:
+            if new_status != "offered":
+                raise ToolError(
+                    "новая нить должна создаваться со статусом offered",
+                    code="player_choice_required",
+                    category="rule_denial",
+                )
             new_th = NarrativeThread(
                 campaign_id=ctx.campaign.id,
                 thread_id=tid,
                 version=th_data.get("version", 1),
-                status=th_data.get("status", "offered"),
+                status="offered",
                 audience=th_data.get("audience", []),
                 subject_refs=th_data.get("subject_refs", []),
                 plan_refs=th_data.get("plan_refs", []),
@@ -184,21 +207,54 @@ async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArg
                 source_refs=th_data.get("source_refs", [ctx.call_key] if ctx.call_key else []),
             )
             ctx.session.add(new_th)
+            final_status = "offered"
+            final_version = 1
         else:
+            if existing.status == "resolved" and new_status != "resolved":
+                raise ToolError(
+                    "нить уже завершена и не может быть реактивирована",
+                    code="resolved_terminal",
+                    category="rule_denial",
+                )
+            if new_status != existing.status and (existing.status, new_status) not in _VALID_TRANSITIONS:
+                raise ToolError(
+                    f"недопустимый переход нити из {existing.status} в {new_status}",
+                    code="invalid_transition",
+                    category="rule_denial",
+                )
             existing.version += 1
-            existing.status = th_data.get("status", existing.status)
+            existing.status = new_status
             existing.audience = th_data.get("audience", existing.audience)
             existing.subject_refs = th_data.get("subject_refs", existing.subject_refs)
             existing.plan_refs = th_data.get("plan_refs", existing.plan_refs)
             if ctx.call_key and ctx.call_key not in (existing.source_refs or []):
                 existing.source_refs = [*existing.source_refs, ctx.call_key]
+            final_status = existing.status
+            final_version = existing.version
     elif args.target_status:
         if existing is None:
             raise ToolError(f"thread not found: {tid}", code="thread_not_found")
+        if existing.status == "resolved" and args.target_status != "resolved":
+            raise ToolError(
+                "нить уже завершена и не может быть реактивирована",
+                code="resolved_terminal",
+                category="rule_denial",
+            )
+        if args.target_status != existing.status and (existing.status, args.target_status) not in _VALID_TRANSITIONS:
+            raise ToolError(
+                f"недопустимый переход нити из {existing.status} в {args.target_status}",
+                code="invalid_transition",
+                category="rule_denial",
+            )
         existing.status = args.target_status
         existing.version += 1
         if ctx.call_key and ctx.call_key not in (existing.source_refs or []):
             existing.source_refs = [*existing.source_refs, ctx.call_key]
+        final_status = existing.status
+        final_version = existing.version
+    else:
+        final_status = existing.status if existing else "offered"
+        final_version = existing.version if existing else 1
 
     ev = await ctx.record(
         "apply_narrative_thread",
@@ -206,7 +262,12 @@ async def apply_narrative_thread(ctx: ToolContext, args: ApplyNarrativeThreadArg
         payload={
             "campaign_id": ctx.campaign.id,
             "thread_id": tid,
-            "status": (args.thread or {}).get("status") or args.target_status,
+            "status": final_status,
+            "before": before_status,
+            "after": final_status,
+            "version": final_version,
+            "previous_version": before_version,
+            "inverse": inverse_payload,
         },
     )
     return {"ok": True, "thread_id": tid, "event_id": ev.id}

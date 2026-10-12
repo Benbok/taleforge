@@ -8,6 +8,7 @@ from app.core.narrative.contracts import (
     NarrativePolicy,
     NarrativeSnapshot,
     ReadRef,
+    ThreadState,
     Violation,
 )
 from app.core.narrative.operations import (
@@ -16,6 +17,7 @@ from app.core.narrative.operations import (
     novelty_cost,
     operation_specs,
 )
+from app.core.narrative.threads import attention_count, transition_thread
 
 __all__ = [
     "admit_adaptation",
@@ -189,8 +191,7 @@ def admit_adaptation(
             read_set=snapshot.read_set,
         )
 
-    active_offered_thread_ids = {t.id for t in snapshot.threads if t.status in ("offered", "active")}
-    new_thread_ids: set[str] = set()
+    sim_threads: dict[str, ThreadState] = {t.id: t for t in snapshot.threads}
 
     allowed_operations = (
         set(ACTIVE_OPERATION_KINDS) & set(policy.allowed_operation_kinds) & set(snapshot.permissions.operation_kinds)
@@ -236,26 +237,71 @@ def admit_adaptation(
                     read_set=snapshot.read_set,
                 )
 
+        elif op_item.kind == "transition_thread":
+            tid = op_item.thread_id
+            curr_th = sim_threads.get(tid)
+            if curr_th is None:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code="unverified_data",
+                    violations=(Violation(code="unknown_thread", target_ref=tid),),
+                    read_set=snapshot.read_set,
+                )
+            primary_ground = next(
+                (g for g in proposal.grounds if g.kind == "consequence"),
+                proposal.grounds[0] if proposal.grounds else None,
+            )
+            if primary_ground is None:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code="source_not_applied",
+                    violations=(Violation(code="missing_ground_for_transition"),),
+                    read_set=snapshot.read_set,
+                )
+            trans_res = transition_thread(
+                state=curr_th,
+                target=op_item.target_status,
+                ground=primary_ground,
+                evidence=snapshot.evidence,
+            )
+            if trans_res.violation:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code=trans_res.violation,
+                    violations=(Violation(code=trans_res.violation, target_ref=tid),),
+                    read_set=snapshot.read_set,
+                )
+            if trans_res.new_state:
+                sim_threads[tid] = trans_res.new_state
+
         elif op_item.kind == "upsert_thread":
-            t_status = op_item.thread.status
-            if t_status in ("offered", "active"):
-                t_id = op_item.thread.id
-                if t_id not in active_offered_thread_ids:
-                    new_thread_ids.add(t_id)
-                    total_count = len(active_offered_thread_ids) + len(new_thread_ids)
-                    if total_count > policy.max_offered_active_threads:
-                        return AdaptationAdmission(
-                            status="denied",
-                            reason_code="attention_limit",
-                            violations=(
-                                Violation(
-                                    code="attention_limit",
-                                    expected=str(policy.max_offered_active_threads),
-                                    actual=str(total_count),
-                                ),
-                            ),
-                            read_set=snapshot.read_set,
-                        )
+            new_th = op_item.thread
+            tid = new_th.id
+            existing_th = sim_threads.get(tid)
+            if existing_th is not None:
+                if existing_th.status == "resolved" and new_th.status != "resolved":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="resolved_terminal",
+                        violations=(Violation(code="resolved_terminal", target_ref=tid),),
+                        read_set=snapshot.read_set,
+                    )
+                if existing_th.status == "offered" and new_th.status == "active":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="player_choice_required",
+                        violations=(Violation(code="player_choice_required", target_ref=tid),),
+                        read_set=snapshot.read_set,
+                    )
+            else:
+                if new_th.status != "offered":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="player_choice_required",
+                        violations=(Violation(code="new_thread_must_be_offered", target_ref=tid),),
+                        read_set=snapshot.read_set,
+                    )
+            sim_threads[tid] = new_th
 
         elif op_item.kind == "revise_draft_fact":
             target = op_item.target_ref
@@ -344,8 +390,26 @@ def admit_adaptation(
                         read_set=snapshot.read_set,
                     )
 
+    # Attention limit check over final simulated threads
+    audiences_to_check = [("party",), *[t.audience for t in sim_threads.values() if t.audience]]
+    for aud in audiences_to_check:
+        att = attention_count(tuple(sim_threads.values()), aud)
+        if att > policy.max_offered_active_threads:
+            return AdaptationAdmission(
+                status="denied",
+                reason_code="attention_limit",
+                violations=(
+                    Violation(
+                        code="attention_limit",
+                        expected=str(policy.max_offered_active_threads),
+                        actual=str(att),
+                    ),
+                ),
+                read_set=snapshot.read_set,
+            )
+
     # 4. Novelty & Budgets
-    cost = novelty_cost(proposal.operations)
+    cost = novelty_cost(proposal.operations, existing_slots=frozenset(snapshot.actors))
 
     if proposal.source.scope == "scene":
         scene_limit = snapshot.budgets.get("novelty_scene", policy.max_novelty_scene)

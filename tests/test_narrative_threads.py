@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import Literal
 
+from sqlalchemy import select
+
 from app.core.narrative.contracts import (
     EvidenceRecord,
     EvidenceRef,
@@ -40,12 +42,13 @@ def consequence_ground(
     *,
     kind: Literal["message", "event"] = "event",
     source_id: str = "evt-1",
+    campaign_id: str = "camp-1",
 ) -> Ground:
     return Ground(
         kind="consequence",
         evidence_refs=(
             EvidenceRef(
-                campaign_id="camp-1",
+                campaign_id=campaign_id,
                 kind=kind,
                 source_id=source_id,
             ),
@@ -296,3 +299,255 @@ def test_db_load_threads_with_audience_and_status(tmp_path):
         await engine.dispose()
 
     asyncio.run(go())
+
+
+def test_persisted_resolved_cannot_reactivate(settings, client, admin):
+    """A resolved narrative thread in database cannot be reactivated via transition or upsert."""
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        NarrativePolicy,
+        TransitionThreadOp,
+        UpsertThreadOp,
+        VersionSet,
+    )
+    from app.db.narrative import ensure_state
+    from app.db.session import make_sessionmaker
+    from app.rules.dice import Dice
+    from app.tools.narrative.executor import apply_in_context
+    from app.tools.narrative.sources import bind_scene_sources
+    from app.tools.runtime import open_context
+    from tests.game import import_base, party
+
+    import_base(settings)
+    c, _heads, hero = party(client, admin)
+    cid = c["id"]
+    maker = make_sessionmaker(client.app.state.engine)
+
+    async def _run():
+        # Setup resolved thread
+        async with maker() as s:
+            s.add(
+                NarrativeThread(
+                    campaign_id=cid,
+                    thread_id="th-done",
+                    version=1,
+                    status="resolved",
+                    audience=[],
+                )
+            )
+            st = await ensure_state(s, cid)
+            st.mode = "adaptive"
+            await s.commit()
+
+        # 1. Attempt transition_thread: resolved -> active
+        async with maker() as s:
+            camp = await s.get(Campaign, cid)
+            ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
+            slots = await bind_scene_sources(ctx)
+            src = slots[0]
+            ev = await ctx.record("evidence", payload={"result": "choice_made"})
+
+            prop = AdaptationProposal(
+                schema_version=1,
+                proposal_id="prop_reactivate_trans",
+                source=src,
+                base=VersionSet(
+                    world_revision=ctx.world.revision,
+                    plan_version=1,
+                    narrative_revision=1,
+                    policy_version=1,
+                ),
+                grounds=(consequence_ground(source_id=ev.id, campaign_id=cid),),
+                summary="Попытка реактивировать завершенную нить через transition",
+                operations=(TransitionThreadOp(thread_id="th-done", target_status="active"),),
+            )
+            res = await apply_in_context(ctx, prop, policy=NarrativePolicy(mode="adaptive"))
+            assert res.status == "denied"
+            assert res.reason_code in ("resolved_terminal", "invalid_transition")
+
+        # 2. Attempt upsert_thread: overwriting resolved thread to active
+        async with maker() as s:
+            camp = await s.get(Campaign, cid)
+            ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
+            slots = await bind_scene_sources(ctx)
+            src = slots[0]
+            ev = await ctx.record("evidence", payload={"result": "choice_made"})
+
+            prop = AdaptationProposal(
+                schema_version=1,
+                proposal_id="prop_reactivate_upsert",
+                source=src,
+                base=VersionSet(
+                    world_revision=ctx.world.revision,
+                    plan_version=1,
+                    narrative_revision=1,
+                    policy_version=1,
+                ),
+                grounds=(consequence_ground(source_id=ev.id, campaign_id=cid),),
+                summary="Попытка реактивировать завершенную нить через upsert",
+                operations=(
+                    UpsertThreadOp(
+                        thread=ThreadState(
+                            id="th-done",
+                            version=1,
+                            status="active",
+                            audience=(),
+                        )
+                    ),
+                ),
+            )
+            res = await apply_in_context(ctx, prop, policy=NarrativePolicy(mode="adaptive"))
+            assert res.status == "denied"
+            assert res.reason_code in ("resolved_terminal", "invalid_transition")
+
+        # 3. Verify in DB: thread is still resolved
+        async with maker() as s:
+            row = (
+                await s.execute(
+                    select(NarrativeThread).where(
+                        NarrativeThread.campaign_id == cid,
+                        NarrativeThread.thread_id == "th-done",
+                    )
+                )
+            ).scalar_one()
+            assert row.status == "resolved"
+
+    asyncio.run(_run())
+
+
+def test_interest_cannot_accept_thread(settings, client, admin):
+    """Thread transition offered -> active cannot be accepted on interest ground alone."""
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        NarrativePolicy,
+        TransitionThreadOp,
+        VersionSet,
+    )
+    from app.db.narrative import ensure_state
+    from app.db.session import make_sessionmaker
+    from app.rules.dice import Dice
+    from app.tools.narrative.executor import apply_in_context
+    from app.tools.narrative.sources import bind_scene_sources
+    from app.tools.runtime import open_context
+    from tests.game import import_base, party
+
+    import_base(settings)
+    c, _heads, hero = party(client, admin)
+    cid = c["id"]
+    maker = make_sessionmaker(client.app.state.engine)
+
+    async def _run():
+        async with maker() as s:
+            s.add(
+                NarrativeThread(
+                    campaign_id=cid,
+                    thread_id="th-offered",
+                    version=1,
+                    status="offered",
+                    audience=[],
+                )
+            )
+            st = await ensure_state(s, cid)
+            st.mode = "adaptive"
+            await s.commit()
+
+        async with maker() as s:
+            camp = await s.get(Campaign, cid)
+            ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
+            slots = await bind_scene_sources(ctx)
+            src = slots[0]
+            ev = await ctx.record("evidence", payload={"result": "curiosity_noted"})
+
+            prop = AdaptationProposal(
+                schema_version=1,
+                proposal_id="prop_interest_accept",
+                source=src,
+                base=VersionSet(
+                    world_revision=ctx.world.revision,
+                    plan_version=1,
+                    narrative_revision=1,
+                    policy_version=1,
+                ),
+                grounds=(
+                    Ground(
+                        kind="interest",
+                        evidence_refs=(EvidenceRef(campaign_id=cid, kind="event", source_id=ev.id),),
+                        subject_refs=("hero-1",),
+                    ),
+                ),
+                summary="Попытка принять нить на основе одного интереса",
+                operations=(TransitionThreadOp(thread_id="th-offered", target_status="active"),),
+            )
+            res = await apply_in_context(ctx, prop, policy=NarrativePolicy(mode="adaptive"))
+            assert res.status == "denied"
+            assert res.reason_code == "player_choice_required"
+
+        async with maker() as s:
+            row = (
+                await s.execute(
+                    select(NarrativeThread).where(
+                        NarrativeThread.campaign_id == cid,
+                        NarrativeThread.thread_id == "th-offered",
+                    )
+                )
+            ).scalar_one()
+            assert row.status == "offered"
+
+    asyncio.run(_run())
+
+
+def test_transition_respects_attention_limit():
+    """Attention limit is evaluated on end state of entire batch: resolving an old thread frees budget for a new one."""
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        NarrativePolicy,
+        TransitionThreadOp,
+        UpsertThreadOp,
+    )
+    from app.core.narrative.policy import admit_adaptation
+    from tests.narrative_helpers import snapshot
+
+    # 5 active/offered threads exist
+    threads = tuple(ThreadState(id=f"t{i}", version=1, status="active", audience=()) for i in range(1, 6))
+    ev_ref = EvidenceRef(campaign_id="camp-1", kind="event", source_id="ev-1")
+    ev_rec = EvidenceRecord(
+        ref=ev_ref,
+        status="applied",
+        applied_result="quest_completed",
+        audience=("party",),
+    )
+    snap = snapshot(
+        threads=threads,
+        evidence=(ev_rec,),
+    )
+    pol = NarrativePolicy(max_offered_active_threads=5)
+
+    # Case A: resolving t1 and introducing t6 -> end state has 5 active/offered threads -> allowed
+    prop_allowed = AdaptationProposal(
+        schema_version=1,
+        proposal_id=snap.proposal_id,
+        source=snap.source,
+        base=snap.base,
+        grounds=(consequence_ground(source_id="ev-1"),),
+        summary="Закрываем старую нить и открываем новую в пределах лимита внимания",
+        operations=(
+            TransitionThreadOp(thread_id="t1", target_status="resolved"),
+            UpsertThreadOp(thread=ThreadState(id="t6", version=1, status="offered", audience=())),
+        ),
+    )
+    decision_allowed = admit_adaptation(snap, prop_allowed, pol)
+    assert decision_allowed.status == "allowed"
+
+    # Case B: simply introducing t6 without resolving anything -> end state has 6 active/offered threads -> denied
+    prop_denied = AdaptationProposal(
+        schema_version=1,
+        proposal_id=snap.proposal_id,
+        source=snap.source,
+        base=snap.base,
+        grounds=(consequence_ground(source_id="ev-1"),),
+        summary="Открываем 6-ю нить без закрытия старых",
+        operations=(UpsertThreadOp(thread=ThreadState(id="t6", version=1, status="offered", audience=())),),
+    )
+    decision_denied = admit_adaptation(snap, prop_denied, pol)
+    assert decision_denied.status == "denied"
+    assert decision_denied.reason_code == "attention_limit"
