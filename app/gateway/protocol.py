@@ -580,8 +580,8 @@ class MapTraverseResult(_Open):
     reason: str | None = None
     error: str | None = None
     area_id: str | None = None
-    area: MapKnownArea | None = None
-    passage: MapExit | None = None
+    area: str | None = None
+    passage: str | None = None
     cell: tuple[int, int] | None = None
     from_cell: tuple[int, int] | None = None
 

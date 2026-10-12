@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -13,8 +14,7 @@ from app.core.layout import store
 from app.db.models import Entity, MapMemory
 
 
-def _area_meta(root: Entity, place: Entity) -> tuple[dict[str, Any], Any] | None:
-    bp = store.blueprint_of(root)
+def _area_meta(bp, place: Entity) -> tuple[dict[str, Any], Any] | None:
     if bp is None:
         return None
     ref = ((place.state or {}).get("complex") or {}).get("area_ref")
@@ -28,7 +28,7 @@ def _area_packet(
     *,
     status: str,
     revision: int,
-    observed_at: Any = None,
+    observed_at: datetime | None = None,
     disclosed_to: list[str] | None = None,
     meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -40,7 +40,8 @@ def _area_packet(
         "level": int((meta or {}).get("level") or 0),
         "status": status,
         "revision": int(revision),
-        "observed_at": observed_at,
+        # пакет уходит через send_json без pydantic-сериализации: время — строкой ISO
+        "observed_at": observed_at.isoformat() if observed_at is not None else None,
         "sketch": geometry,
         "disclosed_to": disclosed_to,
     }
@@ -51,6 +52,7 @@ async def location_plan(
     viewer: Any,
     entities: dict[str, Entity],
     here_id: str | None,
+    blueprint_cache: dict | None = None,
 ) -> dict[str, Any] | None:
     """Собрать только текущий и персонально сохранённые участки комплекса."""
     here = entities.get(here_id or "")
@@ -59,7 +61,13 @@ async def location_plan(
     complex_state = (here.state or {}).get("complex") or {}
     root_id = complex_state.get("root_id")
     root = entities.get(root_id or "")
-    if root is None or store.blueprint_of(root) is None:
+    if root is None:
+        return None
+    cache = blueprint_cache if blueprint_cache is not None else {}
+    if root.id not in cache:
+        cache[root.id] = store.blueprint_of(root)
+    bp = cache[root.id]
+    if bp is None:
         return None
     hero_id = getattr(viewer, "id", None) or getattr(viewer, "hero_id", None)
     if hero_id is None and isinstance(viewer, str):
@@ -74,22 +82,27 @@ async def location_plan(
             ).all()
         )
     by_id = {row.entity_id: row for row in rows}
+    grants = await map_memory.known_passages(session, hero_id, here.id) if hero_id else frozenset()
+    permitted = frozenset(
+        (root.id, p.passage_ref) for p in bp.passages if not p.hidden or (root.id, p.passage_ref) in grants
+    )
     current = map_memory.static_snapshot(
         here,
         root,
         (root.state or {}).get("blueprint"),
         entities,
-        discovered_passages=frozenset(
-            (root.id, str(exit.get("passage_ref")))
-            for exit in ((here.state or {}).get("sketch") or {}).get("exits") or []
-            if exit.get("passage_ref") and not exit.get("hidden")
-        ),
+        discovered_passages=permitted if hero_id else frozenset((root.id, p.passage_ref) for p in bp.passages),
         revealed=frozenset(),
     )
     if current is None:
         return None
+    current["geometry"]["exits"] = [
+        x
+        for x in current["geometry"].get("exits", [])
+        if not x.get("passage_ref") or (root.id, x["passage_ref"]) in permitted or not hero_id
+    ]
     areas: list[dict[str, Any]] = []
-    meta = _area_meta(root, here)
+    meta = _area_meta(bp, here)
     areas.append(
         _area_packet(
             here,
@@ -107,7 +120,7 @@ async def location_plan(
             continue
         if ((place.state or {}).get("complex") or {}).get("root_id") != root.id:
             continue
-        area_meta = _area_meta(root, place)
+        area_meta = _area_meta(bp, place)
         areas.append(
             _area_packet(
                 place,

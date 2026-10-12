@@ -55,7 +55,7 @@ def _clean_sketch(
     result["exits"] = exits
     features: list[dict[str, Any]] = []
     for original in raw.get("features") or []:
-        if original.get("entity_id"):
+        if original.get("entity_id") or original.get("hidden"):
             continue
         features.append(
             {
@@ -85,6 +85,18 @@ def static_snapshot(
         return None
     complex_state = (place.state or {}).get("complex") or {}
     root_id = str(complex_state.get("root_id") or getattr(root, "id", ""))
+    secrets = {p["passage_ref"] for p in (blueprint or {}).get("passages", []) if p.get("hidden")}
+    discovered_passages = discovered_passages | frozenset(
+        (root_id, p["passage_ref"]) for p in (blueprint or {}).get("passages", []) if not p.get("hidden")
+    )
+    raw = {
+        **raw,
+        "exits": [
+            x
+            for x in raw.get("exits", [])
+            if x.get("passage_ref") not in secrets or (root_id, x.get("passage_ref")) in discovered_passages
+        ],
+    }
     geometry = _clean_sketch(raw, discovered_passages, root_id)
     return {
         "schema_version": 1,
@@ -120,7 +132,7 @@ async def observe_area(
         return False
     for hero_id in hero_ids:
         hero = world.characters.get(hero_id)
-        if hero is None or (not explicit and hero.location_id != place_id):
+        if hero is None or (not explicit and world.place_of(hero) != place_id):
             continue
         status = getattr(hero, "status", None)
         if status is not None and status not in {"approved", "active"}:
@@ -143,18 +155,22 @@ async def observe_area(
         )
         if snapshot is None:
             continue
-        before = None
+        key = [hero_id, place_id]
         if row is None:
             row = MapMemory(character_id=hero_id, entity_id=place_id, snapshot=snapshot, revision=1)
             session.add(row)
+            if inverse is not None:
+                inverse.append({"table": "map_memories", "op": "delete", "id": key})
         else:
-            before = copy.deepcopy(row.snapshot)
             if row.snapshot == snapshot:
                 continue
+            if inverse is not None:
+                inverse += [
+                    {"table": "map_memories", "id": key, "field": "snapshot", "before": copy.deepcopy(row.snapshot)},
+                    {"table": "map_memories", "id": key, "field": "revision", "before": row.revision},
+                ]
             row.snapshot = snapshot
             row.revision = int(row.revision or 0) + 1
-        if inverse is not None:
-            inverse.append({"table": "map_memories", "op": "restore", "id": [hero_id, place_id], "before": before})
         world.map_known.setdefault(hero_id, set()).add(place_id)
     return True
 
@@ -162,16 +178,15 @@ async def observe_area(
 async def observe_present(ctx: Any, inverse: list[dict[str, Any]] | None = None, *, explicit: bool = False) -> bool:
     _, world, _ = _context_parts(ctx)
     location = world.scene.location_id
-    heroes = [hero.id for hero in world.characters.values() if hero.location_id == location]
+    heroes = [hero.id for hero in world.characters.values() if world.place_of(hero) == location]
     return await observe_area(ctx, location, heroes, inverse, explicit=explicit) if location else False
 
 
 async def known_passages(session: Any, hero_id: str, place_id: str) -> frozenset[tuple[str, str]]:
-    row = await session.get(MapMemory, (hero_id, place_id))
-    if row is None:
-        return frozenset()
+    rows = await session.scalars(select(MapMemory).where(MapMemory.character_id == hero_id))
     return frozenset(
         (str(item["root_id"]), str(item["passage_ref"]))
+        for row in rows
         for item in (row.discovered_passages or [])
         if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
     )
@@ -192,38 +207,44 @@ async def discover_passage(
     inverse: list[dict[str, Any]] | None = None,
 ) -> None:
     session, world, _ = _context_parts(ctx)
-    root = world.entities.get(root_id)
-    area_ids = []
-    if root is not None:
-        area_ids = list((root.state or {}).get("areas") or [])
     for hero_id in hero_ids:
+        hero = world.characters.get(hero_id)
+        if hero is None:
+            continue
         rows = await session.scalars(
             select(MapMemory).where(MapMemory.character_id == hero_id, MapMemory.entity_id.in_(list(world.entities)))
         )
         memories = rows.all()
+        # открытие хранится в любой строке героя: known_passages читает их все
         row = next((item for item in memories if item.snapshot and item.snapshot.get("root_id") == root_id), None)
         if row is None and memories:
             row = memories[0]
+        grant = {"root_id": root_id, "passage_ref": passage_ref}
         if row is None:
-            hero = world.characters.get(hero_id)
-            entity_id = hero.location_id if hero is not None else (area_ids[0] if area_ids else None)
-            if entity_id is None:
+            if hero.location_id is None:
                 continue
-            row = MapMemory(character_id=hero_id, entity_id=entity_id, snapshot=None, revision=0)
-            session.add(row)
-        if row is None:
+            session.add(
+                MapMemory(
+                    character_id=hero_id,
+                    entity_id=hero.location_id,
+                    snapshot=None,
+                    discovered_passages=[grant],
+                    revision=0,
+                )
+            )
+            if inverse is not None:
+                inverse.append({"table": "map_memories", "op": "delete", "id": [hero_id, hero.location_id]})
             continue
         grants = list(row.discovered_passages or [])
-        grant = {"root_id": root_id, "passage_ref": passage_ref}
-        if grant not in grants:
-            if inverse is not None:
-                inverse.append(
-                    {
-                        "table": "map_memories",
-                        "op": "restore",
-                        "id": [hero_id, row.entity_id],
-                        "before": copy.deepcopy(grants),
-                    }
-                )
-            grants.append(grant)
-            row.discovered_passages = grants
+        if grant in grants:
+            continue
+        if inverse is not None:
+            inverse.append(
+                {
+                    "table": "map_memories",
+                    "id": [hero_id, row.entity_id],
+                    "field": "discovered_passages",
+                    "before": copy.deepcopy(grants),
+                }
+            )
+        row.discovered_passages = [*grants, grant]

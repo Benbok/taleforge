@@ -2,7 +2,6 @@ import pytest
 from pydantic import ValidationError
 
 from app.gateway.protocol import (
-    MapKnownArea,
     MapLocationPlan,
     MapSketchEdge,
     MapSketchTerrain,
@@ -60,3 +59,10 @@ def test_traverse_result_models_failed_finish():
         {"request_id": "t1", "ok": True, "moved": False, "reason": "дверь закрыта"}
     )
     assert result.moved is False and result.reason == "дверь закрыта"
+
+
+def test_traverse_result_accepts_server_names():
+    result = MapTraverseResult.model_validate(
+        {"request_id": "t1", "ok": True, "moved": True, "area": "Дорога", "passage": "Тропа"}
+    )
+    assert result.area == "Дорога" and result.passage == "Тропа"

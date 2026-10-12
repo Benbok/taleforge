@@ -12,7 +12,7 @@ const sketch: Sketch = {
 
 describe("SVG-поверхность эскиза", () => {
   it("clips floor, draws terrain and keeps continuation open", () => {
-    const { container } = render(<SketchSurface sketch={sketch} idPrefix="one" />);
+    const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="one" /></svg>);
     const svg = container.querySelector("svg")!;
     expect(svg.querySelectorAll("image,foreignObject")).toHaveLength(0);
     expect(svg.querySelector('[data-edge-meaning="continuation"][data-wall="true"]')).toBeNull();
@@ -21,7 +21,7 @@ describe("SVG-поверхность эскиза", () => {
   });
 
   it("names defs per instance", () => {
-    const { container } = render(<><SketchSurface sketch={sketch} idPrefix="a" /><SketchSurface sketch={sketch} idPrefix="b" /></>);
+    const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="a" /><SketchSurface sketch={sketch} idPrefix="b" /></svg>);
     const ids = [...container.querySelectorAll("[id]")].map((node) => node.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

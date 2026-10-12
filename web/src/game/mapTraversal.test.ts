@@ -3,6 +3,19 @@ import { mapEvent, useMapWindow } from "./map";
 import { useGame } from "../stores/game";
 
 describe("переход по карте", () => {
+  it("при смене героя очищает карту и игнорирует ответ прежнего зрителя", () => {
+    useMapWindow.setState({ open: false });
+    useGame.setState({ playAs: null, socket: { send: vi.fn(() => true) } as never });
+    useMapWindow.getState().traverseTo("old-passage", "old-room");
+    const oldRequest = useMapWindow.getState().traverse.request_id;
+    useGame.getState().setPlayAs("second-seat");
+    expect(useMapWindow.getState().data).toBeNull();
+    expect(useMapWindow.getState().traverse.busy).toBe(false);
+    mapEvent({ type: "map.traverse.result", payload: { request_id: oldRequest, ok: true } } as never);
+    mapEvent({ type: "map.state", payload: { as_seat: null, request_id: "old-map" } } as never);
+    expect(useMapWindow.getState().data).toBeNull();
+    useGame.getState().setPlayAs(null);
+  });
   it("отправляет один запрос и не двигает карту оптимистически", () => {
     const send = vi.fn(() => true);
     useGame.setState({ socket: { send } as never, playAs: null });

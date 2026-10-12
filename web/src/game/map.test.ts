@@ -129,10 +129,10 @@ describe("карта", () => {
     mapEvent(ev("scene.updated", {}));
     expect(send).not.toHaveBeenCalled();
     useMapWindow.getState().show();
-    expect(send).toHaveBeenCalledWith("map.get");
+    expect(send).toHaveBeenCalledWith("map.get", expect.objectContaining({ request_id: expect.any(String) }));
     mapEvent(ev("scene.updated", {}));
     expect(send).toHaveBeenCalledTimes(2);
-    mapEvent(ev("map.state", { ...empty, here: { id: "x", name: "Площадь", description: null } }));
+    mapEvent(ev("map.state", { ...empty, request_id: useMapWindow.getState().mapRequest, here: { id: "x", name: "Площадь", description: null } }));
     expect(useMapWindow.getState().data?.here?.name).toBe("Площадь");
     expect(useMapWindow.getState().loading).toBe(false);
   });

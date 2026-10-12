@@ -78,7 +78,9 @@ def test_player_map_exits_follow_passages(client, admin, settings):
     cid, heads, hid, village, temple, ids = _built(client, admin, settings, "road", "sacristy")
 
     exits_road = _exits_at(settings, client, heads, cid, hid, ids["road"])
-    assert exits_road[ids["brook"]] == "Луг" and exits_road[ids["narthex"]] == "Двери храма"
+    assert ids["brook"] not in exits_road and ids["narthex"] not in exits_road
+    packet = _map(client, heads[0], cid)
+    assert {x["via"] for x in packet["exits"] if x["id"] is None} == {"Луг", "Двери храма"}
     assert exits_road[village] == "Дорога в деревню" and temple not in exits_road
     exits_sacristy = _exits_at(settings, client, heads, cid, hid, ids["sacristy"])
     assert ids["vault"] not in exits_sacristy and temple not in exits_sacristy

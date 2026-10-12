@@ -7493,13 +7493,14 @@
      "area": {
       "anyOf": [
        {
-        "$ref": "#/components/schemas/MapKnownArea"
+        "type": "string"
        },
        {
         "type": "null"
        }
       ],
-      "default": null
+      "default": null,
+      "title": "Area"
      },
      "area_id": {
       "anyOf": [
@@ -7581,13 +7582,14 @@
      "passage": {
       "anyOf": [
        {
-        "$ref": "#/components/schemas/MapExit"
+        "type": "string"
        },
        {
         "type": "null"
        }
       ],
-      "default": null
+      "default": null,
+      "title": "Passage"
      },
      "reason": {
       "anyOf": [

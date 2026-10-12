@@ -724,12 +724,18 @@ async def _edit_passage(ctx: ToolContext, place: Entity, x: dict, a: EditSketchA
     passages = dict((root.state or {}).get("passages") or {})
     passages[x["passage_ref"]] = {**(passages.get(x["passage_ref"]) or {}), key: value}
     root.state = {**(root.state or {}), "passages": passages}
+    inverse = [{"table": "entities", "id": root.id, "field": "state", "before": before}]
+    if a.action == "reveal":
+        from app.core.map_memory import discover_passage
+
+        heroes = [ch.id for ch in ctx.world.characters.values() if ctx.world.place_of(ch) == place.id]
+        await discover_passage(ctx, root.id, x["passage_ref"], heroes, inverse)
     ctx.signals.add("map.changed")
     await ctx.record(
         "edit_sketch",
         target_id=place.id,
         payload={"place": place.name, "action": a.action, "target": x["name"], "passage_ref": x["passage_ref"]},
-        inverse=[{"table": "entities", "id": root.id, "field": "state", "before": before}],
+        inverse=inverse,
     )
     return {"place": place.name, "passage": x["name"], key: value}
 

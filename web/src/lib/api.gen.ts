@@ -4569,8 +4569,11 @@ export interface components {
         };
         /** MapTraverseResult */
         MapTraverseResult: {
-            /** @default null */
-            area?: components["schemas"]["MapKnownArea"] | null;
+            /**
+             * Area
+             * @default null
+             */
+            area?: string | null;
             /**
              * Area Id
              * @default null
@@ -4604,8 +4607,11 @@ export interface components {
             moved?: boolean;
             /** Ok */
             ok: boolean;
-            /** @default null */
-            passage?: components["schemas"]["MapExit"] | null;
+            /**
+             * Passage
+             * @default null
+             */
+            passage?: string | null;
             /**
              * Reason
              * @default null

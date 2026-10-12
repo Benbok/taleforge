@@ -66,7 +66,7 @@ def find_passage(
         bp = store.blueprint_of(root)
         p = bp.passage(passage_ref) if bp is not None else None
         hidden_for_hero = known_passages is None or (root.id, passage_ref) not in known_passages
-        if p is None or (_live(root, p)["hidden"] and hidden_for_hero):
+        if p is None or (p.hidden and hidden_for_hero) or (_live(root, p)["hidden"] and hidden_for_hero):
             continue
         ids = store.area_ids(root)
         for i, end in enumerate(p.ends):

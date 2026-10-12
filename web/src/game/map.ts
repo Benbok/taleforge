@@ -398,10 +398,8 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
   request() {
     const request_id = `m${++mapSeq}`;
     const as_seat = useGame.getState().playAs;
-    const payload = as_seat ? { request_id, as_seat } : undefined;
-    const sent = payload
-      ? useGame.getState().socket?.send("map.get", payload) ?? false
-      : useGame.getState().socket?.send("map.get") ?? false;
+    const payload = { request_id, ...(as_seat ? { as_seat } : {}) };
+    const sent = useGame.getState().socket?.send("map.get", payload) ?? false;
     set({ mapRequest: sent ? request_id : null });
     set(sent ? { loading: true, error: null } : { loading: false, error: "нет связи с сервером: карта обновится, когда соединение вернётся" });
   },
@@ -435,7 +433,8 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
   },
   step: NO_STEP,
   stepTo(req, confirm = false) {
-    const sent = useGame.getState().socket?.send("map.step", { ...req, confirm, request_id: `s${++stepSeq}` }) ?? false;
+    const as_seat = useGame.getState().playAs;
+    const sent = useGame.getState().socket?.send("map.step", { ...req, confirm, request_id: `s${++stepSeq}`, ...(as_seat ? { as_seat } : {}) }) ?? false;
     set({ step: sent ? { ...NO_STEP, busy: true, note: "Иду…", pending: req } : { ...NO_STEP, error: "нет связи с сервером: шаг не отправлен" } });
   },
   stepResult(r) {
@@ -455,13 +454,23 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
   if (e.type === "map.state") {
-    if (w.mapRequest && e.payload.request_id && e.payload.request_id !== w.mapRequest) return;
+    if ((e.payload.as_seat ?? null) !== useGame.getState().playAs) return;
+    if (w.mapRequest && e.payload.request_id !== w.mapRequest) return;
     w.receive(mapForDisplay(e.payload));
   }
   else if (e.type === "map.step.result") w.stepResult(e.payload);
   else if (e.type === "map.traverse.result") w.traverseResult(e.payload);
   else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
+
+useGame.subscribe((state, previous) => {
+  if (state.playAs !== previous.playAs || state.snapshot?.campaign.id !== previous.snapshot?.campaign.id || state.socket !== previous.socket) {
+    const map = useMapWindow.getState();
+    map.resetForViewer();
+    map.cancelStep();
+    if (map.open) map.request();
+  }
+});
 
 const BEARINGS: Bearing[] = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 

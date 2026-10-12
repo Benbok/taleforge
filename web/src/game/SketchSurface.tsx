@@ -1,22 +1,31 @@
 import { exitSegments, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, Sketch, SketchExit } from "./map";
+import { MapGlyph } from "./MapGlyph";
+import { FEATURE_VISUALS } from "./mapPresets";
 
 export interface SketchSurfaceProps {
   sketch: Sketch;
   areaId?: string;
   idPrefix: string;
   onPassage?: (exit: SketchExit) => void;
+  onFeature?: (id: string, name: string) => void;
 }
 
 const MATERIALS = new Set(["stone", "earth", "grass", "water", "wood"]);
 
-export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage }: SketchSurfaceProps) {
+export function terrainCells(rects: number[][]): [number, number][] {
+  return rects.flatMap(([x0, y0, x1 = x0, y1 = y0]) =>
+    Array.from({ length: y1 - y0 + 1 }, (_, y) =>
+      Array.from({ length: x1 - x0 + 1 }, (_, x) => [x0 + x, y0 + y] as [number, number])).flat());
+}
+
+export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const material = MATERIALS.has(sketch.material ?? "") ? sketch.material! : "stone";
   const clipId = `${idPrefix}-floor`;
   return (
-    <svg viewBox={`0 0 ${sketch.cols} ${sketch.rows}`} role="img" data-sketch-surface={areaId}>
+    <g role="img" data-sketch-surface={areaId}>
       <defs>
         <pattern id={`${idPrefix}-pattern-${material}`} width="1" height="1" patternUnits="userSpaceOnUse">
           <rect width="1" height="1" fill={`var(--tf-map-${material}, var(--tf-map-floor, #3b3b3b))`} />
@@ -29,17 +38,29 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage }: 
       <rect width={sketch.cols} height={sketch.rows} fill={`url(#${idPrefix}-pattern-${material})`} clipPath={`url(#${clipId})`} />
       {(sketch.terrain ?? []).filter((t) => t.kind !== "bridge").map((terrain, i) => (
         <g key={`terrain-${i}`} data-terrain={terrain.kind} clipPath={`url(#${clipId})`}>
-          {terrain.cells.map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill={`var(--tf-map-${terrain.kind}, transparent)`} opacity=".65" />)}
+          {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill={`var(--tf-map-${terrain.kind}, ${terrain.kind === "stream" ? "#77a9c6" : "#b6a66a"})`} opacity=".65" />)}
         </g>
       ))}
       {(sketch.terrain ?? []).filter((t) => t.kind === "bridge").map((terrain, i) => (
         <g key={`bridge-${i}`} data-terrain="bridge" clipPath={`url(#${clipId})`}>
-          {terrain.cells.map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill="var(--tf-map-bridge, #a77b52)" />)}
+          {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill="var(--tf-map-bridge, #a77b52)" />)}
         </g>
       ))}
       <g data-layer="contours">
-        {geometry.contours.map((segment, i) => <line key={i} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-wall="true" stroke="var(--tf-map-wall, #111)" strokeWidth=".12" />)}
+        {geometry.contours.map((segment, i) => <line key={i} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-wall={sketch.shape === "open" ? undefined : "true"} stroke="var(--tf-map-wall, #111)" strokeWidth={sketch.shape === "open" ? ".025" : ".12"} />)}
       </g>
+      {(sketch.walls ?? []).map(([x, y], i) => <rect key={`wall-${i}`} x={x} y={y} width="1" height="1" fill="var(--tf-map-wall, #111)" />)}
+      {sketch.features.map((feature, i) => {
+        const visual = FEATURE_VISUALS[feature.kind] ?? FEATURE_VISUALS.object;
+        const first = feature.cells[0];
+        if (!first) return null;
+        return <g key={`feature-${i}`} data-feature-id={feature.entity_id ?? feature.id}
+          onClick={feature.entity_id && onFeature ? () => onFeature(feature.entity_id!, feature.name) : undefined}>
+          {terrainCells(feature.cells).map(([x, y], j) => <rect key={j} x={x + .1} y={y + .1} width=".8" height=".8" fill="var(--tf-muted, #766)" opacity=".3" />)}
+          <MapGlyph name={visual.glyph} x={first[0] + .15} y={first[1] + .15} width={.7} height={.7} color={visual.color} />
+          <title>{feature.name}</title>
+        </g>;
+      })}
       {(sketch.edges ?? []).map((edge, i) => {
         const vertical = edge.side === "e" || edge.side === "w";
         const x = edge.side === "e" ? sketch.cols : 0;
@@ -55,6 +76,6 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage }: 
           {segs.map((segment, j) => <line key={j} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-opening="true" stroke="var(--tf-map-opening, #e9d8a6)" strokeWidth=".2" />)}
         </g>;
       })}
-    </svg>
+    </g>
   );
 }

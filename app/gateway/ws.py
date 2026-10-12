@@ -612,6 +612,7 @@ async def _map(maker, user: User, conn: Connection, payload: dict) -> None:
         except NotFound as e:
             await conn.send(_error("not_found", str(e), conn.campaign_id))
             return
+    out.update(request_id=payload.get("request_id"), as_seat=payload.get("as_seat") or None)
     await conn.send(envelope("map.state", conn.campaign_id, out))
 
 

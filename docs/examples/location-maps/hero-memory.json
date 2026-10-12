@@ -1,202 +1,660 @@
 {
-  "root_id": "demo-memory",
-  "here_id": "camp",
-  "areas": [
+  "here": {
+    "id": "demo-road",
+    "name": "Дорога у храма",
+    "description": null
+  },
+  "around": [],
+  "scene_view": [
     {
-      "id": "camp",
-      "name": "Лагерь",
-      "offset": [
-        0,
-        0
-      ],
-      "level": 0,
-      "status": "here",
-      "revision": 1,
-      "observed_at": null,
-      "sketch": {
-        "shape": "open",
-        "cols": 12,
-        "rows": 8,
-        "party": [
-          5,
+      "id": "demo-hero-2",
+      "name": "Герой 2",
+      "type": "hero",
+      "visual_key": null,
+      "mine": true,
+      "down": false,
+      "zone": null,
+      "bearing": null,
+      "cell": null
+    }
+  ],
+  "party": [
+    {
+      "id": "demo-hero-2",
+      "name": "Герой 2",
+      "mine": true,
+      "zone": null,
+      "bearing": null,
+      "elevation": "ground",
+      "cover": "none",
+      "cell": null,
+      "down": false
+    }
+  ],
+  "areas": [],
+  "mode": "free",
+  "exits": [
+    {
+      "id": "demo-village",
+      "room_ref": null,
+      "name": "Деревня",
+      "via": "Дорога в деревню",
+      "bearing": "w",
+      "visited": false,
+      "kind": null,
+      "state": null,
+      "width": null,
+      "passage_ref": null,
+      "cells": null
+    },
+    {
+      "id": null,
+      "room_ref": null,
+      "name": "Луг",
+      "via": "Луг",
+      "bearing": "e",
+      "visited": false,
+      "kind": "edge",
+      "state": "open",
+      "width": 10,
+      "passage_ref": "p_brook",
+      "cells": [
+        [
+          11,
+          0
+        ],
+        [
+          11,
+          1
+        ],
+        [
+          11,
+          2
+        ],
+        [
+          11,
+          3
+        ],
+        [
+          11,
           4
         ],
-        "walls": [],
-        "mask": [
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111"
+        [
+          11,
+          5
         ],
-        "edges": [
-          {
-            "side": "n",
-            "start": 0,
-            "length": 12,
-            "meaning": "boundary"
-          }
+        [
+          11,
+          6
         ],
-        "terrain": [],
-        "material": "earth",
-        "environment": "outdoors",
-        "exits": [],
-        "features": []
-      },
-      "disclosed_to": [
-        "hero-a"
+        [
+          11,
+          7
+        ],
+        [
+          11,
+          8
+        ],
+        [
+          11,
+          9
+        ]
       ]
     },
     {
-      "id": "old-road",
-      "name": "Старая дорога",
-      "offset": [
-        16,
-        0
-      ],
-      "level": 0,
-      "status": "remembered",
-      "revision": 1,
-      "observed_at": null,
-      "sketch": {
-        "shape": "open",
-        "cols": 12,
-        "rows": 8,
-        "party": [
-          5,
+      "id": null,
+      "room_ref": null,
+      "name": "Двери храма",
+      "via": "Двери храма",
+      "bearing": "n",
+      "visited": false,
+      "kind": "door",
+      "state": "closed",
+      "width": 1,
+      "passage_ref": "p_narthex",
+      "cells": [
+        [
+          6,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "demo-village",
+      "room_ref": null,
+      "name": "Деревня",
+      "via": "Дорога в деревню",
+      "bearing": "w",
+      "visited": false,
+      "kind": "edge",
+      "state": "open",
+      "width": 2,
+      "passage_ref": "in_road_w",
+      "cells": [
+        [
+          0,
+          3
+        ],
+        [
+          0,
           4
-        ],
-        "walls": [],
-        "mask": [
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111",
-          "111111111111"
-        ],
-        "edges": [
-          {
-            "side": "n",
-            "start": 0,
-            "length": 12,
-            "meaning": "boundary"
-          }
-        ],
-        "terrain": [
-          {
-            "kind": "road",
-            "cells": [
-              [
-                0,
-                3
-              ],
-              [
-                1,
-                3
-              ],
-              [
-                2,
-                3
-              ],
-              [
-                3,
-                3
-              ],
-              [
-                4,
-                3
-              ],
-              [
-                5,
-                3
-              ],
-              [
-                6,
-                3
-              ],
-              [
-                7,
-                3
-              ],
-              [
-                8,
-                3
-              ],
-              [
-                9,
-                3
-              ],
-              [
-                10,
-                3
-              ],
-              [
-                11,
-                3
-              ],
-              [
-                0,
-                4
-              ],
-              [
-                1,
-                4
-              ],
-              [
-                2,
-                4
-              ],
-              [
-                3,
-                4
-              ],
-              [
-                4,
-                4
-              ],
-              [
-                5,
-                4
-              ],
-              [
-                6,
-                4
-              ],
-              [
-                7,
-                4
-              ],
-              [
-                8,
-                4
-              ],
-              [
-                9,
-                4
-              ],
-              [
-                10,
-                4
-              ],
-              [
-                11,
-                4
-              ]
-            ]
-          }
-        ],
-        "material": "earth",
-        "environment": "outdoors",
-        "exits": [],
-        "features": []
-      },
-      "disclosed_to": null
+        ]
+      ]
     }
-  ]
+  ],
+  "places": [
+    {
+      "id": "demo-temple",
+      "name": "Старый храм",
+      "parent_id": null,
+      "status": "known"
+    },
+    {
+      "id": "demo-village",
+      "name": "Деревня",
+      "parent_id": null,
+      "status": "known"
+    },
+    {
+      "id": "demo-road",
+      "name": "Дорога у храма",
+      "parent_id": "demo-temple",
+      "status": "here"
+    }
+  ],
+  "links": [],
+  "bearings": {
+    "n": "север",
+    "ne": "северо-восток",
+    "e": "восток",
+    "se": "юго-восток",
+    "s": "юг",
+    "sw": "юго-запад",
+    "w": "запад",
+    "nw": "северо-запад"
+  },
+  "sketch": {
+    "edit_rev": 0,
+    "placement_rev": 0,
+    "shape": "open",
+    "cols": 12,
+    "rows": 10,
+    "party": [
+      0,
+      3
+    ],
+    "walls": [],
+    "mask": null,
+    "edges": [
+      {
+        "side": "n",
+        "start": 0,
+        "length": 12,
+        "meaning": "obstacle"
+      },
+      {
+        "side": "e",
+        "start": 0,
+        "length": 10,
+        "meaning": "continuation"
+      },
+      {
+        "side": "s",
+        "start": 0,
+        "length": 12,
+        "meaning": "obstacle"
+      },
+      {
+        "side": "w",
+        "start": 0,
+        "length": 3,
+        "meaning": "obstacle"
+      },
+      {
+        "side": "w",
+        "start": 3,
+        "length": 2,
+        "meaning": "boundary"
+      },
+      {
+        "side": "w",
+        "start": 5,
+        "length": 5,
+        "meaning": "obstacle"
+      }
+    ],
+    "terrain": [
+      {
+        "kind": "bridge",
+        "cells": [
+          [
+            6,
+            7,
+            6,
+            7
+          ]
+        ]
+      },
+      {
+        "kind": "path",
+        "cells": [
+          [
+            6,
+            5,
+            6,
+            5
+          ],
+          [
+            6,
+            6,
+            6,
+            6
+          ],
+          [
+            6,
+            8,
+            6,
+            8
+          ],
+          [
+            6,
+            9,
+            6,
+            9
+          ]
+        ]
+      },
+      {
+        "kind": "road",
+        "cells": [
+          [
+            0,
+            3,
+            11,
+            3
+          ],
+          [
+            0,
+            4,
+            11,
+            4
+          ]
+        ]
+      },
+      {
+        "kind": "stream",
+        "cells": [
+          [
+            0,
+            7,
+            5,
+            7
+          ],
+          [
+            7,
+            7,
+            11,
+            7
+          ]
+        ]
+      }
+    ],
+    "material": "grass",
+    "environment": "outdoor",
+    "exits": [
+      {
+        "name": "Дорога в деревню",
+        "side": "w",
+        "at": 3,
+        "kind": "edge",
+        "state": "open",
+        "to": "demo-village",
+        "room_ref": null,
+        "beyond": null,
+        "hidden": false,
+        "width": 2,
+        "passage_ref": "in_road_w",
+        "cells": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      },
+      {
+        "name": "Луг",
+        "side": "e",
+        "at": 0,
+        "kind": "edge",
+        "state": "open",
+        "to": null,
+        "room_ref": null,
+        "beyond": null,
+        "hidden": false,
+        "width": 10,
+        "passage_ref": "p_brook",
+        "cells": [
+          [
+            11,
+            0
+          ],
+          [
+            11,
+            1
+          ],
+          [
+            11,
+            2
+          ],
+          [
+            11,
+            3
+          ],
+          [
+            11,
+            4
+          ],
+          [
+            11,
+            5
+          ],
+          [
+            11,
+            6
+          ],
+          [
+            11,
+            7
+          ],
+          [
+            11,
+            8
+          ],
+          [
+            11,
+            9
+          ]
+        ]
+      },
+      {
+        "name": "Двери храма",
+        "side": "n",
+        "at": 6,
+        "kind": "door",
+        "state": "closed",
+        "to": null,
+        "room_ref": null,
+        "beyond": null,
+        "hidden": false,
+        "width": 1,
+        "passage_ref": "p_narthex",
+        "cells": [
+          [
+            6,
+            0
+          ]
+        ]
+      }
+    ],
+    "features": [],
+    "book": false,
+    "unplaced_exits": []
+  },
+  "book": null,
+  "location_map": {
+    "root_id": "demo-temple",
+    "here_id": "demo-road",
+    "areas": [
+      {
+        "id": "demo-road",
+        "name": "Дорога у храма",
+        "offset": [
+          0,
+          0
+        ],
+        "level": 0,
+        "status": "here",
+        "revision": 1,
+        "observed_at": null,
+        "sketch": {
+          "edit_rev": null,
+          "placement_rev": null,
+          "shape": "open",
+          "cols": 12,
+          "rows": 10,
+          "party": [
+            0,
+            3
+          ],
+          "walls": [],
+          "mask": null,
+          "edges": [
+            {
+              "side": "n",
+              "start": 0,
+              "length": 12,
+              "meaning": "obstacle"
+            },
+            {
+              "side": "e",
+              "start": 0,
+              "length": 10,
+              "meaning": "continuation"
+            },
+            {
+              "side": "s",
+              "start": 0,
+              "length": 12,
+              "meaning": "obstacle"
+            },
+            {
+              "side": "w",
+              "start": 0,
+              "length": 3,
+              "meaning": "obstacle"
+            },
+            {
+              "side": "w",
+              "start": 3,
+              "length": 2,
+              "meaning": "boundary"
+            },
+            {
+              "side": "w",
+              "start": 5,
+              "length": 5,
+              "meaning": "obstacle"
+            }
+          ],
+          "terrain": [
+            {
+              "kind": "bridge",
+              "cells": [
+                [
+                  6,
+                  7,
+                  6,
+                  7
+                ]
+              ]
+            },
+            {
+              "kind": "path",
+              "cells": [
+                [
+                  6,
+                  5,
+                  6,
+                  5
+                ],
+                [
+                  6,
+                  6,
+                  6,
+                  6
+                ],
+                [
+                  6,
+                  8,
+                  6,
+                  8
+                ],
+                [
+                  6,
+                  9,
+                  6,
+                  9
+                ]
+              ]
+            },
+            {
+              "kind": "road",
+              "cells": [
+                [
+                  0,
+                  3,
+                  11,
+                  3
+                ],
+                [
+                  0,
+                  4,
+                  11,
+                  4
+                ]
+              ]
+            },
+            {
+              "kind": "stream",
+              "cells": [
+                [
+                  0,
+                  7,
+                  5,
+                  7
+                ],
+                [
+                  7,
+                  7,
+                  11,
+                  7
+                ]
+              ]
+            }
+          ],
+          "material": "grass",
+          "environment": "outdoor",
+          "exits": [
+            {
+              "name": "Дорога в деревню",
+              "side": "w",
+              "at": 3,
+              "kind": "edge",
+              "state": "open",
+              "to": null,
+              "room_ref": null,
+              "beyond": null,
+              "hidden": false,
+              "width": 2,
+              "passage_ref": "in_road_w",
+              "cells": [
+                [
+                  0,
+                  3
+                ],
+                [
+                  0,
+                  4
+                ]
+              ]
+            },
+            {
+              "name": "Луг",
+              "side": "e",
+              "at": 0,
+              "kind": "edge",
+              "state": "open",
+              "to": null,
+              "room_ref": null,
+              "beyond": null,
+              "hidden": false,
+              "width": 10,
+              "passage_ref": "p_brook",
+              "cells": [
+                [
+                  11,
+                  0
+                ],
+                [
+                  11,
+                  1
+                ],
+                [
+                  11,
+                  2
+                ],
+                [
+                  11,
+                  3
+                ],
+                [
+                  11,
+                  4
+                ],
+                [
+                  11,
+                  5
+                ],
+                [
+                  11,
+                  6
+                ],
+                [
+                  11,
+                  7
+                ],
+                [
+                  11,
+                  8
+                ],
+                [
+                  11,
+                  9
+                ]
+              ]
+            },
+            {
+              "name": "Двери храма",
+              "side": "n",
+              "at": 6,
+              "kind": "door",
+              "state": "closed",
+              "to": null,
+              "room_ref": null,
+              "beyond": null,
+              "hidden": false,
+              "width": 1,
+              "passage_ref": "p_narthex",
+              "cells": [
+                [
+                  6,
+                  0
+                ]
+              ]
+            }
+          ],
+          "features": [],
+          "book": false,
+          "unplaced_exits": null
+        },
+        "disclosed_to": null
+      }
+    ]
+  },
+  "request_id": null,
+  "as_seat": null
 }
