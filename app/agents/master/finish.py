@@ -78,7 +78,9 @@ class FinishMixin:
                         cp["unavailable"] = await self._settle_preparation(cid, refs) if refs else []
                         from app.core.layout import transit
 
-                        done = await transit.complete_queued(self.maker, self.preparer, self.dice_factory, cid)
+                        done = await transit.complete_queued(
+                            self.maker, self.preparer, self.dice_factory, cid, bus=self.bus
+                        )
                         if done:
                             cp["event_ids"] = [*(cp.get("event_ids") or []), *done]
                         cp["stage"] = "narration_pending"

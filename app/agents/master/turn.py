@@ -197,6 +197,12 @@ class TurnMixin:
             await self._save_calls(calls)
             told = await self._narrate_turn(cid, turn_id)
             await publish_changes(self.bus, published["ctx"], [*published["messages"], *told], published["names"])
+            queued = (published["ctx"].world.scene.state or {}).get("transits") or []
+            if queued:  # переходы хода завершились до описания: прежний контекст показал бы героев на старом месте
+                from app.core.layout import transit
+
+                heroes = sorted({h for q in queued for h in q["hero_ids"]})
+                await transit.republish(self.maker, self.dice_factory, self.bus, cid, heroes)
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals

@@ -979,12 +979,13 @@ async def traverse_passage(ctx: ToolContext, a: TraverseArgs) -> dict:
         raise ToolError("некому идти: назови героев в character_ids")
     inverse: list = []
     req = await transit.begin(ctx, [h.id for h in heroes], a.passage_ref, inverse)
-    ctx.closed.update(h.id for h in heroes)  # без character_ids реестр не закрыл бы заявленные действия героев
     if not req.refs:  # участок уже готов: переход сразу, в этом же ходе
         out = await transit.finish(ctx, req, inverse)
         if not out["moved"]:
             raise ToolError(out["reason"])
+        ctx.closed.update(h.id for h in heroes)  # без character_ids реестр не закрыл бы действия героев
         return out
+    ctx.closed.update(h.id for h in heroes)
     transit.enqueue(ctx, req, inverse)
     ctx.operation_refs.update(req.refs)
     payload = {"queued": True, "passage_ref": a.passage_ref, "refs": list(req.refs)}

@@ -18,6 +18,7 @@ from app.core import combat, sketch, steps
 from app.core import positions as grid
 from app.core.layout import store
 from app.core.layout.contracts import Blueprint, End, Passage
+from app.core.world_tx import WorldConflict
 from app.db.models import Campaign, Entity, Scene
 from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolError
@@ -249,22 +250,32 @@ async def complete_queued(maker, preparer, dice_factory, campaign_id: str, bus=N
         return []
     refs = sorted({r for q in queued for r in q.get("refs") or []})
     if refs and preparer is not None:
-        await preparer.settle(maker, campaign_id, refs)
+        try:
+            await preparer.settle(maker, campaign_id, refs)
+        except Exception:  # noqa: BLE001 — finish() заново проверит готовность участка
+            log.warning("подготовка %s перед переходом не завершилась", refs, exc_info=True)
     done: list[str] = []
     for item in queued:
-        async with maker() as s:
-            c = await s.get(Campaign, campaign_id)
-            ctx = await open_context(s, c, dice_factory(), turn_id=item.get("turn_id"), seat_id=None)
-            sc = ctx.world.scene
-            left = [q for q in (sc.state or {}).get(QUEUE) or [] if q != item]
-            sc.state = {k: v for k, v in {**(sc.state or {}), QUEUE: left}.items() if k != QUEUE or left}
-            out = await finish(ctx, Request.from_json(item))
-            if out["moved"]:
-                done.append(out["event_id"])
-            else:
-                ctx.outbox.append({"kind": "system", "content": f"Переход не состоялся: {out['reason']}"})
-            messages = await flush_outbox(s, ctx)
-            await s.commit()
+        try:
+            async with maker() as s:
+                c = await s.get(Campaign, campaign_id)
+                ctx = await open_context(s, c, dice_factory(), turn_id=item.get("turn_id"), seat_id=None)
+                sc = ctx.world.scene
+                current = (sc.state or {}).get(QUEUE) or []
+                if item not in current:
+                    continue  # его уже завершил другой исполнитель
+                left = [q for q in current if q != item]
+                sc.state = {k: v for k, v in {**(sc.state or {}), QUEUE: left}.items() if k != QUEUE or left}
+                out = await finish(ctx, Request.from_json(item))
+                if out["moved"]:
+                    done.append(out["event_id"])
+                else:
+                    ctx.outbox.append({"kind": "system", "content": f"Переход не состоялся: {out['reason']}"})
+                messages = await flush_outbox(s, ctx)
+                await s.commit()
+        except WorldConflict:
+            log.info("переход %s: мир изменился, его завершит другой исполнитель", item.get("passage_ref"))
+            continue
         if bus is not None:
             await publish_changes(bus, ctx, messages)
             await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
@@ -305,3 +316,17 @@ async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str
         log.exception("переход через проход %s не удался", passage_ref)
         return {"ok": False, "error": "переход не удался"}, published
     return {"ok": True, **out}, published
+
+
+async def republish(maker, dice_factory, bus, campaign_id: str, hero_ids: list[str]) -> None:
+    """Свежее состояние героев и сцены после перехода хода: ход публикует свой прежний контекст, и клиенты
+    иначе остались бы с героями в старом участке."""
+    from app.gateway.events import envelope
+    from app.tools.runtime import open_context, publish_changes
+
+    async with maker() as s:
+        c = await s.get(Campaign, campaign_id)
+        ctx = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
+        ctx.changed.update(hero_ids)
+        await publish_changes(bus, ctx, [])
+    await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
