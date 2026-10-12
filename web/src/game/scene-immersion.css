@@ -2,7 +2,7 @@
 .tf-game-atmosphere::before, .tf-game-atmosphere::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .tf-game-atmosphere::before { background: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--tf-scene-glow, var(--tf-accent)) 20%, transparent), transparent 62%); opacity: var(--tf-scene-glow-opacity, .06); }
 .tf-game-atmosphere::after { box-shadow: inset 0 0 7rem color-mix(in srgb, var(--tf-scene-edge, transparent) 60%, transparent); opacity: var(--tf-scene-edge-opacity, 0); transition: opacity 350ms ease; }
-.tf-game-atmosphere > * { position: relative; z-index: 1; }
+.tf-game-atmosphere > *:not(.fixed) { position: relative; z-index: 1; }
 .tf-chronicle-divider { display: flex; align-items: center; gap: .6rem; margin: .8rem 0 .1rem; color: var(--tf-muted); font: 600 .68rem/1 var(--tf-font-mono); letter-spacing: .1em; text-transform: uppercase; }
 .tf-chronicle-divider::before, .tf-chronicle-divider::after { content: ""; height: 1px; flex: 1; background: color-mix(in srgb, var(--tf-accent) 38%, var(--tf-border)); }
 .tf-chronicle-divider small { color: var(--tf-accent); font-size: .58rem; letter-spacing: .08em; }
