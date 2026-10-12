@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "map:examples": "node scripts/export-location-maps.mjs",
     "gen:api": "openapi-typescript openapi.json -o src/lib/api.gen.ts --root-types --root-types-no-schema-prefix --root-types-keep-casing --default-non-nullable false"
   },
   "dependencies": {

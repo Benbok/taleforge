@@ -1,0 +1,202 @@
+{
+  "root_id": "demo-memory",
+  "here_id": "camp",
+  "areas": [
+    {
+      "id": "camp",
+      "name": "Лагерь",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "status": "here",
+      "revision": 1,
+      "observed_at": null,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 8,
+        "party": [
+          5,
+          4
+        ],
+        "walls": [],
+        "mask": [
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111"
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "boundary"
+          }
+        ],
+        "terrain": [],
+        "material": "earth",
+        "environment": "outdoors",
+        "exits": [],
+        "features": []
+      },
+      "disclosed_to": [
+        "hero-a"
+      ]
+    },
+    {
+      "id": "old-road",
+      "name": "Старая дорога",
+      "offset": [
+        16,
+        0
+      ],
+      "level": 0,
+      "status": "remembered",
+      "revision": 1,
+      "observed_at": null,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 8,
+        "party": [
+          5,
+          4
+        ],
+        "walls": [],
+        "mask": [
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111"
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "boundary"
+          }
+        ],
+        "terrain": [
+          {
+            "kind": "road",
+            "cells": [
+              [
+                0,
+                3
+              ],
+              [
+                1,
+                3
+              ],
+              [
+                2,
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                4,
+                3
+              ],
+              [
+                5,
+                3
+              ],
+              [
+                6,
+                3
+              ],
+              [
+                7,
+                3
+              ],
+              [
+                8,
+                3
+              ],
+              [
+                9,
+                3
+              ],
+              [
+                10,
+                3
+              ],
+              [
+                11,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                1,
+                4
+              ],
+              [
+                2,
+                4
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                4,
+                4
+              ],
+              [
+                5,
+                4
+              ],
+              [
+                6,
+                4
+              ],
+              [
+                7,
+                4
+              ],
+              [
+                8,
+                4
+              ],
+              [
+                9,
+                4
+              ],
+              [
+                10,
+                4
+              ],
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "material": "earth",
+        "environment": "outdoors",
+        "exits": [],
+        "features": []
+      },
+      "disclosed_to": null
+    }
+  ]
+}

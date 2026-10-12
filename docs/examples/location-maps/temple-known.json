@@ -1,0 +1,121 @@
+{
+  "root_id": "demo-temple",
+  "here_id": "sacristy",
+  "areas": [
+    {
+      "id": "sacristy",
+      "name": "Сакристия",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "status": "here",
+      "revision": 1,
+      "observed_at": null,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 8,
+        "party": [
+          5,
+          4
+        ],
+        "walls": [],
+        "mask": [
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111"
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "boundary"
+          }
+        ],
+        "terrain": [],
+        "material": "stone",
+        "environment": "temple",
+        "exits": [
+          {
+            "name": "К дороге",
+            "side": "w",
+            "at": 3,
+            "kind": "passage",
+            "state": "open",
+            "to": "road",
+            "width": 10,
+            "passage_ref": "p-road",
+            "cells": [
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": []
+      },
+      "disclosed_to": [
+        "hero-a"
+      ]
+    },
+    {
+      "id": "crypt",
+      "name": "Склеп",
+      "offset": [
+        16,
+        0
+      ],
+      "level": -1,
+      "status": "remembered",
+      "revision": 1,
+      "observed_at": null,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 8,
+        "party": [
+          5,
+          4
+        ],
+        "walls": [],
+        "mask": [
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111",
+          "111111111111"
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "boundary"
+          }
+        ],
+        "terrain": [],
+        "material": "stone",
+        "environment": "underground",
+        "exits": [],
+        "features": []
+      },
+      "disclosed_to": null
+    }
+  ]
+}
