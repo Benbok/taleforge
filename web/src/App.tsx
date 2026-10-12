@@ -15,6 +15,7 @@ import ProfilePage from "./pages/ProfilePage";
 import InvitePage from "./pages/InvitePage";
 import Welcome from "./pages/Welcome";
 import { useSession } from "./stores/session";
+import ApplicationAudio from "./audio/ApplicationAudio";
 
 const queries = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } });
 
@@ -30,6 +31,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queries}>
       <BrowserRouter>
+        <ApplicationAudio />
         <Routes>
           <Route path="/" element={user ? <Home /> : <Welcome />} />
           <Route path="/invite/:token" element={<InvitePage />} />

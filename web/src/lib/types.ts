@@ -3,10 +3,16 @@ import type { ServerEvent } from "./api.gen";
 export type { AudioSfxReady } from "./api.gen";
 import type { Spellbook } from "./spells";
 
+export interface MenuMusicPreferences {
+  enabled: boolean;
+  volume: number;
+}
+
 export interface User {
   id: string;
   name: string;
   platform_role: "super_admin" | "admin" | "player";
+  menu_music: MenuMusicPreferences;
 }
 
 export interface PartyMember {
