@@ -171,6 +171,13 @@ class ThreadState(NarrativeContractModel):
     source_refs: tuple[str, ...] = ()
 
 
+class ThreadTransition(NarrativeContractModel):
+    """Result of attempting a thread state transition."""
+
+    new_state: ThreadState | None = None
+    violation: str | None = None
+
+
 class VersionSet(NarrativeContractModel):
     """Set of version numbers required for optimistic concurrency guard."""
 

@@ -11,8 +11,9 @@ from app.core.narrative.contracts import (
     FactRef,
     FactState,
     SnapshotRef,
+    ThreadState,
 )
-from app.db.models import NarrativeFact, NarrativeState
+from app.db.models import NarrativeFact, NarrativeState, NarrativeThread
 
 
 async def ensure_state(session: AsyncSession, campaign_id: str) -> NarrativeState:
@@ -210,3 +211,45 @@ async def initialize_plan_metadata(
                 existing.value = summary
 
     await session.flush()
+
+
+async def load_threads(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    statuses: tuple[str, ...],
+    audience: tuple[str, ...],
+    limit: int = 20,
+) -> tuple[ThreadState, ...]:
+    """Load threads matching campaign, statuses, and audience filters."""
+    from app.core.narrative.threads import is_thread_visible_to_audience
+
+    stmt = select(NarrativeThread).where(NarrativeThread.campaign_id == campaign_id)
+    if statuses:
+        stmt = stmt.where(NarrativeThread.status.in_(statuses))
+    stmt = stmt.order_by(NarrativeThread.last_developed_at.desc(), NarrativeThread.id.asc())
+
+    res = await session.execute(stmt)
+    rows = res.scalars().all()
+
+    matched: list[ThreadState] = []
+    for r in rows:
+        aud = tuple(r.audience or ())
+        if is_thread_visible_to_audience(aud, audience):
+            matched.append(
+                ThreadState(
+                    id=r.thread_id,
+                    version=r.version,
+                    status=r.status,  # type: ignore[arg-type]
+                    audience=aud,
+                    subject_refs=tuple(r.subject_refs or ()),
+                    plan_refs=tuple(r.plan_refs or ()),
+                    parent_id=r.parent_id,
+                    source_refs=tuple(r.source_refs or ()),
+                )
+            )
+            if len(matched) >= limit:
+                break
+
+    return tuple(matched)
+
