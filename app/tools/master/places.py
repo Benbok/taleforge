@@ -621,6 +621,8 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
     await _lock_sketch_place(ctx, place)
     current = (place.state or {}).get("sketch") or {}
+    if current.get("blueprint"):
+        raise ToolError("участок комплекса: его форма общая с соседями — правь edit_sketch, а не перерисовывай")
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=True)
     data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"}, reach=True)
     if errors:
@@ -672,6 +674,58 @@ def _find(items: list[dict], name: str, what: str) -> int:
     raise ToolError(f"в эскизе нет {what} «{name}»; есть: {have}")
 
 
+PASSAGE_ACTIONS = {
+    "open": ("state", "open"),
+    "close": ("state", "closed"),
+    "lock": ("state", "locked"),
+    "unlock": ("state", "closed"),
+    "reveal": ("hidden", False),
+    "hide": ("hidden", True),
+}
+
+
+def _passage_exit(current: dict, a: EditSketchArgs) -> dict | None:
+    """Выход-проход комплекса, к которому обращается правка."""
+    if not a.target or a.action in ("add_feature", "add_exit"):
+        return None
+    want = a.target.strip().lower()
+    return next(
+        (
+            x
+            for x in current.get("exits") or []
+            if x.get("passage_ref") and (x["name"].strip().lower() == want or x["passage_ref"] == a.target)
+        ),
+        None,
+    )
+
+
+async def _edit_passage(ctx: ToolContext, place: Entity, x: dict, a: EditSketchArgs) -> dict:
+    """Состояние прохода общее для обоих участков: меняется только у корня, эскизы сторон не трогаются."""
+    from app.core.layout import store
+
+    if a.action not in PASSAGE_ACTIONS or a.rename:
+        raise ToolError(
+            f"«{x['name']}» — проход комплекса, общий для двух участков: для него open, close, lock, unlock, reveal "
+            "или hide"
+        )
+    root = store.root_of(ctx.world.entities, place)
+    if root is None:
+        raise ToolError("комплекс этого участка не найден")
+    key, value = PASSAGE_ACTIONS[a.action]
+    before = copy.deepcopy(root.state)
+    passages = dict((root.state or {}).get("passages") or {})
+    passages[x["passage_ref"]] = {**(passages.get(x["passage_ref"]) or {}), key: value}
+    root.state = {**(root.state or {}), "passages": passages}
+    ctx.signals.add("map.changed")
+    await ctx.record(
+        "edit_sketch",
+        target_id=place.id,
+        payload={"place": place.name, "action": a.action, "target": x["name"], "passage_ref": x["passage_ref"]},
+        inverse=[{"table": "entities", "id": root.id, "field": "state", "before": before}],
+    )
+    return {"place": place.name, "passage": x["name"], key: value}
+
+
 @tool(
     "edit_sketch",
     "Правит одну деталь эскиза места, не перерисовывая его: герои нашли тайную дверь, отперли решётку, заметили "
@@ -690,6 +744,9 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=bool(sketch.linked_entity_ids(current)))
+    passage = _passage_exit(current, a)
+    if passage is not None:
+        return await _edit_passage(ctx, place, passage, a)
     data = copy.deepcopy(current)
     exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
     note = ""

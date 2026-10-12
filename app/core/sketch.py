@@ -183,6 +183,7 @@ def describe(sk: dict) -> str:
         f"{EXIT_STATES.get(x.get('state') or 'open')}"
         + (f", за ним {x['beyond']}" if x.get("beyond") else "")
         + (f", ведёт в {x['to']}" if x.get("to") else "")
+        + (f", проход {x['passage_ref']}" if x.get("passage_ref") else "")
         + (", тайный" if x.get("hidden") else "")
         + ")"
         for x in sk.get("exits") or []
@@ -418,13 +419,26 @@ def book_sketch(room: Any, catalog: Any, entities: dict) -> dict | None:
     return from_book(mark, mp["grid"], neighbours)
 
 
+def _live_passages(sk: dict, entities: dict) -> dict:
+    """Проход комплекса общий для двух участков: открыт ли он и тайный ли — из ``state.passages`` корня."""
+    root = entities.get((sk.get("blueprint") or {}).get("root_id") or "")
+    live = ((root.state or {}).get("passages") or {}) if root is not None else {}
+    if not live:
+        return sk
+    exits = []
+    for x in sk.get("exits") or []:
+        now = live.get(x.get("passage_ref") or "") or {}
+        exits.append({**x, **{k: now[k] for k in ("state", "hidden") if k in now}})
+    return {**sk, "exits": exits}
+
+
 def of_place(e: Any, catalog: Any, entities: dict) -> dict | None:
     """Эскиз места: нарисованный мастером или, для комнаты книги, построенный по карте."""
     if e is None:
         return None
     sk = (e.state or {}).get("sketch")
     if isinstance(sk, dict) and sk.get("cols"):
-        return sk
+        return _live_passages(sk, entities) if sk.get("blueprint") else sk
     try:
         return book_sketch(e, catalog, entities)
     except (KeyError, TypeError, ValueError, ZeroDivisionError):
