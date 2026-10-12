@@ -6,6 +6,7 @@
 
 - [tz-ai-master.md](tz-ai-master.md) — техническое задание «AI-Мастер»: архитектура, правила, инструменты мастера, память, пакеты контента. Копия документа из Claude Docs (ревизия 42).
 - [campaign-preparation.md](campaign-preparation.md) — подготовка кампании: анкета, сюжетный каркас, вступление, характер мастера.
+- [Адаптация истории](superpowers/specs/2026-10-12-master-narrative-adaptation-design.md) — проект архитектуры творческого мастера: развитие решений игроков, локальная адаптация, режиссёр, канон, нити и изолируемые контракты.
 - [world-objects-stage0.md](world-objects-stage0.md) — **этап 0 системы игровых объектов**: точная схема хранения, жизненный цикл, операции, сюжетные ограничения, совместимость с картой.
 - [world-objects-stage0-verification.md](world-objects-stage0-verification.md) — тестовая матрица, архитектурные риски и декомпозиция будущих PR.
 - [world-objects-foundation.md](world-objects-foundation.md) — **World Objects, этап 1**: таблицы хранения, миграция и совместимое чтение старых предметов.
