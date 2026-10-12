@@ -57,6 +57,13 @@ export default function PacksSection() {
   const [file, setFile] = useState<File | null>(null);
   const [checked, setChecked] = useState<UploadResult | null>(null);
   const [done, setDone] = useState<UploadResult | null>(null);
+  // API отдаёт строку на каждую версию (по возрастанию даты импорта): карточка — одна на пакет,
+  // с последней версией; прежние остаются в базе для кампаний, закреплённых на них.
+  const grouped = [
+    ...(packs.data ?? [])
+      .reduce((m, p) => m.set(p.id, [p, ...(m.get(p.id) ?? [])]), new Map<string, Pack[]>())
+      .values(),
+  ];
 
   return (
     <div className="flex flex-col gap-6" aria-label="Пакеты сеттинга">
@@ -74,7 +81,7 @@ export default function PacksSection() {
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center font-mono text-xs px-3 py-1 rounded-full border border-line bg-raised text-ink-2">
             <span>УСТАНОВЛЕНО:</span>
-            <span className="font-bold text-accent">{packs.data?.length ?? 0}</span>
+            <span className="font-bold text-accent">{grouped.length}</span>
           </div>
         </div>
       </section>
@@ -102,11 +109,11 @@ export default function PacksSection() {
         )}
 
         <div className="grid gap-4">
-          {(packs.data ?? []).map((p) => {
+          {grouped.map(([p, ...older]) => {
             const countsEntries = Object.entries(p.counts ?? {});
             return (
               <div
-                key={`${p.id}@${p.version}`}
+                key={p.id}
                 className="card group relative overflow-hidden p-5 transition hover:border-accent/60"
               >
                 {/* Two-tone header */}
@@ -151,6 +158,12 @@ export default function PacksSection() {
                     </div>
                   ) : (
                     <span className="text-xs text-muted">Записей сущностей нет</span>
+                  )}
+
+                  {older.length > 0 && (
+                    <div className="font-mono text-[11px] text-faint">
+                      Прежние версии: {older.map((o) => `v${o.version}`).join(", ")}
+                    </div>
                   )}
                 </div>
               </div>
