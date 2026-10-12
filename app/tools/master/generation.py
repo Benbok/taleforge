@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core import economy
+from app.core.layout.intent import LayoutIntent
 from app.core.preparation import brief_status, public_status, receipt
 from app.core.world_generation import storage
 from app.core.world_generation.profiles import MINIMAL_REF, ProfileError, load_profile
@@ -16,7 +17,7 @@ from app.tools.master.items import _accessible_container, _approach, container_c
 from app.tools.registry import ToolContext, ToolError, tool
 
 # Команды ведущего: ИИ-мастер их не видит (app/agents/master/common.py)
-HOST_TOOLS = frozenset({"resolve_location", "retry_preparation", "bind_plot_anchor"})
+HOST_TOOLS = frozenset({"resolve_location", "retry_preparation", "bind_plot_anchor", "prepare_complex"})
 
 
 class ResolveLocationArgs(BaseModel):
@@ -163,3 +164,45 @@ async def generation_status(ctx: ToolContext, a: GenerationStatusArgs) -> dict:
         return await preparation.generation_status(ctx.session, ctx.campaign.id, a.operation_ref, None)
     except NotFound as e:
         raise ToolError(str(e)) from e
+
+
+class PrepareComplexArgs(BaseModel):
+    location_id: str = Field(description="реальный id места, которое станет комплексом участков")
+    intent: LayoutIntent = Field(description="пространственный замысел: части, связи, подходы, дороги и ручьи")
+
+
+@tool(
+    "prepare_complex",
+    "Команда ведущего: принимает пространственный замысел места и просит подготовить его структуру — участки и "
+    "проходы между ними. Возвращает квитанцию; уже принятый замысел не перестраивается.",
+    PrepareComplexArgs,
+    ids={"location_id": "locations"},
+    closes=False,
+)
+async def prepare_complex(ctx: ToolContext, a: PrepareComplexArgs) -> dict:
+    from app.core import adventure
+    from app.core.layout import store as layout_store
+
+    w = ctx.world
+    root = w.entities.get(a.location_id)
+    if root is None or root.kind != "location" or root.campaign_id != ctx.campaign.id:
+        raise ToolError("локация не принадлежит этой кампании")
+    if layout_store.complex_of(root) is not None:
+        raise ToolError("участок комплекса сам комплексом не становится")
+    if adventure.room_of(root) is not None:
+        raise ToolError("готовое приключение берёт план места из книги")
+    for ap in a.intent.approaches:
+        outside = w.entities.get(ap.outside_id or root.id)
+        if outside is None or outside.kind != "location":
+            raise ToolError(f"подход «{ap.public_name}»: нет места {ap.outside_id}")
+    row = await storage.find(ctx.session, ctx.campaign.id, root.id, "location_layout")
+    inverse: list = []
+    if row is None:
+        row = await layout_store.reserve_layout(ctx.session, ctx.campaign, root, a.intent)
+        inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
+    elif (row.reservation or {}).get("intent") != a.intent.model_dump(mode="json"):
+        raise ToolError("у места уже есть замысел комплекса: структура не перестраивается")
+    storage.activate(row)
+    result = {"location_id": root.id, **receipt(row.id)}
+    await ctx.record("prepare_complex", target_id=root.id, payload=result, inverse=inverse, hidden=True)
+    return result

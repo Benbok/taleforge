@@ -292,6 +292,54 @@ async def reserve_llm_call(maker, claim: Claim, limit: int) -> Claim | None:
         return None
 
 
+async def _own(s, claim: Claim) -> None:
+    """Защищённая запись мира от ревизии снимка и CAS строки по токену: только владелец lease пишет результат."""
+    await world_write(s, claim.campaign_id, claim.world_revision)
+    if now() >= claim.lease_until:
+        raise LeaseLost(claim.ref)
+    cas = (
+        (WGS.id == claim.ref)
+        & (WGS.lease_token == claim.token)
+        & (WGS.revision == claim.revision)
+        & (WGS.status == "preparing")
+    )
+    done = await s.execute(update(WGS).where(cas).values(revision=WGS.revision + 1, updated_at=now()))
+    if done.rowcount != 1:
+        raise LeaseLost(claim.ref)
+
+
+def _finish(row: WorldGenerationState, manifest: dict[str, Any], quality: str) -> None:
+    row.status = "ready"
+    row.quality = quality
+    row.lease_token = None
+    row.lease_until = None
+    row.last_error = None
+    row.completed_at = now()
+    row.result_manifest = manifest
+    row.result_digest = digest(manifest)
+
+
+async def phase_of(maker, ref: str) -> str | None:
+    async with maker() as s:
+        return await s.scalar(select(WGS.phase).where(WGS.id == ref))
+
+
+async def commit_with(maker, dice_factory, claim: Claim, apply, *, quality: str = "normal") -> dict[str, Any]:
+    """Результат произвольной фазы одной транзакцией по правилам ``commit_result``: ``apply(ctx, row)`` меняет мир и
+    возвращает manifest. ``WorldConflict``, ``LeaseLost`` и ``Blocked`` откатывают всё."""
+    from app.tools.runtime import open_context
+
+    async with maker() as s:
+        campaign = await s.get(Campaign, claim.campaign_id)
+        await _own(s, claim)
+        ctx = await open_context(s, campaign, dice_factory(), turn_id=None, seat_id=None)
+        row = await s.get(WGS, claim.ref)
+        manifest = await apply(ctx, row)
+        _finish(row, manifest, quality)
+        await s.commit()
+        return manifest
+
+
 async def commit_result(
     maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal, *, quality: str = "normal"
 ) -> dict[str, Any]:
@@ -305,18 +353,7 @@ async def commit_result(
 
     async with maker() as s:
         campaign = await s.get(Campaign, claim.campaign_id)
-        await world_write(s, claim.campaign_id, claim.world_revision)
-        if now() >= claim.lease_until:
-            raise LeaseLost(claim.ref)
-        cas = (
-            (WGS.id == claim.ref)
-            & (WGS.lease_token == claim.token)
-            & (WGS.revision == claim.revision)
-            & (WGS.status == "preparing")
-        )
-        done = await s.execute(update(WGS).where(cas).values(revision=WGS.revision + 1, updated_at=now()))
-        if done.rowcount != 1:
-            raise LeaseLost(claim.ref)
+        await _own(s, claim)
         ctx = await open_context(s, campaign, dice_factory(), turn_id=None, seat_id=None)
         row = await s.get(WGS, claim.ref)
         target = ctx.world.entities.get(plan.target_id)
@@ -430,15 +467,7 @@ async def commit_result(
             "spent": plan.spent,
             "notes": notes,
         }
-        t = now()
-        row.status = "ready"
-        row.quality = quality
-        row.lease_token = None
-        row.lease_until = None
-        row.last_error = None
-        row.completed_at = t
-        row.result_manifest = manifest
-        row.result_digest = digest(manifest)
+        _finish(row, manifest, quality)
         await ctx.record(
             "prepare_scene",
             target_id=target.id,
