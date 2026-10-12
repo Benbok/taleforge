@@ -82,7 +82,7 @@ async def location_plan(
         discovered_passages=frozenset(
             (root.id, str(exit.get("passage_ref")))
             for exit in ((here.state or {}).get("sketch") or {}).get("exits") or []
-            if exit.get("passage_ref")
+            if exit.get("passage_ref") and not exit.get("hidden")
         ),
         revealed=frozenset(),
     )

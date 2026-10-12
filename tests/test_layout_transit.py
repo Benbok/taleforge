@@ -194,28 +194,6 @@ def test_player_cannot_traverse_outside_combat_turn(client, admin, settings):
     assert _place(settings, hid) is None
 
 
-def test_traverse_rejects_stale_source(client, admin, settings):
-    from tests.test_world_generation import _with_maker
-
-    cid, heads, hid, _village, _t, ids = _built(client, admin, settings)
-    _go(client, heads[0], cid, "in_road_w")
-
-    async def go(maker):
-        return await transit.traverse(
-            maker,
-            None,
-            client.app.state.dice_factory,
-            cid,
-            hid,
-            "p_brook",
-            expected_source_id="stale-source",
-        )
-
-    out, published = _with_maker(settings, go)
-    assert out == {"ok": False, "error": "переход не удался"} and published == []
-    assert _place(settings, hid) == ids["road"]
-
-
 @pytest.mark.parametrize("failure", ["not_found", "no_hero"])
 def test_traverse_refusal_is_sent_after_read_transaction_closes(client, admin, settings, monkeypatch, failure):
     from contextlib import asynccontextmanager

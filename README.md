@@ -6,6 +6,8 @@
 
 Техническое задание и документы мира — в [docs/](docs/README.md).
 
+Итог поставки 2 карт локаций — в [docs/location-maps-delivery2.md](docs/location-maps-delivery2.md).
+
 ## Структура
 
 ```
