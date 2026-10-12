@@ -459,6 +459,9 @@ class MapSketchExit(_Strict):
     room_ref: str | None = None
     beyond: str | None = None
     hidden: bool = False
+    width: int | None = None  # участок комплекса: ширина проёма, живой проход и клетки проёма
+    passage_ref: str | None = None
+    cells: list[list[int]] | None = None
 
 
 class MapSketchFeature(_Strict):
@@ -488,6 +491,10 @@ class MapSketch(_Strict):
     rows: int
     party: tuple[int, int]
     walls: list[list[int]]
+    edges: list[Any] | None = None
+    terrain: list[Any] | None = None
+    material: str | None = None
+    environment: str | None = None
     exits: list[MapSketchExit]
     features: list[MapSketchFeature]
     book: bool = False

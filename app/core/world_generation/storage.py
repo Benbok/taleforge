@@ -388,6 +388,7 @@ async def commit_result(
         bindings = {b.anchor_id: b for b in await s.scalars(select(PlotAnchorBinding).where(
             PlotAnchorBinding.campaign_id == campaign.id))}  # fmt: skip
         by_slot = {o.slot_ref: o for o in proposal.objects}
+        here = {b.anchor_id for b in await plot_anchors.reserved_for(s, campaign.id, place)}
         for slot in plan.slots:
             obj = by_slot.get(slot.slot_ref)
             if obj is None:
@@ -395,7 +396,7 @@ async def commit_result(
             if slot.anchor_id is not None:
                 # привязка перепроверяется в финальной транзакции: пересмотр, раскрытие или перенос — пропуск
                 b = bindings.get(slot.anchor_id)
-                if b is None or b.state != "reserved" or b.holder_entity_id or b.target_location_id != place:
+                if b is None or b.state != "reserved" or b.holder_entity_id or b.anchor_id not in here:
                     notes.append(f"anchor_skipped:{slot.anchor_id}:{b.state if b else 'missing'}")
                     continue
                 en = await plot_anchors.place(ctx, b, place_id=place, parent=parent, zone=slot.zone, ref=row.id)

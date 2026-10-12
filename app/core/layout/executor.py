@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Any
 
 from pydantic import ValidationError
@@ -40,20 +41,29 @@ async def _draft(maker, claim: storage.Claim, provider) -> tuple[Blueprint, str]
     async with maker() as s:
         row = await s.get(WorldGenerationState, claim.ref)
         res = dict(row.reservation or {})
+        from app.core import plot_anchors
+
+        waiting = [b.anchor_id for b in await plot_anchors.reserved_for(s, claim.campaign_id, row.target_entity_id)]
     try:
         intent = LayoutIntent.model_validate(res["intent"])
     except (KeyError, ValidationError) as e:
         raise Blocked("unsupported_source", str(e)[:500]) from e
     kw = {"seed": int(res["seed"]), "root_id": res["root_id"], "plot_id": res.get("plot_id")}
     try:
-        return provider.propose(intent, **kw), "normal"
+        return _with_anchors(provider.propose(intent, **kw), waiting), "normal"
     except LayoutError as e:
         first = e.errors
         log.info("структура %s: обычная раскладка не прошла (%s)", claim.ref, "; ".join(first[:3]))
     try:
-        return provider.propose(intent, fallback=True, **kw), "fallback"
+        return _with_anchors(provider.propose(intent, fallback=True, **kw), waiting), "fallback"
     except LayoutError as e:
         raise Blocked("layout_unsatisfiable", "; ".join((first + e.errors)[:6])) from e
+
+
+def _with_anchors(bp: Blueprint, waiting: list[str]) -> Blueprint:
+    """Зацепка корня без места в замысле не теряется: её получает входной участок."""
+    extra = {a: bp.entry for a in waiting if a not in bp.anchors}
+    return replace(bp, anchors={**bp.anchors, **extra}) if extra else bp
 
 
 async def _publish_layout(ctx, row: WorldGenerationState, bp: Blueprint, quality: str) -> dict[str, Any]:

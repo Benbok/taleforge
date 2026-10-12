@@ -6389,6 +6389,19 @@
       "title": "Cols",
       "type": "integer"
      },
+     "edges": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Edges"
+     },
      "edit_rev": {
       "anyOf": [
        {
@@ -6400,6 +6413,18 @@
       ],
       "default": null,
       "title": "Edit Rev"
+     },
+     "environment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Environment"
      },
      "exits": {
       "items": {
@@ -6414,6 +6439,18 @@
       },
       "title": "Features",
       "type": "array"
+     },
+     "material": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Material"
      },
      "party": {
       "maxItems": 2,
@@ -6448,6 +6485,19 @@
      "shape": {
       "title": "Shape",
       "type": "string"
+     },
+     "terrain": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Terrain"
      },
      "unplaced_exits": {
       "default": null,
@@ -6499,6 +6549,24 @@
       "default": null,
       "title": "Beyond"
      },
+     "cells": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "type": "integer"
+         },
+         "type": "array"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cells"
+     },
      "hidden": {
       "default": false,
       "title": "Hidden",
@@ -6511,6 +6579,18 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "passage_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Passage Ref"
      },
      "room_ref": {
       "anyOf": [
@@ -6557,6 +6637,18 @@
       ],
       "default": null,
       "title": "To"
+     },
+     "width": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Width"
      }
     },
     "required": [

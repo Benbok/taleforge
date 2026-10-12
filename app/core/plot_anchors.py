@@ -112,12 +112,21 @@ def _of(campaign_id: str):
 
 
 async def reserved_for(session: AsyncSession, campaign_id: str, location_id: str) -> list[PlotAnchorBinding]:
-    q = _of(campaign_id).where(
-        PlotAnchorBinding.state == "reserved",
-        PlotAnchorBinding.holder_entity_id.is_(None),
-        PlotAnchorBinding.target_location_id == location_id,
-    )
-    return list(await session.scalars(q))
+    """Зацепки, которые ждут места. Участок комплекса получает и зацепки корня, отданные ему blueprint; корень с
+    blueprint их уже не держит (спецификация 2026-10-12, §3.1)."""
+    from app.core.layout import store
+
+    base = _of(campaign_id).where(PlotAnchorBinding.state == "reserved", PlotAnchorBinding.holder_entity_id.is_(None))
+    place = await session.get(Entity, location_id)
+    cx = store.complex_of(place)
+    if cx is not None:
+        bp = store.blueprint_of(await session.get(Entity, cx["root_id"]))
+        mine = {a for a, ref in (bp.anchors if bp else {}).items() if ref == cx["area_ref"]}
+        q = base.where(PlotAnchorBinding.target_location_id.in_((location_id, cx["root_id"])))
+        return [b for b in await session.scalars(q) if b.target_location_id == location_id or b.anchor_id in mine]
+    found = list(await session.scalars(base.where(PlotAnchorBinding.target_location_id == location_id)))
+    bp = store.blueprint_of(place)
+    return [b for b in found if b.anchor_id not in bp.anchors] if bp is not None else found
 
 
 async def routed(session: AsyncSession, campaign_id: str) -> set[str]:

@@ -55,6 +55,12 @@ def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[st
     if place.kind != "location":
         return []
 
+    from app.core.layout import store
+
+    cx = store.complex_of(place)
+    if cx is not None:
+        return _passage_exits(place, entities.get(cx["root_id"]), entities)
+
     exits: list[LocationExit] = []
     seen_ids: set[str] = set()
 
@@ -84,7 +90,39 @@ def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[st
                 add(other.id, link.get("label"))
                 break
     for other in entities.values():
-        if other.kind == "location" and other.location_id == place.id:
+        if other.kind == "location" and other.location_id == place.id and not store.complex_of(other):
             add(other.id, "внутри")
+    for root in entities.values():
+        bp = store.blueprint_of(root) if root.kind == "location" else None
+        if bp is None:
+            continue
+        ids = store.area_ids(root)
+        for p in bp.passages:
+            if store.passage_live(root, p.passage_ref).get("hidden", p.hidden):
+                continue
+            for i, x in enumerate(p.ends):
+                if x.external and x.place_id == place.id:
+                    add(ids.get(p.ends[1 - i].area_ref or ""), p.public_name)
     add(place.location_id, "наружу")
     return exits
+
+
+def _passage_exits(place: Entity, root: Entity | None, entities: dict[str, Entity]) -> list[LocationExit]:
+    """Соседи участка комплекса — только через его проходы; тайный проход соседства не даёт, пока его не нашли.
+    Вложенность в корень прохода не создаёт."""
+    from app.core.layout import store
+
+    bp = store.blueprint_of(root)
+    if bp is None:
+        return []
+    ids = store.area_ids(root)
+    area_ref = store.complex_of(place)["area_ref"]
+    out: list[LocationExit] = []
+    for p, x in bp.ends_of(area_ref):
+        if store.passage_live(root, p.passage_ref).get("hidden", p.hidden):
+            continue
+        o = bp.other(p, x)
+        target = ids.get(o.area_ref) if o.area_ref else o.place_id
+        if target and target in entities and target not in {e.target_id for e in out}:
+            out.append(LocationExit(target, None, p.public_name, x.side))
+    return out
