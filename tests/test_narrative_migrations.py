@@ -38,8 +38,28 @@ def test_sqlite_alembic_narrative_foundation_upgrade_and_downgrade(monkeypatch, 
         tables_downgraded = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
         assert not {"narrative_states", "narrative_facts", "narrative_threads"} & tables_downgraded
 
-    # 4. Re-upgrade to 0021
-    command.upgrade(config, "0021")
+    # 4. Upgrade to 0022 (head)
+    command.upgrade(config, "0022")
     with sqlite3.connect(db_path) as db:
-        tables_reup = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-        assert {"narrative_states", "narrative_facts", "narrative_threads"} <= tables_reup
+        tables_0022 = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "narrative_work" in tables_0022
+
+        indices = {row[1] for row in db.execute("PRAGMA index_list(narrative_work)")}
+        assert "ix_narrative_work_status" in indices
+        assert "ix_narrative_work_campaign_created" in indices
+        assert "ix_narrative_work_capacity_slot" in indices
+        assert "ix_narrative_work_campaign_preparing" in indices
+
+    # 5. Downgrade back to 0021
+    command.downgrade(config, "0021")
+    with sqlite3.connect(db_path) as db:
+        tables_down_0021 = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "narrative_work" not in tables_down_0021
+        assert {"narrative_states", "narrative_facts", "narrative_threads"} <= tables_down_0021
+
+    # 6. Re-upgrade to 0022 (head)
+    command.upgrade(config, "0022")
+    with sqlite3.connect(db_path) as db:
+        tables_head = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert "narrative_work" in tables_head
+

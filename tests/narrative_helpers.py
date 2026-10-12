@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import TypeAdapter
 
 from app.core.narrative.contracts import (
     AdaptationProposal,
+    BoundaryRecord,
     EvidenceRecord,
     EvidenceRef,
     FactRef,
@@ -27,9 +29,27 @@ from app.core.narrative.contracts import (
 _OP_ADAPTER = TypeAdapter(Operation)
 
 
+def boundary(**overrides: Any) -> BoundaryRecord:
+    """Factory for BoundaryRecord with default test values."""
+    defaults: dict[str, Any] = {
+        "campaign_id": "camp-1",
+        "kind": "turn",
+        "source_id": "turn-1",
+        "scope": "future",
+        "evidence_refs": (),
+        "audience": ("party",),
+        "focus": None,
+        "session_budget_ref": "sess-1",
+        "policy_version": 1,
+    }
+    defaults.update(overrides)
+    return BoundaryRecord(**defaults)
+
+
 def policy(**overrides: Any) -> NarrativePolicy:
     """Factory for NarrativePolicy with default test values."""
     return NarrativePolicy(**overrides)
+
 
 
 def fact(**overrides: Any) -> FactState:
@@ -211,3 +231,18 @@ def op(kind: str, **args: Any) -> Operation:
     """Factory for validated discriminated Operation."""
     payload = {"kind": kind, **args}
     return _OP_ADAPTER.validate_python(payload)
+
+
+class FakeClock:
+    """Controllable deterministic UTC clock for time-dependent job/lease tests."""
+
+    def __init__(self, start: datetime | None = None) -> None:
+        self._current = start or datetime(2026, 10, 12, 12, 0, 0, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        return self._current
+
+    def advance(self, seconds: int) -> None:
+        self._current += timedelta(seconds=seconds)
+
+

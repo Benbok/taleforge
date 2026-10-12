@@ -405,6 +405,28 @@ class AdaptationResult(NarrativeContractModel):
     public_effects: tuple[PublicEffect, ...] = ()
 
 
+class BoundaryRecord(NarrativeContractModel):
+    """Durable trigger boundary that enqueues director work."""
+
+    campaign_id: str
+    kind: str
+    source_id: str
+    scope: Literal["scene", "future", "system"] = "future"
+    evidence_refs: tuple[EvidenceRef, ...] = ()
+    audience: tuple[str, ...] = ()
+    focus: str | None = None
+    session_budget_ref: str
+    policy_version: int = 1
+
+    @property
+    def source_key(self) -> str:
+        return f"{self.kind}:{self.source_id}"
+
+
+class LeaseLost(RuntimeError):
+    """Raised when a worker attempts to update a job with an expired or superseded lease."""
+
+
 class WorkClaim(NarrativeContractModel):
     """Lease claim for background director worker jobs."""
 
@@ -418,3 +440,7 @@ class WorkClaim(NarrativeContractModel):
     attempts: int = 0
     session_budget_ref: str
     phase: Literal["author", "apply"] = "author"
+    draft: AdaptationProposal | None = None
+    capacity_slot: int | None = None
+    status: str = "preparing"
+
