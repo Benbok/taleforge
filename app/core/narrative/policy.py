@@ -268,6 +268,13 @@ def admit_adaptation(
                     violations=(Violation(code="immutable_fact_address", target_ref=address),),
                     read_set=snapshot.read_set,
                 )
+            if address in perms.anchors:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code="anchor_immutable",
+                    violations=(Violation(code="anchor_immutable", target_ref=address),),
+                    read_set=snapshot.read_set,
+                )
             matching_fact = next(
                 (
                     f
@@ -286,11 +293,54 @@ def admit_adaptation(
                         violations=(Violation(code="fact_committed", target_ref=address),),
                         read_set=snapshot.read_set,
                     )
-                if matching_fact.temporal_semantics == "historical":
+
+        elif op_item.kind == "add_campaign_fact":
+            new_fact = op_item.fact
+            target_ref = new_fact.ref
+            address = f"{target_ref.namespace}:{target_ref.subject_id}:{target_ref.key}"
+            perms = snapshot.permissions
+
+            if address in perms.anchors:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code="anchor_immutable",
+                    violations=(Violation(code="anchor_immutable", target_ref=address),),
+                    read_set=snapshot.read_set,
+                )
+
+            matching_fact = next(
+                (
+                    f
+                    for f in snapshot.facts
+                    if f.ref.namespace == target_ref.namespace
+                    and f.ref.subject_id == target_ref.subject_id
+                    and f.ref.key == target_ref.key
+                ),
+                None,
+            )
+            if matching_fact is not None:
+                if matching_fact.freedom == "committed" and matching_fact.temporal_semantics == "historical":
                     return AdaptationAdmission(
                         status="denied",
                         reason_code="historical_fact_immutable",
                         violations=(Violation(code="historical_fact_immutable", target_ref=address),),
+                        read_set=snapshot.read_set,
+                    )
+                if matching_fact.freedom == "committed" and new_fact.freedom == "draft":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="cannot_demote_committed_fact",
+                        violations=(Violation(code="cannot_demote_committed_fact", target_ref=address),),
+                        read_set=snapshot.read_set,
+                    )
+                if (
+                    matching_fact.temporal_semantics != new_fact.temporal_semantics
+                    or matching_fact.kind != new_fact.kind
+                ):
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="cannot_change_fact_semantics",
+                        violations=(Violation(code="cannot_change_fact_semantics", target_ref=address),),
                         read_set=snapshot.read_set,
                     )
 

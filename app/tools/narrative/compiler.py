@@ -42,6 +42,27 @@ def compile_operations(
             )
 
         elif op.kind == "revise_draft_fact":
+            matching = next(
+                (
+                    f
+                    for f in snapshot.facts
+                    if f.ref.namespace == op.target_ref.namespace
+                    and f.ref.subject_id == op.target_ref.subject_id
+                    and f.ref.key == op.target_ref.key
+                ),
+                None,
+            )
+            fact_kind = matching.kind if matching else "truth"
+            fact_temporal = matching.temporal_semantics if matching else "current_state"
+            fact_audience = list(matching.audience) if matching else []
+            fact_depends = [d.model_dump() for d in matching.depends_on] if matching else []
+            fact_snap_ref = (
+                matching.ref.snapshot_ref.model_dump()
+                if matching and matching.ref.snapshot_ref
+                else op.target_ref.snapshot_ref.model_dump()
+                if hasattr(op.target_ref, "snapshot_ref") and op.target_ref.snapshot_ref
+                else {}
+            )
             calls.append(
                 CompiledCall(
                     tool="apply_narrative_fact",
@@ -51,7 +72,12 @@ def compile_operations(
                         "subject_id": op.target_ref.subject_id,
                         "key": op.target_ref.key,
                         "value": op.new_value,
+                        "kind": fact_kind,
+                        "temporal_semantics": fact_temporal,
                         "freedom": "draft",
+                        "audience": fact_audience,
+                        "depends_on": fact_depends,
+                        "snapshot_ref": fact_snap_ref,
                     },
                     call_key=call_key,
                     metadata={"operation": op.kind},

@@ -103,7 +103,7 @@ def revise_draft(
     if current.freedom == "committed":
         violations.append("fact_committed")
 
-    if current.temporal_semantics == "historical":
+    if current.temporal_semantics == "historical" and current.freedom == "committed":
         violations.append("historical_fact_immutable")
 
     if ground.kind not in ("divergence", "relationship", "consequence"):

@@ -64,6 +64,10 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
     res = await ctx.session.execute(stmt)
     existing = res.scalar_one_or_none()
 
+    before_value = None
+    prev_version = None
+    inverse_payload = None
+
     if existing is None:
         f = NarrativeFact(
             campaign_id=ctx.campaign.id,
@@ -81,7 +85,36 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
             snapshot_ref=args.snapshot_ref,
         )
         ctx.session.add(f)
+        current_version = 1
     else:
+        if existing.freedom == "committed" and existing.temporal_semantics == "historical":
+            raise ToolError(
+                "нельзя изменить исторический закреплённый факт",
+                code="historical_fact_immutable",
+                category="rule_denial",
+            )
+        if existing.freedom == "committed" and args.freedom == "draft":
+            raise ToolError(
+                "нельзя понизить статус закреплённого факта в черновик",
+                code="cannot_demote_committed_fact",
+                category="rule_denial",
+            )
+        if existing.temporal_semantics != args.temporal_semantics or existing.kind != args.kind:
+            raise ToolError(
+                "нельзя изменять семантику существующего факта",
+                code="cannot_change_fact_semantics",
+                category="rule_denial",
+            )
+
+        before_value = existing.value
+        prev_version = existing.version
+        inverse_payload = {
+            "value": existing.value,
+            "version": existing.version,
+            "freedom": existing.freedom,
+            "audience": copy.deepcopy(existing.audience),
+        }
+
         existing.value = args.value
         existing.version += 1
         existing.freedom = args.freedom
@@ -89,6 +122,7 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
         existing.depends_on = args.depends_on
         if ctx.call_key and ctx.call_key not in (existing.source_refs or []):
             existing.source_refs = [*existing.source_refs, ctx.call_key]
+        current_version = existing.version
 
     ev = await ctx.record(
         "apply_narrative_fact",
@@ -99,6 +133,11 @@ async def apply_narrative_fact(ctx: ToolContext, args: ApplyNarrativeFactArgs) -
             "subject_id": args.subject_id,
             "key": args.key,
             "value": args.value,
+            "version": current_version,
+            "before": before_value,
+            "after": args.value,
+            "previous_version": prev_version,
+            "inverse": inverse_payload,
         },
     )
     return {"ok": True, "fact_address": f"{args.namespace}:{args.subject_id}:{args.key}", "event_id": ev.id}
