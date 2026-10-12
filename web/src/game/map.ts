@@ -65,6 +65,11 @@ export interface MapExit {
   via: string | null;
   bearing: Bearing | null;
   visited: boolean;
+  kind?: string | null;
+  state?: string | null;
+  width?: number | null;
+  passage_ref?: string | null;
+  cells?: number[][] | null;
 }
 
 export interface MapPlace {
@@ -118,6 +123,21 @@ export interface SketchExit {
   room_ref?: string | null;
   beyond?: string | null;
   hidden?: boolean;
+  width?: number | null;
+  passage_ref?: string | null;
+  cells?: number[][] | null;
+}
+
+export interface SketchEdge {
+  side: "n" | "e" | "s" | "w";
+  start: number;
+  length: number;
+  meaning: "obstacle" | "continuation" | "boundary";
+}
+
+export interface SketchTerrain {
+  kind: "road" | "path" | "stream" | "bridge";
+  cells: number[][];
 }
 
 export interface SketchFeature {
@@ -141,6 +161,11 @@ export interface Sketch {
   walls: number[][];
   exits: SketchExit[];
   features: SketchFeature[];
+  mask?: string[] | null;
+  edges?: SketchEdge[] | null;
+  terrain?: SketchTerrain[] | null;
+  material?: string | null;
+  environment?: string | null;
   book?: boolean; // эскиз построен непосредственно из размеченной сетки книги
   unplaced_exits?: { name: string; to?: string | null; room_ref?: string | null }[]; // выход есть в книге, но клетка двери неизвестна
 }
@@ -170,6 +195,27 @@ export interface MapState extends Pick<GeneratedMapState, "here" | "places" | "l
   areas?: MapArea[];
   mode?: "free" | "combat";
   exits: MapExit[];
+  location_map?: MapLocationPlan | null;
+  request_id?: string | null;
+  as_seat?: string | null;
+}
+
+export interface MapKnownArea {
+  id: string;
+  name: string;
+  offset: [number, number];
+  level: number;
+  status: "here" | "remembered" | "prepared";
+  revision: number;
+  observed_at?: string | null;
+  sketch: Sketch;
+  disclosed_to?: string[] | null;
+}
+
+export interface MapLocationPlan {
+  root_id: string;
+  here_id: string | null;
+  areas: MapKnownArea[];
 }
 
 const ZONES: Zone[] = ["melee", "near", "far"];
@@ -208,6 +254,10 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
       cover: feature.cover ? listed(feature.cover, COVERS, "none") : undefined,
     })),
   } : null;
+  const locationMap = data.location_map ? {
+    ...data.location_map,
+    areas: data.location_map.areas.map((area) => ({ ...area, offset: [area.offset[0], area.offset[1]] as [number, number], sketch: area.sketch as Sketch })),
+  } : null;
   return {
     here: data.here,
     places: data.places,
@@ -236,6 +286,9 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
     })),
     areas: data.areas.map((a) => ({ ...a, zone: listed(a.zone, ZONES, "near"), bearing: safeBearing(a.bearing) })),
     exits: data.exits.map((e) => ({ ...e, bearing: safeBearing(e.bearing) })),
+    location_map: locationMap,
+    request_id: data.request_id,
+    as_seat: data.as_seat,
     scene_view: data.scene_view.map((t) => ({
       ...t,
       zone: t.zone == null ? null : listed(t.zone, ZONES, "near"),
@@ -578,8 +631,9 @@ export function sketchFrame(sk: Sketch): SketchFrame {
   const minRow = -dr;
   const maxCol = sk.cols - 1 - dc;
   const maxRow = sk.rows - 1 - dr;
+  const floor = sk.mask ? new Set(sk.mask.flatMap((row, r) => [...row].flatMap((cell, c) => cell === "." ? [`${c - dc},${r - dr}`] : []))) : null;
   const allowed = (c: number, r: number) =>
-    c >= minCol && c <= maxCol && r >= minRow && r <= maxRow && !walls.has(`${c},${r}`) && !solid.has(`${c},${r}`);
+    c >= minCol && c <= maxCol && r >= minRow && r <= maxRow && (!floor || floor.has(`${c},${r}`)) && !walls.has(`${c},${r}`) && !solid.has(`${c},${r}`);
   const reach = Math.max(-minCol, maxCol, -minRow, maxRow, 1);
   return { dc, dr, minCol, minRow, maxCol, maxRow, walls, solid, allowed, reach };
 }
@@ -591,6 +645,16 @@ export function exitCell(sk: Sketch, x: SketchExit): [number, number] {
   if (x.side === "s") return [x.at - dc, sk.rows - dr];
   if (x.side === "w") return [-1 - dc, x.at - dr];
   return [sk.cols - dc, x.at - dr];
+}
+
+/** Клетки прохода в механических координатах; сохранённые клетки надёжнее ширины. */
+export function exitCells(sk: Sketch, x: SketchExit): [number, number][] {
+  if (x.cells?.length) {
+    const [dc, dr] = sk.party;
+    return x.cells.map(([c, r]) => [c - dc, r - dr]);
+  }
+  const cell = exitCell(sk, x);
+  return [cell];
 }
 
 // --- раскладка «Места» ---
