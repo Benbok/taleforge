@@ -338,7 +338,16 @@ async def complete_queued(
     return done
 
 
-async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str, passage_ref: str):
+async def traverse(
+    maker,
+    preparer,
+    dice_factory,
+    campaign_id: str,
+    hero_id: str,
+    passage_ref: str,
+    *,
+    expected_source_id: str | None = None,
+):
     """Переход по действию игрока: подготовка принята → дождаться её вне транзакции → проверить и перейти.
     Возвращает ответ и список ``(ctx, messages)`` закоммиченных транзакций для публикации изменений."""
     from app.tools.runtime import flush_outbox, open_context
@@ -349,6 +358,8 @@ async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str
             ctx1 = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
             inverse: list = []
             try:
+                if expected_source_id is not None and ctx1.world.actor_place(hero_id) != expected_source_id:
+                    return {"ok": False, "error": "переход не удался"}, []
                 req = await begin(ctx1, [hero_id], passage_ref, inverse, by_player=True)
             except ToolError as e:
                 await s.rollback()
