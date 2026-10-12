@@ -327,6 +327,21 @@ export interface StepState {
   pending: StepRequest | null; // ждёт подтверждения игрока
 }
 
+export interface TraverseResult {
+  request_id?: string | null;
+  ok: boolean;
+  moved?: boolean;
+  reason?: string | null;
+  error?: string | null;
+}
+
+export interface TraverseState {
+  busy: boolean;
+  request_id: string | null;
+  reason: string | null;
+  error: string | null;
+}
+
 const NO_STEP: StepState = { busy: false, note: null, error: null, warnings: null, pending: null };
 
 /** Строка о шаге для игрока: сколько прошёл, сколько осталось в бою, что случилось по дороге. */
@@ -344,10 +359,15 @@ interface MapWindowState {
   data: MapState | null;
   loading: boolean;
   error: string | null;
+  mapRequest: string | null;
   show(tab?: Tab): void;
   hide(): void;
   setTab(tab: Tab): void;
   request(): void;
+  traverse: TraverseState;
+  traverseTo(passage_ref: string, source_id?: string | null): void;
+  traverseResult(result: TraverseResult): void;
+  resetForViewer(): void;
   receive(data: MapState): void;
   step: StepState;
   stepTo(req: StepRequest, confirm?: boolean): void;
@@ -356,6 +376,8 @@ interface MapWindowState {
 }
 
 let stepSeq = 0;
+let traverseSeq = 0;
+let mapSeq = 0;
 
 export const useMapWindow = create<MapWindowState>((set, get) => ({
   open: false,
@@ -374,11 +396,42 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
     set({ tab });
   },
   request() {
-    const sent = useGame.getState().socket?.send("map.get") ?? false;
+    const request_id = `m${++mapSeq}`;
+    const as_seat = useGame.getState().playAs;
+    const payload = as_seat ? { request_id, as_seat } : undefined;
+    const sent = payload
+      ? useGame.getState().socket?.send("map.get", payload) ?? false
+      : useGame.getState().socket?.send("map.get") ?? false;
+    set({ mapRequest: sent ? request_id : null });
     set(sent ? { loading: true, error: null } : { loading: false, error: "нет связи с сервером: карта обновится, когда соединение вернётся" });
   },
   receive(data) {
     set({ data, loading: false, error: null });
+  },
+  mapRequest: null,
+  traverse: { busy: false, request_id: null, reason: null, error: null },
+  traverseTo(passage_ref, source_id) {
+    const current = get().traverse;
+    if (current.busy) return;
+    const request_id = `t${++traverseSeq}`;
+    const as_seat = useGame.getState().playAs;
+    const sent = useGame.getState().socket?.send("map.traverse", {
+      passage_ref,
+      ...(source_id ? { source_id } : {}),
+      request_id,
+      ...(as_seat ? { as_seat } : {}),
+    }) ?? false;
+    set({ traverse: { busy: sent, request_id: sent ? request_id : null, reason: null, error: sent ? null : "переход не отправлен" } });
+  },
+  traverseResult(result) {
+    const current = get().traverse;
+    if (!current.busy || result.request_id !== current.request_id) return;
+    const moved = result.moved ?? result.ok;
+    set({ traverse: { busy: false, request_id: null, reason: moved ? null : result.reason ?? "переход не удался", error: result.error ?? null } });
+    get().request();
+  },
+  resetForViewer() {
+    set({ data: null, loading: false, error: null, mapRequest: null, traverse: { busy: false, request_id: null, reason: null, error: null } });
   },
   step: NO_STEP,
   stepTo(req, confirm = false) {
@@ -401,8 +454,12 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
 /** Событие сокета для карты: ответ сервера или повод перезапросить открытую карту. */
 export function mapEvent(e: Envelope): void {
   const w = useMapWindow.getState();
-  if (e.type === "map.state") w.receive(mapForDisplay(e.payload));
+  if (e.type === "map.state") {
+    if (w.mapRequest && e.payload.request_id && e.payload.request_id !== w.mapRequest) return;
+    w.receive(mapForDisplay(e.payload));
+  }
   else if (e.type === "map.step.result") w.stepResult(e.payload);
+  else if (e.type === "map.traverse.result") w.traverseResult(e.payload);
   else if (w.open && (e.type === "scene.updated" || e.type === "state.snapshot" || e.type === "knowledge.revealed" || e.type === "map.changed")) w.request();
 }
 
