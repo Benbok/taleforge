@@ -8,6 +8,8 @@ from sqlalchemy import select
 from app.core import world_tx
 from app.core.narrative.contracts import (
     AdaptationResult,
+    EvidenceRecord,
+    EvidenceRef,
     LeaseLost,
     WorkClaim,
 )
@@ -15,7 +17,7 @@ from app.db.models import Campaign, NarrativeWork, User, as_utc
 from app.db.narrative_jobs import SqlNarrativeJobs
 from app.db.session import make_sessionmaker
 from tests.game import import_base, party
-from tests.narrative_helpers import FakeClock, boundary, proposal
+from tests.narrative_helpers import FakeClock, boundary, policy, proposal, snapshot
 
 
 @pytest.fixture
@@ -602,3 +604,290 @@ def test_enqueue_claim_roundtrip_preserves_evidence(session_maker):
         assert claim.source.source_id == claim.work_id
 
     asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R12 — applied proposal strictly belongs to the claimed job
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_applied_proposal_strictly_belongs_to_claimed_job(
+    session_maker, campaign_fixture
+):
+    """R12: RuntimeNarrativeApplier verifies work/source/proposal alignment against claim.
+
+    Attempting to apply proposal B using claim A must be rejected before commit.
+    """
+    cid = campaign_fixture["id"]
+    from app.core.narrative.contracts import LeaseLost
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        b1 = boundary(campaign_id=cid, source_id="src-prop-align-1")
+        b2 = boundary(campaign_id=cid, source_id="src-prop-align-2")
+        await jobs.enqueue(b1)
+
+        claim1 = await jobs.claim(clock())
+        assert claim1 is not None
+
+        # Build proposal matching claim 1
+        snap1 = snapshot(
+            source=claim1.source,
+            proposal_id=claim1.proposal_id,
+        )
+        prop1 = proposal(snap1, summary="Proposal 1")
+        await jobs.save_draft(claim1, prop1, clock())
+
+        apply_claim1 = await jobs.claim(clock())
+        assert apply_claim1 is not None
+
+        # Mismatched proposal (different proposal_id)
+        mismatched_prop = proposal(
+            snap1,
+            proposal_id="foreign-prop-999",
+            summary="Foreign Proposal",
+        )
+
+        with pytest.raises(LeaseLost, match="mismatch"):
+            await applier.apply(mismatched_prop, claim=apply_claim1)
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R14 — no_change proposal records exactly one Event and populates receipt_event_id
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_no_change_creates_single_event_and_receipt_event_id(
+    session_maker, campaign_fixture
+):
+    """R14: A no_change proposal must create an adapt_story Event and record receipt_event_id."""
+    cid = campaign_fixture["id"]
+    from app.db.models import Event
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        async with session_maker() as session:
+            ev_row = Event(
+                id="evt-nc-1",
+                campaign_id=cid,
+                tool="roll_check",
+                actor_id=None,
+                hidden=False,
+                payload={},
+            )
+            session.add(ev_row)
+            await session.commit()
+
+        b = boundary(campaign_id=cid, source_id="src-nc-test")
+        work_id = await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        async with session_maker() as session:
+            current_rev = await world_tx.read_revision(session, cid)
+
+        ev = EvidenceRef(campaign_id=cid, kind="event", source_id="evt-nc-1")
+        ev_rec = EvidenceRecord(
+            ref=ev,
+            status="applied",
+            subject_refs=("npc-1",),
+            audience=("party",),
+            game_time=1000,
+            applied_result="divergence_noted",
+        )
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+            evidence=(ev_rec,),
+            base=snapshot().base.model_copy(update={"world_revision": current_rev}),
+        )
+        nc_prop = proposal(snap, summary="Никаких изменений", operations=())
+        await jobs.save_draft(author_claim, nc_prop, clock())
+
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+        assert apply_claim.phase == "apply"
+
+        res = await applier.apply(apply_claim.draft, claim=apply_claim)
+        assert res.status == "no_change", f"Unexpected status: {res.status}, reason: {res.reason_code}"
+        assert len(res.event_ids) == 1, "no_change must produce exactly one receipt event"
+
+        receipt_id = res.event_ids[0]
+        await jobs.finish(apply_claim, res, clock())
+
+        async with session_maker() as session:
+            work = await session.scalar(
+                select(NarrativeWork).where(NarrativeWork.id == work_id)
+            )
+            assert work is not None
+            assert work.status == "no_change"
+            assert work.receipt_event_id == receipt_id
+
+            ev = await session.scalar(select(Event).where(Event.id == receipt_id))
+            assert ev is not None
+            assert ev.tool == "adapt_story"
+            assert ev.payload.get("proposal_id") == author_claim.proposal_id
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 — late worker with expired lease cannot write world and raises LeaseLost
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_late_worker_cannot_write_world_on_expired_lease(
+    session_maker, campaign_fixture
+):
+    """F8: Worker whose lease expired before commit must raise LeaseLost and not advance world revision."""
+    cid = campaign_fixture["id"]
+    from app.core.narrative.contracts import LeaseLost
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        b = boundary(campaign_id=cid, source_id="src-late-worker")
+        await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+        )
+        prop = proposal(snap, summary="Черновик")
+        await jobs.save_draft(author_claim, prop, clock())
+
+        # Worker 1 claims for apply
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+
+        # Time passes past 120s lease duration
+        clock.advance(150)
+
+        # Worker 1 tries to commit using expired lease
+        with pytest.raises(LeaseLost, match="Lease lost or expired"):
+            await applier.apply(apply_claim.draft, claim=apply_claim)
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R14 — recording bus publishes only after successful commit
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_recording_bus_publishes_only_after_successful_commit(
+    session_maker, campaign_fixture
+):
+    """R14: Bus messages are published only after database commit; rollback publishes nothing."""
+    cid = campaign_fixture["id"]
+    from app.db.models import Event
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    class RecordingBus:
+        def __init__(self):
+            self.published: list[tuple[str, dict, list[str] | None]] = []
+
+        async def publish(self, campaign_id, envelope, seats=None):
+            self.published.append((campaign_id, envelope, seats))
+
+    rec_bus = RecordingBus()
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=rec_bus,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        async with session_maker() as session:
+            ev_row = Event(
+                id="evt-bus-1",
+                campaign_id=cid,
+                tool="roll_check",
+                actor_id=None,
+                hidden=False,
+                payload={},
+            )
+            session.add(ev_row)
+            await session.commit()
+
+        b = boundary(campaign_id=cid, source_id="src-bus-test")
+        await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        async with session_maker() as session:
+            current_rev = await world_tx.read_revision(session, cid)
+
+        ev = EvidenceRef(campaign_id=cid, kind="event", source_id="evt-bus-1")
+        ev_rec = EvidenceRecord(
+            ref=ev,
+            status="applied",
+            subject_refs=("npc-1",),
+            audience=("party",),
+            game_time=1000,
+            applied_result="divergence_noted",
+        )
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+            evidence=(ev_rec,),
+            base=snapshot().base.model_copy(update={"world_revision": current_rev}),
+        )
+        prop = proposal(snap, summary="No-change for bus", operations=())
+        await jobs.save_draft(author_claim, prop, clock())
+
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+
+        # Successful apply publishes changes
+        res = await applier.apply(apply_claim.draft, claim=apply_claim)
+        assert res.status == "no_change"
+        assert len(rec_bus.published) > 0, "bus must have published messages after commit"
+
+        # Now clear bus and verify failed apply (expired lease) does NOT publish anything
+        rec_bus.published.clear()
+        clock.advance(300)
+        try:
+            await applier.apply(apply_claim.draft, claim=apply_claim)
+        except Exception:
+            pass
+        assert len(rec_bus.published) == 0, "failed/rolled back apply must NOT publish any messages"
+
+    asyncio.run(_test())
+

@@ -1,6 +1,7 @@
 """Recovery tests for director narrative jobs across process restarts (Task 14)."""
 
 import asyncio
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -48,7 +49,7 @@ class DirectApplier:
         self.result = result
         self.calls = 0
 
-    async def apply(self, prop: AdaptationProposal) -> AdaptationResult:
+    async def apply(self, prop: AdaptationProposal, *, claim: Any = None) -> AdaptationResult:
         self.calls += 1
         return self.result
 
@@ -89,11 +90,13 @@ def test_recovery_picks_up_expired_preparing_job(session_maker, settings, client
         # Worker 1 dies, lease expires
         clock.advance(200)
 
-        # Service recovers and runs
-        report = await service.prepare_once()
-        assert report is not None
-        assert report.work_id == work_id
-        assert report.status == "applied"
+        # Service recovers and runs through author -> apply
+        reports = await service.run_due(limit=5)
+        assert len(reports) == 2
+        assert reports[0].work_id == work_id
+        assert reports[0].status == "prepared"
+        assert reports[1].work_id == work_id
+        assert reports[1].status == "applied"
         assert author.calls == 1
 
         async with session_maker() as session:

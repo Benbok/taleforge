@@ -18,6 +18,7 @@ from app.core.narrative.contracts import (
     SnapshotRef,
     SnapshotRequest,
     VersionSet,
+    WorkClaim,
 )
 from app.core.narrative.policy import admit_adaptation
 from app.core.world_tx import WorldConflict, world_write
@@ -426,7 +427,9 @@ class ContextNarrativeApplier:
         self._ctx = ctx
         self._policy = policy
 
-    async def apply(self, proposal: AdaptationProposal) -> AdaptationResult:
+    async def apply(
+        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
+    ) -> AdaptationResult:
         return await apply_in_context(self._ctx, proposal, policy=self._policy)
 
 
@@ -442,7 +445,9 @@ class DbNarrativeApplier:
         self._maker = maker
         self._policy_provider = policy_provider
 
-    async def apply(self, proposal: AdaptationProposal) -> AdaptationResult:
+    async def apply(
+        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
+    ) -> AdaptationResult:
         async with self._maker() as session:
             campaign = await session.get(Campaign, proposal.source.campaign_id)
             if campaign is None:

@@ -287,6 +287,7 @@ def test_gate_b_alliance_boundary_to_future_preparation(settings, client, admin,
         from app.tools.narrative.reader import DbNarrativeReader
         from tests.narrative_helpers import FakeClock
 
+        clock = FakeClock()
         reader = DbNarrativeReader(maker, policy_provider=lambda: NarrativePolicy(mode="adaptive"))
         jobs = SqlNarrativeJobs(maker, max_author_slots=2)
         applier = RuntimeNarrativeApplier(
@@ -294,19 +295,24 @@ def test_gate_b_alliance_boundary_to_future_preparation(settings, client, admin,
             bus=FakeBus(),
             coordination=None,
             policy_provider=lambda _cid: NarrativePolicy(mode="adaptive"),
+            clock=clock,
         )
         service = NarrativeService(
             reader=reader,
             author=GateBAuthor(),
             applier=applier,
             jobs=jobs,
-            clock=FakeClock(),
+            clock=clock,
         )
 
-        # 3. Execute narrative service once
+        # 3. Execute narrative service: prepare draft then apply draft
         prep_report = await service.prepare_once(cid)
         assert prep_report is not None
-        assert prep_report.status == "applied"
+        assert prep_report.status == "prepared"
+
+        apply_report = await service.prepare_once(cid)
+        assert apply_report is not None
+        assert apply_report.status == "applied", f"reason={apply_report.reason_code}"
 
         # 4. Verify future node updated in CampaignSecret.plot
         async with maker() as s:

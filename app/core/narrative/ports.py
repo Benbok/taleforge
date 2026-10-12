@@ -12,6 +12,7 @@ from app.core.narrative.contracts import (
     BoundaryRecord,
     NarrativeSnapshot,
     SnapshotRequest,
+    Violation,
     WorkClaim,
 )
 
@@ -34,7 +35,9 @@ class NarrativeAuthor(Protocol):
 class NarrativeApplier(Protocol):
     """Port for validating and executing adaptation proposals atomically."""
 
-    async def apply(self, proposal: AdaptationProposal) -> AdaptationResult: ...
+    async def apply(
+        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
+    ) -> AdaptationResult: ...
 
 
 @runtime_checkable
@@ -54,7 +57,12 @@ class NarrativeJobs(Protocol):
     ) -> None: ...
 
     async def finish(
-        self, claim: WorkClaim, result: AdaptationResult, now: datetime | None = None
+        self,
+        claim: WorkClaim,
+        result: AdaptationResult,
+        now: datetime | None = None,
+        *,
+        feedback: tuple[Violation, ...] | None = None,
     ) -> None: ...
 
     async def resnapshot(self, claim: WorkClaim, now: datetime) -> WorkClaim | None: ...

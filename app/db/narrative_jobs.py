@@ -16,6 +16,7 @@ from app.core.narrative.contracts import (
     EvidenceRef,
     LeaseLost,
     NarrativeSource,
+    Violation,
     WorkClaim,
 )
 from app.db.models import NarrativeWork, new_id
@@ -275,6 +276,14 @@ class SqlNarrativeJobs:
                     res = await session.execute(stmt)
                     if res.rowcount == 1:
                         await session.commit()
+                        feedback_items: tuple[Violation, ...] = ()
+                        if candidate.draft and isinstance(candidate.draft.get("feedback"), list):
+                            feedback_items = tuple(
+                                Violation.model_validate(v)
+                                for v in candidate.draft["feedback"]
+                                if isinstance(v, dict)
+                            )
+
                         return WorkClaim(
                             work_id=candidate.id,
                             campaign_id=candidate.campaign_id,
@@ -297,6 +306,7 @@ class SqlNarrativeJobs:
                             evidence_refs=_evidence_refs(candidate.evidence_refs),
                             audience=tuple(candidate.audience or ()),
                             focus=candidate.focus,
+                            feedback=feedback_items,
                         )
                 except IntegrityError:
                     await session.rollback()
@@ -392,11 +402,15 @@ class SqlNarrativeJobs:
         claim: WorkClaim,
         result: AdaptationResult,
         now: datetime | None = None,
+        *,
+        feedback: tuple[Violation, ...] | None = None,
     ) -> None:
         """Records terminal or retry status after applying adaptation."""
         now_utc = _as_utc(now) if now is not None else datetime.now(UTC)
         async with self._session_maker() as session:
             receipt_event_id = result.event_ids[0] if result.event_ids else None
+            draft_to_save: dict | None = None
+            save_draft_explicitly = False
 
             if result.status in ("applied", "repeated"):
                 new_status = "applied"
@@ -405,17 +419,37 @@ class SqlNarrativeJobs:
                 new_status = "no_change"
                 retry_after = None
             elif result.status == "denied":
-                new_status = "rejected"
-                retry_after = None
+                if feedback and claim.llm_calls < 2:
+                    new_status = "retry_wait"
+                    retry_after = now_utc + timedelta(seconds=5)
+                    draft_to_save = {"feedback": [v.model_dump() for v in feedback]}
+                    save_draft_explicitly = True
+                else:
+                    new_status = "rejected"
+                    retry_after = None
             elif result.status == "deferred":
                 new_status = "prepared"
                 retry_after = now_utc + timedelta(seconds=30)
             elif result.status in ("stale", "failed"):
                 new_status = "retry_wait"
                 retry_after = now_utc + timedelta(seconds=5)
+                save_draft_explicitly = True
+                draft_to_save = None
             else:
                 new_status = "rejected"
                 retry_after = None
+
+            values_to_update: dict[str, Any] = {
+                "status": new_status,
+                "retry_after": retry_after,
+                "receipt_event_id": receipt_event_id,
+                "lease_token": None,
+                "lease_until": None,
+                "capacity_slot": None,
+                "updated_at": now_utc,
+            }
+            if save_draft_explicitly:
+                values_to_update["draft"] = draft_to_save
 
             stmt = (
                 update(NarrativeWork)
@@ -423,15 +457,7 @@ class SqlNarrativeJobs:
                     NarrativeWork.id == claim.work_id,
                     NarrativeWork.lease_token == claim.lease_token,
                 )
-                .values(
-                    status=new_status,
-                    retry_after=retry_after,
-                    receipt_event_id=receipt_event_id,
-                    lease_token=None,
-                    lease_until=None,
-                    capacity_slot=None,
-                    updated_at=now_utc,
-                )
+                .values(**values_to_update)
             )
             res = await session.execute(stmt)
             if res.rowcount != 1:

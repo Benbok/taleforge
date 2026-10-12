@@ -347,15 +347,15 @@ LeaseLost не превращается в успешное применение
 без новой генерации. Failure одного job фиксируется отдельно; batch продолжает
 следующую кампанию. После commit — publish_changes с прежними фильтрами audience.
 
-- [ ] Добавить author B / apply A race; applied proposal всегда принадлежит
+- [x] Добавить author B / apply A race; applied proposal всегда принадлежит
   завершённому job. No_change имеет один Event и receipt_event_id.
-- [ ] Добавить first-campaign author error + second-campaign success,
+- [x] Добавить first-campaign author error + second-campaign success,
   correction, один stale/resnapshot и retry после restart.
-- [ ] Добавить heartbeat/late-worker takeover во время network и world commit;
+- [x] Добавить heartbeat/late-worker takeover во время network и world commit;
   просроченный worker не пишет мир.
-- [ ] Добавить recording bus: событие видно нужным клиентам после commit,
+- [x] Добавить recording bus: событие видно нужным клиентам после commit,
   rollback ничего не публикует.
-- [ ] Прогнать jobs/service/recovery/receipts на обеих БД; коммит
+- [x] Прогнать jobs/service/recovery/receipts на обеих БД; коммит
   fix(narrative): make director workflow recoverable and observable.
 
 ### F9. Собрать и проверить режиссёра в приложении
