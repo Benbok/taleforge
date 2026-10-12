@@ -2,6 +2,7 @@
 """Подготовка комплекса (спецификация 2026-10-12, §3.2, §8): структура и геометрия фазами подготовки мира."""
 
 import asyncio
+from datetime import timedelta
 
 from sqlalchemy import select
 
@@ -9,7 +10,7 @@ from app.core import sketch
 from app.core.layout import store
 from app.core.world_generation import storage
 from app.core.world_generation.service import Orchestrator
-from app.db.models import Entity, Event, WorldGenerationState
+from app.db.models import Entity, Event, WorldGenerationState, now
 from app.gateway.coordination import InMemoryCoordination
 from tests.game import import_base, party, quiet, run
 from tests.layout_pilot import pilot_intent
@@ -150,3 +151,45 @@ def test_location_initial_of_area_waits_for_its_geometry(client, admin, settings
     assert geometry.status == "ready" and geometry.completed_at <= _row(settings, initial).completed_at
     chapel_sk = run(settings, lambda s: s.get(Entity, chapel)).state["sketch"]
     assert sketch.check(chapel_sk, {x["to"] for x in chapel_sk["exits"] if x["to"]}) == []
+
+
+def test_initial_waits_for_leased_geometry_and_activation_keeps_claimed_row(client, admin, settings):
+    cid, _heads, _hid = _setup(client, admin, settings)
+    _village, temple, ref = _complex(settings, cid)
+    _prepare(settings, cid, ref)
+    chapel = _areas(settings, temple)["chapel"].id
+
+    async def resolve(ctx):
+        return (await _ok(ctx, "resolve_location", {"location_id": chapel, "profile_id": "minimal"}))["operation_ref"]
+
+    initial = _play(settings, cid, resolve)
+
+    async def lease(s):
+        row = await storage.find(s, cid, chapel, "location_geometry")
+        row.status, row.revision = "preparing", row.revision + 5
+        row.lease_token, row.lease_until = "other", now() + timedelta(minutes=5)
+        row.requested_at = now()
+        await s.commit()
+        return row.id, row.revision
+
+    gid, rev = run(settings, lease)
+    assert _prepare(settings, cid, initial) == "pending"
+    assert _row(settings, initial).status == "unprepared"
+    geometry = _row(settings, gid)
+    assert (geometry.status, geometry.revision) == ("preparing", rev)
+
+
+def test_auto_sketch_is_replaced_by_blueprint_geometry(client, admin, settings):
+    cid, _heads, _hid = _setup(client, admin, settings)
+    _village, temple, ref = _complex(settings, cid)
+    _prepare(settings, cid, ref)
+    narthex = _areas(settings, temple)["narthex"]
+
+    async def draw(s):
+        en = await s.get(Entity, narthex.id)
+        en.state = {**en.state, "sketch": {"shape": "room", "cols": 6, "rows": 4, "auto": True, "edit_rev": 1}}
+        await s.commit()
+
+    run(settings, draw)
+    assert _prepare(settings, cid, _activate(settings, cid, narthex.id)) == "ready"
+    assert run(settings, lambda s: s.get(Entity, narthex.id)).state["sketch"]["blueprint"]["area_ref"] == "narthex"

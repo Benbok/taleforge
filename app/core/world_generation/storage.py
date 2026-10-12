@@ -132,6 +132,19 @@ def activate(row: WorldGenerationState) -> bool:
     return True
 
 
+async def activate_cas(s: AsyncSession, row: WorldGenerationState) -> bool:
+    """``activate`` условным UPDATE: запрос не затирает строку, которую параллельно активировали или захватили."""
+    if row.status != "unprepared" or row.requested_at is not None:
+        return False
+    t = now()
+    cond = (WGS.id == row.id) & (WGS.status == "unprepared") & (WGS.requested_at.is_(None))
+    cond &= WGS.revision == row.revision
+    done = await s.execute(
+        update(WGS).where(cond).values(requested_at=t, next_attempt_at=t, revision=WGS.revision + 1, updated_at=t)
+    )
+    return done.rowcount == 1
+
+
 def retry(row: WorldGenerationState) -> None:
     """Повтор ведущего: ``blocked → unprepared``, тот же seed и резерв, счётчик конфликтов сброшен."""
     t = now()

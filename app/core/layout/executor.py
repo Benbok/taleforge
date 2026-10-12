@@ -61,7 +61,7 @@ async def _publish_layout(ctx, row: WorldGenerationState, bp: Blueprint, quality
     if root is None or root.kind != "location":
         raise Blocked("target_missing", "корневого места больше нет")
     if (root.state or {}).get("blueprint"):
-        raise Blocked("target_missing", "у места уже есть blueprint")
+        raise Blocked("already_built", "у места уже есть blueprint")
     ids: dict[str, str] = {}
     for area in bp.areas:
         state: dict[str, Any] = {"complex": {"root_id": root.id, "area_ref": area.area_ref}}
@@ -98,7 +98,7 @@ async def _publish_geometry(ctx, row: WorldGenerationState) -> dict[str, Any]:
     if spec is None:
         raise Blocked("target_missing", f"в blueprint нет участка {res.get('area_ref')}")
     current = (area.state or {}).get("sketch")
-    if isinstance(current, dict) and current.get("cols") and not current.get("blueprint"):
+    if isinstance(current, dict) and current.get("cols") and not current.get("blueprint") and not current.get("auto"):
         return {"schema_version": 1, "phase": "location_geometry", "area_ref": spec.area_ref,
                 "notes": ["manual_preserved"]}  # fmt: skip
     try:

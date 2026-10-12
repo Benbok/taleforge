@@ -66,7 +66,8 @@ class Orchestrator:
         """Довести фазу до ``ready``/``blocked``. Иначе вернуть, почему остановились. Обстановка участка комплекса
         сначала ждёт его геометрию: размещать её не на чем."""
         for dep in await _dependencies(maker, campaign_id, ref):
-            await self.prepare(maker, campaign_id, dep)
+            if await self.prepare(maker, campaign_id, dep) not in ("ready", "blocked"):
+                return "pending"
         async with self.coordination.generation_lock(campaign_id):
             for _ in range(MAX_STEPS):
                 got = await storage.claim(maker, campaign_id, ref)
@@ -224,6 +225,6 @@ async def _dependencies(maker, campaign_id: str, ref: str) -> list[str]:
         dep = await storage.find(s, campaign_id, row.target_entity_id, "location_geometry")
         if dep is None or dep.status in ("ready", "blocked"):
             return []
-        if storage.activate(dep):
+        if await storage.activate_cas(s, dep):
             await s.commit()
         return [dep.id]
