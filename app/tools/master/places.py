@@ -257,7 +257,11 @@ def _linked(ctx: ToolContext | None, a: Entity, b: Entity) -> bool:
 
 
 def _connect(ctx: ToolContext, a: Entity, b: Entity, inverse: list) -> None:
-    """В свободном мире пройденный маршрут отмечается; в книге переходы заданы её планом."""
+    """В свободном мире пройденный маршрут отмечается; в книге и в комплексе переходы заданы планом."""
+    from app.core.layout import store
+
+    if store.complex_of(a) or store.complex_of(b):
+        return  # проходы комплекса заданы blueprint: переход не прокладывает нового пути
     if adventure.room_of(a) and adventure.room_of(b) and a.location_id == b.location_id:
         return  # Переход персонажей не создаёт новую дверь между комнатами модуля.
     if a.id != b.id and not _linked(ctx, a, b):

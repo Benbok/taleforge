@@ -534,6 +534,11 @@ class MapStepResult(_Open):
     ok: bool
 
 
+class MapTraverseResult(_Open):
+    request_id: str | None
+    ok: bool
+
+
 class MasterStatus(_Strict):
     stage: str
 
@@ -631,6 +636,7 @@ SERVER_EVENTS: dict[str, type[BaseModel]] = {
     "map.changed": MapChanged,
     "map.state": MapState,
     "map.step.result": MapStepResult,
+    "map.traverse.result": MapTraverseResult,
     "master.status": MasterStatus,
     "master.tool.result": MasterToolResult,
     "message.chunk": MessageChunk,

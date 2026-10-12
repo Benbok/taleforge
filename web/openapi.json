@@ -3036,6 +3036,49 @@
     "title": "Event_map_step_result",
     "type": "object"
    },
+   "Event_map_traverse_result": {
+    "additionalProperties": false,
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "payload": {
+      "$ref": "#/components/schemas/MapTraverseResult"
+     },
+     "seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seq"
+     },
+     "type": {
+      "const": "map.traverse.result",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "type",
+     "campaign_id",
+     "seq",
+     "payload"
+    ],
+    "title": "Event_map_traverse_result",
+    "type": "object"
+   },
    "Event_master_status": {
     "additionalProperties": false,
     "properties": {
@@ -7148,6 +7191,32 @@
     "title": "MapToken",
     "type": "object"
    },
+   "MapTraverseResult": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "request_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Request Id"
+     }
+    },
+    "required": [
+     "request_id",
+     "ok"
+    ],
+    "title": "MapTraverseResult",
+    "type": "object"
+   },
    "MapUnplacedExit": {
     "additionalProperties": false,
     "properties": {
@@ -9962,6 +10031,7 @@
       "map.changed": "#/components/schemas/Event_map_changed",
       "map.state": "#/components/schemas/Event_map_state",
       "map.step.result": "#/components/schemas/Event_map_step_result",
+      "map.traverse.result": "#/components/schemas/Event_map_traverse_result",
       "master.status": "#/components/schemas/Event_master_status",
       "master.tool.result": "#/components/schemas/Event_master_tool_result",
       "message.chunk": "#/components/schemas/Event_message_chunk",
@@ -10044,6 +10114,9 @@
      },
      {
       "$ref": "#/components/schemas/Event_map_step_result"
+     },
+     {
+      "$ref": "#/components/schemas/Event_map_traverse_result"
      },
      {
       "$ref": "#/components/schemas/Event_master_status"
