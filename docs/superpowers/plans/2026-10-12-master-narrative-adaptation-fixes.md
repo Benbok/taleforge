@@ -254,13 +254,13 @@ SnapshotRef — package/plan/event с реальным сохранённым so
 Learn_fact использует exact used refs; имя/свидетельство не закрепляет
 несвязанные motive/secret и не превращается в truth.
 
-- [ ] Добавить реальный A -> B -> C materialization test: все зависимости
+- [x] Добавить реальный A -> B -> C materialization test: все зависимости
   committed; независимый мотив остаётся draft.
-- [ ] Добавить тесты версии/campaign/cycle/16–64 лимитов и draft_only sealing.
-- [ ] Добавить world_generation commit_result с непустым used_fact_refs:
+- [x] Добавить тесты версии/campaign/cycle/16–64 лимитов и draft_only sealing.
+- [x] Добавить world_generation commit_result с непустым used_fact_refs:
   проверить оба формата refs и отсутствие ValidationError.
-- [ ] Исправить resolver/снимки/транзитивную запись и knowledge-hook.
-- [ ] Прогнать реальную подготовку, anchors, commitments и guard rollback;
+- [x] Исправить resolver/снимки/транзитивную запись и knowledge-hook.
+- [x] Прогнать реальную подготовку, anchors, commitments и guard rollback;
   коммит fix(narrative): seal exact dependencies through spatial preparation.
 
 ### F6. Подключить единое чтение канона и раскрытие
