@@ -431,7 +431,7 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
             </svg>
           </Link>
 
-          {campaign.is_owner && (
+          {(campaign.is_owner || campaign.my_role === "master") && (
             <Link
               to={`/c/${campaign.id}/manage`}
               className="btn h-12 px-5 rounded-[10px] text-sm text-ink border-line hover:border-accent bg-surface/80"
