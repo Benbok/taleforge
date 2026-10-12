@@ -179,12 +179,20 @@ class Scene(_Open):
     turn: Turn | None
 
 
+class AudioAttribution(_Strict):
+    author: str = absent()
+    url: str = absent()
+    license: str = absent()
+    license_url: str = absent()
+
+
 class AudioTrack(_Open):
     id: str
     title: str
     layer: str
     url: str
     gain_db: float
+    attribution: AudioAttribution = absent()
 
 
 class AudioState(_Open):

@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from "react";
 import { getToken } from "../lib/api";
 import type { AudioSfxReady, AudioState, AudioTrack, Scene } from "../lib/types";
+import { prepareMusic, primeMusic, type MusicDeck, type PreparedMusic } from "./music";
 
 export type Channel = "music" | "sfx";
 export const CHANNELS: Channel[] = ["music", "sfx"];
@@ -52,13 +53,9 @@ export function dbToGain(db: number | undefined): number {
   return Math.pow(10, (db ?? 0) / 20);
 }
 
-interface Voice {
+interface Voice extends PreparedMusic {
   track: AudioTrack;
-  source: AudioBufferSourceNode;
-  gain: GainNode;
-  startedAt: number; // ctx.currentTime, когда петля была на позиции offset
-  offset: number;
-  duration: number;
+  deck: MusicDeck;
 }
 
 type Listener = () => void;
@@ -97,12 +94,18 @@ export class SfxGate {
 }
 
 /** Один микшер на вкладку. Контекст звука создаётся только по нажатию: так требуют браузеры. */
-class SoundMixer {
+export class SoundMixer {
   private generatedGate = new SfxGate();
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Partial<Record<Channel, GainNode>> = {};
   private voice: Voice | null = null;
+  private decks: MusicDeck[] = [];
+  private musicReady: Promise<void> | null = null;
+  private musicPrimed = false;
+  private musicLoad: AbortController | null = null;
+  private starting: string | null = null;
+  private fading = new Map<Voice, ReturnType<typeof setTimeout>>();
   private buffers = new Map<string, Promise<AudioBuffer>>();
   private state: AudioState | null = null;
   private skew = 0; // часы сервера минус часы браузера, секунды
@@ -122,7 +125,7 @@ class SoundMixer {
   }
 
   get unlocked(): boolean {
-    return this.ctx !== null && this.ctx.state === "running";
+    return this.musicPrimed && this.ctx !== null && this.ctx.state === "running";
   }
 
   subscribe = (fn: Listener) => {
@@ -151,8 +154,24 @@ class SoundMixer {
         this.buses[ch] = g;
       }
       this.applyVolumes();
+      const primed = primeMusic(this.ctx);
+      this.decks = primed.decks;
+      this.musicReady = primed.ready;
     }
-    if (this.ctx.state !== "running") await this.ctx.resume();
+    const ctx = this.ctx;
+    try {
+      await Promise.all([ctx.state === "running" ? Promise.resolve() : ctx.resume(), this.musicReady]);
+      if (this.ctx !== ctx) return;
+      this.musicPrimed = true;
+    } catch (e) {
+      if (this.ctx === ctx) {
+        const state = this.state;
+        this.stop();
+        this.state = state;
+        this.changed();
+      }
+      throw e;
+    }
     if (this.state) await this.apply(this.state);
     this.changed();
   }
@@ -198,8 +217,12 @@ class SoundMixer {
     this.skew = state.now - Date.now() / 1000;
     this.state = state;
     this.changed();
-    if (!this.ctx || this.ctx.state !== "running") return;
+    if (!this.unlocked) return;
     const want = state.enabled ? state.music : null;
+    if (this.starting && this.starting !== want?.id) {
+      this.musicLoad?.abort();
+      this.starting = null;
+    }
     const have = this.voice;
     if (!want) {
       this.fadeOut(state.enabled ? FADE : 1.5);
@@ -209,10 +232,13 @@ class SoundMixer {
       have.track = want;
       return;
     }
+    if (this.starting === want.id) return;
     try {
       await this.start(want);
     } catch (e) {
-      this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   }
 
@@ -272,21 +298,47 @@ class SoundMixer {
 
   private async start(track: AudioTrack) {
     const ctx = this.ctx!;
-    const buf = await this.load(track.url);
-    if (this.state?.music?.id !== track.id) return; // пока грузили, музыка сменилась
-    const now = ctx.currentTime;
-    const when = now + 0.05;
-    const offset = loopOffset(Date.now() / 1000 + this.skew - (track.since ?? 0), buf.duration);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, now);
-    g.gain.setTargetAtTime((track.level ?? 0.6) * dbToGain(track.gain_db), when, FADE / 3);
-    src.connect(g).connect(this.buses.music!);
-    src.start(when, offset);
-    this.fadeOut(FADE);
-    this.voice = { track, source: src, gain: g, startedAt: when, offset, duration: buf.duration };
+    const controller = new AbortController();
+    this.musicLoad?.abort();
+    this.musicLoad = controller;
+    this.starting = track.id;
+    const deck = this.decks.find((d) => d !== this.voice?.deck)!;
+    for (const [voice, timer] of this.fading) {
+      if (voice.deck === deck) {
+        clearTimeout(timer);
+        voice.dispose();
+        this.fading.delete(voice);
+      }
+    }
+    let music: PreparedMusic | undefined;
+    try {
+      music = await prepareMusic(ctx, track.url, getToken() ?? "", controller.signal, deck);
+      controller.signal.throwIfAborted();
+      const now = ctx.currentTime;
+      music.gain.gain.setValueAtTime(0, now);
+      music.gain.connect(this.buses.music!);
+      music.element.currentTime = loopOffset(Date.now() / 1000 + this.skew - (track.since ?? 0), music.element.duration);
+      await music.element.play();
+      controller.signal.throwIfAborted();
+      if (this.ctx !== ctx || !this.state?.enabled || this.state.music?.id !== track.id) {
+        music.dispose();
+        return;
+      }
+      music.gain.gain.setTargetAtTime((track.level ?? 0.6) * dbToGain(track.gain_db), ctx.currentTime, FADE / 3);
+      this.fadeOut(FADE);
+      this.voice = { ...music, track, deck };
+      this.error = null;
+      this.changed();
+    } catch (e) {
+      music?.dispose();
+      if (controller.signal.aborted) return;
+      throw e;
+    } finally {
+      if (this.musicLoad === controller) {
+        this.musicLoad = null;
+        this.starting = null;
+      }
+    }
   }
 
   private fadeOut(sec: number) {
@@ -296,12 +348,34 @@ class SoundMixer {
     const t = this.ctx.currentTime;
     v.gain.gain.cancelScheduledValues(t);
     v.gain.gain.setTargetAtTime(0, t, sec / 3);
-    v.source.stop(t + sec + 0.5);
+    const timer = setTimeout(() => {
+      v.dispose();
+      this.fading.delete(v);
+    }, (sec + 0.5) * 1000);
+    this.fading.set(v, timer);
   }
 
   /** Уход с экрана игры: всё смолкает, контекст закрывается. */
   stop() {
-    this.fadeOut(0.3);
+    this.musicLoad?.abort();
+    this.musicLoad = null;
+    this.starting = null;
+    this.voice?.dispose();
+    this.voice = null;
+    for (const [voice, timer] of this.fading) {
+      clearTimeout(timer);
+      voice.dispose();
+    }
+    this.fading.clear();
+    for (const deck of this.decks) {
+      deck.element.pause();
+      deck.element.removeAttribute("src");
+      deck.element.load();
+      deck.source.disconnect();
+    }
+    this.decks = [];
+    this.musicReady = null;
+    this.musicPrimed = false;
     this.state = null;
     const ctx = this.ctx;
     this.ctx = null;

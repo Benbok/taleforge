@@ -99,6 +99,30 @@ def play(settings, cid, fn):
 # --- библиотека ---
 
 
+def test_attribution_survives_admin_edit_and_reaches_players(client, admin, tmp_path):
+    attribution = {
+        "author": "Tabletop Audio",
+        "url": "https://tabletopaudio.com/index.html?51",
+        "license": "CC BY-NC-ND 4.0",
+        "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    }
+    card = {**CARDS[0], "attribution": attribution}
+    row = ok(client.put("/api/admin/audio/tracks/mel_rest", json=card, headers=admin))
+    assert row["attribution"] == attribution
+    row["title"] = "Другое название"
+    ok(client.put("/api/admin/audio/tracks/mel_rest", json=row, headers=admin))
+    library = audio.Library(tmp_path / "audio")
+    assert library.get("mel_rest").card()["attribution"] == attribution
+    assert library.get("mel_rest").public()["attribution"] == attribution
+    assert "attribution" not in library.get("mel_fast").public()
+
+
+@pytest.mark.parametrize("field", ["url", "license_url"])
+def test_attribution_rejects_unsafe_links(field):
+    with pytest.raises(Exception, match="https"):
+        audio.parse_card({**CARDS[0], "attribution": {"author": "Author", field: "javascript:alert(1)"}})
+
+
 def test_library_reads_cards_and_unsorted(tmp_path):
     fill(tmp_path)
     (tmp_path / "new_loop.ogg").write_bytes(OGG)

@@ -482,3 +482,273 @@
   cue:
   - effect
   - hazard
+
+# Tabletop Audio: оригинальные десятиминутные MP3, CC BY-NC-ND 4.0. См. audio/TABLETOP-AUDIO.md.
+- id: tta_051_woodland_campsite
+  file: tta_051_woodland_campsite.mp3
+  layer: music
+  title: Woodland Campsite
+  hint: Лесной привал, костёр, отдых после дороги
+  moods:
+  - calm
+  - warm
+  places:
+  - camp
+  - forest
+  - wild
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?51
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_054_mountain_tavern
+  file: tta_054_mountain_tavern.mp3
+  layer: music
+  title: Mountain Tavern
+  hint: Тёплая таверна, разговоры и передышка
+  moods:
+  - calm
+  - warm
+  places:
+  - tavern
+  - settlement
+  - city
+  - slums
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?54
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_161_forest_day
+  file: tta_161_forest_day.mp3
+  layer: music
+  title: 'Forest: Day'
+  hint: Дневной лес, спокойное исследование природы
+  moods:
+  - calm
+  - wonder
+  places:
+  - forest
+  - wild
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?161
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_069_forest_night
+  file: tta_069_forest_night.mp3
+  layer: music
+  title: 'Forest: Night'
+  hint: Ночной лес, неизвестность и осторожное движение
+  moods:
+  - mystery
+  - dread
+  places:
+  - forest
+  - wild
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?69
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_065_dungeon_i
+  file: tta_065_dungeon_i.mp3
+  layer: music
+  title: Dungeon I
+  hint: Исследование подземелья, коридоров и глубин
+  moods:
+  - mystery
+  - tension
+  places:
+  - dungeon
+  - underground
+  - mine
+  - carcass
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?65
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_037_catacombs
+  file: tta_037_catacombs.mp3
+  layer: music
+  title: Catacombs
+  hint: Катакомбы, могилы, страх перед скрытой угрозой
+  moods:
+  - dread
+  - horror
+  places:
+  - crypt
+  - dungeon
+  - underground
+  - sacred
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?37
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_073_medieval_library
+  file: tta_073_medieval_library.mp3
+  layer: music
+  title: Medieval Library
+  hint: Тихая библиотека, изучение книг и загадок
+  moods:
+  - calm
+  - mystery
+  places:
+  - library
+  - tower
+  - city
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?73
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_136_temple_of_helm
+  file: tta_136_temple_of_helm.mp3
+  layer: music
+  title: Temple of Helm
+  hint: Величие храма, вера и героическая решимость
+  moods:
+  - wonder
+  - heroic
+  places:
+  - temple
+  - shrine
+  - sacred
+  - sanctuary
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?136
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_079_medieval_battle
+  file: tta_079_medieval_battle.mp3
+  layer: music
+  title: Medieval Battle
+  hint: Средневековый бой, схватка и столкновение отрядов
+  moods:
+  - battle
+  - tension
+  places: []
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?79
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_176_barren_wastes
+  file: tta_176_barren_wastes.mp3
+  layer: music
+  title: Barren Wastes
+  hint: Опустошённые земли, одиночество и тревога
+  moods:
+  - sorrow
+  - dread
+  places:
+  - wasteland
+  - cordon
+  - wild
+  - ruins
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?176
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_182_country_village
+  file: tta_182_country_village.mp3
+  layer: music
+  title: Country Village
+  hint: Мирная деревня, повседневная жизнь поселения
+  moods:
+  - calm
+  - warm
+  places:
+  - village
+  - settlement
+  - city
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?182
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_211_thieves_guild
+  file: tta_211_thieves_guild.mp3
+  layer: music
+  title: Thieves' Guild
+  hint: Гильдия воров, тайные встречи и интриги
+  moods:
+  - mystery
+  - tension
+  places:
+  - city
+  - slums
+  - tavern
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?211
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_064_mountain_pass
+  file: tta_064_mountain_pass.mp3
+  layer: music
+  title: Mountain Pass
+  hint: Горный перевал, опасное путешествие и простор
+  moods:
+  - wonder
+  - tension
+  places:
+  - mountain
+  - travel
+  - wild
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?64
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_342_tavern_celebration
+  file: tta_342_tavern_celebration.mp3
+  layer: music
+  title: Tavern Celebration
+  hint: Праздник в таверне, торжество после победы
+  moods:
+  - triumph
+  - warm
+  places:
+  - tavern
+  - settlement
+  - city
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?342
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_328_battle_requiem
+  file: tta_328_battle_requiem.mp3
+  layer: music
+  title: Battle Requiem
+  hint: Реквием после боя, скорбь и память о потерях
+  moods:
+  - sorrow
+  places: []
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?328
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+- id: tta_294_cutpurse_pursuit
+  file: tta_294_cutpurse_pursuit.mp3
+  layer: music
+  title: Cutpurse Pursuit
+  hint: Погоня за карманником по городским улицам
+  moods:
+  - chase
+  - tension
+  places:
+  - city
+  - settlement
+  - slums
+  attribution:
+    author: Tabletop Audio
+    url: https://tabletopaudio.com/index.html?294
+    license: CC BY-NC-ND 4.0
+    license_url: https://creativecommons.org/licenses/by-nc-nd/4.0/

@@ -450,6 +450,12 @@ export interface AudioTrack {
   layer: string; // music | sfx
   url: string;
   gain_db: number;
+  attribution?: {
+    author?: string;
+    url?: string;
+    license?: string;
+    license_url?: string;
+  };
   level?: number; // громкость музыки до настроек игрока, 0..1
   since?: number; // с какого момента по часам сервера звучит петля
   mood?: string | null; // настроение сцены, под которое подобрана музыка

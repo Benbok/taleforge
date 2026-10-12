@@ -106,6 +106,20 @@ export default function SoundControl() {
             </ActionButton>
           )}
           {s.error && <p className="text-xs text-bad">{s.error}</p>}
+          {music?.attribution && (
+            <p className="text-[11px] text-muted">
+              Музыка: {music.attribution.url ? (
+                <a className="underline" href={music.attribution.url} target="_blank" rel="noopener noreferrer">
+                  {music.attribution.author ?? music.title}
+                </a>
+              ) : music.attribution.author}
+              {music.attribution.license && <> · {music.attribution.license_url ? (
+                <a className="underline" href={music.attribution.license_url} target="_blank" rel="noopener noreferrer">
+                  {music.attribution.license}
+                </a>
+              ) : music.attribution.license}</>}
+            </p>
+          )}
           <p className="text-[11px] text-muted">Громкость хранится в этом браузере и не меняет звук у других игроков.</p>
         </div>
       )}

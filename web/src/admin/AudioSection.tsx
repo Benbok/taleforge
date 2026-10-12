@@ -5,6 +5,7 @@ import { api, getToken } from "../lib/api";
 import { toast } from "../stores/toasts";
 import CustomSelect from "../components/CustomSelect";
 import SfxStatus from "./SfxStatus";
+import type { AudioTrack } from "../lib/types";
 
 export interface TrackCard {
   id: string;
@@ -20,6 +21,7 @@ export interface TrackCard {
   off?: boolean;
   url?: string;
   size?: number;
+  attribution?: AudioTrack["attribution"];
 }
 
 interface Library {

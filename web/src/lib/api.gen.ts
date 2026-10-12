@@ -2171,6 +2171,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AudioAttribution */
+        AudioAttribution: {
+            /**
+             * Author
+             * @default null
+             */
+            author?: string;
+            /**
+             * License
+             * @default null
+             */
+            license?: string;
+            /**
+             * License Url
+             * @default null
+             */
+            license_url?: string;
+            /**
+             * Url
+             * @default null
+             */
+            url?: string;
+        };
         /** AudioSfxReady */
         AudioSfxReady: {
             /** Asset Id */
@@ -2212,6 +2235,8 @@ export interface components {
         };
         /** AudioTrack */
         AudioTrack: {
+            /** @default null */
+            attribution?: components["schemas"]["AudioAttribution"];
             /** Gain Db */
             gain_db: number;
             /** Id */
@@ -5617,6 +5642,7 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type AudioAttribution = components['schemas']['AudioAttribution'];
 export type AudioSfxReady = components['schemas']['AudioSfxReady'];
 export type AudioState = components['schemas']['AudioState'];
 export type AudioTrack = components['schemas']['AudioTrack'];

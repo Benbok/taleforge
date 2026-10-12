@@ -1,6 +1,33 @@
 {
  "components": {
   "schemas": {
+   "AudioAttribution": {
+    "additionalProperties": false,
+    "properties": {
+     "author": {
+      "default": null,
+      "title": "Author",
+      "type": "string"
+     },
+     "license": {
+      "default": null,
+      "title": "License",
+      "type": "string"
+     },
+     "license_url": {
+      "default": null,
+      "title": "License Url",
+      "type": "string"
+     },
+     "url": {
+      "default": null,
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "title": "AudioAttribution",
+    "type": "object"
+   },
    "AudioSfxReady": {
     "additionalProperties": false,
     "properties": {
@@ -112,6 +139,10 @@
    "AudioTrack": {
     "additionalProperties": true,
     "properties": {
+     "attribution": {
+      "$ref": "#/components/schemas/AudioAttribution",
+      "default": null
+     },
      "gain_db": {
       "title": "Gain Db",
       "type": "number"
