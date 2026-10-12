@@ -27,7 +27,20 @@ def test_sqlite_alembic_layout_phases_upgrade_and_downgrade(monkeypatch, tmp_pat
     assert "location_layout" not in table_sql()
     command.upgrade(config, "0021")
     assert "location_layout" in table_sql() and "location_geometry" in table_sql()
+    with sqlite3.connect(db_path) as db:  # внешние ключи в sqlite3 по умолчанию выключены
+        cols = db.execute("PRAGMA table_info(world_generation_states)").fetchall()
+        row = {}
+        for _cid, name, ctype, notnull, default, _pk in cols:
+            if notnull and default is None:
+                row[name] = 0 if ctype.upper().startswith(("INT", "BOOL")) else "{}" if "JSON" in ctype.upper() else "x"
+        row.update(id="a" * 32, phase="location_layout", status="unprepared")
+        db.execute(
+            f"INSERT INTO world_generation_states ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",
+            list(row.values()),
+        )
     command.downgrade(config, "0020")
+    with sqlite3.connect(db_path) as db:
+        assert db.execute("SELECT COUNT(*) FROM world_generation_states").fetchone()[0] == 0
     assert "location_layout" not in table_sql() and "container_contents" in table_sql()
 
 

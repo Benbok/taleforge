@@ -19,7 +19,7 @@ NEW = "phase IN ('location_initial', 'container_contents', 'location_layout', 'l
 
 
 def _replace(check: str) -> None:
-    with op.batch_alter_table("world_generation_states", recreate="always") as batch:
+    with op.batch_alter_table("world_generation_states") as batch:
         batch.drop_constraint("ck_world_generation_phase", type_="check")
         batch.create_check_constraint("ck_world_generation_phase", check)
 
