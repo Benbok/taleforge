@@ -281,6 +281,9 @@ export interface EntityCard {
   kind_name?: string;
   lore?: string;
   habits?: string;
+  /** Принятая роль и мотив из канона кампании — только то, что адресовано этому герою или отряду. */
+  role?: string;
+  motivation?: string;
   condition?: string | null;
   attacks?: string[];
   vulnerable?: string[];

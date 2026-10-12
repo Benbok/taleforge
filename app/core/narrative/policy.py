@@ -225,11 +225,21 @@ def admit_adaptation(
                 )
 
         elif op_item.kind == "reveal_fact":
-            f_found = any(
-                f.ref.subject_id == op_item.fact_ref.subject_id and f.ref.key == op_item.fact_ref.key
-                for f in snapshot.facts
+            # точная ссылка: та же кампания, namespace, адрес и версия, иначе раскрывается не то, что прочитано
+            target = op_item.fact_ref
+            f_found = next(
+                (
+                    f
+                    for f in snapshot.facts
+                    if f.ref.campaign_id == target.campaign_id
+                    and f.ref.namespace == target.namespace
+                    and f.ref.subject_id == target.subject_id
+                    and f.ref.key == target.key
+                    and f.ref.version == target.version
+                ),
+                None,
             )
-            if not f_found:
+            if f_found is None or len(" ".join(f_found.value.split())) < 3 or not op_item.audience:
                 return AdaptationAdmission(
                     status="denied",
                     reason_code="unverified_data",

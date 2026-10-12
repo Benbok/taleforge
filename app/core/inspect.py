@@ -180,6 +180,23 @@ async def facts(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[
     return list(dict.fromkeys(rows))
 
 
+async def canon(session: AsyncSession, viewer: Viewer, subject_ids: tuple[str | None, ...]) -> dict[str, str]:
+    """Принятые роль и мотив по аудитории факта: герой видит только адресованное ему или отряду."""
+    from app.core.narrative.view import compose_view
+    from app.db.narrative import load_campaign_facts
+
+    if viewer.seat is not None and viewer.seat.role == "master":
+        audience = None
+    else:
+        hero = await viewer_hero(session, viewer)
+        if hero is None:
+            return {}
+        audience = (hero.id, "party")
+    view = compose_view({}, await load_campaign_facts(session, viewer.campaign.id), ())
+    found = view.facts_for(tuple(i for i in subject_ids if i), audience=audience)
+    return {f.ref.key: f.value for f in found if f.ref.key in ("role", "motivation")}
+
+
 def _condition(state: dict[str, Any]) -> str | None:
     if state.get("dead"):
         return "мёртв"
@@ -278,6 +295,7 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         box = container_view(e, await container_rows(session, viewer.campaign.id))
         if box is not None:
             card["container"] = box
+    card.update(await canon(session, viewer, (e.id, e.template_id)))
     card["facts"] = await facts(session, viewer, e.id)
     card["heard"] = await heard(session, viewer, e.id)
     return card

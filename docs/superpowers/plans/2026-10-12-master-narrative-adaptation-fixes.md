@@ -283,14 +283,14 @@ Reveal_fact разрешает FactRef и вызывает learn_fact с subject
 character_ids, затем точный commitment; лишние/чужие refs запрещены.
 Reserve_narration_claims вызывается до LLM и publication по spec §5.4.
 
-- [ ] Добавить end-to-end test через обычный ход: новая роль/мотив видны
+- [x] Добавить end-to-end test через обычный ход: новая роль/мотив видны
   в следующем master prompt, разрешённой карточке и adventure reader.
-- [ ] Добавить successful reveal через runner: знания правильных героев,
+- [x] Добавить successful reveal через runner: знания правильных героев,
   exact sealing, отсутствие секрета в чужом голосе/summary.
-- [ ] Добавить две кампании одного пакета и reveal-vs-revise гонку.
-- [ ] Подключить существующие view/init/reservation helpers в runtime;
+- [x] Добавить две кампании одного пакета и reveal-vs-revise гонку.
+- [x] Подключить существующие view/init/reservation helpers в runtime;
   не считать ручной вызов effective_module_entry интеграционным тестом.
-- [ ] Прогнать module/master/adventure/visibility/narration recovery;
+- [x] Прогнать module/master/adventure/visibility/narration recovery;
   коммит fix(narrative): use accepted canon in real readers and revelations.
 
 ### F7. Сохранить идентичность и контекст задания

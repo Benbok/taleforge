@@ -11,6 +11,16 @@ from app.core.narrative.contracts import (
     FactState,
 )
 
+# свойства, которые разрешённое переопределение накладывает на модуль; порядок — порядок вывода читателям
+NARRATIVE_KEYS: tuple[str, ...] = ("role", "motivation", "relationship", "situation_premise", "secret_truth")
+
+
+def visible_to(fact: FactState, audience: tuple[str, ...] | None) -> bool:
+    """Видит ли аудитория факт. None — место мастера: видит всё, включая скрытые мотивы."""
+    if audience is None:
+        return True
+    return bool(set(fact.audience) & set(audience))
+
 
 class CampaignNarrativeView:
     """Unified read-view over campaign plan, module overlays, and campaign facts."""
@@ -71,6 +81,24 @@ class CampaignNarrativeView:
             subjects.add(f.ref.subject_id)
 
         return tuple(sorted(subjects))
+
+    def facts_for(
+        self,
+        subject_ids: tuple[str, ...],
+        *,
+        audience: tuple[str, ...] | None = None,
+    ) -> tuple[FactState, ...]:
+        """Переопределения module/campaign для субъектов, видимые аудитории; campaign важнее module."""
+        out: list[FactState] = []
+        for subject_id in dict.fromkeys(subject_ids):
+            for key in NARRATIVE_KEYS:
+                for ns in ("campaign", "module"):
+                    f = self._facts_by_key.get((ns, subject_id, key))
+                    if f is not None:
+                        if visible_to(f, audience):
+                            out.append(f)
+                        break
+        return tuple(out)
 
     def _extract_plan_value(self, subject_id: str, key: str) -> str | None:
         """Extract live value for a plan property."""
@@ -154,8 +182,12 @@ def compose_view(
 def effective_module_entry(
     base_entry: Entry,
     view: CampaignNarrativeView | None,
+    *,
+    audience: tuple[str, ...] | None = None,
 ) -> Entry:
-    """Return an immutable Entry representation with narrative fact overrides applied without mutating base."""
+    """Return an immutable Entry representation with narrative fact overrides applied without mutating base.
+
+    Audience None — представление мастера; иначе накладываются только факты, видимые этой аудитории."""
     if view is None:
         return base_entry
     if isinstance(view, (tuple, list)):
@@ -176,6 +208,8 @@ def effective_module_entry(
         for ns in ("module", "campaign", "plan"):
             fact_state = view._facts_by_key.get((ns, base_entry.id, fact_key))
             if fact_state is not None:
+                if not visible_to(fact_state, audience):
+                    break
                 val = fact_state.value
                 matched = False
                 for fld in target_fields:
@@ -198,3 +232,35 @@ def effective_module_entry(
         pack_id=base_entry.pack_id,
         data=data,
     )
+
+
+FACT_LABELS: dict[str, str] = {
+    "role": "роль",
+    "motivation": "чего хочет",
+    "relationship": "отношение",
+    "situation_premise": "положение",
+    "secret_truth": "тайная правда",
+}
+
+
+def fact_line(facts: tuple[FactState, ...], *, mark_hidden: bool) -> str:
+    """Свойства одного субъекта одной строкой; скрытые от героев помечаются для мастера."""
+    parts = []
+    for f in facts:
+        hidden = " (герои не знают)" if mark_hidden and not f.audience else ""
+        parts.append(f"{FACT_LABELS.get(f.ref.key, f.ref.key)} — {f.value}{hidden}")
+    return "; ".join(parts)
+
+
+def master_canon_block(world: Any) -> str:
+    """Принятый канон кампании о существах рядом с героями: для system prompt мастера."""
+    lines = []
+    for e in world.in_scene_entities():
+        if e.kind != "creature":
+            continue
+        facts = world.narrative_facts((e.id, e.template_id))
+        if facts:
+            lines.append(f"{e.name} ({e.id}): {fact_line(facts, mark_hidden=True)}")
+    if not lines:
+        return ""
+    return "Развитие персонажей в этой кампании (важнее книги и шаблона):\n" + "\n".join(lines)

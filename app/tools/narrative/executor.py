@@ -93,6 +93,19 @@ def validate_proposal_campaign_boundary(proposal: AdaptationProposal, campaign_i
     return True
 
 
+def reveal_audience_ok(ctx: ToolContext, audience: tuple[str, ...]) -> bool:
+    """Каждый адресат — живой герой кампании; у разделённого отряда — герой группы этого хода."""
+    if not audience:
+        return False
+    for hero_id in audience:
+        ch = ctx.world.characters.get(hero_id)
+        if ch is None or ch.status not in ("approved", "active"):
+            return False
+        if ctx.world.focus and ctx.world.crew and hero_id not in ctx.world.crew:
+            return False
+    return True
+
+
 async def apply_in_context(
     ctx: ToolContext,
     proposal: AdaptationProposal,
@@ -237,6 +250,11 @@ async def apply_in_context(
         res = res.model_copy(update={"event_ids": (receipt_ev.id,)})
         receipt_ev.payload["adaptation"] = res.model_dump()
         return res
+
+    # Audience раскрытия — реальные герои этой сцены, а не желание автора предложения (spec §18)
+    for op_item in proposal.operations:
+        if op_item.kind == "reveal_fact" and not reveal_audience_ok(ctx, op_item.audience):
+            return AdaptationResult(status="denied", reason_code="reveal_audience_invalid", budgets_used={})
 
     # 5. Compile and execute operations group
     calls = compile_operations(snapshot, proposal)

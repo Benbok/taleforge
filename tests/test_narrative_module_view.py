@@ -127,3 +127,21 @@ def test_namespace_adapters_all_standard_keys():
     assert eff.data.get("situation_premise") == target_premise or eff.data.get("premise") == target_premise
     target_truth = "В саркофаге спрятан ключ"
     assert eff.data.get("secret_truth") == target_truth or eff.data.get("truth") == target_truth
+
+
+def test_view_projects_facts_with_their_own_audience():
+    """Публичная роль видна героям, скрытый мотив — только мастеру (audience=None)."""
+    role = _make_fact("c1", "en_1", "role", "Проводник отряда", namespace="campaign")
+    motive = _make_fact("c1", "en_1", "motivation", "Тайно ищет брата", namespace="campaign").model_copy(
+        update={"audience": ()}
+    )
+    view = compose_view(plan={}, facts=(role, motive), content_chain=())
+
+    master = {f.ref.key: f.value for f in view.facts_for(("en_1",))}
+    assert master == {"role": "Проводник отряда", "motivation": "Тайно ищет брата"}
+    heroes = {f.ref.key: f.value for f in view.facts_for(("en_1",), audience=("hero-1", "party"))}
+    assert heroes == {"role": "Проводник отряда"}
+
+    base = Entry(id="en_1", kind="creature_template", status="approved", pack_id="p", data={"want": "Покой"})
+    assert effective_module_entry(base, view, audience=("hero-1", "party")).data["want"] == "Покой"
+    assert effective_module_entry(base, view).data["want"] == "Тайно ищет брата"

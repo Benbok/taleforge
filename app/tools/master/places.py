@@ -991,7 +991,7 @@ async def enter_room(ctx: ToolContext, a: EnterRoomArgs) -> dict:
     return {
         "room_id": target.id,
         "moved": [h.id for h in heroes],
-        "book": adventure.room_text(rec, room, target, w.catalog, w.entities),
+        "book": adventure.room_text(rec, room, target, w.catalog, w.entities, w.narrative_view),
         **joined,
     }
 

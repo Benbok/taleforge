@@ -30,6 +30,7 @@ from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
+from app.core.narrative.view import master_canon_block
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
@@ -47,6 +48,7 @@ from app.tools.action_plan import (
     maneuver_plan,
 )
 from app.tools.audio import AUDIO_TOOLS
+from app.tools.narrative.commitments import reserve_turn_claims
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.resolution.requests import bound_tool_key
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -856,6 +858,8 @@ class TurnMixin:
             "stalled": bool(stall),
         }
         adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
+        listeners = None if heard is None else tuple(h.id for h in ctx.world.characters.values() if h.seat_id in heard)
+        claims = await reserve_turn_claims(ctx, listeners)  # закрепление коммитится ниже, до LLM повествования
         try:
             from app.core.narrative.contracts import EvidenceRecord, EvidenceRef, NarrativePolicy, TurnBoundaryState
             from app.core.narrative.triggers import derive_boundaries, enqueue_boundaries
@@ -903,7 +907,7 @@ class TurnMixin:
                 "party_notes": party_notes,
                 "stalled": bool(stall),
                 "meet": meet,
-                "adaptation_notes": [e.description for e in adapt_effects],
+                "adaptation_notes": [e.description for e in adapt_effects] + claims,
             },
             adaptation_effects=[e.model_dump() for e in adapt_effects],
         )
@@ -927,6 +931,8 @@ class TurnMixin:
                 secrets += "\n\nПо книге:\n" + book[:12000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
+        if canon := master_canon_block(ctx.world):
+            secrets = (secrets + "\n\n" if secrets else "") + canon
         ties = [
             f"{ch.name} ({ch.id}):\n{text}"
             for ch in ctx.world.characters.values()

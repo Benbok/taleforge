@@ -156,8 +156,15 @@ def _check_line(i: int, c: dict, room_id: str) -> str:
     return f"  {i}. {kind} {what}, СЛ {c.get('dc')} (difficulty {BOOK}{room_id}:{i}): {c.get('text')}"
 
 
-def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogView, entities: dict[str, Entity]) -> str:
-    """Комната для мастера целиком, по книге."""
+def room_text(
+    rec: Entry,
+    room: dict,
+    entity: Entity | None,
+    catalog: CatalogView,
+    entities: dict[str, Entity],
+    view: Any | None = None,
+) -> str:
+    """Комната для мастера целиком, по книге; ``view`` — принятый канон кампании поверх книги."""
     eid = entity.id if entity is not None else "?"
     lines = [f"Комната {room.get('number') or '—'} «{room.get('name')}» ({eid}) в месте «{rec.name}»."]
     if room.get("read_aloud"):
@@ -177,6 +184,11 @@ def room_text(rec: Entry, room: dict, entity: Entity | None, catalog: CatalogVie
             cr = catalog.find(str(x.get("creature_ref")), "creature_template")
             name = cr.name if cr else x.get("creature_ref")
             note = f" — {x['note']}" if x.get("note") else ""
+            canon = view.facts_for((str(x.get("creature_ref")),)) if view is not None else ()
+            if canon:
+                from app.core.narrative.view import fact_line
+
+                note += f" [в этой кампании: {fact_line(canon, mark_hidden=True)}]"
             lines.append(f"  {x.get('count')} × {name} ({x.get('creature_ref')}){note}")
     loot = [x for x in room.get("treasure") or [] if isinstance(x, dict)]
     if loot:
@@ -235,7 +247,7 @@ def master_block(world: Any) -> str:
         r = room_of(e)
         room = find_room(rec, r["id"]) if r else None
         if room is not None:
-            parts.append(room_text(rec, room, e, world.catalog, world.entities))
+            parts.append(room_text(rec, room, e, world.catalog, world.entities, world.narrative_view))
         elif r is None:
             parts.append("Отряд у места, но ни в одной комнате: при входе вызови enter_room с номером комнаты.")
     return "\n\n".join(parts) if len(parts) > 1 else ""

@@ -221,3 +221,52 @@ async def reserve_narration_claims(
         await session.commit()
 
     return tuple(reserved)
+
+
+async def reserve_turn_claims(ctx: ToolContext, listeners: tuple[str, ...] | None) -> list[str]:
+    """Допустимые утверждения рассказчика (spec §5.4): факты, принятые в фазе решения этого хода и адресованные
+    слушателям, закрепляются вместе с зависимостями в транзакции хода — до LLM-вызова повествования.
+
+    ``listeners`` — герои, которые слышат повествование; None — весь отряд. Скрытые мастеру факты (пустая
+    audience) не становятся утверждениями и не закрепляются. Knowledge/KnownFact здесь не меняются."""
+    from app.core.narrative.view import FACT_LABELS
+
+    addresses: list[tuple[str, str, str]] = []
+    for ev in ctx.events:
+        p = ev.payload or {}
+        if ev.tool == "apply_narrative_fact" and p.get("campaign_id") == ctx.campaign.id:
+            addr = (p.get("namespace"), p.get("subject_id"), p.get("key"))
+            if all(addr) and addr not in addresses:
+                addresses.append(addr)
+    if not addresses:
+        return []
+    hearers = {"party"} if listeners is None else set(listeners)
+    claimed: list[NarrativeFact] = []
+    for ns, subject_id, key in addresses:
+        row = await ctx.session.scalar(
+            select(NarrativeFact).where(
+                NarrativeFact.campaign_id == ctx.campaign.id,
+                NarrativeFact.namespace == ns,
+                NarrativeFact.subject_id == subject_id,
+                NarrativeFact.key == key,
+            )
+        )
+        if row is not None and row.value and hearers & set(row.audience or ()):
+            claimed.append(row)
+    if not claimed:
+        return []
+    await record_commitments(
+        ctx,
+        tuple(f"{r.namespace}:{r.subject_id}:{r.key}" for r in claimed),
+        reason="narration_claim",
+        snapshot_ref=SnapshotRef(
+            kind="event",
+            source_id=ctx.turn_id or ctx.campaign.id,
+            typed_address=f"narration:{ctx.turn_id or ctx.campaign.id}",
+        ),
+    )
+    notes = []
+    for r in claimed:
+        who = ctx.world.entities.get(r.subject_id) or ctx.world.characters.get(r.subject_id)
+        notes.append(f"{who.name if who else r.subject_id}: {FACT_LABELS.get(r.key, r.key)} — {r.value}")
+    return notes

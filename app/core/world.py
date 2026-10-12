@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -367,7 +368,22 @@ class World:
     # ревизия мира, от которой прочитан этот снимок (app/core/world_tx.py)
     revision: int = 0
     _actors: dict[str, Actor] = field(default_factory=dict)
+    # принятый канон кампании (app/core/narrative/view.py): роли, мотивы и переопределения модуля
     narrative_view: Any | None = None
+
+    def narrative_entry(self, rec: Entry | None, *, audience: tuple[str, ...] | None = None) -> Entry | None:
+        """Запись пакета с переопределениями этой кампании; общий каталог не мутируется."""
+        if rec is None or self.narrative_view is None:
+            return rec
+        from app.core.narrative.view import effective_module_entry
+
+        return effective_module_entry(rec, self.narrative_view, audience=audience)
+
+    def narrative_facts(self, subject_ids: Iterable[str | None], *, audience: tuple[str, ...] | None = None) -> tuple:
+        """Принятые повествовательные свойства субъектов, видимые аудитории (None — мастер)."""
+        if self.narrative_view is None:
+            return ()
+        return self.narrative_view.facts_for(tuple(i for i in subject_ids if i), audience=audience)
 
     def actor(self, actor_id: str) -> Actor:
         if actor_id in self._actors:
@@ -878,6 +894,11 @@ async def load_world(
         ).all()
     )
     secret = await session.get(CampaignSecret, campaign.id, populate_existing=refresh)
+    plot = copy.deepcopy(secret.plot) if secret and secret.plot else {}
+    from app.db.narrative import load_narrative_view
+
+    # единое представление канона: общий каталог пакета не меняется, переопределения кампании — поверх него
+    narrative_view = await load_narrative_view(session, campaign.id, plot, tuple(campaign.content_chain or ()))
     revealed: dict[str, set[str]] = {}
     if ids:
         q = select(Knowledge.character_id, Knowledge.entity_id).where(
@@ -893,7 +914,8 @@ async def load_world(
         entities={e.id: e for e in ents},
         inventory=inventory,
         effects=effects,
-        plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
+        plot=plot,
         revealed=revealed,
+        narrative_view=narrative_view,
         revision=revision if (base := world_tx.base_revision(session, campaign.id)) is None else base,
     )

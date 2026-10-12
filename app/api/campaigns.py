@@ -46,6 +46,7 @@ from app.db.models import (
     ModelProfile,
     User,
 )
+from app.db.narrative import sync_plan_metadata
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -225,6 +226,7 @@ async def _start_module(session, campaign: Campaign, module: AdventureModule, ho
     secret = await session.get(CampaignSecret, campaign.id)
     secret.plot = plan
     await plot_anchors.sync_bindings(session, campaign.id, plan)
+    await sync_plan_metadata(session, campaign, plan)
     settings = dict(campaign.settings or {})
     settings["module"] = {
         "id": module.id,
@@ -303,10 +305,15 @@ async def patch_campaign(
             "mode": new_mode,
             "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
         }
-        from app.db.narrative import ensure_state
+        from app.db.narrative import ensure_state, initialize_plan_metadata
 
         st = await ensure_state(session, c.id)
         st.mode = new_mode
+        if new_mode == "adaptive":  # каркас, принятый до включения, получает метаданные закрепления
+            secret_row = await session.get(CampaignSecret, c.id)
+            await initialize_plan_metadata(
+                session, c.id, (secret_row.plot if secret_row else None) or {}, mode=new_mode
+            )
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     if settings.get("scene_generation") and not (c.settings or {}).get("scene_generation"):
         from app.core.preparation import preserve_seen_places

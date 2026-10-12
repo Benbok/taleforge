@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.core.narrative.contracts import (
     FactRef,
     FrontRef,
@@ -118,6 +120,15 @@ def test_compile_reveal_fact():
     calls = compile_operations(snap, prop)
     assert len(calls) == 1
     assert calls[0].tool == "learn_fact"
+    assert calls[0].args == {
+        "character_ids": ["hero-1"],
+        "subject_id": "npc-1",
+        "fact": "Ищет союзников для обороны города",
+        "used_fact_refs": ["campaign:npc-1:motivation"],
+    }
+    stale = f_ref.model_copy(update={"version": 2})
+    with pytest.raises(ValueError):
+        compile_operations(snap, proposal(snap, operations=(op("reveal_fact", fact_ref=stale, audience=("hero-1",)),)))
 
 
 def test_compiled_calls_execute_successfully(settings, client, admin):
