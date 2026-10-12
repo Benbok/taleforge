@@ -19,7 +19,7 @@ from app.core import positions as grid
 from app.core.layout import store
 from app.core.layout.contracts import Blueprint, End, Passage
 from app.core.world_tx import WorldConflict
-from app.db.models import Campaign, Entity, Scene
+from app.db.models import Campaign, Entity, MasterTurn, Scene
 from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolError
 
@@ -54,21 +54,22 @@ class Request:
 
 def find_passage(world, place_id: str | None, passage_ref: str) -> tuple[Entity, Blueprint, Passage, End, End]:
     """Корень, blueprint, проход, конец со стороны ``place_id`` и противоположный конец."""
-    place = world.entities.get(place_id or "")
-    root = store.root_of(world.entities, place)
-    roots = [root] if root is not None else [
-        e for e in world.entities.values() if e.kind == "location" and (e.state or {}).get("blueprint")
-    ]  # fmt: skip
-    for r in roots:
-        bp = store.blueprint_of(r)
+    roots = [e for e in world.entities.values() if e.kind == "location" and (e.state or {}).get("blueprint")]
+    found = []
+    for root in roots:
+        bp = store.blueprint_of(root)
         p = bp.passage(passage_ref) if bp is not None else None
-        if p is None:
+        if p is None or _live(root, p)["hidden"]:
             continue
-        ids = store.area_ids(r)
+        ids = store.area_ids(root)
         for i, end in enumerate(p.ends):
             here = ids.get(end.area_ref) if end.area_ref else end.place_id
             if here == place_id:
-                return r, bp, p, end, p.ends[1 - i]
+                found.append((root, bp, p, end, p.ends[1 - i]))
+    if len(found) > 1:
+        raise ToolError("отсюда ведут несколько проходов с этой ссылкой: попроси мастера уточнить проход")
+    if found:
+        return found[0]
     raise ToolError(MISSING)
 
 
@@ -237,7 +238,16 @@ def enqueue(ctx, req: Request, inverse: list) -> None:
     sc.state = {**(sc.state or {}), QUEUE: queued}
 
 
-async def complete_queued(maker, preparer, dice_factory, campaign_id: str, bus=None) -> list[str]:
+async def complete_queued(
+    maker,
+    preparer,
+    dice_factory,
+    campaign_id: str,
+    bus=None,
+    *,
+    turn_id: str | None = None,
+    panel_only: bool = False,
+) -> list[str]:
     """Завершить отложенные переходы кампании: дождаться их подготовок, затем каждый — своей транзакцией.
     Возвращает id событий состоявшихся переходов; несостоявшийся оставляет системную заметку."""
     from app.gateway.events import envelope
@@ -246,6 +256,11 @@ async def complete_queued(maker, preparer, dice_factory, campaign_id: str, bus=N
     async with maker() as s:
         sc = await s.get(Scene, campaign_id)
         queued = list(((sc.state or {}) if sc is not None else {}).get(QUEUE) or [])
+    queued = [
+        q
+        for q in queued
+        if (turn_id is None or q.get("turn_id") == turn_id) and (not panel_only or q.get("turn_id") is None)
+    ]
     if not queued:
         return []
     refs = sorted({r for q in queued for r in q.get("refs") or []})
@@ -268,17 +283,30 @@ async def complete_queued(maker, preparer, dice_factory, campaign_id: str, bus=N
                 sc.state = {k: v for k, v in {**(sc.state or {}), QUEUE: left}.items() if k != QUEUE or left}
                 out = await finish(ctx, Request.from_json(item))
                 if out["moved"]:
-                    done.append(out["event_id"])
+                    if item.get("turn_id"):
+                        turn = await s.get(MasterTurn, item["turn_id"])
+                        if turn is not None and turn.generation_checkpoint:
+                            cp = turn.generation_checkpoint
+                            turn.generation_checkpoint = {
+                                **cp,
+                                "event_ids": list(dict.fromkeys([*(cp.get("event_ids") or []), out["event_id"]])),
+                            }
+
                 else:
                     ctx.outbox.append({"kind": "system", "content": f"Переход не состоялся: {out['reason']}"})
                 messages = await flush_outbox(s, ctx)
                 await s.commit()
+                if out["moved"]:
+                    done.append(out["event_id"])  # только подтверждённая фиксация
         except WorldConflict:
-            log.info("переход %s: мир изменился, его завершит другой исполнитель", item.get("passage_ref"))
-            continue
+            log.info("переход %s: мир изменился, очередь остаётся для повтора", item.get("passage_ref"))
+            raise  # ход не переходит к описанию, пока его очередь не обработана
         if bus is not None:
-            await publish_changes(bus, ctx, messages)
-            await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
+            try:
+                await publish_changes(bus, ctx, messages)
+                await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
+            except Exception:  # noqa: BLE001 — фиксация перехода не зависит от рассылки
+                log.exception("публикация перехода %s не удалась", item.get("passage_ref"))
     return done
 
 
@@ -287,20 +315,24 @@ async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str
     Возвращает ответ и список ``(ctx, messages)`` закоммиченных транзакций для публикации изменений."""
     from app.tools.runtime import flush_outbox, open_context
 
-    async with maker() as s:
-        c = await s.get(Campaign, campaign_id)
-        ctx1 = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
-        inverse: list = []
-        try:
-            req = await begin(ctx1, [hero_id], passage_ref, inverse, by_player=True)
-        except ToolError as e:
-            await s.rollback()
-            return {"ok": False, "error": str(e)}, []
-        await ctx1.record("request_passage", actor_id=hero_id, target_id=req.dest_id,
-                          payload={"passage_ref": passage_ref, "refs": list(req.refs)}, inverse=inverse,
-                          hidden=True)  # fmt: skip
-        messages1 = await flush_outbox(s, ctx1)
-        await s.commit()
+    try:
+        async with maker() as s:
+            c = await s.get(Campaign, campaign_id)
+            ctx1 = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
+            inverse: list = []
+            try:
+                req = await begin(ctx1, [hero_id], passage_ref, inverse, by_player=True)
+            except ToolError as e:
+                await s.rollback()
+                return {"ok": False, "error": str(e)}, []
+            await ctx1.record("request_passage", actor_id=hero_id, target_id=req.dest_id,
+                              payload={"passage_ref": passage_ref, "refs": list(req.refs)}, inverse=inverse,
+                              hidden=True)  # fmt: skip
+            messages1 = await flush_outbox(s, ctx1)
+            await s.commit()
+    except Exception:
+        log.exception("запрос перехода через проход %s не удался", passage_ref)
+        return {"ok": False, "error": "переход не удался"}, []
     published = [(ctx1, messages1)]
     try:
         if req.refs and preparer is not None:
@@ -328,5 +360,5 @@ async def republish(maker, dice_factory, bus, campaign_id: str, hero_ids: list[s
         c = await s.get(Campaign, campaign_id)
         ctx = await open_context(s, c, dice_factory(), turn_id=None, seat_id=None)
         ctx.changed.update(hero_ids)
-        await publish_changes(bus, ctx, [])
+    await publish_changes(bus, ctx, [])
     await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)

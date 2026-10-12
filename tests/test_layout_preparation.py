@@ -4,6 +4,7 @@
 import asyncio
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
 
 from app.core import sketch
@@ -193,3 +194,68 @@ def test_auto_sketch_is_replaced_by_blueprint_geometry(client, admin, settings):
     run(settings, draw)
     assert _prepare(settings, cid, _activate(settings, cid, narthex.id)) == "ready"
     assert run(settings, lambda s: s.get(Entity, narthex.id)).state["sketch"]["blueprint"]["area_ref"] == "narthex"
+
+
+@pytest.mark.parametrize("reason", ["stale_blueprint", "geometry_invalid", "already_built"])
+def test_preparation_block_reasons_leave_world_unchanged(client, admin, settings, reason):
+    cid, _heads, _hid = _setup(client, admin, settings)
+    _v, temple, ref = _complex(settings, cid)
+    if reason == "already_built":
+
+        async def built(s):
+            root = await s.get(Entity, temple)
+            root.state = {**root.state, "blueprint": {"existing": True}}
+            await s.commit()
+
+        run(settings, built)
+        assert _prepare(settings, cid, ref) == "blocked"
+        assert _row(settings, ref).last_error == reason
+        assert _areas(settings, temple) == {}
+        return
+    _prepare(settings, cid, ref)
+    area = _areas(settings, temple)["road"]
+    geo = _activate(settings, cid, area.id)
+
+    async def corrupt(s):
+        root = await s.get(Entity, temple)
+        bp = store.blueprint_of(root).to_json()
+        if reason == "stale_blueprint":
+            bp["revision"] += 1
+        else:
+            bp["areas"][0]["details"] = [
+                {"detail_ref": "wall", "name": "Стена", "kind": "object", "solid": True, "cells": [[0, 0, 11, 7]]}
+            ]
+        root.state = {**root.state, "blueprint": bp}
+        await s.commit()
+
+    run(settings, corrupt)
+    assert _prepare(settings, cid, geo) == "blocked"
+    assert _row(settings, geo).last_error == reason
+    assert "sketch" not in run(settings, lambda s: s.get(Entity, area.id)).state
+
+
+@pytest.mark.parametrize("case", ["area", "book", "changed_intent", "missing_approach"])
+def test_prepare_complex_refusals_do_not_reserve_another_layout(client, admin, settings, case):
+    from app.tools.registry import execute
+
+    cid, _heads, _hid = _setup(client, admin, settings)
+    village, temple, ref = _complex(settings, cid)
+    _prepare(settings, cid, ref)
+
+    async def refuse(ctx):
+        target = temple
+        intent = pilot_intent(village).model_dump(mode="json")
+        if case == "area":
+            target = store.area_ids(ctx.world.entities[temple])["road"]
+        elif case == "book":
+            target = village
+            ctx.world.entities[village].state = {"room": {"of": temple, "id": "1"}}
+        elif case == "changed_intent":
+            intent["parts"][0]["public_name"] = "Другая дорога"
+        else:
+            intent["approaches"][0]["outside_id"] = "missing"
+        return await execute(ctx, "prepare_complex", {"location_id": target, "intent": intent})
+
+    out = _play(settings, cid, refuse)
+    assert not out["ok"] and out["error"]
+    assert len(rows(settings, WGS, WGS.phase == "location_layout")) == 1

@@ -67,3 +67,21 @@ def test_inner_cell_walks_inward_to_floor():
     assert shapes.inner_cell(ell, 4, 4, "n", 3) == (3, 2)
     assert shapes.inner_cell(ell, 4, 4, "w", 1) == (0, 1)
     assert shapes.inner_cell(set(), 4, 4, "e", 0) is None
+
+
+@pytest.mark.parametrize("seed", [-(2**31) - 1, 2**31])
+def test_seed_outside_postgresql_integer_is_rejected(seed):
+    with pytest.raises(LayoutError):
+        Blueprint.from_json({**two_rooms().to_json(), "seed": seed})
+
+
+@pytest.mark.parametrize("seed", [-(2**31), 2**31 - 1])
+def test_seed_integer_boundaries_are_accepted(seed):
+    assert Blueprint.from_json({**two_rooms().to_json(), "seed": seed}).seed == seed
+
+
+@pytest.mark.parametrize("field", ["seed", "schema_version"])
+def test_infinite_json_numbers_are_layout_errors(field):
+    data = json.loads('{"' + field + '": Infinity}')
+    with pytest.raises(LayoutError):
+        Blueprint.from_json({**two_rooms().to_json(), **data})

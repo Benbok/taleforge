@@ -202,7 +202,10 @@ class TurnMixin:
                 from app.core.layout import transit
 
                 heroes = sorted({h for q in queued for h in q["hero_ids"]})
-                await transit.republish(self.maker, self.dice_factory, self.bus, cid, heroes)
+                try:
+                    await transit.republish(self.maker, self.dice_factory, self.bus, cid, heroes)
+                except Exception:  # noqa: BLE001 — сбой рассылки не прерывает завершение сохранённого хода
+                    log.exception("публикация перехода хода %s не удалась", turn_id)
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
@@ -854,6 +857,7 @@ class TurnMixin:
         turn.generation_checkpoint = checkpoint.effects_committed(
             events=[ev.id for ev in ctx.events],
             operation_refs=sorted(ctx.operation_refs),
+            crew=sorted(crew),
             narration_message_id=msg.id,
             audience=heard,
             place=place,

@@ -26,6 +26,7 @@ def effects_committed(
     audience: list[str] | None,
     place: str | None,
     inputs: dict[str, Any],
+    crew: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
         "version": VERSION,
@@ -37,6 +38,7 @@ def effects_committed(
         "place": place,
         "attempts": 0,
         "inputs": inputs,
+        **({"crew": crew} if crew is not None else {}),
     }
 
 

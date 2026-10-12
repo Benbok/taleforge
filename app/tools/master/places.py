@@ -974,7 +974,12 @@ async def traverse_passage(ctx: ToolContext, a: TraverseArgs) -> dict:
     if a.character_ids:
         heroes = [_character(ctx, cid) for cid in a.character_ids]
     else:
-        heroes = [c for c in w.characters.values() if c.status in PLAYABLE and w.place_of(c) == w.scene.location_id]
+        heroes = [
+            c
+            for c in w.characters.values()
+            if c.status in PLAYABLE
+            and (c.id in w.crew if w.focus is not None else w.place_of(c) == w.scene.location_id)
+        ]
     if not heroes:
         raise ToolError("некому идти: назови героев в character_ids")
     inverse: list = []

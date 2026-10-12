@@ -69,21 +69,25 @@ class FinishMixin:
                     if turn is None or turn.status != "running" or not checkpoint.resumable(turn.generation_checkpoint):
                         return []
                     cp = dict(turn.generation_checkpoint)
-                    if cp["stage"] in ("effects_committed", "preparing"):
-                        refs = list(cp.get("operation_refs") or [])
-                        if refs and cp["stage"] == "effects_committed":
-                            cp["stage"] = "preparing"
-                            turn.generation_checkpoint = dict(cp)  # новый объект: JSON сохраняется только при замене
-                            await s.commit()
-                        cp["unavailable"] = await self._settle_preparation(cid, refs) if refs else []
-                        from app.core.layout import transit
+                    waiting = cp["stage"] in ("effects_committed", "preparing")
+                    if waiting and cp["stage"] == "effects_committed":
+                        turn.generation_checkpoint = {**cp, "stage": "preparing"}
+                        await s.commit()
+                if waiting:
+                    refs = list(cp.get("operation_refs") or [])
+                    unavailable = await self._settle_preparation(cid, refs) if refs else []
+                    from app.core.layout import transit
 
-                        done = await transit.complete_queued(
-                            self.maker, self.preparer, self.dice_factory, cid, bus=self.bus
-                        )
-                        if done:
-                            cp["event_ids"] = [*(cp.get("event_ids") or []), *done]
-                        cp["stage"] = "narration_pending"
+                    await transit.complete_queued(
+                        self.maker, self.preparer, self.dice_factory, cid, bus=self.bus, turn_id=turn_id
+                    )
+                async with self.maker() as s:
+                    turn = await s.get(MasterTurn, turn_id)
+                    if turn is None or turn.status != "running" or not checkpoint.resumable(turn.generation_checkpoint):
+                        return []
+                    cp = dict(turn.generation_checkpoint)  # переход мог атомарно добавить свои события
+                    if waiting:
+                        cp.update(unavailable=unavailable, stage="narration_pending")
                     if resume and await self._over_limit(s, cid):
                         turn.generation_checkpoint = dict(cp)  # новый объект: JSON сохраняется только при замене
                         await s.commit()
@@ -139,6 +143,8 @@ class FinishMixin:
             seat = master_seat(c)
             cfg = await s.get(AgentConfig, seat.agent_config_id)
             ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=cp.get("place"))
+            if "crew" in cp:
+                ctx.world.crew = set(cp["crew"])  # группа хода сохраняется, даже когда герои ушли из focus
             ids = list(cp.get("event_ids") or [])
             found = {ev.id: ev for ev in await s.scalars(select(Event).where(Event.id.in_(ids)))} if ids else {}
             ctx.events = [found[i] for i in ids if i in found]
@@ -320,6 +326,12 @@ class FinishMixin:
                     seat_id=master_seat(c).id,
                     focus=(turn.generation_checkpoint or {}).get("place"),
                 )
+            from app.core.layout import transit
+
+            try:
+                await transit.republish(self.maker, self.dice_factory, self.bus, cid, sorted(ctx.world.characters))
+            except Exception:  # noqa: BLE001 — повествование и действие уже сохранены
+                log.exception("публикация восстановленного хода %s не удалась", turn_id)
             await arm(ctx)
             await self._states(cid, ids, "answered")
 
@@ -364,6 +376,21 @@ class FinishMixin:
                 await run_due(self.maker)
             except Exception:  # noqa: BLE001
                 log.exception("подготовка мира не удалась")
+
+        async with self.maker() as s:
+            pending = [sc.campaign_id for sc in await s.scalars(select(Scene)) if (sc.state or {}).get("transits")]
+        from app.core.layout import transit
+
+        for cid in pending:
+            if self.turn_lock(cid).locked():
+                continue
+            try:
+                async with self.turn_lock(cid):
+                    await transit.complete_queued(
+                        self.maker, self.preparer, self.dice_factory, cid, bus=self.bus, panel_only=True
+                    )
+            except Exception:  # noqa: BLE001 — очередь остаётся в БД для следующей попытки
+                log.exception("восстановление переходов кампании %s не удалось", cid)
 
     def start_recovery(self) -> None:
         self._recovery_signal = asyncio.Event()

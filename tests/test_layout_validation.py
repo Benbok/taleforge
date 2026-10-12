@@ -57,3 +57,11 @@ def test_required_area_behind_secret_and_orphans():
     lonely = replace(bp, passages=(bp.passage("in_hall_w"),), required=())
     assert any("cell не связан с входом" in e for e in validate(lonely))
     assert any("нет участка crypt" in e for e in validate(two_rooms(anchors={"relic": "crypt"})))
+
+
+def test_obstacle_edge_cannot_extend_past_its_side():
+    bp = two_fields()
+    west = bp.area("west")
+    edges = tuple(replace(g, length=g.length + 1) if g.side == "n" else g for g in west.edges)
+    invalid = replace(bp, areas=(replace(west, edges=edges), bp.area("east")))
+    assert any("вне стороны" in e for e in validate(invalid))

@@ -3146,6 +3146,19 @@ export interface components {
              */
             type: "map.step.result";
         };
+        /** Event_map_traverse_result */
+        Event_map_traverse_result: {
+            /** Campaign Id */
+            campaign_id: string | null;
+            payload: components["schemas"]["MapTraverseResult"];
+            /** Seq */
+            seq: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "map.traverse.result";
+        };
         /** Event_master_status */
         Event_master_status: {
             /** Campaign Id */
@@ -4183,14 +4196,34 @@ export interface components {
             /** Cols */
             cols: number;
             /**
+             * Edges
+             * @default null
+             */
+            edges?: unknown[] | null;
+            /**
              * Edit Rev
              * @default null
              */
             edit_rev?: number | null;
+            /**
+             * Environment
+             * @default null
+             */
+            environment?: string | null;
             /** Exits */
             exits: components["schemas"]["MapSketchExit"][];
             /** Features */
             features: components["schemas"]["MapSketchFeature"][];
+            /**
+             * Mask
+             * @default null
+             */
+            mask?: string[] | null;
+            /**
+             * Material
+             * @default null
+             */
+            material?: string | null;
             /** Party */
             party: [
                 number,
@@ -4205,6 +4238,11 @@ export interface components {
             rows: number;
             /** Shape */
             shape: string;
+            /**
+             * Terrain
+             * @default null
+             */
+            terrain?: unknown[] | null;
             /**
              * Unplaced Exits
              * @default null
@@ -4223,6 +4261,11 @@ export interface components {
              */
             beyond?: string | null;
             /**
+             * Cells
+             * @default null
+             */
+            cells?: number[][] | null;
+            /**
              * Hidden
              * @default false
              */
@@ -4231,6 +4274,11 @@ export interface components {
             kind: string;
             /** Name */
             name: string;
+            /**
+             * Passage Ref
+             * @default null
+             */
+            passage_ref?: string | null;
             /**
              * Room Ref
              * @default null
@@ -4251,6 +4299,11 @@ export interface components {
              * @default null
              */
             to?: string | null;
+            /**
+             * Width
+             * @default null
+             */
+            width?: number | null;
         };
         /** MapSketchFeature */
         MapSketchFeature: {
@@ -4408,6 +4461,15 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** MapTraverseResult */
+        MapTraverseResult: {
+            /** Ok */
+            ok: boolean;
+            /** Request Id */
+            request_id: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** MapUnplacedExit */
         MapUnplacedExit: {
@@ -5279,7 +5341,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
+        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
         /** SessionSummary */
         SessionSummary: {
             /** Events */
@@ -5666,6 +5728,7 @@ export type Event_knowledge_revealed = components['schemas']['Event_knowledge_re
 export type Event_map_changed = components['schemas']['Event_map_changed'];
 export type Event_map_state = components['schemas']['Event_map_state'];
 export type Event_map_step_result = components['schemas']['Event_map_step_result'];
+export type Event_map_traverse_result = components['schemas']['Event_map_traverse_result'];
 export type Event_master_status = components['schemas']['Event_master_status'];
 export type Event_master_tool_result = components['schemas']['Event_master_tool_result'];
 export type Event_message_chunk = components['schemas']['Event_message_chunk'];
@@ -5733,6 +5796,7 @@ export type MapState = components['schemas']['MapState'];
 export type MapStepResult = components['schemas']['MapStepResult'];
 export type MapThing = components['schemas']['MapThing'];
 export type MapToken = components['schemas']['MapToken'];
+export type MapTraverseResult = components['schemas']['MapTraverseResult'];
 export type MapUnplacedExit = components['schemas']['MapUnplacedExit'];
 export type Mark = components['schemas']['Mark'];
 export type MarksIn = components['schemas']['MarksIn'];

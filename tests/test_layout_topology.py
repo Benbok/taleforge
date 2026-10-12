@@ -124,3 +124,65 @@ def test_revealed_passage_becomes_neighbour(client, admin, settings):
     ents = _entities(settings)
     assert ids["vault"] in {x.target_id for x in location_exits(ents[ids["sacristy"]], None, ents)}
     assert ids["sacristy"] in {x.target_id for x in location_exits(ents[ids["vault"]], None, ents)}
+
+
+def test_map_parses_each_blueprint_once(client, admin, settings, monkeypatch):
+    from app.core.layout.contracts import Blueprint
+
+    cid, heads, hid, _v, _t, ids = _built(client, admin, settings, "road", "sacristy")
+    for area in (ids["road"], ids["sacristy"]):
+
+        async def enter(ctx, area=area):
+            await _enter(ctx, hid, area)
+
+        _play(settings, cid, enter)
+    parsed = []
+    original = Blueprint.from_json
+
+    def spy(data):
+        parsed.append(data)
+        return original(data)
+
+    monkeypatch.setattr(Blueprint, "from_json", spy)
+    _map(client, heads[0], cid)
+    assert len(parsed) == 1
+
+
+def test_another_complex_approach_is_visible_and_traversable_from_area():
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from app.core.layout import transit
+    from app.core.layout.contracts import End
+    from tests.layout_pilot import two_rooms
+
+    first = two_rooms()
+    second = two_rooms()
+    entrance = replace(second.passage("in_hall_w"), ends=(End("hall", "w", 1), End(place_id="cell1")))
+    second = replace(second, passages=(second.passage("p_cell"), entrance))
+    roots = [
+        Entity(
+            id="root1",
+            kind="location",
+            state={"blueprint": first.to_json(), "areas": {"hall": "hall1", "cell": "cell1"}},
+        ),
+        Entity(
+            id="root2",
+            kind="location",
+            state={"blueprint": second.to_json(), "areas": {"hall": "hall2", "cell": "cell2"}},
+        ),
+    ]
+    places = [
+        Entity(
+            id=ref + str(i),
+            kind="location",
+            location_id="root" + str(i),
+            state={"complex": {"root_id": "root" + str(i), "area_ref": ref}},
+        )
+        for i in (1, 2)
+        for ref in ("hall", "cell")
+    ]
+    ents = {e.id: e for e in [*roots, *places]}
+    assert "hall2" in {x.target_id for x in location_exits(ents["cell1"], None, ents)}
+    root, _bp, _p, end, other = transit.find_passage(SimpleNamespace(entities=ents), "cell1", "in_hall_w")
+    assert root.id == "root2" and end.external and other.area_ref == "hall"

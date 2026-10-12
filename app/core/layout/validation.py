@@ -99,6 +99,8 @@ def _area(a: Area) -> list[str]:
     for g in a.edges:
         if g.side not in OPPOSITE or g.meaning not in EDGE_MEANINGS:
             e.append(f"{name}: край {g.side}/{g.meaning}")
+        elif g.start < 0 or g.length < 1 or g.start + g.length > side_len(a, g.side):
+            e.append(f"{name}: край {g.start}+{g.length} вне стороны {g.side}")
     return e
 
 

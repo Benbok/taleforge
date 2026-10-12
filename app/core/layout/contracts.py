@@ -148,10 +148,13 @@ class Blueprint:
             version = int(d.get("schema_version") or 0)
             if version != SCHEMA_VERSION:
                 raise LayoutError([f"blueprint: неизвестная версия схемы {d.get('schema_version')}"])
-            return cls._parse(d)
+            bp = cls._parse(d)
+            if not -(2**31) <= bp.seed < 2**31:
+                raise LayoutError(["blueprint: seed за пределами int32"])
+            return bp
         except LayoutError:
             raise
-        except (KeyError, TypeError, ValueError, IndexError, AttributeError) as e:
+        except (KeyError, TypeError, ValueError, OverflowError, IndexError, AttributeError) as e:
             raise LayoutError([f"blueprint: {type(e).__name__}: {e}"]) from e
 
     @classmethod
