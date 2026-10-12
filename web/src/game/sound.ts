@@ -10,6 +10,8 @@ export type Channel = "music" | "sfx";
 export const CHANNELS: Channel[] = ["music", "sfx"];
 export const CHANNEL_LABELS: Record<Channel, string> = { music: "Музыка", sfx: "Эффекты" };
 const FADE = 3.5; // секунд на смену музыки
+const SURFACE_FADE = 0.5;
+const QUIET_FADE = 0.15;
 const DUCK = 0.22; // пока звучит голос мастера или игрока, музыка уходит на задний план
 const PREFS_KEY = "tf_sound";
 
@@ -53,9 +55,17 @@ export function dbToGain(db: number | undefined): number {
   return Math.pow(10, (db ?? 0) / 20);
 }
 
+export type AudioSurface = "menu" | "scene" | "silent";
+export interface MenuMusicPreferences {
+  enabled: boolean;
+  volume: number;
+}
+type MenuStatus = "disabled" | "locked" | "loading" | "playing" | "paused" | "error";
+
 interface Voice extends PreparedMusic {
   track: AudioTrack;
   deck: MusicDeck;
+  kind: "scene" | "menu";
 }
 
 type Listener = () => void;
@@ -98,6 +108,7 @@ export class SoundMixer {
   private generatedGate = new SfxGate();
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private menuBus: GainNode | null = null;
   private buses: Partial<Record<Channel, GainNode>> = {};
   private voice: Voice | null = null;
   private decks: MusicDeck[] = [];
@@ -108,6 +119,14 @@ export class SoundMixer {
   private fading = new Map<Voice, ReturnType<typeof setTimeout>>();
   private buffers = new Map<string, Promise<AudioBuffer>>();
   private state: AudioState | null = null;
+  private surface: AudioSurface = "scene";
+  private menuTrack: AudioTrack | null = null;
+  private menuPrefs: MenuMusicPreferences = { enabled: true, volume: 0.2 };
+  private menuOffset = 0;
+  private visible = true;
+  private targetRevision = 0;
+  private _menuStatus: MenuStatus = "disabled";
+  private _menuError: string | null = null;
   private skew = 0; // часы сервера минус часы браузера, секунды
   private ducked = 0;
   private listeners = new Set<Listener>();
@@ -127,6 +146,10 @@ export class SoundMixer {
   get unlocked(): boolean {
     return this.musicPrimed && this.ctx !== null && this.ctx.state === "running";
   }
+
+  get menuStatus(): MenuStatus { return this._menuStatus; }
+  get menuError(): string | null { return this._menuError; }
+  get audioSurface(): AudioSurface { return this.surface; }
 
   subscribe = (fn: Listener) => {
     this.listeners.add(fn);
@@ -148,6 +171,8 @@ export class SoundMixer {
       this.ctx = new Ctx();
       this.master = this.ctx.createGain();
       this.master.connect(this.ctx.destination);
+      this.menuBus = this.ctx.createGain();
+      this.menuBus.connect(this.ctx.destination);
       for (const ch of CHANNELS) {
         const g = this.ctx.createGain();
         g.connect(this.master);
@@ -165,14 +190,12 @@ export class SoundMixer {
       this.musicPrimed = true;
     } catch (e) {
       if (this.ctx === ctx) {
-        const state = this.state;
-        this.stop();
-        this.state = state;
+        this.releaseAudioResources();
         this.changed();
       }
       throw e;
     }
-    if (this.state) await this.apply(this.state);
+    await this.reconcile();
     this.changed();
   }
 
@@ -212,29 +235,109 @@ export class SoundMixer {
     return !!this.state?.enabled;
   }
 
-  /** Новое состояние от сервера. Пока звук не разблокирован нажатием, только запоминаем его. */
-  async apply(state: AudioState): Promise<void> {
-    this.skew = state.now - Date.now() / 1000;
-    this.state = state;
+  async setSurface(surface: AudioSurface): Promise<void> {
+    if (this.surface === surface) return;
+    this.surface = surface;
+    this.targetRevision++;
+    this.musicLoad?.abort();
+    this.musicLoad = null;
+    this.starting = null;
+    if (surface !== "menu" && this.menuTrack && this.menuPrefs.enabled && this.menuPrefs.volume > 0) {
+      this._menuStatus = "paused";
+    }
+    await this.reconcile();
     this.changed();
-    if (!this.unlocked) return;
-    const want = state.enabled ? state.music : null;
-    if (this.starting && this.starting !== want?.id) {
+  }
+
+  async setMenuMusic(track: AudioTrack | null, prefs: MenuMusicPreferences): Promise<void> {
+    this.menuTrack = track;
+    this.menuPrefs = { enabled: prefs.enabled, volume: Math.max(0, Math.min(1, prefs.volume)) };
+    this.targetRevision++;
+    this.musicLoad?.abort();
+    this.musicLoad = null;
+    this.starting = null;
+    this._menuError = null;
+    if (!track || !this.menuPrefs.enabled || this.menuPrefs.volume <= 0) this._menuStatus = "disabled";
+    else if (!this.unlocked) this._menuStatus = "locked";
+    await this.reconcile();
+    if (this.voice?.kind === "menu" && this.voice.track.id === track?.id && this.menuPrefs.enabled) {
+      this.voice.gain.gain.setTargetAtTime(this.menuPrefs.volume, this.ctx?.currentTime ?? 0, 0.1);
+    }
+    this.changed();
+  }
+
+  async setDocumentVisible(visible: boolean): Promise<void> {
+    this.visible = visible;
+    if (!visible && this.surface === "menu") {
+      this.targetRevision++;
       this.musicLoad?.abort();
+      this.musicLoad = null;
       this.starting = null;
+      if (this.menuTrack && this.menuPrefs.enabled && this.menuPrefs.volume > 0) this._menuStatus = "paused";
+      await this.fadeOut(QUIET_FADE);
+    } else if (visible) {
+      await this.reconcile();
     }
-    const have = this.voice;
+    this.changed();
+  }
+
+  private async reconcile(): Promise<void> {
+    if (!this.unlocked) {
+      if (this.surface === "menu" && this.menuTrack && this.menuPrefs.enabled && this.menuPrefs.volume > 0) {
+        this._menuStatus = "locked";
+      }
+      return;
+    }
+    if (this.surface === "silent") {
+      await this.fadeOut(QUIET_FADE);
+      return;
+    }
+    if (this.surface === "menu") {
+      const track = this.menuTrack;
+      if (!track || !this.menuPrefs.enabled || this.menuPrefs.volume <= 0) {
+        this._menuStatus = "disabled";
+        await this.fadeOut(QUIET_FADE);
+        return;
+      }
+      if (!this.visible) {
+        this._menuStatus = "paused";
+        await this.fadeOut(QUIET_FADE);
+        return;
+      }
+      if (this.voice?.kind === "menu" && this.voice.track.id === track.id) {
+        this._menuStatus = "playing";
+        return;
+      }
+      if (this.voice) await this.fadeOut(SURFACE_FADE);
+      this._menuStatus = "loading";
+      try {
+        await this.start(track, "menu", this.menuPrefs.volume, this.menuOffset, SURFACE_FADE, this.targetRevision);
+        if (this.surface === "menu" && this.visible && this.menuTrack?.id === track.id
+          && this.menuPrefs.enabled && this.menuPrefs.volume > 0 && this.voice?.kind === "menu") {
+          this._menuStatus = "playing";
+        }
+      } catch (e) {
+        if (!(e instanceof DOMException && e.name === "AbortError")) {
+          this._menuError = e instanceof Error ? e.message : String(e);
+          this._menuStatus = "error";
+        }
+      }
+      return;
+    }
+    const want = this.state?.enabled ? this.state.music : null;
     if (!want) {
-      this.fadeOut(state.enabled ? FADE : 1.5);
+      await this.fadeOut(this.state?.enabled ? FADE : QUIET_FADE);
       return;
     }
-    if (have && have.track.id === want.id) {
-      have.track = want;
+    if (this.voice?.kind === "scene" && this.voice.track.id === want.id) {
+      this.voice.track = want;
       return;
     }
+    if (this.voice?.kind === "menu") await this.fadeOut(SURFACE_FADE);
     if (this.starting === want.id) return;
     try {
-      await this.start(want);
+      await this.start(want, "scene", want.level ?? 0.6,
+        Date.now() / 1000 + this.skew - (want.since ?? 0), FADE, this.targetRevision);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) {
         this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
@@ -242,9 +345,22 @@ export class SoundMixer {
     }
   }
 
+  /** Новое состояние от сервера. Пока звук не разблокирован нажатием, только запоминаем его. */
+  async apply(state: AudioState): Promise<void> {
+    this.skew = state.now - Date.now() / 1000;
+    this.state = state;
+    this.changed();
+    this.targetRevision++;
+    if (!this.unlocked || this.surface !== "scene") return;
+    this.musicLoad?.abort();
+    this.musicLoad = null;
+    this.starting = null;
+    await this.reconcile();
+  }
+
   /** Эффекты хода: один раз, поверх музыки. */
   async cue(tracks: AudioTrack[], valid: () => boolean = () => true): Promise<void> {
-    if (!this.ctx || this.ctx.state !== "running" || !this.state?.enabled || this.prefs.muted) return;
+    if (this.surface !== "scene" || !this.ctx || this.ctx.state !== "running" || !this.state?.enabled || this.prefs.muted) return;
     const ctx = this.ctx;
     for (const t of tracks) {
       try {
@@ -267,6 +383,7 @@ export class SoundMixer {
   }
 
   async generated(event: AudioSfxReady): Promise<void> {
+    if (this.surface !== "scene") return;
     const now = () => Date.now() / 1000 + this.skew;
     const valid = this.generatedGate.accept(event, now());
     if (valid) await this.cue([event.track], () => valid(now()));
@@ -296,7 +413,14 @@ export class SoundMixer {
     return p;
   }
 
-  private async start(track: AudioTrack) {
+  private async start(
+    track: AudioTrack,
+    kind: "scene" | "menu",
+    level: number,
+    offset: number,
+    fade: number,
+    revision: number,
+  ) {
     const ctx = this.ctx!;
     const controller = new AbortController();
     this.musicLoad?.abort();
@@ -314,20 +438,35 @@ export class SoundMixer {
     try {
       music = await prepareMusic(ctx, track.url, getToken() ?? "", controller.signal, deck);
       controller.signal.throwIfAborted();
-      const now = ctx.currentTime;
-      music.gain.gain.setValueAtTime(0, now);
-      music.gain.connect(this.buses.music!);
-      music.element.currentTime = loopOffset(Date.now() / 1000 + this.skew - (track.since ?? 0), music.element.duration);
-      await music.element.play();
-      controller.signal.throwIfAborted();
-      if (this.ctx !== ctx || !this.state?.enabled || this.state.music?.id !== track.id) {
+      if (this.targetRevision !== revision ||
+        (kind === "scene"
+          ? this.surface !== "scene" || !this.state?.enabled || this.state.music?.id !== track.id
+          : this.surface !== "menu" || !this.visible || this.menuTrack?.id !== track.id
+            || !this.menuPrefs.enabled || this.menuPrefs.volume <= 0)) {
         music.dispose();
         return;
       }
-      music.gain.gain.setTargetAtTime((track.level ?? 0.6) * dbToGain(track.gain_db), ctx.currentTime, FADE / 3);
-      this.fadeOut(FADE);
-      this.voice = { ...music, track, deck };
+      const now = ctx.currentTime;
+      music.gain.gain.setValueAtTime(0, now);
+      music.gain.connect(kind === "menu" ? this.menuBus! : this.buses.music!);
+      music.element.currentTime = kind === "menu"
+        ? loopOffset(offset, music.element.duration)
+        : loopOffset(offset, music.element.duration);
+      await music.element.play();
+      controller.signal.throwIfAborted();
+      if (this.ctx !== ctx || this.targetRevision !== revision ||
+        (kind === "scene"
+          ? this.surface !== "scene" || !this.state?.enabled || this.state.music?.id !== track.id
+          : this.surface !== "menu" || !this.visible || this.menuTrack?.id !== track.id
+            || !this.menuPrefs.enabled || this.menuPrefs.volume <= 0)) {
+        music.dispose();
+        return;
+      }
+      music.gain.gain.setTargetAtTime(level * dbToGain(track.gain_db), ctx.currentTime, fade / 3);
+      await this.fadeOut(fade);
+      this.voice = { ...music, track, deck, kind };
       this.error = null;
+      if (kind === "menu") this._menuError = null;
       this.changed();
     } catch (e) {
       music?.dispose();
@@ -341,10 +480,11 @@ export class SoundMixer {
     }
   }
 
-  private fadeOut(sec: number) {
+  private async fadeOut(sec: number): Promise<void> {
     const v = this.voice;
     if (!v || !this.ctx) return;
     this.voice = null;
+    if (v.kind === "menu") this.menuOffset = v.element.currentTime || this.menuOffset;
     const t = this.ctx.currentTime;
     v.gain.gain.cancelScheduledValues(t);
     v.gain.gain.setTargetAtTime(0, t, sec / 3);
@@ -355,8 +495,20 @@ export class SoundMixer {
     this.fading.set(v, timer);
   }
 
-  /** Уход с экрана игры: всё смолкает, контекст закрывается. */
-  stop() {
+  /** Уход со сцены: состояние и эффекты очищаются, контекст приложения остаётся разблокированным. */
+  clearScene() {
+    this.targetRevision++;
+    this.musicLoad?.abort();
+    this.musicLoad = null;
+    this.starting = null;
+    if (this.voice?.kind === "scene") void this.fadeOut(QUIET_FADE);
+    this.state = null;
+    this.skew = 0;
+    this.generatedGate.clear();
+    this.changed();
+  }
+
+  private releaseAudioResources() {
     this.musicLoad?.abort();
     this.musicLoad = null;
     this.starting = null;
@@ -376,14 +528,26 @@ export class SoundMixer {
     this.decks = [];
     this.musicReady = null;
     this.musicPrimed = false;
-    this.state = null;
     const ctx = this.ctx;
     this.ctx = null;
     this.master = null;
+    this.menuBus = null;
     this.buses = {};
     this.buffers.clear();
-    this.generatedGate.clear();
     if (ctx) window.setTimeout(() => void ctx.close(), 800);
+  }
+
+  /** Полный teardown при выходе из аккаунта или уничтожении приложения. */
+  stop() {
+    this.releaseAudioResources();
+    this.state = null;
+    this.surface = "silent";
+    this.menuTrack = null;
+    this.menuOffset = 0;
+    this.menuPrefs = { enabled: true, volume: 0.2 };
+    this._menuStatus = "disabled";
+    this._menuError = null;
+    this.generatedGate.clear();
     this.changed();
   }
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AudioState } from "../lib/types";
+import type { AudioState, AudioTrack } from "../lib/types";
 import { prepareMusic, primeMusic, type MusicDeck, type PreparedMusic } from "./music";
 import { SoundMixer } from "./sound";
 
@@ -22,7 +22,9 @@ class FakeContext {
 }
 function prepared(): PreparedMusic {
   return {
-    element: { currentTime: 0, duration: 600, play: vi.fn(async () => {}) } as unknown as HTMLAudioElement,
+    element: {
+      currentTime: 0, duration: 600, play: vi.fn(async () => {}), pause: vi.fn(),
+    } as unknown as HTMLAudioElement,
     source: node() as unknown as MediaElementAudioSourceNode,
     gain: node() as unknown as GainNode,
     dispose: vi.fn(),
@@ -31,6 +33,9 @@ function prepared(): PreparedMusic {
 const state = (id = "tta_camp"): AudioState => ({
   enabled: true, v: 1, now: 105,
   music: { id, title: id, layer: "music", url: `/api/audio/${id}`, gain_db: -3, since: 35 },
+});
+const menu = (id = "menu_edge_of_the_world"): AudioTrack => ({
+  id, title: "Edge of the World", layer: "music", url: `/api/menu-music/file?v=${id}`, gain_db: 0,
 });
 
 describe("воспроизведение музыки сцены", () => {
@@ -136,5 +141,102 @@ describe("воспроизведение музыки сцены", () => {
     mixer.stop();
     expect(second.dispose).toHaveBeenCalledOnce();
     expect(third.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("громкость меню не зависит от игровых master/mute/music настроек", async () => {
+    const music = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(music);
+    mixer.setPrefs({ master: 0, music: 0, muted: true });
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("menu");
+    expect(music.gain.gain.setTargetAtTime).toHaveBeenCalledWith(0.2, 10, expect.any(Number));
+    expect(mixer.menuStatus).toBe("playing");
+  });
+
+  it("переходы внутри кабинета не перезапускают тему, а возврат сохраняет позицию", async () => {
+    const first = prepared(), scene = prepared(), secondMenu = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(first).mockResolvedValueOnce(scene).mockResolvedValueOnce(secondMenu);
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("menu");
+    first.element.currentTime = 37;
+    await mixer.setSurface("menu");
+    expect(prepareMusic).toHaveBeenCalledOnce();
+    await mixer.apply(state());
+    await mixer.setSurface("scene");
+    expect(first.gain.gain.setTargetAtTime).toHaveBeenCalledWith(0, 10, 0.5 / 3);
+    await mixer.setSurface("menu");
+    expect(secondMenu.element.currentTime).toBe(37);
+  });
+
+  it("отключённая сцена не подменяется темой меню", async () => {
+    const music = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(music);
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("scene");
+    await mixer.apply({ ...state(), enabled: false, music: null });
+    expect(prepareMusic).not.toHaveBeenCalled();
+    expect(mixer.music).toBeNull();
+  });
+
+  it("скрывает меню и возобновляет его с сохранённой позиции", async () => {
+    const first = prepared(), second = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("menu");
+    first.element.currentTime = 19;
+    await mixer.setDocumentVisible(false);
+    expect(first.gain.gain.setTargetAtTime).toHaveBeenCalledWith(0, 10, 0.15 / 3);
+    expect(mixer.menuStatus).toBe("paused");
+    await mixer.setDocumentVisible(true);
+    expect(second.element.currentTime).toBe(19);
+  });
+
+  it("устаревшая загрузка не запускается после ухода с поверхности", async () => {
+    let resolve!: (music: PreparedMusic) => void;
+    vi.mocked(prepareMusic).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    const pending = mixer.setSurface("menu");
+    await mixer.setSurface("silent");
+    resolve(prepared());
+    await pending;
+    expect(vi.mocked(prepareMusic).mock.results[0].type).toBe("return");
+    expect(mixer.menuStatus).not.toBe("playing");
+  });
+
+  it("после отказа autoplay сохраняет цель и повторяет запуск", async () => {
+    const music = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(music);
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("menu");
+    expect(mixer.menuStatus).toBe("locked");
+    await mixer.unlock();
+    expect(mixer.menuStatus).toBe("playing");
+  });
+
+  it("clearScene сохраняет разблокировку и тему, stop освобождает всё", async () => {
+    const music = prepared();
+    vi.mocked(prepareMusic).mockResolvedValueOnce(music);
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    await mixer.setSurface("menu");
+    mixer.clearScene();
+    expect(mixer.unlocked).toBe(true);
+    expect(mixer.menuStatus).toBe("playing");
+    mixer.stop();
+    expect(mixer.unlocked).toBe(false);
+    expect(music.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("эффекты на menu и silent не звучат", async () => {
+    await mixer.unlock();
+    await mixer.setSurface("menu");
+    await expect(mixer.cue([state().music!])).resolves.toBeUndefined();
+    await mixer.setSurface("silent");
+    await expect(mixer.cue([state().music!])).resolves.toBeUndefined();
   });
 });
