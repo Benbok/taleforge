@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import adventure, reach, sketch
+from app.core.map_projection import location_plan
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
 from app.core.object_policy import concealed, revealed_to
@@ -397,6 +398,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         projected_sketch["placement_rev"] = int((here.state or {}).get("placement_rev") or 0)
     linked = sketch.linked_entity_ids(projected_sketch)
     scene_view = [token for token in scene_view if token["id"] not in linked]
+    location_map = await location_plan(session, hero if not master else None, {e.id: e for e in ents}, here_id)
     return {
         "book": book,
         "sketch": projected_sketch,
@@ -418,4 +420,5 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         "places": out_places,
         "links": links,
         "bearings": BEARING_NAMES,
+        "location_map": location_map,
     }

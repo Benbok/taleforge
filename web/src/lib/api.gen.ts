@@ -4325,7 +4325,7 @@ export interface components {
              * Meaning
              * @enum {string}
              */
-            meaning: "wall" | "field" | "road" | "water" | "bridge";
+            meaning: "obstacle" | "continuation" | "boundary";
             /**
              * Side
              * @enum {string}
@@ -4440,7 +4440,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "road" | "stream" | "bridge" | "field";
+            kind: "road" | "path" | "stream" | "bridge";
         };
         /** MapState */
         MapState: {

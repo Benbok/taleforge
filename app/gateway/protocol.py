@@ -487,11 +487,11 @@ class MapSketchEdge(_Strict):
     side: Literal["n", "e", "s", "w"]
     start: int
     length: int
-    meaning: Literal["wall", "field", "road", "water", "bridge"]
+    meaning: Literal["obstacle", "continuation", "boundary"]
 
 
 class MapSketchTerrain(_Strict):
-    kind: Literal["road", "stream", "bridge", "field"]
+    kind: Literal["road", "path", "stream", "bridge"]
     cells: list[list[int]]
 
 

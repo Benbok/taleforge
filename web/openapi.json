@@ -6787,11 +6787,9 @@
      },
      "meaning": {
       "enum": [
-       "wall",
-       "field",
-       "road",
-       "water",
-       "bridge"
+       "obstacle",
+       "continuation",
+       "boundary"
       ],
       "title": "Meaning",
       "type": "string"
@@ -7082,9 +7080,9 @@
      "kind": {
       "enum": [
        "road",
+       "path",
        "stream",
-       "bridge",
-       "field"
+       "bridge"
       ],
       "title": "Kind",
       "type": "string"
