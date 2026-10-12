@@ -28,6 +28,7 @@ from app.tools import progress as _progress_tools  # noqa: F401 — опыт и 
 from app.tools import rest as _rest_tools  # noqa: F401 — отдых и умения с перезарядкой
 from app.tools import spells as _spell_tools  # noqa: F401 — сотворение заклинаний
 from app.tools.master import adjudication as _adjudication_tools  # noqa: F401
+from app.tools.narrative import tools as _narrative_tools  # noqa: F401
 from app.tools.registry import ToolContext
 
 # Кто ещё слушает события хода в этом процессе: например, таймер голосования за отдых (app/gateway/rest.py)
