@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../lib/api";
-import { ApplicationAudioCoordinator, audioSurfaceFor } from "./applicationAudioCoordinator";
+import { ApplicationAudioCoordinator, audioSurfaceFor, installVisibilityListener } from "./applicationAudioCoordinator";
 
 vi.mock("../lib/api", () => ({ api: vi.fn() }));
 
@@ -72,5 +72,29 @@ describe("поверхность звука приложения", () => {
     await pending;
     expect(m.stop).toHaveBeenCalledOnce();
     expect(m.setMenuMusic).not.toHaveBeenCalled();
+  });
+
+  it("передаёт скрытие вкладки только микшеру меню", () => {
+    const m = { setDocumentVisible: vi.fn() };
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    const remove = installVisibilityListener(m);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(m.setDocumentVisible).toHaveBeenCalledWith(false);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(m.setDocumentVisible).toHaveBeenLastCalledWith(true);
+    remove();
+  });
+
+  it("не применяет устаревшие настройки после более нового reconcile", async () => {
+    vi.mocked(api).mockResolvedValue(theme);
+    const m = mixer();
+    const coordinator = new ApplicationAudioCoordinator(m);
+    const first = coordinator.reconcile("/", user("u1"), { enabled: true, volume: 0.2 });
+    const second = coordinator.reconcile("/", user("u1"), { enabled: true, volume: 0.8 });
+    await Promise.all([first, second]);
+    expect(m.setMenuMusic).toHaveBeenCalledOnce();
+    expect(api).toHaveBeenCalledOnce();
+    expect(m.setMenuMusic).toHaveBeenCalledWith(theme, { enabled: true, volume: 0.8 });
   });
 });

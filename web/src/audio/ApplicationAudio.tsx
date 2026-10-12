@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { ApplicationAudioCoordinator } from "./applicationAudioCoordinator";
+import { ApplicationAudioCoordinator, installVisibilityListener } from "./applicationAudioCoordinator";
 import { DEFAULT_MENU_MUSIC, useMenuMusicPreferences } from "./menuMusicPreferences";
 import { useSession } from "../stores/session";
+import { sound } from "../game/sound";
 
 /** Координатор звука без собственного UI: живёт внутри BrowserRouter один раз. */
 export default function ApplicationAudio() {
@@ -15,6 +16,8 @@ export default function ApplicationAudio() {
   useEffect(() => {
     void coordinator.current!.reconcile(location.pathname, user, prefs);
   }, [location.pathname, user, prefs]);
+
+  useEffect(() => installVisibilityListener(sound), []);
 
   useEffect(() => () => { void coordinator.current?.reconcile("/", null, DEFAULT_MENU_MUSIC); }, []);
   return null;

@@ -239,4 +239,54 @@ describe("воспроизведение музыки сцены", () => {
     await mixer.setSurface("silent");
     await expect(mixer.cue([state().music!])).resolves.toBeUndefined();
   });
+
+  it("очистка menu metadata не отменяет начатую загрузку сцены", async () => {
+    let resolve!: (music: PreparedMusic) => void;
+    vi.mocked(prepareMusic).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await mixer.unlock();
+    const scene = mixer.apply(state());
+    await Promise.resolve();
+    const pending = mixer.setMenuMusic(null, { enabled: true, volume: 0.2 });
+    resolve(prepared());
+    await Promise.all([scene, pending]);
+    expect(mixer.music?.id).toBe("tta_camp");
+  });
+
+  it("clearScene не оставляет загрузку меню в состоянии loading", async () => {
+    let resolve!: (music: PreparedMusic) => void;
+    vi.mocked(prepareMusic).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await mixer.unlock();
+    await mixer.setMenuMusic(menu(), { enabled: true, volume: 0.2 });
+    const pending = mixer.setSurface("menu");
+    await Promise.resolve();
+    mixer.clearScene();
+    resolve(prepared());
+    await pending;
+    expect(mixer.menuStatus).toBe("playing");
+  });
+
+  it("вычисляет позицию сцены после завершения загрузки", async () => {
+    let resolve!: (music: PreparedMusic) => void;
+    vi.mocked(prepareMusic).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await mixer.apply(state());
+    const pending = mixer.unlock();
+    for (let i = 0; i < 5 && !resolve; i++) await Promise.resolve();
+    vi.setSystemTime(100_012_000);
+    const music = prepared();
+    resolve(music);
+    await pending;
+    expect(music.element.currentTime).toBe(382);
+  });
+
+  it("не запускает вторую загрузку для одинакового pending состояния сцены", async () => {
+    let resolve!: (music: PreparedMusic) => void;
+    vi.mocked(prepareMusic).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await mixer.unlock();
+    const first = mixer.apply(state());
+    await Promise.resolve();
+    const second = mixer.apply(state());
+    resolve(prepared());
+    await Promise.all([first, second]);
+    expect(prepareMusic).toHaveBeenCalledOnce();
+  });
 });

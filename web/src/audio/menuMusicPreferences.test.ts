@@ -74,4 +74,43 @@ describe("сохраняемые настройки темы меню", () => {
     expect(useMenuMusicPreferences.getState().userId).toBe("u2");
     expect(useMenuMusicPreferences.getState().prefs).toEqual({ enabled: false, volume: 0.5 });
   });
+
+  it("после смены аккаунта дописывает pending PATCH после старого запроса", async () => {
+    let resolve!: (v: { enabled: boolean; volume: number }) => void;
+    vi.mocked(api)
+      .mockImplementationOnce(() => new Promise(r => { resolve = r; }))
+      .mockResolvedValueOnce({ enabled: false, volume: 0.6 });
+    useMenuMusicPreferences.getState().bindUser(user("u1"));
+    useMenuMusicPreferences.getState().update({ volume: 0.9 });
+    await vi.advanceTimersByTimeAsync(250);
+    useMenuMusicPreferences.getState().bindUser(user("u2"));
+    useMenuMusicPreferences.getState().update({ volume: 0.6, enabled: false });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(api).toHaveBeenCalledOnce();
+    resolve({ enabled: true, volume: 0.9 });
+    await Promise.resolve();
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(api).toHaveBeenLastCalledWith("/api/me/menu-music", {
+      method: "PATCH", body: { volume: 0.6, enabled: false },
+    });
+  });
+
+  it("после ошибки первого PATCH повторно сохраняет остальные локальные поля", async () => {
+    vi.mocked(api)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ enabled: false, volume: 0.2 })
+      .mockResolvedValueOnce({ enabled: false, volume: 0.8 });
+    useMenuMusicPreferences.getState().bindUser(user("u1"));
+    useMenuMusicPreferences.getState().update({ volume: 0.8 });
+    await vi.advanceTimersByTimeAsync(250);
+    await Promise.resolve();
+    useMenuMusicPreferences.getState().update({ enabled: false });
+    await vi.advanceTimersByTimeAsync(250);
+    await Promise.resolve();
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(api).toHaveBeenLastCalledWith("/api/me/menu-music", {
+      method: "PATCH", body: { volume: 0.8, enabled: false },
+    });
+    expect(useMenuMusicPreferences.getState().saveState).toBe("error");
+  });
 });

@@ -251,12 +251,15 @@ export class SoundMixer {
   }
 
   async setMenuMusic(track: AudioTrack | null, prefs: MenuMusicPreferences): Promise<void> {
+    const affectsMenuPlayback = this.surface === "menu" || this.voice?.kind === "menu";
     this.menuTrack = track;
     this.menuPrefs = { enabled: prefs.enabled, volume: Math.max(0, Math.min(1, prefs.volume)) };
-    this.targetRevision++;
-    this.musicLoad?.abort();
-    this.musicLoad = null;
-    this.starting = null;
+    if (affectsMenuPlayback) {
+      this.targetRevision++;
+      this.musicLoad?.abort();
+      this.musicLoad = null;
+      this.starting = null;
+    }
     this._menuError = null;
     if (!track || !this.menuPrefs.enabled || this.menuPrefs.volume <= 0) this._menuStatus = "disabled";
     else if (!this.unlocked) this._menuStatus = "locked";
@@ -334,11 +337,13 @@ export class SoundMixer {
       this.voice.track = want;
       return;
     }
-    if (this.voice?.kind === "menu") await this.fadeOut(SURFACE_FADE);
+    const fromMenu = this.voice?.kind === "menu";
+    if (fromMenu) await this.fadeOut(SURFACE_FADE);
     if (this.starting === want.id) return;
     try {
       await this.start(want, "scene", want.level ?? 0.6,
-        Date.now() / 1000 + this.skew - (want.since ?? 0), FADE, this.targetRevision);
+        () => Date.now() / 1000 + this.skew - (want.since ?? 0),
+        fromMenu ? SURFACE_FADE : FADE, this.targetRevision);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) {
         this.report(`Звук: не играет «${want.title}»: ${e instanceof Error ? e.message : String(e)}`);
@@ -349,8 +354,12 @@ export class SoundMixer {
   /** Новое состояние от сервера. Пока звук не разблокирован нажатием, только запоминаем его. */
   async apply(state: AudioState): Promise<void> {
     this.skew = state.now - Date.now() / 1000;
+    const samePendingScene = this.surface === "scene" && this.unlocked
+      && state.enabled && this.state?.enabled
+      && this.starting === state.music?.id && this.state?.music?.id === state.music?.id;
     this.state = state;
     this.changed();
+    if (samePendingScene) return;
     this.targetRevision++;
     if (!this.unlocked || this.surface !== "scene") return;
     this.musicLoad?.abort();
@@ -418,7 +427,7 @@ export class SoundMixer {
     track: AudioTrack,
     kind: "scene" | "menu",
     level: number,
-    offset: number,
+    offset: number | (() => number),
     fade: number,
     revision: number,
   ) {
@@ -450,9 +459,8 @@ export class SoundMixer {
       const now = ctx.currentTime;
       music.gain.gain.setValueAtTime(0, now);
       music.gain.connect(kind === "menu" ? this.menuBus! : this.buses.music!);
-      music.element.currentTime = kind === "menu"
-        ? loopOffset(offset, music.element.duration)
-        : loopOffset(offset, music.element.duration);
+      const playbackOffset = typeof offset === "function" ? offset() : offset;
+      music.element.currentTime = loopOffset(playbackOffset, music.element.duration);
       await music.element.play();
       controller.signal.throwIfAborted();
       if (this.ctx !== ctx || this.targetRevision !== revision ||
@@ -498,10 +506,12 @@ export class SoundMixer {
 
   /** Уход со сцены: состояние и эффекты очищаются, контекст приложения остаётся разблокированным. */
   clearScene() {
-    this.targetRevision++;
-    this.musicLoad?.abort();
-    this.musicLoad = null;
-    this.starting = null;
+    if (this.surface === "scene") {
+      this.targetRevision++;
+      this.musicLoad?.abort();
+      this.musicLoad = null;
+      this.starting = null;
+    }
     if (this.voice?.kind === "scene") void this.fadeOut(QUIET_FADE);
     this.state = null;
     this.skew = 0;

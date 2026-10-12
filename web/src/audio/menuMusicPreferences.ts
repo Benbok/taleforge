@@ -38,18 +38,32 @@ async function flush(get: () => MenuMusicState, set: (value: Partial<MenuMusicSt
   const body = pending;
   pending = null;
   inFlight = true;
+  let continuePending = true;
   set({ saveState: "saving" });
   try {
     const response = await api<MenuMusicPreferences>("/api/me/menu-music", { method: "PATCH", body });
     if (mine === generation) {
+      const acknowledged = Object.entries(body).every(([key, value]) => response?.[key as keyof MenuMusicPreferences] === value);
+      if (!acknowledged) {
+        pending = { ...body, ...(pending ?? {}) };
+        continuePending = false;
+        set({ saveState: "error" });
+        return;
+      }
       saved = { ...saved, ...response };
+      const remaining = patchFrom(get().prefs);
+      if (Object.keys(remaining).length > 0) pending = { ...(pending ?? {}), ...remaining };
       set({ saveState: pending ? "saving" : "saved" });
     }
   } catch {
-    if (mine === generation) set({ saveState: "error" });
+    if (mine === generation) {
+      pending = { ...body, ...(pending ?? {}) };
+      continuePending = false;
+      set({ saveState: "error" });
+    }
   } finally {
     inFlight = false;
-    if (mine === generation && pending) void flush(get, set);
+    if (continuePending && pending) void flush(get, set);
   }
 }
 
