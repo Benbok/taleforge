@@ -32,6 +32,7 @@ def carriers(plan: dict | None) -> dict[str, dict[str, Any]]:
                     "at": c.get("at"),
                     "text": c.get("text"),
                     "carrier": c["carrier"],
+                    "used_fact_refs": list(c.get("used_fact_refs") or []),
                 }
     return out
 
@@ -51,7 +52,12 @@ def _target(plan: dict, at: str | None) -> str | None:
 
 
 def snapshot(data: dict[str, Any]) -> dict[str, Any]:
-    return {"reveal_id": data["reveal_id"], "text": data.get("text"), "carrier": dict(data["carrier"])}
+    return {
+        "reveal_id": data["reveal_id"],
+        "text": data.get("text"),
+        "carrier": dict(data["carrier"]),
+        "used_fact_refs": list(data.get("used_fact_refs") or []),
+    }
 
 
 async def sync_bindings(session: AsyncSession, campaign_id: str, plan: dict | None) -> None:

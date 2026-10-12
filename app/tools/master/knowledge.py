@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.core.object_policy import observe
 from app.db.models import Knowledge, KnownFact, now
@@ -95,6 +96,13 @@ async def learn_fact(ctx: ToolContext, a: FactArgs) -> dict:
         ctx.session.add(row)
         if a.subject_id in w.entities and await ctx.session.get(Knowledge, (ch.id, a.subject_id)) is None:
             ctx.session.add(Knowledge(character_id=ch.id, entity_id=a.subject_id, level=0))  # теперь он о нём знает
+        from app.db.models import NarrativeFact
+        nf_stmt = select(NarrativeFact).where(
+            NarrativeFact.campaign_id == ctx.campaign.id,
+            NarrativeFact.subject_id == a.subject_id,
+        )
+        for nf in (await ctx.session.scalars(nf_stmt)).all():
+            nf.freedom = "committed"
         await ctx.session.flush()
         await ctx.record(
             "learn_fact",

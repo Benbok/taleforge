@@ -125,7 +125,15 @@ async def plot_reveal(ctx: ToolContext, a: RevealPlotArgs) -> dict:
         r = plot.mark_revealed(p, a.reveal_id, a.how)
         return {"reveal": r["id"], "truth": r.get("truth"), "leads_to": r.get("node_id")}
 
-    return await _change(ctx, "plot_reveal", fn, payload={"reveal_id": a.reveal_id, "how": a.how})
+    res = await _change(ctx, "plot_reveal", fn, payload={"reveal_id": a.reveal_id, "how": a.how})
+    from app.db.models import NarrativeFact
+    nf_stmt = select(NarrativeFact).where(
+        NarrativeFact.campaign_id == ctx.campaign.id,
+        NarrativeFact.subject_id == a.reveal_id,
+    )
+    for nf in (await ctx.session.scalars(nf_stmt)).all():
+        nf.freedom = "committed"
+    return res
 
 
 class EndActArgs(BaseModel):
