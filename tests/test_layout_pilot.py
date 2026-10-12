@@ -3,7 +3,7 @@
 
 from app.core import sketch
 from app.core.layout import store
-from app.core.layout.contracts import terrain_cells
+from app.core.layout.contracts import rect_cells, terrain_cells
 from app.db.models import Character, Entity, WorldGenerationState
 from tests.game import run
 from tests.test_layout_passages import _built
@@ -13,6 +13,10 @@ from tests.test_master import rows
 from tests.test_world_generation import _fast_retry  # noqa: F401 — фикстура
 
 WGS = WorldGenerationState
+
+
+def _cells(sk, kind):
+    return rect_cells([c for t in sk["terrain"] if t["kind"] == kind for c in t["cells"]])
 
 
 def test_pilot_field_temple_and_back(client, admin, settings):
@@ -28,12 +32,18 @@ def test_pilot_field_temple_and_back(client, admin, settings):
         out = _go(client, head, cid, ref)
         assert out["ok"] and out["moved"], out
     assert run(settings, lambda s: s.get(Character, hid)).location_id == ids["chapel"]
+    kept = ("road", "narthex", "nave", "chapel")
+    sketches_before = {k: run(settings, lambda s, k=k: s.get(Entity, ids[k])).state["sketch"] for k in kept}
     layouts_before = len(rows(settings, WGS))
     ids_before = dict(ids)
 
     for ref in ("p_chapel", "p_nave", "p_narthex", "p_brook"):
         assert _go(client, head, cid, ref)["moved"]
     assert run(settings, lambda s: s.get(Character, hid)).location_id == ids["brook"]
+    assert _go(client, head, cid, "p_brook")["moved"]  # и обратно через ручей на дорогу
+    assert run(settings, lambda s: s.get(Character, hid)).location_id == ids["road"]
+    for k in kept:  # возвращение не перестраивает эскизы
+        assert run(settings, lambda s, k=k: s.get(Entity, ids[k])).state["sketch"] == sketches_before[k], k
     assert len(rows(settings, WGS)) == layouts_before  # возвращение не создаёт новых подготовок
     root = run(settings, lambda s: s.get(Entity, temple))
     assert store.area_ids(root) == ids_before
@@ -43,6 +53,11 @@ def test_pilot_field_temple_and_back(client, admin, settings):
     assert road["environment"] == "outdoor" and not road["walls"] and "mask" not in road
     meanings = {(g["side"], g["meaning"]) for g in road["edges"]}
     assert ("e", "continuation") in meanings and ("w", "boundary") in meanings
+    for kind, rows_expected in (("road", {3, 4}), ("stream", {7})):
+        east = {r for c, r in _cells(road, kind) if c == 11}
+        west = {r for c, r in _cells(brook, kind) if c == 0}
+        assert east == west == rows_expected, (kind, east, west)
+    assert ("w", "continuation") in {(g["side"], g["meaning"]) for g in brook["edges"]}
     bp = store.blueprint_of(root)
     assert {(11, 3), (11, 4)} <= terrain_cells(bp.area("road"), "road")
     assert {(0, 3), (0, 4)} <= terrain_cells(bp.area("brook"), "road")
