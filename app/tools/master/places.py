@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.core import adventure, audio, combat, economy, sketch
 from app.core import positions as grid
+from app.core.map_memory import observe_area
 from app.core.object_policy import observe
 from app.core.positions import Pos, active_areas, areas_at, distance, hero_positions, inside, pos_of
 from app.core.world import PLAYABLE
@@ -304,7 +305,7 @@ def _clear_positions(ctx: ToolContext, hero_ids: set[str], inverse: list) -> Non
     )
 
 
-def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[Character]:
+async def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[Character]:
     """Сцена переходит в новое место вместе с героями, которые стояли в старом: место отмечается посещённым,
     а старое и новое связываются на карте, если ещё не связаны. Возвращает героев, что пришли со сценой."""
     old_id = ctx.world.scene.location_id
@@ -312,6 +313,7 @@ def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[Charact
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     going = [c for c in party if (c.location_id or old_id) == old_id]
     if old is not None and old.id != loc.id:
+        await observe_area(ctx, old.id, [c.id for c in going], inverse, explicit=True)
         _visit(ctx, old, going, inverse)
         _connect(ctx, old, loc, inverse)
     for c in going:
@@ -322,13 +324,14 @@ def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[Charact
     _reset_positions(ctx, inverse)
     ctx.world.scene.location_id = loc.id
     _visit(ctx, loc, going, inverse)
+    await observe_area(ctx, loc.id, [c.id for c in going], inverse, explicit=True)
     ctx.signals.add("map.changed")
     return going
 
 
 async def enter_current(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
     """Место становится текущей сценой. Пришли герои — это вход, как при ``move``: место готовится к описанию."""
-    if not relocate_scene(ctx, loc, inverse):
+    if not await relocate_scene(ctx, loc, inverse):
         return {}
     return await request_preparation(ctx, loc, inverse)
 
@@ -1117,6 +1120,16 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
     """Герои переходят в место ``loc``: посещения и пути на карте, вход в бой и выход из него, сцена — за отрядом."""
     scene_loc = ctx.world.scene.location_id
     moved = []
+    source_ids = {ch.location_id or scene_loc for ch in heroes}
+    for source_id in source_ids:
+        if source_id and source_id != loc.id:
+            await observe_area(
+                ctx,
+                source_id,
+                [ch.id for ch in heroes if (ch.location_id or scene_loc) == source_id],
+                inverse,
+                explicit=True,
+            )
     for ch in heroes:
         was = ctx.world.entities.get(ch.location_id or scene_loc or "")
         if was is not None and was.id != loc.id:
@@ -1126,6 +1139,7 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
         ch.location_id = loc.id
         moved.append(ch)
     _visit(ctx, loc, moved, inverse)
+    await observe_area(ctx, loc.id, [ch.id for ch in moved], inverse, explicit=True)
     await observe(ctx, loc.id, inverse)  # вошедшие запоминают видимую обстановку (спецификация §8.2)
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if not all(c.location_id == loc.id for c in party):

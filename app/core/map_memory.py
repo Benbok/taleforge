@@ -39,9 +39,11 @@ def _clean_sketch(
     root_id = str((raw.get("blueprint") or {}).get("root_id") or root_id)
     exits: list[dict[str, Any]] = []
     for original in raw.get("exits") or []:
-        item = {key: copy.deepcopy(value) for key, value in original.items() if key in {
-            "name", "side", "at", "kind", "state", "width", "cells", "passage_ref"
-        }}
+        item = {
+            key: copy.deepcopy(value)
+            for key, value in original.items()
+            if key in {"name", "side", "at", "kind", "state", "width", "cells", "passage_ref"}
+        }
         ref = item.get("passage_ref")
         if ref and (root_id, str(ref)) not in discovered_passages:
             item.pop("to", None)
