@@ -112,12 +112,24 @@ async def apply_in_context(
             budgets_used={},
         )
 
+    op_subjects: list[str] = [s for g in proposal.grounds for s in g.subject_refs]
+    for op_item in proposal.operations:
+        if op_item.kind == "revise_draft_fact":
+            op_subjects.append(op_item.target_ref.subject_id)
+        elif op_item.kind == "add_campaign_fact":
+            op_subjects.append(op_item.fact.ref.subject_id)
+        elif op_item.kind == "develop_actor_role":
+            op_subjects.append(op_item.entity_id)
+        elif op_item.kind == "reveal_fact":
+            op_subjects.append(op_item.fact_ref.subject_id)
+
     # 3. Re-read snapshot & verify base / read_set
     snapshot = await load_snapshot(
         ctx,
         SnapshotRequest(
             source=proposal.source,
             evidence_refs=tuple(ev for g in proposal.grounds for ev in g.evidence_refs),
+            mutable_subject_refs=tuple(dict.fromkeys(op_subjects)),
         ),
         policy=policy,
     )

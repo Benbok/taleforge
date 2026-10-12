@@ -1,0 +1,269 @@
+"""Tests for draft fact revision rules and concurrency guards (Task 17)."""
+
+import asyncio
+from typing import Any
+
+import pytest
+
+from app.core.narrative.contracts import (
+    FactRef,
+    FactRevision,
+    FactState,
+    Ground,
+    SnapshotRef,
+)
+from app.core.narrative.facts import revise_draft
+from tests.narrative_helpers import fact
+
+
+def divergence_ground(**overrides: Any) -> Ground:
+    """Factory for divergence Ground for test scenarios."""
+    defaults: dict[str, Any] = {
+        "kind": "divergence",
+        "evidence_refs": (),
+        "confidence": "explicit",
+    }
+    defaults.update(overrides)
+    return Ground(**defaults)
+
+
+def test_unrevealed_materialized_secret_cannot_be_rewritten():
+    """Committed facts cannot be rewritten as drafts."""
+    old = fact(freedom="committed", audience=())
+    result = revise_draft(old, "другая истина", divergence_ground(), ())
+    assert result.violations == ("fact_committed",)
+    assert result.after is None
+
+
+def test_draft_fact_can_be_revised_successfully():
+    """Draft fact updates value and increments version when revision succeeds."""
+    old = fact(freedom="draft", value="первоначальный план")
+    result = revise_draft(old, "новый тайный план", divergence_ground(), ())
+    assert result.violations == ()
+    assert result.after is not None
+    assert result.after.value == "новый тайный план"
+    assert result.after.ref.version == old.ref.version + 1
+    assert result.after.freedom == "draft"
+
+
+def test_historical_fact_cannot_be_rewritten():
+    """Historical narrative facts cannot be altered by current draft revision."""
+    old = fact(freedom="draft", temporal_semantics="historical")
+    result = revise_draft(old, "другое прошлое", divergence_ground(), ())
+    assert "historical_fact_immutable" in result.violations
+    assert result.after is None
+
+
+def test_invalid_ground_rejects_draft_revision():
+    """Draft revision requires consequence, relationship, or divergence ground."""
+    old = fact(freedom="draft")
+    bad_ground = Ground(kind="world_time", evidence_refs=())
+    result = revise_draft(old, "новое", bad_ground, ())
+    assert "invalid_ground_for_draft_revision" in result.violations
+    assert result.after is None
+
+
+def test_revise_draft_fact_in_context(settings, client, admin):
+    """End-to-end: ReviseDraftFactOp updates draft fact in active database context."""
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        EvidenceRef,
+        NarrativePolicy,
+        ReadRef,
+        ReviseDraftFactOp,
+        VersionSet,
+    )
+    from app.db.models import Campaign, NarrativeFact
+    from app.db.session import make_sessionmaker
+    from app.rules.dice import Dice
+    from app.tools.narrative.executor import apply_in_context
+    from app.tools.runtime import open_context
+    from tests.game import import_base, party
+
+    import_base(settings)
+    c, _heads, hero = party(client, admin)
+    cid = c["id"]
+    maker = make_sessionmaker(client.app.state.engine)
+
+    async def _run():
+        snap_ref = SnapshotRef(kind="package", source_id="p1", typed_address="module:npc.scout:motivation")
+        f_ref = FactRef(
+            campaign_id=cid,
+            namespace="module",
+            subject_id="npc.scout",
+            key="motivation",
+            version=1,
+            snapshot_ref=snap_ref,
+        )
+
+        # 1. Insert draft fact
+        async with maker() as s:
+            f = NarrativeFact(
+                campaign_id=cid,
+                namespace="module",
+                subject_id="npc.scout",
+                key="motivation",
+                version=1,
+                kind="intent",
+                temporal_semantics="current_state",
+                freedom="draft",
+                value="Спасти деревню",
+                audience=["party"],
+                depends_on=[],
+                source_refs=[],
+                snapshot_ref={"kind": "package", "source_id": "p1", "typed_address": "module:npc.scout:motivation"},
+            )
+            s.add(f)
+            from app.db.narrative import ensure_state
+            st = await ensure_state(s, cid)
+            st.mode = "adaptive"
+            await s.commit()
+
+        # 2. Revise via proposal in context
+        async with maker() as s:
+            camp = await s.get(Campaign, cid)
+            ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
+            from app.tools.narrative.sources import bind_scene_sources
+            slots = await bind_scene_sources(ctx)
+            src = slots[0]
+
+            ev = await ctx.record("evidence", payload={"result": "scout_agreed", "subject_refs": ["npc.scout"]})
+
+            prop = AdaptationProposal(
+                schema_version=1,
+                proposal_id="prop_revise_1",
+                source=src,
+                base=VersionSet(
+                    world_revision=ctx.world.revision,
+                    plan_version=1,
+                    narrative_revision=1,
+                    policy_version=1,
+                ),
+                grounds=(
+                    Ground(
+                        kind="relationship",
+                        evidence_refs=(EvidenceRef(campaign_id=cid, kind="event", source_id=ev.id),),
+                        subject_refs=("npc.scout",),
+                    ),
+                ),
+                summary="Разведчик меняет мотив",
+                operations=(
+                    ReviseDraftFactOp(
+                        target_ref=f_ref,
+                        new_value="Увести жителей в горы",
+                    ),
+                ),
+            )
+            policy = NarrativePolicy(mode="adaptive")
+            res = await apply_in_context(ctx, prop, policy=policy)
+            assert res.status == "applied"
+            await s.commit()
+
+        # 3. Verify in database
+        async with maker() as s:
+            from sqlalchemy import select
+            fact_row = (await s.execute(select(NarrativeFact).where(
+                NarrativeFact.campaign_id == cid,
+                NarrativeFact.subject_id == "npc.scout",
+                NarrativeFact.key == "motivation",
+            ))).scalar_one()
+            assert fact_row.value == "Увести жителей в горы"
+            assert fact_row.version == 2
+            assert fact_row.freedom == "draft"
+
+    asyncio.run(_run())
+
+
+def test_revise_committed_fact_in_context_denied(settings, client, admin):
+    """Attempting to revise a committed fact in context is denied by policy."""
+    from app.core.narrative.contracts import (
+        AdaptationProposal,
+        EvidenceRef,
+        NarrativePolicy,
+        ReviseDraftFactOp,
+        VersionSet,
+    )
+    from app.db.models import Campaign, NarrativeFact
+    from app.db.session import make_sessionmaker
+    from app.rules.dice import Dice
+    from app.tools.narrative.executor import apply_in_context
+    from app.tools.runtime import open_context
+    from tests.game import import_base, party
+
+    import_base(settings)
+    c, _heads, hero = party(client, admin)
+    cid = c["id"]
+    maker = make_sessionmaker(client.app.state.engine)
+
+    async def _run():
+        snap_ref = SnapshotRef(kind="package", source_id="p1", typed_address="module:npc.boss:role")
+        f_ref = FactRef(
+            campaign_id=cid,
+            namespace="module",
+            subject_id="npc.boss",
+            key="role",
+            version=1,
+            snapshot_ref=snap_ref,
+        )
+
+        async with maker() as s:
+            f = NarrativeFact(
+                campaign_id=cid,
+                namespace="module",
+                subject_id="npc.boss",
+                key="role",
+                version=1,
+                kind="truth",
+                temporal_semantics="current_state",
+                freedom="committed",  # already committed!
+                value="Глава стражи",
+                audience=["party"],
+                depends_on=[],
+                source_refs=[],
+                snapshot_ref={"kind": "package", "source_id": "p1", "typed_address": "module:npc.boss:role"},
+            )
+            s.add(f)
+            from app.db.narrative import ensure_state
+            st = await ensure_state(s, cid)
+            st.mode = "adaptive"
+            await s.commit()
+
+        async with maker() as s:
+            camp = await s.get(Campaign, cid)
+            ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
+            from app.tools.narrative.sources import bind_scene_sources
+            slots = await bind_scene_sources(ctx)
+            src = slots[0]
+
+            ev = await ctx.record("evidence", payload={"result": "boss_seen"})
+
+            prop = AdaptationProposal(
+                schema_version=1,
+                proposal_id="prop_revise_fail",
+                source=src,
+                base=VersionSet(
+                    world_revision=ctx.world.revision,
+                    plan_version=1,
+                    narrative_revision=1,
+                    policy_version=1,
+                ),
+                grounds=(
+                    Ground(
+                        kind="relationship",
+                        evidence_refs=(EvidenceRef(campaign_id=cid, kind="event", source_id=ev.id),),
+                    ),
+                ),
+                summary="Попытка переписать закреплённую роль",
+                operations=(
+                    ReviseDraftFactOp(
+                        target_ref=f_ref,
+                        new_value="Предатель",
+                    ),
+                ),
+            )
+            policy = NarrativePolicy(mode="adaptive")
+            res = await apply_in_context(ctx, prop, policy=policy)
+            assert res.status == "denied"
+            assert res.reason_code == "fact_committed"
+
+    asyncio.run(_run())

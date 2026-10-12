@@ -39,6 +39,7 @@ ACTIVE_OPERATION_KINDS: frozenset[str] = frozenset(
     | {
         "introduce_actor",
         "settle_standing_response",
+        "revise_draft_fact",
     }
 )
 

@@ -240,6 +240,42 @@ def admit_adaptation(
                             read_set=snapshot.read_set,
                         )
 
+        elif op_item.kind == "revise_draft_fact":
+            target = op_item.target_ref
+            address = f"{target.namespace}:{target.subject_id}:{target.key}"
+            if snapshot.permissions.mutable_fact_addresses and address not in snapshot.permissions.mutable_fact_addresses:
+                return AdaptationAdmission(
+                    status="denied",
+                    reason_code="permission_denied",
+                    violations=(Violation(code="immutable_fact_address", target_ref=address),),
+                    read_set=snapshot.read_set,
+                )
+            matching_fact = next(
+                (
+                    f
+                    for f in snapshot.facts
+                    if f.ref.namespace == target.namespace
+                    and f.ref.subject_id == target.subject_id
+                    and f.ref.key == target.key
+                ),
+                None,
+            )
+            if matching_fact is not None:
+                if matching_fact.freedom == "committed":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="fact_committed",
+                        violations=(Violation(code="fact_committed", target_ref=address),),
+                        read_set=snapshot.read_set,
+                    )
+                if matching_fact.temporal_semantics == "historical":
+                    return AdaptationAdmission(
+                        status="denied",
+                        reason_code="historical_fact_immutable",
+                        violations=(Violation(code="historical_fact_immutable", target_ref=address),),
+                        read_set=snapshot.read_set,
+                    )
+
     # 4. Novelty & Budgets
     cost = novelty_cost(proposal.operations)
 
@@ -295,6 +331,11 @@ def admit_adaptation(
             if op_item.thread.id not in read_ref_ids:
                 read_refs.append(ReadRef(kind="thread", id=op_item.thread.id))
                 read_ref_ids.add(op_item.thread.id)
+        elif op_item.kind == "revise_draft_fact":
+            fact_id = f"{op_item.target_ref.namespace}:{op_item.target_ref.subject_id}:{op_item.target_ref.key}"
+            if fact_id not in read_ref_ids:
+                read_refs.append(ReadRef(kind="fact", id=fact_id, version=op_item.target_ref.version))
+                read_ref_ids.add(fact_id)
 
     return AdaptationAdmission(
         status="allowed",

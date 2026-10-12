@@ -6,7 +6,9 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.narrative.contracts import (
     FactRef,
+    FactRevision,
     FactState,
+    Ground,
 )
 
 
@@ -87,3 +89,34 @@ def seal_facts(
             deduped.append(r)
 
     return SealResult(refs=tuple(deduped), violations=())
+
+
+def revise_draft(
+    current: FactState,
+    new_value: str,
+    ground: Ground,
+    dependency_states: tuple[FactState, ...] = (),
+) -> FactRevision:
+    """Revise a draft narrative fact given grounds and dependencies."""
+    violations: list[str] = []
+
+    if current.freedom == "committed":
+        violations.append("fact_committed")
+
+    if current.temporal_semantics == "historical":
+        violations.append("historical_fact_immutable")
+
+    if ground.kind not in ("divergence", "relationship", "consequence"):
+        violations.append("invalid_ground_for_draft_revision")
+
+    if violations:
+        return FactRevision(before=current, after=None, violations=tuple(violations))
+
+    new_ref = current.ref.model_copy(update={"version": current.ref.version + 1})
+    after_state = current.model_copy(
+        update={
+            "ref": new_ref,
+            "value": new_value,
+        }
+    )
+    return FactRevision(before=current, after=after_state, violations=())

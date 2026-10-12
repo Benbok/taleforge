@@ -125,6 +125,14 @@ class FactState(NarrativeContractModel):
     depends_on: tuple[FactRef, ...] = ()
 
 
+class FactRevision(NarrativeContractModel):
+    """Result of attempting to revise a draft narrative fact."""
+
+    before: FactState
+    after: FactState | None = None
+    violations: tuple[str, ...] = ()
+
+
 class ReadRef(NarrativeContractModel):
     """Read-set dependency element checked during optimistic concurrency."""
 

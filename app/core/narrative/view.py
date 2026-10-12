@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
+from app.content.catalog import Entry
 from app.core.narrative.contracts import (
     FactRef,
     FactState,
@@ -147,3 +149,50 @@ def compose_view(
 ) -> CampaignNarrativeView:
     """Pure constructor building unified CampaignNarrativeView."""
     return CampaignNarrativeView(plan, facts, content_chain)
+
+
+def effective_module_entry(
+    base_entry: Entry,
+    view: CampaignNarrativeView | None,
+) -> Entry:
+    """Return an immutable Entry representation with narrative fact overrides applied without mutating base."""
+    if view is None:
+        return base_entry
+
+    data = copy.deepcopy(base_entry.data)
+    overridden = False
+
+    field_map: dict[str, list[str]] = {
+        "motivation": ["want", "motivation", "goal"],
+        "role": ["role"],
+        "relationship": ["relationship"],
+        "secret_truth": ["truth", "secret_truth"],
+        "situation_premise": ["premise", "situation_premise"],
+    }
+
+    for fact_key, target_fields in field_map.items():
+        for ns in ("module", "campaign", "plan"):
+            fact_state = view._facts_by_key.get((ns, base_entry.id, fact_key))
+            if fact_state is not None:
+                val = fact_state.value
+                matched = False
+                for fld in target_fields:
+                    if fld in data:
+                        data[fld] = val
+                        matched = True
+                        overridden = True
+                if not matched:
+                    data[target_fields[0]] = val
+                    overridden = True
+                break
+
+    if not overridden:
+        return base_entry
+
+    return Entry(
+        id=base_entry.id,
+        kind=base_entry.kind,
+        status=base_entry.status,
+        pack_id=base_entry.pack_id,
+        data=data,
+    )

@@ -41,6 +41,23 @@ def compile_operations(
                 )
             )
 
+        elif op.kind == "revise_draft_fact":
+            calls.append(
+                CompiledCall(
+                    tool="apply_narrative_fact",
+                    args={
+                        "campaign_id": op.target_ref.campaign_id,
+                        "namespace": op.target_ref.namespace,
+                        "subject_id": op.target_ref.subject_id,
+                        "key": op.target_ref.key,
+                        "value": op.new_value,
+                        "freedom": "draft",
+                    },
+                    call_key=call_key,
+                    metadata={"operation": op.kind},
+                )
+            )
+
         elif op.kind == "develop_actor_role":
             calls.append(
                 CompiledCall(
