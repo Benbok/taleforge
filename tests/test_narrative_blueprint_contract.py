@@ -2,8 +2,6 @@
 
 import asyncio
 
-import pytest
-
 from app.core.narrative.contracts import (
     FactRef,
     Ground,
@@ -36,14 +34,6 @@ def blueprint_commitment_scenario(settings, client, admin) -> dict:
     )
 
     snap_npc = SnapshotRef(kind="package", source_id="p1", typed_address="module:npc.guide:motivation")
-    npc_ref = FactRef(
-        campaign_id=cid,
-        namespace="module",
-        subject_id="npc.guide",
-        key="motivation",
-        version=1,
-        snapshot_ref=snap_npc,
-    )
 
     async def _run():
         # 1. Insert two draft facts
@@ -98,21 +88,31 @@ def blueprint_commitment_scenario(settings, client, admin) -> dict:
         # 3. Check freedoms and test revision
         async with maker() as s:
             from sqlalchemy import select
-            p_row = (await s.execute(select(NarrativeFact).where(
-                NarrativeFact.campaign_id == cid,
-                NarrativeFact.subject_id == "loc.passage",
-                NarrativeFact.key == "secret_truth",
-            ))).scalar_one()
 
-            n_row = (await s.execute(select(NarrativeFact).where(
-                NarrativeFact.campaign_id == cid,
-                NarrativeFact.subject_id == "npc.guide",
-                NarrativeFact.key == "motivation",
-            ))).scalar_one()
+            p_row = (
+                await s.execute(
+                    select(NarrativeFact).where(
+                        NarrativeFact.campaign_id == cid,
+                        NarrativeFact.subject_id == "loc.passage",
+                        NarrativeFact.key == "secret_truth",
+                    )
+                )
+            ).scalar_one()
+
+            n_row = (
+                await s.execute(
+                    select(NarrativeFact).where(
+                        NarrativeFact.campaign_id == cid,
+                        NarrativeFact.subject_id == "npc.guide",
+                        NarrativeFact.key == "motivation",
+                    )
+                )
+            ).scalar_one()
 
             passage_fact_state = p_row.as_state() if hasattr(p_row, "as_state") else None
             if passage_fact_state is None:
                 from app.core.narrative.contracts import FactState
+
                 passage_fact_state = FactState(
                     ref=passage_ref,
                     kind=p_row.kind,

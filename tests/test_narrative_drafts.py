@@ -3,12 +3,8 @@
 import asyncio
 from typing import Any
 
-import pytest
-
 from app.core.narrative.contracts import (
     FactRef,
-    FactRevision,
-    FactState,
     Ground,
     SnapshotRef,
 )
@@ -69,7 +65,6 @@ def test_revise_draft_fact_in_context(settings, client, admin):
         AdaptationProposal,
         EvidenceRef,
         NarrativePolicy,
-        ReadRef,
         ReviseDraftFactOp,
         VersionSet,
     )
@@ -115,6 +110,7 @@ def test_revise_draft_fact_in_context(settings, client, admin):
             )
             s.add(f)
             from app.db.narrative import ensure_state
+
             st = await ensure_state(s, cid)
             st.mode = "adaptive"
             await s.commit()
@@ -124,6 +120,7 @@ def test_revise_draft_fact_in_context(settings, client, admin):
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
             from app.tools.narrative.sources import bind_scene_sources
+
             slots = await bind_scene_sources(ctx)
             src = slots[0]
 
@@ -162,11 +159,16 @@ def test_revise_draft_fact_in_context(settings, client, admin):
         # 3. Verify in database
         async with maker() as s:
             from sqlalchemy import select
-            fact_row = (await s.execute(select(NarrativeFact).where(
-                NarrativeFact.campaign_id == cid,
-                NarrativeFact.subject_id == "npc.scout",
-                NarrativeFact.key == "motivation",
-            ))).scalar_one()
+
+            fact_row = (
+                await s.execute(
+                    select(NarrativeFact).where(
+                        NarrativeFact.campaign_id == cid,
+                        NarrativeFact.subject_id == "npc.scout",
+                        NarrativeFact.key == "motivation",
+                    )
+                )
+            ).scalar_one()
             assert fact_row.value == "Увести жителей в горы"
             assert fact_row.version == 2
             assert fact_row.freedom == "draft"
@@ -224,6 +226,7 @@ def test_revise_committed_fact_in_context_denied(settings, client, admin):
             )
             s.add(f)
             from app.db.narrative import ensure_state
+
             st = await ensure_state(s, cid)
             st.mode = "adaptive"
             await s.commit()
@@ -232,6 +235,7 @@ def test_revise_committed_fact_in_context_denied(settings, client, admin):
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
             from app.tools.narrative.sources import bind_scene_sources
+
             slots = await bind_scene_sources(ctx)
             src = slots[0]
 

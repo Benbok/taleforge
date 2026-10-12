@@ -13,7 +13,6 @@ from app.core.narrative.contracts import (
 from app.core.narrative.operations import (
     _OPERATION_SPECS,
     ACTIVE_OPERATION_KINDS,
-    GATE_A_ACTIVE_KINDS,
     novelty_cost,
     operation_specs,
 )
@@ -243,7 +242,8 @@ def admit_adaptation(
         elif op_item.kind == "revise_draft_fact":
             target = op_item.target_ref
             address = f"{target.namespace}:{target.subject_id}:{target.key}"
-            if snapshot.permissions.mutable_fact_addresses and address not in snapshot.permissions.mutable_fact_addresses:
+            perms = snapshot.permissions
+            if perms.mutable_fact_addresses and address not in perms.mutable_fact_addresses:
                 return AdaptationAdmission(
                     status="denied",
                     reason_code="permission_denied",

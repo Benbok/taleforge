@@ -5,8 +5,6 @@ import pytest
 from app.core.modules import parse_narrative_permissions, validate_used_fact_refs
 from app.core.narrative.contracts import (
     FactRef,
-    NarrativePermissions,
-    NarrativeSnapshot,
     SnapshotRef,
 )
 from tests.narrative_helpers import fact, snapshot
@@ -68,14 +66,16 @@ def test_invalid_fact_address_rejected():
 
 def test_validate_used_fact_refs():
     """validate_used_fact_refs filters and returns validated tuple of FactRefs."""
-    f1 = fact(ref=FactRef(
-        campaign_id="c1",
-        namespace="module",
-        subject_id="npc.scout",
-        key="motivation",
-        version=1,
-        snapshot_ref=SnapshotRef(kind="package", source_id="p1", typed_address="module:npc.scout:motivation"),
-    ))
+    f1 = fact(
+        ref=FactRef(
+            campaign_id="c1",
+            namespace="module",
+            subject_id="npc.scout",
+            key="motivation",
+            version=1,
+            snapshot_ref=SnapshotRef(kind="package", source_id="p1", typed_address="module:npc.scout:motivation"),
+        )
+    )
     snap = snapshot(facts=(f1,))
 
     valid_ref = f1.ref

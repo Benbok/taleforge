@@ -1,14 +1,10 @@
 """Tests for campaign fronts, clock thresholds, and dramatic questions (Task 19)."""
 
-import pytest
-
 from app.core.narrative.contracts import (
     FactRef,
     FrontRef,
-    FrontTransition,
     FrontView,
     Ground,
-    ReadyIntent,
 )
 from app.core.narrative.fronts import (
     advance_front,
@@ -127,7 +123,7 @@ def test_conversation_alone_does_not_stop_front_but_alliance_can():
 
 def test_secret_alliance_not_known_to_inquisition():
     """A secret pact fact carries restricted audience preventing leaks to inquisition."""
-    from app.core.narrative.contracts import FactRef, FactState, SnapshotRef
+    from app.core.narrative.contracts import FactState, SnapshotRef
 
     secret_alliance_fact = FactState(
         ref=FactRef(
@@ -136,7 +132,9 @@ def test_secret_alliance_not_known_to_inquisition():
             subject_id="npc.rebel_leader",
             key="relationship",
             version=1,
-            snapshot_ref=SnapshotRef(kind="event", source_id="evt-1", typed_address="campaign:npc.rebel_leader:relationship"),
+            snapshot_ref=SnapshotRef(
+                kind="event", source_id="evt-1", typed_address="campaign:npc.rebel_leader:relationship"
+            ),
         ),
         kind="truth",
         temporal_semantics="current_state",

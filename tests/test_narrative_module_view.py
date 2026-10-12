@@ -1,9 +1,6 @@
 """Tests for effective module view overrides and isolation (Task 17)."""
 
 import copy
-from typing import Any
-
-import pytest
 
 from app.content.catalog import Entry
 from app.core.narrative.contracts import (
@@ -12,11 +9,9 @@ from app.core.narrative.contracts import (
     SnapshotRef,
 )
 from app.core.narrative.view import (
-    CampaignNarrativeView,
     compose_view,
     effective_module_entry,
 )
-from tests.narrative_helpers import fact
 
 
 def _make_fact(
@@ -75,7 +70,8 @@ def test_effective_module_entry_overrides_narrative_properties():
     eff = effective_module_entry(base, view)
 
     # 1. Overrides applied
-    assert eff.data.get("want") == "Ищет союзников против нежити" or eff.data.get("motivation") == "Ищет союзников против нежити"
+    target_want = "Ищет союзников против нежити"
+    assert eff.data.get("want") == target_want or eff.data.get("motivation") == target_want
     assert eff.data.get("role") == "Тайный дипломат церкви"
 
     # 2. Mechanical attributes untouched
@@ -127,5 +123,7 @@ def test_namespace_adapters_all_standard_keys():
     view = compose_view(plan={}, facts=(f_premise, f_truth), content_chain=())
     eff = effective_module_entry(base, view)
 
-    assert eff.data.get("situation_premise") == "Осквернено культом" or eff.data.get("premise") == "Осквернено культом"
-    assert eff.data.get("secret_truth") == "В саркофаге спрятан ключ" or eff.data.get("truth") == "В саркофаге спрятан ключ"
+    target_premise = "Осквернено культом"
+    assert eff.data.get("situation_premise") == target_premise or eff.data.get("premise") == target_premise
+    target_truth = "В саркофаге спрятан ключ"
+    assert eff.data.get("secret_truth") == target_truth or eff.data.get("truth") == target_truth

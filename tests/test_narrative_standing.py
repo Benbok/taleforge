@@ -1,9 +1,6 @@
 """Tests for narrative standing response settlement and race handling (Task 16)."""
 
 import asyncio
-from typing import Any
-
-import pytest
 
 from app.core import standing as sd
 from app.core.narrative.contracts import (
@@ -11,13 +8,11 @@ from app.core.narrative.contracts import (
     EvidenceRef,
     Ground,
     NarrativePolicy,
-    NarrativeSnapshot,
-    Operation,
     SettleStandingResponseOp,
     VersionSet,
 )
 from app.core.narrative.policy import admit_adaptation
-from app.db.models import Campaign, Scene
+from app.db.models import Campaign
 from app.db.session import make_sessionmaker
 from app.rules.dice import Dice
 from app.tools.narrative.compiler import compile_operations
@@ -25,7 +20,7 @@ from app.tools.narrative.executor import apply_in_context
 from app.tools.registry import execute
 from app.tools.runtime import open_context
 from tests.game import import_base, party
-from tests.narrative_helpers import boundary, op, proposal, snapshot
+from tests.narrative_helpers import proposal, snapshot
 
 
 def test_settle_standing_response_admission_red():
@@ -75,17 +70,19 @@ def test_settle_standing_response_e2e_reconciliation(settings, client, admin):
 
             # 1. Manually inject a ready standing response
             b = sd.book(ctx.world.scene.state)
-            b["responses"].append({
-                "id": "resp_scout",
-                "subject_id": "faction.guards",
-                "name": "Стража города",
-                "mood": "gratitude",
-                "tier": 1,
-                "due_at": 0,
-                "status": "ready",
-                "reason": "спасли патруль",
-                "targets": [hero["id"]],
-            })
+            b["responses"].append(
+                {
+                    "id": "resp_scout",
+                    "subject_id": "faction.guards",
+                    "name": "Стража города",
+                    "mood": "gratitude",
+                    "tier": 1,
+                    "due_at": 0,
+                    "status": "ready",
+                    "reason": "спасли патруль",
+                    "targets": [hero["id"]],
+                }
+            )
             ctx.world.scene.state = {**(ctx.world.scene.state or {}), "standing": b}
             await s.commit()
 
@@ -94,6 +91,7 @@ def test_settle_standing_response_e2e_reconciliation(settings, client, admin):
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
             from app.db.narrative import ensure_state
+
             n_state = await ensure_state(s, cid)
             n_state.mode = "adaptive"
             await s.commit()
@@ -102,6 +100,7 @@ def test_settle_standing_response_e2e_reconciliation(settings, client, admin):
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
             from app.tools.narrative.sources import bind_scene_sources
+
             slots = await bind_scene_sources(ctx)
             src = slots[0]
 
@@ -167,17 +166,19 @@ def test_standing_race_normal_vs_narrative(settings, client, admin):
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
             b = sd.book(ctx.world.scene.state)
-            b["responses"].append({
-                "id": "resp_gift",
-                "subject_id": "faction.merchants",
-                "name": "Купеческая гильдия",
-                "mood": "gratitude",
-                "tier": 1,
-                "due_at": 0,
-                "status": "ready",
-                "reason": "спасли караван",
-                "targets": [hero["id"]],
-            })
+            b["responses"].append(
+                {
+                    "id": "resp_gift",
+                    "subject_id": "faction.merchants",
+                    "name": "Купеческая гильдия",
+                    "mood": "gratitude",
+                    "tier": 1,
+                    "due_at": 0,
+                    "status": "ready",
+                    "reason": "спасли караван",
+                    "targets": [hero["id"]],
+                }
+            )
             ctx.world.scene.state = {**(ctx.world.scene.state or {}), "standing": b}
             await s.commit()
 
@@ -197,6 +198,7 @@ def test_standing_race_normal_vs_narrative(settings, client, admin):
             assert resp["status"] == "done"
 
             from app.tools.narrative.sources import bind_scene_sources
+
             slots = await bind_scene_sources(ctx)
             src = slots[0]
 

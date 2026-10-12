@@ -14,16 +14,12 @@ from app.core.narrative.contracts import (
     AdaptationProposal,
     Ground,
     NarrativePolicy,
-    NarrativeSource,
-    Operation,
-    VersionSet,
 )
 from app.core.narrative.service import NarrativeService
-from app.db.models import AgentConfig, Campaign, CampaignPlan, CampaignSecret, NarrativeState, NarrativeWork, User
+from app.db.models import Campaign, CampaignPlan, CampaignSecret, NarrativeWork
 from app.db.narrative import ensure_state
 from app.db.narrative_jobs import SqlNarrativeJobs
 from app.db.session import make_sessionmaker
-from app.gateway.hub import MemoryBus
 from app.tools.narrative.runtime import RuntimeNarrativeApplier
 from app.tools.registry import ToolContext
 from tests.game import QueueDice, import_base, party
@@ -74,7 +70,7 @@ def plan_campaign(settings, client, admin):
 
     async def _setup():
         async with maker() as s:
-            camp = await s.get(Campaign, cid)
+            assert await s.get(Campaign, cid) is not None
             p = initialized_plan()
             row = CampaignPlan(campaign_id=cid, version=1, content=p, note="init")
             s.add(row)
@@ -216,6 +212,7 @@ def test_gate_b_alliance_boundary_to_future_preparation(settings, client, admin,
     async def _run():
         async with maker() as s:
             from app.db.models import Event
+
             ev = Event(
                 id="evt-alliance-1",
                 campaign_id=cid,
@@ -282,15 +279,13 @@ def test_gate_b_alliance_boundary_to_future_preparation(settings, client, admin,
                         ),
                     ),
                     summary="Адаптация маяка под заключённый союз",
-                    operations=(
-                        op("revise_future_situation", patch=patch),
-                    ),
+                    operations=(op("revise_future_situation", patch=patch),),
                     read_set=snapshot.read_set,
                 )
                 return proposal
 
-        from tests.narrative_helpers import FakeClock
         from app.tools.narrative.reader import DbNarrativeReader
+        from tests.narrative_helpers import FakeClock
 
         reader = DbNarrativeReader(maker, policy_provider=lambda: NarrativePolicy(mode="adaptive"))
         jobs = SqlNarrativeJobs(maker, max_author_slots=2)

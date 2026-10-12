@@ -15,30 +15,26 @@ import copy
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from app.agents.llm import ScriptedLLM
 from app.content.catalog import Entry
 from app.core.narrative.contracts import (
     FactRef,
     FactState,
-    FrontRef,
-    FrontView,
     Ground,
-    NarrativePermissions,
     SnapshotRef,
 )
 from app.core.narrative.facts import revise_draft
 from app.core.narrative.fronts import advance_front, iter_fronts, tick_fronts
 from app.core.narrative.view import effective_module_entry
-from app.db.models import Campaign, CampaignSecret, Entity, NarrativeFact
+from app.db.models import Campaign, CampaignSecret, NarrativeFact
 from app.db.session import make_sessionmaker
 from app.main import create_app
 from app.rules.dice import Dice
 from app.tools.narrative.commitments import record_commitments
 from app.tools.runtime import open_context
 from tests.conftest import login
-from tests.game import QueueDice, import_base, party, run
+from tests.game import QueueDice, import_base, party
 
 
 @pytest.fixture
@@ -168,7 +164,12 @@ def test_gate_c_adaptive_module_scenario(settings, game_client, admin_g):
             audience=("party", "creature.guard"),
         )
         div_ground = Ground(kind="divergence", evidence_refs=())
-        rev_res = revise_draft(guard_fact, "Защищать героев ценой репутации", div_ground, ("module:creature.guard:motivation",))
+        rev_res = revise_draft(
+            guard_fact,
+            "Защищать героев ценой репутации",
+            div_ground,
+            ("module:creature.guard:motivation",),
+        )
         assert not rev_res.violations
         assert rev_res.after is not None
 

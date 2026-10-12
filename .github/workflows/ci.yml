@@ -21,6 +21,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+      - run: python tools/eval_narrative.py --cases tests/fixtures/narrative_quality.json --mode scripted
       - run: python -m app.content validate content/dnd5e-srd --strict
 
   postgres:

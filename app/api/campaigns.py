@@ -148,6 +148,16 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             raise NotFound("пакет не импортирован")
         if pack.manifest.get("ruleset") != "dnd5e":
             raise Conflict("пакет для другой системы правил")
+
+    if "narrative" in body.model_fields_set and body.narrative:
+        effective_mode = body.narrative.mode
+    elif "narrative_mode" in body.model_fields_set and body.narrative_mode:
+        effective_mode = body.narrative_mode
+    elif body.module_id:
+        effective_mode = "strict"
+    else:
+        effective_mode = "adaptive"
+
     campaign = await svc.create_campaign(
         session,
         user,
@@ -165,9 +175,9 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
-            "narrative_mode": body.narrative.mode if body.narrative else body.narrative_mode,
+            "narrative_mode": effective_mode,
             "narrative": {
-                "mode": body.narrative.mode if body.narrative else body.narrative_mode,
+                "mode": effective_mode,
                 "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
             },
             "leveling": body.leveling,

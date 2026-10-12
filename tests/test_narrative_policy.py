@@ -2,6 +2,7 @@ from app.core.narrative.contracts import (
     EvidenceRecord,
     EvidenceRef,
     FactRef,
+    FrontRef,
     FuturePlanEdit,
     FutureSituationPatch,
     Ground,
@@ -180,11 +181,9 @@ def test_operation_not_available_for_gate_a():
         snap,
         operations=(
             op(
-                "introduce_actor",
-                actor_slot="slot_1",
-                template_id="tmpl",
-                place_ref="tavern",
-                public_description="A guard",
+                "advance_front",
+                front_ref=FrontRef(campaign_id="camp-1", source_kind="front", source_id="f1"),
+                steps=1,
             ),
         ),
     )

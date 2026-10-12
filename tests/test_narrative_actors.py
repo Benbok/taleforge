@@ -1,33 +1,23 @@
 """Tests for narrative actor introduction, slot deduplication, and local references (Task 16)."""
 
 import asyncio
-from typing import Any
 
 import pytest
-from sqlalchemy import select
 
 from app.core.narrative.contracts import (
-    AdaptationProposal,
-    AdaptationResult,
-    Ground,
     IntroduceActorOp,
     LocalRef,
     NarrativePolicy,
-    NarrativeSnapshot,
-    Operation,
-    VersionSet,
 )
 from app.core.narrative.operations import novelty_cost, resolve_local_ref
 from app.core.narrative.policy import admit_adaptation
-from app.db.models import Campaign, Entity, Scene
+from app.db.models import Campaign, Entity
 from app.db.session import make_sessionmaker
 from app.rules.dice import Dice
 from app.tools.master.entities import SpawnArgs, authorize_actor_slot, spawn_entity
-from app.tools.narrative.compiler import compile_operations
-from app.tools.narrative.executor import apply_in_context
 from app.tools.runtime import open_context
 from tests.game import import_base, party
-from tests.narrative_helpers import FakeClock, boundary, op, proposal, snapshot
+from tests.narrative_helpers import proposal, snapshot
 
 
 def test_resolve_local_ref():
@@ -83,8 +73,6 @@ def test_materializing_existing_slot_does_not_charge_novelty_twice(settings, cli
         async with maker() as s:
             camp = await s.get(Campaign, cid)
             ctx = await open_context(s, camp, Dice(), turn_id=None, seat_id=None)
-            place = ctx.world.scene.location_id or ctx.world.home() or "loc_tavern"
-
             # 1. Authorize and spawn first time with slot_scout
             args1 = SpawnArgs(
                 creature_template_id="creature.commoner",
@@ -97,7 +85,8 @@ def test_materializing_existing_slot_does_not_charge_novelty_twice(settings, cli
             assert adm1.allowed is True
             assert adm1.existing_entity_id is None
 
-            res1 = await spawn_entity(ctx, args1.model_copy(update={"actor_slot": "slot_scout"} if hasattr(args1, "actor_slot") else {}))
+            slot_update = {"actor_slot": "slot_scout"} if hasattr(args1, "actor_slot") else {}
+            res1 = await spawn_entity(ctx, args1.model_copy(update=slot_update))
             entity_id_1 = res1["spawned"][0]["id"]
             await s.commit()
 
@@ -118,16 +107,19 @@ def test_materializing_existing_slot_does_not_charge_novelty_twice(settings, cli
 
             # Count distinct entities with this slot
             ents = [e for e in ctx.world.entities.values() if (e.state or {}).get("actor_slot") == "slot_scout"]
-            cost = novelty_cost((
-                IntroduceActorOp(
-                    actor_slot="slot_scout",
-                    template_id="creature.commoner",
-                    place_ref="loc_scene",
-                    attitude="neutral",
-                    public_description="Рыжий дозорный",
-                    mode="materialize",
+            cost = novelty_cost(
+                (
+                    IntroduceActorOp(
+                        actor_slot="slot_scout",
+                        template_id="creature.commoner",
+                        place_ref="loc_scene",
+                        attitude="neutral",
+                        public_description="Рыжий дозорный",
+                        mode="materialize",
+                    ),
                 ),
-            ), existing_slots=frozenset({"slot_scout"}))
+                existing_slots=frozenset({"slot_scout"}),
+            )
 
             return {
                 "distinct_entities": len(ents),
