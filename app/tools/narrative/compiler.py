@@ -202,4 +202,19 @@ def compile_operations(
                 )
             )
 
+        elif op.kind == "advance_front":
+            calls.append(
+                CompiledCall(
+                    tool="apply_advance_front",
+                    args={
+                        "campaign_id": snapshot.source.campaign_id,
+                        "front_ref": op.front_ref.model_dump(),
+                        "steps": op.steps,
+                        "ground_ref": op.ground_ref,
+                    },
+                    call_key=call_key,
+                    metadata={"operation": op.kind},
+                )
+            )
+
     return tuple(calls)

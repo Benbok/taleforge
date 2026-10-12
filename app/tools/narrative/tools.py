@@ -188,13 +188,22 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
     secret = await ctx.session.get(CampaignSecret, args.campaign_id)
     plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
     antagonists = list(plan.get("antagonists") or [])
-    src_id = args.front_ref.get("source_id")
+    src_id = args.front_ref.get("source_id") or args.front_ref.get("id")
     found = False
     for ant in antagonists:
         if isinstance(ant, dict) and ant.get("id") == src_id:
             ant["goal"] = args.new_intent
             if args.status:
                 ant["status"] = args.status
+                if args.status == "stopped":
+                    ant["stopped"] = True
+            found = True
+            break
+    for fr in plan.get("fronts") or []:
+        if isinstance(fr, dict) and fr.get("id") == src_id:
+            fr["goal"] = args.new_intent
+            if args.status:
+                fr["status"] = args.status
             found = True
             break
     if found:
@@ -213,9 +222,57 @@ async def apply_existing_front_intent(ctx: ToolContext, args: ApplyFrontIntentAr
             "campaign_id": args.campaign_id,
             "front_id": src_id,
             "new_intent": args.new_intent,
+            "status": args.status,
         },
     )
     return {"ok": True, "front_id": src_id, "new_intent": args.new_intent, "event_id": ev.id}
+
+
+class ApplyAdvanceFrontArgs(BaseModel):
+    campaign_id: str
+    front_ref: dict[str, Any]
+    steps: int = 1
+    ground_ref: str | None = None
+
+
+@tool("apply_advance_front", "Advance antagonist or campaign front", ApplyAdvanceFrontArgs)
+async def apply_advance_front(ctx: ToolContext, args: ApplyAdvanceFrontArgs) -> dict[str, Any]:
+    secret = await ctx.session.get(CampaignSecret, args.campaign_id)
+    plan = copy.deepcopy(secret.plot) if (secret and secret.plot) else dict(ctx.campaign.settings.get("plan") or {})
+    src_id = args.front_ref.get("source_id") or args.front_ref.get("id")
+    found = False
+    for ant in plan.get("antagonists") or []:
+        if isinstance(ant, dict) and ant.get("id") == src_id:
+            steps = ant.get("threat") or []
+            cur = int(ant.get("threat_step") or 0)
+            ant["threat_step"] = min(len(steps), cur + args.steps)
+            found = True
+            break
+    for fr in plan.get("fronts") or []:
+        if isinstance(fr, dict) and fr.get("id") == src_id:
+            cur = int(fr.get("progress") or 0)
+            max_v = int(fr.get("maximum") or 6)
+            fr["progress"] = min(max_v, cur + args.steps)
+            found = True
+            break
+    if found:
+        if secret is not None:
+            secret.plot = copy.deepcopy(plan)
+        if hasattr(ctx.world, "plot"):
+            ctx.world.plot = copy.deepcopy(plan)
+        ctx.campaign.settings = {**ctx.campaign.settings, "plan": plan}
+        ctx.changed.add("plan")
+
+    ev = await ctx.record(
+        "apply_advance_front",
+        hidden=True,
+        payload={
+            "campaign_id": args.campaign_id,
+            "front_id": src_id,
+            "steps": args.steps,
+        },
+    )
+    return {"ok": True, "front_id": src_id, "steps": args.steps, "event_id": ev.id}
 
 
 class ApplyNarrativeActorSketchArgs(BaseModel):

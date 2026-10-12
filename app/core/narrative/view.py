@@ -158,6 +158,8 @@ def effective_module_entry(
     """Return an immutable Entry representation with narrative fact overrides applied without mutating base."""
     if view is None:
         return base_entry
+    if isinstance(view, (tuple, list)):
+        view = CampaignNarrativeView(plan={}, facts=tuple(view), content_chain=())
 
     data = copy.deepcopy(base_entry.data)
     overridden = False

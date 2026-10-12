@@ -149,6 +149,10 @@ class FrontRef(NarrativeContractModel):
     source_kind: Literal["antagonist", "front"]
     source_id: str
 
+    @property
+    def id(self) -> str:
+        return self.source_id
+
 
 class FrontView(NarrativeContractModel):
     """Consistent read-view of an active front or antagonist threat."""
@@ -164,6 +168,38 @@ class FrontView(NarrativeContractModel):
     clock_at: int = 0
     period: int = 86400
     milestones: tuple[str, ...] = ()
+
+
+class ReadyIntent(NarrativeContractModel):
+    """Intent triggered by front readiness or clock threshold."""
+
+    id: str
+    front_ref: FrontRef
+    kind: str
+    description: str
+    target_refs: tuple[str, ...] = ()
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class FrontTransition(NarrativeContractModel):
+    """Result of advancing a front or changing its state."""
+
+    front_ref: FrontRef
+    previous_progress: int
+    new_progress: int
+    previous_status: str
+    new_status: str
+    transition_key: str
+    violation: str | None = None
+    ready_intent: ReadyIntent | None = None
+
+
+class FrontTickResult(NarrativeContractModel):
+    """Result of processing time ticks across all campaign fronts."""
+
+    next_plan: dict[str, Any]
+    progress_events: tuple[dict[str, Any], ...] = ()
+    ready_intents: tuple[ReadyIntent, ...] = ()
 
 
 class ThreadState(NarrativeContractModel):

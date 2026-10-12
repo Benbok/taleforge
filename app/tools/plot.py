@@ -291,6 +291,41 @@ async def run_clock(ctx: ToolContext) -> list[str]:
         return []
     before = copy.deepcopy(secret.plot)
     new = copy.deepcopy(secret.plot)
+
+    mode = (ctx.campaign.settings or {}).get("narrative", {}).get("mode") or getattr(
+        ctx.campaign, "narrative_mode", "strict"
+    )
+
+    if mode == "adaptive":
+        from app.core.narrative.fronts import tick_fronts
+
+        tick_result = tick_fronts(
+            new,
+            int(ctx.world.scene.game_time),
+            length=length_of(ctx),
+            mode="adaptive",
+        )
+        new = tick_result.next_plan
+        if new == before:
+            return []
+        secret.plot = new
+        ctx.world.plot = copy.deepcopy(new)
+        notes = [
+            f"{ev.get('antagonist_id', ev.get('front_id'))} сделал шаг угрозы: {ev.get('step', ev.get('progress'))}"
+            for ev in tick_result.progress_events
+        ]
+        if tick_result.progress_events:
+            await ctx.record(
+                "threat_clock",
+                payload={
+                    "events": list(tick_result.progress_events),
+                    "ready_intents": [i.model_dump() for i in tick_result.ready_intents],
+                },
+                hidden=True,
+                inverse=[{"table": "campaign_secrets", "id": ctx.campaign.id, "field": "plot", "before": before}],
+            )
+        return notes
+
     ticks = plot.clock(new, int(ctx.world.scene.game_time), length_of(ctx))
     if new == before:
         return []
