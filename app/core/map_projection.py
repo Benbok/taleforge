@@ -10,8 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import map_memory
 from app.core.layout import store
-from app.core.layout.geometry import build_area
-from app.db.models import Character, Entity, MapMemory
+from app.db.models import Entity, MapMemory
 
 
 def _area_meta(root: Entity, place: Entity) -> tuple[dict[str, Any], Any] | None:
@@ -120,4 +119,3 @@ async def location_plan(
             )
         )
     return {"root_id": root.id, "here_id": here.id, "areas": areas}
-

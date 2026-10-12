@@ -24,9 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import adventure, reach, sketch
-from app.core.map_projection import location_plan
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_type, viewer_hero
+from app.core.map_projection import location_plan
 from app.core.object_policy import concealed, revealed_to
 from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.preparation import container_rows, container_view
