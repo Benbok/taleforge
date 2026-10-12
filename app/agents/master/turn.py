@@ -30,6 +30,7 @@ from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
+from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
 from app.gateway.events import envelope, publish_message
@@ -824,6 +825,7 @@ class TurnMixin:
             if m.kind == "roll" and heard is not None:
                 m.visible_to = heard
         # строка повествования резервируется один раз на ход; пока текста нет, её не видит никто
+        scene_context = await message_scene_context(s, c, place)
         msg = Message(
             campaign_id=cid,
             session_id=ctx.game_session_id,
@@ -832,7 +834,12 @@ class TurnMixin:
             kind="narration",
             visible_to=[],
             content="",
-            data={"pending": True},
+            data={
+                "pending": True,
+                "scene_context": scene_context,
+                "scope": "party" if heard is not None else "public",
+                **({"place": place} if place is not None else {}),
+            },
         )
         s.add(msg)
         await s.flush()

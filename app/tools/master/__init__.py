@@ -14,5 +14,6 @@ from app.tools.master import entities  # noqa: F401
 from app.tools.master import places  # noqa: F401
 from app.tools.master import knowledge  # noqa: F401
 from app.tools.master import scene  # noqa: F401
+from app.tools.master import presentation  # noqa: F401
 from app.tools.master import talk  # noqa: F401
 # isort: on

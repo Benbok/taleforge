@@ -7,6 +7,8 @@ import { Spinner } from "../components/ActionButton";
 import { useGame } from "../stores/game";
 import { useSession } from "../stores/session";
 import MessageView, { type Who } from "./MessageView";
+import ChronicleDivider from "./ChronicleDivider";
+import { chronicleEntries } from "./chronicle";
 
 export const STAGES: Record<string, string> = {
   listening: "Мастер слушает…",
@@ -48,10 +50,8 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
       .catch(() => undefined);
   }, [messages, types, campaignId, setTypes]);
 
-  const shown = messages.filter((m) =>
-    onlyStory ? m.kind === "narration" && !m.whisper : !(hideOoc && m.kind === "ooc"),
-  );
-  const last = shown.at(-1)?.seq;
+  const shown = chronicleEntries(messages, { onlyStory, hideOoc });
+  const last = shown.at(-1)?.message.seq;
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -121,10 +121,11 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
       </div>
       <div ref={box} onScroll={onScroll} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4" aria-live="polite">
         {shown.length === 0 && <p className="m-auto text-muted">Здесь появится история. Мастер начнёт, когда стартует сессия.</p>}
-        {shown.map((m) => (
-          <div key={m.id} className="flex flex-col gap-2">
-            <MessageView m={m} who={who} />
-            {notesAfter(m.seq).map((n) => (
+        {shown.map(({ message, divider }) => (
+          <div key={message.id} className="flex flex-col gap-2">
+            {divider && <ChronicleDivider message={message} />}
+            <MessageView m={message} who={who} />
+            {notesAfter(message.seq).map((n) => (
               <p key={n.id} className="tf-pop mx-auto rounded-full bg-raised px-3 py-1 text-xs" style={{ color: "var(--tf-accent)" }}>
                 ✦ {n.text}
               </p>

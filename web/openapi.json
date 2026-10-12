@@ -554,6 +554,16 @@
       "title": "Name",
       "type": "string"
      },
+     "narrative_mode": {
+      "default": "strict",
+      "description": "Режим адаптации сюжета",
+      "enum": [
+       "strict",
+       "adaptive"
+      ],
+      "title": "Narrative Mode",
+      "type": "string"
+     },
      "owner_plays": {
       "default": true,
       "description": "владелец, если он не мастер, сразу занимает место игрока",
@@ -1001,6 +1011,22 @@
        }
       ],
       "title": "Name"
+     },
+     "narrative_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "strict",
+         "adaptive"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Режим адаптации сюжета",
+      "title": "Narrative Mode"
      },
      "public_intro": {
       "anyOf": [
@@ -2006,6 +2032,34 @@
      "kind": {
       "title": "Kind",
       "type": "string"
+     },
+     "scene_context": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SceneContext"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "scope": {
+      "anyOf": [
+       {
+        "enum": [
+         "public",
+         "party",
+         "private"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Scope"
      },
      "seat_id": {
       "anyOf": [
@@ -5787,6 +5841,77 @@
     "title": "Lineage",
     "type": "object"
    },
+   "LocationPresentation": {
+    "additionalProperties": false,
+    "properties": {
+     "illustration_key": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Illustration Key"
+     },
+     "period": {
+      "anyOf": [
+       {
+        "enum": [
+         "dawn",
+         "day",
+         "dusk",
+         "night"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Period"
+     },
+     "preset": {
+      "default": "neutral",
+      "enum": [
+       "neutral",
+       "tavern",
+       "coast",
+       "forest",
+       "ruins",
+       "crypt",
+       "sanctuary"
+      ],
+      "title": "Preset",
+      "type": "string"
+     },
+     "weather": {
+      "anyOf": [
+       {
+        "enum": [
+         "clear",
+         "cloudy",
+         "rain",
+         "fog",
+         "snow"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Weather"
+     }
+    },
+    "title": "LocationPresentation",
+    "type": "object"
+   },
    "LoginIn": {
     "properties": {
      "name": {
@@ -8070,6 +8195,34 @@
       "title": "Reset",
       "type": "boolean"
      },
+     "scene_context": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SceneContext"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "scope": {
+      "anyOf": [
+       {
+        "enum": [
+         "public",
+         "party",
+         "private"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Scope"
+     },
      "seat_id": {
       "anyOf": [
        {
@@ -9600,6 +9753,17 @@
       "title": "Party",
       "type": "array"
      },
+     "presentation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LocationPresentation"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
      "round": {
       "title": "Round",
       "type": "integer"
@@ -9623,6 +9787,45 @@
      "turn"
     ],
     "title": "Scene",
+    "type": "object"
+   },
+   "SceneContext": {
+    "additionalProperties": false,
+    "properties": {
+     "location_id": {
+      "title": "Location Id",
+      "type": "string"
+     },
+     "location_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Location Name"
+     },
+     "presentation": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Presentation"
+     }
+    },
+    "required": [
+     "location_id"
+    ],
+    "title": "SceneContext",
     "type": "object"
    },
    "SceneEntity": {

@@ -14,6 +14,7 @@ from app.agents.master.helpers import _heard_by, _names
 from app.core import combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
+from app.core.scene_context import message_scene_context
 from app.db.models import AgentConfig, Campaign, Character, LlmCall, MasterTurn, Message, Scene, now
 from app.gateway.events import envelope
 from app.tools.registry import ToolContext
@@ -181,6 +182,8 @@ class StepwiseMixin:
                     else:
                         text, kind, trace_extra = None, None, {}
                     if text is not None:
+                        message_place = next(iter(places)) if len(places) == 1 else None
+                        scene_context = await message_scene_context(s, c, message_place) if kind == "narration" else None
                         msg = Message(
                             campaign_id=cid,
                             session_id=ctx.game_session_id,
@@ -189,7 +192,15 @@ class StepwiseMixin:
                             kind=kind,
                             content=text,
                             visible_to=heard,
-                            data={"place": next(iter(places))} if heard is not None and len(places) == 1 else None,
+                            data=(
+                                {
+                                    **({"place": message_place} if heard is not None and message_place is not None else {}),
+                                    "scene_context": scene_context,
+                                    "scope": "party" if heard is not None else "public",
+                                }
+                                if kind == "narration"
+                                else None
+                            ),
                         )
                         s.add(msg)
                         await s.flush()

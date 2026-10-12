@@ -101,11 +101,28 @@ export interface ChatMessage {
         voice_parts?: number;
         whisper_reply?: string;
         place?: string;
+        scene_context?: SceneContext | null;
+        scope?: "public" | "party" | "private" | null;
       })
     | null;
   created_at: string | null;
   state?: ReplyState | null;
+  scene_context?: SceneContext | null;
+  scope?: "public" | "party" | "private" | null;
   fresh?: boolean;
+}
+
+export interface SceneContext {
+  location_id: string;
+  location_name?: string | null;
+  presentation?: LocationPresentation | null;
+}
+
+export interface LocationPresentation {
+  preset?: "neutral" | "tavern" | "coast" | "forest" | "ruins" | "crypt" | "sanctuary";
+  period?: "dawn" | "day" | "dusk" | "night" | null;
+  weather?: "clear" | "cloudy" | "rain" | "fog" | "snow" | null;
+  illustration_key?: string | null;
 }
 
 export interface RollCard {
@@ -197,6 +214,7 @@ export interface Scene {
   mode: "free" | "combat";
   round: number;
   location: { id: string; name: string } | null;
+  presentation?: LocationPresentation | null;
   /** Есть, только когда отряд разделился. */
   party?: PartyPart[];
   entities: SceneEntity[];

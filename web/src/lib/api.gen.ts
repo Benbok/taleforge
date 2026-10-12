@@ -2403,6 +2403,13 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Narrative Mode
+             * @description Режим адаптации сюжета
+             * @default strict
+             * @enum {string}
+             */
+            narrative_mode?: "strict" | "adaptive";
+            /**
              * Owner Plays
              * @description владелец, если он не мастер, сразу занимает место игрока
              * @default true
@@ -2530,6 +2537,11 @@ export interface components {
             leveling?: ("xp" | "milestone") | null;
             /** Name */
             name?: string | null;
+            /**
+             * Narrative Mode
+             * @description Режим адаптации сюжета
+             */
+            narrative_mode?: ("strict" | "adaptive") | null;
             /** Public Intro */
             public_intro?: string | null;
             /** Random Events */
@@ -2795,6 +2807,13 @@ export interface components {
             id: string;
             /** Kind */
             kind: string;
+            /** @default null */
+            scene_context?: components["schemas"]["SceneContext"] | null;
+            /**
+             * Scope
+             * @default null
+             */
+            scope?: ("public" | "party" | "private") | null;
             /** Seat Id */
             seat_id: string | null;
             /** Seq */
@@ -4002,6 +4021,30 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** LocationPresentation */
+        LocationPresentation: {
+            /**
+             * Illustration Key
+             * @default null
+             */
+            illustration_key?: string | null;
+            /**
+             * Period
+             * @default null
+             */
+            period?: ("dawn" | "day" | "dusk" | "night") | null;
+            /**
+             * Preset
+             * @default neutral
+             * @enum {string}
+             */
+            preset?: "neutral" | "tavern" | "coast" | "forest" | "ruins" | "crypt" | "sanctuary";
+            /**
+             * Weather
+             * @default null
+             */
+            weather?: ("clear" | "cloudy" | "rain" | "fog" | "snow") | null;
+        };
         /** LoginIn */
         LoginIn: {
             /** Name */
@@ -4707,6 +4750,13 @@ export interface components {
              * @default null
              */
             reset?: boolean;
+            /** @default null */
+            scene_context?: components["schemas"]["SceneContext"] | null;
+            /**
+             * Scope
+             * @default null
+             */
+            scope?: ("public" | "party" | "private") | null;
             /** Seat Id */
             seat_id: string | null;
             /** Seq */
@@ -5219,11 +5269,30 @@ export interface components {
              * @default null
              */
             party?: components["schemas"]["PartyPart"][];
+            /** @default null */
+            presentation?: components["schemas"]["LocationPresentation"] | null;
             /** Round */
             round: number;
             turn: components["schemas"]["Turn"] | null;
         } & {
             [key: string]: unknown;
+        };
+        /** SceneContext */
+        SceneContext: {
+            /** Location Id */
+            location_id: string;
+            /**
+             * Location Name
+             * @default null
+             */
+            location_name?: string | null;
+            /**
+             * Presentation
+             * @default null
+             */
+            presentation?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** SceneEntity */
         SceneEntity: {
@@ -5739,6 +5808,7 @@ export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
 export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
 export type Lineage = components['schemas']['Lineage'];
+export type LocationPresentation = components['schemas']['LocationPresentation'];
 export type LoginIn = components['schemas']['LoginIn'];
 export type MapArea = components['schemas']['MapArea'];
 export type MapBook = components['schemas']['MapBook'];
@@ -5815,6 +5885,7 @@ export type RestHero = components['schemas']['RestHero'];
 export type RestVote = components['schemas']['RestVote'];
 export type ReviewIn = components['schemas']['ReviewIn'];
 export type Scene = components['schemas']['Scene'];
+export type SceneContext = components['schemas']['SceneContext'];
 export type SceneEntity = components['schemas']['SceneEntity'];
 export type SeatAgentIn = components['schemas']['SeatAgentIn'];
 export type SeatChanged = components['schemas']['SeatChanged'];

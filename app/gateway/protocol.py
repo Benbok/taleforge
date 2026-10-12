@@ -20,6 +20,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.core.views import HeroPublic, HeroSheet, absent
+from app.core.scene_presentation import LocationPresentation
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False
@@ -73,6 +74,12 @@ class Turn(_Strict):
     economy: TurnEconomy = absent()
 
 
+class SceneContext(_Strict):
+    location_id: str
+    location_name: str | None = None
+    presentation: dict[str, Any] | None = None
+
+
 class ChatMessage(_Strict):
     """Сообщение чата. ``data`` — свободная форма: карточка броска, голосовая запись, место части отряда."""
 
@@ -86,6 +93,8 @@ class ChatMessage(_Strict):
     data: dict[str, Any] | None
     created_at: str | None
     state: Literal["pending", "processing", "answered", "failed"] | None
+    scene_context: SceneContext | None = None
+    scope: Literal["public", "party", "private"] | None = None
 
 
 class Vote(_Strict):
@@ -173,6 +182,7 @@ class Scene(_Open):
     mode: Literal["free", "combat"]
     round: int
     location: Place | None
+    presentation: LocationPresentation | None = None
     party: list[PartyPart] = absent()
     entities: list[SceneEntity]
     order: list[OrderEntry] = absent()
@@ -550,6 +560,8 @@ class MessageChunk(_Strict):
     kind: str
     chunk: str
     reset: bool = absent()
+    scene_context: SceneContext | None = None
+    scope: Literal["public", "party", "private"] | None = None
 
 
 class MessageNotice(_Strict):

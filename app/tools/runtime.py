@@ -17,6 +17,7 @@ from app.core.campaigns import master_seat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
 from app.core.scene_view import VisibleScene, visible_scene
+from app.core.scene_presentation import scene_presentation
 from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
 from app.db.models import Campaign, Entity, Message, SfxPlayback, SfxSound
 from app.gateway.events import envelope, publish_message
@@ -169,6 +170,7 @@ def scene_payload(scene, entities: dict, characters: dict, view: VisibleScene) -
     return {
         **({"party": split} if split else {}),
         "location": {"id": loc.id, "name": loc.name} if loc else None,
+        "presentation": scene_presentation(loc).model_dump() if loc is not None else None,
         "entities": [public_entity(e) for e in view.entities],
         **battle,
     }

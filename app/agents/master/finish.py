@@ -203,7 +203,11 @@ class FinishMixin:
             msg.content = await link_text(s, cid, narration)
             msg.visible_to = self._audience_for(c, cp.get("audience"))
             place = cp.get("place")
-            data = {"place": place} if msg.visible_to is not None and place is not None else {}
+            data = {
+                **({"place": place} if msg.visible_to is not None and place is not None else {}),
+                "scene_context": (msg.data or {}).get("scene_context"),
+                "scope": (msg.data or {}).get("scope") or ("party" if msg.visible_to is not None else "public"),
+            }
             voices = [{**voice_data, "text": voice_line}] if voice_data else []
             spoken = MARKUP.sub(r"\2", narration)
             text_ch = self._tts_for(c, voicing.TEXT)

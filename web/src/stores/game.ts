@@ -242,13 +242,24 @@ export const useGame = create<GameState>((set, get) => ({
               author: null,
               content: p.chunk,
               whisper: false,
+              scene_context: p.scene_context ?? null,
+              scope: p.scope ?? null,
               created_at: null,
               fresh: true,
             };
             return { messages: mergeMessages(s.messages, [draft]) };
           }
           return {
-            messages: s.messages.map((m) => (m.id === p.id ? { ...m, content: p.reset ? p.chunk : m.content + p.chunk } : m)),
+            messages: s.messages.map((m) =>
+              m.id === p.id
+                ? {
+                    ...m,
+                    content: p.reset ? p.chunk : m.content + p.chunk,
+                    scene_context: p.scene_context ?? m.scene_context,
+                    scope: p.scope ?? m.scope,
+                  }
+                : m,
+            ),
           };
         });
         return;
