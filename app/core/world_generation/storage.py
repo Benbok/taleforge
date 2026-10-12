@@ -353,6 +353,18 @@ async def commit_with(maker, dice_factory, claim: Claim, apply, *, quality: str 
         return manifest
 
 
+def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int) -> list[str]:
+    """Обстановка участка комплекса встаёт на его геометрию связанными деталями (спецификация 2026-10-12, §3.4)."""
+    from app.core.layout import furnish
+
+    sk = (place.state or {}).get("sketch")
+    if not placed or not isinstance(sk, dict) or not sk.get("blueprint"):
+        return []
+    new, unplaced = furnish.place(sk, placed, seed)
+    place.state = {**(place.state or {}), "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1}}
+    return [f"unplaced:{x}" for x in unplaced]
+
+
 async def commit_result(
     maker, dice_factory, claim: Claim, plan: Plan, proposal: Proposal, *, quality: str = "normal"
 ) -> dict[str, Any]:
@@ -381,6 +393,7 @@ async def commit_result(
         parent = None if root else target.id
 
         made: dict[str, str] = {}
+        placed: list[tuple[str, str]] = []
         children: dict[str, str] = {}
         notes = list(plan.notes)
         lost = await plot_anchors.mark_lost(s, campaign.id)
@@ -440,6 +453,8 @@ async def commit_result(
                 await s.flush()
                 ctx.world.entities[en.id] = en
             made[slot.slot_ref] = en.id
+            if slot.role != "item" and slot.anchor_id is None:
+                placed.append((en.id, en.name))
             if slot.role == "container":
                 reservation = plan.children[slot.slot_ref]
                 child = WGS(
@@ -472,6 +487,8 @@ async def commit_result(
             wo["contents"] = {**(wo.get("contents") or {}), "status": "ready"}
             wo["revision"] = int(wo.get("revision") or 0) + 1
             target.state = {**st, "world_object": wo}
+        if root:
+            notes += _furnish(target, placed, int(row.seed or 0))
         manifest = {
             "schema_version": 1,
             "phase": plan.phase,
