@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 POLICY_VERSION = "scene-policy-v1"
 PRNG = "py-mt-v1"  # random.Random (Mersenne Twister): другую сохранённую версию воспроизвести нельзя
-PHASES = ("location_initial", "container_contents")
+PHASES = ("location_initial", "container_contents", "location_layout", "location_geometry")
 
 Role = Literal["prop", "container", "item"]
 
