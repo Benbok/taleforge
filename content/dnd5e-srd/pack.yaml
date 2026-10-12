@@ -1,8 +1,17 @@
 id: dnd5e-srd
-name: "D&D 5e SRD 5.1 — базовый пакет правил"
-version: 0.5.8
+name: "D&D 5e SRD 5.1"
+version: 0.5.9
 ruleset: dnd5e
 provides: srd-5.1
+category: "КЛАССИЧЕСКИЙ НАБОР ПРАВИЛ"
+summary: "Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0). Подходит для кастомных приключений в традиционном сеттинге меча и магии."
+description: "Системный справочный документ D&D 5.1 (System Reference Document) от Wizards of the Coast под лицензией CC BY 4.0. Включает 12 базовых классов, 9 классических рас, сотни монстров, полный гримуар заклинаний, правила боевой системы и снаряжение для классических героических приключений."
+badges:
+  - "12 базовых классов"
+  - "Свободный бестиарий"
+  - "Уровни: 1–20"
+  - "Система: D&D 5e SRD"
+status_badge: "БАЗОВЫЙ ПАКЕТ"
 level_cap: 20
 languages: [ru]
 license: "This work includes material taken from the System Reference Document 5.1 (SRD 5.1) by Wizards of the Coast LLC, licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/legalcode"

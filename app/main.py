@@ -27,6 +27,7 @@ from app.api import (
     plan,
     profile,
     voice,
+    worlds,
 )
 from app.api import audio as audio_api
 from app.api import generation as generation_api
@@ -151,6 +152,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(plan.router)
     app.include_router(profile.router)
     app.include_router(voice.router)
+    app.include_router(worlds.router)
     app.include_router(audio_api.router)
     app.include_router(sfx_api.router)
     app.include_router(ws.router)

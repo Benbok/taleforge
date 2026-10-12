@@ -10,6 +10,7 @@ import DndHeroArt from "../components/DndHeroArt";
 import Avatar, { hue, initials } from "../components/Avatar";
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
+import type { WorldSummary } from "../lib/worlds";
 import { actionOf, when } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import { useSession } from "../stores/session";
@@ -610,8 +611,55 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
   );
 }
 
+const FALLBACK_WORLDS: WorldSummary[] = [
+  {
+    id: "echo-leviathans",
+    name: "Эхо Левиафанов",
+    version: "0.2.6",
+    category: "ОСНОВНОЙ СЕТТИНГ · БИОПАНК / ДИЗЕЛЬПАНК",
+    summary:
+      "Мир титанов, павших сорок лет назад. Люди живут на остывающих телах гигантов, добывая ликвор и сражаясь с выводками Резонанса на Пепельной черте.",
+    description:
+      "Сорок лет назад титаны пали с небес. На их гигантских остывающих телах человечество построило новую цивилизацию: в позвоночных каналах гремят печи и фабрики, по жилам текут цистерны с ликвором, а на границах Пепельного кордона защитники сдерживают натиск Резонанса.",
+    ruleset: "dnd5e",
+    ruleset_base: "srd-5.1",
+    level_cap: 15,
+    badges: ["Шкалы: Скверна и Перемена", "Уровни: 1–15", "Система: SRD 5.1 Hack"],
+    status_badge: "АКТИВЕН В СИСТЕМЕ",
+    is_base: false,
+    counts: {},
+  },
+  {
+    id: "dnd5e-srd",
+    name: "D&D 5e SRD 5.1",
+    version: "0.5.9",
+    category: "КЛАССИЧЕСКИЙ НАБОР ПРАВИЛ",
+    summary:
+      "Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0). Подходит для кастомных приключений в традиционном сеттинге меча и магии.",
+    description:
+      "Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0). Включает 12 базовых классов, свободный бестиарий и классические заклинания.",
+    ruleset: "dnd5e",
+    level_cap: 20,
+    badges: ["12 базовых классов", "Свободный бестиарий"],
+    status_badge: "БАЗОВЫЙ ПАКЕТ",
+    is_base: true,
+    counts: {},
+  },
+];
+
 /** Полноценный экран каталога миров */
 function WorldsSection({ isAdmin }: { isAdmin: boolean }) {
+  const worldsQuery = useQuery({
+    queryKey: ["worlds-list"],
+    queryFn: () => api<WorldSummary[]>("/api/worlds"),
+  });
+  const worlds =
+    worldsQuery.data && worldsQuery.data.length > 0
+      ? worldsQuery.data
+      : worldsQuery.isLoading
+      ? []
+      : FALLBACK_WORLDS;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="border-b border-line pb-4">
@@ -623,74 +671,79 @@ function WorldsSection({ isAdmin }: { isAdmin: boolean }) {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <article className="card flex flex-col justify-between overflow-hidden border-accent bg-surface p-6">
-          <div className="flex flex-col gap-3">
-            <div className="font-mono text-xs tracking-widest text-copper-hi">
-              ОСНОВНОЙ СЕТТИНГ · БИОПАНК / ДИЗЕЛЬПАНК
-            </div>
-            <h3 className="font-heading text-3xl font-semibold text-ink">
-              Эхо Левиафанов
-            </h3>
-            <p className="font-narration text-base italic leading-relaxed text-ink-2">
-              Мир титанов, павших сорок лет назад. Люди живут на остывающих телах гигантов,
-              добывая ликвор и сражаясь с выводками Резонанса на Пепельной черте.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-muted">
-              <span className="rounded-md border border-line bg-raised px-2.5 py-1">
-                Шкалы: Скверна и Перемена
-              </span>
-              <span className="rounded-md border border-line bg-raised px-2.5 py-1">
-                Уровни: 1–15
-              </span>
-              <span className="rounded-md border border-line bg-raised px-2.5 py-1">
-                Система: SRD 5.1 Hack
-              </span>
-            </div>
-          </div>
+      {worldsQuery.isLoading ? (
+        <div className="card p-8 text-center text-muted font-mono text-sm">
+          Загрузка каталога миров…
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          {worlds.map((w) => {
+            const isPrimary = w.id === "echo-leviathans";
+            return (
+              <article
+                key={w.id}
+                className={`card flex flex-col justify-between overflow-hidden p-6 ${
+                  isPrimary ? "border-accent bg-surface" : "border-line bg-surface"
+                }`}
+              >
+                <div className="flex flex-col gap-3">
+                  <div
+                    className={`font-mono text-xs tracking-widest ${
+                      isPrimary ? "text-copper-hi" : "text-muted"
+                    }`}
+                  >
+                    {w.category}
+                  </div>
+                  <h3 className="font-heading text-3xl font-semibold text-ink">
+                    {w.name}
+                  </h3>
+                  <p
+                    className={`font-narration text-base italic leading-relaxed ${
+                      isPrimary ? "text-ink-2" : "text-muted"
+                    }`}
+                  >
+                    {w.summary}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-muted">
+                    {w.badges.map((b, idx) => (
+                      <span key={idx} className="rounded-md border border-line bg-raised px-2.5 py-1">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4">
-            <span className="text-xs text-patina-hi font-mono">АКТИВЕН В СИСТЕМЕ</span>
-            {isAdmin && (
-              <Link to="/new" className="btn btn-primary text-xs font-semibold">
-                Запустить стол
-              </Link>
-            )}
-          </div>
-        </article>
-
-        <article className="card flex flex-col justify-between overflow-hidden border-line bg-surface p-6">
-          <div className="flex flex-col gap-3">
-            <div className="font-mono text-xs tracking-widest text-muted">
-              КЛАССИЧЕСКИЙ НАБОР ПРАВИЛ
-            </div>
-            <h3 className="font-heading text-3xl font-semibold text-ink">
-              D&D 5e SRD 5.1
-            </h3>
-            <p className="font-narration text-base italic leading-relaxed text-muted">
-              Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0).
-              Подходит для кастомных приключений в традиционном сеттинге меча и магии.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-muted">
-              <span className="rounded-md border border-line bg-raised px-2.5 py-1">
-                12 базовых классов
-              </span>
-              <span className="rounded-md border border-line bg-raised px-2.5 py-1">
-                Свободный бестиарий
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4">
-            <span className="text-xs text-muted font-mono">БАЗОВЫЙ ПАКЕТ</span>
-            {isAdmin && (
-              <Link to="/new" className="btn text-xs">
-                Запустить стол
-              </Link>
-            )}
-          </div>
-        </article>
-      </div>
+                <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4 gap-2">
+                  <span
+                    className={`text-xs font-mono ${
+                      isPrimary ? "text-patina-hi" : "text-muted"
+                    }`}
+                  >
+                    {w.status_badge}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/worlds/${w.id}`}
+                      className="btn btn-outline-copper text-xs font-semibold"
+                    >
+                      Подробнее о мире
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        to={`/new?pack=${w.id}`}
+                        className={`btn text-xs font-semibold ${isPrimary ? "btn-primary" : ""}`}
+                      >
+                        Запустить стол
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
+

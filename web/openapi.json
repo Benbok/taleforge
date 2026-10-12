@@ -2229,6 +2229,178 @@
     "title": "ClassFeatureUses",
     "type": "object"
    },
+   "ClassItem": {
+    "properties": {
+     "badge": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Badge"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "epithet": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Epithet"
+     },
+     "highlights": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Highlights",
+      "type": "array"
+     },
+     "hit_die": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hit Die"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "spell_source": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Spell Source"
+     },
+     "subclasses": {
+      "items": {
+       "additionalProperties": {
+        "type": "string"
+       },
+       "type": "object"
+      },
+      "title": "Subclasses",
+      "type": "array"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "world_role": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "World Role"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "ClassItem",
+    "type": "object"
+   },
+   "ClockItem": {
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "max": {
+      "default": 6,
+      "title": "Max",
+      "type": "integer"
+     },
+     "min": {
+      "default": 0,
+      "title": "Min",
+      "type": "integer"
+     },
+     "moves_down": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Moves Down",
+      "type": "array"
+     },
+     "moves_up": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Moves Up",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "scope": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scope"
+     },
+     "thresholds": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Thresholds",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "ClockItem",
+    "type": "object"
+   },
    "CreationRulesIn": {
     "description": "Настройки создания персонажа (раздел 5.1).",
     "properties": {
@@ -2268,6 +2440,70 @@
      }
     },
     "title": "CreationRulesIn",
+    "type": "object"
+   },
+   "CreatureItem": {
+    "properties": {
+     "cr": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "number"
+       },
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cr"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "CreatureItem",
     "type": "object"
    },
    "Derived": {
@@ -4345,6 +4581,77 @@
     "title": "Event_vote_updated",
     "type": "object"
    },
+   "FactionItem": {
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "goal": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Goal"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "leader_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Leader Ref"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "relations": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Relations",
+      "type": "array"
+     },
+     "resources": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Resources",
+      "type": "array"
+     },
+     "seat_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seat Ref"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "FactionItem",
+    "type": "object"
+   },
    "FeatureUses": {
     "additionalProperties": false,
     "properties": {
@@ -5861,6 +6168,111 @@
     "title": "Lineage",
     "type": "object"
    },
+   "LocationDistrict": {
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "LocationDistrict",
+    "type": "object"
+   },
+   "LocationItem": {
+    "properties": {
+     "belt": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Belt"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "districts": {
+      "items": {
+       "$ref": "#/components/schemas/LocationDistrict"
+      },
+      "title": "Districts",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "location_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Type"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "population": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Population"
+     },
+     "ruler": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ruler"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "LocationItem",
+    "type": "object"
+   },
    "LocationPresentation": {
     "additionalProperties": false,
     "properties": {
@@ -5948,6 +6360,73 @@
      "password"
     ],
     "title": "LoginIn",
+    "type": "object"
+   },
+   "LoreFactItem": {
+    "properties": {
+     "doc": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Doc"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+     },
+     "text": {
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "text"
+    ],
+    "title": "LoreFactItem",
+    "type": "object"
+   },
+   "LoreTopicGroup": {
+    "properties": {
+     "facts": {
+      "items": {
+       "$ref": "#/components/schemas/LoreFactItem"
+      },
+      "title": "Facts",
+      "type": "array"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "topic": {
+      "title": "Topic",
+      "type": "string"
+     }
+    },
+    "required": [
+     "topic",
+     "title",
+     "facts"
+    ],
+    "title": "LoreTopicGroup",
     "type": "object"
    },
    "MapArea": {
@@ -8643,6 +9122,100 @@
     "title": "OrderEntry",
     "type": "object"
    },
+   "OriginItem": {
+    "properties": {
+     "ability_bonuses": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Ability Bonuses",
+      "type": "array"
+     },
+     "badge": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Badge"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "epithet": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Epithet"
+     },
+     "features": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Features",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "size": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Size"
+     },
+     "speed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Speed"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "OriginItem",
+    "type": "object"
+   },
    "PackOut": {
     "properties": {
      "counts": {
@@ -8658,6 +9231,11 @@
       "format": "date-time",
       "title": "Imported At",
       "type": "string"
+     },
+     "is_base": {
+      "default": false,
+      "title": "Is Base",
+      "type": "boolean"
      },
      "name": {
       "title": "Name",
@@ -8679,7 +9257,8 @@
      "name",
      "party_size",
      "counts",
-     "imported_at"
+     "imported_at",
+     "is_base"
     ],
     "title": "PackOut",
     "type": "object"
@@ -9825,6 +10404,69 @@
      "approve"
     ],
     "title": "ReviewIn",
+    "type": "object"
+   },
+   "ScaleItem": {
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max"
+     },
+     "min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+     },
+     "widget_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Widget Type"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "description"
+    ],
+    "title": "ScaleItem",
     "type": "object"
    },
    "Scene": {
@@ -11410,6 +12052,250 @@
      "cr"
     ],
     "title": "WildShapeForm",
+    "type": "object"
+   },
+   "WorldDetail": {
+    "properties": {
+     "badges": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Badges",
+      "type": "array"
+     },
+     "bestiary": {
+      "items": {
+       "$ref": "#/components/schemas/CreatureItem"
+      },
+      "title": "Bestiary",
+      "type": "array"
+     },
+     "category": {
+      "title": "Category",
+      "type": "string"
+     },
+     "classes": {
+      "items": {
+       "$ref": "#/components/schemas/ClassItem"
+      },
+      "title": "Classes",
+      "type": "array"
+     },
+     "clocks": {
+      "items": {
+       "$ref": "#/components/schemas/ClockItem"
+      },
+      "title": "Clocks",
+      "type": "array"
+     },
+     "counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Counts",
+      "type": "object"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "factions": {
+      "items": {
+       "$ref": "#/components/schemas/FactionItem"
+      },
+      "title": "Factions",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "is_base": {
+      "default": false,
+      "title": "Is Base",
+      "type": "boolean"
+     },
+     "level_cap": {
+      "default": 20,
+      "title": "Level Cap",
+      "type": "integer"
+     },
+     "license": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "License"
+     },
+     "locations": {
+      "items": {
+       "$ref": "#/components/schemas/LocationItem"
+      },
+      "title": "Locations",
+      "type": "array"
+     },
+     "lore_topics": {
+      "items": {
+       "$ref": "#/components/schemas/LoreTopicGroup"
+      },
+      "title": "Lore Topics",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "origins": {
+      "items": {
+       "$ref": "#/components/schemas/OriginItem"
+      },
+      "title": "Origins",
+      "type": "array"
+     },
+     "ruleset": {
+      "title": "Ruleset",
+      "type": "string"
+     },
+     "ruleset_base": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ruleset Base"
+     },
+     "scales": {
+      "items": {
+       "$ref": "#/components/schemas/ScaleItem"
+      },
+      "title": "Scales",
+      "type": "array"
+     },
+     "status_badge": {
+      "title": "Status Badge",
+      "type": "string"
+     },
+     "summary": {
+      "title": "Summary",
+      "type": "string"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "version",
+     "category",
+     "summary",
+     "description",
+     "ruleset",
+     "status_badge"
+    ],
+    "title": "WorldDetail",
+    "type": "object"
+   },
+   "WorldSummary": {
+    "properties": {
+     "badges": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Badges",
+      "type": "array"
+     },
+     "category": {
+      "title": "Category",
+      "type": "string"
+     },
+     "counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Counts",
+      "type": "object"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "is_base": {
+      "default": false,
+      "title": "Is Base",
+      "type": "boolean"
+     },
+     "level_cap": {
+      "default": 20,
+      "title": "Level Cap",
+      "type": "integer"
+     },
+     "license": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "License"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "ruleset": {
+      "title": "Ruleset",
+      "type": "string"
+     },
+     "ruleset_base": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ruleset Base"
+     },
+     "status_badge": {
+      "title": "Status Badge",
+      "type": "string"
+     },
+     "summary": {
+      "title": "Summary",
+      "type": "string"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "version",
+     "category",
+     "summary",
+     "description",
+     "ruleset",
+     "status_badge"
+    ],
+    "title": "WorldSummary",
     "type": "object"
    }
   },
@@ -19236,6 +20122,85 @@
     "summary": "Get Vs Profiles",
     "tags": [
      "voice"
+    ]
+   }
+  },
+  "/api/worlds": {
+   "get": {
+    "description": "Список всех доступных миров и правил.",
+    "operationId": "list_worlds_api_worlds_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/WorldSummary"
+         },
+         "title": "Response List Worlds Api Worlds Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "List Worlds",
+    "tags": [
+     "worlds"
+    ]
+   }
+  },
+  "/api/worlds/{world_id}": {
+   "get": {
+    "description": "Подробная информация о мире: лор, фракции, локации, классы, происхождения, шкалы, бестиарий.",
+    "operationId": "get_world_api_worlds__world_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "world_id",
+      "required": true,
+      "schema": {
+       "title": "World Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WorldDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get World",
+    "tags": [
+     "worlds"
     ]
    }
   }

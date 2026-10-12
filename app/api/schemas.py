@@ -446,6 +446,7 @@ class PackOut(Out):
     party_size: dict
     counts: dict
     imported_at: datetime
+    is_base: bool = False  # база правил (SRD), а не мир: в мастере кампании это пункт «без пакета»
 
 
 class SecretsIn(BaseModel):

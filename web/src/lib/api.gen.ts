@@ -2238,6 +2238,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/worlds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Worlds
+         * @description Список всех доступных миров и правил.
+         */
+        get: operations["list_worlds_api_worlds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worlds/{world_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get World
+         * @description Подробная информация о мире: лор, фракции, локации, классы, происхождения, шкалы, бестиарий.
+         */
+        get: operations["get_world_api_worlds__world_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2952,6 +2992,62 @@ export interface components {
             /** Unit */
             unit: string;
         };
+        /** ClassItem */
+        ClassItem: {
+            /** Badge */
+            badge?: string | null;
+            /** Description */
+            description: string;
+            /** Epithet */
+            epithet?: string | null;
+            /** Highlights */
+            highlights?: string[];
+            /** Hit Die */
+            hit_die?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Spell Source */
+            spell_source?: string | null;
+            /** Subclasses */
+            subclasses?: {
+                [key: string]: string;
+            }[];
+            /** Summary */
+            summary?: string | null;
+            /** World Role */
+            world_role?: string | null;
+        };
+        /** ClockItem */
+        ClockItem: {
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /**
+             * Max
+             * @default 6
+             */
+            max?: number;
+            /**
+             * Min
+             * @default 0
+             */
+            min?: number;
+            /** Moves Down */
+            moves_down?: string[];
+            /** Moves Up */
+            moves_up?: string[];
+            /** Name */
+            name: string;
+            /** Scope */
+            scope?: string | null;
+            /** Thresholds */
+            thresholds?: {
+                [key: string]: unknown;
+            }[];
+        };
         /**
          * CreationRulesIn
          * @description Настройки создания персонажа (раздел 5.1).
@@ -2977,6 +3073,21 @@ export interface components {
              * @default 1
              */
             start_level?: number;
+        };
+        /** CreatureItem */
+        CreatureItem: {
+            /** Cr */
+            cr?: string | number | null;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind?: string | null;
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
         };
         /** Derived */
         Derived: {
@@ -3627,6 +3738,27 @@ export interface components {
              */
             type: "vote.updated";
         };
+        /** FactionItem */
+        FactionItem: {
+            /** Description */
+            description: string;
+            /** Goal */
+            goal?: string | null;
+            /** Id */
+            id: string;
+            /** Leader Ref */
+            leader_ref?: string | null;
+            /** Name */
+            name: string;
+            /** Relations */
+            relations?: {
+                [key: string]: unknown;
+            }[];
+            /** Resources */
+            resources?: string[];
+            /** Seat Ref */
+            seat_ref?: string | null;
+        };
         /** FeatureUses */
         FeatureUses: {
             /** Key */
@@ -4094,6 +4226,34 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** LocationDistrict */
+        LocationDistrict: {
+            /** Name */
+            name: string;
+            /** Text */
+            text?: string | null;
+        };
+        /** LocationItem */
+        LocationItem: {
+            /** Belt */
+            belt?: string | null;
+            /** Description */
+            description: string;
+            /** Districts */
+            districts?: components["schemas"]["LocationDistrict"][];
+            /** Id */
+            id: string;
+            /** Location Type */
+            location_type?: string | null;
+            /** Name */
+            name: string;
+            /** Population */
+            population?: number | null;
+            /** Ruler */
+            ruler?: string | null;
+            /** Tags */
+            tags?: string[];
+        };
         /** LocationPresentation */
         LocationPresentation: {
             /**
@@ -4124,6 +4284,28 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+        };
+        /** LoreFactItem */
+        LoreFactItem: {
+            /** Doc */
+            doc?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
+            /** Text */
+            text: string;
+        };
+        /** LoreTopicGroup */
+        LoreTopicGroup: {
+            /** Facts */
+            facts: components["schemas"]["LoreFactItem"][];
+            /** Title */
+            title: string;
+            /** Topic */
+            topic: string;
         };
         /** MapArea */
         MapArea: {
@@ -4980,6 +5162,33 @@ export interface components {
              */
             side: "hero" | "enemy" | "ally";
         };
+        /** OriginItem */
+        OriginItem: {
+            /** Ability Bonuses */
+            ability_bonuses?: {
+                [key: string]: unknown;
+            }[];
+            /** Badge */
+            badge?: string | null;
+            /** Description */
+            description: string;
+            /** Epithet */
+            epithet?: string | null;
+            /** Features */
+            features?: {
+                [key: string]: unknown;
+            }[];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Size */
+            size?: string | null;
+            /** Speed */
+            speed?: number | null;
+            /** Summary */
+            summary?: string | null;
+        };
         /** PackOut */
         PackOut: {
             /** Counts */
@@ -4993,6 +5202,11 @@ export interface components {
              * Format: date-time
              */
             imported_at: string;
+            /**
+             * Is Base
+             * @default false
+             */
+            is_base: boolean;
             /** Name */
             name: string;
             /** Party Size */
@@ -5368,6 +5582,23 @@ export interface components {
              * @default
              */
             comment?: string;
+        };
+        /** ScaleItem */
+        ScaleItem: {
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Name */
+            name: string;
+            /** Tags */
+            tags?: string[];
+            /** Widget Type */
+            widget_type?: string | null;
         };
         /** Scene */
         Scene: {
@@ -5825,6 +6056,100 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** WorldDetail */
+        WorldDetail: {
+            /** Badges */
+            badges?: string[];
+            /** Bestiary */
+            bestiary?: components["schemas"]["CreatureItem"][];
+            /** Category */
+            category: string;
+            /** Classes */
+            classes?: components["schemas"]["ClassItem"][];
+            /** Clocks */
+            clocks?: components["schemas"]["ClockItem"][];
+            /** Counts */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Description */
+            description: string;
+            /** Factions */
+            factions?: components["schemas"]["FactionItem"][];
+            /** Id */
+            id: string;
+            /**
+             * Is Base
+             * @default false
+             */
+            is_base?: boolean;
+            /**
+             * Level Cap
+             * @default 20
+             */
+            level_cap?: number;
+            /** License */
+            license?: string | null;
+            /** Locations */
+            locations?: components["schemas"]["LocationItem"][];
+            /** Lore Topics */
+            lore_topics?: components["schemas"]["LoreTopicGroup"][];
+            /** Name */
+            name: string;
+            /** Origins */
+            origins?: components["schemas"]["OriginItem"][];
+            /** Ruleset */
+            ruleset: string;
+            /** Ruleset Base */
+            ruleset_base?: string | null;
+            /** Scales */
+            scales?: components["schemas"]["ScaleItem"][];
+            /** Status Badge */
+            status_badge: string;
+            /** Summary */
+            summary: string;
+            /** Version */
+            version: string;
+        };
+        /** WorldSummary */
+        WorldSummary: {
+            /** Badges */
+            badges?: string[];
+            /** Category */
+            category: string;
+            /** Counts */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /**
+             * Is Base
+             * @default false
+             */
+            is_base?: boolean;
+            /**
+             * Level Cap
+             * @default 20
+             */
+            level_cap?: number;
+            /** License */
+            license?: string | null;
+            /** Name */
+            name: string;
+            /** Ruleset */
+            ruleset: string;
+            /** Ruleset Base */
+            ruleset_base?: string | null;
+            /** Status Badge */
+            status_badge: string;
+            /** Summary */
+            summary: string;
+            /** Version */
+            version: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -5859,7 +6184,10 @@ export type CharacterView = components['schemas']['CharacterView'];
 export type ChatMessage = components['schemas']['ChatMessage'];
 export type ClassFeature = components['schemas']['ClassFeature'];
 export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
+export type ClassItem = components['schemas']['ClassItem'];
+export type ClockItem = components['schemas']['ClockItem'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
+export type CreatureItem = components['schemas']['CreatureItem'];
 export type Derived = components['schemas']['Derived'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
@@ -5910,6 +6238,7 @@ export type Event_turn_changed = components['schemas']['Event_turn_changed'];
 export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
+export type FactionItem = components['schemas']['FactionItem'];
 export type FeatureUses = components['schemas']['FeatureUses'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
@@ -5929,8 +6258,12 @@ export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
 export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
 export type Lineage = components['schemas']['Lineage'];
+export type LocationDistrict = components['schemas']['LocationDistrict'];
+export type LocationItem = components['schemas']['LocationItem'];
 export type LocationPresentation = components['schemas']['LocationPresentation'];
 export type LoginIn = components['schemas']['LoginIn'];
+export type LoreFactItem = components['schemas']['LoreFactItem'];
+export type LoreTopicGroup = components['schemas']['LoreTopicGroup'];
 export type MapArea = components['schemas']['MapArea'];
 export type MapBook = components['schemas']['MapBook'];
 export type MapBookGrid = components['schemas']['MapBookGrid'];
@@ -5984,6 +6317,7 @@ export type NarrativeSettingsIn = components['schemas']['NarrativeSettingsIn'];
 export type NoteIn = components['schemas']['NoteIn'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
+export type OriginItem = components['schemas']['OriginItem'];
 export type PackOut = components['schemas']['PackOut'];
 export type PartyMember = components['schemas']['PartyMember'];
 export type PartyPart = components['schemas']['PartyPart'];
@@ -6009,6 +6343,7 @@ export type RestEnded = components['schemas']['RestEnded'];
 export type RestHero = components['schemas']['RestHero'];
 export type RestVote = components['schemas']['RestVote'];
 export type ReviewIn = components['schemas']['ReviewIn'];
+export type ScaleItem = components['schemas']['ScaleItem'];
 export type Scene = components['schemas']['Scene'];
 export type SceneContext = components['schemas']['SceneContext'];
 export type SceneEntity = components['schemas']['SceneEntity'];
@@ -6042,6 +6377,8 @@ export type ValidationError = components['schemas']['ValidationError'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
 export type WildShapeForm = components['schemas']['WildShapeForm'];
+export type WorldDetail = components['schemas']['WorldDetail'];
+export type WorldSummary = components['schemas']['WorldSummary'];
 export type $defs = Record<string, never>;
 export interface operations {
     admin_audio_api_admin_audio_get: {
@@ -10824,6 +11161,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_worlds_api_worlds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldSummary"][];
+                };
+            };
+        };
+    };
+    get_world_api_worlds__world_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                world_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

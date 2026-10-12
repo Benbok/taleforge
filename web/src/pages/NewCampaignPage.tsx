@@ -35,8 +35,16 @@ export default function NewCampaignPage() {
   const user = useSession((s) => s.user)!;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<CampaignDraft>(() => loadDraft(user.id) ?? EMPTY_DRAFT);
-  const [resumed] = useState(() => !!loadDraft(user.id));
+  const [draft, setDraft] = useState<CampaignDraft>(() => {
+    const loaded = loadDraft(user.id);
+    const searchParams = new URLSearchParams(window.location.search);
+    const packParam = searchParams.get("pack");
+    if (packParam) {
+      return { ...(loaded ?? EMPTY_DRAFT), pack_id: packParam };
+    }
+    return loaded ?? EMPTY_DRAFT;
+  });
+  const [resumed] = useState(() => !new URLSearchParams(window.location.search).get("pack") && !!loadDraft(user.id));
   const [testScenes, setTestScenes] = useState<{ scene: string; situation: string; reply: string }[] | null>(null);
   useEffect(() => saveDraft(user.id, draft), [user.id, draft]);
 
@@ -122,7 +130,8 @@ export default function NewCampaignPage() {
 
   // Старые версии пакета остаются в базе ради кампаний на них, а новая кампания берёт последнюю:
   // в списке по одному пункту на пакет. API отдаёт версии по порядку импорта — последняя свежая.
-  const latestPacks = [...new Map((packs.data ?? []).map((p) => [p.id, p])).values()];
+  // База правил (SRD) — не мир: её даёт пункт «Без пакета», отдельной строкой она дублировала бы его.
+  const latestPacks = [...new Map((packs.data ?? []).map((p) => [p.id, p])).values()].filter((p) => !p.is_base);
   const packOptions: SelectOption[] = [
     {
       value: "",

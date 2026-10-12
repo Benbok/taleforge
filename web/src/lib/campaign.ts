@@ -171,6 +171,7 @@ export interface Pack {
   name: string;
   counts?: Record<string, number>;
   imported_at?: string;
+  is_base?: boolean;
 }
 
 export const PROVIDER_RU: Record<string, string> = { claude: "Claude", gemini: "Gemini", local: "LM Studio" };

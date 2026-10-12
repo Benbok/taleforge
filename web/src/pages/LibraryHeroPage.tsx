@@ -22,7 +22,14 @@ export default function LibraryHeroPage() {
   });
   const worlds = useQuery({ queryKey: ["worlds"], queryFn: () => api<World[]>("/api/me/worlds") });
   // выбранный мир; пока игрок не менял его, берём мир сохранённого героя
-  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const [picked, setPicked] = useState<string | null | undefined>(() => {
+    if (!hid) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const packParam = searchParams.get("pack");
+      if (packParam) return packParam;
+    }
+    return undefined;
+  });
   const packId = picked !== undefined ? picked : (hero.data?.pack_id ?? null);
   const opts = useQuery({
     queryKey: ["options", "library", packId],

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.api.auth import user_out
 from app.api.deps import SessionDep, UserDep
 from app.api.schemas import PackOut, UserCreateIn, UserOut
+from app.content.catalog import BASE_PACK_ID, BASE_RULES
 from app.content.upload import UploadError, upload
 from app.core import spend
 from app.core.campaigns import DEFAULT_PARTY, AccessDenied, Conflict, is_admin
@@ -51,6 +52,7 @@ async def list_packs(user: UserDep, session: SessionDep) -> list[PackOut]:
             party_size={**DEFAULT_PARTY, **(p.manifest.get("party_size") or {})},
             counts=(p.import_report or {}).get("counts", {}),
             imported_at=p.imported_at,
+            is_base=p.id == BASE_PACK_ID or (p.manifest or {}).get("provides") == BASE_RULES,
         )
         for p in rows
     ]
