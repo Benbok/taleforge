@@ -30,7 +30,8 @@ def test_place_keeps_passages_free_and_is_deterministic():
 def test_crowded_area_leaves_objects_unplaced():
     tiny = {**FIELD, "cols": 3, "rows": 1, "party": [0, 0], "exits": []}
     sk, unplaced = furnish.place(tiny, [("en_a", "Сундук"), ("en_b", "Бочка")], seed=1)
-    # 3×1, герой в клетке 0: первый объект встаёт в клетку 2, для второго оставшаяся клетка не проходит проверку досягаемости
+    # 3×1, герой в клетке 0: первый объект встаёт в клетку 2,
+    # для второго оставшаяся клетка не проходит проверку досягаемости
     assert unplaced == ["en_b"] and [f["entity_id"] for f in sk["features"]] == ["en_a"]
 
 
