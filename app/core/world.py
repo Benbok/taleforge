@@ -367,6 +367,7 @@ class World:
     # ревизия мира, от которой прочитан этот снимок (app/core/world_tx.py)
     revision: int = 0
     _actors: dict[str, Actor] = field(default_factory=dict)
+    narrative_view: Any | None = None
 
     def actor(self, actor_id: str) -> Actor:
         if actor_id in self._actors:
