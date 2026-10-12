@@ -11,6 +11,8 @@ import random
 
 from app.core import reach, sketch
 
+MAX_TRIES = 48  # кандидатов на объект: каждая проверка досягаемости — несколько обходов, транзакция не безгранична
+
 
 def place(sk: dict, objects: list[tuple[str, str]], seed: int) -> tuple[dict, list[str]]:
     floor = sketch.floor_cells(sk) or {(c, r) for c in range(sk["cols"]) for r in range(sk["rows"])}
@@ -23,12 +25,13 @@ def place(sk: dict, objects: list[tuple[str, str]], seed: int) -> tuple[dict, li
     out = copy.deepcopy(sk)
     features = list(out.get("features") or [])
     unplaced: list[str] = []
+    baseline = set(reach.reach_errors(out))  # прежние замечания рисунка не мешают, новых размещение не добавляет
     for entity_id, name in objects:
-        for i, (c, r) in enumerate(free):
+        for i, (c, r) in enumerate(free[:MAX_TRIES]):
             feature = {"id": f"sf_{entity_id}"[:32], "entity_id": entity_id, "name": name, "kind": "object",
                        "cells": [[c, r, c, r]], "cover": "none", "hidden": False}  # fmt: skip
             trial = {**out, "features": [*features, feature]}
-            if not reach.reach_errors(trial):
+            if set(reach.reach_errors(trial)) <= baseline:
                 features.append(feature)
                 free.pop(i)
                 break

@@ -361,7 +361,8 @@ def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int) -> list[st
     if not placed or not isinstance(sk, dict) or not sk.get("blueprint"):
         return []
     new, unplaced = furnish.place(sk, placed, seed)
-    place.state = {**(place.state or {}), "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1}}
+    if len(new.get("features") or []) != len(sk.get("features") or []):
+        place.state = {**(place.state or {}), "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1}}
     return [f"unplaced:{x}" for x in unplaced]
 
 
