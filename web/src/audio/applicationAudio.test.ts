@@ -14,8 +14,8 @@ function mixer() {
 describe("поверхность звука приложения", () => {
   beforeEach(() => vi.mocked(api).mockReset());
   it.each([
-    "/", "/admin", "/new", "/profile", "/heroes/h1", "/c/c1/manage", "/c/c1/hero",
-  ])("пускает тему в кабинете и админке: %s", (path) => {
+    "/", "/admin", "/new", "/profile", "/worlds/w1", "/heroes/h1", "/c/c1/manage", "/c/c1/hero",
+  ])("пускает тему в кабинете, админке и детализации миров: %s", (path) => {
     expect(audioSurfaceFor(path, true)).toBe("menu");
   });
 
@@ -28,9 +28,10 @@ describe("поверхность звука приложения", () => {
     expect(audioSurfaceFor(path, false)).toBe("silent");
   });
 
-  it("пускает тему на экране логирования анонимному пользователю", () => {
+  it("пускает тему на экране логирования и в мирах анонимному пользователю", () => {
     expect(audioSurfaceFor("/", false)).toBe("menu");
     expect(audioSurfaceFor("/admin", false)).toBe("menu");
+    expect(audioSurfaceFor("/worlds/echo-leviathans", false)).toBe("menu");
     expect(audioSurfaceFor("/c/c1", false)).toBe("silent");
   });
 

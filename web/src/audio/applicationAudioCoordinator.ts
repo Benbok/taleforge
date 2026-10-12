@@ -39,6 +39,7 @@ export function audioSurfaceFor(pathname: string, signedIn: boolean): AudioSurfa
   const path = pathname.split(/[?#]/, 1)[0] || "/";
   if (/^\/c\/[^/]+$/.test(path)) return signedIn ? "scene" : "silent";
   if (path === "/" || path === "/admin" || path === "/new" || path === "/profile"
+    || /^\/worlds(\/[^/]+)?$/.test(path)
     || /^\/heroes\/[^/]+$/.test(path)
     || /^\/c\/[^/]+\/(manage|hero)$/.test(path)) return "menu";
   return "silent";
