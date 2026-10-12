@@ -12,13 +12,14 @@ from sqlalchemy import select
 
 from app.content.catalog import Catalog, Entry
 from app.core import world_tx
+from app.core.narrative.contracts import FactRef, SnapshotRef
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked, Proposal, ProposedObject
 from app.core.world_generation.policy import build_plan, child_seed, root_reservation
 from app.core.world_generation.profiles import MINIMAL, ProfileError, eligible, load_profile, parse_profile
 from app.core.world_generation.service import Orchestrator
 from app.core.world_generation.validation import validate
-from app.db.models import Campaign, Character, Entity, Event, WorldGenerationState, now
+from app.db.models import Campaign, Character, Entity, Event, NarrativeFact, WorldGenerationState, now
 from app.db.session import make_engine, make_sessionmaker
 from app.gateway.coordination import InMemoryCoordination
 from app.tools.registry import execute
@@ -496,3 +497,84 @@ def test_turn_waits_for_generated_scene_and_describes_it(game_client, admin_g, l
     narrate = llm.requests[-1]["messages"]
     assert any(n in str(narrate) for n in names)  # описание видит уже готовую обстановку
     assert "исследование пока недоступно" not in str(narrate)
+
+
+def test_commit_result_with_used_fact_refs(client, admin, settings):
+    """commit_result seals both string and dict used_fact_refs without ValidationError."""
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    quiet(client)
+    cid = campaign["id"]
+    _room_id, ref = _room(settings, cid)
+
+    snap_ref = SnapshotRef(kind="plan", source_id="p-1", typed_address="plan:1")
+    fact_str = NarrativeFact(
+        campaign_id=cid,
+        namespace="campaign",
+        subject_id="room_1",
+        key="situation_premise",
+        version=1,
+        kind="truth",
+        temporal_semantics="current_state",
+        freedom="draft",
+        value="Dusty table",
+        audience=[],
+        depends_on=[],
+        source_refs=[],
+        snapshot_ref=snap_ref.model_dump(),
+    )
+    fact_dict = NarrativeFact(
+        campaign_id=cid,
+        namespace="campaign",
+        subject_id="room_1",
+        key="role",
+        version=1,
+        kind="truth",
+        temporal_semantics="current_state",
+        freedom="draft",
+        value="Storage",
+        audience=[],
+        depends_on=[],
+        source_refs=[],
+        snapshot_ref=snap_ref.model_dump(),
+    )
+
+    async def init_facts(s):
+        s.add_all([fact_str, fact_dict])
+        await s.commit()
+
+    run(settings, init_facts)
+
+    claim = _with_maker(settings, lambda maker: storage.claim(maker, cid, ref))
+    assert isinstance(claim, storage.Claim)
+
+    async def commit_with_refs(maker):
+        orch = Orchestrator(InMemoryCoordination())
+        draft = await orch._plan(maker, claim)
+        dict_ref = FactRef(
+            campaign_id=cid, namespace="campaign", subject_id="room_1", key="role", version=1, snapshot_ref=snap_ref
+        )
+        obj1 = ProposedObject(
+            slot_ref=draft.plan.slots[0].slot_ref,
+            role="clutter",
+            name="Dusty note",
+            used_fact_refs=("campaign:room_1:situation_premise",),
+        )
+        obj2 = ProposedObject(
+            slot_ref=draft.plan.slots[1].slot_ref if len(draft.plan.slots) > 1 else draft.plan.slots[0].slot_ref,
+            role="feature",
+            name="Storage box",
+            used_fact_refs=(dict_ref.model_dump(),),
+        )
+        proposal = Proposal(schema_version=1, objects=(obj1, obj2))
+        await storage.commit_result(maker, orch.dice_factory, claim, draft.plan, proposal)
+
+    _with_maker(settings, commit_with_refs)
+
+    async def verify(s):
+        f1 = await s.get(NarrativeFact, fact_str.id)
+        f2 = await s.get(NarrativeFact, fact_dict.id)
+        assert f1.freedom == "committed"
+        assert f2.freedom == "committed"
+
+    run(settings, verify)

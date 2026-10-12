@@ -121,7 +121,7 @@ class FactState(NarrativeContractModel):
 
     ref: FactRef
     kind: Literal["truth", "testimony", "intent"]
-    temporal_semantics: Literal["historical", "current_state"]
+    temporal_semantics: Literal["historical", "current_state", "draft_only"]
     freedom: Literal["draft", "committed"]
     value: str
     audience: tuple[str, ...] = ()

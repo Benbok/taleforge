@@ -179,42 +179,17 @@ async def place(ctx, binding: PlotAnchorBinding, *, place_id: str, parent: str |
 
     used_refs = (binding.source_snapshot or {}).get("used_fact_refs") or []
     if used_refs:
-        from app.core.narrative.contracts import FactRef, SnapshotRef
-        from app.tools.narrative.commitments import record_commitments
-
-        to_seal: list[FactRef] = []
-        for r in used_refs:
-            if isinstance(r, FactRef):
-                to_seal.append(r)
-            elif isinstance(r, dict):
-                to_seal.append(FactRef(**r))
-            elif isinstance(r, str):
-                parts = r.split(":")
-                if len(parts) == 3:
-                    to_seal.append(
-                        FactRef(
-                            campaign_id=ctx.campaign.id,
-                            namespace=parts[0],
-                            subject_id=parts[1],
-                            key=parts[2],
-                        )
-                    )
-                elif len(parts) == 4:
-                    to_seal.append(
-                        FactRef(
-                            campaign_id=parts[0],
-                            namespace=parts[1],
-                            subject_id=parts[2],
-                            key=parts[3],
-                        )
-                    )
+        to_seal = [r for r in used_refs if r]
         if to_seal:
+            from app.core.narrative.contracts import SnapshotRef
+            from app.tools.narrative.commitments import record_commitments
+
             await record_commitments(
                 ctx,
                 tuple(to_seal),
                 reason="plot_anchor_materialized",
                 snapshot_ref=SnapshotRef(
-                    kind="turn",
+                    kind="event",
                     source_id=ref,
                     typed_address=f"plot_anchor:{binding.anchor_id}",
                 ),

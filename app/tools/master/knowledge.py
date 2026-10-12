@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from app.core.object_policy import observe
 from app.db.models import Knowledge, KnownFact, now
@@ -73,6 +72,10 @@ class FactArgs(BaseModel):
         description="что герои теперь знают, одной фразой от третьего лица: «Староста боится леса». "
         "Только то, что они действительно узнали, без тайн, до которых не добрались",
     )
+    used_fact_refs: list[str] = Field(
+        default_factory=list,
+        description="список точных ссылок на раскрытые факты",
+    )
 
 
 @tool(
@@ -96,13 +99,6 @@ async def learn_fact(ctx: ToolContext, a: FactArgs) -> dict:
         ctx.session.add(row)
         if a.subject_id in w.entities and await ctx.session.get(Knowledge, (ch.id, a.subject_id)) is None:
             ctx.session.add(Knowledge(character_id=ch.id, entity_id=a.subject_id, level=0))  # теперь он о нём знает
-        from app.db.models import NarrativeFact
-        nf_stmt = select(NarrativeFact).where(
-            NarrativeFact.campaign_id == ctx.campaign.id,
-            NarrativeFact.subject_id == a.subject_id,
-        )
-        for nf in (await ctx.session.scalars(nf_stmt)).all():
-            nf.freedom = "committed"
         await ctx.session.flush()
         await ctx.record(
             "learn_fact",
@@ -112,4 +108,20 @@ async def learn_fact(ctx: ToolContext, a: FactArgs) -> dict:
             inverse=[{"table": "known_facts", "op": "delete", "id": row.id}],
         )
         names.append(ch.name)
+
+    if a.used_fact_refs:
+        from app.core.narrative.contracts import SnapshotRef
+        from app.tools.narrative.commitments import record_commitments
+
+        snap_ref = SnapshotRef(
+            kind="event",
+            source_id=ctx.turn_id or ctx.campaign.id,
+            typed_address=f"learn_fact:{a.subject_id}",
+        )
+        await record_commitments(
+            ctx,
+            tuple(a.used_fact_refs),
+            reason="fact_learned",
+            snapshot_ref=snap_ref,
+        )
     return {"learned": names, "subject": subject.name, "fact": text}

@@ -42,7 +42,12 @@ def seal_facts(
     visited: set[tuple[str, str, str, str]] = set()
     result_refs: list[FactRef] = []
 
+    root_cid = used_refs[0].campaign_id if used_refs else (facts[0].ref.campaign_id if facts else None)
+
     def dfs(curr_ref: FactRef, path: list[tuple[str, str, str, str]]) -> str | None:
+        if root_cid is not None and curr_ref.campaign_id != root_cid:
+            return "foreign_campaign"
+
         k = _fact_key(curr_ref)
         if k in path:
             return "dependency_cycle"
@@ -56,8 +61,11 @@ def seal_facts(
         if curr_fact is None:
             return "missing_dependency"
 
-        if curr_fact.temporal_semantics == "draft_only":
-            return "draft_only_cannot_be_sealed"
+        if curr_fact.ref.version != curr_ref.version:
+            return "stale_fact_version"
+
+        if curr_fact.ref.campaign_id != curr_ref.campaign_id:
+            return "foreign_campaign"
 
         if len(curr_fact.depends_on) > max_dependencies:
             return "max_dependencies_exceeded"
