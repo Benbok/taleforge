@@ -59,6 +59,7 @@ class MasterService(
         media_dir: Path | None = None,
         tts: Any = None,
         coordination: Coordination | None = None,
+        narrative_preparer: Any = None,
     ):
         self.maker = sessionmaker
         self.bus = bus
@@ -71,6 +72,7 @@ class MasterService(
         self.coordination = coordination or InMemoryCoordination()
         # исполнитель подготовок мира: ход ждёт его перед описанием, восстановитель доводит активированные фазы
         self.preparer = Orchestrator(self.coordination, bus, dice_factory=dice_factory, llm=llm)
+        self.narrative_preparer = narrative_preparer
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._background: set[asyncio.Task] = set()

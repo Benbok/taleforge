@@ -358,6 +358,14 @@ class FinishMixin:
                 await run_due(self.maker)
             except Exception:  # noqa: BLE001
                 log.exception("подготовка мира не удалась")
+        narrative_preparer = getattr(self, "narrative_preparer", None)
+        if narrative_preparer is not None:
+            narrative_due = getattr(narrative_preparer, "run_due", None)
+            if narrative_due is not None:
+                try:
+                    await narrative_due()
+                except Exception:  # noqa: BLE001
+                    log.exception("фоновая адаптация сюжета не удалась")
 
     def start_recovery(self) -> None:
         self._recovery_signal = asyncio.Event()
