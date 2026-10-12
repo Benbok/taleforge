@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.core import map_memory
+from app.core.layout import store
 from app.core.object_policy import observe
 from app.db.models import Knowledge, KnownFact, now
 from app.tools.master.base import _character
@@ -19,6 +21,60 @@ class RevealArgs(BaseModel):
         description="true — герой нашёл сам тайный предмет или существо (тайник, скрытый шкаф): теперь видит его "
         "на схеме. Слух и рассказ — false: знание без обнаружения",
     )
+
+
+class RevealAreaArgs(BaseModel):
+    character_ids: list[str] = Field(min_length=1, max_length=8, description="герои, которым открывается участок")
+    location_id: str = Field(description="участок комплекса")
+    passage_refs: list[str] = Field(default_factory=list, max_length=8, description="тайные проходы")
+    reason: str = Field(min_length=3, max_length=300, description="почему мастер открыл карту")
+
+
+@tool(
+    "reveal_area",
+    "Открывает выбранным героям готовую геометрию участка и указанные тайные проходы.",
+    RevealAreaArgs,
+    ids={"location_id": "locations", "character_ids": "characters"},
+    closes=False,
+)
+async def reveal_area(ctx: ToolContext, a: RevealAreaArgs) -> dict:
+    heroes = []
+    for cid in dict.fromkeys(a.character_ids):
+        heroes.append(_character(ctx, cid))
+    area = ctx.world.entities.get(a.location_id)
+    if area is None or area.kind != "location":
+        raise ToolError("нет такого участка")
+    complex_state = (area.state or {}).get("complex") or {}
+    root = ctx.world.entities.get(complex_state.get("root_id"))
+    if root is None or not store.blueprint_of(root):
+        raise ToolError("участок ещё не подготовлен")
+    if not (area.state or {}).get("sketch", {}).get("cols"):
+        raise ToolError("геометрия участка ещё не готова")
+    inverse: list[dict] = []
+    await map_memory.observe_area(ctx, area.id, [hero.id for hero in heroes], inverse, explicit=True)
+    bp = store.blueprint_of(root)
+    refs = []
+    if bp is not None:
+        for ref in dict.fromkeys(a.passage_refs):
+            if bp.passage(ref) is None:
+                raise ToolError("отсюда нет такого прохода")
+            refs.append(ref)
+    for ref in refs:
+        await map_memory.discover_passage(ctx, root.id, ref, [hero.id for hero in heroes], inverse)
+    ctx.signals.add("map.changed")
+    await ctx.record(
+        "reveal_area",
+        target_id=area.id,
+        payload={
+            "characters": [hero.id for hero in heroes],
+            "location_id": area.id,
+            "passage_refs": refs,
+            "reason": a.reason,
+        },
+        inverse=inverse,
+        hidden=True,
+    )
+    return {"location_id": area.id, "revealed": [hero.id for hero in heroes], "passage_refs": refs}
 
 
 @tool(

@@ -190,12 +190,25 @@ async def discover_passage(
     inverse: list[dict[str, Any]] | None = None,
 ) -> None:
     session, world, _ = _context_parts(ctx)
+    root = world.entities.get(root_id)
+    area_ids = []
+    if root is not None:
+        area_ids = list((root.state or {}).get("areas") or [])
     for hero_id in hero_ids:
         rows = await session.scalars(
             select(MapMemory).where(MapMemory.character_id == hero_id, MapMemory.entity_id.in_(list(world.entities)))
         )
         memories = rows.all()
         row = next((item for item in memories if item.snapshot and item.snapshot.get("root_id") == root_id), None)
+        if row is None and memories:
+            row = memories[0]
+        if row is None:
+            hero = world.characters.get(hero_id)
+            entity_id = hero.location_id if hero is not None else (area_ids[0] if area_ids else None)
+            if entity_id is None:
+                continue
+            row = MapMemory(character_id=hero_id, entity_id=entity_id, snapshot=None, revision=0)
+            session.add(row)
         if row is None:
             continue
         grants = list(row.discovered_passages or [])

@@ -52,14 +52,21 @@ class Request:
                    bool(d.get("by_player")))  # fmt: skip
 
 
-def find_passage(world, place_id: str | None, passage_ref: str) -> tuple[Entity, Blueprint, Passage, End, End]:
+def find_passage(
+    world,
+    place_id: str | None,
+    passage_ref: str,
+    *,
+    known_passages: frozenset[tuple[str, str]] | None = None,
+) -> tuple[Entity, Blueprint, Passage, End, End]:
     """Корень, blueprint, проход, конец со стороны ``place_id`` и противоположный конец."""
     roots = [e for e in world.entities.values() if e.kind == "location" and (e.state or {}).get("blueprint")]
     found = []
     for root in roots:
         bp = store.blueprint_of(root)
         p = bp.passage(passage_ref) if bp is not None else None
-        if p is None or _live(root, p)["hidden"]:
+        hidden_for_hero = known_passages is None or (root.id, passage_ref) not in known_passages
+        if p is None or (_live(root, p)["hidden"] and hidden_for_hero):
             continue
         ids = store.area_ids(root)
         for i, end in enumerate(p.ends):
@@ -77,14 +84,20 @@ def _live(root: Entity, p: Passage) -> dict:
     return {"state": p.state, "hidden": p.hidden, **store.passage_live(root, p.passage_ref)}
 
 
-def check(world, hero_ids: list[str], passage_ref: str) -> tuple[str, Entity, Blueprint, Passage, End, End]:
+def check(
+    world,
+    hero_ids: list[str],
+    passage_ref: str,
+    *,
+    known_passages: frozenset[tuple[str, str]] | None = None,
+) -> tuple[str, Entity, Blueprint, Passage, End, End]:
     places = {world.actor_place(h) for h in hero_ids}
     if len(places) != 1:
         raise ToolError("проходят вместе только герои из одного места")
     here = places.pop()
-    root, bp, p, end, other = find_passage(world, here, passage_ref)
+    root, bp, p, end, other = find_passage(world, here, passage_ref, known_passages=known_passages)
     live = _live(root, p)
-    if live["hidden"]:
+    if live["hidden"] and (known_passages is None or (root.id, passage_ref) not in known_passages):
         raise ToolError(MISSING)  # тайный проход отвечает как несуществующий
     if live["state"] != "open":
         raise ToolError(f"«{p.public_name}» {STATE_NAMES.get(live['state'], live['state'])}: сначала откройте")
@@ -154,10 +167,22 @@ async def request_area(ctx, area: Entity, inverse: list) -> list[str]:
     return refs
 
 
-async def begin(ctx, hero_ids: list[str], passage_ref: str, inverse: list, *, by_player: bool = False) -> Request:
+async def begin(
+    ctx,
+    hero_ids: list[str],
+    passage_ref: str,
+    inverse: list,
+    *,
+    by_player: bool = False,
+    known_passages: frozenset[tuple[str, str]] | None = None,
+) -> Request:
     w = ctx.world
     check_heroes(ctx, hero_ids, by_player)
-    here, root, bp, p, end, other = check(w, hero_ids, passage_ref)
+    if known_passages is None:
+        from app.core.map_memory import known_passages as read_known_passages
+
+        known_passages = await read_known_passages(ctx.session, hero_ids[0], w.actor_place(hero_ids[0]))
+    here, root, bp, p, end, other = check(w, hero_ids, passage_ref, known_passages=known_passages)
     lane = _approach(ctx, hero_ids[0], here, end, p, inverse)
     dest_id = store.area_ids(root).get(other.area_ref) if other.area_ref else other.place_id
     dest = w.entities.get(dest_id or "")
@@ -185,7 +210,10 @@ async def finish(ctx, req: Request, inverse: list | None = None) -> dict[str, An
     w = ctx.world
     try:
         check_heroes(ctx, req.hero_ids, req.by_player)
-        here, root, bp, p, end, other = check(w, list(req.hero_ids), req.passage_ref)
+        from app.core.map_memory import known_passages as read_known_passages
+
+        known = await read_known_passages(ctx.session, req.hero_ids[0], w.actor_place(req.hero_ids[0]))
+        here, root, bp, p, end, other = check(w, list(req.hero_ids), req.passage_ref, known_passages=known)
     except ToolError as e:
         return {"moved": False, "reason": str(e)}
     if here != req.source_id or root.id != req.root_id or bp.revision != req.blueprint_rev:
