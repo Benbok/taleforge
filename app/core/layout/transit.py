@@ -18,7 +18,7 @@ from app.core import combat, sketch, steps
 from app.core import positions as grid
 from app.core.layout import store
 from app.core.layout.contracts import Blueprint, End, Passage
-from app.db.models import Campaign, Entity
+from app.db.models import Campaign, Entity, Scene
 from app.rules.dnd5e import modifiers as mod
 from app.tools.registry import ToolError
 
@@ -226,6 +226,49 @@ def _arrive(ctx, heroes, dest: Entity, p: Passage, other: End, lane: int, invers
             grid.set_cell(w, hero.id, got[0])
             first_cell = first_cell or grid.to_master(w, dest.id, got[0])
     return first_cell
+
+
+def enqueue(ctx, req: Request, inverse: list) -> None:
+    """Переход хода ждёт подготовки: ход завершит его после ``settle``, до описания."""
+    sc = ctx.world.scene
+    inverse.append({"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(sc.state)})
+    queued = [*((sc.state or {}).get(QUEUE) or []), {**req.to_json(), "turn_id": ctx.turn_id}]
+    sc.state = {**(sc.state or {}), QUEUE: queued}
+
+
+async def complete_queued(maker, preparer, dice_factory, campaign_id: str, bus=None) -> list[str]:
+    """Завершить отложенные переходы кампании: дождаться их подготовок, затем каждый — своей транзакцией.
+    Возвращает id событий состоявшихся переходов; несостоявшийся оставляет системную заметку."""
+    from app.gateway.events import envelope
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    async with maker() as s:
+        sc = await s.get(Scene, campaign_id)
+        queued = list(((sc.state or {}) if sc is not None else {}).get(QUEUE) or [])
+    if not queued:
+        return []
+    refs = sorted({r for q in queued for r in q.get("refs") or []})
+    if refs and preparer is not None:
+        await preparer.settle(maker, campaign_id, refs)
+    done: list[str] = []
+    for item in queued:
+        async with maker() as s:
+            c = await s.get(Campaign, campaign_id)
+            ctx = await open_context(s, c, dice_factory(), turn_id=item.get("turn_id"), seat_id=None)
+            sc = ctx.world.scene
+            left = [q for q in (sc.state or {}).get(QUEUE) or [] if q != item]
+            sc.state = {k: v for k, v in {**(sc.state or {}), QUEUE: left}.items() if k != QUEUE or left}
+            out = await finish(ctx, Request.from_json(item))
+            if out["moved"]:
+                done.append(out["event_id"])
+            else:
+                ctx.outbox.append({"kind": "system", "content": f"Переход не состоялся: {out['reason']}"})
+            messages = await flush_outbox(s, ctx)
+            await s.commit()
+        if bus is not None:
+            await publish_changes(bus, ctx, messages)
+            await bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
+    return done
 
 
 async def traverse(maker, preparer, dice_factory, campaign_id: str, hero_id: str, passage_ref: str):

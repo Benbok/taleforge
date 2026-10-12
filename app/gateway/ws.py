@@ -370,6 +370,14 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
         app.state.master.schedule_sketches(ctx)  # describe_place с панели: эскиз строится в фоне
+        if (ctx.world.scene.state or {}).get("transits"):  # переход с панели: завершить после подготовки, в фоне
+            from app.core.layout import transit
+
+            queued = transit.complete_queued(
+                app.state.sessionmaker, app.state.master.preparer, app.state.dice_factory, conn.campaign_id,
+                bus=app.state.bus,
+            )  # fmt: skip
+            _background(queued)
         if ctx.operation_refs:  # принятая с панели подготовка мира: исполнитель берёт её сразу, не через 15 с
             app.state.master.signal_recovery()
         # move в бою: герой вошёл в бой или ушёл из него — очередь сдвинулась

@@ -951,14 +951,63 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     }
 
 
+class TraverseArgs(BaseModel):
+    character_ids: list[str] = Field(
+        default_factory=list, description="кто проходит; пусто — все герои, что стоят там же, где сцена"
+    )
+    passage_ref: str = Field(
+        min_length=1, max_length=64, description="проход комплекса из таблицы сцены («проход p_…» у выхода)"
+    )
+
+
+@tool(
+    "traverse_passage",
+    "Герои проходят проходом комплекса — дверью, аркой, лестницей или свободным краем поля — в соседний участок. "
+    "Участок за проходом сначала готовится; описывай его только после перехода. Закрытую дверь сначала открывают.",
+    TraverseArgs,
+    ids={"character_ids": "characters"},
+)
+async def traverse_passage(ctx: ToolContext, a: TraverseArgs) -> dict:
+    from app.core.layout import transit
+
+    w = ctx.world
+    if a.character_ids:
+        heroes = [_character(ctx, cid) for cid in a.character_ids]
+    else:
+        heroes = [c for c in w.characters.values() if c.status in PLAYABLE and w.place_of(c) == w.scene.location_id]
+    if not heroes:
+        raise ToolError("некому идти: назови героев в character_ids")
+    inverse: list = []
+    req = await transit.begin(ctx, [h.id for h in heroes], a.passage_ref, inverse)
+    ctx.closed.update(h.id for h in heroes)  # без character_ids реестр не закрыл бы заявленные действия героев
+    if not req.refs:  # участок уже готов: переход сразу, в этом же ходе
+        out = await transit.finish(ctx, req, inverse)
+        if not out["moved"]:
+            raise ToolError(out["reason"])
+        return out
+    transit.enqueue(ctx, req, inverse)
+    ctx.operation_refs.update(req.refs)
+    payload = {"queued": True, "passage_ref": a.passage_ref, "refs": list(req.refs)}
+    await ctx.record("traverse_passage", target_id=req.dest_id, payload=payload, inverse=inverse, hidden=True)
+    return {
+        "queued": True,
+        "passage": a.passage_ref,
+        "note": "участок за проходом готовится; герои перейдут до описания",
+    }
+
+
 async def request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
     """Вход героев в место: резерв корня и запрос подготовки в той же транзакции; ход ждёт её перед описанием.
     Без флага кампании ``scene_generation`` место готовится только ради сюжетных носителей, с профилем
     ``minimal`` (docs/world-objects-delivery3.md, §2.6; docs/world-objects-delivery4.md, §2.3)."""
     from app.core import plot_anchors
+    from app.core.layout import store as layout_store
     from app.core.preparation import receipt
     from app.core.world_generation import storage
 
+    geo = await layout_store.request_geometry(ctx, loc)
+    if geo is not None:
+        ctx.operation_refs.add(geo)  # ход дождётся геометрии участка до описания
     flag = bool((ctx.campaign.settings or {}).get("scene_generation"))
     row = await storage.find(ctx.session, ctx.campaign.id, loc.id, "location_initial")
     if row is not None and row.status == "ready":  # поздние зацепки готового места — сразу, в этой транзакции

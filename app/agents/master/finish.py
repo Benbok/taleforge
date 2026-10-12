@@ -76,6 +76,11 @@ class FinishMixin:
                             turn.generation_checkpoint = dict(cp)  # новый объект: JSON сохраняется только при замене
                             await s.commit()
                         cp["unavailable"] = await self._settle_preparation(cid, refs) if refs else []
+                        from app.core.layout import transit
+
+                        done = await transit.complete_queued(self.maker, self.preparer, self.dice_factory, cid)
+                        if done:
+                            cp["event_ids"] = [*(cp.get("event_ids") or []), *done]
                         cp["stage"] = "narration_pending"
                     if resume and await self._over_limit(s, cid):
                         turn.generation_checkpoint = dict(cp)  # новый объект: JSON сохраняется только при замене
