@@ -26,6 +26,7 @@ from app.content.importer import import_pack
 from app.content.loader import Pack, PackError, load_pack
 from app.content.vocab import CUSTOM_OP, MODIFIER_OPS
 from app.core import plot
+from app.core.narrative.contracts import FactRef, NarrativePermissions, NarrativeSnapshot
 from app.core.rolls import SKILL_RU
 from app.rules.dnd5e.tables import ABILITIES, SKILLS
 
@@ -68,6 +69,68 @@ MAX_PDF = 50 * 1024 * 1024
 
 class ModuleError(Exception):
     """Модуль не принят: причина для админа."""
+
+
+def parse_narrative_permissions(module_data: dict, catalog: Any = None) -> NarrativePermissions:
+    """Извлечь и валидировать narrative permissions модуля.
+
+    Если метаданные отсутствуют — возвращаются строгие права (strict permissions).
+    """
+    raw_perms = module_data.get("narrative_permissions")
+    if raw_perms is None:
+        raw_perms = module_data.get("permissions")
+    if raw_perms is None:
+        return NarrativePermissions()
+
+    if not isinstance(raw_perms, dict):
+        raise ValueError("narrative_permissions must be a dictionary")
+
+    version = raw_perms.get("schema_version")
+    if version != 1:
+        raise ValueError(f"unsupported schema_version: {version}")
+
+    raw_anchors = raw_perms.get("anchors") or []
+    if not isinstance(raw_anchors, (list, tuple)):
+        raise ValueError("anchors must be a list or tuple")
+    anchors = tuple(str(a) for a in raw_anchors)
+
+    raw_addresses = raw_perms.get("mutable_fact_addresses") or []
+    if not isinstance(raw_addresses, (list, tuple)):
+        raise ValueError("mutable_fact_addresses must be a list or tuple")
+    mutable_fact_addresses: list[str] = []
+    for addr in raw_addresses:
+        if not isinstance(addr, str):
+            raise ValueError(f"invalid mutable_fact_address: {addr}")
+        parts = addr.split(":")
+        if len(parts) not in (3, 4) or any(not p.strip() for p in parts):
+            raise ValueError(f"invalid mutable_fact_address: {addr}")
+        mutable_fact_addresses.append(addr)
+
+    raw_ops = raw_perms.get("operation_kinds") or []
+    if not isinstance(raw_ops, (list, tuple)):
+        raise ValueError("operation_kinds must be a list or tuple")
+    operation_kinds = tuple(str(op) for op in raw_ops)
+
+    raw_scopes = raw_perms.get("supplement_scopes") or []
+    if not isinstance(raw_scopes, (list, tuple)):
+        raise ValueError("supplement_scopes must be a list or tuple")
+    supplement_scopes = tuple(str(sc) for sc in raw_scopes)
+
+    return NarrativePermissions(
+        anchors=anchors,
+        mutable_fact_addresses=tuple(mutable_fact_addresses),
+        operation_kinds=operation_kinds,
+        supplement_scopes=supplement_scopes,
+    )
+
+
+def validate_used_fact_refs(snapshot: NarrativeSnapshot, refs: tuple[FactRef, ...]) -> tuple[FactRef, ...]:
+    """Проверить использованные ссылки на факты по снимку.
+
+    Оставляет только те ссылки, чей факт присутствует в снимке и кампания совпадает со снимком.
+    """
+    existing_refs = {f.ref for f in snapshot.facts}
+    return tuple(r for r in refs if r in existing_refs)
 
 
 # --- текст книги ---
@@ -327,6 +390,17 @@ def tool_spec() -> dict:
             "creatures": _arr(creature, "Существа книги, которых нет в SRD или которые в ней изменены."),
             "items": _arr(item, "Предметы книги, которых нет в SRD."),
             "plot": _plot_schema(),
+            "narrative_permissions": _obj(
+                {
+                    "schema_version": {"type": "integer", "enum": [1]},
+                    "anchors": _arr({"type": "string"}, "Список опорных якорей сюжета."),
+                    "mutable_fact_addresses": _arr({"type": "string"}, "Разрешённые адреса фактов для изменения."),
+                    "operation_kinds": _arr({"type": "string"}, "Допустимые типы операций повествования."),
+                    "supplement_scopes": _arr({"type": "string"}, "Разрешённые скоупы дополнений (scene, future)."),
+                },
+                ["schema_version"],
+                "Разрешения на изменение сюжета и фактов модуля (по умолчанию strict).",
+            ),
             "epilogue": _str("Чем кончается приключение и какие награды обещаны.", 1500),
             "notes": _arr(
                 _str("Пометка для админа.", 400),
@@ -521,6 +595,8 @@ def adventure_record(raw: dict, plan: dict, maps: list[dict] | None = None, modu
         "epilogue": raw.get("epilogue") or "",
         "module_id": module_id,
     }
+    if raw.get("narrative_permissions"):
+        rec["narrative_permissions"] = copy.deepcopy(raw["narrative_permissions"])
     if maps:
         rec["maps"] = [
             {
@@ -676,6 +752,11 @@ def check(raw: Any, packs_root: Path) -> tuple[dict | None, list[str], list[str]
     plan, plot_errors = plot.check(raw["plot"], length=plot.MODULE, catalog=catalog, excluded=[])
     errors += [f"каркас: {e}" for e in plot_errors]
     module_locs = {r["id"] for r in records["location_template"]}
+    if "narrative_permissions" in raw and raw["narrative_permissions"] is not None:
+        try:
+            parse_narrative_permissions(raw, catalog=catalog)
+        except ValueError as e:
+            errors.append(f"narrative_permissions: {e}")
     if plan is not None:
         used = {loc.get("template_id") for loc in plan["locations"]}
         missing = sorted(module_locs - used)

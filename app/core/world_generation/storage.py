@@ -439,6 +439,58 @@ async def commit_result(
         row.completed_at = t
         row.result_manifest = manifest
         row.result_digest = digest(manifest)
+
+        used_fact_refs_to_seal = []
+        for slot in plan.slots:
+            obj = by_slot.get(slot.slot_ref)
+            refs_sources = []
+            if slot.used_fact_refs:
+                refs_sources.extend(slot.used_fact_refs)
+            if obj and obj.used_fact_refs:
+                refs_sources.extend(obj.used_fact_refs)
+            if slot.anchor_id is not None:
+                b = bindings.get(slot.anchor_id)
+                if b and b.source_snapshot and b.source_snapshot.get("used_fact_refs"):
+                    refs_sources.extend(b.source_snapshot["used_fact_refs"])
+            for r in refs_sources:
+                if isinstance(r, dict):
+                    from app.core.narrative.contracts import FactRef
+                    used_fact_refs_to_seal.append(FactRef(**r))
+                elif isinstance(r, str):
+                    from app.core.narrative.contracts import FactRef
+                    parts = r.split(":")
+                    if len(parts) == 3:
+                        used_fact_refs_to_seal.append(
+                            FactRef(
+                                campaign_id=campaign.id,
+                                namespace=parts[0],
+                                subject_id=parts[1],
+                                key=parts[2],
+                            )
+                        )
+                    elif len(parts) == 4:
+                        used_fact_refs_to_seal.append(
+                            FactRef(
+                                campaign_id=parts[0],
+                                namespace=parts[1],
+                                subject_id=parts[2],
+                                key=parts[3],
+                            )
+                        )
+                else:
+                    used_fact_refs_to_seal.append(r)
+
+        if used_fact_refs_to_seal:
+            from app.core.narrative.contracts import SnapshotRef
+            from app.tools.narrative.commitments import record_commitments
+
+            await record_commitments(
+                ctx,
+                tuple(used_fact_refs_to_seal),
+                reason="spatial_generation_committed",
+                snapshot_ref=SnapshotRef(kind="turn", source_id=row.id, typed_address=f"world_gen:{row.id}"),
+            )
+
         await ctx.record(
             "prepare_scene",
             target_id=target.id,
