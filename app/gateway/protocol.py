@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -359,6 +360,11 @@ class MapExit(_Strict):
     via: str | None
     bearing: str | None
     visited: bool
+    kind: str | None = None
+    state: str | None = None
+    width: int | None = None
+    passage_ref: str | None = None
+    cells: list[list[int]] | None = None
 
 
 class MapLink(_Strict):
@@ -477,6 +483,18 @@ class MapSketchFeature(_Strict):
     access_sides: list[Literal["n", "e", "s", "w"]] | None = None
 
 
+class MapSketchEdge(_Strict):
+    side: Literal["n", "e", "s", "w"]
+    start: int
+    length: int
+    meaning: Literal["wall", "field", "road", "water", "bridge"]
+
+
+class MapSketchTerrain(_Strict):
+    kind: Literal["road", "stream", "bridge", "field"]
+    cells: list[list[int]]
+
+
 class MapUnplacedExit(_Strict):
     name: str
     to: str | None = None
@@ -492,14 +510,32 @@ class MapSketch(_Strict):
     party: tuple[int, int]
     walls: list[list[int]]
     mask: list[str] | None = None
-    edges: list[Any] | None = None
-    terrain: list[Any] | None = None
+    edges: list[MapSketchEdge] | None = None
+    terrain: list[MapSketchTerrain] | None = None
     material: str | None = None
     environment: str | None = None
     exits: list[MapSketchExit]
     features: list[MapSketchFeature]
     book: bool = False
     unplaced_exits: list[MapUnplacedExit] = absent()
+
+
+class MapKnownArea(_Strict):
+    id: str
+    name: str
+    offset: tuple[int, int]
+    level: int
+    status: Literal["here", "remembered", "prepared"]
+    revision: int
+    observed_at: datetime | None = None
+    sketch: MapSketch
+    disclosed_to: list[str] | None = None
+
+
+class MapLocationPlan(_Strict):
+    root_id: str
+    here_id: str | None
+    areas: list[MapKnownArea]
 
 
 class MapSceneToken(_Strict):
@@ -527,6 +563,9 @@ class MapState(_Strict):
     bearings: dict[str, str]
     sketch: MapSketch | None
     book: MapBook | None
+    location_map: MapLocationPlan | None = None
+    request_id: str | None = None
+    as_seat: str | None = None
 
 
 class MapStepResult(_Open):
@@ -537,6 +576,14 @@ class MapStepResult(_Open):
 class MapTraverseResult(_Open):
     request_id: str | None
     ok: bool
+    moved: bool = False
+    reason: str | None = None
+    error: str | None = None
+    area_id: str | None = None
+    area: MapKnownArea | None = None
+    passage: MapExit | None = None
+    cell: tuple[int, int] | None = None
+    from_cell: tuple[int, int] | None = None
 
 
 class MasterStatus(_Strict):
