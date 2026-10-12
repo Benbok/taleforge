@@ -33,12 +33,15 @@ MAX_STEPS = 6  # захватов на одну фазу за вызов: два
 
 
 class Orchestrator:
-    def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice, llm=None):
+    def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice, llm=None, layout_provider=None):
         self.coordination = coordination
         self.llm = llm  # техническая модель (app/agents/world_generator.py); без неё — только детерминированно
         self.bus = bus
         self.provider = provider or DeterministicProvider()
         self.dice_factory = dice_factory
+        from app.core.layout.provider import DeterministicLayoutProvider
+
+        self.layout_provider = layout_provider or DeterministicLayoutProvider()
 
     async def settle(self, maker, campaign_id: str, refs: list[str]) -> None:
         """Ход ждёт терминального статуса своих подготовок (не дольше двух конфликтов каждой)."""
@@ -60,7 +63,11 @@ class Orchestrator:
                 log.exception("подготовка %s не удалась", ref)
 
     async def prepare(self, maker, campaign_id: str, ref: str) -> str:
-        """Довести фазу до ``ready``/``blocked``. Иначе вернуть, почему остановились."""
+        """Довести фазу до ``ready``/``blocked``. Иначе вернуть, почему остановились. Обстановка участка комплекса
+        сначала ждёт его геометрию: размещать её не на чем."""
+        for dep in await _dependencies(maker, campaign_id, ref):
+            if await self.prepare(maker, campaign_id, dep) not in ("ready", "blocked"):
+                return "pending"
         async with self.coordination.generation_lock(campaign_id):
             for _ in range(MAX_STEPS):
                 got = await storage.claim(maker, campaign_id, ref)
@@ -144,10 +151,16 @@ class Orchestrator:
         return draft.proposal, "fallback", claim
 
     async def _run(self, maker, claim: storage.Claim) -> str:
+        from app.core.layout import executor
+
         try:
-            draft = await self._plan(maker, claim)
-            proposal, quality, claim = await self._propose(maker, claim, draft)
-            await storage.commit_result(maker, self.dice_factory, claim, draft.plan, proposal, quality=quality)
+            phase = await storage.phase_of(maker, claim.ref)
+            if phase in executor.PHASES:
+                await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider)
+            else:
+                draft = await self._plan(maker, claim)
+                proposal, quality, claim = await self._propose(maker, claim, draft)
+                await storage.commit_result(maker, self.dice_factory, claim, draft.plan, proposal, quality=quality)
         except Blocked as e:
             await storage.block(maker, claim, e.reason, e.detail)
             return "blocked"
@@ -201,3 +214,17 @@ async def _model_of(s, campaign) -> tuple[str, str | None, str | None] | None:
     except Conflict:
         return None
     return parser_model_for(), api_base, seat_id
+
+
+async def _dependencies(maker, campaign_id: str, ref: str) -> list[str]:
+    """Неготовые фазы, без которых эту не выполнить: обстановке участка комплекса нужна его геометрия."""
+    async with maker() as s:
+        row = await s.get(WorldGenerationState, ref)
+        if row is None or row.campaign_id != campaign_id or row.phase != "location_initial":
+            return []
+        dep = await storage.find(s, campaign_id, row.target_entity_id, "location_geometry")
+        if dep is None or dep.status in ("ready", "blocked"):
+            return []
+        if await storage.activate_cas(s, dep):
+            await s.commit()
+        return [dep.id]

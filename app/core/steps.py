@@ -15,6 +15,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.core import positions as grid
+from app.core import sketch
 
 LIMIT = 13  # web/src/game/map.ts GRID_R
 DIRS = [(dc, dr) for dr in (-1, 0, 1) for dc in (-1, 0, 1) if dc or dr]
@@ -59,7 +60,7 @@ def search(
             free[c] = _inside(sk, ax, ay, c) and grid.cell_problem(world, place, c, actor_id, sk) is None
         return free[c]
 
-    walls = {tuple(x) for x in (sk or {}).get("walls") or []}
+    walls = sketch.solid_cells(sk)
 
     def squeeze(a: tuple[int, int], dc: int, dr: int) -> bool:
         """Стена — полная преграда: по диагонали сквозь стык двух стен, сходящихся углом, не пройти."""

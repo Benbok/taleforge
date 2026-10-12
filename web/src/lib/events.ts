@@ -20,6 +20,7 @@ export const EVENT_HANDLERS = {
   "map.changed": "game/map.ts",
   "map.state": "game/map.ts",
   "map.step.result": "game/map.ts",
+  "map.traverse.result": "не нужно: клиент пока не отправляет map.traverse; карту обновляет map.changed",
   "master.status": "stores/game.ts",
   "master.tool.result": "master/tools.ts",
   "message.chunk": "stores/game.ts",

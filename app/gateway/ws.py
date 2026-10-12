@@ -5,12 +5,14 @@
 Офлайн и голосование (этап 8, app/gateway/presence.py): обрыв связи во время сессии — «переподключается», через
 60 секунд «офлайн» и ``vote.started``; ``vote.cast`` — голос. Игрок, которому отдали героя ушедшего, действует за
 него, передавая ``as_seat`` (место героя) в ``message.send``, ``message.withdraw``, ``turn.pass``,
-``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get``, ``map.step`` и ``stat.explain``.
+``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get``, ``map.step``, ``map.traverse`` и
+``stat.explain``.
 ``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``map.get`` — схема места и карта открытых мест для героя зрителя (``map.state``, app/core/map.py).
 ``map.step`` — герой зрителя идёт на нажатую клетку схемы (``map.step.result``, app/tools/movement.py).
+``map.traverse`` — герой зрителя проходит проходом комплекса (``map.traverse.result``, app/core/layout/transit.py).
 ``master.tool`` — инструменты мастера для живого мастера (этап 3). Пошаговый режим (этап 4): в бою пишет только
 игрок, чей ход; ``turn.pass`` — пропустить ход (мастер так закрывает ход героя), ``reaction.choose`` — ответ на
 кнопку реакции.
@@ -314,6 +316,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 await _step(app, user, conn, payload)
                 continue
 
+            if kind == "map.traverse":
+                _background(_traverse(app, user, conn, payload))
+                continue
+
             if kind == "stat.explain":
                 await _explain(maker, user, conn, payload)
                 continue
@@ -364,6 +370,17 @@ async def _master_tool(app, user: User, conn: Connection, payload: dict) -> None
     if result.get("ok"):
         await publish_changes(app.state.bus, ctx, messages)
         app.state.master.schedule_sketches(ctx)  # describe_place с панели: эскиз строится в фоне
+        if (ctx.world.scene.state or {}).get("transits"):  # переход с панели: завершить после подготовки, в фоне
+            from app.core.layout import transit
+
+            async def finish_panel():
+                async with app.state.master.turn_lock(conn.campaign_id):
+                    await transit.complete_queued(
+                        app.state.sessionmaker, app.state.master.preparer, app.state.dice_factory, conn.campaign_id,
+                        bus=app.state.bus, panel_only=True,
+                    )  # fmt: skip
+
+            _background(finish_panel())
         if ctx.operation_refs:  # принятая с панели подготовка мира: исполнитель берёт её сразу, не через 15 с
             app.state.master.signal_recovery()
         # move в бою: герой вошёл в бой или ушёл из него — очередь сдвинулась
@@ -653,6 +670,53 @@ async def _step(app, user: User, conn: Connection, payload: dict) -> None:
     await publish_changes(app.state.bus, ctx, messages)
     await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
     await _publish_turn(app, ctx)
+
+
+async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
+    """Герой зрителя проходит проходом комплекса: участок за ним сначала готовится, затем сервер заново проверяет
+    проход и переводит героя. Ответ ``map.traverse.result`` — только этому сокету; схема у всех — по ``map.changed``."""
+    from app.core.inspect import viewer_hero
+    from app.core.layout import transit
+    from app.tools.runtime import publish_changes
+
+    request_id = payload.get("request_id")
+    ref = payload.get("passage_ref")
+
+    async def answer(body: dict) -> None:
+        await conn.send(envelope("map.traverse.result", conn.campaign_id, {"request_id": request_id, **body}))
+
+    if not isinstance(ref, str) or not 0 < len(ref) <= 64:
+        await answer({"ok": False, "error": "passage_ref — строка"})
+        return
+    try:
+        async with app.state.sessionmaker() as session:
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            hero = await viewer_hero(session, viewer)
+            hero_id = hero.id if hero is not None else None
+        if hero_id is None:
+            out, published = {"ok": False, "error": "у тебя нет героя в этой кампании"}, []
+        else:
+            out, published = await transit.traverse(
+                app.state.sessionmaker,
+                app.state.master.preparer,
+                app.state.dice_factory,
+                conn.campaign_id,
+                hero_id,
+                ref,
+            )
+    except NotFound as e:
+        out, published = {"ok": False, "error": str(e)}, []
+    except Exception:  # noqa: BLE001 — игрок получает ответ и при сбое чтения или первой транзакции
+        log.exception("переход игрока в кампании %s не удался", conn.campaign_id)
+        out, published = {"ok": False, "error": "переход не удался"}, []
+    try:
+        await answer(out)
+    finally:
+        for ctx, messages in published:
+            await publish_changes(app.state.bus, ctx, messages)
+        if published:
+            await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
+            await _publish_turn(app, published[-1][0])
 
 
 async def _publish_turn(app, ctx) -> None:

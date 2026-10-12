@@ -3036,6 +3036,49 @@
     "title": "Event_map_step_result",
     "type": "object"
    },
+   "Event_map_traverse_result": {
+    "additionalProperties": false,
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "payload": {
+      "$ref": "#/components/schemas/MapTraverseResult"
+     },
+     "seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seq"
+     },
+     "type": {
+      "const": "map.traverse.result",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "type",
+     "campaign_id",
+     "seq",
+     "payload"
+    ],
+    "title": "Event_map_traverse_result",
+    "type": "object"
+   },
    "Event_master_status": {
     "additionalProperties": false,
     "properties": {
@@ -6389,6 +6432,19 @@
       "title": "Cols",
       "type": "integer"
      },
+     "edges": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Edges"
+     },
      "edit_rev": {
       "anyOf": [
        {
@@ -6400,6 +6456,18 @@
       ],
       "default": null,
       "title": "Edit Rev"
+     },
+     "environment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Environment"
      },
      "exits": {
       "items": {
@@ -6414,6 +6482,33 @@
       },
       "title": "Features",
       "type": "array"
+     },
+     "mask": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Mask"
+     },
+     "material": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Material"
      },
      "party": {
       "maxItems": 2,
@@ -6448,6 +6543,19 @@
      "shape": {
       "title": "Shape",
       "type": "string"
+     },
+     "terrain": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Terrain"
      },
      "unplaced_exits": {
       "default": null,
@@ -6499,6 +6607,24 @@
       "default": null,
       "title": "Beyond"
      },
+     "cells": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "type": "integer"
+         },
+         "type": "array"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cells"
+     },
      "hidden": {
       "default": false,
       "title": "Hidden",
@@ -6511,6 +6637,18 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "passage_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Passage Ref"
      },
      "room_ref": {
       "anyOf": [
@@ -6557,6 +6695,18 @@
       ],
       "default": null,
       "title": "To"
+     },
+     "width": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Width"
      }
     },
     "required": [
@@ -7039,6 +7189,32 @@
      "down"
     ],
     "title": "MapToken",
+    "type": "object"
+   },
+   "MapTraverseResult": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "request_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Request Id"
+     }
+    },
+    "required": [
+     "request_id",
+     "ok"
+    ],
+    "title": "MapTraverseResult",
     "type": "object"
    },
    "MapUnplacedExit": {
@@ -9855,6 +10031,7 @@
       "map.changed": "#/components/schemas/Event_map_changed",
       "map.state": "#/components/schemas/Event_map_state",
       "map.step.result": "#/components/schemas/Event_map_step_result",
+      "map.traverse.result": "#/components/schemas/Event_map_traverse_result",
       "master.status": "#/components/schemas/Event_master_status",
       "master.tool.result": "#/components/schemas/Event_master_tool_result",
       "message.chunk": "#/components/schemas/Event_message_chunk",
@@ -9937,6 +10114,9 @@
      },
      {
       "$ref": "#/components/schemas/Event_map_step_result"
+     },
+     {
+      "$ref": "#/components/schemas/Event_map_traverse_result"
      },
      {
       "$ref": "#/components/schemas/Event_master_status"

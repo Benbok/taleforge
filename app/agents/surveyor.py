@@ -81,7 +81,7 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
         c = await s.get(Campaign, cid)
         place = await s.get(Entity, place_id)
         st = (place.state or {}) if place is not None else {}
-        if c is None or place is None or not st.get("layout"):
+        if c is None or place is None or not st.get("layout") or (st.get("sketch") or {}).get("blueprint"):
             return None
         rev = int(st.get("layout_rev") or 0)
         ents = (await s.scalars(select(Entity).where(Entity.campaign_id == cid))).all()

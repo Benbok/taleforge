@@ -197,6 +197,15 @@ class TurnMixin:
             await self._save_calls(calls)
             told = await self._narrate_turn(cid, turn_id)
             await publish_changes(self.bus, published["ctx"], [*published["messages"], *told], published["names"])
+            queued = (published["ctx"].world.scene.state or {}).get("transits") or []
+            if queued:  # переходы хода завершились до описания: прежний контекст показал бы героев на старом месте
+                from app.core.layout import transit
+
+                heroes = sorted({h for q in queued for h in q["hero_ids"]})
+                try:
+                    await transit.republish(self.maker, self.dice_factory, self.bus, cid, heroes)
+                except Exception:  # noqa: BLE001 — сбой рассылки не прерывает завершение сохранённого хода
+                    log.exception("публикация перехода хода %s не удалась", turn_id)
             await self._states(cid, published["ids"], "answered")
             await self.after_turn(published["ctx"])
             replan = "replan" in published["ctx"].signals
@@ -848,6 +857,7 @@ class TurnMixin:
         turn.generation_checkpoint = checkpoint.effects_committed(
             events=[ev.id for ev in ctx.events],
             operation_refs=sorted(ctx.operation_refs),
+            crew=sorted(crew),
             narration_message_id=msg.id,
             audience=heard,
             place=place,

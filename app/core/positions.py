@@ -114,6 +114,11 @@ def cell_problem(
             return f"клетка {shown} за краем места {sk['cols']}×{sk['rows']}"
         if [c, r] in (sk.get("walls") or []):
             return f"клетка {shown} — стена"
+        from app.core import sketch as sketch_mod
+
+        floor = sketch_mod.floor_cells(sk)
+        if floor is not None and (c, r) not in floor:
+            return f"клетка {shown} — вне пола места"
         for f in sk.get("features") or []:
             if any(c0 <= c <= c1 and r0 <= r <= r1 for c0, r0, c1, r1 in f["cells"]):
                 if f.get("hidden"):
@@ -138,6 +143,11 @@ def floor_problem(world, place: str | None, cell: tuple[int, int], wall_ok: bool
     c, r = cell[0] + ax, cell[1] + ay
     if not (0 <= c < sk["cols"] and 0 <= r < sk["rows"]):
         return f"клетка {[c, r]} за краем места {sk['cols']}×{sk['rows']}"
+    from app.core import sketch as sketch_mod
+
+    floor = sketch_mod.floor_cells(sk)
+    if floor is not None and (c, r) not in floor:
+        return f"клетка {[c, r]} — вне пола места"
     if not wall_ok and [c, r] in (sk.get("walls") or []):
         return f"клетка {[c, r]} — стена"
     return None
@@ -275,7 +285,9 @@ def wall_between(world, a_id: str, b_id: str) -> bool:
     if place is None or place != world.actor_place(b_id):
         return False
     sk = _sketch(world, place)
-    walls = {tuple(x) for x in (sk or {}).get("walls") or []}
+    from app.core import sketch as sketch_mod
+
+    walls = sketch_mod.solid_cells(sk)
     if not walls:
         return False
     ac, bc = _grid_cell(pos_of(world, a_id)), _grid_cell(pos_of(world, b_id))

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.content.catalog import CatalogView
+from app.core.layout.contracts import Blueprint
 from app.db.models import Entity
 
 
@@ -21,7 +22,12 @@ class LocationExit:
     bearing: str | None
 
 
-def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[str, Entity]) -> list[LocationExit]:
+def location_exits(
+    place: Entity,
+    catalog: CatalogView | None,
+    entities: dict[str, Entity],
+    blueprint_cache: dict[str, Blueprint | None] | None = None,
+) -> list[LocationExit]:
     """Соседние места; для комнаты книги допускается ещё не созданный room_ref."""
     from app.core import adventure
 
@@ -55,6 +61,16 @@ def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[st
     if place.kind != "location":
         return []
 
+    from app.core.layout import store
+
+    cache = blueprint_cache if blueprint_cache is not None else {}
+    cx = store.complex_of(place)
+    if cx is not None:
+        return [
+            *_passage_exits(place, entities.get(cx["root_id"]), entities, cache),
+            *_approach_exits(place, entities, cache),
+        ]
+
     exits: list[LocationExit] = []
     seen_ids: set[str] = set()
 
@@ -84,7 +100,71 @@ def location_exits(place: Entity, catalog: CatalogView | None, entities: dict[st
                 add(other.id, link.get("label"))
                 break
     for other in entities.values():
-        if other.kind == "location" and other.location_id == place.id:
+        if other.kind == "location" and other.location_id == place.id and not store.complex_of(other):
             add(other.id, "внутри")
+    for exit_ in _approach_exits(place, entities, cache):
+        add(exit_.target_id, exit_.label, exit_.bearing)
     add(place.location_id, "наружу")
     return exits
+
+
+def _approach_exits(
+    place: Entity,
+    entities: dict[str, Entity],
+    cache: dict[str, Blueprint | None],
+) -> list[LocationExit]:
+    """Подходы других комплексов могут выходить и в обычное место, и в участок комплекса."""
+    from app.core.layout import store
+
+    out = []
+    for root in entities.values():
+        bp = _blueprint(root, cache) if root.kind == "location" else None
+        if bp is None:
+            continue
+        ids = store.area_ids(root)
+        for p in bp.passages:
+            if store.passage_live(root, p.passage_ref).get("hidden", p.hidden):
+                continue
+            for i, end in enumerate(p.ends):
+                if end.external and end.place_id == place.id:
+                    target = ids.get(p.ends[1 - i].area_ref or "")
+                    if target and target != place.id and target in entities:
+                        out.append(LocationExit(target, None, p.public_name, None))
+    return out
+
+
+def _blueprint(root: Entity | None, cache: dict[str, Blueprint | None]) -> Blueprint | None:
+    """Кэш одного снимка мира: новое построение карты получает новый словарь."""
+    from app.core.layout import store
+
+    if root is None:
+        return None
+    if root.id not in cache:
+        cache[root.id] = store.blueprint_of(root)
+    return cache[root.id]
+
+
+def _passage_exits(
+    place: Entity,
+    root: Entity | None,
+    entities: dict[str, Entity],
+    cache: dict[str, Blueprint | None],
+) -> list[LocationExit]:
+    """Соседи участка комплекса — только через его проходы; тайный проход соседства не даёт, пока его не нашли.
+    Вложенность в корень прохода не создаёт."""
+    from app.core.layout import store
+
+    bp = _blueprint(root, cache)
+    if bp is None:
+        return []
+    ids = store.area_ids(root)
+    area_ref = store.complex_of(place)["area_ref"]
+    out: list[LocationExit] = []
+    for p, x in bp.ends_of(area_ref):
+        if store.passage_live(root, p.passage_ref).get("hidden", p.hidden):
+            continue
+        o = bp.other(p, x)
+        target = ids.get(o.area_ref) if o.area_ref else o.place_id
+        if target and target in entities and target not in {e.target_id for e in out}:
+            out.append(LocationExit(target, None, p.public_name, x.side))
+    return out

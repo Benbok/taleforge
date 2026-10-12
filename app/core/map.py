@@ -100,11 +100,22 @@ def _footprint_zones(sk: dict | None, around: list[dict], entities: dict[str, En
         item["cell"] = None  # одна позиция: деталь эскиза
 
 
+def _in_complex(place: Entity, blueprint_cache: dict) -> bool:
+    from app.core.layout import store
+
+    if store.complex_of(place) is not None:
+        return True
+    if place.id not in blueprint_cache:
+        blueprint_cache[place.id] = store.blueprint_of(place)
+    return blueprint_cache[place.id] is not None
+
+
 async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     cid = viewer.campaign.id
     scene = await get_scene(session, cid)
     ents = (await session.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
     places = {e.id: e for e in ents if e.kind == "location"}
+    blueprint_cache = {}
     master = viewer.seat is not None and viewer.seat.role == "master"
     hero = None if master else await viewer_hero(session, viewer)
 
@@ -141,7 +152,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         # из места, где побывали, видно, внутри чего оно, что в нём и куда из него ведут пути
         for pid in list(visited):
             p = places[pid]
-            near = {x.target_id for x in location_exits(p, catalog, places) if x.target_id}
+            near = {x.target_id for x in location_exits(p, catalog, places, blueprint_cache) if x.target_id}
             if p.location_id:
                 near.add(p.location_id)  # группировка; не выход из комнаты книги
             shown |= {n for n in near if n in places and not (places[n].state or {}).get("secret")}
@@ -271,7 +282,16 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 continue
             link = next((x for x in _links(here) if x["to"] == pid), None)
             back = next((x for x in _links(places[pid]) if x["to"] == here.id), None)
-            if link or back:
+            if _in_complex(here, blueprint_cache) or _in_complex(places[pid], blueprint_cache):
+                # комплекс: соседи и подписи — по проходам blueprint; вложенность и старые links прохода не дают
+                found = next(
+                    (x for x in location_exits(here, catalog, places, blueprint_cache) if x.target_id == pid), None
+                )
+                if found is None:
+                    continue
+                link = {"bearing": found.bearing}
+                via = found.label
+            elif link or back:
                 via = (link or back).get("label")
             elif places[pid].location_id == here.id:
                 via = "внутри"
@@ -283,7 +303,12 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                 {
                     "id": pid,
                     "room_ref": next(
-                        (x.room_ref for x in location_exits(here, catalog, places) if x.target_id == pid), None
+                        (
+                            x.room_ref
+                            for x in location_exits(here, catalog, places, blueprint_cache)
+                            if x.target_id == pid
+                        ),
+                        None,
                     ),
                     "name": p["name"],
                     "via": via,
@@ -293,7 +318,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             )
     if here is not None and adventure.room_of(here) and catalog is not None:
         known_ids = {exit["id"] for exit in exits}
-        for passage in location_exits(here, catalog, places):
+        for passage in location_exits(here, catalog, places, blueprint_cache):
             if passage.target_id is not None and passage.target_id not in shown:
                 continue
             if passage.target_id is not None and passage.target_id in known_ids:

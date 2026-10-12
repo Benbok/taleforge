@@ -257,7 +257,11 @@ def _linked(ctx: ToolContext | None, a: Entity, b: Entity) -> bool:
 
 
 def _connect(ctx: ToolContext, a: Entity, b: Entity, inverse: list) -> None:
-    """В свободном мире пройденный маршрут отмечается; в книге переходы заданы её планом."""
+    """В свободном мире пройденный маршрут отмечается; в книге и в комплексе переходы заданы планом."""
+    from app.core.layout import store
+
+    if store.complex_of(a) or store.complex_of(b):
+        return  # проходы комплекса заданы blueprint: переход не прокладывает нового пути
     if adventure.room_of(a) and adventure.room_of(b) and a.location_id == b.location_id:
         return  # Переход персонажей не создаёт новую дверь между комнатами модуля.
     if a.id != b.id and not _linked(ctx, a, b):
@@ -621,6 +625,8 @@ async def sketch_place(ctx: ToolContext, a: SketchArgs) -> dict:
     place = w.entities[w.place_arg(a.location_id, "эскиз")]
     await _lock_sketch_place(ctx, place)
     current = (place.state or {}).get("sketch") or {}
+    if current.get("blueprint"):
+        raise ToolError("участок комплекса: его форма общая с соседями — правь edit_sketch, а не перерисовывай")
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=True)
     data, errors = sketch_data(a, {e.id for e in w.entities.values() if e.kind == "location"}, reach=True)
     if errors:
@@ -672,6 +678,59 @@ def _find(items: list[dict], name: str, what: str) -> int:
     raise ToolError(f"в эскизе нет {what} «{name}»; есть: {have}")
 
 
+PASSAGE_ACTIONS = {
+    "open": ("state", "open"),
+    "close": ("state", "closed"),
+    "lock": ("state", "locked"),
+    "unlock": ("state", "closed"),
+    "reveal": ("hidden", False),
+    "hide": ("hidden", True),
+}
+
+
+def _passage_exit(current: dict, a: EditSketchArgs) -> dict | None:
+    """Выход-проход комплекса, к которому обращается правка."""
+    if not a.target or a.action in ("add_feature", "add_exit"):
+        return None
+    want = a.target.strip().lower()
+    return next(
+        (
+            x
+            for x in current.get("exits") or []
+            if x.get("passage_ref") and (x["name"].strip().lower() == want or x["passage_ref"] == a.target)
+        ),
+        None,
+    )
+
+
+async def _edit_passage(ctx: ToolContext, place: Entity, x: dict, a: EditSketchArgs) -> dict:
+    """Состояние прохода общее для обоих участков: меняется только у корня, эскизы сторон не трогаются."""
+    from app.core.layout import store
+
+    if a.action not in PASSAGE_ACTIONS or a.rename:
+        raise ToolError(
+            f"«{x['name']}» — проход комплекса, общий для двух участков: для него open, close, lock, unlock, reveal "
+            "или hide"
+        )
+    root = store.root_of(ctx.world.entities, place)
+    if root is None:
+        raise ToolError("комплекс этого участка не найден")
+    await _lock_sketch_place(ctx, root)
+    key, value = PASSAGE_ACTIONS[a.action]
+    before = copy.deepcopy(root.state)
+    passages = dict((root.state or {}).get("passages") or {})
+    passages[x["passage_ref"]] = {**(passages.get(x["passage_ref"]) or {}), key: value}
+    root.state = {**(root.state or {}), "passages": passages}
+    ctx.signals.add("map.changed")
+    await ctx.record(
+        "edit_sketch",
+        target_id=place.id,
+        payload={"place": place.name, "action": a.action, "target": x["name"], "passage_ref": x["passage_ref"]},
+        inverse=[{"table": "entities", "id": root.id, "field": "state", "before": before}],
+    )
+    return {"place": place.name, "passage": x["name"], key: value}
+
+
 @tool(
     "edit_sketch",
     "Правит одну деталь эскиза места, не перерисовывая его: герои нашли тайную дверь, отперли решётку, заметили "
@@ -690,6 +749,9 @@ async def edit_sketch(ctx: ToolContext, a: EditSketchArgs) -> dict:
     if current is None:
         raise ToolError(f"у места «{place.name}» ещё нет эскиза: describe_place или sketch_place")
     revision = _verify_sketch_revision(current, a.expected_revision, replacing=bool(sketch.linked_entity_ids(current)))
+    passage = _passage_exit(current, a)
+    if passage is not None:
+        return await _edit_passage(ctx, place, passage, a)
     data = copy.deepcopy(current)
     exits, feats = list(data.get("exits") or []), list(data.get("features") or [])
     note = ""
@@ -889,14 +951,69 @@ async def move(ctx: ToolContext, a: MoveArgs) -> dict:
     }
 
 
+class TraverseArgs(BaseModel):
+    character_ids: list[str] = Field(
+        default_factory=list, description="кто проходит; пусто — все герои, что стоят там же, где сцена"
+    )
+    passage_ref: str = Field(
+        min_length=1, max_length=64, description="проход комплекса из таблицы сцены («проход p_…» у выхода)"
+    )
+
+
+@tool(
+    "traverse_passage",
+    "Герои проходят проходом комплекса — дверью, аркой, лестницей или свободным краем поля — в соседний участок. "
+    "Участок за проходом сначала готовится; описывай его только после перехода. Закрытую дверь сначала открывают.",
+    TraverseArgs,
+    ids={"character_ids": "characters"},
+)
+async def traverse_passage(ctx: ToolContext, a: TraverseArgs) -> dict:
+    from app.core.layout import transit
+
+    w = ctx.world
+    if a.character_ids:
+        heroes = [_character(ctx, cid) for cid in a.character_ids]
+    else:
+        heroes = [
+            c
+            for c in w.characters.values()
+            if c.status in PLAYABLE
+            and (c.id in w.crew if w.focus is not None else w.place_of(c) == w.scene.location_id)
+        ]
+    if not heroes:
+        raise ToolError("некому идти: назови героев в character_ids")
+    inverse: list = []
+    req = await transit.begin(ctx, [h.id for h in heroes], a.passage_ref, inverse)
+    if not req.refs:  # участок уже готов: переход сразу, в этом же ходе
+        out = await transit.finish(ctx, req, inverse)
+        if not out["moved"]:
+            raise ToolError(out["reason"])
+        ctx.closed.update(h.id for h in heroes)  # без character_ids реестр не закрыл бы действия героев
+        return out
+    ctx.closed.update(h.id for h in heroes)
+    transit.enqueue(ctx, req, inverse)
+    ctx.operation_refs.update(req.refs)
+    payload = {"queued": True, "passage_ref": a.passage_ref, "refs": list(req.refs)}
+    await ctx.record("traverse_passage", target_id=req.dest_id, payload=payload, inverse=inverse, hidden=True)
+    return {
+        "queued": True,
+        "passage": a.passage_ref,
+        "note": "участок за проходом готовится; герои перейдут до описания",
+    }
+
+
 async def request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
     """Вход героев в место: резерв корня и запрос подготовки в той же транзакции; ход ждёт её перед описанием.
     Без флага кампании ``scene_generation`` место готовится только ради сюжетных носителей, с профилем
     ``minimal`` (docs/world-objects-delivery3.md, §2.6; docs/world-objects-delivery4.md, §2.3)."""
     from app.core import plot_anchors
+    from app.core.layout import store as layout_store
     from app.core.preparation import receipt
     from app.core.world_generation import storage
 
+    geo = await layout_store.request_geometry(ctx, loc)
+    if geo is not None:
+        ctx.operation_refs.add(geo)  # ход дождётся геометрии участка до описания
     flag = bool((ctx.campaign.settings or {}).get("scene_generation"))
     row = await storage.find(ctx.session, ctx.campaign.id, loc.id, "location_initial")
     if row is not None and row.status == "ready":  # поздние зацепки готового места — сразу, в этой транзакции
