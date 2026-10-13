@@ -75,9 +75,7 @@ def power_errors(category: str, modifiers: list[dict]) -> list[str]:
             if bad or not names:
                 errors.append(f"снять можно только {', '.join(sorted(REMOVABLE))}")
         else:
-            errors.append(
-                f"операция {op!r} недоступна: можно resource hp, add temp_hp, remove_condition"
-            )
+            errors.append(f"операция {op!r} недоступна: можно resource hp, add temp_hp, remove_condition")
     return errors
 
 
