@@ -225,7 +225,7 @@ def test_combat_music_and_cues(game):
 
 
 def test_event_cues_by_priority(game):
-    """Эффекты на события хода: важные первыми, не больше двух; скрытые броски не звучат."""
+    """Эффекты на события хода; скрытые броски не звучат."""
     settings, cid, hero, _ = game
 
     async def fn(ctx):

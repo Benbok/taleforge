@@ -92,6 +92,10 @@ async def flush_outbox(session: AsyncSession, ctx: ToolContext) -> list[Message]
     """Карточки открытых бросков хода и сообщения, которые инструменты отложили до конца хода (шёпот), получают
     номера и пишутся в чат. Вызывается до повествования, поэтому числа в чате появляются раньше слов."""
     audio.finalize(ctx)  # короткие фразы на гибель героя и раскрытую тайну — до фиксации хода
+    if ctx.generated_sfx_events:
+        from app.sfx.playback import queue_automatic_playbacks
+
+        await queue_automatic_playbacks(ctx)
     if ctx.sfx_requests:
         from app.sfx.playback import prepare_playbacks
 

@@ -6,8 +6,9 @@
 
 Два вида треков. ``music`` — фоновая музыка, звучит петлёй, одна на сцену: движок сам выбирает трек из библиотеки по
 настроению сцены и месту, мастер только называет настроение. ``sfx`` — короткий эффект один раз: движок играет его
-сам, когда в игре случается событие из карточки (начало боя, крит, заклинание…), а эффекты без события мастер
-включает сам. Сервер хранит выбор в ``scenes.state["audio"]`` и рассылает событием ``audio.state``.
+сам, когда в игре случается событие из карточки (начало боя, крит, заклинание…), а для выполненного действия без
+готового эффекта очередь может сгенерировать отдельный SFX. Сервер хранит выбор в ``scenes.state["audio"]`` и
+рассылает событием ``audio.state``.
 """
 
 from __future__ import annotations
@@ -97,9 +98,96 @@ EXT = {".ogg": "audio/ogg", ".opus": "audio/ogg", ".mp3": "audio/mpeg", ".wav": 
 MAX_BYTES = 20 * 1024 * 1024
 RECENT = 3  # столько последних треков движок старается не повторять
 MUSIC_COOLDOWN = 60.0  # секунд реального времени между сменами музыки, кроме начала и конца боя
-MAX_SFX = 2  # эффектов за ход: больше — каша
+# Техническая страховка для ручных/автоматических звуков. Обычный ход содержит 1–2 действия,
+# но каждое фактически выполненное действие может получить свой эффект.
+MAX_SFX = 16
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 CARDS = "tracks.yaml"
+
+AUTO_SFX_DESCRIPTIONS = {
+    "resolve_attack": "A tabletop fantasy attack strikes or misses with weapon impact",
+    "roll_check": "Tense fantasy tabletop action with a decisive outcome",
+    "resolve_grapple": "A rough fantasy grapple locks into a struggle",
+    "escape_grapple": "A character breaks free from a grapple",
+    "resolve_shove": "A forceful shove sends someone stumbling",
+    "cross_threshold": "A character crosses a threshold into another area",
+    "cast_spell": "A magical spell surges through the scene",
+    "death_save": "A tense final breath and a desperate heartbeat",
+    "apply_hazard": "A dangerous trap or environmental hazard triggers",
+    "apply_effect": "A supernatural condition takes hold",
+    "remove_effect": "A supernatural condition dissolves",
+    "use_item": "A fantasy adventurer uses a significant item",
+    "give_item": "An important item is handed to an adventurer",
+    "keep_found_item": "A found object is claimed from the scene",
+    "take_item": "An item is taken from its container",
+    "equip_item": "A weapon or piece of gear is equipped",
+    "place_item": "An object is placed into the scene",
+    "pick_up_item": "An adventurer picks up an important object",
+    "drop_item": "An object is dropped onto the ground",
+    "pass_item": "An object changes hands between adventurers",
+    "create_container": "A container is placed into the fantasy scene",
+    "open_container": "An old container opens with a revealing creak",
+    "store_object": "An object is stored inside a container",
+    "retrieve_object": "An object is retrieved from a container",
+    "search_container": "A container is searched for hidden contents",
+    "reposition": "Fast footsteps and movement across a fantasy scene",
+    "step": "Footsteps carry a character across the scene",
+    "move": "Footsteps carry a character across the scene",
+    "traverse_passage": "Footsteps move through a passage into a new area",
+    "enter_room": "A character enters a new room",
+    "place_area": "A new area takes shape in the scene",
+    "remove_area": "An area fades out of the scene",
+    "reveal_area": "A hidden area is revealed",
+    "reveal_knowledge": "A piece of hidden knowledge is revealed",
+    "learn_fact": "A new fact settles into the party's knowledge",
+    "rest": "A brief fantasy camp rest with a quiet fire",
+    "use_feature": "A fantasy character activates a special ability",
+    "take_action": "A fantasy adventurer makes a decisive move",
+    "auto_success": "A simple fantasy action completes with a clear sound",
+    "award_xp": "A reward is granted after the adventure",
+    "grant_level": "A character reaches a new level",
+    "grant_inspiration": "A spark of inspiration is granted",
+    "roll_fortune": "Fate turns with a decisive tabletop roll",
+}
+
+# State mutations that are orchestration, presentation, or bookkeeping rather than
+# an in-world action players should hear as a separate generated effect.
+AUTO_SFX_EXCLUDED = {
+    "set_music",
+    "play_sfx",
+    "request_sfx",
+    "set_scene_mode",
+    "advance_time",
+    "set_location_presentation",
+    "mark_moment",
+    "review_character",
+    "set_class_choice",
+    "set_rest_place",
+    "advance_plot",
+    "develop",
+    "threat_tick",
+    "bind_plot_anchor",
+    "record_deed",
+    "expose_deed",
+    "resolve_response",
+    "adapt_story",
+}
+
+
+def automatic_sfx_specs(ctx) -> list[tuple[str, str]]:
+    """Return one generated effect description for every visible, executed action."""
+    out = []
+    for ev in ctx.events:
+        if (
+            ev.hidden
+            or not (getattr(ev, "actor_id", None) or getattr(ev, "target_id", None))
+            or ev.tool in AUTO_SFX_EXCLUDED
+        ):
+            continue
+        description = AUTO_SFX_DESCRIPTIONS.get(ev.tool)
+        if description:
+            out.append((ev.tool, description))
+    return out
 
 
 @dataclass
@@ -745,9 +833,32 @@ def _events(ctx) -> list[str]:
     return out
 
 
+def _action_cue(ev) -> str | None:
+    """Map an action to the most specific static library cue, if one exists."""
+    p = ev.payload or {}
+    p = p.get("result", p) if isinstance(p.get("result"), dict) else p
+    if ev.tool == "resolve_attack":
+        if p.get("critical"):
+            return "crit"
+        if p.get("fumble"):
+            return "fumble"
+        if p.get("killed"):
+            return "kill"
+        if p.get("hit"):
+            return "hit"
+    return {
+        "grant_level": "levelup",
+        "plot_reveal": "secret",
+        "end_act": "act",
+        "cast_spell": "spell",
+        "apply_hazard": "hazard",
+        "apply_effect": "effect",
+        "rest": "rest",
+    }.get(ev.tool)
+
+
 def finalize(ctx) -> None:
-    """Конец хода, до фиксации: эффекты на события хода — самые важные, не больше MAX_SFX вместе с эффектами
-    мастера."""
+    """Конец хода, до фиксации: готовые эффекты и заявки на генерацию по действиям."""
     signaled = [s for s in ctx.signals if s.startswith("cue:")]
     ctx.signals.difference_update(signaled)
     if not enabled(ctx.campaign):
@@ -769,11 +880,30 @@ def finalize(ctx) -> None:
         st["seen"] = [*st["seen"], *[p for p in places if p not in st["seen"]]]
         _store(ctx.world.scene, st)
         happened.append("place")
+    tracks = {event: for_event(ctx.campaign, event) for event in set(happened)}
     for event in sorted(set(happened), key=CUES.index):
         if len(ctx.audio) + len(ctx.sfx_requests) >= MAX_SFX:
             break
-        if t := for_event(ctx.campaign, event):
+        if t := tracks[event]:
             cue(ctx, t)
+
+    # A generated sound fills the gap only when the library has no matching static cue.
+    descriptions = AUTO_SFX_DESCRIPTIONS
+    existing = {getattr(ev, "id", None) or id(ev) for ev, _ in ctx.generated_sfx_events}
+    for ev in ctx.events:
+        if (
+            ev.hidden
+            or not (getattr(ev, "actor_id", None) or getattr(ev, "target_id", None))
+            or ev.tool in AUTO_SFX_EXCLUDED
+            or ev.tool not in descriptions
+            or tracks.get(_action_cue(ev)) is not None
+            or len(ctx.audio) + len(ctx.sfx_requests) + len(ctx.generated_sfx_events) >= MAX_SFX
+        ):
+            continue
+        key = getattr(ev, "id", None) or id(ev)
+        if key not in existing:
+            ctx.generated_sfx_events.append((ev, descriptions[ev.tool]))
+            existing.add(key)
 
 
 def prompt_block(campaign, scene, place: str | None = None, saved: list[dict] | None = None) -> str:
@@ -796,7 +926,8 @@ def prompt_block(campaign, scene, place: str | None = None, saved: list[dict] | 
         out += [f"- {x['id']}: {x['title']} — {x['description']}" for x in saved]
     if (campaign.settings or {}).get("sfx_enabled"):
         out.append(
-            "request_sfx: новый редкий звук описывай по-английски, 1–4 секунды, без речи и музыки. "
-            "Максимум один запрос за ход. Боевые звуки ведёт движок; генерация может не успеть к сцене."
+            "request_sfx: новый звук описывай по-английски, 1–4 секунды, без речи и музыки. "
+            "Каждое выполненное действие может получить свой эффект; не создавай звук для служебных вызовов. "
+            "Генерация может не успеть к сцене."
         )
     return "\n".join(out)

@@ -280,7 +280,6 @@ class SfxPlayback(Base):
     """Persistent outbox; pending until the turn's text has been published."""
 
     __tablename__ = "sfx_playbacks"
-    __table_args__ = (UniqueConstraint("campaign_id", "turn_id"),)
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("sp"))
     campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
     sound_id: Mapped[str] = mapped_column(ForeignKey("sfx_sounds.id", ondelete="CASCADE"))

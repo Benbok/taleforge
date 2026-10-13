@@ -72,6 +72,51 @@ async def prepare_playbacks(ctx) -> None:
             row.context, row.audience = final, audience_of(ctx, final)
 
 
+async def queue_automatic_playbacks(ctx) -> None:
+    """Queue one generated effect for each action without a matching library cue."""
+    if not ctx.generated_sfx_events:
+        return
+    from app.config import Settings
+    from app.sfx.contracts import SfxInput
+    from app.sfx.service import enqueue
+
+    cfg = ctx.session.info.get("settings", Settings())
+    if not cfg.sfx_enabled or not (ctx.campaign.settings or {}).get("sfx_enabled"):
+        return
+    final = context_of(ctx)
+    for ev, description in ctx.generated_sfx_events:
+        try:
+            receipt = await enqueue(
+                ctx.session,
+                cfg,
+                ctx.campaign.id,
+                SfxInput(description=description, duration_seconds=2, context=ev.tool),
+                staged=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — sound must never abort a game turn
+            log.warning("automatic SFX admission failed for %s: %s", ev.tool, exc)
+            continue
+        if receipt.get("status") == "skipped":
+            continue
+        row = SfxPlayback(
+            campaign_id=ctx.campaign.id,
+            sound_id=receipt["sound_id"],
+            turn_id=ctx.turn_id,
+            asset_id=receipt.get("asset_id"),
+            context=final,
+            audience=audience_of(ctx, final),
+        )
+        ctx.session.add(row)
+        await ctx.session.flush()
+        ctx.sfx_requests.append(row.id)
+        await ctx.record(
+            "request_sfx",
+            payload={"request_id": row.id, "sound_id": receipt["sound_id"], "automatic": True, "action": ev.tool},
+            hidden=True,
+        )
+    ctx.generated_sfx_events.clear()
+
+
 async def arm(ctx) -> None:
     """Called after publish_changes sent narration; works when the original session has already closed."""
     if not ctx.sfx_requests:
