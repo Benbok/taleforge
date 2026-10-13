@@ -565,7 +565,7 @@
       ]
      },
      "narrative_mode": {
-      "default": "strict",
+      "default": "adaptive",
       "description": "Режим адаптации сюжета",
       "enum": [
        "strict",
@@ -9166,6 +9166,24 @@
       "title": "Features",
       "type": "array"
      },
+     "formatted_bonuses": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Formatted Bonuses"
+     },
+     "highlights": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Highlights",
+      "type": "array"
+     },
      "id": {
       "title": "Id",
       "type": "string"
@@ -9185,6 +9203,17 @@
       ],
       "title": "Size"
      },
+     "size_display": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Size Display"
+     },
      "speed": {
       "anyOf": [
        {
@@ -9195,6 +9224,17 @@
        }
       ],
       "title": "Speed"
+     },
+     "speed_display": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Speed Display"
      },
      "summary": {
       "anyOf": [

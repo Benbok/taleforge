@@ -2517,7 +2517,7 @@ export interface components {
             /**
              * Narrative Mode
              * @description Режим адаптации сюжета
-             * @default strict
+             * @default adaptive
              * @enum {string}
              */
             narrative_mode?: "strict" | "adaptive";
@@ -5178,14 +5178,22 @@ export interface components {
             features?: {
                 [key: string]: unknown;
             }[];
+            /** Formatted Bonuses */
+            formatted_bonuses?: string | null;
+            /** Highlights */
+            highlights?: string[];
             /** Id */
             id: string;
             /** Name */
             name: string;
             /** Size */
             size?: string | null;
+            /** Size Display */
+            size_display?: string | null;
             /** Speed */
             speed?: number | null;
+            /** Speed Display */
+            speed_display?: string | null;
             /** Summary */
             summary?: string | null;
         };
