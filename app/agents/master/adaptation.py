@@ -2,12 +2,81 @@
 
 from __future__ import annotations
 
+import json
+
 from app.core.narrative.contracts import PublicEffect
 from app.core.narrative.threads import is_thread_visible_to_audience
 from app.db.narrative import ensure_state
 from app.tools.narrative.executor import find_receipt
 from app.tools.narrative.sources import bind_scene_sources
 from app.tools.registry import ToolContext
+
+# Минимальные образцы аргументов adapt_story по видам операций. Модель видит точный формат, сервер его же и
+# проверяет; тест сверяет каждый образец с контрактами, чтобы подсказка не разошлась с кодом.
+OPERATION_EXAMPLES: dict[str, dict] = {
+    "develop_actor_role": {
+        "kind": "develop_actor_role",
+        "entity_id": "<id NPC>",
+        "new_role": "проводник отряда",
+        "new_motivation": "тайно ищет брата",
+    },
+    "add_campaign_fact": {
+        "kind": "add_campaign_fact",
+        "fact": {
+            "ref": {
+                "campaign_id": "{campaign_id}",
+                "namespace": "campaign",
+                "subject_id": "<id>",
+                "key": "relationship",
+                "snapshot_ref": {
+                    "kind": "event",
+                    "source_id": "current",
+                    "typed_address": "campaign:<id>:relationship",
+                },
+            },
+            "kind": "truth",
+            "temporal_semantics": "current_state",
+            "freedom": "draft",
+            "value": "староста должен отряду услугу",
+            "audience": ["party"],
+        },
+    },
+    "upsert_thread": {
+        "kind": "upsert_thread",
+        "thread": {"id": "th-<кратко>", "status": "offered", "audience": ["party"], "subject_refs": ["<id>"]},
+    },
+    "transition_thread": {"kind": "transition_thread", "thread_id": "th-<кратко>", "target_status": "dormant"},
+    "change_front_intent": {
+        "kind": "change_front_intent",
+        "front_ref": {"campaign_id": "{campaign_id}", "source_kind": "antagonist", "source_id": "<id антагониста>"},
+        "new_intent": "выжидает и шлёт разведчиков",
+    },
+    "revise_future_situation": {
+        "kind": "revise_future_situation",
+        "patch": {
+            "edits": [
+                {
+                    "kind": "update_open_node",
+                    "act_id": "<id акта>",
+                    "node_id": "<id открытого узла>",
+                    "fields": {"title": "…", "summary": "…"},
+                }
+            ]
+        },
+    },
+}
+GROUND_EXAMPLE = {
+    "kind": "divergence",
+    "evidence_refs": [{"kind": "message", "source_id": "current"}],
+    "confidence": "explicit",
+}
+
+
+def operation_examples(campaign_id: str) -> str:
+    return "\n".join(
+        f"  {kind}: " + json.dumps(example, ensure_ascii=False).replace("{campaign_id}", campaign_id)
+        for kind, example in OPERATION_EXAMPLES.items()
+    )
 
 
 async def adaptation_prompt(ctx: ToolContext) -> str:
@@ -41,7 +110,10 @@ async def adaptation_prompt(ctx: ToolContext) -> str:
         "- Развитие роли существующего NPC: develop_actor_role.\n"
         "- Новый устойчивый факт: add_campaign_fact.\n"
         "- Новая цель или подозрение фракции: change_front_intent.\n"
-        "- Не описывай факты и связи в тексте без предварительного вызова adapt_story."
+        "- Не описывай факты и связи в тексте без предварительного вызова adapt_story.\n"
+        f"Формат: grounds [{json.dumps(GROUND_EXAMPLE, ensure_ascii=False)}]; operations — список объектов:\n"
+        + operation_examples(ctx.campaign.id)
+        + "\nЗначения в угловых скобках замени настоящими id из сцены и get_plot; future-правки — slot 2."
     )
 
 
