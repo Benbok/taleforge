@@ -3,7 +3,7 @@
 
 from app.core import rolls
 from app.db.models import Character, Entity, Event, Knowledge, Message
-from tests.game import FIGHTER, ok, party, run
+from tests.game import FIGHTER, ok, party, quiet, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
 
@@ -168,6 +168,7 @@ def test_actions_follow_state(game_client, admin_g, settings):
     assert player["actions"] == ["chat.ooc"] and player["blocked"]["chat.play"].startswith("Сессия не идёт")
 
     ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
+    quiet(game_client)
     goblin = _spawn(settings, cid, kind="creature", name="Гоблин", template_id="creature.goblin")
 
     async def fight(s):
