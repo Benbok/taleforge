@@ -232,7 +232,12 @@ def run_alliance_story_scenario(game_client, admin_g, llm, settings, monkeypatch
                 Event.tool == "adapt_story",
             )
         )
-        receipts = receipts_res.scalars().all()
+        # квитанции адаптации из хода; фоновый режиссёр (source_kind=work) отвечает на границу хода своей
+        receipts = [
+            e
+            for e in receipts_res.scalars().all()
+            if ((e.payload or {}).get("source") or {}).get("source_kind") != "work"
+        ]
 
         return {
             "next_node": open_node.get("title"),

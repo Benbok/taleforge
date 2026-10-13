@@ -66,6 +66,8 @@ def plan_campaign(settings, client, admin):
     import_base(settings)
     c, _heads, _hero = party(client, admin)
     cid = c["id"]
+    # фоновое вступление после старта сессии пишет в мир: без ожидания ревизия сдвигается между фазами режиссёра
+    client.portal.call(client.app.state.master.wait_idle, cid)
     maker = make_sessionmaker(client.app.state.engine)
 
     async def _setup():
@@ -128,15 +130,26 @@ def test_architect_revise_adaptive_delegates_to_narrative_path(settings, client,
             await s.commit()
 
         svc = FakeMasterService(maker)
+        # без проверяемого события закрытия акта режиссёру нечем обосновать пересмотр
+        assert await architect.revise(svc, cid) is None
+
+        async with maker() as s:
+            from app.db.models import Event
+
+            s.add(Event(id="evt-end-act-1", campaign_id=cid, tool="end_act", payload={"act_id": "act1"}))
+            await s.commit()
         res = await architect.revise(svc, cid)
         assert res is not None
+        assert await architect.revise(svc, cid) == res  # тот же ключ, что у границы хода: одно задание
 
         # Verify a narrative work item was enqueued instead of running legacy merge
         async with maker() as s:
             works = (await s.scalars(select(NarrativeWork).where(NarrativeWork.campaign_id == cid))).all()
-            assert len(works) >= 1
+            assert len(works) == 1
             work = works[0]
             assert work.kind == "act_closed"
+            assert work.source_id == "evt-end-act-1"
+            assert work.evidence_refs == [{"campaign_id": cid, "kind": "event", "source_id": "evt-end-act-1"}]
             assert work.scope == "future"
             assert work.status == "pending"
 

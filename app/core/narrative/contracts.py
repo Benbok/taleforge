@@ -527,6 +527,7 @@ class AuthorCallReport(NarrativeContractModel):
     cost: float = 0.0
     latency_ms: int = 0
     error: str | None = None
+    call_id: str | None = None
 
 
 class PreparationReport(NarrativeContractModel):

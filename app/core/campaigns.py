@@ -35,9 +35,9 @@ DEFAULT_SETTINGS = {
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
     "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
-    "narrative_mode": "strict",  # режим адаптации сюжета: strict / adaptive
+    "narrative_mode": "adaptive",  # режим адаптации сюжета: strict / adaptive
     "narrative": {
-        "mode": "strict",
+        "mode": "adaptive",
         "policy_version": "2026-10-12",
     },
     **voicing.DEFAULTS,  # каналы озвучки: реплики локально, текст выключен
@@ -298,7 +298,7 @@ async def create_campaign(
     n_mode = (
         (settings or {}).get("narrative", {}).get("mode")
         if (settings or {}).get("narrative")
-        else (settings or {}).get("narrative_mode", merged_settings.get("narrative_mode", "strict"))
+        else (settings or {}).get("narrative_mode", merged_settings.get("narrative_mode", "adaptive"))
     )
     merged_settings["narrative_mode"] = n_mode
     merged_settings["narrative"] = {

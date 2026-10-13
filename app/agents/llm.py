@@ -252,7 +252,8 @@ Script = Callable[[list[dict[str, Any]], list[dict[str, Any]] | None], LLMReply 
 
 class ScriptedLLM:
     """Модель для тестов: отдаёт ответы по очереди. Ответ — LLMReply, словарь {text, tool_calls: [(name, args)]}
-    или функция от (messages, tools). Все запросы сохраняются в ``requests``."""
+    или функция от (messages, tools). Все запросы сохраняются в ``requests``; запросы фонового режиссёра —
+    в ``director_requests`` (ответ — элемент с пометкой director и arguments, иначе «без изменений»)."""
 
     def __init__(self, replies: list[Any]):
         self.replies = list(replies)
@@ -260,6 +261,7 @@ class ScriptedLLM:
         self.parser_requests: list[dict[str, Any]] = []
         self.voice_requests: list[dict[str, Any]] = []
         self.intro_requests: list[dict[str, Any]] = []
+        self.director_requests: list[dict[str, Any]] = []
         self.greeting_requests: list[dict[str, Any]] = []
 
     async def complete(
@@ -304,6 +306,15 @@ class ScriptedLLM:
                 return LLMReply(text="Добро пожаловать за стол, друзья!", model=model, tokens_in=10, tokens_out=5)
             self.replies.remove(scripted)
             return LLMReply(text=scripted.get("text", ""), model=model, tokens_in=10, tokens_out=5)
+        if _is_director(tools):
+            # фоновый режиссёр идёт параллельно ходам: сценарный ответ с пометкой director, иначе «без изменений»
+            self.director_requests.append(req)
+            scripted = next((r for r in self.replies if isinstance(r, dict) and r.get("director")), None)
+            if scripted is not None:
+                self.replies.remove(scripted)
+            args = (scripted or {}).get("arguments") or {"summary": "no_change", "operations": []}
+            call = ToolCall(f"call_d{len(self.director_requests)}", "propose_adaptation", args, json.dumps(args))
+            return LLMReply(text="", tool_calls=[call], model=model, tokens_in=10, tokens_out=5)
         if _is_campaign_intro(messages):
             # вступление ко всей кампании готовится само после каркаса: тесты не обязаны его сценарировать,
             # а сценарный ответ с пометкой campaign_intro берётся, где бы он ни стоял в очереди
@@ -385,6 +396,10 @@ def _is_emotion(messages: list[dict[str, Any]]) -> bool:
 
 def _is_greeting(messages: list[dict[str, Any]]) -> bool:
     return any(isinstance(m.get("content"), str) and "Поприветствуй игроков" in m["content"] for m in messages)
+
+
+def _is_director(tools) -> bool:
+    return any(((t or {}).get("function") or {}).get("name") == "propose_adaptation" for t in tools or [])
 
 
 def _is_campaign_intro(messages: list[dict[str, Any]]) -> bool:

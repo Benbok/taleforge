@@ -71,7 +71,8 @@ def derive_boundaries(
                 BoundaryRecord(
                     campaign_id=camp_id,
                     kind="act_closed",
-                    source_id=subj_key if ev.subject_refs else "act",
+                    # каждое закрытие акта — своё событие: постоянный ключ слил бы второй акт с первым
+                    source_id=ev.ref.source_id,
                     scope="future",
                     evidence_refs=(ev.ref,),
                     audience=turn.audience or (),

@@ -138,7 +138,10 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
         "Гимли" in llm.requests[6]["messages"][1]["content"]
         and "Бран (" not in llm.requests[6]["messages"][1]["content"].split("Герои:\n")[-1]
     )
-    purposes = [x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle")]
+    # фоновый режиссёр после паузы сессии идёт параллельно ритму: его вызов проверяет test_narrative_startup
+    purposes = [
+        x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle", "director")
+    ]
     assert purposes[:9] == [
         "bonds",
         "hook",

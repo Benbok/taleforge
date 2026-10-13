@@ -77,6 +77,9 @@ def client(settings):
     from app.main import create_app
 
     with TestClient(create_app(settings)) as c:
+        # здесь настоящий LiteLLM-клиент: фоновый режиссёр не должен ходить в сеть и забирать задания,
+        # которые тест ведёт сам. Подключение режиссёра проверяет tests/test_narrative_startup.py
+        c.app.state.master.narrative_preparer = None
         yield c
 
 

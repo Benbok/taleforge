@@ -222,17 +222,19 @@ class LlmNarrativeAuthor:
     def __init__(
         self,
         llm: LLM,
-        model_config: Any,
+        model_config: Any = None,
         *,
-        token_counter: Callable[[str], int],
+        token_counter: Callable[[str], int] = len,
         timeout_seconds: int = 90,
         call_observer: Callable[[AuthorCallReport], Awaitable[None]] | None = None,
+        session_maker: Any = None,
     ) -> None:
         self._llm = llm
         self._model_config = model_config
         self._token_counter = token_counter
         self._timeout_seconds = timeout_seconds
         self._call_observer = call_observer
+        self._session_maker = session_maker
 
     async def propose(self, snapshot: NarrativeSnapshot) -> AdaptationProposal:
         packed = pack_director_input(
@@ -253,9 +255,44 @@ class LlmNarrativeAuthor:
                 read_set=snapshot.read_set,
             )
 
-        model_name = getattr(self._model_config, "model", str(self._model_config))
+        cid = snapshot.source.campaign_id
+        model_name = getattr(self._model_config, "model", str(self._model_config)) if self._model_config else None
         api_base = getattr(self._model_config, "api_base", None)
+        temperature = getattr(self._model_config, "temperature", 0.7)
+        seat_id = None
+        reserved_call_id: str | None = None
 
+        if self._session_maker is not None:
+            from app.agents.architect import model_of
+            from app.core.campaigns import master_seat
+            from app.db.models import Campaign, LlmCall
+
+            async with self._session_maker() as session:
+                campaign = await session.get(Campaign, cid)
+                if campaign is not None:
+                    # replan/ended/strict/лимит расходов проверяет NarrativePreparerAdapter до claim и до сети
+                    # Модель выбирается для кампании через действующий model_of
+                    _, camp_model, camp_api_base, camp_temp = await model_of(session, campaign)
+                    model_name = camp_model or model_name
+                    api_base = camp_api_base or api_base
+                    temperature = camp_temp or temperature
+                    m_seat = master_seat(campaign)
+                    seat_id = m_seat.id if m_seat else None
+
+                    # Резервируем LlmCall до сетевого вызова
+                    call = LlmCall(
+                        campaign_id=cid,
+                        seat_id=seat_id,
+                        turn_id=None,
+                        purpose="director",
+                        model=model_name or "default",
+                    )
+                    session.add(call)
+                    await session.commit()
+                    reserved_call_id = call.id
+            # Сессия закрыта, транзакция БД не удерживается во время сетевого вызова!
+
+        model_name = model_name or "default"
         t0 = time.perf_counter()
         error_msg: str | None = None
         reply = None
@@ -268,6 +305,7 @@ class LlmNarrativeAuthor:
                     tools=[packed.tool_schema],
                     tool_choice={"type": "function", "function": {"name": "propose_adaptation"}},
                     max_tokens=4096,
+                    temperature=temperature,
                     api_base=api_base,
                 ),
                 timeout=self._timeout_seconds,
@@ -277,17 +315,50 @@ class LlmNarrativeAuthor:
             raise
         finally:
             latency_ms = int((time.perf_counter() - t0) * 1000)
+            tokens_in = reply.tokens_in if reply else packed.estimated_input_tokens
+            tokens_out = reply.tokens_out if reply else 0
+
+            # стоимость — от провайдера; иначе по тарифу модели. Неизвестный тариф (локальная модель) остаётся 0,
+            # а ошибка сохраняется в error: она не выдаётся за бесплатный успешный вызов
+            cost = float(reply.cost) if reply is not None and getattr(reply, "cost", None) else 0.0
+            if not cost and (tokens_in or tokens_out):
+                try:
+                    import litellm
+
+                    cin, cout = litellm.cost_per_token(
+                        model=model_name, prompt_tokens=tokens_in or 0, completion_tokens=tokens_out or 0
+                    )
+                    cost = float(cin + cout)
+                except Exception:  # noqa: BLE001 — у локальной и неизвестной модели тарифа нет
+                    cost = 0.0
+
+            report = AuthorCallReport(
+                source=snapshot.source,
+                author_attempt=snapshot.author_attempt,
+                model=model_name,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                cost=cost,
+                latency_ms=latency_ms,
+                error=error_msg,
+                call_id=reserved_call_id,
+            )
+
+            # Обновление зарезервированного LlmCall в БД
+            if reserved_call_id and self._session_maker:
+                from app.db.models import LlmCall
+
+                async with self._session_maker() as s_upd:
+                    c_row = await s_upd.get(LlmCall, reserved_call_id)
+                    if c_row:
+                        c_row.tokens_in = tokens_in
+                        c_row.tokens_out = tokens_out
+                        c_row.cost = cost
+                        c_row.latency_ms = latency_ms
+                        c_row.error = error_msg
+                        await s_upd.commit()
+
             if self._call_observer:
-                report = AuthorCallReport(
-                    source=snapshot.source,
-                    author_attempt=snapshot.author_attempt,
-                    model=model_name,
-                    tokens_in=reply.tokens_in if reply else 0,
-                    tokens_out=reply.tokens_out if reply else 0,
-                    cost=reply.cost if reply else 0.0,
-                    latency_ms=latency_ms,
-                    error=error_msg,
-                )
                 await self._call_observer(report)
 
         tool_args: dict[str, Any] = {}

@@ -5,9 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.narrative.contracts import BoundaryRecord
-from app.db.models import NarrativeWork, new_id
+from app.core.narrative.contracts import BoundaryRecord, EvidenceRef
+from app.db.models import Campaign, Message, NarrativeWork, new_id
 from app.db.narrative import ensure_state
 from app.tools.registry import ToolContext
 
@@ -21,15 +22,24 @@ async def enqueue_boundaries(
     Coalesces with existing pending work in the same scope, preserving all evidence/grounds.
     Returns the tuple of enqueued job IDs.
     """
+    return await enqueue_for_campaign(ctx.session, ctx.campaign, boundaries)
+
+
+async def enqueue_for_campaign(
+    session: AsyncSession,
+    campaign: Campaign,
+    boundaries: tuple[BoundaryRecord, ...],
+) -> tuple[str, ...]:
+    """То же вне хода: граница, у которой нет ToolContext (закрытие сессии)."""
     if not boundaries:
         return ()
 
-    # Respect replan setting
-    replan = (ctx.campaign.settings or {}).get("replan")
-    if replan is False:
+    # Respect replan setting and campaign ended status
+    replan = (campaign.settings or {}).get("replan")
+    if replan is False or getattr(campaign, "status", None) == "ended":
         return ()
 
-    state = await ensure_state(ctx.session, ctx.campaign.id)
+    state = await ensure_state(session, campaign.id)
     if state.mode != "adaptive":
         return ()
 
@@ -42,7 +52,7 @@ async def enqueue_boundaries(
             NarrativeWork.campaign_id == b.campaign_id,
             NarrativeWork.source_key == b.source_key,
         )
-        existing = (await ctx.session.execute(stmt)).scalar_one_or_none()
+        existing = (await session.execute(stmt)).scalar_one_or_none()
         if existing is not None:
             work_ids.append(existing.id)
             continue
@@ -53,7 +63,7 @@ async def enqueue_boundaries(
             NarrativeWork.scope == b.scope,
             NarrativeWork.status == "pending",
         )
-        pending_work = (await ctx.session.execute(pending_stmt)).scalar_one_or_none()
+        pending_work = (await session.execute(pending_stmt)).scalar_one_or_none()
 
         new_evidence_refs = [ref.model_dump() for ref in b.evidence_refs]
 
@@ -84,8 +94,8 @@ async def enqueue_boundaries(
                 created_at=now_utc,
                 updated_at=now_utc,
             )
-            ctx.session.add(new_work)
-            await ctx.session.flush()
+            session.add(new_work)
+            await session.flush()
 
             pending_work.status = "superseded"
             pending_work.draft = {"superseded_by": new_work.id}
@@ -110,8 +120,35 @@ async def enqueue_boundaries(
                 created_at=now_utc,
                 updated_at=now_utc,
             )
-            ctx.session.add(new_work)
-            await ctx.session.flush()
+            session.add(new_work)
+            await session.flush()
             work_ids.append(new_work.id)
 
     return tuple(work_ids)
+
+
+async def enqueue_session_closed(session: AsyncSession, campaign: Campaign, game_session_id: str) -> str | None:
+    """Конец сессии — сигнал режиссёру (spec §16.1): основание — системное сообщение о закрытии этой сессии."""
+    closing = await session.scalar(
+        select(Message)
+        .where(
+            Message.campaign_id == campaign.id,
+            Message.session_id == game_session_id,
+            Message.kind == "system",
+        )
+        .order_by(Message.seq.desc())
+        .limit(1)
+    )
+    if closing is None:
+        return None
+    boundary = BoundaryRecord(
+        campaign_id=campaign.id,
+        kind="session_closed",
+        source_id=game_session_id,
+        scope="future",
+        evidence_refs=(EvidenceRef(campaign_id=campaign.id, kind="message", source_id=closing.id),),
+        audience=(),
+        session_budget_ref=game_session_id,
+    )
+    ids = await enqueue_for_campaign(session, campaign, (boundary,))
+    return ids[0] if ids else None

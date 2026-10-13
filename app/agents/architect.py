@@ -17,7 +17,16 @@ from app.content.catalog import campaign_catalog
 from app.core import knowledge, plot, plot_anchors
 from app.core.brief import brief_text
 from app.core.campaigns import default_model_profile, master_seat
-from app.db.models import AgentConfig, Campaign, CampaignPlan, CampaignSecret, ContentPack, GameSession, LlmCall
+from app.db.models import (
+    AgentConfig,
+    Campaign,
+    CampaignPlan,
+    CampaignSecret,
+    ContentPack,
+    Event,
+    GameSession,
+    LlmCall,
+)
 from app.db.narrative import sync_plan_metadata
 from app.gateway.events import envelope
 
@@ -293,7 +302,7 @@ async def revise(svc, cid: str) -> str | None:
             if c is None or secret is None or not plot.has_plan(secret.plot):
                 return None
             seat = master_seat(c)
-            if seat.occupant_type != "agent" or (c.settings or {}).get("replan") is False:
+            if seat.occupant_type != "agent" or (c.settings or {}).get("replan") is False or c.status == "ended":
                 return None
             if not plot.open_acts(secret.plot):
                 return None
@@ -302,33 +311,40 @@ async def revise(svc, cid: str) -> str | None:
             n_state = await ensure_state(s, cid)
             is_adaptive = n_state.mode == "adaptive"
             policy_ver = n_state.policy_version
+            closing = None
             if is_adaptive:
-                act = plot.active_act(secret.plot)
-                act_id = act["id"] if act else "act"
+                # основание пересмотра — само событие закрытия акта: без проверяемого источника режиссёр не правит
+                closing = await s.scalar(
+                    select(Event)
+                    .where(Event.campaign_id == cid, Event.tool == "end_act")
+                    .order_by(Event.created_at.desc(), Event.id.desc())
+                    .limit(1)
+                )
+                closing = closing.id if closing is not None else None
                 await s.rollback()
 
         if is_adaptive:
-            from app.core.narrative.contracts import BoundaryRecord
+            if closing is None:
+                return None
+            from app.core.narrative.contracts import BoundaryRecord, EvidenceRef
             from app.db.narrative_jobs import SqlNarrativeJobs
 
+            # тот же ключ, что у границы хода (act_closed:<id события>): два пути дают одно задание
             boundary = BoundaryRecord(
                 campaign_id=cid,
                 kind="act_closed",
-                source_id=f"act_closed_{act_id}",
+                source_id=closing,
                 scope="future",
-                evidence_refs=(),
+                evidence_refs=(EvidenceRef(campaign_id=cid, kind="event", source_id=closing),),
                 audience=(),
                 session_budget_ref=f"sess_{cid}",
                 policy_version=policy_ver,
             )
-            jobs = SqlNarrativeJobs(svc.maker)
-            work_id = await jobs.enqueue(boundary)
-            if hasattr(svc, "narrative_preparer") and svc.narrative_preparer is not None:
-                report = await svc.narrative_preparer.prepare_once(cid)
-                if report and report.status in ("applied", "prepared"):
-                    return work_id
+            work_id = await SqlNarrativeJobs(svc.maker).enqueue(boundary)
+            if getattr(svc, "narrative_preparer", None) is not None:
+                await svc.narrative_preparer.prepare_once(cid)  # автор вне хода и транзакции
             if hasattr(svc, "signal_recovery"):
-                svc.signal_recovery()
+                svc.signal_recovery()  # применение черновика — штатный цикл восстановления
             return work_id
 
         async with svc.maker() as s:

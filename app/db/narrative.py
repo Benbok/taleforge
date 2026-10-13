@@ -15,7 +15,7 @@ from app.core.narrative.contracts import (
     ThreadState,
 )
 from app.core.narrative.view import CampaignNarrativeView, compose_view
-from app.db.models import Event, NarrativeFact, NarrativeState, NarrativeThread
+from app.db.models import Campaign, Event, NarrativeFact, NarrativeState, NarrativeThread
 
 
 async def ensure_state(session: AsyncSession, campaign_id: str) -> NarrativeState:
@@ -23,11 +23,17 @@ async def ensure_state(session: AsyncSession, campaign_id: str) -> NarrativeStat
     res = await session.execute(select(NarrativeState).where(NarrativeState.campaign_id == campaign_id))
     state = res.scalar_one_or_none()
     if state is None:
+        campaign = await session.get(Campaign, campaign_id)
+        mode = "adaptive"
+        if campaign and campaign.settings:
+            mode = campaign.settings.get("narrative_mode") or campaign.settings.get("narrative", {}).get(
+                "mode", "adaptive"
+            )
         state = NarrativeState(
             campaign_id=campaign_id,
             revision=1,
             policy_version=1,
-            mode="strict",
+            mode=mode,
             recent_boundaries=[],
             budget_counters={},
         )

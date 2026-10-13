@@ -145,6 +145,34 @@ async def apply_in_context(
             budgets_used={},
         )
 
+    # Решение «без изменений»: одна квитанция, без захвата мира и без оснований — нечего обосновывать.
+    # Захват мира здесь сдвинул бы ревизию и сорвал бы параллельный ход игрока (spec §10.3).
+    if len(proposal.operations) == 0:
+        res = AdaptationResult(
+            status="no_change",
+            reason_code="no_change",
+            versions=proposal.base,
+            budgets_used={},
+        )
+        key = narrative_key(proposal.source)
+        orig_call_key, orig_first_event = ctx.call_key, ctx._first_event
+        ctx.call_key, ctx._first_event = key, None
+        receipt_ev = await ctx.record(
+            "adapt_story",
+            hidden=True,
+            payload={
+                "schema_version": 1,
+                "fingerprint": hashlib.sha256(proposal.model_dump_json().encode("utf-8")).hexdigest(),
+                "source": proposal.source.model_dump(),
+                "proposal_id": proposal.proposal_id,
+                "adaptation": res.model_dump(),
+            },
+        )
+        ctx.call_key, ctx._first_event = orig_call_key, orig_first_event
+        res = res.model_copy(update={"event_ids": (receipt_ev.id,)})
+        receipt_ev.payload["adaptation"] = res.model_dump()
+        return res
+
     # 2. Concurrency guard: verify world revision
     if ctx.world.revision != proposal.base.world_revision:
         return AdaptationResult(
@@ -224,33 +252,6 @@ async def apply_in_context(
             reason_code=admission.reason_code,
             budgets_used={},
         )
-
-    # 4. Handle empty operations (no_change)
-    if len(proposal.operations) == 0:
-        res = AdaptationResult(
-            status="no_change",
-            reason_code="no_change",
-            versions=snapshot.base,
-            budgets_used={},
-        )
-        key = narrative_key(proposal.source)
-        orig_call_key, orig_first_event = ctx.call_key, ctx._first_event
-        ctx.call_key, ctx._first_event = key, None
-        receipt_ev = await ctx.record(
-            "adapt_story",
-            hidden=True,
-            payload={
-                "schema_version": 1,
-                "fingerprint": hashlib.sha256(proposal.model_dump_json().encode("utf-8")).hexdigest(),
-                "source": proposal.source.model_dump(),
-                "proposal_id": proposal.proposal_id,
-                "adaptation": res.model_dump(),
-            },
-        )
-        ctx.call_key, ctx._first_event = orig_call_key, orig_first_event
-        res = res.model_copy(update={"event_ids": (receipt_ev.id,)})
-        receipt_ev.payload["adaptation"] = res.model_dump()
-        return res
 
     # Audience раскрытия — реальные герои этой сцены, а не желание автора предложения (spec §18)
     for op_item in proposal.operations:
@@ -427,9 +428,7 @@ class ContextNarrativeApplier:
         self._ctx = ctx
         self._policy = policy
 
-    async def apply(
-        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
-    ) -> AdaptationResult:
+    async def apply(self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None) -> AdaptationResult:
         return await apply_in_context(self._ctx, proposal, policy=self._policy)
 
 
@@ -445,9 +444,7 @@ class DbNarrativeApplier:
         self._maker = maker
         self._policy_provider = policy_provider
 
-    async def apply(
-        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
-    ) -> AdaptationResult:
+    async def apply(self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None) -> AdaptationResult:
         async with self._maker() as session:
             campaign = await session.get(Campaign, proposal.source.campaign_id)
             if campaign is None:

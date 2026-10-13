@@ -332,7 +332,7 @@ class CampaignCreateIn(BaseModel):
         default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
     )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
-    narrative_mode: Literal["strict", "adaptive"] = Field(default="strict", description="Режим адаптации сюжета")
+    narrative_mode: Literal["strict", "adaptive"] = Field(default="adaptive", description="Режим адаптации сюжета")
     narrative: NarrativeSettingsIn | None = None
     module_id: str | None = Field(default=None, description="готовое приключение вместо анкеты и пакета мира")
     module_hook: str | None = Field(default=None, max_length=32, description="зацепка книги для вступления")

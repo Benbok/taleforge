@@ -24,7 +24,7 @@ class DbNarrativeReader:
         self,
         maker: async_sessionmaker,
         *,
-        policy_provider: Callable[[], NarrativePolicy],
+        policy_provider: Callable[..., NarrativePolicy],
     ) -> None:
         self._maker = maker
         self._policy_provider = policy_provider
@@ -42,4 +42,11 @@ class DbNarrativeReader:
                 turn_id=None,
                 seat_id=None,
             )
-            return await load_snapshot(ctx, request, policy=self._policy_provider())
+            try:
+                policy = self._policy_provider(request.source.campaign_id)
+            except TypeError:
+                policy = self._policy_provider()
+            mode = (campaign.settings or {}).get("narrative_mode")
+            if mode:
+                policy = policy.model_copy(update={"mode": mode})
+            return await load_snapshot(ctx, request, policy=policy)
