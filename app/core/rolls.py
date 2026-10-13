@@ -84,6 +84,12 @@ def _attack_outcome(r: dict) -> str:
     return "fumble" if r.get("fumble") else "miss"
 
 
+def _opportunity(ev: Event) -> bool:
+    """Автоматический удар вдогонку (реакция), а не действие героя: ключ события из app/core/combat и movement."""
+    key = ev.idempotency_key or ""
+    return ":oa:" in key or key.startswith("oa:")
+
+
 def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
     """Данные карточки для события или None, если карточки у события нет."""
     if ev.hidden or (not ev.dice and ev.tool != "cast_spell"):
@@ -109,7 +115,7 @@ def card(ev: Event, hero_ids: set[str]) -> dict[str, Any] | None:
         outcome = _attack_outcome(p)
         out: dict[str, Any] = {
             "tool": ev.tool,
-            "title": f"Атака: {p.get('attack')}",
+            "title": f"{'Атака по возможности' if _opportunity(ev) else 'Атака'}: {p.get('attack')}",
             "who": p.get("attacker"),
             "target": p.get("target"),
             "roll": _d20(dice),
