@@ -8,12 +8,15 @@ LM_STUDIO_API_BASE для локальной модели в LM Studio).
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from app.config import settings
+
+log = logging.getLogger(__name__)
 
 
 class LLMError(Exception):
@@ -194,6 +197,29 @@ def _parse_args(raw: Any) -> dict[str, Any]:
     return v if isinstance(v, dict) else {"__invalid_json__": str(raw)[:500]}
 
 
+TRANSIENT_STATUS = frozenset({500, 502, 503, 504})  # перегрузка/сбой у провайдера: повтор обычно проходит
+RETRY_DELAYS = (1.0, 3.0)  # секунд до второй и третьей попытки; дольше игроки ждать не должны
+
+
+def _transient(e: Exception) -> bool:
+    return getattr(e, "status_code", None) in TRANSIENT_STATUS
+
+
+async def _with_retry(call):
+    """Короткий повтор временных ошибок провайдера (503 «high demand»): один такой сбой не роняет весь ход.
+    Квоты, лимит расходов и ошибки запроса не повторяются — их разбирает вызывающий код."""
+    import asyncio
+
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            return await call()
+        except Exception as e:  # noqa: BLE001
+            if delay is None or not _transient(e):
+                raise
+            log.warning("временная ошибка провайдера (%s), повтор через %s с", getattr(e, "status_code", "?"), delay)
+            await asyncio.sleep(delay)
+
+
 class LiteLLMClient:
     def __init__(self):
         # Shared by narration, parsing and background authors using this client.
@@ -261,7 +287,7 @@ class LiteLLMClient:
             kwargs["stream_options"] = {"include_usage": True}  # без этого поток не несёт токены и цену
         started = time.monotonic()
         try:
-            resp = await litellm.acompletion(**kwargs)
+            resp = await _with_retry(lambda: litellm.acompletion(**kwargs))
         except Exception as e:  # noqa: BLE001 — любая ошибка провайдера останавливает ход, а не сервер
             quota = quota_error(str(e))
             if quota is not None:
