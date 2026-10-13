@@ -111,6 +111,10 @@ def run_alliance_story_scenario(game_client, admin_g, llm, settings, monkeypatch
         await s.commit()
 
     run(settings, init_plot)
+    # Фоновое вступление после старта сессии публикует повествование. Если оно придёт
+    # в уже открытый сокет (на PostgreSQL так и бывает), act() примет его за ответ
+    # на первое действие, и сценарные ответы хода сдвинутся во второй ход.
+    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
 
     # Turn 1: Player offers alliance to Mortis
     # Decision phase:
