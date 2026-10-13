@@ -1,6 +1,7 @@
 # ruff: noqa: F811 — фикстуры импортируются из соседних модулей
 """Хвосты после этапа 7: запись в БД во время ИИ-проверки героя, стартовое снаряжение пакета, имена предметов."""
 
+import asyncio
 import sqlite3
 
 import pytest
@@ -20,7 +21,7 @@ def test_db_writable_while_model_reviews_hero(game_client, admin_g, llm, setting
     ch = ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=p1), 201)
     wrote = []
 
-    def review(messages, tools):
+    def probe_write():
         # пока «модель думает», кто-то другой пишет в БД: раньше здесь был «database is locked»
         db = sqlite3.connect(path, timeout=1)
         try:
@@ -29,9 +30,20 @@ def test_db_writable_while_model_reviews_hero(game_client, admin_g, llm, setting
             wrote.append(True)
         finally:
             db.close()
-        return {"tool_calls": [("review_character", {"character_id": ch["id"], "approve": True, "comment": "Да"})]}
 
-    llm.replies += [review]
+    complete = llm.complete
+
+    async def reviewing(messages, **kwargs):
+        if any(t.get("function", {}).get("name") == "review_character" for t in kwargs.get("tools") or []):
+            # A real provider awaits I/O. Keep the app loop free so unrelated
+            # presence writes can commit; an owned review transaction still fails.
+            await asyncio.to_thread(probe_write)
+        return await complete(messages, **kwargs)
+
+    llm.complete = reviewing
+    llm.replies += [
+        {"tool_calls": [("review_character", {"character_id": ch["id"], "approve": True, "comment": "Да"})]}
+    ]
     with connect(game_client, p1, c["id"]) as (ws, _):
         ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p1))
         e = ws.receive_json()

@@ -196,9 +196,20 @@ def test_scale_bounded_queries_under_10k_history(settings, client, admin):
                     dialect=engine.sync_engine.dialect,
                     compile_kwargs={"literal_binds": True},
                 )
-                plan_rows = (await s.execute(text(f"EXPLAIN QUERY PLAN {compiled}"))).all()
-                plan_text = " ".join(str(row[-1]).upper() for row in plan_rows)
-                assert "USING" in plan_text or "SEARCH" in plan_text
+                if engine.dialect.name == "postgresql":
+                    import json
+
+                    raw_plan = await s.scalar(text(f"EXPLAIN (FORMAT JSON) {compiled}"))
+                    plans = json.loads(raw_plan) if isinstance(raw_plan, str) else raw_plan
+
+                    def index_used(node):
+                        return "Index" in node.get("Node Type", "") or any(index_used(p) for p in node.get("Plans", []))
+
+                    assert index_used(plans[0]["Plan"]), plans
+                else:
+                    plan_rows = (await s.execute(text(f"EXPLAIN QUERY PLAN {compiled}"))).all()
+                    plan_text = " ".join(str(row[-1]).upper() for row in plan_rows)
+                    assert "USING" in plan_text or "SEARCH" in plan_text
 
             # Noise rows from other campaigns are not leaked.
             assert all(f.ref.campaign_id == cid for f in snapshot.facts)

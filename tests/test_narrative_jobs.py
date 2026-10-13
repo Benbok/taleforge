@@ -47,6 +47,37 @@ async def _ensure_campaigns(session_maker, *cids: str) -> None:
         await session.commit()
 
 
+def test_finish_links_parent_receipt_instead_of_first_child(session_maker):
+    from app.db.models import Event
+    from app.tools.narrative.executor import narrative_key
+
+    async def go():
+        await _ensure_campaigns(session_maker, "camp-receipt")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker)
+        wid = await jobs.enqueue(boundary(campaign_id="camp-receipt"))
+        claim = await jobs.claim(clock())
+        async with session_maker() as session:
+            child = Event(campaign_id=claim.campaign_id, tool="apply_future_situation", payload={})
+            parent = Event(
+                campaign_id=claim.campaign_id,
+                tool="adapt_story",
+                idempotency_key=narrative_key(claim.source),
+                payload={"source": claim.source.model_dump()},
+            )
+            session.add_all([child, parent])
+            await session.commit()
+            child_id, parent_id = child.id, parent.id
+        await jobs.finish(
+            claim, AdaptationResult(status="applied", reason_code="ok", event_ids=(child_id, parent_id)), clock()
+        )
+        async with session_maker() as session:
+            work = await session.get(NarrativeWork, wid)
+            assert work.receipt_event_id == parent_id
+
+    asyncio.run(go())
+
+
 def lease_takeover_scenario(settings, client, admin) -> dict:
     """Simulates a slow worker whose lease expires and gets taken over by a second worker."""
     import_base(settings)

@@ -20,6 +20,7 @@ from app.core.narrative.contracts import (
     VersionSet,
     WorkClaim,
 )
+from app.core.narrative.keys import narrative_key
 from app.core.narrative.policy import admit_adaptation
 from app.core.world_tx import WorldConflict, world_write
 from app.db.models import Campaign, Event
@@ -30,11 +31,6 @@ from app.tools.narrative.context import load_snapshot
 from app.tools.operation_group import CompiledCall, run_operation_group
 from app.tools.registry import ToolContext, ToolError, issue_internal_grant
 from app.tools.runtime import open_context
-
-
-def narrative_key(source: NarrativeSource) -> str:
-    """Stable SHA-256 idempotency key for narrative adaptations."""
-    return hashlib.sha256(source.source_key().encode("utf-8")).hexdigest()
 
 
 async def find_receipt(session: AsyncSession, source: NarrativeSource) -> Event | None:

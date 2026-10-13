@@ -20,7 +20,8 @@ from app.core.narrative.contracts import (
     Violation,
     WorkClaim,
 )
-from app.db.models import NarrativeWork, new_id
+from app.core.narrative.keys import narrative_key
+from app.db.models import Event, NarrativeWork, new_id
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -397,7 +398,18 @@ class SqlNarrativeJobs:
         """Records terminal or retry status after applying adaptation."""
         now_utc = _as_utc(now) if now is not None else datetime.now(UTC)
         async with self._session_maker() as session:
-            receipt_event_id = result.event_ids[0] if result.event_ids else None
+            receipt_event_id = None
+            if result.status in ("applied", "repeated", "no_change") and result.event_ids:
+                receipt_event_id = await session.scalar(
+                    select(Event.id).where(
+                        Event.campaign_id == claim.campaign_id,
+                        Event.tool == "adapt_story",
+                        Event.idempotency_key == narrative_key(claim.source),
+                        Event.id.in_(result.event_ids),
+                    )
+                )
+                if receipt_event_id is None:
+                    raise ValueError("adaptation parent receipt missing")
             draft_to_save: dict | None = None
             save_draft_explicitly = False
 

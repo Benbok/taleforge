@@ -360,7 +360,14 @@ def test_transient_finish_failure_preserves_committed_result(status, session_mak
         draft = proposal(snapshot(source=claim.source, proposal_id=claim.proposal_id), operations=())
         await jobs.save_draft(claim, draft, clock())
         async with session_maker() as s:
-            ev = Event(campaign_id="camp-finish", tool="adapt_story", payload={"status": status})
+            from app.core.narrative.keys import narrative_key
+
+            ev = Event(
+                campaign_id="camp-finish",
+                tool="adapt_story",
+                payload={"status": status},
+                idempotency_key=narrative_key(claim.source),
+            )
             s.add(ev)
             await s.commit()
             receipt_id = ev.id

@@ -172,6 +172,14 @@ def test_concurrent_two_sessions_race(settings, client, admin):
 
     maker = make_sessionmaker(client.app.state.engine)
 
+    async def seed_evidence(session):
+        from app.db.narrative import ensure_state
+
+        session.add(Message(id="msg-1", campaign_id=cid, seq=9999, kind="speech", content="Выбираю новый путь"))
+        await ensure_state(session, cid)
+        await session.commit()
+
+    run(settings, seed_evidence)
     barrier = asyncio.Barrier(2)
     results = []
 
@@ -205,9 +213,7 @@ def test_concurrent_two_sessions_race(settings, client, admin):
 
         await asyncio.gather(worker(1), worker(2))
 
-    run(scenario())
+    asyncio.run(scenario())
 
     statuses = [r.status for r in results]
-    assert "applied" in statuses
-    # The losing session must either be stale (because world_revision changed) or if serialized cleanly, both valid
-    assert ("stale" in statuses) or (statuses == ["applied", "applied"])
+    assert sorted(statuses) == ["applied", "stale"]
