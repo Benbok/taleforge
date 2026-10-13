@@ -135,8 +135,11 @@ export default function VoiceClip({ clips, expected, autoPlay }: { clips: VoiceD
   useEffect(() => {
     if (!autoPlay || !campaignId || !first || !claimAutoplay(first)) return;
     const start = () => {
+      // очередь занимается сразу, а не после загрузки записи: иначе сообщения, пришедшие почти разом,
+      // стартуют вместе, и позже загрузившееся перебивает начатое
+      speaking = me.current;
       if (alive.current) void playPart(0);
-      else queue.shift()?.(); // плеер уже убран с экрана: очередь идёт дальше
+      else release(me.current); // плеер уже убран с экрана: очередь идёт дальше
     };
     if (speaking) queue.push(start);
     else start();
