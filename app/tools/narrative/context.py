@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from typing import Any
 
 from sqlalchemy import select
 
@@ -15,11 +16,13 @@ from app.core.narrative.contracts import (
     NarrativePolicy,
     NarrativeSnapshot,
     ReadRef,
+    SituationView,
     SnapshotRequest,
     ThreadState,
     VersionSet,
 )
 from app.core.narrative.operations import ACTIVE_OPERATION_KINDS
+from app.core.narrative.plan_patch import CLOSED_STATUSES
 from app.db.models import Event, Message, NarrativeThread
 from app.db.narrative import ensure_state, load_subject_facts
 from app.tools.narrative.evidence import action_message_id, verified_player_action
@@ -409,6 +412,8 @@ async def load_snapshot(
     if hasattr(ctx.world.catalog, "chain"):
         content_chain = tuple(ctx.world.catalog.chain)
 
+    situations = open_situations(plot_data, limit=policy.max_snapshot_threads)
+
     return NarrativeSnapshot(
         source=request.source,
         proposal_id=proposal_id,
@@ -418,6 +423,7 @@ async def load_snapshot(
         actors=actors,
         fronts=tuple(fronts_list),
         threads=threads_list,
+        situations=situations,
         read_set=tuple(read_set),
         permissions=permissions,
         budgets=budgets,
@@ -425,3 +431,33 @@ async def load_snapshot(
         feedback=request.feedback,
         author_attempt=0,
     )
+
+
+def open_situations(plot_data: Any, *, limit: int) -> tuple[SituationView, ...]:
+    """Открытые узлы незакрытых актов — то, что режиссёр вправе пересматривать (plan_patch).
+
+    Текущий акт идёт первым: его ближайшие ситуации важнее дальних; объём ограничен."""
+    if not isinstance(plot_data, dict):
+        return ()
+    out: list[SituationView] = []
+    for act in plot_data.get("acts") or []:
+        if not isinstance(act, dict) or act.get("status") in ("done", "closed", "retired") or not act.get("id"):
+            continue
+        for node in act.get("nodes") or []:
+            if not isinstance(node, dict) or not node.get("id"):
+                continue
+            if node.get("status") in CLOSED_STATUSES or node.get("outcome") is not None:
+                continue
+            out.append(
+                SituationView(
+                    act_id=str(act["id"]),
+                    act_title=str(act.get("title") or ""),
+                    act_status=str(act.get("status") or ""),
+                    node_id=str(node["id"]),
+                    title=str(node.get("title") or ""),
+                    summary=str(node.get("summary") or "")[:300],
+                )
+            )
+            if len(out) >= limit:
+                return tuple(out)
+    return tuple(out)

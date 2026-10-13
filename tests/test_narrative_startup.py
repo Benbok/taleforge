@@ -147,6 +147,10 @@ def test_act_close_reaches_receipt_and_changes_future_node(game_client, admin_g,
         # во время сетевого вызова не держится ни ход кампании, ни транзакция записи БД: другая сессия
         # успевает записать. Транзакция, удержанная на время LLM, ждала бы этого ответа и дала бы таймаут
         seen["turn_locked"] = master.turn_lock(cid).locked()
+        # живой модели видны изменяемый будущий узел и основание задания — закрытие акта
+        user = messages[1]["content"]
+        seen["sees_future"] = "node_id=n_crypt" in user and "act_id=act3" in user
+        seen["sees_end_act"] = "result=end_act" in user or ": end_act" in user
         async with master.maker() as s:
             await asyncio.wait_for(
                 s.execute(text("UPDATE campaigns SET name = name WHERE id = :id"), {"id": cid}), timeout=10
@@ -163,7 +167,7 @@ def test_act_close_reaches_receipt_and_changes_future_node(game_client, admin_g,
     assert [w.status for w in works] == ["applied"], [(w.status, w.draft) for w in works]
     assert works[0].receipt_event_id
     assert _node_title(settings, cid) == NEW_TITLE
-    assert seen == {"turn_locked": False, "db_writable": True}
+    assert seen == {"turn_locked": False, "db_writable": True, "sees_future": True, "sees_end_act": True}
     calls = _director_calls(settings, cid)
     assert [(c.error, c.tokens_in, c.tokens_out) for c in calls] == [(None, 120, 40)]
     assert len(asked) == 1

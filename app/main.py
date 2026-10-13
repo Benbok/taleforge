@@ -96,7 +96,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.dice_factory = dice_factory
         from datetime import UTC, datetime
 
-        from app.agents.director import LlmNarrativeAuthor
+        from app.agents.director import LlmNarrativeAuthor, approx_tokens
         from app.agents.tts import TTSManager
         from app.core.narrative.contracts import NarrativePolicy
         from app.core.narrative.service import NarrativeService
@@ -122,7 +122,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         )
         app.state.narrative_author = LlmNarrativeAuthor(
             effective_llm,
-            token_counter=len,
+            token_counter=approx_tokens,
             session_maker=app.state.sessionmaker,
         )
         app.state.narrative_service = NarrativeService(

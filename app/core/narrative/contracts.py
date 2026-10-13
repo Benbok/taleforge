@@ -314,6 +314,17 @@ class SnapshotRequest(NarrativeContractModel):
     feedback: tuple[Violation, ...] = ()
 
 
+class SituationView(NarrativeContractModel):
+    """Открытая будущая ситуация каркаса: адрес для revise_future_situation и её краткое содержание."""
+
+    act_id: str
+    act_title: str = ""
+    act_status: str = ""
+    node_id: str
+    title: str = ""
+    summary: str = ""
+
+
 class NarrativeSnapshot(NarrativeContractModel):
     """Serializable immutable snapshot for master/director authors."""
 
@@ -325,6 +336,7 @@ class NarrativeSnapshot(NarrativeContractModel):
     actors: tuple[str, ...] = ()
     fronts: tuple[FrontView, ...] = ()
     threads: tuple[ThreadState, ...] = ()
+    situations: tuple[SituationView, ...] = ()
     read_set: tuple[ReadRef, ...] = ()
     permissions: NarrativePermissions = Field(default_factory=NarrativePermissions)
     budgets: dict[str, int] = Field(default_factory=dict)

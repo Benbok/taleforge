@@ -16,10 +16,15 @@ from app.agents.llm import LLM
 from app.core.narrative.contracts import (
     AdaptationProposal,
     AuthorCallReport,
+    ChangeFrontIntentOp,
+    DevelopActorRoleOp,
     DirectorInput,
     Ground,
     NarrativeSnapshot,
     Operation,
+    ReviseFutureSituationOp,
+    TransitionThreadOp,
+    UpsertThreadOp,
 )
 
 _OP_ADAPTER = TypeAdapter(Operation)
@@ -31,6 +36,43 @@ _env = jinja2.Environment(
     lstrip_blocks=True,
 )
 
+# Операции, которыми режиссёр двигает будущее (scope=future). Схема — из тех же pydantic-контрактов,
+# что проверяет сервер: живая модель видит точный формат, а не «массив объектов».
+DIRECTOR_OPERATIONS = (
+    ReviseFutureSituationOp,
+    ChangeFrontIntentOp,
+    DevelopActorRoleOp,
+    UpsertThreadOp,
+    TransitionThreadOp,
+)
+
+
+def approx_tokens(text: str) -> int:
+    """Оценка токенов без токенизатора провайдера: кириллица даёт ~3 символа на токен, с запасом."""
+    return (len(text) + 2) // 3
+
+
+def _inline(schema: Any, defs: dict[str, Any]) -> Any:
+    """JSON-схема без $ref/$defs и без discriminator: не все провайдеры (Gemini) разворачивают ссылки."""
+    if isinstance(schema, dict):
+        if "$ref" in schema:
+            return _inline(defs[schema["$ref"].rsplit("/", 1)[-1]], defs)
+        out = {}
+        for k, v in schema.items():
+            if k in ("$defs", "discriminator", "title", "additionalProperties"):
+                continue
+            out["anyOf" if k == "oneOf" else k] = _inline(v, defs)
+        return out
+    if isinstance(schema, list):
+        return [_inline(x, defs) for x in schema]
+    return schema
+
+
+def _schema_of(model: Any) -> dict[str, Any]:
+    raw = TypeAdapter(model).json_schema()
+    return _inline(raw, raw.get("$defs", {}))
+
+
 DIRECTOR_TOOL_SCHEMA: dict[str, Any] = {
     "type": "function",
     "function": {
@@ -41,8 +83,9 @@ DIRECTOR_TOOL_SCHEMA: dict[str, Any] = {
             "properties": {
                 "grounds": {
                     "type": "array",
-                    "description": "Grounds and evidence justifying the adaptation.",
-                    "items": {"type": "object"},
+                    "description": "Основания: ссылки только на проверенные доказательства из запроса. "
+                    "Можно опустить — сервер подставит доказательства задания.",
+                    "items": _schema_of(Ground),
                 },
                 "summary": {
                     "type": "string",
@@ -50,8 +93,8 @@ DIRECTOR_TOOL_SCHEMA: dict[str, Any] = {
                 },
                 "operations": {
                     "type": "array",
-                    "description": "Targeted narrative operations to apply.",
-                    "items": {"type": "object"},
+                    "description": "Операции над будущим; пустой список — без изменений.",
+                    "items": {"anyOf": [_schema_of(op) for op in DIRECTOR_OPERATIONS]},
                 },
             },
             "required": ["summary", "operations"],
@@ -69,12 +112,13 @@ def _format_facts(snapshot: NarrativeSnapshot) -> str:
 
 
 def _format_evidence(snapshot: NarrativeSnapshot) -> str:
+    """Доказательство с содержанием: модель должна знать, что сказал или сделал игрок, а не только ссылку."""
     lines = []
     for ev in snapshot.evidence:
-        lines.append(
-            f"- {ev.ref.kind}:{ev.ref.source_id} status={ev.status} result={ev.applied_result} "
-            f"player_action={ev.player_action_source} targets={ev.player_action_targets}"
-        )
+        what = (ev.utterance_text or ev.applied_result or "").replace("\n", " ")[:300]
+        action = f" (заявка игрока, цели {list(ev.player_action_targets)})" if ev.player_action_source else ""
+        ref = f"{ev.ref.kind}:{ev.ref.source_id}"
+        lines.append(f"- {ref} status={ev.status} audience={list(ev.audience)}: {what}{action}")
     return "\n".join(lines)
 
 
@@ -83,6 +127,22 @@ def _format_threads(snapshot: NarrativeSnapshot) -> str:
     for t in snapshot.threads:
         lines.append(f"- id={t.id} status={t.status} subjects={t.subject_refs}")
     return "\n".join(lines)
+
+
+def _format_situations(snapshot: NarrativeSnapshot) -> str:
+    """Открытые будущие ситуации: адреса act_id/node_id для revise_future_situation."""
+    return "\n".join(
+        f"- act_id={s.act_id} ({s.act_status or 'pending'}) node_id={s.node_id}: {s.title} — {s.summary}"
+        for s in snapshot.situations
+    )
+
+
+def _format_fronts(snapshot: NarrativeSnapshot) -> str:
+    return "\n".join(
+        f"- front_ref={{source_kind: {f.ref.source_kind}, source_id: {f.ref.source_id}}} status={f.status} "
+        f"progress={f.progress}/{f.maximum}: {f.goal}"
+        for f in snapshot.fronts
+    )
 
 
 def pack_director_input(
@@ -129,17 +189,24 @@ def pack_director_input(
     th_str = _format_threads(snapshot)
 
     actors_str = ", ".join(snapshot.actors) if snapshot.actors else "(none)"
-    user_content = (
-        f"Campaign actors: {actors_str}\n"
-        f"Verified evidence:\n{ev_str}\n"
-        f"Known facts:\n{facts_str}\n"
-        f"Active threads:\n{th_str}\n"
+    head = f"campaign_id: {snapshot.source.campaign_id}\nCampaign actors: {actors_str}\n"
+    required = f"Known facts:\n{facts_str}\n"
+    optional = (
+        f"Open future situations (editable):\n{_format_situations(snapshot) or '(none)'}\n"
+        f"Fronts:\n{_format_fronts(snapshot) or '(none)'}\n"
+        f"Verified evidence:\n{ev_str or '(none)'}\n"
+        f"Active threads:\n{th_str or '(none)'}\n"
     )
+    user_content = head + optional + required
 
     total_tokens = base_tokens + token_counter(user_content)
     if total_tokens > max_tokens:
-        # Trim user content if necessary while keeping facts
-        user_content = f"Campaign actors: {actors_str}\nKnown facts:\n{facts_str}\n"
+        # необязательное — только сколько влезет; факты (обязательные зависимости) не урезаются
+        room = max(0, max_tokens - base_tokens - token_counter(head + required))
+        cut = optional
+        while cut and token_counter(cut) > room:
+            cut = cut[: int(len(cut) * 0.8)]
+        user_content = head + cut + ("\n" if cut else "") + required
         total_tokens = base_tokens + token_counter(user_content)
 
     permitted = set(snapshot.actors)
@@ -227,7 +294,7 @@ class LlmNarrativeAuthor:
         llm: LLM,
         model_config: Any = None,
         *,
-        token_counter: Callable[[str], int] = len,
+        token_counter: Callable[[str], int] = approx_tokens,
         timeout_seconds: int = 90,
         call_observer: Callable[[AuthorCallReport], Awaitable[None]] | None = None,
         session_maker: Any = None,

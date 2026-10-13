@@ -5,7 +5,9 @@ from typing import Any
 import pytest
 
 from app.agents.director import (
+    DIRECTOR_TOOL_SCHEMA,
     LlmNarrativeAuthor,
+    approx_tokens,
     decode_director_reply,
     pack_director_input,
 )
@@ -106,7 +108,7 @@ def test_context_limit_does_not_turn_omitted_fact_into_freedom():
 
 def test_pack_director_input_within_budget():
     snap = snapshot()
-    packed = pack_director_input(snap, token_counter=len, max_tokens=6000)
+    packed = pack_director_input(snap, token_counter=approx_tokens, max_tokens=6000)
     assert packed.estimated_input_tokens <= 6000
     assert packed.complete_for_edit
     assert len(packed.messages) >= 2  # system + user
@@ -219,7 +221,7 @@ def test_llm_narrative_author_propose():
     author = LlmNarrativeAuthor(
         llm,
         "test-director-model",
-        token_counter=len,
+        token_counter=approx_tokens,
         timeout_seconds=90,
         call_observer=observer,
     )
@@ -266,3 +268,112 @@ def test_llm_narrative_author_incomplete_context_returns_no_change():
         assert len(llm.last_messages) == 0
 
     asyncio.run(_run())
+
+
+def _live_like_snapshot() -> NarrativeSnapshot:
+    """Снимок, как его собирает сервер для режиссёра: будущие узлы, фронт, реплика игрока, 60 фактов."""
+    from app.core.narrative.contracts import (
+        EvidenceRecord,
+        EvidenceRef,
+        FrontRef,
+        FrontView,
+        SituationView,
+    )
+    from tests.narrative_helpers import fact
+
+    base = snapshot()
+    cid = base.source.campaign_id
+    facts = tuple(
+        fact(
+            ref=fact().ref.model_copy(update={"subject_id": f"npc-{i}", "key": "motivation"}),
+            value="Хочет вернуть фамильный перстень и не доверяет храмовой страже Солёной бухты",
+        )
+        for i in range(60)
+    )
+    msg = EvidenceRef(campaign_id=cid, kind="message", source_id="msg-alliance")
+    return base.model_copy(
+        update={
+            "facts": facts,
+            "evidence": (
+                EvidenceRecord(
+                    ref=msg,
+                    status="stated",
+                    audience=("party",),
+                    utterance_text="Предлагаю Мортису союз против мародёров",
+                ),
+            ),
+            "fronts": (
+                FrontView(
+                    ref=FrontRef(campaign_id=cid, source_kind="antagonist", source_id="ant-necromancer"),
+                    owner_ref="ant-necromancer",
+                    goal="Уничтожить всех живых в долине",
+                ),
+            ),
+            "situations": (
+                SituationView(act_id="act3", act_status="pending", node_id="n_crypt", title="Штурм склепа"),
+            ),
+        }
+    )
+
+
+def test_director_input_shows_editable_future_fronts_and_player_words():
+    """Живая модель должна видеть адреса, которые ей разрешено менять, и что именно сказал игрок."""
+    snap = _live_like_snapshot()
+    packed = pack_director_input(snap, token_counter=approx_tokens)
+    assert packed.complete_for_edit
+    user = packed.messages[1]["content"]
+    assert "act3" in user and "n_crypt" in user and "Штурм склепа" in user
+    assert "ant-necromancer" in user and "Уничтожить всех живых" in user
+    assert "Предлагаю Мортису союз" in user
+    assert snap.source.campaign_id in user
+    assert packed.estimated_input_tokens <= 6000
+
+
+def test_director_tool_schema_describes_operations_without_refs():
+    import json
+
+    params = DIRECTOR_TOOL_SCHEMA["function"]["parameters"]
+    text = json.dumps(params, ensure_ascii=False)
+    assert "$ref" not in text and "$defs" not in text  # Gemini и другие провайдеры не разворачивают ссылки
+    kinds = set()
+    for variant in params["properties"]["operations"]["items"]["anyOf"]:
+        kinds |= set(variant["properties"]["kind"].get("enum") or [variant["properties"]["kind"].get("const")])
+    assert {"revise_future_situation", "change_front_intent", "develop_actor_role", "upsert_thread"} <= kinds
+    assert "evidence_refs" in json.dumps(params["properties"]["grounds"])
+
+
+def test_reply_in_schema_format_decodes():
+    snap = _live_like_snapshot()
+    cid = snap.source.campaign_id
+    args = {
+        "grounds": [
+            {
+                "kind": "divergence",
+                "evidence_refs": [{"campaign_id": cid, "kind": "message", "source_id": "msg-alliance"}],
+                "confidence": "explicit",
+            }
+        ],
+        "summary": "Союз с некромантом меняет штурм на переговоры",
+        "operations": [
+            {
+                "kind": "revise_future_situation",
+                "patch": {
+                    "edits": [
+                        {
+                            "kind": "update_open_node",
+                            "act_id": "act3",
+                            "node_id": "n_crypt",
+                            "fields": {"title": "Переговоры в склепе"},
+                        }
+                    ]
+                },
+            },
+            {
+                "kind": "change_front_intent",
+                "front_ref": {"campaign_id": cid, "source_kind": "antagonist", "source_id": "ant-necromancer"},
+                "new_intent": "Держать перемирие, пока герои охраняют склепы",
+            },
+        ],
+    }
+    proposal = decode_director_reply(snap, args)
+    assert [op.kind for op in proposal.operations] == ["revise_future_situation", "change_front_intent"]
