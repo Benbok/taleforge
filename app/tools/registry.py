@@ -84,6 +84,8 @@ class ToolContext:
     turn_diagnostics: dict = field(default_factory=dict)
     # подготовки мира, принятые вызовами этого хода: ход ждёт их перед повествованием (поставка 2)
     operation_refs: set[str] = field(default_factory=set)
+    # Actual narration audience can include heroes who joined the party during this turn.
+    narration_viewer_ids: set[str] | None = None
 
     async def record(
         self,

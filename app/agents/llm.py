@@ -20,6 +20,30 @@ class LLMError(Exception):
     pass
 
 
+class LLMQuotaError(LLMError):
+    """Provider quota failures have a safe player-facing reason and retry policy."""
+
+    def __init__(self, *, budget_exhausted: bool = False):
+        self.budget_exhausted = budget_exhausted
+        super().__init__("исчерпан бюджет модели" if budget_exhausted else "исчерпана квота запросов модели")
+
+
+def quota_error(message: str) -> LLMQuotaError | None:
+    message = message.casefold()
+    budget = any(
+        text in message
+        for text in (
+            "monthly spending cap",
+            "spending limit",
+            "billing hard limit",
+            "insufficient_quota",
+        )
+    )
+    if budget or "resource_exhausted" in message or ("429" in message and "quota" in message):
+        return LLMQuotaError(budget_exhausted=budget)
+    return None
+
+
 @dataclass
 class ToolCall:
     id: str
@@ -38,6 +62,63 @@ class LLMReply:
     tokens_out: int = 0
     cost: float = 0.0
     latency_ms: int = 0
+    finish_reason: str | None = None
+    blocked: bool = False
+    blocked_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: str | None = None) -> str | None:
+    """Record invalid output and termination metadata without copying provider text."""
+    if reason is None:
+        if require_text and not reply.text.strip():
+            reason = "empty_response"
+        elif reply.blocked:
+            reason = "blocked_response"
+        elif reply.finish_reason and reply.finish_reason not in {"stop", "tool_calls", "function_call"}:
+            reason = "incomplete_response"
+    if reason is None:
+        return None
+    return json.dumps(
+        {
+            "reason": reason,
+            "finish_reason": reply.finish_reason,
+            "blocked": reply.blocked,
+            "blocked_metadata": reply.blocked_metadata,
+        },
+        ensure_ascii=False,
+    )
+
+
+def _termination_metadata(response: Any, choice: Any, message: Any) -> dict[str, Any]:
+    """Keep provider block reasons, while excluding refusal text and hidden parameters."""
+    finish_reason = getattr(choice, "finish_reason", None)
+    blocked = finish_reason in {"content_filter", "safety", "blocked", "refusal"}
+    metadata: dict[str, Any] = {}
+    for obj in (response, choice, message):
+        if obj is None:
+            continue
+        fields = getattr(obj, "provider_specific_fields", None) or {}
+        feedback = (
+            fields.get("prompt_feedback") or fields.get("promptFeedback") or getattr(obj, "prompt_feedback", None)
+        )
+        if feedback:
+            if hasattr(feedback, "model_dump"):
+                feedback = feedback.model_dump(exclude_none=True)
+            if isinstance(feedback, dict):
+                block_reason = feedback.get("block_reason") or feedback.get("blockReason")
+                if block_reason and block_reason != "BLOCK_REASON_UNSPECIFIED":
+                    metadata["block_reason"] = str(block_reason)[:128]
+                    blocked = True
+        if getattr(obj, "refusal", None) or fields.get("refusal"):
+            metadata["refusal"] = True
+            blocked = True
+        filters = getattr(obj, "content_filter_results", None) or fields.get("content_filter_results")
+        if isinstance(filters, dict):
+            filtered = [k for k, v in filters.items() if isinstance(v, dict) and v.get("filtered")]
+            if filtered:
+                metadata["filtered_categories"] = filtered
+                blocked = True
+    return {"finish_reason": finish_reason, "blocked": blocked, "blocked_metadata": metadata}
 
 
 class LLM(Protocol):
@@ -114,6 +195,19 @@ def _parse_args(raw: Any) -> dict[str, Any]:
 
 
 class LiteLLMClient:
+    def __init__(self):
+        # Shared by narration, parsing and background authors using this client.
+        self._quota_blocks: dict[str, tuple[float | None, LLMQuotaError]] = {}
+
+    def check_quota(self, model: str) -> None:
+        provider = model.split("/", 1)[0]
+        block = self._quota_blocks.get(provider)
+        if block is not None:
+            retry_at, error = block
+            if retry_at is None or time.monotonic() < retry_at:
+                raise error
+            del self._quota_blocks[provider]
+
     async def complete(
         self,
         messages: list[dict[str, Any]],
@@ -130,6 +224,7 @@ class LiteLLMClient:
         """``tool_choice="required"`` — модель обязана ответить вызовом инструмента, а не текстом.
         ``thinking=False`` — художественный текст без скрытых рассуждений: у Gemini 2.5 они входят в max_tokens
         и обрезают ответ на полуслове, да и ждать их дольше."""
+        self.check_quota(model)
         import litellm
 
         msgs = messages
@@ -168,27 +263,33 @@ class LiteLLMClient:
         try:
             resp = await litellm.acompletion(**kwargs)
         except Exception as e:  # noqa: BLE001 — любая ошибка провайдера останавливает ход, а не сервер
+            quota = quota_error(str(e))
+            if quota is not None:
+                retry_at = None if quota.budget_exhausted else time.monotonic() + 60
+                self._quota_blocks[model.split("/", 1)[0]] = (retry_at, quota)
+                raise quota from e
             raise LLMError(f"{type(e).__name__}: {e}") from e
         latency = int((time.monotonic() - started) * 1000)
 
         if stream_callback:
             return await _collect_stream(litellm, resp, model, msgs, stream_callback, started)
 
-        choice = resp.choices[0]
-        msg = choice.message
+        choices = getattr(resp, "choices", None)
+        choice = choices[0] if choices else None
+        msg = choice.message if choice else None
         calls = [
             ToolCall(tc.id, tc.function.name, _parse_args(tc.function.arguments), tc.function.arguments or "")
-            for tc in (msg.tool_calls or [])
+            for tc in (getattr(msg, "tool_calls", None) or [])
         ]
         try:
             cost = float(litellm.completion_cost(completion_response=resp) or 0.0)
         except Exception:  # noqa: BLE001 — у локальных моделей цены нет
             cost = 0.0
         usage = getattr(resp, "usage", None)
-        history = msg.model_dump(exclude_none=True) if hasattr(msg, "model_dump") else dict(msg)
+        history = msg.model_dump(exclude_none=True) if hasattr(msg, "model_dump") else dict(msg) if msg else {}
         history["role"] = "assistant"
         return LLMReply(
-            text=msg.content or "",
+            text=getattr(msg, "content", None) or "",
             tool_calls=calls,
             message=history,
             model=getattr(resp, "model", model) or model,
@@ -196,6 +297,7 @@ class LiteLLMClient:
             tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
             cost=cost,
             latency_ms=latency,
+            **_termination_metadata(resp, choice, msg),
         )
 
 
@@ -222,7 +324,8 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
     # stream_chunk_builder reconstructs the assistant message, including tool calls.
     # Previously streaming silently discarded them, so game actions could be lost.
     choices = getattr(full, "choices", None)
-    msg = choices[0].message if choices else None
+    choice = choices[0] if choices else None
+    msg = choice.message if choice else None
     calls = [
         ToolCall(tc.id, tc.function.name, _parse_args(tc.function.arguments), tc.function.arguments or "")
         for tc in (getattr(msg, "tool_calls", None) or [])
@@ -235,6 +338,16 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         else {"role": "assistant", "content": text}
     )
     history["role"] = "assistant"
+    termination = _termination_metadata(full, choice, msg)
+    # Some builders omit the final reason or provider feedback from the rebuilt reply.
+    for chunk in raw:
+        chunk_choices = getattr(chunk, "choices", None)
+        chunk_choice = chunk_choices[0] if chunk_choices else None
+        info = _termination_metadata(chunk, chunk_choice, getattr(chunk_choice, "delta", None))
+        if info["finish_reason"]:
+            termination["finish_reason"] = info["finish_reason"]
+        termination["blocked"] |= info["blocked"]
+        termination["blocked_metadata"].update(info["blocked_metadata"])
     return LLMReply(
         text=text,
         tool_calls=calls,
@@ -244,6 +357,7 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
         cost=cost,
         latency_ms=latency,
+        **termination,
     )
 
 

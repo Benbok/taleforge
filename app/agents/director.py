@@ -12,7 +12,7 @@ from typing import Any
 import jinja2
 from pydantic import TypeAdapter
 
-from app.agents.llm import LLM
+from app.agents.llm import LLM, reply_audit_error
 from app.core.narrative.contracts import (
     AdaptationProposal,
     AuthorCallReport,
@@ -234,6 +234,14 @@ def decode_director_reply(
     arguments: dict[str, Any],
 ) -> AdaptationProposal:
     """Decodes director tool call arguments into validated AdaptationProposal."""
+    if (
+        not isinstance(arguments, dict)
+        or not isinstance(arguments.get("summary"), str)
+        or not arguments["summary"].strip()
+        or not isinstance(arguments.get("operations"), list)
+        or "__invalid_json__" in arguments
+    ):
+        raise ValueError("Invalid required propose_adaptation arguments")
     permitted_refs = set(snapshot.actors)
     for f in snapshot.facts:
         permitted_refs.add(f.ref.subject_id)
@@ -241,15 +249,19 @@ def decode_director_reply(
         permitted_refs.add(t.id)
 
     grounds_raw = arguments.get("grounds", [])
+    if not isinstance(grounds_raw, list):
+        raise ValueError("Invalid propose_adaptation grounds")
     parsed_grounds = []
     for g in grounds_raw:
         if isinstance(g, dict):
             parsed_grounds.append(Ground.model_validate(g))
         elif isinstance(g, Ground):
             parsed_grounds.append(g)
+        else:
+            raise ValueError("Invalid propose_adaptation ground")
 
-    summary = arguments.get("summary", "no_change")
-    ops_raw = arguments.get("operations", [])
+    summary = arguments["summary"]
+    ops_raw = arguments["operations"]
     parsed_ops = []
 
     for item in ops_raw:
@@ -380,13 +392,19 @@ class LlmNarrativeAuthor:
                 ),
                 timeout=self._timeout_seconds,
             )
+            calls = [tc for tc in reply.tool_calls if tc.name == "propose_adaptation"]
+            if len(calls) != 1 or reply.blocked:
+                raise ValueError("Required propose_adaptation response missing or blocked")
+            return decode_director_reply(snapshot, calls[0].arguments)
         except Exception as exc:
-            error_msg = type(exc).__name__
+            error_msg = reply_audit_error(reply, reason=type(exc).__name__) if reply else type(exc).__name__
             raise
         finally:
             latency_ms = int((time.perf_counter() - t0) * 1000)
             tokens_in = reply.tokens_in if reply else packed.estimated_input_tokens
             tokens_out = reply.tokens_out if reply else 0
+            if reply is not None and error_msg is None:
+                error_msg = reply_audit_error(reply)
 
             # стоимость — от провайдера; иначе по тарифу модели. Неизвестный тариф (локальная модель) остаётся 0,
             # а ошибка сохраняется в error: она не выдаётся за бесплатный успешный вызов
@@ -430,12 +448,3 @@ class LlmNarrativeAuthor:
 
             if self._call_observer:
                 await self._call_observer(report)
-
-        tool_args: dict[str, Any] = {}
-        if reply and reply.tool_calls:
-            for tc in reply.tool_calls:
-                if tc.name == "propose_adaptation":
-                    tool_args = tc.arguments
-                    break
-
-        return decode_director_reply(snapshot, tool_args)

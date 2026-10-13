@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView, Entry
-from app.core.world_objects import is_nested
+from app.core.world_objects import container_parent, is_nested
 from app.db.models import (
     ActiveEffect,
     Campaign,
@@ -69,6 +69,17 @@ class Actor:
     features: frozenset[str] = frozenset()  # ключи умений класса героя на его уровне (app/rules/dnd5e/features.py)
     class_numbers: dict = field(default_factory=dict)  # числа класса: скрытая атака, урон ярости, кость ци…
     level: int = 0
+
+    def can_target_harmfully(self, target: Actor) -> bool:
+        """Source-scoped conditions protect their source, not every other actor."""
+        return not any(
+            effect.source in (target.id, target.name)
+            and any(
+                modifier.get("target") == "can_target_source_harmfully" and modifier.get("value") is False
+                for modifier in record.data.get("modifiers") or []
+            )
+            for effect, record in self.effects
+        )
 
     @property
     def alive(self) -> bool:
@@ -576,10 +587,34 @@ class World:
             "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
             # предметы, лежащие в сцене: их можно подобрать
-            "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)],
+            "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)]
+            + [item.id for item, _ in self.known_scene_possessions()],
             # все существа мира, включая ушедших со сцены: за побеждённых без убийства дают опыт
             "creatures": [e.id for e in self.entities.values() if e.kind == "creature"],
         }
+
+    def known_scene_possessions(self) -> list[tuple[Entity, Entity]]:
+        """Known possessions of present NPCs, for master tool selection only."""
+        from app.core.object_policy import concealed
+
+        present = {en.id for en in self.in_scene_entities() if en.kind == "creature"}
+        heroes = [h for h in self.characters.values() if h.status in PLAYABLE]
+        return [
+            (item, owner)
+            for item in self.entities.values()
+            if item.campaign_id == self.campaign.id
+            and is_scene_item(item)
+            and (owner := self.entities.get(container_parent(item) or "")) is not None
+            and owner.id in present
+            and owner.campaign_id == self.campaign.id
+            and (item.state or {}).get("world_object", {}).get("physical") != "destroyed"
+            and any(
+                item.id in self.revealed.get(hero.id, set())
+                and self.place_of(hero) == owner.location_id
+                and not concealed(owner, self.entities, self.revealed.get(hero.id, set()))
+                for hero in heroes
+            )
+        ]
 
     def scene_table(self) -> str:
         """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1). Разделившийся отряд
@@ -630,6 +665,13 @@ class World:
             )
         ids = {ch.id for ch in shown} | {e.id for e in self.in_scene_entities(None)}
         lines += self._condition_rules(ids)
+        possessions = self.known_scene_possessions()
+        if possessions:
+            lines.append("Известные вещи у NPC (получить или украсть через pick_up_item):")
+            lines += [
+                f"  {item.id} {item.name} ×{int((item.state or {}).get('qty') or 1)} — владелец {owner.id} {owner.name}"
+                for item, owner in possessions
+            ]
         if apart:
             lines.append(
                 "Отряд разделён, этот ход — только для героев выше. Другие части отряда (не описывай их, они услышат "

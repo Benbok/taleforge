@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from typing import get_args
 
-from app.core.narrative.contracts import PublicEffect
+from app.core.narrative.contracts import FactRef, FactState, PublicEffect, SnapshotRef
 from app.core.narrative.threads import is_thread_visible_to_audience
 from app.db.narrative import ensure_state
 from app.tools.narrative.executor import find_receipt
@@ -109,7 +110,20 @@ async def adaptation_prompt(ctx: ToolContext) -> str:
         "другие сообщения и события — только по их настоящему id.\n"
         "- Развитие роли существующего NPC: develop_actor_role.\n"
         "- Новый устойчивый факт: add_campaign_fact.\n"
-        "- Новая цель или подозрение фракции: change_front_intent.\n"
+        + "- Допустимые значения фактов: "
+        + "; ".join(
+            f"{label}={','.join(get_args(contract.model_fields[field].annotation))}"
+            for label, contract, field in (
+                ("ref.key", FactRef, "key"),
+                ("ref.namespace", FactRef, "namespace"),
+                ("ref.snapshot_ref.kind", SnapshotRef, "kind"),
+                ("fact.kind", FactState, "kind"),
+                ("fact.temporal_semantics", FactState, "temporal_semantics"),
+                ("fact.freedom", FactState, "freedom"),
+            )
+        )
+        + ". Другие ключи запрещены.\n"
+        + "- Новая цель или подозрение фракции: change_front_intent.\n"
         "- Не описывай факты и связи в тексте без предварительного вызова adapt_story.\n"
         f"Формат: grounds [{json.dumps(GROUND_EXAMPLE, ensure_ascii=False)}]; operations — список объектов:\n"
         + operation_examples(ctx.campaign.id)

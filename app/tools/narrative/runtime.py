@@ -145,14 +145,24 @@ STEPS_PER_TICK = 3  # автор, применение и одна повтор�
 class NarrativePreparerAdapter:
     """MasterService.narrative_preparer: режиссёр только для кампаний, которым он сейчас разрешён."""
 
-    def __init__(self, service: Any, session_maker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(self, service: Any, session_maker: async_sessionmaker[AsyncSession], *, quota_check=None) -> None:
         self.service = service
         self.session_maker = session_maker
+        self.quota_check = quota_check
 
     async def _allowed(self, campaign_id: str) -> bool:
         async with self.session_maker() as s:
             campaign = await s.get(Campaign, campaign_id)
             allowed = campaign is not None and await director_blocker(s, campaign) is None
+            if allowed and self.quota_check is not None:
+                from app.agents.architect import model_of
+                from app.agents.llm import LLMQuotaError
+
+                _, model, _, _ = await model_of(s, campaign)
+                try:
+                    self.quota_check(model)
+                except LLMQuotaError:
+                    allowed = False  # Keep pending work and its author budget untouched.
             await s.rollback()  # ensure_state мог создать строку: чтение не пишет
         return allowed
 

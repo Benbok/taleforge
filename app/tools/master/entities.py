@@ -259,6 +259,9 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
 class UpdateEntityArgs(BaseModel):
     entity_id: str
     attitude: Literal["hostile", "neutral", "friendly"] | None = None
+    attitude_basis_event_id: str | None = Field(
+        None, description="id события этого хода: успешная социальная проверка или передача вещи"
+    )
     mood: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500, description="нарративная пометка: мотив, что пообещал")
     zone: Zone | None = Field(
@@ -273,7 +276,8 @@ class UpdateEntityArgs(BaseModel):
 @tool(
     "update_entity",
     "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки. Хиты и статы так "
-    "не меняются.",
+    "не меняются. Новое отношение требует успешной социальной roll_check с target_id этой сущности "
+    "либо attitude_basis_event_id подтверждённого события этого хода.",
     UpdateEntityArgs,
     ids={"entity_id": "entities"},
     closes=False,
@@ -282,6 +286,8 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     en = ctx.world.entities.get(a.entity_id)
     if en is None:
         raise ToolError(f"нет сущности {a.entity_id}")
+    if a.attitude is not None and a.attitude != (en.state or {}).get("attitude", "hostile"):
+        _attitude_ground(ctx, en, a)
     if en.kind == "object" and (a.zone is not None or a.bearing is not None):
         from app.core.reach import object_feature
 
@@ -318,3 +324,31 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
         if hit:
             out["areas"] = hit
     return out
+
+
+def _attitude_ground(ctx: ToolContext, entity: Entity, args: UpdateEntityArgs) -> None:
+    """Evidence is tied to this NPC and this turn; an unrelated success is not a ground."""
+    social = [
+        event
+        for event in ctx.events
+        if event.tool == "roll_check"
+        and event.target_id == entity.id
+        and event.payload.get("kind") == "check"
+        and event.payload.get("stat") in {"persuasion", "deception", "intimidation", "performance"}
+    ]
+    if args.attitude_basis_event_id:
+        event = next((event for event in ctx.events if event.id == args.attitude_basis_event_id), None)
+        if event is not None and event.target_id == entity.id:
+            if event in social and event.payload.get("success") and event is social[-1]:
+                return
+            if event.tool == "pass_item" and not event.hidden:
+                return
+            if event.tool == "resolve_attack" and args.attitude == "hostile" and not event.hidden:
+                return
+        raise ToolError("основание отношения не подтверждено событием этого хода для этого NPC")
+    if social and social[-1].payload.get("success"):
+        return
+    raise ToolError(
+        "отношение не изменено: нужна успешная социальная roll_check с target_id этого NPC "
+        "или attitude_basis_event_id реальной передачи вещи; провал проверки не даёт успеха"
+    )

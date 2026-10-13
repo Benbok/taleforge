@@ -14,7 +14,7 @@ from app.core.object_policy import concealed, hidden_feature, observe, revealed_
 from app.core.weapon_enchantments import release_weapon
 from app.core.world import is_scene_item
 from app.core.world_objects import container_chain, container_parent, is_nested, read_world_object
-from app.db.models import Character, Entity, InventoryItem
+from app.db.models import Character, Entity, InventoryItem, Knowledge, now
 from app.tools import effects as fx
 from app.tools.master.base import (
     CELL_HINT,
@@ -147,15 +147,35 @@ HOW_RU = {"found": "находит", "pried": "добывает", "stolen": "к�
 
 @tool(
     "keep_found_item",
-    "Герой оставляет себе вещь, добытую в мире по ходу игры: нашёл камень, выломал арматуру из стены, украл шляпу "
-    "у прохожего. Если добыть вещь было непросто (вытащить, украсть), сначала roll_check, и вызывай это только при "
-    "успехе. Вещь попадает в инвентарь героя и остаётся там.",
+    "Герой сохраняет новую находку, которой ещё нет среди объектов кампании и инвентарей: нашёл камень, "
+    "выломал арматуру из стены. Существующие вещи, включая вещи NPC, перемещайте через pick_up_item по entity_id. "
+    "Для stolen/pried нужен успешный roll_check этого героя в текущем ходу; from_id не создаёт владение вещью.",
     KeepFoundArgs,
     ids={"character_id": "characters", "from_id": "subjects"},
 )
 async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
     ch = _character(ctx, a.character_id)
     _can_handle(ctx, ch)
+    if a.how in ("stolen", "pried"):
+        _successful_item_check(ctx, ch.id, a.from_id)
+    name_key = _item_name_key(a.name)
+    if any(
+        en.campaign_id == ctx.campaign.id and en.kind == "object" and _item_name_key(en.name) == name_key
+        for en in ctx.world.entities.values()
+    ) or any(
+        _item_name_key(ctx.world.item_name(it)) == name_key for items in ctx.world.inventory.values() for it in items
+    ):
+        raise ToolError("такая вещь уже существует: перемещайте её через pick_up_item, pass_item или drop_item")
+    src = ctx.world.entities.get(a.from_id or "") or ctx.world.characters.get(a.from_id or "")
+    if a.from_id:
+        if src is None or src.campaign_id != ctx.campaign.id:
+            raise ToolError("источник вещи не найден в текущей кампании")
+        place = ctx.world.place_of(src) if isinstance(src, Character) else src.location_id
+        if place != ctx.world.place_of(ch):
+            raise ToolError("источник вещи находится в другом месте")
+        # Actors cannot supply invented possessions. Existing possessions are moved by id.
+        if isinstance(src, Character) or src.kind == "creature":
+            raise ToolError("у источника нет такой подтверждённой вещи: существующий предмет берите через pick_up_item")
     if a.kind == "template":
         if not a.item_template_id:
             raise ToolError("для kind=template укажите item_template_id (найдите его через lookup_template)")
@@ -176,7 +196,6 @@ async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
     )
     if entity is not None:
         inverse.append({"table": "entities", "op": "delete", "id": entity.id})
-    src = ctx.world.entities.get(a.from_id or "") or ctx.world.characters.get(a.from_id or "")
     result = {"character": ch.name, "item": a.name, "qty": a.qty, "inventory_id": inv_id, "how": a.how}
     if src is not None:
         result["from"] = src.name
@@ -190,6 +209,29 @@ async def keep_found_item(ctx: ToolContext, a: KeepFoundArgs) -> dict:
     many = f" ×{a.qty}" if a.qty > 1 else ""
     ctx.outbox.append({"kind": "system", "content": f"{ch.name} {HOW_RU[a.how]} «{a.name}»{many}: вещь в инвентаре."})
     return result
+
+
+def _item_name_key(name: str) -> str:
+    return " ".join(name.casefold().split())
+
+
+def _successful_item_check(ctx: ToolContext, character_id: str, source_id: str | None) -> None:
+    checks = [
+        ev
+        for ev in ctx.events
+        if ev.tool == "roll_check"
+        and ev.actor_id == character_id
+        and ev.turn_id == ctx.turn_id
+        and ev.campaign_id == ctx.campaign.id
+    ]
+    check = checks[-1] if checks else None
+    if (
+        check is None
+        or check.payload.get("kind") != "check"
+        or check.payload.get("success") is not True
+        or (check.target_id is not None and check.target_id != source_id)
+    ):
+        raise ToolError("сначала нужен успешный roll_check этого героя в текущем ходу для этой добычи")
 
 
 def _world_item_state(*, unique: bool = True) -> dict:
@@ -343,19 +385,18 @@ class TakeItemArgs(BaseModel):
 
 @tool(
     "take_item",
-    "Забирает предмет из инвентаря персонажа.",
+    "Списывает обычный предмет из инвентаря персонажа. Уникальные вещи переносите через pass_item или drop_item; "
+    "вещь у NPC забирают через pick_up_item.",
     TakeItemArgs,
     ids={"character_id": "characters", "inventory_id": "inventory"},
 )
 async def take_item(ctx: ToolContext, a: TakeItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
     it = _own_item(ctx, ch, a.inventory_id)
+    if it.world_entity_id is not None:
+        raise ToolError("уникальный предмет нельзя списать: используйте pass_item или drop_item")
     name = ctx.world.item_name(it)
     inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-    if it.world_entity_id is not None:
-        entity = _unique_inventory_entity(ctx, it)
-        inverse.append({"table": "entities", "id": entity.id, "field": "state", "before": copy.deepcopy(entity.state)})
-        entity.state = _object_state(entity, physical="destroyed")
     result = {"character": ch.name, "item": name, "qty": a.qty}
     await ctx.record("take_item", target_id=ch.id, payload={**result, "reason": a.reason}, inverse=inverse)
     return result
@@ -416,6 +457,10 @@ class PlaceItemArgs(BaseModel):
     )
     reason: str = Field(description="откуда предмет: выпал у врага, лежит в сундуке, тайник")
     location_id: str | None = Field(None, description=PLACE_HINT)
+    discovery_check_event_id: str | None = Field(
+        None,
+        description="id успешного roll_check(perception/investigation) текущего хода, результат которого — находка",
+    )
 
 
 @tool(
@@ -429,6 +474,21 @@ class PlaceItemArgs(BaseModel):
 async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
     place = ctx.world.place_arg(a.location_id, "лежит предмет")
+    if a.discovery_check_event_id is not None:
+        check = next((ev for ev in ctx.events if ev.id == a.discovery_check_event_id), None)
+        hero = ctx.world.characters.get(check.actor_id or "") if check is not None else None
+        if (
+            check is None
+            or check.tool != "roll_check"
+            or check.turn_id != ctx.turn_id
+            or check.campaign_id != ctx.campaign.id
+            or check.payload.get("success") is not True
+            or check.payload.get("kind") != "check"
+            or check.payload.get("stat") not in ("perception", "investigation")
+            or hero is None
+            or ctx.world.place_of(hero) != (place or ctx.world.home())
+        ):
+            raise ToolError("находка требует успешного roll_check поиска этого хода героем в том же месте")
     cell = _floor(ctx, place or ctx.world.home(), a.cell)
     if rec.data.get("unique") and a.qty != 1:
         raise ToolError("уникальный предмет нельзя разместить стопкой")
@@ -437,7 +497,15 @@ async def place_item(ctx: ToolContext, a: PlaceItemArgs) -> dict:
     if a.cell is not None:
         result["cell"] = list(a.cell)
     await ctx.record(
-        "place_item", target_id=en.id, payload={**result, "reason": a.reason, "template": rec.id}, inverse=inverse
+        "place_item",
+        target_id=en.id,
+        payload={
+            **result,
+            "reason": a.reason,
+            "template": rec.id,
+            **({"discovery_check_event_id": a.discovery_check_event_id} if a.discovery_check_event_id else {}),
+        },
+        inverse=inverse,
     )
     return result
 
@@ -534,12 +602,16 @@ class PickUpArgs(BaseModel):
     character_id: str
     entity_id: str = Field(description="предмет, который лежит в сцене")
     qty: int | None = Field(None, ge=1, le=100, description="сколько взять; по умолчанию всё")
+    how: Literal["found", "given", "stolen", "looted"] = Field(
+        "found", description="у владельца-NPC: given — отдал, stolen — после успешного roll_check, looted — у павшего"
+    )
 
 
 @tool(
     "pick_up_item",
     "Герой подбирает предмет, лежащий в сцене: предмет переходит в его инвентарь и остаётся там. Бросок не нужен, "
-    "если предмет никто не охраняет.",
+    "если предмет никто не охраняет. Вещь NPC берите по её entity_id с how=given/stolen/looted; "
+    "кража требует успешной проверки, добыча — павшего владельца.",
     PickUpArgs,
     ids={"character_id": "characters", "entity_id": "scene_items"},
 )
@@ -547,15 +619,35 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     ch = _character(ctx, a.character_id)
     _can_handle(ctx, ch)
     en = ctx.world.entities.get(a.entity_id)
-    if en is None or en not in ctx.world.in_scene_entities(ctx.world.place_of(ch)):
+    parent = ctx.world.entities.get(container_parent(en) or "") if en is not None else None
+    owner = parent if parent is not None and parent.kind == "creature" else None
+    if (
+        en is None
+        or en.campaign_id != ctx.campaign.id
+        or (owner is None and en not in ctx.world.in_scene_entities(ctx.world.place_of(ch)))
+    ):
         raise ToolError(f"предмета {a.entity_id} нет рядом с {ch.name}")
     if not is_scene_item(en):
         raise ToolError(f"{en.name} — не предмет: его нельзя положить в инвентарь")
     st = dict(en.state or {})
-    if is_nested(en):
+    if is_nested(en) and owner is None:
         raise ToolError("сначала извлеките предмет из контейнера")
-    if concealed(en, ctx.world.entities, await revealed_to(ctx.session, ch.id)):
+    found = await revealed_to(ctx.session, ch.id)
+    if owner is not None:
+        _npc_item_access(ctx, ch, owner, found)
+        if en.id not in found:
+            raise ToolError("вещь владельца ещё не обнаружена")
+        if a.how == "stolen":
+            _successful_item_check(ctx, ch.id, owner.id)
+        elif a.how == "looted":
+            if ctx.world.actor(owner.id).hp.current > 0:
+                raise ToolError("владелец ещё не побеждён: вещь можно получить или украсть")
+        elif a.how != "given":
+            raise ToolError("вещь принадлежит NPC: укажите how=given, stolen или looted")
+    elif concealed(en, ctx.world.entities, found):
         raise ToolError(f"предмета {a.entity_id} не видно: сначала его находят")
+    if read_world_object(en).metadata.get("physical") == "destroyed":
+        raise ToolError("предмет уничтожен")
     room_id = en.location_id
     unique = read_world_object(en).unique
     have = int(st.get("qty") or 1)
@@ -584,23 +676,33 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
             .execution_options(populate_existing=True)
         )
         en = (await ctx.session.scalars(query)).one_or_none()
-        if en is None or en.location_id != ctx.world.place_of(ch) or is_nested(en):
+        if en is None or (
+            container_parent(en) != owner.id
+            if owner is not None
+            else en.location_id != ctx.world.place_of(ch) or is_nested(en)
+        ):
             raise ToolError("уникальный предмет уже перемещён")
         owned = await ctx.session.scalar(select(InventoryItem.id).where(InventoryItem.world_entity_id == en.id))
         if owned is not None:
             raise ToolError("уникальный предмет уже принадлежит персонажу")
         # Identity stays in Entity, while InventoryItem links the current owner.
+        if owner is None:
+            inverse += _approach(ctx, ch, en, walk=True)
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id)
         en.location_id = None
         carried = _object_state(en, container_id=None)
         carried.pop("cell", None)
         en.state = carried
     else:
+        if owner is None:
+            inverse += _approach(ctx, ch, en, walk=True)
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
     inverse += inv
     if unique or qty == have:
         inverse += detach_feature(ctx, en.id, room_id)
     result = {"character": ch.name, "item": en.name, "qty": qty, "inventory_id": inv_id, "left": have - qty}
+    if owner is not None:
+        result.update({"from_id": owner.id, "from": owner.name, "how": a.how})
     await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     many = f" ×{qty}" if qty > 1 else ""
     ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
@@ -670,19 +772,30 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
 
 class PassItemArgs(BaseModel):
     character_id: str = Field(description="кто отдаёт")
-    to_character_id: str = Field(description="кому из героев отряда")
+    to_character_id: str | None = Field(None, description="кому из героев отряда; укажите ровно одного получателя")
+    to_entity_id: str | None = Field(None, description="NPC или существу сцены; укажите ровно одного получателя")
     inventory_id: str
     qty: int = Field(1, ge=1, le=100)
 
 
 @tool(
     "pass_item",
-    "Герой передаёт предмет из своего инвентаря другому герою отряда.",
+    "Герой передаёт предмет из своего инвентаря герою (to_character_id) или NPC (to_entity_id). "
+    "Уникальная вещь сохраняет entity_id; вернуть вещь NPC можно через pick_up_item.",
     PassItemArgs,
-    ids={"character_id": "characters", "to_character_id": "characters", "inventory_id": "inventory"},
+    ids={
+        "character_id": "characters",
+        "to_character_id": "characters",
+        "to_entity_id": "entities",
+        "inventory_id": "inventory",
+    },
 )
 async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
+    if (a.to_character_id is None) == (a.to_entity_id is None):
+        raise ToolError("укажите ровно одного получателя: to_character_id или to_entity_id")
+    if a.to_entity_id is not None:
+        return await _pass_to_npc(ctx, ch, a)
     to = _character(ctx, a.to_character_id)
     if ch.id == to.id:
         raise ToolError("отдать предмет самому себе нельзя")
@@ -712,6 +825,75 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     await ctx.record("pass_item", actor_id=ch.id, target_id=to.id, payload=result, inverse=inverse + inv)
     ctx.outbox.append(
         {"kind": "system", "content": f"{ch.name} передаёт {to.name} «{name}»{f' ×{a.qty}' if a.qty > 1 else ''}."}
+    )
+    return result
+
+
+def _npc_item_access(ctx: ToolContext, ch: Character, npc: Entity, found: frozenset[str]) -> None:
+    if npc.campaign_id != ctx.campaign.id or npc.kind != "creature":
+        raise ToolError("получатель должен быть NPC или существом текущей кампании")
+    if npc.location_id != ctx.world.place_of(ch) or is_nested(npc):
+        raise ToolError("NPC находится в другом месте или недоступен")
+    if concealed(npc, ctx.world.entities, found):
+        raise ToolError("NPC скрыт: сначала его находят")
+    if grid.distance(grid.pos_of(ctx.world, ch.id), grid.pos_of(ctx.world, npc.id)) > 5:
+        raise ToolError("до NPC не дотянуться: сначала подойдите вплотную")
+    if grid.wall_between(ctx.world, ch.id, npc.id) or grid.pos_of(ctx.world, npc.id).cover == "total":
+        raise ToolError("до NPC не дотянуться: путь закрыт")
+    problem, _ = reach.approach_route(ctx.world, ch.id, npc, fighting=True)
+    if problem:
+        raise ToolError(problem)
+
+
+async def _pass_to_npc(ctx: ToolContext, ch: Character, a: PassItemArgs) -> dict:
+    _can_handle(ctx, ch)
+    npc = ctx.world.entities.get(a.to_entity_id or "")
+    if npc is None:
+        raise ToolError("NPC не найден")
+    _npc_item_access(ctx, ch, npc, await revealed_to(ctx.session, ch.id))
+    _alive(ctx.world.actor(npc.id), "Получатель")
+    it = _own_item(ctx, ch, a.inventory_id)
+    name = ctx.world.item_name(it)
+    if it.world_entity_id is not None:
+        en = _unique_inventory_entity(ctx, it)
+        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        inverse.extend(
+            [
+                {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
+                {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},
+                {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
+            ]
+        )
+        en.location_id = npc.location_id
+        en.zone = npc.zone
+        en.state = _object_state(en, container_id=npc.id)
+    else:
+        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        en, inv = await _put_in_scene(
+            ctx,
+            it.item_template_id,
+            it.display_name,
+            a.qty,
+            npc.zone,
+            place=npc.location_id,
+            container_id=npc.id,
+        )
+        inverse += inv
+    # Giving an object proves this hero knows it, without revealing other NPC possessions.
+    row = await ctx.session.get(Knowledge, (ch.id, en.id))
+    if row is None:
+        row = Knowledge(character_id=ch.id, entity_id=en.id, level=0, revealed_at=now())
+        ctx.session.add(row)
+        inverse.append({"table": "knowledge", "op": "delete", "id": [ch.id, en.id]})
+    elif row.revealed_at is None:
+        inverse.append({"table": "knowledge", "id": [ch.id, en.id], "field": "revealed_at", "before": None})
+        row.revealed_at = now()
+    ctx.world.revealed.setdefault(ch.id, set()).add(en.id)
+    ctx.changed.add(en.id)
+    result = {"from": ch.name, "to": npc.name, "item": name, "qty": a.qty, "entity_id": en.id}
+    await ctx.record("pass_item", actor_id=ch.id, target_id=npc.id, payload=result, inverse=inverse)
+    ctx.outbox.append(
+        {"kind": "system", "content": f"{ch.name} передаёт {npc.name} «{name}»{f' ×{a.qty}' if a.qty > 1 else ''}."}
     )
     return result
 

@@ -14,7 +14,9 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-_NAME = re.compile(r"(?<![\w])(?:\\?\[\s*)?([a-z][a-z0-9_]*)(?:\s*\\?\])?\s*\\?\(")
+_NAME = re.compile(
+    r"(?<![\w])(?:\\?\[\s*)?(?:[\x60_*]+)?([a-z][a-z0-9_]*[a-z0-9]|[a-z])(?:[\x60_*]+)?(?:\s*\\?\])?\s*\\?\("
+)
 _CALL_KEYS = ("call", "tool", "tool_name", "function", "name")
 _ARG_KEYS = ("args", "arguments", "parameters", "params", "input")
 _JSON_CALL = re.compile(r'"(?:' + "|".join(_CALL_KEYS) + r')"\s*:\s*"([^"\\]*)"')
@@ -220,8 +222,8 @@ def strip(text: str, names: Iterable[str]) -> str:
         line_end = len(cut) if line_end == -1 else line_end
         before = cut[line_start:start]
         after = cut[end:line_end]
-        if re.fullmatch(r"\s*(?:[-*•]\s*)?(?:\d+[.)]\s*)?(?:[a-z_ ]{0,20}:\s*)?`*\s*", before, re.IGNORECASE) and (
-            re.fullmatch(r"\s*`*\s*[;,.]?\s*", after)
+        if re.fullmatch(r"\s*(?:[-*•]\s*)?(?:\d+[.)]\s*)?(?:[a-z_ ]{0,20}:\s*)?[`_*]*\s*", before, re.IGNORECASE) and (
+            re.fullmatch(r"\s*[`_*]*\s*[;,.]?\s*", after)
         ):
             cut = cut[:line_start] + cut[line_end + 1 :]
         else:

@@ -26,6 +26,9 @@ from app.tools.registry import ToolContext, ToolError, dice_json, tool
 
 class CheckArgs(BaseModel):
     character_id: str = Field(description="кто бросает: персонаж или существо в сцене")
+    target_id: str | None = Field(
+        None, description="против кого или что исследует: цель социальной проверки, поиска, кражи"
+    )
     stat: str = Field(description=f"навык ({', '.join(SKILLS)}) или характеристика ({', '.join(ABILITIES)})")
     kind: Literal["check", "save"] = "check"
     difficulty: str = Field(
@@ -42,7 +45,7 @@ class CheckArgs(BaseModel):
     "Проверка навыка или характеристики или спасбросок против сложности из данных. Скрытые проверки "
     "(внимательность, проницательность, скрытность) игрок не видит — сообщи только последствия.",
     CheckArgs,
-    ids={"character_id": "combatants", "difficulty": "dc"},
+    ids={"character_id": "combatants", "target_id": "subjects", "difficulty": "dc"},
 )
 async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     act = ctx.world.actor(a.character_id)
@@ -82,6 +85,7 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
         "success": success,
         "margin": res.margin,
         "hidden": hidden,
+        "target_id": a.target_id,
     }
     if res.critical and not auto:
         result["critical"] = res.critical
@@ -96,7 +100,8 @@ async def roll_check(ctx: ToolContext, a: CheckArgs) -> dict:
     await ctx.record(
         "roll_check",
         actor_id=act.id,
-        payload={"reason": a.reason, **result},
+        target_id=a.target_id,
+        payload={"reason": a.reason, "difficulty": a.difficulty, **result},
         dice=[dice_json(res.roll)],
         hidden=hidden,
         inverse=spent or [],
@@ -210,6 +215,8 @@ async def resolve_attack(ctx: ToolContext, a: AttackArgs) -> dict:
         raise ToolError("атаковать себя нельзя")
     _alive(att, "Атакующий")
     _alive(tgt, "Цель")
+    if not att.can_target_harmfully(tgt):
+        raise ToolError("очарованный не может атаковать источник очарования")
     if att.kind == "character" and att.hp.current == 0:
         raise ToolError(f"{att.name} без сознания и не может атаковать")
     blocked = mod.can_act(att.modifiers)
@@ -472,6 +479,8 @@ async def resolve_grapple(ctx: ToolContext, a: GrappleArgs) -> dict:
         raise ToolError("самого себя схватить нельзя")
     _alive(att, "Хватающий")
     _alive(tgt, "Цель")
+    if not att.can_target_harmfully(tgt):
+        raise ToolError("очарованный не может выбирать источник очарования целью захвата")
     if not att.conscious or mod.can_act(att.modifiers):
         raise ToolError(f"{att.name} сейчас не может действовать")
     if not economy.active(w, att.id):
@@ -620,6 +629,8 @@ async def resolve_shove(ctx: ToolContext, a: ShoveArgs) -> dict:
         raise ToolError("себя толкнуть нельзя")
     _alive(attacker, "Толкающий")
     _alive(target, "Цель")
+    if not attacker.can_target_harmfully(target):
+        raise ToolError("очарованный не может выбирать источник очарования целью толчка")
     if not attacker.conscious or mod.can_act(attacker.modifiers):
         raise ToolError(f"{attacker.name}: сейчас не может совершить толчок")
     if not economy.active(w, attacker.id):

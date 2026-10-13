@@ -135,6 +135,12 @@ class FinishMixin:
             ids = list(cp.get("event_ids") or [])
             found = {ev.id: ev for ev in await s.scalars(select(Event).where(Event.id.in_(ids)))} if ids else {}
             ctx.events = [found[i] for i in ids if i in found]
+            audience = cp.get("audience")
+            ctx.narration_viewer_ids = {
+                character.id
+                for character in ctx.world.characters.values()
+                if audience is None or character.seat_id in audience
+            }
             system = await self._system_prompt(s, c, cfg, ctx) + (inputs.get("mood") or "")
             head = await s.get(Message, cp["narration_message_id"])
             tool_attempts = (turn.trace or {}).get("calls") or []

@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.agents import intent as intents
 from app.agents import memory
-from app.agents.llm import LLMError, parser_model_for
+from app.agents.llm import LLMError, LLMQuotaError, parser_model_for
 from app.agents.master.common import CATCH_UP_SYSTEM, MARKUP
 from app.agents.master.helpers import _names, _who
 from app.core.campaigns import master_seat
@@ -49,6 +49,12 @@ class RecallMixin:
         ``session`` — в конце сессии, если есть что добавить. Сбой модели сводку просто пропускает."""
         if cid in self._summarizing:
             return None
+        check_quota = getattr(self.llm, "check_quota", None)
+        if check_quota is not None:
+            try:
+                check_quota(parser_model_for())
+            except LLMQuotaError:
+                return None
         self._summarizing.add(cid)
         try:
             async with self.maker() as s:

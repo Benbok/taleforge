@@ -133,7 +133,9 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             clock=lambda: datetime.now(UTC),
         )
         app.state.narrative_preparer = NarrativePreparerAdapter(
-            app.state.narrative_service, session_maker=app.state.sessionmaker
+            app.state.narrative_service,
+            session_maker=app.state.sessionmaker,
+            quota_check=getattr(effective_llm, "check_quota", None),
         )
 
         app.state.master = MasterService(

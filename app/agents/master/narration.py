@@ -11,7 +11,14 @@ from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import invented_player_dialogue, unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
-from app.agents.master.outcomes import failed_attack, public_attempts, transition_outcome
+from app.agents.master.outcomes import (
+    acted,
+    cancelled_actions,
+    failed_attack,
+    public_attempts,
+    public_factual_fallback,
+    transition_outcome,
+)
 from app.core import combat
 from app.core.linker import BARE, effect_names
 from app.db.models import AgentConfig, Campaign, Scene
@@ -49,12 +56,14 @@ class NarrationMixin:
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
         attempts = public_attempts(tool_attempts)
+        cancellations = cancelled_actions(ctx)
         results = _render_results(ctx)
         turn = combat.public_turn(ctx.world)
         prompt = render(
             "narrate.j2",
             results=results,
             tool_attempts=attempts,
+            cancelled_actions=cancellations,
             failed_transition=outcome == "failed",
             scene=ctx.world.scene_table(),
             length=_narration_length(ctx, notes),
@@ -74,6 +83,12 @@ class NarrationMixin:
             },
         ]
         known = set(ctx.world.characters) | set(ctx.world.entities)
+        inventory_names = {
+            item.id: ctx.world.item_name(item)
+            for items in getattr(ctx.world, "inventory", {}).values()
+            for item in items
+        }
+        known.update(inventory_names)
         rules = effect_names(ctx.world.catalog)
         known.update(rules)
         human_seats = {seat.id for seat in c.seats if seat.occupant_type != "agent"}
@@ -84,15 +99,35 @@ class NarrationMixin:
         if outcome is not None:
             audit["transition_outcome"] = outcome
         has_resolution = any(ev.tool == "resolve_action" for ev in ctx.events)
-        can_stream = stream is not None and outcome != "failed" and not attack_rejected and not has_resolution
+        can_stream = (
+            stream is not None
+            and outcome != "failed"
+            and not attack_rejected
+            and not has_resolution
+            and not cancellations
+        )
         # Scene and player ownership checks require the whole response. Publish
         # the checked draft only; a rejected first attempt must never reach chat.
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None)
         text = reply.text.strip()
+        if not text:
+            audit["regenerated"] = True
+            audit["empty_retry"] = True
+            retry = [
+                *base,
+                {
+                    "role": "user",
+                    "content": "Ответ пуст. Опиши подтверждённые результаты этого хода словами. Не выводи многоточие.",
+                },
+            ]
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+            text = reply.text.strip()
         rejected_names: set[str] = set()
+        excluded_fallback_names: set[str] = set()
         known_names = {ch.name.casefold() for ch in ctx.world.characters.values()}
         known_names.update(e.name.casefold() for e in ctx.world.entities.values())
         known_names.update(name.casefold() for name in rules.values())
+        known_names.update(name.casefold() for name in inventory_names.values())
 
         def unknown_refs(draft: str) -> list[str]:
             refs = set()
@@ -161,6 +196,10 @@ class NarrationMixin:
         blocked_refs = unknown_refs(text)
 
         def strip(m: re.Match) -> str:
+            if m.group(1) in inventory_names:
+                # Inventory rows have no entity.inspect card. Preserve the
+                # item name without publishing a link the client cannot open.
+                return m.group(2)
             if m.group(1) in known:
                 return m.group(0)
             audit["stripped"].append(m.group(1))
@@ -200,34 +239,66 @@ class NarrationMixin:
         blocked_names = sorted(
             name for name in rejected_names if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text, re.IGNORECASE)
         )
+        excluded_fallback_names.update(blocked_names)
         unregistered = unregistered_named_actors(text, ctx.world)
         if unregistered:
             audit["blocked_actors"] = unregistered
-            text = (
-                "Мастер не смог подтвердить появление этих существ в игровой сцене. "
-                "Они пока отсутствуют в реестре мира; для взаимодействия мастер должен сначала "
-                "добавить их в сцену."
+            excluded_fallback_names.update(unregistered)
+            text = public_factual_fallback(
+                ctx,
+                tool_attempts,
+                notice="Появление новых участников не подтверждено текущей сценой.",
+                excluded_names=unregistered,
             )
         if blocked_refs or blocked_names:
             if blocked_refs:
                 audit["blocked_refs"] = blocked_refs
             if blocked_names:
                 audit["blocked_names"] = blocked_names
-            text = "Описание встречи не подтверждено текущей сценой."
+            text = public_factual_fallback(
+                ctx,
+                tool_attempts,
+                notice="Описание встречи не подтверждено текущей сценой.",
+                excluded_names=blocked_names,
+            )
+        bare_names = sorted(
+            {m.group(1).strip() for m in BARE.finditer(text) if m.group(1).strip().casefold() not in known_names}
+        )
+        if bare_names:
+            audit["blocked_bare_names"] = bare_names
+            excluded_fallback_names.update(bare_names)
+            text = public_factual_fallback(ctx, tool_attempts, excluded_names=bare_names)
         blocked_dialogue = invented_player_dialogue(text, players, participants, news)
         if blocked_dialogue:
             audit["blocked_player_dialogue"] = blocked_dialogue
-            text = "Ответ персонажа игрока ещё не получен. Его реплику должен написать сам игрок."
+            text = public_factual_fallback(
+                ctx,
+                tool_attempts,
+                notice="Ответ персонажа игрока ещё не получен. Его реплику должен написать сам игрок.",
+            )
         if outcome == "failed":
             # После окончательного отказа нельзя публиковать свободную прозу модели:
             # она может утверждать об успешном входе, несмотря на явный запрет.
             # Используем факты из движка, не историю диалога и не секретные ToolError.
             audit["transition_fallback"] = True
-            text = "Переход не состоялся. Герои остались на прежнем месте."
+            text = public_factual_fallback(ctx, tool_attempts, excluded_names=excluded_fallback_names)
         elif attack_rejected:
             audit["attack_fallback"] = True
-            text = "Атака не состоялась: сервер отклонил действие."
-        text = text or "…"
+            text = public_factual_fallback(ctx, tool_attempts, excluded_names=excluded_fallback_names)
+        if cancellations and text and all(acted(ctx, x.get("actor_id")) for x in cancellations):
+            # Часть заявки обработана (многочастная заявка, мастер закрыл одну часть): проза о применённом
+            # остаётся, необработанная часть называется явно — без замены всего ответа сухой сводкой.
+            audit["partial_cancel"] = True
+            names = ", ".join(dict.fromkeys(x["character"] for x in cancellations))
+            text = f"{text}\n\n{names}: часть заявки мастер не обработал — уточните её следующим действием."
+        elif cancellations:
+            # Unconstrained prose cannot establish the success of a cancelled
+            # action. Other committed effects still appear in the same answer.
+            audit["cancel_fallback"] = True
+            text = public_factual_fallback(ctx, tool_attempts, excluded_names=excluded_fallback_names)
+        if not text:
+            audit["empty_fallback"] = True
+            text = public_factual_fallback(ctx, tool_attempts, excluded_names=excluded_fallback_names)
         if can_stream:
             await stream.push(text)
         return text, audit

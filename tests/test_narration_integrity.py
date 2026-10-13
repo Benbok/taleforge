@@ -67,7 +67,11 @@ def test_retry_cannot_keep_unknown_npc_by_removing_markup(game_client, admin_g, 
 
 def test_submitted_player_dialogue_is_allowed(game_client, admin_g, llm, settings):  # noqa: F811
     c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [DONE, DONE, {"text": f"[[{hero['id']}|Бран]] спрашивает: «Что за тени?»"}]
+    llm.replies += [
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "задаёт вопрос"})]},
+        DONE,
+        {"text": f"[[{hero['id']}|Бран]] спрашивает: «Что за тени?»"},
+    ]
     result = act(game_client, p1, c["id"], "Что за тени? — спрашиваю я")
     assert "Что за тени?" in result["content"]
     (turn,) = rows(settings, MasterTurn)
