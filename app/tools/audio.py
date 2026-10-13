@@ -10,7 +10,6 @@ import time
 from dataclasses import replace
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from app.config import Settings
 from app.core import audio
@@ -78,7 +77,7 @@ async def set_music(ctx: ToolContext, a: MusicArgs) -> dict:
 @tool(
     "play_sfx",
     "Короткий звуковой эффект один раз (гром, рык, скрип двери). Эффекты боя, заклинаний и находок движок играет "
-    "сам. Не больше двух за ход.",
+    "сам. Обычно один эффект приходится на одно действие; не больше 16 за ход.",
     SfxArgs,
     ids={"sfx": "audio:sfx"},
     closes=False,
@@ -98,7 +97,7 @@ async def play_sfx(ctx: ToolContext, a: SfxArgs) -> dict:
 @tool(
     "request_sfx",
     "Редкий короткий эффект сцены: описание по-английски (без речи/музыки), 1–4 секунды. "
-    "Не жди результат и не запрашивай каждый удар: бой озвучивает движок. Один запрос за ход. "
+    "Не жди результат и не запрашивай каждый служебный вызов: одно выполненное действие — один эффект. "
     "Для похожего сохранённого звука передай sound_id из библиотеки вместо description.",
     SfxInput,
     closes=False,
@@ -108,12 +107,6 @@ async def request_sfx(ctx: ToolContext, a: SfxInput) -> dict:
         return {"status": "skipped", "reason": "звук выключен"}
     if not a.sound_id and not (ctx.campaign.settings or {}).get("sfx_enabled"):
         return {"status": "skipped", "reason": "генерация выключена в кампании"}
-    if ctx.sfx_requests or any(ev.tool == "request_sfx" for ev in ctx.events):
-        return {"status": "skipped", "reason": "не больше одного запроса за ход"}
-    if ctx.turn_id and await ctx.session.scalar(
-        select(SfxPlayback.id).where(SfxPlayback.campaign_id == ctx.campaign.id, SfxPlayback.turn_id == ctx.turn_id)
-    ):
-        return {"status": "skipped", "reason": "запрос этого хода уже сохранён"}
     if len(ctx.audio) >= audio.MAX_SFX:
         return {"status": "skipped", "reason": "лимит эффектов хода исчерпан"}
     cfg = ctx.session.info.get("settings", Settings())

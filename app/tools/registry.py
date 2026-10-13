@@ -72,6 +72,7 @@ class ToolContext:
     carded: set[str] = field(default_factory=set)  # события, у которых уже есть карточка броска в чате
     audio: list[dict[str, Any]] = field(default_factory=list)  # эффекты звука, прозвучат с публикацией хода
     sfx_requests: list[str] = field(default_factory=list)  # generated SFX reserve the shared per-turn budget
+    generated_sfx_events: list[tuple[Any, str]] = field(default_factory=list)  # automatic per-action SFX specs
     saved_sfx: list[dict[str, Any]] = field(default_factory=list)
     # события клиентам после фиксации хода: (тип, данные, кому — места или None для всех)
     notices: list[tuple[str, dict[str, Any], list[str] | None]] = field(default_factory=list)

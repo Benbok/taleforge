@@ -25,6 +25,20 @@ def test_sfx_only_campaign_enabled(tmp_path):
     assert audio.enabled(SimpleNamespace(settings={"audio_enabled": True}, pack_id=None, content_chain=[]))
 
 
+def test_each_action_gets_an_automatic_sfx_spec():
+    from types import SimpleNamespace
+
+    events = [
+        SimpleNamespace(tool="resolve_attack", actor_id="ch_1", hidden=False, payload={"hit": True}),
+        SimpleNamespace(tool="cast_spell", actor_id="ch_1", hidden=False, payload={}),
+        SimpleNamespace(tool="remove_effect", actor_id=None, target_id="ch_1", hidden=False, payload={}),
+        SimpleNamespace(tool="set_scene_mode", actor_id=None, hidden=False, payload={}),
+    ]
+    specs = audio.automatic_sfx_specs(SimpleNamespace(events=events))
+    assert [tool for tool, _ in specs] == ["resolve_attack", "cast_spell", "remove_effect"]
+    assert all(len(description) >= 8 for _, description in specs)
+
+
 def test_sfx_key_normalization_and_model_parameters():
     from app.config import Settings
     from app.sfx.contracts import SfxInput, cache_key
@@ -382,6 +396,25 @@ def test_sfx_migration_upgrade_and_downgrade(monkeypatch, tmp_path):
         assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0018",)
 
 
+def test_sfx_migration_allows_multiple_playbacks_per_turn(monkeypatch, tmp_path):
+    import sqlite3
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "alembic"))
+    db_path = tmp_path / "multiple-playbacks.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
+    command.upgrade(config, "0019")
+    command.upgrade(config, "0027")
+    with sqlite3.connect(db_path) as db:
+        constraints = db.execute("SELECT sql FROM sqlite_master WHERE name = 'sfx_playbacks'").fetchone()[0]
+        assert "UNIQUE (campaign_id, turn_id)" not in constraints
+
+
 def test_single_worker_lease_and_bounded_recovery(settings, client, admin, tmp_path):
     import time
 
@@ -523,10 +556,51 @@ def test_generated_tool_reserves_budget_and_rolls_back(settings, client, admin, 
         assert out["ok"] and out["result"]["status"] == "queued"
         assert len(ctx.sfx_requests) == 1
         again = await execute(ctx, "request_sfx", {"description": "Another massive door opens"})
-        assert again["ok"] and again["result"]["status"] == "skipped"
-        assert await session.scalar(select(func.count()).select_from(SfxPlayback)) == 1
+        assert again["ok"] and again["result"]["status"] == "queued"
+        assert await session.scalar(select(func.count()).select_from(SfxPlayback)) == 2
         await session.rollback()
         assert await session.scalar(select(func.count()).select_from(SfxJob)) == 0
+
+    run(settings, go)
+
+
+def test_automatic_action_sfx_creates_one_playback_per_action(settings, client, admin, tmp_path):
+    from types import SimpleNamespace
+
+    from sqlalchemy import func, select
+
+    from app.db.models import Campaign, SfxPlayback
+    from app.sfx.playback import queue_automatic_playbacks
+    from app.tools.runtime import open_context
+    from tests.game import QueueDice, ok
+
+    import_base(settings)
+    campaign, _, hero = party(client, admin)
+    ok(
+        client.patch(
+            f"/api/campaigns/{campaign['id']}",
+            json={"audio_enabled": True, "sfx_enabled": True},
+            headers=admin,
+        )
+    )
+    cfg = sfx_settings(settings, tmp_path)
+
+    async def go(session):
+        session.info["settings"] = cfg
+        ctx = await open_context(
+            session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id="t_auto", seat_id=None
+        )
+        ctx.events.extend(
+            [
+                SimpleNamespace(tool="use_item", actor_id=hero["id"], hidden=False, payload={}),
+                SimpleNamespace(tool="reposition", actor_id=hero["id"], hidden=False, payload={}),
+            ]
+        )
+        audio.finalize(ctx)
+        assert len(ctx.generated_sfx_events) == 2
+        await queue_automatic_playbacks(ctx)
+        assert len(ctx.sfx_requests) == 2
+        assert await session.scalar(select(func.count()).select_from(SfxPlayback)) == 2
 
     run(settings, go)
 
