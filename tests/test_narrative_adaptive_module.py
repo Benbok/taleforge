@@ -32,9 +32,95 @@ from app.db.session import make_sessionmaker
 from app.main import create_app
 from app.rules.dice import Dice
 from app.tools.narrative.commitments import record_commitments
+from app.tools.plot import run_clock
 from app.tools.runtime import open_context
 from tests.conftest import login
 from tests.game import QueueDice, import_base, party
+from tests.test_ws import connect, next_of
+
+
+def test_adaptive_front_clock_is_persisted_across_context_reload(game_client, admin_g):
+    campaign, _, _ = party(game_client, admin_g, master={"type": "owner"}, narrative_mode="adaptive")
+    cid = campaign["id"]
+    maker = make_sessionmaker(game_client.app.state.engine)
+
+    async def check_clock():
+        async with maker() as session:
+            secret = await session.get(CampaignSecret, cid)
+            if secret is None:
+                secret = CampaignSecret(campaign_id=cid)
+                session.add(secret)
+            secret.plot = {
+                "title": "Часы осады",
+                "clock_at": 0,
+                "fronts": [{"id": "siege", "period": 3600, "clock_at": 0, "maximum": 6}],
+            }
+            await session.commit()
+
+        for now, progress, notes_count in ((3600, 1, 1), (3600, 1, 0), (7500, 2, 1)):
+            async with maker() as session:
+                camp = await session.get(Campaign, cid)
+                ctx = await open_context(session, camp, Dice(), turn_id=None, seat_id=None)
+                ctx.world.scene.game_time = now
+                entities_before = set(ctx.world.entities)
+                notes = await run_clock(ctx)
+                assert len(notes) == notes_count
+                assert set(ctx.world.entities) == entities_before
+                assert ctx.world.plot["fronts"][0]["progress"] == progress
+                await session.commit()
+            async with maker() as session:
+                persisted = await session.get(CampaignSecret, cid)
+                assert persisted.plot["fronts"][0]["progress"] == progress
+                assert persisted.plot["fronts"][0]["clock_at"] == progress * 3600
+
+    game_client.portal.call(check_clock)
+
+
+def test_human_master_route_uses_explicit_front_clock(game_client, admin_g):
+    campaign, _, hero = party(game_client, admin_g, master={"type": "owner"}, narrative_mode="adaptive")
+    cid = campaign["id"]
+    maker = make_sessionmaker(game_client.app.state.engine)
+
+    async def prepare():
+        async with maker() as session:
+            secret = await session.get(CampaignSecret, cid)
+            if secret is None:
+                secret = CampaignSecret(campaign_id=cid)
+                session.add(secret)
+            secret.plot = {
+                "title": "Осада",
+                "clock_at": 0,
+                "fronts": [{"id": "siege", "period": 3600, "clock_at": 0, "maximum": 6}],
+            }
+            camp = await session.get(Campaign, cid)
+            ctx = await open_context(session, camp, Dice(), turn_id=None, seat_id=None)
+            ctx.world.scene.game_time = 3600
+            await session.commit()
+
+    game_client.portal.call(prepare)
+    with connect(game_client, admin_g, cid) as (ws, _):
+        for request_id in ("clock-1", "clock-2"):
+            ws.send_json(
+                {
+                    "type": "master.tool",
+                    "payload": {
+                        "tool": "give_item",
+                        "args": {"character_id": hero["id"], "item_template_id": "item.dagger", "reason": "награда"},
+                        "request_id": request_id,
+                    },
+                }
+            )
+            result = next_of(ws, "master.tool.result")["payload"]
+            assert result["ok"], result
+            assert bool(result.get("plot_clock")) == (request_id == "clock-1")
+
+    async def check_persisted():
+        async with maker() as session:
+            secret = await session.get(CampaignSecret, cid)
+            assert secret.plot["fronts"][0]["progress"] == 1
+            assert secret.plot["fronts"][0]["clock_at"] == 3600
+
+    game_client.portal.call(check_persisted)
 
 
 @pytest.fixture

@@ -398,12 +398,25 @@ Replan=false и ended campaign выключают новые фоновые из
 Первая точка отсчёта, несколько прошедших периодов, stopped и transition_key
 проверяются по одному авторитетному прогрессу.
 
-- [ ] Тест hourly-front: 3599 секунд — 0, 3600 — 1; повтор — 1,
+- [x] Тест hourly-front: 3599 секунд — 0, 3600 — 1; повтор — 1,
   7200 — 2; stopped не тикает.
-- [ ] Тесты двух front с разными period, legacy strict и clock_at после restart.
-- [ ] Исправить per-front расчёт без второго timer и без создания армии текстом.
-- [ ] Прогнать front/plot/standing/adaptive module и human-master route.
-- [ ] Коммит fix(narrative): advance each front on its own clock.
+- [x] Тесты двух front с разными period, legacy strict и clock_at после restart.
+- [x] Исправить per-front расчёт без второго timer и без создания армии текстом.
+- [x] Прогнать front/plot/standing/adaptive module и human-master route.
+- [x] Коммит fix(narrative): advance each front on its own clock.
+
+**Проверено 2026-10-13:** 49 passed в front/adaptive module/standing/plan/master panel;
+Ruff check и format --check для изменённых Python-файлов — PASS.
+Регрессии часов, загрузки из БД и WebSocket живого мастера подтверждены RED → GREEN.
+Новые paused/completed фронты не тикают; legacy oneshot/module сохраняют отсутствие
+автоматического продвижения антагонистов. Изменять plot.py/ws.py не потребовалось:
+оба существующих маршрута используют общий run_clock.
+
+Общий pytest с ограничением числа ошибок остановился: 203 passed, 3 failed
+(test_schema_is_fresh, test_ai_player_answers_once_after_master,
+test_master_leads_by_plan). Все три отдельно воспроизведены с прежним fronts.py
+из fb6a7d8 при остальных текущих изменениях рабочего дерева; исправления относятся
+к другим задачам. Полный Gate D этим запуском не подтверждён.
 
 ### F11. Проверять реальные ограничения и убрать ложные зелёные сигналы
 

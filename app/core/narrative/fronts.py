@@ -73,7 +73,7 @@ def iter_fronts(plan: dict[str, Any]) -> tuple[FrontView, ...]:
                 maximum=max_val,
                 status=status,
                 known_fact_refs=(),
-                clock_at=int(f.get("clock_at") or global_clock),
+                clock_at=int(f.get("clock_at", global_clock)),
                 period=int(f.get("period") or 86400),
                 milestones=milestones,
             )
@@ -96,20 +96,18 @@ def tick_fronts(
 
     next_plan = copy.deepcopy(plan)
     game_time = int(game_time)
-    days = THREAT_DAYS.get(length, 3)
+    days = THREAT_DAYS.get(length, 0)
     period_sec = days * DAY
 
-    if "clock_at" not in next_plan:
-        next_plan["clock_at"] = game_time
-        return FrontTickResult(next_plan=next_plan, progress_events=(), ready_intents=())
-
-    last_clock = int(next_plan.get("clock_at") or 0)
+    # The campaign clock belongs to legacy antagonists. Explicit fronts must be
+    # checked even when this clock has not yet reached its next interval.
+    if days:
+        next_plan.setdefault("clock_at", game_time)
+    last_clock = int(next_plan.get("clock_at", game_time))
     elapsed = game_time - last_clock
-    if elapsed < period_sec:
-        return FrontTickResult(next_plan=next_plan, progress_events=(), ready_intents=())
-
-    periods = max(0, elapsed // period_sec)
-    next_plan["clock_at"] = last_clock + periods * period_sec
+    periods = max(0, elapsed // period_sec) if period_sec else 0
+    if days:
+        next_plan["clock_at"] = last_clock + periods * period_sec
 
     events: list[dict[str, Any]] = []
     intents: list[ReadyIntent] = []
@@ -125,10 +123,12 @@ def tick_fronts(
                 break
             step_text = str(steps[step_idx])
             a["threat_step"] = step_idx + 1
-            a.setdefault("threat_log", []).append({
-                "step": step_text,
-                "reason": f"прошло {days} дн. игрового времени",
-            })
+            a.setdefault("threat_log", []).append(
+                {
+                    "step": step_text,
+                    "reason": f"прошло {days} дн. игрового времени",
+                }
+            )
             events.append({"antagonist_id": a["id"], "step": step_text})
 
             if mode == "adaptive":
@@ -144,14 +144,24 @@ def tick_fronts(
                     intents.append(intent)
 
     for f in next_plan.get("fronts") or []:
-        if f.get("status") in ("stopped", "completed"):
+        if f.get("status") in ("stopped", "completed", "paused"):
             continue
-        for _ in range(periods):
+        # Persist the initial origin and the unconsumed remainder in the plan,
+        # so a restart or a repeated call cannot advance the same interval twice.
+        front_clock = int(f.setdefault("clock_at", last_clock))
+        front_period = int(f.get("period") or DAY)
+        if front_period <= 0:
+            continue
+        front_periods = max(0, (game_time - front_clock) // front_period)
+        f["clock_at"] = front_clock + front_periods * front_period
+        for _ in range(front_periods):
             prog = int(f.get("progress") or 0)
             max_v = int(f.get("maximum") or 6)
             if prog >= max_v:
                 break
             f["progress"] = prog + 1
+            if f["progress"] >= max_v:
+                f["status"] = "completed"
             events.append({"front_id": f["id"], "progress": f["progress"]})
 
             if mode == "adaptive" and f["progress"] >= max_v - 1:

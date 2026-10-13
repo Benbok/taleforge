@@ -1,5 +1,10 @@
 """Tests for campaign fronts, clock thresholds, and dramatic questions (Task 19)."""
 
+import copy
+
+import pytest
+
+from app.core import plot
 from app.core.narrative.contracts import (
     FactRef,
     FrontRef,
@@ -11,6 +16,91 @@ from app.core.narrative.fronts import (
     iter_fronts,
     tick_fronts,
 )
+
+
+def hourly_plan() -> dict:
+    return {
+        "campaign_id": "c1",
+        "clock_at": 0,
+        "fronts": [{"id": "watch", "period": 3600, "clock_at": 0, "progress": 0, "maximum": 6}],
+    }
+
+
+def test_explicit_front_ticks_on_its_own_clock_without_duplicates():
+    original = hourly_plan()
+    plan = original
+    for now, expected in ((3599, 0), (3600, 1), (3600, 1), (7200, 2)):
+        result = tick_fronts(plan, now, mode="adaptive")
+        assert result.next_plan["fronts"][0]["progress"] == expected
+        assert result.next_plan["fronts"][0]["clock_at"] == expected * 3600
+        plan = result.next_plan
+    assert original == hourly_plan()
+
+
+def test_explicit_fronts_have_independent_periods_and_persist_remainder():
+    plan = hourly_plan()
+    plan["fronts"].append({"id": "siege", "period": 7200, "clock_at": 0, "progress": 0, "maximum": 6})
+    result = tick_fronts(plan, 7500, mode="adaptive")
+    assert [f["progress"] for f in result.next_plan["fronts"]] == [2, 1]
+    # Simulate a restart with only the persisted plan; the leftover 300 seconds survive.
+    restarted = copy.deepcopy(result.next_plan)
+    result = tick_fronts(restarted, 10800, mode="adaptive")
+    assert [f["progress"] for f in result.next_plan["fronts"]] == [3, 1]
+    assert [f["clock_at"] for f in result.next_plan["fronts"]] == [10800, 7200]
+
+
+@pytest.mark.parametrize("status", ["stopped", "completed", "paused"])
+def test_inactive_explicit_front_does_not_tick(status):
+    plan = hourly_plan()
+    plan["fronts"][0]["status"] = status
+    result = tick_fronts(plan, 3 * 86400, mode="adaptive")
+    assert result.next_plan["fronts"] == plan["fronts"]
+    assert not result.progress_events
+    assert not result.ready_intents
+
+
+def test_new_front_clock_starts_at_first_tick_without_retroactive_progress():
+    plan = hourly_plan()
+    del plan["clock_at"]
+    del plan["fronts"][0]["clock_at"]
+    result = tick_fronts(plan, 10000)
+    assert result.next_plan["fronts"][0]["clock_at"] == 10000
+    assert not result.progress_events
+    result = tick_fronts(result.next_plan, 13600)
+    assert result.next_plan["fronts"][0]["progress"] == 1
+
+
+def test_explicit_zero_clock_survives_global_initialization_and_view():
+    plan = hourly_plan()
+    del plan["clock_at"]
+    result = tick_fronts(plan, 3600)
+    assert result.next_plan["fronts"][0]["progress"] == 1
+    plan["clock_at"] = 9000
+    assert iter_fronts(plan)[0].clock_at == 0
+
+
+def test_explicit_front_completion_caps_progress_and_emits_intent_once():
+    plan = hourly_plan()
+    plan["fronts"][0]["maximum"] = 2
+    result = tick_fronts(plan, 20000, mode="adaptive")
+    assert result.next_plan["fronts"][0]["progress"] == 2
+    assert result.next_plan["fronts"][0]["status"] == "completed"
+    assert len(result.progress_events) == 2
+    repeated = tick_fronts(result.next_plan, 30000, mode="adaptive")
+    assert not repeated.progress_events
+    assert not repeated.ready_intents
+
+
+@pytest.mark.parametrize("length", ["oneshot", "short", "long", "module"])
+def test_legacy_strict_clock_matches_existing_plot_clock(length):
+    plan = plan_with_front_near_threshold()
+    for now in (3599, 3 * 86400, 3 * 86400, 7 * 86400):
+        expected = copy.deepcopy(plan)
+        plot.clock(expected, now, length)
+        result = tick_fronts(plan, now, length=length, mode="strict")
+        assert result.next_plan == expected
+        assert not result.ready_intents
+        plan = result.next_plan
 
 
 def plan_with_front_near_threshold() -> dict:
