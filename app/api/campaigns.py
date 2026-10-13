@@ -288,9 +288,19 @@ async def patch_campaign(
         "random_events",
         "scene_generation",
         "scene_generation_llm",
+        "location_layouts",
+        "location_layouts_llm",
     ):
         if key in body.model_fields_set and (
-            key not in ("leveling", "random_events", "scene_generation", "scene_generation_llm")
+            key
+            not in (
+                "leveling",
+                "random_events",
+                "scene_generation",
+                "scene_generation_llm",
+                "location_layouts",
+                "location_layouts_llm",
+            )
             or getattr(body, key) is not None
         ):
             settings[key] = getattr(body, key)

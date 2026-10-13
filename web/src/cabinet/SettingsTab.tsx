@@ -204,6 +204,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           <p className="text-xs text-muted">
             Когда отряд впервые входит в место, сервер расставляет обстановку и контейнеры по профилю места, а
             содержимое шкафа или сундука готовит при первом обыске. Места, где отряд уже был, останутся как есть.
+            Устройство места — из каких частей оно состоит; посещённые места не перестраиваются.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -250,6 +251,52 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             }
           >
             {st.scene_generation_llm ? "Брать имена из шаблонов" : "Имена от модели"}
+          </ActionButton>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${st.location_layouts ? "text-patina-hi" : "text-muted"}`}>
+            {st.location_layouts ? "● устройство из каркаса" : "○ места без устройства"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={
+              st.location_layouts
+                ? "Новые места останутся одним местом; готовые комплексы сохранятся"
+                : "Новые места каркаса будут собираться из частей при развороте"
+            }
+            run={async () =>
+              onRoom(
+                await api<Room>(`/api/campaigns/${room.id}`, {
+                  method: "PATCH",
+                  body: { location_layouts: !st.location_layouts },
+                }),
+              )
+            }
+          >
+            {st.location_layouts ? "Выключить устройство мест" : "Включить устройство мест"}
+          </ActionButton>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`font-mono text-xs ${st.location_layouts_llm ? "text-patina-hi" : "text-muted"}`}>
+            {st.location_layouts_llm ? "● устройство от модели" : "○ устройство по шаблону"}
+          </span>
+          <ActionButton
+            className="btn-outline-copper"
+            done={
+              st.location_layouts_llm
+                ? "Устройство места собирает сервер без модели"
+                : "Устройство места предложит модель; если ответ не подойдёт, сервер соберёт его сам"
+            }
+            run={async () =>
+              onRoom(
+                await api<Room>(`/api/campaigns/${room.id}`, {
+                  method: "PATCH",
+                  body: { location_layouts_llm: !st.location_layouts_llm },
+                }),
+              )
+            }
+          >
+            {st.location_layouts_llm ? "Устройство по шаблону" : "Устройство от модели"}
           </ActionButton>
         </div>
       </section>

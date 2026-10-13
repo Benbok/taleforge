@@ -255,6 +255,16 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
 
     # каркас раньше подготовки: резерв места фиксирует носителей зацепок, привязанных к нему в _change
     result = await _change(ctx, "develop", fn, payload={"sketch_id": a.sketch_id, "entity_id": en.id}, target_id=en.id)
+    if kind == "location" and (ctx.campaign.settings or {}).get("location_layouts"):
+        from app.core.layout import plan as layout_plan
+        from app.core.preparation import receipt
+        from app.core.world_generation import storage
+
+        row = await layout_plan.reserve_from_plan(ctx, en, sketch, inverse)
+        if row is not None:
+            storage.activate(row)
+            ctx.operation_refs.add(row.id)  # ход и вступление дождутся структуры до описания
+            result["layout"] = receipt(row.id)
     if arrived:  # отряд пришёл вместе со сценой — это вход в место, как при move
         from app.tools.master.places import request_preparation
 

@@ -378,9 +378,10 @@ class CampaignPatchIn(BaseModel):
     leveling: Literal["xp", "milestone"] | None = None  # рост уровней: по опыту или по вехам
     # случайности: auto — сервер сам проверяет их по игровому времени, manual — только когда бросает мастер
     random_events: Literal["auto", "manual"] | None = None
-    # генерация исследуемых сцен: включение явное, посещённые места фиксируются как есть (§8.3)
     scene_generation: bool | None = None
     scene_generation_llm: bool | None = None  # имена и описания сцены от технической модели
+    location_layouts: bool | None = None  # места каркаса с пространством становятся комплексами при развороте
+    location_layouts_llm: bool | None = None  # устройство места предлагает техническая модель
     brief: BriefIn | None = None
 
 

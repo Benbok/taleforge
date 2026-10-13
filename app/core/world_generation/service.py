@@ -219,14 +219,18 @@ async def _model_of(s, campaign) -> tuple[str, str | None, str | None] | None:
 
 
 async def _dependencies(maker, campaign_id: str, ref: str) -> list[str]:
-    """Неготовые фазы, без которых эту не выполнить: обстановке участка комплекса нужна его геометрия."""
+    """Неготовые фазы, без которых эту не выполнить: обстановке корня нужна структура комплекса (иначе носители
+    лягут у корня), обстановке участка — его геометрия."""
     async with maker() as s:
         row = await s.get(WorldGenerationState, ref)
         if row is None or row.campaign_id != campaign_id or row.phase != "location_initial":
             return []
-        dep = await storage.find(s, campaign_id, row.target_entity_id, "location_geometry")
-        if dep is None or dep.status in ("ready", "blocked"):
-            return []
-        if await storage.activate_cas(s, dep):
-            await s.commit()
-        return [dep.id]
+        deps = []
+        for phase in ("location_layout", "location_geometry"):
+            dep = await storage.find(s, campaign_id, row.target_entity_id, phase)
+            if dep is None or dep.status in ("ready", "blocked"):
+                continue
+            if await storage.activate_cas(s, dep):
+                await s.commit()
+            deps.append(dep.id)
+        return deps
