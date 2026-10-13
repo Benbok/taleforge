@@ -83,7 +83,8 @@ class CatalogView:
         self.allow_proposals = allow_proposals
 
     def _ok(self, e: Entry | None) -> bool:
-        return e is not None and (self.allow_proposals or e.status == "canon")
+        # пакет кампании в цепочке — всегда свой: придуманное мастером видно без тестового режима
+        return e is not None and (self.allow_proposals or e.status == "canon" or e.pack_id.startswith("campaign."))
 
     def get(self, rid: str, kind: str | None = None) -> Entry:
         e = self.catalog.resolve(rid)
