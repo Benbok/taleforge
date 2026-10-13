@@ -36,7 +36,8 @@ HEADING = re.compile(r"^\s*(#.*|[*_]{1,3}[^\n]{1,150}?[*_]{1,3}:?|[^\n]{0,150}:|
 ECHO = re.compile(r"^\s*Кампания\s+«[^»\n]*»\.?\s*(Завязка[^:\n]*:\s*)?")
 STORY_RULES = (
     "Сразу начни сам художественный текст: без заголовка, пояснений и вводных фраз вроде «Вот вступление», "
-    "не повторяй название кампании и слова задания."
+    "не повторяй название кампании и слова задания. Не утверждай о наличии снаряжения вопреки фактическому "
+    "листу персонажа."
 )
 
 
@@ -412,6 +413,102 @@ async def _open_first_place(svc, cid: str, where: dict) -> bool:
                     return False
         messages = await flush_outbox(s, ctx)
         await s.commit()
+    await publish_changes(svc.bus, ctx, messages)
+    if ctx.operation_refs:
+        await svc._settle_preparation(cid, list(ctx.operation_refs))
+    return True
+
+
+async def _apply_opening_conditions(
+    svc,
+    cid: str,
+    p: dict,
+    newcomers: list[Character],
+    first: bool,
+) -> bool:
+    """Применяет стартовые условия кампании (изъятие снаряжения) до вступления героев."""
+    from app.core.world_objects import read_world_object
+    from app.tools.master.items import confiscate_hero_gear, create_stash_container
+    from app.tools.registry import execute
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    opening = (p or {}).get("opening") or {}
+    if opening.get("gear") != "confiscated":
+        return True
+    stash_id = opening.get("stash")
+    if not stash_id:
+        return True
+
+    applied = list(opening.get("applied_to") or [])
+    heroes_to_confiscate = [ch for ch in newcomers if ch.id not in applied]
+    if not heroes_to_confiscate:
+        return True
+
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
+        plot_data = ctx.world.plot or {}
+        fresh_opening = dict(plot_data.get("opening") or opening)
+        fresh_applied = list(fresh_opening.get("applied_to") or [])
+        targets = [ch for ch in heroes_to_confiscate if ch.id not in fresh_applied]
+        if not targets:
+            return True
+
+        stash_sketch = next((loc for loc in (plot_data.get("locations") or []) if loc["id"] == stash_id), None)
+        if stash_sketch is None:
+            log.warning("место stash %s не найдено в каркасе", stash_id)
+            return False
+
+        stash_place = ctx.world.entities.get(stash_sketch.get("entity_id") or "")
+        if stash_place is None:
+            details = stash_sketch.get("mood") or stash_sketch.get("name") or "место для изъятых вещей"
+            res = await execute(ctx, "develop", {"sketch_id": stash_id, "details": details, "here": False})
+            if not res.get("ok"):
+                log.warning("не удалось развернуть место stash %s: %s", stash_id, res.get("error"))
+                await s.rollback()
+                return False
+            stash_place_id = (res.get("result") or {}).get("entity_id")
+            stash_place = ctx.world.entities.get(stash_place_id or "")
+            if stash_place is None:
+                log.warning("сущность места stash %s не найдена после develop", stash_id)
+                await s.rollback()
+                return False
+        else:
+            stash_place_id = stash_place.id
+
+        containers = [
+            e
+            for e in ctx.world.in_scene_entities(stash_place_id)
+            if read_world_object(e).role == "container" and e.name == "Изъятые вещи"
+        ]
+        if containers:
+            container = containers[0]
+        else:
+            container = await create_stash_container(ctx, stash_place_id)
+
+        is_opened = bool(read_world_object(container).metadata.get("access", {}).get("open"))
+        if not first and is_opened:
+            for ch in targets:
+                if ch.id not in fresh_applied:
+                    fresh_applied.append(ch.id)
+        else:
+            for ch in targets:
+                hero = ctx.world.characters.get(ch.id) or ch
+                await confiscate_hero_gear(ctx, hero, container, stash_place_id)
+                if ch.id not in fresh_applied:
+                    fresh_applied.append(ch.id)
+
+        fresh_opening["applied_to"] = fresh_applied
+        plot_data["opening"] = fresh_opening
+        secret = await s.get(CampaignSecret, cid)
+        if secret is not None:
+            fresh_secret = dict(secret.plot or {})
+            fresh_secret["opening"] = fresh_opening
+            secret.plot = json.loads(json.dumps(fresh_secret))
+
+        messages = await flush_outbox(s, ctx)
+        await s.commit()
+
     await publish_changes(svc.bus, ctx, messages)
     if ctx.operation_refs:
         await svc._settle_preparation(cid, list(ctx.operation_refs))
@@ -798,6 +895,12 @@ async def introduce(svc, cid: str) -> str | None:
         except Exception:
             log.exception("не удалось открыть первое место до вступления героев")
             return None
+    try:
+        if not await _apply_opening_conditions(svc, cid, p, newcomers, first):
+            return None
+    except Exception:
+        log.exception("не удалось применить стартовые условия кампании")
+        return None
     from app.tools.runtime import open_context
 
     async with svc.maker() as s:
@@ -825,6 +928,17 @@ async def introduce(svc, cid: str) -> str | None:
         )
         if where:
             scene_hint += f" Место: {where.get('name')}, {where.get('mood')}"
+    opening = (p or {}).get("opening") or {}
+    opening_note = ""
+    if opening.get("gear") == "confiscated":
+        stash_id = opening.get("stash")
+        stash_sketch = next((loc for loc in (p.get("locations") or []) if loc["id"] == stash_id), None)
+        stash_name = stash_sketch.get("name") if stash_sketch else stash_id
+        note_extra = f" ({opening['note']})" if opening.get("note") else ""
+        opening_note = (
+            f"Стартовое условие кампании: снаряжение героев изъято и находится в месте «{stash_name}»{note_extra}. "
+            "Не описывай наличие оружия, доспехов или снаряжения вопреки фактическому листу персонажа."
+        )
     if first:
         task = (
             "Напиши, как эти герои встретились. 120–200 слов. У каждого героя — одна яркая деталь "
@@ -842,6 +956,7 @@ async def introduce(svc, cid: str) -> str | None:
         for x in (
             f"Кампания «{p.get('title')}». Завязка для игроков: {p.get('public_intro')}",
             adventure.hook_line(p) if first else "",
+            opening_note,
             scene_hint,
             "Фактическая сцена (достовернее завязки и прошлых описаний):\n" + factual_scene,
             "Уже рассказано игрокам:\n" + previous_text if previous_text else "",

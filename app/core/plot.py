@@ -31,6 +31,22 @@ MODULE = "module"
 MIN_CLUES = 3
 MIN_CLUE_PLACES = 2
 CLUE_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+CONFISCATED_HINTS = (
+    "лишённые оружия",
+    "лишенные оружия",
+    "отобрали оружие",
+    "отняли оружие",
+    "без оружия",
+    "снаряжение изъято",
+    "отняли снаряжение",
+    "вещи изъяты",
+    "вещи конфискованы",
+    "отобрали снаряжение",
+    "отобрали доспехи",
+    "без снаряжения",
+    "снаряжение отобрано",
+    "изъяли оружие",
+)
 
 
 def new_clue_id() -> str:
@@ -219,6 +235,23 @@ def tool_spec() -> dict:
                 "items": {"type": "string", "maxLength": 400},
                 "minItems": 2,
                 "maxItems": 3,
+            },
+            "opening": {
+                "type": "object",
+                "description": "Стартовое условие кампании (снаряжение отряда). По умолчанию gear=kept.",
+                "properties": {
+                    "gear": {
+                        "type": "string",
+                        "enum": ["kept", "confiscated"],
+                        "description": "kept — снаряжение при героях; confiscated — изъято и лежит в тайнике.",
+                    },
+                    "stash": {
+                        "type": "string",
+                        "description": "id локации каркаса, где сложены изъятые вещи (обязательно при confiscated).",
+                    },
+                    "note": _str("Одна фраза для мастера о стартовом положении.", 300),
+                },
+                "required": ["gear"],
             },
         },
         "required": [
@@ -419,6 +452,39 @@ def check(
             errors.append(f"фракция {f.get('name')}: нет фракции {f['ref']} в пакете")
 
     loc_ids = {k for k, v in seen.items() if v == "локация"}
+    opening = plan.get("opening")
+    if opening is not None:
+        if not isinstance(opening, dict):
+            errors.append("opening: ожидается объект")
+            plan["opening"] = {"gear": "kept"}
+        else:
+            gear = opening.get("gear")
+            if gear not in ("kept", "confiscated"):
+                errors.append(f"opening.gear: ожидается 'kept' или 'confiscated', получено {gear!r}")
+                gear = "kept"
+            stash = opening.get("stash")
+            if gear == "confiscated":
+                if not stash or not isinstance(stash, str):
+                    errors.append("opening: при gear=confiscated необходимо указать stash (id места каркаса)")
+                elif stash not in loc_ids:
+                    errors.append(f"opening.stash: место {stash} не найдено в локациях каркаса")
+            norm_opening: dict[str, Any] = {"gear": gear}
+            if stash and isinstance(stash, str):
+                norm_opening["stash"] = stash
+            if opening.get("note"):
+                norm_opening["note"] = str(opening["note"])[:300].strip()
+            if isinstance(opening.get("applied_to"), list):
+                norm_opening["applied_to"] = [str(x) for x in opening["applied_to"]]
+            plan["opening"] = norm_opening
+    else:
+        plan["opening"] = {"gear": "kept"}
+
+    intro_text = (plan.get("public_intro") or "").lower()
+    if plan["opening"].get("gear") != "confiscated" and any(hint in intro_text for hint in CONFISCATED_HINTS):
+        errors.append(
+            "завязка говорит об изъятом снаряжении, но opening.gear не установлен в confiscated со ссылкой на stash"
+        )
+
     npc_ids = {k for k, v in seen.items() if v == "NPC"}
     for npc in plan["npcs"]:
         if isinstance(npc, dict) and npc.get("location_id") and npc["location_id"] not in loc_ids:
@@ -519,6 +585,8 @@ SYSTEM = """Ты — архитектор кампании для текстов
 - К каждой тайне — не меньше трёх зацепок хотя бы в двух разных местах или у разных NPC.
 - План угрозы антагониста — шаги, которые он сделает сам, если герои медлят.
 - Завязка (public_intro), название, фраза-приманка и теги видны игрокам: в них не должно быть тайн.
+- Если завязка утверждает, что у героев отняли снаряжение или оружие, обязательно укажи opening:
+  {gear: "confiscated", stash: "<id места каркаса>", note: "..."}. Иначе вещи остаются при героях.
 - Запретные темы нельзя упоминать нигде.
 Сдай каркас одним вызовом submit_campaign_plan."""
 
@@ -876,6 +944,12 @@ def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
     acts = plan.get("acts") or []
     act = active_act(plan)
     lines = [f"Сюжет сейчас — «{plan.get('title')}». Конфликт: {plan.get('conflict')} Ставки: {plan.get('stakes')}"]
+    opening = plan.get("opening") or {}
+    if opening.get("gear") == "confiscated":
+        stash = opening.get("stash")
+        loc_name = next((loc.get("name") for loc in plan.get("locations") or [] if loc.get("id") == stash), stash)
+        note = f" ({opening['note']})" if opening.get("note") else ""
+        lines.append(f"Стартовое условие: снаряжение героев изъято и находится в «{loc_name}» (@{stash}){note}.")
     for a in acts:
         if a.get("status") == "done":
             lines.append(f"Пройден акт {a['id']} «{a.get('title')}»: {a.get('outcome')}")

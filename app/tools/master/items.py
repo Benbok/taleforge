@@ -247,7 +247,7 @@ def _world_item_state(*, unique: bool = True) -> dict:
 
 
 def _object_state(entity: Entity, **changes: object) -> dict:
-    previous = dict((entity.state or {}).get("world_object") or {})
+    previous = dict((entity.state or {}).get("world_object") or _world_item_state())
     world_object = {**previous, **changes, "revision": int(previous.get("revision", 0)) + 1}
     return {**(entity.state or {}), "world_object": world_object}
 
@@ -1171,3 +1171,133 @@ async def _unexplored(ctx: ToolContext, container: Entity) -> str | None:
     if row is None or row.status == "ready":
         return None
     return public_status(row)
+
+
+async def create_stash_container(
+    ctx: ToolContext,
+    stash_place_id: str,
+    name: str = "Изъятые вещи",
+    description: str = "Снаряжение героев, изъятое при пленении.",
+) -> Entity:
+    """Создаёт постоянный контейнер в тайнике каркаса без требования присутствия отряда в сцене."""
+    en = Entity(
+        campaign_id=ctx.campaign.id,
+        kind="object",
+        name=name,
+        description=description,
+        location_id=stash_place_id,
+        zone="near",
+        state={
+            "visual_key": "item:chest",
+            "world_object": _container_state(),
+        },
+    )
+    ctx.session.add(en)
+    await ctx.session.flush()
+    ctx.world.entities[en.id] = en
+    result = {"container_id": en.id, "name": en.name, "location_id": stash_place_id}
+    await ctx.record(
+        "create_container",
+        target_id=en.id,
+        payload=result,
+        inverse=[{"table": "entities", "op": "delete", "id": en.id}],
+    )
+    return en
+
+
+KEPT_CATEGORIES = frozenset({"clothing", "focus", "spellcasting_focus"})
+KEPT_TAGS = frozenset(
+    {
+        "clothing",
+        "focus",
+        "spellcasting_focus",
+        "druidic_focus",
+        "holy_symbol",
+        "arcane_focus",
+        "component_pouch",
+    }
+)
+
+
+def is_kept_gear(catalog, item: InventoryItem) -> bool:
+    """Остаётся ли предмет при изъятии снаряжения по завязке: одежда и фокусировка заклинателя."""
+    rec = catalog.find(item.item_template_id, "item_template")
+    if rec is None:
+        return False
+    data = rec.data or {}
+    category = data.get("category")
+    if category in KEPT_CATEGORIES:
+        return True
+    tags = set(data.get("tags") or [])
+    return bool(tags & KEPT_TAGS)
+
+
+async def confiscate_hero_gear(
+    ctx: ToolContext,
+    hero: Character,
+    container: Entity,
+    stash_place_id: str,
+) -> list[dict]:
+    """Изымает снаряжение героя в контейнер тайника, сохраняя только одежду и фокусировку заклинателя.
+
+    Уникальные предметы сохраняют сущность Entity, обычные переносятся в контейнер.
+    """
+    inv_items = list(ctx.world.inventory.get(hero.id, []))
+    total_inverse: list[dict] = []
+    has_clothes = False
+
+    for item in inv_items:
+        if is_kept_gear(ctx.world.catalog, item):
+            rec = ctx.world.catalog.find(item.item_template_id, "item_template")
+            if rec and (rec.data.get("category") == "clothing" or "clothing" in (rec.data.get("tags") or [])):
+                has_clothes = True
+            continue
+
+        item_name = ctx.world.item_name(item)
+        qty = item.qty
+        unique_en = ctx.world.entities.get(item.world_entity_id) if item.world_entity_id else None
+
+        inverse = await _remove_from_inventory(ctx, hero, item, qty)
+
+        if unique_en is not None:
+            inverse.append(
+                {"table": "entities", "id": unique_en.id, "field": "location_id", "before": unique_en.location_id}
+            )
+            inverse.append(
+                {"table": "entities", "id": unique_en.id, "field": "state", "before": copy.deepcopy(unique_en.state)}
+            )
+            unique_en.location_id = stash_place_id
+            unique_en.state = _object_state(unique_en, container_id=container.id)
+            total_inverse.extend(inverse)
+        else:
+            _, put_inv = await _put_in_scene(
+                ctx,
+                item.item_template_id,
+                item.display_name,
+                qty,
+                zone="near",
+                place=stash_place_id,
+                container_id=container.id,
+            )
+            inverse.extend(put_inv)
+            total_inverse.extend(inverse)
+
+        await ctx.record(
+            "confiscate_item",
+            actor_id=hero.id,
+            target_id=container.id,
+            payload={
+                "character": hero.name,
+                "item": item_name,
+                "qty": qty,
+                "container_id": container.id,
+            },
+            inverse=inverse,
+        )
+
+    if not has_clothes and ctx.world.catalog.find("item.clothes_common", "item_template"):
+        _, add_inv = await _add_to_inventory(ctx, hero, "item.clothes_common", None, 1)
+        total_inverse.extend(add_inv)
+
+    ctx.world.invalidate(hero.id)
+    return total_inverse

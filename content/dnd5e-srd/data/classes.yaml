@@ -803,7 +803,7 @@ items:
         - - {any: simple, qty: 1}
       - - - {other: Набор священника, qty: 1}
         - - {other: Набор путешественника, qty: 1}
-      - - - &id001 {other: священный символ, qty: 1}
+      - - - &id001 {item: item.holy_symbol, qty: 1}
       other: *id001
     spellcasting: {ability: wis}
     levels:
@@ -1168,7 +1168,7 @@ items:
         - - {any: simple, qty: 1}
       - - - {item: item.scimitar, qty: 1}
         - - {any: simple_melee, qty: 1}
-      - - - &id002 {other: друидическая фокусировка, qty: 1}
+      - - - &id002 {item: item.druidic_focus, qty: 1}
       other: *id002
     spellcasting: {ability: wis}
     levels:
@@ -2105,7 +2105,7 @@ items:
         - - {any: simple, qty: 1}
       - - - {other: Набор священника, qty: 1}
         - - {other: Набор путешественника, qty: 1}
-      - - - &id003 {other: священный символ, qty: 1}
+      - - - &id003 {item: item.holy_symbol, qty: 1}
       other: *id003
     spellcasting: {ability: cha}
     levels:
@@ -3088,8 +3088,8 @@ items:
       - - - {item: item.light_crossbow, qty: 1}
           - {other: Арбалетный болт, qty: 20}
         - - {any: simple, qty: 1}
-      - - - {other: Мешочек с компонентами, qty: 1}
-        - - {other: магическая фокусировка, qty: 1}
+      - - - {item: item.component_pouch, qty: 1}
+        - - {item: item.arcane_focus, qty: 1}
       - - - {other: Набор исследователя подземелий, qty: 1}
         - - {other: Набор путешественника, qty: 1}
     spellcasting: {ability: cha}
@@ -3592,8 +3592,8 @@ items:
       - - - {item: item.light_crossbow, qty: 1}
           - {other: Арбалетный болт, qty: 20}
         - - {any: simple, qty: 1}
-      - - - {other: Мешочек с компонентами, qty: 1}
-        - - {other: магическая фокусировка, qty: 1}
+      - - - {item: item.component_pouch, qty: 1}
+        - - {item: item.arcane_focus, qty: 1}
       - - - {other: Набор учёного, qty: 1}
         - - {other: Набор исследователя подземелий, qty: 1}
       - - - {any: simple, qty: 1}
@@ -4197,8 +4197,8 @@ items:
       choices:
       - - - {item: item.quarterstaff, qty: 1}
         - - {item: item.dagger, qty: 1}
-      - - - {other: Мешочек с компонентами, qty: 1}
-        - - {other: магическая фокусировка, qty: 1}
+      - - - {item: item.component_pouch, qty: 1}
+        - - {item: item.arcane_focus, qty: 1}
       - - - {other: Набор учёного, qty: 1}
         - - {other: Набор путешественника, qty: 1}
       other: [Книга заклинаний]

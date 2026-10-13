@@ -39,3 +39,21 @@ items:
      category: tool, price: {gp: 25}, weight: 1}
   - {id: item.crowbar, name: Ломик, status: canon, doc: "SRD 5.1: Adventuring Gear", tags: [gear, srd], srd_ref: {type: item, name: Crowbar},
      category: gear, price: {gp: 2}, weight: 5, description: "Преимущество на проверки Силы, где помогает рычаг."}
+  - {id: item.clothes_common, name: Обычная одежда, status: canon, doc: "SRD 5.1: Adventuring Gear", tags: [clothing, gear, srd],
+     srd_ref: {type: item, name: "Clothes, common"}, category: clothing, price: {sp: 5}, weight: 3,
+     description: "Простая повседневная одежда."}
+  - {id: item.clothes_travelers, name: Одежда путешественника, status: canon, doc: "SRD 5.1: Adventuring Gear", tags: [clothing, gear, srd],
+     srd_ref: {type: item, name: "Clothes, traveler's"}, category: clothing, price: {gp: 2}, weight: 4,
+     description: "Прочная одежда для дороги."}
+  - {id: item.arcane_focus, name: Магическая фокусировка, status: canon, doc: "SRD 5.1: Spellcasting Focus", tags: [focus, arcane_focus, spellcasting_focus, srd],
+     srd_ref: {type: item, name: "Arcane Focus"}, category: focus, price: {gp: 5}, weight: 1,
+     description: "Фокусировка заклинателя: кристалл, жезл или сфера."}
+  - {id: item.druidic_focus, name: Друидическая фокусировка, status: canon, doc: "SRD 5.1: Spellcasting Focus", tags: [focus, druidic_focus, spellcasting_focus, srd],
+     srd_ref: {type: item, name: "Druidic Focus"}, category: focus, price: {gp: 1}, weight: 1,
+     description: "Фокусировка друида: веточка омелы, посох из тиса или тотем."}
+  - {id: item.holy_symbol, name: Священный символ, status: canon, doc: "SRD 5.1: Spellcasting Focus", tags: [focus, holy_symbol, spellcasting_focus, srd],
+     srd_ref: {type: item, name: "Holy Symbol"}, category: focus, price: {gp: 5}, weight: 1,
+     description: "Священный символ жреца или паладина: амулет или эмблема."}
+  - {id: item.component_pouch, name: Мешочек с компонентами, status: canon, doc: "SRD 5.1: Spellcasting Focus", tags: [focus, component_pouch, spellcasting_focus, srd],
+     srd_ref: {type: item, name: "Component Pouch"}, category: focus, price: {gp: 25}, weight: 2,
+     description: "Мешочек с материальными компонентами для заклинаний."}
