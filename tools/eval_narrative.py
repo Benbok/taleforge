@@ -22,6 +22,7 @@ def run_evaluation(cases_path: Path, mode: str) -> dict[str, Any]:
 
     passed = 0
     failed = 0
+    skipped = 0
 
     print(f"=== Narrative Adaptation Quality Eval ({mode}) ===")
     print(f"Loaded {len(cases)} cases from {cases_path}")
@@ -51,17 +52,19 @@ def run_evaluation(cases_path: Path, mode: str) -> dict[str, Any]:
             )
         else:
             # Live mode with model invocation (requires active model configuration)
+            skipped += 1
             print(f"[SKIP-LIVE] {case.id}: Live mode requires explicitly permitted model config (not available in CI)")
             results.append({"case_id": case.id, "status": "skipped_no_model"})
 
     total = len(cases)
-    print(f"\nSummary: {passed}/{total} passed, {failed} failed")
+    print(f"\nSummary: {passed}/{total} passed, {failed} failed, {skipped} skipped")
 
     return {
         "mode": mode,
         "cases_total": total,
         "passed": passed,
         "failed": failed,
+        "skipped": skipped,
         "results": results,
     }
 

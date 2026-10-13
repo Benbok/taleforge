@@ -876,10 +876,11 @@ class TurnMixin:
                 )
                 for ev in ctx.events
             ]
+            game_session = locals().get("game")
             t_bound = TurnBoundaryState(
                 id=turn_id,
                 phase="turn",
-                session_id=getattr(game, "id", None) if "game" in locals() and game else None,
+                session_id=getattr(game_session, "id", None) if game_session else None,
                 focus=place,
                 audience=tuple(heard or ()),
                 external_boundary=False,

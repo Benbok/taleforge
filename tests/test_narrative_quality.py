@@ -48,3 +48,21 @@ def test_quiet_scene_does_not_mandate_violent_complication():
 
     good_report = score_structural_quality(case, case.reference_good)
     assert good_report.structural_pass
+
+
+def test_live_quality_eval_reports_unavailable_model_as_skipped(capsys):
+    from pathlib import Path
+
+    from tools.eval_narrative import run_evaluation
+
+    report = run_evaluation(Path("tests/fixtures/narrative_quality.json"), "live")
+
+    assert report["passed"] == 0
+    assert report["failed"] == 0
+    assert report["skipped"] == len(load_quality_cases())
+    assert all(result["status"] == "skipped_no_model" for result in report["results"])
+    output = capsys.readouterr().out
+    assert "Summary: 0/8 passed, 0 failed, 8 skipped" in output
+    assert "[PASS]" not in output
+    assert "api_key" not in repr(report).lower()
+    assert "password" not in repr(report).lower()

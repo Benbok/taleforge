@@ -37,7 +37,8 @@ def message_payload(
     msg: Message,
     names: dict[str, str] | None = None,
     state: str | None = None,
-    *, effects: dict[str, str] | None = None,
+    *,
+    effects: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     content = autolink(msg.content, {}, effects=effects) if effects and msg.kind == "narration" else msg.content
     return {
@@ -125,7 +126,13 @@ async def post_message(
         data = {
             **(data or {}),
             "scene_context": context,
-            "scope": "private" if visible_to is not None and kind == "whisper" else "party" if visible_to is not None else "public",
+            "scope": (
+                "private"
+                if visible_to is not None and kind == "whisper"
+                else "party"
+                if visible_to is not None
+                else "public"
+            ),
         }
 
     msg = Message(

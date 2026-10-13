@@ -19,8 +19,8 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
-from app.core.views import HeroPublic, HeroSheet, absent
 from app.core.scene_presentation import LocationPresentation
+from app.core.views import HeroPublic, HeroSheet, absent
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False

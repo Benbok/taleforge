@@ -47,18 +47,37 @@ async def load_snapshot(
         operation_schema_version=1,
     )
 
-    # 1. Evidence
+    # 1. Evidence. Resolve durable rows in two bounded queries. The old loop
+    # issued one query per reference and made a large history scale with the
+    # number of supplied grounds.
     evidence_records: list[EvidenceRecord] = []
-    if request.evidence_refs:
+    evidence_refs = tuple(ref for ref in request.evidence_refs if ref.campaign_id == cid)[: policy.max_snapshot_grounds]
+    if evidence_refs:
         scene_state = ctx.world.scene.state if isinstance(ctx.world.scene.state, dict) else {}
-        for ev_ref in request.evidence_refs:
-            if ev_ref.campaign_id != cid:
-                continue
+        event_ids = tuple(ref.source_id for ref in evidence_refs if ref.kind == "event")
+        message_ids = tuple(ref.source_id for ref in evidence_refs if ref.kind == "message")
+        event_rows = {}
+        message_rows = {}
+        if event_ids:
+            event_rows = {
+                row.id: row
+                for row in (
+                    await ctx.session.scalars(select(Event).where(Event.campaign_id == cid, Event.id.in_(event_ids)))
+                ).all()
+            }
+        if message_ids:
+            message_rows = {
+                row.id: row
+                for row in (
+                    await ctx.session.scalars(
+                        select(Message).where(Message.campaign_id == cid, Message.id.in_(message_ids))
+                    )
+                ).all()
+            }
 
+        for ev_ref in evidence_refs:
             if ev_ref.kind == "event":
-                stmt = select(Event).where(Event.campaign_id == cid, Event.id == ev_ref.source_id)
-                res = await ctx.session.execute(stmt)
-                ev_row = res.scalar_one_or_none()
+                ev_row = event_rows.get(ev_ref.source_id)
                 if not ev_row:
                     continue
                 if ev_row.tool in ("adapt_story", "narrative_fact_snapshot") or (
@@ -92,9 +111,7 @@ async def load_snapshot(
                 )
 
             elif ev_ref.kind == "message":
-                stmt = select(Message).where(Message.campaign_id == cid, Message.id == ev_ref.source_id)
-                res = await ctx.session.execute(stmt)
-                msg = res.scalar_one_or_none()
+                msg = message_rows.get(ev_ref.source_id)
                 if not msg:
                     continue
 
@@ -187,37 +204,73 @@ async def load_snapshot(
                     )
 
     # 2. Facts
-    subject_ids = set(request.mutable_subject_refs)
+    subject_ids: list[str] = []
+    subject_seen: set[str] = set()
+
+    def add_subject(subject_id: str) -> None:
+        if subject_id and subject_id not in subject_seen:
+            subject_seen.add(subject_id)
+            subject_ids.append(subject_id)
+
+    for subject_id in request.mutable_subject_refs:
+        add_subject(subject_id)
     for ent_id, ent in ctx.world.entities.items():
-        subject_ids.add(ent_id)
+        add_subject(ent_id)
         slot = (ent.state or {}).get("actor_slot")
         if slot:
-            subject_ids.add(slot)
+            add_subject(slot)
     for ch_id in ctx.world.characters:
-        subject_ids.add(ch_id)
+        add_subject(ch_id)
     counters = st.budget_counters or {}
     for slot in counters.get("spent_actor_slots", []):
-        subject_ids.add(slot)
+        add_subject(slot)
 
-    facts = await load_subject_facts(ctx.session, cid, tuple(subject_ids), limit=policy.max_snapshot_records)
+    max_records = max(0, policy.max_snapshot_records)
+    actor_candidates = tuple(subject_ids)
+    actor_limit = min(len(actor_candidates), max_records // 4)
+    actors = actor_candidates[:actor_limit]
 
-    # 3. Actors
-    actors = tuple(sorted(subject_ids))
+    fact_subject_ids = tuple(subject_ids[:max_records])
+    fact_limit = max(0, max_records - len(actors))
+    facts = await load_subject_facts(ctx.session, cid, fact_subject_ids, limit=fact_limit)
+
+    # 3. Actors. A single shared record budget covers facts, actors, and fronts.
+    # Keeping a deterministic actor slice preserves useful request references
+    # while preventing large world registries from entering every prompt.
 
     # 4. Fronts
-    fronts_list: list[FrontView] = []
+    front_candidates: list[FrontView] = []
+    front_ids: set[str] = set()
     antagonists = plot_data.get("antagonists", []) if isinstance(plot_data, dict) else []
-    for ant in antagonists:
-        if isinstance(ant, dict) and "id" in ant:
-            f_ref = FrontRef(campaign_id=cid, source_kind="antagonist", source_id=ant["id"])
-            fronts_list.append(
+    explicit_fronts = plot_data.get("fronts", []) if isinstance(plot_data, dict) else []
+    for source_kind, candidates in (("antagonist", antagonists), ("front", explicit_fronts)):
+        for ant in candidates:
+            if not isinstance(ant, dict) or "id" not in ant or ant["id"] in front_ids:
+                continue
+            front_ids.add(ant["id"])
+            f_ref = FrontRef(campaign_id=cid, source_kind=source_kind, source_id=ant["id"])
+            front_candidates.append(
                 FrontView(
                     ref=f_ref,
                     owner_ref=ant["id"],
                     goal=ant.get("goal") or ant.get("name") or "",
-                    status="stopped" if ant.get("stopped") else "active",
+                    progress=int(ant.get("progress") or ant.get("threat_step") or 0),
+                    maximum=int(ant.get("maximum") or len(ant.get("threat") or ()) or 6),
+                    status=(
+                        "stopped"
+                        if ant.get("stopped")
+                        else str(ant.get("status") or "active")
+                        if str(ant.get("status") or "active") in {"active", "paused", "completed"}
+                        else "active"
+                    ),
+                    clock_at=int(ant.get("clock_at") or 0),
+                    period=int(ant.get("period") or 86400),
+                    milestones=tuple(str(step) for step in (ant.get("threat") or ant.get("milestones") or ())),
                 )
             )
+
+    front_limit = min(len(front_candidates), max(0, max_records - len(actors) - len(facts)))
+    fronts_list = front_candidates[:front_limit]
 
     # 5. Threads
     stmt = (

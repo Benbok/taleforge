@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,8 +45,10 @@ DEFAULT_WORLD_DESCRIPTIONS: dict[str, str] = {
         "механизмы сплелись воедино, а любая сила требует платы — Скверной или Переменой."
     ),
     "dnd5e-srd": (
-        "Системный справочный документ D&D 5.1 (System Reference Document) от Wizards of the Coast под лицензией CC BY 4.0. "
-        "Включает 12 базовых классов, 9 классических рас, сотни монстров, полный гримуар заклинаний, правила боевой системы "
+        "Системный справочный документ D&D 5.1 (System Reference Document) от Wizards of the Coast под лицензией "
+        "CC BY 4.0. "
+        "Включает 12 базовых классов, 9 классических рас, сотни монстров, полный гримуар заклинаний, правила боевой "
+        "системы "
         "и снаряжение для классических героических приключений."
     ),
 }
@@ -231,11 +234,15 @@ SRD_FEATURE_TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "lucky": {
         "name": "Везучесть",
-        "description": "При выпадении 1 на d20 (атака, проверка характеристики или спасбросок) можно перебросить кость.",
+        "description": (
+            "При выпадении 1 на d20 (атака, проверка характеристики или спасбросок) можно перебросить кость."
+        ),
     },
     "naturally_stealthy": {
         "name": "Естественная скрытность",
-        "description": "Вы можете попытаться спрятаться даже за существом, которое хотя бы на один размер крупнее вас.",
+        "description": (
+            "Вы можете попытаться спрятаться даже за существом, которое хотя бы на один размер крупнее вас."
+        ),
     },
     "draconic_ancestry": {
         "name": "Драконье происхождение",
@@ -243,7 +250,10 @@ SRD_FEATURE_TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "breath_weapon": {
         "name": "Оружие дыхания",
-        "description": "Выдох разрушительной энергии (урон 2d6, рост с уровнем; перезарядка после короткого или продолжительного отдыха).",
+        "description": (
+            "Выдох разрушительной энергии (урон 2d6, рост с уровнем; перезарядка после короткого или продолжительного "
+            "отдыха)."
+        ),
     },
     "damage_resistance": {
         "name": "Сопротивление урону",
@@ -255,7 +265,9 @@ SRD_FEATURE_TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "artificers_lore": {
         "name": "Знания ремесленника",
-        "description": "Удвоенный бонус мастерства к проверкам Истории о магических, алхимических или механических предметах.",
+        "description": (
+            "Удвоенный бонус мастерства к проверкам Истории о магических, алхимических или механических предметах."
+        ),
     },
     "tinker": {
         "name": "Жестянщик",
@@ -283,7 +295,10 @@ SRD_FEATURE_TRANSLATIONS: dict[str, dict[str, str]] = {
     },
     "infernal_legacy": {
         "name": "Адское наследие",
-        "description": "Заговор «Чудотворство», с 3-го уровня «Адское возмездие» 2-го круга, с 5-го уровня «Тьма». Базовая характеристика — Харизма.",
+        "description": (
+            "Заговор «Чудотворство», с 3-го уровня «Адское возмездие» 2-го круга, с 5-го уровня «Тьма». "
+            "Базовая характеристика — Харизма."
+        ),
     },
 }
 
@@ -593,9 +608,13 @@ async def list_worlds(session: AsyncSession) -> list[WorldSummary]:
         counts = (pack.import_report or {}).get("counts", {})
         if not counts:
             # Считаем из записей БД, если отчет пуст
-            recs = (await session.scalars(
-                select(ContentRecord.kind).where(ContentRecord.pack_id == pid, ContentRecord.pack_version == pack.version)
-            )).all()
+            recs = (
+                await session.scalars(
+                    select(ContentRecord.kind).where(
+                        ContentRecord.pack_id == pid, ContentRecord.pack_version == pack.version
+                    )
+                )
+            ).all()
             for k in recs:
                 counts[k] = counts.get(k, 0) + 1
 
@@ -659,9 +678,11 @@ async def get_world_detail(session: AsyncSession, world_id: str) -> WorldDetail:
     counts: dict[str, int] = dict((pack.import_report or {}).get("counts", {}))
 
     # Загружаем записи из БД
-    records = (await session.scalars(
-        select(ContentRecord).where(ContentRecord.pack_id == world_id, ContentRecord.pack_version == pack.version)
-    )).all()
+    records = (
+        await session.scalars(
+            select(ContentRecord).where(ContentRecord.pack_id == world_id, ContentRecord.pack_version == pack.version)
+        )
+    ).all()
 
     by_kind: dict[str, list[dict[str, Any]]] = {}
     for r in records:
@@ -730,11 +751,14 @@ async def get_world_detail(session: AsyncSession, world_id: str) -> WorldDetail:
     for loc in by_kind.get("location_template", []):
         l_type = loc.get("location_type")
         tags = loc.get("tags") or []
-        is_key = l_type in ("hulk", "city", "settlement", "belt", "landmark") or "atlas" in tags or bool(loc.get("districts"))
+        is_key = (
+            l_type in ("hulk", "city", "settlement", "belt", "landmark")
+            or "atlas" in tags
+            or bool(loc.get("districts"))
+        )
         if is_key or len(locations) < 20:
             districts = [
-                LocationDistrict(name=d.get("name", ""), text=d.get("text"))
-                for d in loc.get("districts") or []
+                LocationDistrict(name=d.get("name", ""), text=d.get("text")) for d in loc.get("districts") or []
             ]
             locations.append(
                 LocationItem(

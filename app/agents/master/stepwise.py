@@ -183,7 +183,9 @@ class StepwiseMixin:
                         text, kind, trace_extra = None, None, {}
                     if text is not None:
                         message_place = next(iter(places)) if len(places) == 1 else None
-                        scene_context = await message_scene_context(s, c, message_place) if kind == "narration" else None
+                        scene_context = (
+                            await message_scene_context(s, c, message_place) if kind == "narration" else None
+                        )
                         msg = Message(
                             campaign_id=cid,
                             session_id=ctx.game_session_id,
@@ -194,7 +196,11 @@ class StepwiseMixin:
                             visible_to=heard,
                             data=(
                                 {
-                                    **({"place": message_place} if heard is not None and message_place is not None else {}),
+                                    **(
+                                        {"place": message_place}
+                                        if heard is not None and message_place is not None
+                                        else {}
+                                    ),
                                     "scene_context": scene_context,
                                     "scope": "party" if heard is not None else "public",
                                 }

@@ -47,7 +47,6 @@ async def _ensure_campaigns(session_maker, *cids: str) -> None:
         await session.commit()
 
 
-
 def lease_takeover_scenario(settings, client, admin) -> dict:
     """Simulates a slow worker whose lease expires and gets taken over by a second worker."""
     import_base(settings)
@@ -101,9 +100,7 @@ def lease_takeover_scenario(settings, client, admin) -> dict:
 
         # Read active job from DB
         async with maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.id == claim1.work_id)
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == claim1.work_id))
             assert work is not None
             active_draft_summary = work.draft.get("summary") if work.draft else None
             llm_calls = work.llm_calls
@@ -136,9 +133,7 @@ def test_duplicate_enqueue_returns_same_job_id(session_maker):
         assert job_id_1 == job_id_2
         async with session_maker() as session:
             records = (
-                await session.scalars(
-                    select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-dup")
-                )
+                await session.scalars(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-dup"))
             ).all()
             assert len(records) == 1
             assert records[0].status == "pending"
@@ -252,11 +247,8 @@ def test_claim_attempts_limit_and_rejected_status(session_maker):
         c7 = await jobs.claim(clock())
         assert c7 is None
 
-
         async with session_maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-attempts")
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-attempts"))
             assert work is not None
             assert work.status == "rejected"
 
@@ -342,9 +334,7 @@ def test_deferred_result_keeps_prepared_status_without_reauthoring(session_maker
 
         # Status remains prepared with retry_after
         async with session_maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-defer")
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-defer"))
             assert work is not None
             assert work.status == "prepared"
             assert work.retry_after is not None
@@ -385,9 +375,7 @@ def test_renew_extends_lease(session_maker):
         assert renewed is True
 
         async with session_maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.id == claim.work_id)
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == claim.work_id))
             assert work is not None
             assert as_utc(work.lease_until) > orig_lease_until
 
@@ -407,9 +395,7 @@ def test_renew_extends_lease(session_maker):
     asyncio.run(_test())
 
 
-def test_job_operations_do_not_increase_world_revision(
-    session_maker, campaign_fixture
-):
+def test_job_operations_do_not_increase_world_revision(session_maker, campaign_fixture):
     cid = campaign_fixture["id"]
     clock = FakeClock()
     jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
@@ -461,6 +447,7 @@ def test_job_operations_do_not_increase_world_revision(
 # F7 / R11 — claim carries boundary evidence, audience and focus (not empty defaults)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_claim_carries_evidence_audience_focus(session_maker):
     """R11: WorkClaim must propagate evidence_refs, audience and focus from the saved job.
 
@@ -499,9 +486,7 @@ def test_claim_carries_evidence_audience_focus(session_maker):
         assert claim.focus == "guild-hall", "focus lost in claim"
 
         # source.source_id must be the stable work id, not the raw boundary source_id
-        assert claim.source.source_id == claim.work_id, (
-            "source_id must equal work_id for stable receipt identity"
-        )
+        assert claim.source.source_id == claim.work_id, "source_id must equal work_id for stable receipt identity"
 
     asyncio.run(_test())
 
@@ -511,12 +496,14 @@ def test_claim_carries_evidence_audience_focus(session_maker):
 #            must produce different receipt source_key values
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_boundary_kinds_produce_distinct_receipt_sources(session_maker):
     """R13: choice:npc-1 and relationship:npc-1 are separate jobs with distinct identities.
 
     After each job is processed, their NarrativeSource.source_key() values must
     differ so that receipts for the two operations never collide.
     """
+
     async def _test():
         await _ensure_campaigns(session_maker, "camp-r13")
         jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
@@ -560,12 +547,8 @@ def test_boundary_kinds_produce_distinct_receipt_sources(session_maker):
         assert claim_b.work_id != claim_a.work_id
 
         key_b = claim_b.source.source_key()
-        assert claim_b.source.source_id == claim_b.work_id, (
-            "source_id must be the stable work id for job B"
-        )
-        assert key_a != key_b, (
-            f"receipt source_key must differ for different jobs: {key_a!r} == {key_b!r}"
-        )
+        assert claim_b.source.source_id == claim_b.work_id, "source_id must be the stable work id for job B"
+        assert key_a != key_b, f"receipt source_key must differ for different jobs: {key_a!r} == {key_b!r}"
 
     asyncio.run(_test())
 
@@ -573,6 +556,7 @@ def test_boundary_kinds_produce_distinct_receipt_sources(session_maker):
 # ──────────────────────────────────────────────────────────────────────────────
 # F7 / R11 — enqueue → claim round-trip preserves evidence_refs
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_enqueue_claim_roundtrip_preserves_evidence(session_maker):
     """R11: evidence_refs stored via enqueue must survive the DB round-trip into claim."""
@@ -610,9 +594,8 @@ def test_enqueue_claim_roundtrip_preserves_evidence(session_maker):
 # F8 / R12 — applied proposal strictly belongs to the claimed job
 # ──────────────────────────────────────────────────────────────────────────────
 
-def test_applied_proposal_strictly_belongs_to_claimed_job(
-    session_maker, campaign_fixture
-):
+
+def test_applied_proposal_strictly_belongs_to_claimed_job(session_maker, campaign_fixture):
     """R12: RuntimeNarrativeApplier verifies work/source/proposal alignment against claim.
 
     Attempting to apply proposal B using claim A must be rejected before commit.
@@ -633,7 +616,6 @@ def test_applied_proposal_strictly_belongs_to_claimed_job(
 
     async def _test():
         b1 = boundary(campaign_id=cid, source_id="src-prop-align-1")
-        b2 = boundary(campaign_id=cid, source_id="src-prop-align-2")
         await jobs.enqueue(b1)
 
         claim1 = await jobs.claim(clock())
@@ -667,9 +649,8 @@ def test_applied_proposal_strictly_belongs_to_claimed_job(
 # F8 / R14 — no_change proposal records exactly one Event and populates receipt_event_id
 # ──────────────────────────────────────────────────────────────────────────────
 
-def test_no_change_creates_single_event_and_receipt_event_id(
-    session_maker, campaign_fixture
-):
+
+def test_no_change_creates_single_event_and_receipt_event_id(session_maker, campaign_fixture):
     """R14: A no_change proposal must create an adapt_story Event and record receipt_event_id."""
     cid = campaign_fixture["id"]
     from app.db.models import Event
@@ -737,9 +718,7 @@ def test_no_change_creates_single_event_and_receipt_event_id(
         await jobs.finish(apply_claim, res, clock())
 
         async with session_maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.id == work_id)
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == work_id))
             assert work is not None
             assert work.status == "no_change"
             assert work.receipt_event_id == receipt_id
@@ -756,9 +735,8 @@ def test_no_change_creates_single_event_and_receipt_event_id(
 # F8 — late worker with expired lease cannot write world and raises LeaseLost
 # ──────────────────────────────────────────────────────────────────────────────
 
-def test_late_worker_cannot_write_world_on_expired_lease(
-    session_maker, campaign_fixture
-):
+
+def test_late_worker_cannot_write_world_on_expired_lease(session_maker, campaign_fixture):
     """F8: Worker whose lease expired before commit must raise LeaseLost and not advance world revision."""
     cid = campaign_fixture["id"]
     from app.core.narrative.contracts import LeaseLost
@@ -806,9 +784,8 @@ def test_late_worker_cannot_write_world_on_expired_lease(
 # F8 / R14 — recording bus publishes only after successful commit
 # ──────────────────────────────────────────────────────────────────────────────
 
-def test_recording_bus_publishes_only_after_successful_commit(
-    session_maker, campaign_fixture
-):
+
+def test_recording_bus_publishes_only_after_successful_commit(session_maker, campaign_fixture):
     """R14: Bus messages are published only after database commit; rollback publishes nothing."""
     cid = campaign_fixture["id"]
     from app.db.models import Event
@@ -890,4 +867,3 @@ def test_recording_bus_publishes_only_after_successful_commit(
         assert len(rec_bus.published) == 0, "failed/rolled back apply must NOT publish any messages"
 
     asyncio.run(_test())
-

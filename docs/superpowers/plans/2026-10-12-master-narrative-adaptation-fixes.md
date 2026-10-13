@@ -459,16 +459,24 @@ Scripted quality не выдаётся за оценку автора. Live CLI 
 все случаи независимо от model-config: реализовать разрешённый режим либо
 явно документировать его недоступность; не печатать PASS модели без вызова.
 
-- [ ] Дополнить scale-тест реальными grounds и combined caps, подтвердить FAIL
+- [x] Дополнить scale-тест реальными grounds и combined caps, подтвердить FAIL
   на старой сборке снимка с 120 subject refs.
-- [ ] Ограничить source/fact/actor/front выборку и сохранить необходимые
+- [x] Ограничить source/fact/actor/front выборку и сохранить необходимые
   зависимости; недостающий контекст не становится разрешением.
-- [ ] Исправить конкретные lint/type ошибки; форматировать только проверенный
+- [x] Исправить конкретные lint/type ошибки; форматировать только проверенный
   набор файлов вне чужих изменений.
-- [ ] Проверить quality fixture/CLI, status skipped для отсутствующей модели
+- [x] Проверить quality fixture/CLI, status skipped для отсутствующей модели
   и отсутствие секретов/ключей в отчёте.
-- [ ] Прогнать scale/quality, ruff check, ruff format --check; коммит
+- [x] Прогнать scale/quality, ruff check, ruff format --check; коммит
   test(narrative): verify realistic bounds and honest quality reporting.
+
+**Проверено 2026-10-13:** scale, context, director и quality — 22 passed;
+scale использует реальные события/сообщения текущей кампании, соседнюю кампанию,
+EXPLAIN QUERY PLAN и один батч-запрос на тип evidence. Scripted CLI — 8/8 PASS;
+live CLI — 0/8 PASS, 0 failed, 8 skipped без разрешённой модели и без ключей в
+отчёте. `ruff check .` — PASS; `ruff format --check` для всех изменённых F11-файлов —
+PASS. Полный формат репозитория намеренно не расширялся на 23 независимых файла,
+которые уже были вне F11 и содержат изменения других задач.
 
 ### F12. Полная приёмка и пакет для повторного ревью
 

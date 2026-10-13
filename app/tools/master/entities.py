@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core import positions as grid
+from app.core.narrative.contracts import ActorAdmission
 from app.core.positions import areas_at
 from app.core.world import PLAYABLE
 from app.db.models import Entity, MasterTurn
@@ -98,9 +99,6 @@ def _budget_hint(ctx: ToolContext, rec, xp: int, count: int, place: str | None) 
             "объясни словами мира, куда они делись (ушли вглубь, обман теней)."
         )
     return hint
-
-
-from app.core.narrative.contracts import ActorAdmission
 
 
 class SpawnArgs(BaseModel):

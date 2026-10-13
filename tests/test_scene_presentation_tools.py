@@ -1,3 +1,6 @@
+# The imported fixture must remain in module globals; pytest resolves the
+# parameter named ``game`` from this re-export.
+# ruff: noqa: F401, F811
 from sqlalchemy import select
 
 from app.db.models import Entity, Event
@@ -21,7 +24,13 @@ def test_presentation_preserves_other_state_and_has_inverse(game):
         return await call(
             ctx,
             "set_location_presentation",
-            {"location_id": loc.id, "preset": "coast", "period": "dusk", "weather": "fog", "illustration_key": "salt_bay"},
+            {
+                "location_id": loc.id,
+                "preset": "coast",
+                "period": "dusk",
+                "weather": "fog",
+                "illustration_key": "salt_bay",
+            },
         )
 
     out = play(settings, cid, [], fn)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -94,9 +95,7 @@ class SqlNarrativeJobs:
                     return existing_id
                 raise
 
-    async def claim(
-        self, now: datetime, *, campaign_id: str | None = None
-    ) -> WorkClaim | None:
+    async def claim(self, now: datetime, *, campaign_id: str | None = None) -> WorkClaim | None:
         """Claims next available work item: prepared for apply, or pending/retry_wait for author."""
         now_utc = _as_utc(now)
         async with self._session_maker() as session:
@@ -160,10 +159,7 @@ class SqlNarrativeJobs:
                     .where(
                         NarrativeWork.id == prepared_job.id,
                         NarrativeWork.status == "prepared",
-                        (
-                            NarrativeWork.lease_until.is_(None)
-                            | (NarrativeWork.lease_until <= now_utc)
-                        ),
+                        (NarrativeWork.lease_until.is_(None) | (NarrativeWork.lease_until <= now_utc)),
                     )
                     .values(
                         lease_token=token,
@@ -257,10 +253,7 @@ class SqlNarrativeJobs:
                     .where(
                         NarrativeWork.id == candidate.id,
                         NarrativeWork.status.in_(("pending", "retry_wait")),
-                        (
-                            NarrativeWork.lease_until.is_(None)
-                            | (NarrativeWork.lease_until <= now_utc)
-                        ),
+                        (NarrativeWork.lease_until.is_(None) | (NarrativeWork.lease_until <= now_utc)),
                     )
                     .values(
                         status="preparing",
@@ -279,9 +272,7 @@ class SqlNarrativeJobs:
                         feedback_items: tuple[Violation, ...] = ()
                         if candidate.draft and isinstance(candidate.draft.get("feedback"), list):
                             feedback_items = tuple(
-                                Violation.model_validate(v)
-                                for v in candidate.draft["feedback"]
-                                if isinstance(v, dict)
+                                Violation.model_validate(v) for v in candidate.draft["feedback"] if isinstance(v, dict)
                             )
 
                         return WorkClaim(
@@ -334,9 +325,7 @@ class SqlNarrativeJobs:
             res = await session.execute(stmt)
             if res.rowcount == 1:
                 new_calls = await session.scalar(
-                    select(NarrativeWork.llm_calls).where(
-                        NarrativeWork.id == claim.work_id
-                    )
+                    select(NarrativeWork.llm_calls).where(NarrativeWork.id == claim.work_id)
                 )
                 await session.commit()
                 return claim.model_copy(update={"llm_calls": new_calls})
