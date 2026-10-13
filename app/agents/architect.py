@@ -36,6 +36,7 @@ ATTEMPTS = 3
 MAX_TOKENS = 12000
 LORE_K = 25
 OUT_TOKENS = {"oneshot": 3500, "short": 6000, "long": 9000}
+SPATIAL_OUT = 600  # пространство 1–3 мест в ответе архитектора
 FIGURES = 60  # ключевые лица мира (тег unique) в задании архитектору
 PLACES = 30  # ключевые места мира (тег atlas)
 
@@ -123,7 +124,7 @@ async def build_input(s, c: Campaign, note: str = "", structure_id: str | None =
 def estimate_cost(model: str, prompt: str, length: str) -> dict:
     """Примерная стоимость генерации: вход — по длине задания, выход — по длительности кампании."""
     tokens_in = int(len(plot.SYSTEM + prompt) / 3.2) + 2500  # + схема инструмента
-    tokens_out = OUT_TOKENS.get(length, 6000)
+    tokens_out = OUT_TOKENS.get(length, 6000) + SPATIAL_OUT
     usd = None
     try:
         import litellm
