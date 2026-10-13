@@ -102,7 +102,7 @@ def test_ai_player_answers_once_after_master(game_client, admin_g, settings, llm
     c, p1, hero = ai_party(game_client, admin_g)
     cid = c["id"]
     seat = seat_ai(game_client, admin_g, cid)
-    build_hero(game_client, admin_g, cid, seat)
+    ai_hero = build_hero(game_client, admin_g, cid, seat)
     with connect(game_client, p1, cid) as (ws, snap):
         me = snap["payload"]["me"]["seat_id"]
         ai = next(s for s in snap["payload"]["seats"] if s["id"] == seat)
@@ -110,7 +110,12 @@ def test_ai_player_answers_once_after_master(game_client, admin_g, settings, llm
         whisper(settings, cid, me)
         llm.replies += [
             {"text": "«Я пойду первым», — говорит Торин и зажигает факел."},
-            DONE,
+            {
+                "tool_calls": [
+                    ("auto_success", {"character_id": hero["id"], "reason": "осматривается"}),
+                    ("auto_success", {"character_id": ai_hero["id"], "reason": "зажигает факел"}),
+                ]
+            },
             DONE,
             {"text": "Факел выхватывает из тьмы ступени."},
         ]
@@ -172,7 +177,7 @@ def test_ai_player_reaction_follows_mood(game_client):
 
 
 def test_vote_hands_hero_to_ai_and_back(game_client, admin_g, settings, llm):
-    c, (p1, p2), _ = party(game_client, admin_g, players=2)
+    c, (p1, p2), hero = party(game_client, admin_g, players=2)
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json={**FIGHTER, "name": "Торин"}, headers=p2), 201)
     tid = rows(settings, Character, Character.name == "Торин")[0].id
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{tid}/submit", headers=p2))
@@ -191,7 +196,17 @@ def test_vote_hands_hero_to_ai_and_back(game_client, admin_g, settings, llm):
         assert seat.occupant_type == "agent" and seat.delegated_from and seat.agent_config_id
 
         # ИИ ведёт Брана осторожно: в подсказке модели пометка
-        llm.replies += [{"text": "Бран держится позади отряда."}, DONE, DONE, {"text": "Коридор пуст."}]
+        llm.replies += [
+            {"text": "Бран держится позади отряда."},
+            {
+                "tool_calls": [
+                    ("auto_success", {"character_id": hero["id"], "reason": "держится позади"}),
+                    ("auto_success", {"character_id": tid, "reason": "идёт вперёд"}),
+                ]
+            },
+            DONE,
+            {"text": "Коридор пуст."},
+        ]
         w2.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Торин идёт вперёд"}})
         for _ in range(40):
             m = next_of(w2, "message.new")["payload"]

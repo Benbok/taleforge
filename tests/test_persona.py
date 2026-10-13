@@ -68,7 +68,7 @@ def test_try_scenes_use_unsaved_sheet(game_client, admin_g, settings, llm):
 
 
 def test_chronicle_notes_edit_revert_and_reach_the_agent(game_client, admin_g, settings, llm):
-    c, p1, _ = ai_party(game_client, admin_g)
+    c, p1, hero = ai_party(game_client, admin_g)
     cid = c["id"]
     seat = seat_ai(game_client, admin_g, cid)
     ch = build_hero(game_client, admin_g, cid, seat)
@@ -102,7 +102,17 @@ def test_chronicle_notes_edit_revert_and_reach_the_agent(game_client, admin_g, s
     assert edited["notes"][0]["text"] == "стал осторожнее" and edited["notes"][0]["edited"]
 
     # агент видит анкету и летопись в системной подсказке
-    llm.replies += [{"text": "Торин молча кивает."}, DONE, DONE, {"text": "Тихо."}]
+    llm.replies += [
+        {"text": "Торин молча кивает."},
+        {
+            "tool_calls": [
+                ("auto_success", {"character_id": hero["id"], "reason": "слушает"}),
+                ("auto_success", {"character_id": ch["id"], "reason": "молча кивает"}),
+            ]
+        },
+        DONE,
+        {"text": "Тихо."},
+    ]
     with connect(game_client, p1, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран слушает"}})
         for _ in range(40):

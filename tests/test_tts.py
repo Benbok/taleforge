@@ -366,6 +366,14 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
                     )
                 ]
             },
+            {
+                "tool_calls": [
+                    (
+                        "learn_fact",
+                        {"character_ids": [ch["id"]], "subject_id": ch["id"], "fact": "Перед героем просторная зала."},
+                    )
+                ]
+            },
             {"tool_calls": []},
             {"text": "Перед вами открывается просторная зала."},
         ]
@@ -676,6 +684,14 @@ def test_text_channel_without_line_skips_voice_line_request(settings, tmp_path):
                     (
                         "roll_check",
                         {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "река"},
+                    )
+                ]
+            },
+            {
+                "tool_calls": [
+                    (
+                        "learn_fact",
+                        {"character_ids": [ch["id"]], "subject_id": ch["id"], "fact": "Над рекой стелется туман."},
                     )
                 ]
             },

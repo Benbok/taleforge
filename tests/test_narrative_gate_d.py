@@ -56,7 +56,7 @@ def test_alliance_future_job_next_scene_and_reconnect(game_client, admin_g, llm,
         return await s.scalar(select(Character.id).where(Character.campaign_id == cid))
 
     hid = run(settings, hero_id)
-    dice[:] = [20, 20]
+    dice[:] = [20]
     director_count = 0
     narration_text = "Союз заключён. Герои готовятся защищать склеп."
     complete = llm.complete
@@ -173,6 +173,7 @@ def test_alliance_future_job_next_scene_and_reconnect(game_client, admin_g, llm,
                 ("develop", {"sketch_id": "loc_crypt", "details": "Место переговоров союзников", "here": True})
             ]
         },
+        {"tool_calls": [("auto_success", {"character_id": hid, "reason": "идёт в склеп с союзниками"})]},
         DONE,
         DONE,
     ]
@@ -187,11 +188,9 @@ def test_alliance_future_job_next_scene_and_reconnect(game_client, admin_g, llm,
         {
             "tool_calls": [
                 (
-                    "roll_check",
+                    "auto_success",
                     {
                         "character_id": hid,
-                        "stat": "perception",
-                        "difficulty": "dc.easy",
                         "reason": "осмотреть союзный склеп",
                     },
                 )
@@ -206,7 +205,7 @@ def test_alliance_future_job_next_scene_and_reconnect(game_client, admin_g, llm,
     decision = next(
         r
         for r in llm.requests[start:]
-        if any(t.get("function", {}).get("name") == "roll_check" for t in r.get("tools") or [])
+        if any(t.get("function", {}).get("name") == "auto_success" for t in r.get("tools") or [])
     )
     system = next(m["content"] for m in decision["messages"] if m.get("role") == "system")
     assert NEW_TITLE in system
