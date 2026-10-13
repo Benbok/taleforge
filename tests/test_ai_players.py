@@ -119,7 +119,8 @@ def test_ai_player_answers_once_after_master(game_client, admin_g, settings, llm
             m = next_of(ws, "message.new")["payload"]
             if m["seat_id"] == seat:
                 break
-        assert m["content"].startswith("Я пойду первым") and m["data"] == {"ai": True} and m["author"] is None
+        # данные сообщения дополняет контекст сцены (95ef266): здесь важна только пометка ИИ-игрока
+        assert m["content"].startswith("Я пойду первым") and m["data"].get("ai") is True and m["author"] is None
         # мастер отвечает на действия всей партии одним повествованием
         assert narration(ws).endswith("ступени.")
         game_client.portal.call(game_client.app.state.master.wait_idle, cid)
