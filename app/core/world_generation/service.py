@@ -131,9 +131,11 @@ class Orchestrator:
                         model=attempt.model,
                         tokens_in=attempt.tokens_in,
                         tokens_out=attempt.tokens_out,
+                        tokens_reasoning=attempt.tokens_reasoning,
                         cost=attempt.cost,
                         latency_ms=attempt.latency_ms,
                         error=attempt.error,
+                        generation_id=claim.ref,
                     )
                 )
                 if got is not None:

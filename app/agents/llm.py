@@ -63,6 +63,7 @@ class LLMReply:
     model: str = ""
     tokens_in: int = 0
     tokens_out: int = 0
+    reasoning_tokens: int = 0
     cost: float = 0.0
     latency_ms: int = 0
     finish_reason: str | None = None
@@ -90,6 +91,12 @@ def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: st
         },
         ensure_ascii=False,
     )
+
+
+def reasoning_of(usage: Any) -> int:
+    """Токены рассуждений из usage LiteLLM; у провайдеров без них — 0. Обычно уже входят в completion_tokens."""
+    details = getattr(usage, "completion_tokens_details", None)
+    return int(getattr(details, "reasoning_tokens", 0) or 0)
 
 
 def _termination_metadata(response: Any, choice: Any, message: Any) -> dict[str, Any]:
@@ -321,6 +328,7 @@ class LiteLLMClient:
             model=getattr(resp, "model", model) or model,
             tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
             tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
+            reasoning_tokens=reasoning_of(usage),
             cost=cost,
             latency_ms=latency,
             **_termination_metadata(resp, choice, msg),
@@ -381,6 +389,7 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         model=getattr(full, "model", None) or model,
         tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
         tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
+        reasoning_tokens=reasoning_of(usage),
         cost=cost,
         latency_ms=latency,
         **termination,
