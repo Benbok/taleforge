@@ -220,19 +220,19 @@ def test_status_links_replace_wrong_hero_reference_and_link_plain_text(game_clie
         f"[[{hero['id']}|Бран]]: состояние [[condition.frightened|Испуганный]]. "
         "Атаки [[condition.frightened|испуганного]] с помехой. Возле [[en_shield|Щита]] лежит щит."
     )
-    assert run(settings, lambda s: link_text(s, c['id'], original)) == expected
+    assert run(settings, lambda s: link_text(s, c["id"], original)) == expected
 
     async def save(s):
         from app.db.models import Campaign
 
-        campaign = await s.get(Campaign, c['id'])
+        campaign = await s.get(Campaign, c["id"])
         campaign.last_seq += 1
-        s.add(Message(campaign_id=c['id'], seq=campaign.last_seq, kind="narration", content=original))
+        s.add(Message(campaign_id=c["id"], seq=campaign.last_seq, kind="narration", content=original))
         await s.commit()
 
     run(settings, save)
-    with connect(game_client, p1, c['id']) as (_, snapshot):
-        assert snapshot['payload']['messages'][-1]['content'] == expected
+    with connect(game_client, p1, c["id"]) as (_, snapshot):
+        assert snapshot["payload"]["messages"][-1]["content"] == expected
     # Исправляем выдачу старой истории, исходная запись остаётся целой.
     assert rows(settings, Message, Message.content == original)
 
@@ -246,31 +246,34 @@ def test_status_link_preserves_explicit_entity_reference():
 
 def test_status_card_shows_rules_without_hero_or_world_details(game_client, admin_g):
     c, (p1,), _ = party(game_client, admin_g)
-    with connect(game_client, p1, c['id']) as (ws, _):
+    with connect(game_client, p1, c["id"]) as (ws, _):
         ws.send_json({"type": "entity.inspect", "payload": {"entity_id": "condition.frightened"}})
-        card = next_of(ws, "entity.card")['payload']
-        assert card['type'] == "effect" and card['name'] == "Испуганный"
-        assert "помехой" in card['description'] and "приблизиться" in card['description']
-        assert 'hero' not in card and 'stats' not in card
+        card = next_of(ws, "entity.card")["payload"]
+        assert card["type"] == "effect" and card["name"] == "Испуганный"
+        assert "помехой" in card["description"] and "приблизиться" in card["description"]
+        assert "hero" not in card and "stats" not in card
         ws.send_json({"type": "entity.inspect", "payload": {"entity_id": "condition.missing"}})
-        assert "error" in next_of(ws, "entity.card")['payload']
+        assert "error" in next_of(ws, "entity.card")["payload"]
         ws.send_json({"type": "entity.inspect", "payload": {"entity_id": "spell.fireball"}})
-        assert "error" in next_of(ws, "entity.card")['payload']
-    types = ok(game_client.get(
-        f"/api/campaigns/{c['id']}/entity-types?ids=condition.frightened,condition.missing", headers=p1,
-    ))
+        assert "error" in next_of(ws, "entity.card")["payload"]
+    types = ok(
+        game_client.get(
+            f"/api/campaigns/{c['id']}/entity-types?ids=condition.frightened,condition.missing",
+            headers=p1,
+        )
+    )
     assert types == {"condition.frightened": "effect"}
 
 
 def test_narrator_accepts_status_rule_references(game_client, admin_g, llm):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
-        {"tool_calls": [("auto_success", {"character_id": hero['id'], "reason": "вспомнил правила страха"})]},
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "вспомнил правила страха"})]},
         DONE,
         {"text": "Состояние [[condition.frightened|Испуганный]] даёт помеху на атаки."},
     ]
-    narration = act(game_client, p1, c['id'], "Вспоминаю, что значит состояние испуганный")
-    assert "[[condition.frightened|Испуганный]]" in narration['content']
+    narration = act(game_client, p1, c["id"], "Вспоминаю, что значит состояние испуганный")
+    assert "[[condition.frightened|Испуганный]]" in narration["content"]
 
 
 def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, settings):

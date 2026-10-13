@@ -70,7 +70,8 @@ def _aliases(name: str) -> list[tuple[str, bool]]:
 def effect_names(catalog: CatalogView, *, conditions_only: bool = False) -> dict[str, str]:
     """Общедоступные правила состояний и эффектов из пакетов этой кампании."""
     return {
-        e.id: e.name for e in catalog.by_kind("effect_template")
+        e.id: e.name
+        for e in catalog.by_kind("effect_template")
         if not conditions_only or e.id.startswith("condition.") or "condition" in (e.data.get("tags") or [])
     }
 
@@ -85,7 +86,7 @@ def autolink(text: str, names: dict[str, str], *, effects: dict[str, str] | None
     for eid, name in {**effects, **names}.items():
         if name and name.strip():
             # Эффекты связываем по полному названию: «Сильный шум» не превращает любой «шум» в статус.
-            for a, strict in ([(name.strip(), False)] if eid in effects else _aliases(name.strip())):
+            for a, strict in [(name.strip(), False)] if eid in effects else _aliases(name.strip()):
                 owners.setdefault(a.lower(), set()).add(eid)
                 strict_of[a.lower()] = strict_of.get(a.lower(), True) and strict
     aliases = sorted(((a, next(iter(ids))) for a, ids in owners.items() if len(ids) == 1), key=lambda x: -len(x[0]))

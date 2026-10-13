@@ -100,9 +100,7 @@ def test_recovery_picks_up_expired_preparing_job(session_maker, settings, client
         assert author.calls == 1
 
         async with session_maker() as session:
-            work = await session.scalar(
-                select(NarrativeWork).where(NarrativeWork.id == work_id)
-            )
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == work_id))
             assert work is not None
             assert work.status == "applied"
 

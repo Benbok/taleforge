@@ -1043,4 +1043,3 @@ def revise_input(plan: dict, *, brief_text: str, excluded: list[str]) -> str:
 def check_adaptive_plan(plan: dict, *, catalog) -> tuple[dict | None, list[str]]:
     """Проверка целостности плана при адаптации в ходе игры без навязывания стартовых минимумов."""
     return check(plan, length=MODULE, catalog=catalog, excluded=[], keep_state=True)
-

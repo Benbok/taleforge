@@ -23,8 +23,10 @@ def _client(settings, tmp_path):
     root.mkdir()
     (root / "scene.ogg").write_bytes(b"OggS-scene")
     (root / "tracks.yaml").write_text(
-        yaml.safe_dump([{"id": "scene", "file": "scene.ogg", "layer": "music", "title": "Сцена", "moods": ["calm"]}],
-                       allow_unicode=True),
+        yaml.safe_dump(
+            [{"id": "scene", "file": "scene.ogg", "layer": "music", "title": "Сцена", "moods": ["calm"]}],
+            allow_unicode=True,
+        ),
         encoding="utf-8",
     )
     configured = dataclasses.replace(settings, audio_dir=root)
@@ -98,7 +100,7 @@ def test_menu_preferences_are_per_user(client):
     ],
 )
 def test_menu_preferences_invalid_values(client, payload):
-    r = client.post("/api/auth/signup", json={"name": f"bad{abs(hash(str(payload))) }", "password": "secret1"})
+    r = client.post("/api/auth/signup", json={"name": f"bad{abs(hash(str(payload)))}", "password": "secret1"})
     assert r.status_code == 200, r.text
     headers = {"Authorization": f"Bearer {r.json()['token']}"}
     assert client.patch("/api/me/menu-music", json=payload, headers=headers).status_code == 422
@@ -112,8 +114,14 @@ def test_menu_preferences_reject_non_finite_values(client):
     r = client.post("/api/auth/signup", json={"name": "finite", "password": "secret1"})
     headers = {"Authorization": f"Bearer {r.json()['token']}"}
     for value in ("NaN", "Infinity", "-Infinity"):
-        assert client.patch("/api/me/menu-music", content=(f'{{"volume": {value}}}').encode(),
-                             headers={**headers, "Content-Type": "application/json"}).status_code == 422
+        assert (
+            client.patch(
+                "/api/me/menu-music",
+                content=(f'{{"volume": {value}}}').encode(),
+                headers={**headers, "Content-Type": "application/json"},
+            ).status_code
+            == 422
+        )
 
 
 def test_theme_metadata_and_hash(tmp_path):
@@ -150,7 +158,11 @@ def test_menu_music_migration_is_reversible_for_existing_user(tmp_path, monkeypa
     command.downgrade(config, "0022")
     with sqlite3.connect(db_path) as db:
         assert {row[1] for row in db.execute("PRAGMA table_info(users)")} >= {
-            "id", "name", "password_hash", "platform_role", "created_at"
+            "id",
+            "name",
+            "password_hash",
+            "platform_role",
+            "created_at",
         }
         assert "menu_music_enabled" not in {row[1] for row in db.execute("PRAGMA table_info(users)")}
     command.upgrade(config, "0023")

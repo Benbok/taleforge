@@ -62,4 +62,3 @@ def test_sqlite_alembic_narrative_foundation_upgrade_and_downgrade(monkeypatch, 
     with sqlite3.connect(db_path) as db:
         tables_head = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
         assert "narrative_work" in tables_head
-

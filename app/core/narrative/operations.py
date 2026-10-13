@@ -50,6 +50,7 @@ def resolve_local_ref(bindings: dict[str, str], ref: LocalRef) -> str:
         raise ValueError(f"LocalRef actor_slot '{ref.actor_slot}' not found in executed bindings")
     return bindings[ref.actor_slot]
 
+
 _OPERATION_SPECS: tuple[OperationSpec, ...] = (
     OperationSpec(
         kind="add_campaign_fact",

@@ -52,4 +52,3 @@ async def optional_user(
 
 
 OptionalUserDep = Annotated[User | None, Depends(optional_user)]
-

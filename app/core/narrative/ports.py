@@ -35,9 +35,7 @@ class NarrativeAuthor(Protocol):
 class NarrativeApplier(Protocol):
     """Port for validating and executing adaptation proposals atomically."""
 
-    async def apply(
-        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
-    ) -> AdaptationResult: ...
+    async def apply(self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None) -> AdaptationResult: ...
 
 
 @runtime_checkable
@@ -52,9 +50,7 @@ class NarrativeJobs(Protocol):
 
     async def renew(self, claim: WorkClaim, now: datetime) -> bool: ...
 
-    async def save_draft(
-        self, claim: WorkClaim, proposal: AdaptationProposal, now: datetime | None = None
-    ) -> None: ...
+    async def save_draft(self, claim: WorkClaim, proposal: AdaptationProposal, now: datetime | None = None) -> None: ...
 
     async def finish(
         self,
@@ -66,4 +62,3 @@ class NarrativeJobs(Protocol):
     ) -> None: ...
 
     async def resnapshot(self, claim: WorkClaim, now: datetime) -> WorkClaim | None: ...
-

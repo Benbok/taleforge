@@ -74,9 +74,7 @@ async def rename(body: MePatchIn, user: UserDep, session: SessionDep) -> UserOut
 
 
 @router.patch("/me/menu-music")
-async def patch_menu_music(
-    body: MenuMusicPreferencesPatch, user: UserDep, session: SessionDep
-) -> MenuMusicPreferences:
+async def patch_menu_music(body: MenuMusicPreferencesPatch, user: UserDep, session: SessionDep) -> MenuMusicPreferences:
     changes = body.model_dump(exclude_unset=True)
     if "enabled" in changes:
         user.menu_music_enabled = changes["enabled"]

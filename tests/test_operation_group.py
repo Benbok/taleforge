@@ -121,6 +121,7 @@ def test_successful_group_commits_and_resolves_bindings(settings, client, admin)
         return {"updated": True}
 
     try:
+
         async def scenario(ctx):
             calls = (
                 CompiledCall(tool="test_spawn_op", args={"name": "guard"}, local_binding="$guard_1"),
@@ -151,6 +152,7 @@ def test_validate_step_failure_rolls_back(settings, client, admin):
         return {"ok": True, "result": {"step": args.step}}
 
     try:
+
         async def scenario(ctx):
             def validate(c_ctx, call, bindings):
                 if call.args.get("step") == 2:
@@ -184,6 +186,7 @@ def test_annotate_event_customizes_metadata(settings, client, admin):
         return {"ok": True, "result": {"val": args.val}, "event_id": ev.id}
 
     try:
+
         async def scenario(ctx):
             def annotate(event, call):
                 event.payload["custom_note"] = "annotated_by_runner"

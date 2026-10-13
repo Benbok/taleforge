@@ -185,12 +185,7 @@ def run_alliance_story_scenario(game_client, admin_g, llm, settings, monkeypatch
             ]
         },
         DONE,
-        {
-            "text": (
-                "Мортис опускает посох: «Договорились. Защитите склепы от мародёров, "
-                "и нежить не тронет деревню»."
-            )
-        },
+        {"text": ("Мортис опускает посох: «Договорились. Защитите склепы от мародёров, и нежить не тронет деревню».")},
     ]
 
     act(game_client, p1, cid, "Предлагаю Мортису союз: мы защитим кладбище от мародёров взамен на мир")
@@ -278,4 +273,3 @@ def test_alliance_changes_main_story_and_survives_reconnect(game_client, admin_g
     assert report["closed_outcome_unchanged"]
     assert report["adaptation_receipts"] == 1
     assert not report["forced_kill_goal_in_next_prompt"]
-

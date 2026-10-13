@@ -127,6 +127,7 @@ async def plot_reveal(ctx: ToolContext, a: RevealPlotArgs) -> dict:
 
     res = await _change(ctx, "plot_reveal", fn, payload={"reveal_id": a.reveal_id, "how": a.how})
     from app.db.models import NarrativeFact
+
     nf_stmt = select(NarrativeFact).where(
         NarrativeFact.campaign_id == ctx.campaign.id,
         NarrativeFact.subject_id == a.reveal_id,

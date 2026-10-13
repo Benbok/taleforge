@@ -227,4 +227,3 @@ def test_get_world_detail_endpoint(client, worlds):
 def test_get_unknown_world_404(client, worlds):
     r = client.get("/api/worlds/nonexistent-world")
     assert r.status_code == 404
-

@@ -1,6 +1,5 @@
 """Tests for fact sealing domain logic."""
 
-
 from app.core.narrative.contracts import (
     FactRef,
     FactState,
