@@ -13,13 +13,15 @@ from dataclasses import replace
 from typing import Any
 
 from pydantic import ValidationError
+from sqlalchemy import func, select
 
 from app.core.layout import geometry, store
 from app.core.layout.contracts import Blueprint, LayoutError
 from app.core.layout.intent import LayoutIntent
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
-from app.db.models import Entity, WorldGenerationState
+from app.core.world_generation.storage import Claim
+from app.db.models import Campaign, Entity, LlmCall, WorldGenerationState
 
 log = logging.getLogger(__name__)
 
@@ -38,24 +40,38 @@ async def run(maker, dice_factory, claim: storage.Claim, phase: str, provider, l
 
 
 async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Blueprint, str, list[str], storage.Claim]:
-    """Замысел резерва → blueprint. Ручной замысел ведущего — как в поставке 1; мандат каркаса — лестница
-    детерминированных замыслов (модель добавляется в поставке 3, Task 6). Ни один не лёг — ``blocked``."""
+    """Замысел резерва → blueprint. Ручной замысел ведущего — как в поставке 1. Мандат каркаса — сначала модель
+    (если включена и расходы позволяют), затем лестница детерминированных замыслов. Ни один не лёг — ``blocked``."""
     from app.core import plot_anchors
     from app.core.layout import spatial
+    from app.core.world_generation.service import _model_of
 
     async with maker() as s:
         row = await s.get(WorldGenerationState, claim.ref)
         res = dict(row.reservation or {})
         waiting = [b.anchor_id for b in await plot_anchors.reserved_for(s, claim.campaign_id, row.target_entity_id)]
+        campaign = await s.get(Campaign, claim.campaign_id)
+        wants = llm is not None and "mandate" in res and bool((campaign.settings or {}).get("location_layouts_llm"))
+        model = await _model_of(s, campaign) if wants else None
+        over = wants and await _over_spend(s, campaign)
     kw = {"seed": int(res["seed"]), "root_id": res["root_id"], "plot_id": res.get("plot_id")}
     notes: list[str] = []
     try:
-        if "mandate" in res:
-            candidates = spatial.intent_candidates(spatial.Mandate.model_validate(res["mandate"]))
-        else:
-            candidates = [LayoutIntent.model_validate(res["intent"])]
+        mandate = spatial.Mandate.model_validate(res["mandate"]) if "mandate" in res else None
+        intent0 = None if mandate is not None else LayoutIntent.model_validate(res["intent"])
     except (KeyError, ValidationError) as e:
         raise Blocked("unsupported_source", str(e)[:500]) from e
+    if mandate is not None:
+        if over:
+            notes.append("fallback:spend_limit")
+        elif model is not None:
+            intent, reason, claim = await _ask_model(maker, claim, llm, model, mandate, provider, kw)
+            if intent is not None:
+                return _with_anchors(provider.propose(intent, **kw), waiting), "normal", notes, claim
+            notes.append(f"fallback:{reason}")
+        candidates = spatial.intent_candidates(mandate)
+    else:
+        candidates = [intent0]
     errors: list[str] = []
     for i, intent in enumerate(candidates):
         for fallback in (False, True):
@@ -72,10 +88,74 @@ async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Bluep
                 )
                 continue
             quality = "normal" if i == 0 and not fallback and not notes else "fallback"
-            if quality == "fallback":
+            if i > 0 or fallback:
                 notes.append("fallback:layout")
             return _with_anchors(bp, waiting), quality, notes, claim
     raise Blocked("layout_unsatisfiable", "; ".join(errors[:6]))
+
+
+async def _over_spend(s, campaign) -> bool:
+    limit = (campaign.settings or {}).get("spend_limit_usd")
+    if limit is None:
+        return False
+    spent = await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == campaign.id))
+    return float(spent or 0.0) >= float(limit)
+
+
+async def _ask_model(maker, claim, llm, model, mandate, provider, kw) -> tuple[LayoutIntent | None, str, Claim]:
+    """Замысел модели в пределах лимита фазы (``LLM_LIMIT``); вызов занимается до сетевого запроса, учёт —
+    в ``LlmCall`` с ``generation_id``. Возвращает (замысел или None, причина fallback, обновлённый claim)."""
+    from app.agents import layout_model
+    from app.core.world_generation.service import LLM_LIMIT
+
+    name, api_base, seat_id = model
+    if layout_model.brief(mandate) is None:
+        return None, "context_budget", claim
+    msgs: list = []
+    calls: list[LlmCall] = []
+    reason = "llm_failed"
+
+    def check(intent: LayoutIntent) -> None:
+        provider.propose(intent, **kw)
+
+    try:
+        while True:
+            held = await storage.reserve_llm_call(maker, claim, LLM_LIMIT)
+            if held is None:
+                reason = reason if calls else "llm_limit"
+                break
+            claim = held
+            got, attempt, retry = await layout_model.ask(
+                llm, mandate, model=name, api_base=api_base, msgs=msgs, check=check
+            )
+            calls.append(
+                LlmCall(
+                    campaign_id=claim.campaign_id,
+                    seat_id=seat_id,
+                    turn_id=None,
+                    purpose=layout_model.PURPOSE,
+                    model=attempt.model,
+                    tokens_in=attempt.tokens_in,
+                    tokens_out=attempt.tokens_out,
+                    tokens_reasoning=attempt.tokens_reasoning,
+                    cost=attempt.cost,
+                    latency_ms=attempt.latency_ms,
+                    error=attempt.error,
+                    generation_id=claim.ref,
+                )
+            )
+            if got is not None:
+                return got, "", claim
+            if retry is None:
+                break  # сбой модели, а не ошибка ответа: корректировать нечего
+            reason = "invalid_proposal"
+    finally:
+        if calls:
+            async with maker() as s:
+                s.add_all(calls)
+                await s.commit()
+    log.info("структура %s: fallback (%s)", claim.ref, reason)
+    return None, reason, claim
 
 
 def _with_anchors(bp: Blueprint, waiting: list[str]) -> Blueprint:
