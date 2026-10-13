@@ -70,7 +70,7 @@ def test_base_pack_is_valid():
     assert report.ok, report.errors
     assert pack.manifest.provides == "srd-5.1"
     assert report.counts["effect_template"] == 26  # 16 + усиления заклинаний + умения классов
-    assert report.counts["item_template"] == 73  # оружие, доспехи, снаряжение, зелья, свитки и записка сюжета
+    assert report.counts["item_template"] == 79  # оружие, доспехи, снаряжение, зелья, свитки и записка сюжета
     assert report.counts["spell_template"] == 319
     assert report.counts["creature_template"] == 334
     assert report.counts["class"] == 12
