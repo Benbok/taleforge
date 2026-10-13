@@ -96,3 +96,18 @@ def _world_choices(cat) -> str:
     origins = ", ".join(e.name for e in cat.by_kind("origin")) or "—"
     classes = ", ".join(e.name for e in cat.by_kind("class")) or "—"
     return f"Происхождения мира: {origins}. Классы мира: {classes}."
+
+
+def declared_cast(messages: list, char_by_seat: dict, caster_id: str, spell_name: str) -> bool:
+    """Заявил ли игрок заклинание в новых репликах хода: разбор парсера с ``cast`` или название в тексте.
+    Название — запасной путь, когда парсер не узнал заклинание в свободной фразе."""
+    name = spell_name.strip().lower()
+    for m in messages:
+        ch = char_by_seat.get(m.seat_id)
+        if ch is None or ch.id != caster_id:
+            continue
+        if any(a.get("verb") == "cast" for a in (m.intent or {}).get("actions") or []):
+            return True
+        if name and name in (m.content or "").lower():
+            return True
+    return False

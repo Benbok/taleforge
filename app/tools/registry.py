@@ -85,6 +85,7 @@ class ToolContext:
     turn_diagnostics: dict = field(default_factory=dict)
     # подготовки мира, принятые вызовами этого хода: ход ждёт их перед повествованием (поставка 2)
     operation_refs: set[str] = field(default_factory=set)
+    content_misses: set[tuple[str, str]] = field(default_factory=set)  # (вид, id) шаблонов, которых нет: invent_item
     # Actual narration audience can include heroes who joined the party during this turn.
     narration_viewer_ids: set[str] | None = None
 
@@ -368,6 +369,16 @@ async def execute(
         await ctx.session.refresh(ctx.campaign)
         ctx.world = await load_world(ctx.session, ctx.campaign, ctx.world.catalog)
         restore_context(ctx, snapshot)
+        if isinstance(e, CatalogError) and e.kind == "item_template" and e.rid:
+            ctx.content_misses.add((e.kind, e.rid))
+            log.warning("CONTENT_GAP campaign=%s turn=%s tool=%s missing=%s", ctx.campaign.id, ctx.turn_id, name, e.rid)
+            return _failure(
+                f"{e}. Вне боя можно создать этот предмет через invent_item (missing_id={e.rid}) и повторить вызов",
+                "missing_content",
+                "rule_denial",
+                key,
+                rolled_back=True,
+            )
         return _failure(
             str(e),
             e.code if isinstance(e, ToolError) else "unclassified",

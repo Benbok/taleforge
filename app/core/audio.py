@@ -506,10 +506,10 @@ def library() -> Library:
 
 
 def pack_of(campaign) -> str | None:
-    """Мир кампании: её пакет сеттинга или верхний пакет цепочки."""
+    """Мир кампании: её пакет сеттинга или верхний пакет цепочки, кроме пакета кампании."""
     if campaign.pack_id:
         return campaign.pack_id
-    chain = campaign.content_chain or []
+    chain = [x for x in campaign.content_chain or [] if not str(x[0]).startswith("campaign.")]
     return chain[-1][0] if chain else None
 
 

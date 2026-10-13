@@ -108,6 +108,8 @@ class GiveItemArgs(BaseModel):
 async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
+    if rec.pack_id.startswith("campaign.") and a.qty > 10:
+        raise ToolError("придуманный мастером предмет выдаётся не больше 10 штук за раз")
     unique = bool(rec.data.get("unique"))
     if unique and a.qty != 1:
         raise ToolError("уникальный экземпляр нельзя выдавать стопкой")

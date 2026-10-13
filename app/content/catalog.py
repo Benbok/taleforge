@@ -20,7 +20,10 @@ BASE_PACK_ID = "dnd5e-srd"
 
 
 class CatalogError(LookupError):
-    pass
+    def __init__(self, message: str = "", *, rid: str | None = None, kind: str | None = None):
+        super().__init__(message)
+        self.rid = rid
+        self.kind = kind
 
 
 @dataclass(frozen=True)
@@ -83,13 +86,14 @@ class CatalogView:
         self.allow_proposals = allow_proposals
 
     def _ok(self, e: Entry | None) -> bool:
-        return e is not None and (self.allow_proposals or e.status == "canon")
+        # пакет кампании в цепочке — всегда свой: придуманное мастером видно без тестового режима
+        return e is not None and (self.allow_proposals or e.status == "canon" or e.pack_id.startswith("campaign."))
 
     def get(self, rid: str, kind: str | None = None) -> Entry:
         e = self.catalog.resolve(rid)
         if not self._ok(e) or (kind is not None and e.kind != kind):
             what = f"{kind} " if kind else ""
-            raise CatalogError(f"нет записи {what}{rid}")
+            raise CatalogError(f"нет записи {what}{rid}", rid=rid, kind=kind)
         return e
 
     def find(self, rid: str, kind: str | None = None) -> Entry | None:
