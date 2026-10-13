@@ -20,7 +20,10 @@ BASE_PACK_ID = "dnd5e-srd"
 
 
 class CatalogError(LookupError):
-    pass
+    def __init__(self, message: str = "", *, rid: str | None = None, kind: str | None = None):
+        super().__init__(message)
+        self.rid = rid
+        self.kind = kind
 
 
 @dataclass(frozen=True)
@@ -90,7 +93,7 @@ class CatalogView:
         e = self.catalog.resolve(rid)
         if not self._ok(e) or (kind is not None and e.kind != kind):
             what = f"{kind} " if kind else ""
-            raise CatalogError(f"нет записи {what}{rid}")
+            raise CatalogError(f"нет записи {what}{rid}", rid=rid, kind=kind)
         return e
 
     def find(self, rid: str, kind: str | None = None) -> Entry | None:
