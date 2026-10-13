@@ -154,3 +154,27 @@ def test_give_invented_item_qty_capped(game):  # noqa: F811
 
     r = play(settings, cid, [], fn)
     assert not r["ok"] and "10" in r["error"]
+
+
+from app.db.models import InventoryItem, MasterTurn  # noqa: E402
+from tests.game import party  # noqa: E402
+from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: E402, F401
+
+
+def test_master_turn_invents_and_gives(game_client, admin_g, llm, settings):  # noqa: F811
+    c, (player,), hero = party(game_client, admin_g)
+    give = {"character_id": hero["id"], "item_template_id": "item.mossberry", "qty": 3, "reason": "собранные ягоды"}
+    llm.replies += [
+        {"tool_calls": [("give_item", give)]},
+        {"tool_calls": [("invent_item", {**_invent(missing="item.mossberry"), "name": "Моховая ягода"})]},
+        {"tool_calls": [("give_item", give)]},
+        DONE,
+        DONE,
+        {"text": "Ты собираешь три моховые ягоды."},
+    ]
+    act(game_client, player, c["id"], "Собираю ягоды с мха у входа")
+    items = [i for i in rows(settings, InventoryItem) if i.item_template_id == "item.mossberry"]
+    assert items and items[0].qty == 3
+    (turn,) = rows(settings, MasterTurn)
+    codes = [(x["tool"], (x["result"].get("failure") or {}).get("code")) for x in turn.trace["calls"]]
+    assert ("give_item", "missing_content") in codes and ("invent_item", None) in codes
