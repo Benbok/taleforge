@@ -12,7 +12,15 @@ from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMQuotaError, LLMReply, decide_model_for, model_for, reply_audit_error
 from app.agents.master import checkpoint
 from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
-from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
+from app.agents.master.common import (
+    MAX_CALLS,
+    MAX_STEPS,
+    ROLL_TOOLS,
+    _routable_cast,
+    decision_tools,
+    declared_cast,
+    render,
+)
 from app.agents.master.creative import creative_context, creative_note
 from app.agents.master.helpers import (
     _batches,
@@ -567,6 +575,14 @@ class TurnMixin:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
+            if name == "cast_spell" and not combat.in_combat(ctx) and args.get("caster_id") in ctx.world.characters:
+                spell = ctx.world.catalog.find(str(args.get("spell_id") or ""), "spell_template")
+                if not declared_cast(new, char_by_seat, args["caster_id"], spell.name if spell else ""):
+                    done_calls += 1
+                    return {
+                        "ok": False,
+                        "error": "игрок этого заклинания в этом ходу не заявлял: не твори его за героя",
+                    }
             if name in ("resolve_attack", "resolve_shove", "resolve_grapple"):
                 attacker = (args or {}).get("attacker_id")
                 target = ctx.world.entities.get((args or {}).get("target_id"))
