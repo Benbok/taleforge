@@ -1,9 +1,45 @@
 """Контекст короткой реплики: характер кампании и публичные результаты хода."""
 
+import asyncio
 from types import SimpleNamespace
 
+import pytest
+
 from app.agents.master.helpers import _render_results
+from app.agents.master.narration import NarrationMixin
 from app.emotion import EmotionState, LLMAnalyzer, PlayerActionContext, SystemPromptInjector
+from app.emotion import game as mood
+
+
+@pytest.mark.parametrize("temper", [
+    "sadist", "tired_mentor", "kind_mentor", "sarcastic_skeptic", "enthusiastic_storyteller",
+    "daring_gambler", "calm_arbiter", "grim_fatalist", "dark_comedian", None, "unknown",
+])
+def test_voice_line_uses_selected_temper_even_without_mood(temper):
+    requests = []
+
+    class Narrator(NarrationMixin):
+        async def _ask(self, calls, cfg, cid, seat_id, turn_id, purpose, messages, tools, **kwargs):
+            requests.append(messages)
+            return SimpleNamespace(text="Ну что ж, попытка была смелой.")
+
+    cfg = SimpleNamespace(settings={"emotion_persona": temper}, persona="Классический мастер")
+    asyncio.run(
+        Narrator()._voice_line(
+            [], cfg, SimpleNamespace(id="campaign"), "seat", "turn", "Классический мастер",
+            SimpleNamespace(events=[]), [], news="Пытаюсь перепрыгнуть ручей",
+        )
+    )
+    prompt = requests[0][1]["content"]
+    selected = mood.persona_of(temper)
+    if temper and temper != "unknown":
+        from app.emotion.analyzers import PERSONAS
+
+        assert temper in PERSONAS
+    assert selected.name in prompt
+    assert selected.description in prompt
+    assert "Пытаюсь перепрыгнуть ручей" in prompt
+    assert "Текущее настроение" in prompt
 
 
 def test_emotion_analysis_uses_campaign_persona():

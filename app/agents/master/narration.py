@@ -379,6 +379,7 @@ class NarrationMixin:
         results = _render_results(ctx, public_only=True)
         prompt = render(
             "voice_line.j2",
+            temper=mood.persona_of((cfg.settings or {}).get("emotion_persona")),
             results=results,
             news=news,
             combat_notes=list(combat_notes),

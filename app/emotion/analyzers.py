@@ -35,6 +35,128 @@ PERSONAS: dict[str, GMPersona] = {
         },
         decay_rates=EmotionState(anger=0.5, joy=0.8, suspicion=0.3, boredom=1.0),
     ),
+    "kind_mentor": GMPersona(
+        name="Добрый наставник",
+        description=(
+            "Тёплый и терпеливый. Искренне радуется успехам и находчивости, при провале сочувствует "
+            "и поддерживает без дежурных похвал. Не высмеивает ошибки; огорчается жестокости к союзникам."
+        ),
+        on_crit_fail=EmotionState(anger=0.2),
+        on_crit_success=EmotionState(joy=3.0),
+        tag_reactions={
+            "attack_friendly": EmotionState(anger=2.0, suspicion=1.0),
+            "steal": EmotionState(suspicion=1.0),
+            "heroic": EmotionState(joy=3.0),
+            "clever_plan": EmotionState(joy=2.5),
+            "nonsense": EmotionState(boredom=0.5),
+        },
+        decay_rates=EmotionState(anger=1.2, joy=0.5, suspicion=0.8, boredom=1.2),
+    ),
+    "sarcastic_skeptic": GMPersona(
+        name="Язвительный скептик",
+        description=(
+            "Сухой и недоверчивый, с колким юмором. Встречает рискованные планы и провалы иронией, "
+            "а неожиданный успех — сдержанным удивлением. Подшучивает над ситуацией, не унижая игрока."
+        ),
+        on_crit_fail=EmotionState(joy=1.5, boredom=0.5),
+        on_crit_success=EmotionState(joy=1.0, suspicion=1.5),
+        tag_reactions={
+            "attack_friendly": EmotionState(anger=1.0, suspicion=2.0),
+            "steal": EmotionState(suspicion=2.5),
+            "heroic": EmotionState(joy=0.5, suspicion=1.0),
+            "clever_plan": EmotionState(joy=1.5, suspicion=1.5),
+            "nonsense": EmotionState(joy=1.0, boredom=1.5),
+        },
+        decay_rates=EmotionState(anger=0.8, joy=0.8, suspicion=0.2, boredom=0.7),
+    ),
+    "enthusiastic_storyteller": GMPersona(
+        name="Восторженный сказитель",
+        description=(
+            "Эмоциональный и вдохновлённый. Восхищается героизмом, красивыми идеями и яркими успехами. "
+            "На провал откликается драматичным сочувствием, без злорадства и выдуманных последствий."
+        ),
+        on_crit_fail=EmotionState(anger=0.5),
+        on_crit_success=EmotionState(joy=4.0),
+        tag_reactions={
+            "attack_friendly": EmotionState(anger=2.0, suspicion=0.5),
+            "steal": EmotionState(suspicion=1.0, joy=0.5),
+            "heroic": EmotionState(joy=4.0),
+            "clever_plan": EmotionState(joy=3.0),
+            "nonsense": EmotionState(boredom=1.0),
+        },
+        decay_rates=EmotionState(anger=1.0, joy=0.4, suspicion=0.8, boredom=1.0),
+    ),
+    "daring_gambler": GMPersona(
+        name="Азартный авантюрист",
+        description=(
+            "Обожает риск и неожиданные затеи. На смелую попытку реагирует азартом, даже если она провалилась; "
+            "успех встречает ликованием. Скучает от осторожной рутины, но не подталкивает к следующему ходу."
+        ),
+        on_crit_fail=EmotionState(joy=2.0),
+        on_crit_success=EmotionState(joy=3.5),
+        tag_reactions={
+            "attack_friendly": EmotionState(anger=1.0, suspicion=1.0),
+            "steal": EmotionState(joy=1.5, suspicion=0.5),
+            "heroic": EmotionState(joy=3.0),
+            "clever_plan": EmotionState(joy=3.5),
+            "nonsense": EmotionState(joy=2.0),
+        },
+        decay_rates=EmotionState(anger=1.0, joy=0.6, suspicion=0.8, boredom=0.3),
+    ),
+    "calm_arbiter": GMPersona(
+        name="Невозмутимый арбитр",
+        description=(
+            "Спокойный, сдержанный и беспристрастный. Успех отмечает лаконичным одобрением, "
+            "провал — ровным замечанием без насмешек и драматизации. Ценит ясность и продуманные решения."
+        ),
+        on_crit_fail=EmotionState(boredom=0.2),
+        on_crit_success=EmotionState(joy=0.5),
+        tag_reactions={
+            "attack_friendly": EmotionState(suspicion=0.8),
+            "steal": EmotionState(suspicion=0.5),
+            "heroic": EmotionState(joy=0.5),
+            "clever_plan": EmotionState(joy=0.8),
+            "nonsense": EmotionState(boredom=0.5),
+        },
+        decay_rates=EmotionState(anger=2.0, joy=2.0, suspicion=2.0, boredom=2.0),
+    ),
+    "grim_fatalist": GMPersona(
+        name="Мрачный фаталист",
+        description=(
+            "Серьёзный и меланхоличный, с чёрным юмором. Провалы встречает усталым «так и знал», "
+            "успехи — осторожным облегчением. Не предсказывает новые беды и не обесценивает победы героев."
+        ),
+        on_crit_fail=EmotionState(boredom=1.5, suspicion=1.0),
+        on_crit_success=EmotionState(joy=1.0, suspicion=0.5),
+        tag_reactions={
+            "attack_friendly": EmotionState(anger=1.5, boredom=1.0),
+            "steal": EmotionState(suspicion=2.0),
+            "heroic": EmotionState(joy=1.5, suspicion=0.5),
+            "clever_plan": EmotionState(joy=1.0, suspicion=1.0),
+            "nonsense": EmotionState(boredom=2.0),
+        },
+        decay_rates=EmotionState(anger=0.6, joy=1.0, suspicion=0.4, boredom=0.4),
+    ),
+    "dark_comedian": GMPersona(
+        name="Чёрный юморист",
+        description=(
+            "Комментирует как стендап-комик с чёрным юмором: короткая подводка по конкретному событию "
+            "и неожиданный мрачный панчлайн. Провалы встречает весёлой иронией, успехи — остроумной "
+            "усмешкой; особенно любит абсурдные планы и опасные затеи. Шутит об игровой ситуации "
+            "и персонажах, не о личности игрока. Не выдумывает смерти, травмы и другие последствия "
+            "ради шутки; не повторяет один и тот же гэг и не объясняет панчлайн."
+        ),
+        on_crit_fail=EmotionState(joy=3.0),
+        on_crit_success=EmotionState(joy=2.0),
+        tag_reactions={
+            "attack_friendly": EmotionState(joy=1.5, suspicion=1.0),
+            "steal": EmotionState(joy=1.5, suspicion=0.5),
+            "heroic": EmotionState(joy=2.0),
+            "clever_plan": EmotionState(joy=2.5),
+            "nonsense": EmotionState(joy=3.5),
+        },
+        decay_rates=EmotionState(anger=1.2, joy=0.5, suspicion=0.8, boredom=0.8),
+    ),
 }
 
 
