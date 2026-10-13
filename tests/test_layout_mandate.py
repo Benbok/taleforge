@@ -31,12 +31,7 @@ def _variants(n: int, env: str):
             base[-2] | {"secret": True, "outdoor": False},
             base[-1] | {"below": True, "outdoor": False},
         ]
-        yield (
-            base[:1]
-            + [base[1] | {"required": True}]
-            + base[2:-1]
-            + [base[-1] | {"secret": True, "outdoor": False}]
-        )
+        yield (base[:1] + [base[1] | {"required": True}] + base[2:-1] + [base[-1] | {"secret": True, "outdoor": False}])
     if env == "mixed" and n >= 2:  # вход — помещение, двор дальше
         yield [{"ref": f"p{i}", "name": f"Часть {i}", "outdoor": i == n - 1} for i in range(n)]
 
@@ -85,11 +80,7 @@ def test_candidates_put_holders_where_the_plan_expects():
     m = temple_mandate()
     first = intent_candidates(m)[0]
     by = {p.part_ref: p for p in first.parts}
-    assert (
-        first.entry == "road"
-        and by["chapel"].anchors == ["clue_relic"]
-        and by["road"].anchors == ["npc:npc_warden"]
-    )
+    assert first.entry == "road" and by["chapel"].anchors == ["clue_relic"] and by["road"].anchors == ["npc:npc_warden"]
     assert by["vault"].secret and by["crypt"].level == -1 and by["chapel"].required
     assert all(a.outside_id is None for a in first.approaches)
     assert [b.kind for b in first.bands] == ["road"] and not intent_candidates(m)[1].bands

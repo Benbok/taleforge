@@ -15,20 +15,23 @@
   входного участка и подходов без внешних ссылок.
 - **Лестница детерминированных замыслов** (`app/core/layout/spatial.py::intent_candidates`): детерминированный
   запасной вариант из 3 ступеней: (1) с полосой дороги у западного подхода → (2) без полос → (3) только первый подход.
-  В сочетании с обычной раскладкой и `fallback=True` провайдера поставки 1 полностью устраняет риск тупика:
-  1890 комбинаций параметров дают 0 блокировок.
+  В сочетании с обычной раскладкой и `fallback=True` провайдера поставки 1 проверена на
+  1890 комбинациях параметров: 0 блокировок. Это результат проверенного набора, а не гарантия для любых входов.
 - **Техническая модель структуры** (`app/agents/layout_model.py`): отдельный легковесный агент предлагает
   замысел комплекса (`LayoutIntent`) в рамках единого вызова инструмента `submit_layout`. Модель не касается
   геометрии и координат клеток: их рассчитывает `DeterministicLayoutProvider`. Ошибки мандата или валидации
   возвращаются модели текстом для ровно одной корректирующей попытки. В запросе модели нет секретов сюжета.
 - **Подключение модели к фазе генерации** (`app/core/layout/executor.py`): фаза `location_layout` запрашивает
   структуру у технической модели при включённом флаге `location_layouts_llm`. Реализованы строгие защитные лимиты:
-  бюджет контекста (6000 входных / 3000 выходных токенов), лимит бюджета кампании (`spend_limit_usd`), лимит
+  бюджет контекста (оценка до 6000 входных / ограничение 3000 выходных токенов), лимит бюджета кампании (`spend_limit_usd`), лимит
   попыток (`llm_attempt_count <= 2`). При любом исчерпании лимитов, синтаксической или семантической ошибке
   фаза автоматически переключается на детерминированную лестницу (`quality="fallback"` с диагностической заметкой).
+  Оценка охватывает всю историю и схему инструмента перед каждой попыткой. Переполнение коррекции даёт
+  `fallback:context_budget` до резервирования второго вызова; лишняя запись `LlmCall` не создаётся.
+  Входные токены оцениваются по длине сериализованного запроса, а не подсчитываются токенизатором провайдера.
 - **Флаги кампании и разворот ключевых мест** (`app/core/layout/plan.py`, `app/config.py`): флаги `location_layouts`
   и `location_layouts_llm` управляют генерацией комплексов. Функция `develop_location_complex` разворачивает место
-  каркаса в комплекс участков: бронирует фазу `location_layout` с мандатом в `state.blueprint`, откладывая наполнение
+  каркаса в комплекс участков: бронирует фазу `location_layout` с мандатом в `WorldGenerationState.reservation`, откладывая наполнение
   `location_initial` до фиксации структуры.
 - **Жители и носители зацепок** (`app/core/layout/executor.py`, `app/tools/plot.py`): при публикации структуры
   носители зацепок размещаются строго в назначенных участках комплекса. Жители-NPC (`npc:<plot_id>`) переносятся
@@ -47,7 +50,7 @@
     `location_geometry`, `location_initial`) и агрегацией строк, вызовов, ошибок, токенов рассуждений, времени
     и стоимости в USD.
 - **Учёт расходов по фазам** (`app/db/models.py`, `app/agents/llm.py`): таблица `llm_calls` расширена полями
-  `generation_id` (внешний ключ на строку фазы `world_generation_state`) и `tokens_reasoning` (токены рассуждений
+  `generation_id` (идентификатор строки фазы, индексированный без ограничения внешнего ключа) и `tokens_reasoning` (токены рассуждений
   моделей reasoning).
 
 ## Решения поставки
@@ -57,7 +60,7 @@
 2. **Мандат фиксируется один раз при развороте.** Резерв фазы `location_layout` сохраняет неизменяемый `mandate`
    на момент разворота. Повторный вход или рестарт не пересчитывают мандат и не расходуют новые вызовы модели.
 3. **Лестница детерминированных замыслов.** 3 ступени кандидатов в сочетании с алгоритмическим fallback
-   гарантируют 100% надёжность генерации даже при полном отказе внешней модели.
+   обеспечивают запасной путь при отказе внешней модели; проверенные 1890 комбинаций мандата не блокируются.
 4. **Изоляция сюжета от модели структуры.** В технический запрос к LLM передаются только публичное имя, атмосфера
    и топологические требования. Секреты локации, зацепок и NPC полностью скрыты.
 5. **Вход до вступления первой сцены.** Фиксация героев на входном участке выполняется до вызова агента прелюдии,
@@ -66,6 +69,9 @@
    и не оставляет следов в личной памяти игроков (`MapMemory`).
 7. **Обратная совместимость.** Старые кампании, книги приключений и кампании с выключенными флагами сохраняют
    прежнее поведение без создания комплексов и без изменения формата данных.
+8. **Обязательный вызов инструмента.** Общий клиент сохраняет `tool_choice="required"` для всех провайдеров.
+   Установленный адаптер LiteLLM преобразует его в Gemini `functionCallingConfig.mode="ANY"`;
+   замена на `auto`, разрешающая ответ обычным текстом, удалена. Проверка адаптера не делает сетевого запроса.
 
 ## Вне поставки
 
@@ -79,22 +85,26 @@
    - `tests/test_layout_model.py::test_brief_carries_no_plot_secrets`
    - `tests/test_location_maps_delivery3.py::test_pilot_brief_has_no_plot_secrets`
 2. **Повтор не тратит новые вызовы модели (0 новых вызовов структуры):**
-   - `tests/test_layout_model_phase.py::test_restart_exhausted_layout_uses_fallback_without_llm`
-   - `tests/test_opening_complex.py::test_repeat_open_does_not_reenter_or_duplicate`
+   - `tests/test_layout_model_phase.py::test_limit_survives_restart_retry_and_reentry`
+   - `tests/test_opening_complex.py::test_second_opening_does_not_enter_again`
    - `tests/test_location_maps_delivery3.py::test_pilot_round_trip_keeps_structure_and_costs_nothing_new`
 3. **Порядок фаз (обстановка корня и носители не обгоняют структуру):**
-   - `tests/test_layout_develop.py::test_develop_location_complex_creates_layout_reservation`
-   - `tests/test_layout_residents.py::test_residents_and_anchors_assigned_to_complex_areas`
+   - `tests/test_layout_develop.py::test_root_preparation_waits_for_structure`
+   - `tests/test_layout_residents.py::test_resident_developed_before_structure_moves_in_on_publish`
+   - `tests/test_layout_residents.py::test_carrier_appears_in_its_area_not_at_root`
 4. **Первая сцена (вход фиксируется до нарратива, сбой оставляет у корня):**
-   - `tests/test_opening_complex.py::test_first_scene_starts_inside_complex_entry`
-   - `tests/test_opening_complex.py::test_failed_layout_keeps_heroes_at_root`
+   - `tests/test_opening_complex.py::test_intro_text_is_written_after_entry`
+   - `tests/test_opening_complex.py::test_blocked_structure_keeps_heroes_outside`
 5. **Подготовка без раскрытия (lookahead и prepare_location не светят неисследованное):**
-   - `tests/test_layout_ahead.py::test_transit_requests_ahead_geometry_without_disclosing`
-   - `tests/test_prepare_location.py::test_prepare_location_geometry_ahead_does_not_disclose_memory`
+   - `tests/test_layout_ahead.py::test_prepared_neighbour_stays_unknown_to_players`
+   - `tests/test_prepare_location.py::test_two_calls_prepare_structure_then_all_geometry`
    - `tests/test_location_maps_delivery3.py::test_pilot_secret_vault_is_not_disclosed_by_preparation`
 6. **Старые кампании и готовые модули не затрагиваются:**
-   - `tests/test_layout_develop.py::test_develop_without_flag_or_spatial_keeps_simple_location`
-   - `tests/test_prepare_location.py::test_prepare_location_refuses_simple_location`
+   - `tests/test_layout_develop.py::test_no_layout_without_flag_spatial_or_for_modules`
+   - `tests/test_prepare_location.py::test_refuses_visited_books_and_places_without_space`
+7. **Лимит коррекции и контракт Gemini:**
+   - `tests/test_layout_model_phase.py::test_correction_over_budget_uses_fallback_without_spending_second_call`
+   - `tests/test_llm_tool_choice.py::test_required_tool_choice_is_not_downgraded`
 
 ## Команды воспроизведения тестов и живого замера
 
@@ -103,7 +113,7 @@
 uv run pytest tests/test_location_maps_delivery3.py -q
 
 # Все специализированные тесты поставки 3
-uv run pytest tests/test_layout_mandate.py tests/test_layout_plan_phase.py tests/test_layout_model.py tests/test_layout_model_phase.py tests/test_layout_develop.py tests/test_layout_residents.py tests/test_opening_complex.py tests/test_layout_ahead.py tests/test_prepare_location.py tests/test_location_cost.py tests/test_llm_accounting.py -q
+uv run pytest tests/test_layout_mandate.py tests/test_layout_plan_phase.py tests/test_layout_model.py tests/test_layout_model_phase.py tests/test_layout_develop.py tests/test_layout_residents.py tests/test_opening_complex.py tests/test_layout_ahead.py tests/test_prepare_location.py tests/test_location_cost.py tests/test_llm_accounting.py tests/test_llm_tool_choice.py -q
 
 # Регрессионный срез смежных подсистем
 uv run pytest tests/test_sketch.py tests/test_grid.py tests/test_world_objects_reach.py tests/test_adventure.py tests/test_modules.py tests/test_layout_pilot.py tests/test_layout_turn.py tests/test_opening_scene.py tests/test_scene_model.py -q
@@ -117,11 +127,25 @@ TALEFORGE_LIVE_PILOT=1 uv run python tools/pilot_location_layout.py
 
 ## Таблица результатов прогонов
 
+Проверка исправлений ревью от 2026-10-13. Результаты полного backend-прогона ниже относятся
+к рабочему дереву перед фиксацией исправлений ревью.
+
 | Набор тестов / Замер | Результат | Примечания |
 | --- | --- | --- |
-| `tests/test_location_maps_delivery3.py` | **5 passed** (18 с) | Приёмочный сценарий храма и луга, обход проходов, изоляция тайн, учёт |
-| Модульные тесты поставки 3 (11 файлов) | **64 passed** (42 с) | Мандат, модель, CAS исполнителя, перенос NPC, первая сцена, lookahead, расходы |
-| Регрессионный срез (9 файлов) | **56 passed** (28 с) | Эскизы, сетка, дистанции, модули, приключения, ходы мастера, сцены |
-| Полный прогон `pytest` | **1309 passed, 4 skipped** (234 с) | 3 пропуска требуют PostgreSQL, 1 — pdftotext |
-| Frontend `npm test` & `npm run build` | **142 passed**, сборка успешна | Тесты клиента, валидация карт и типов без ошибок |
-| Живой замер `tools/pilot_location_layout.py` | **100% работоспособность** | Проверены обе ветки: успешный ответ модели и fallback при невалидных предложениях |
+| `tests/test_location_maps_delivery3.py` | **5 passed** | Приёмочный сценарий храма и луга, обход проходов, изоляция тайн, учёт |
+| Модульные тесты поставки 3 (12 файлов, включая адаптер Gemini) | **64 passed** | Вместе с 5 приёмочными тестами: 69 passed за 47.32 с; мандат, модель, CAS, жители, первая сцена, lookahead, расходы, бюджет коррекции, режим ANY |
+| Регрессионный срез (9 файлов) | **66 passed, 1 skipped** (предыдущая независимая проверка) | Повторная проверка — в составе полного backend-прогона |
+| Полный прогон `pytest` | **1319 passed, 4 skipped** (570.19 с, 4 воркера) | 3 пропуска требуют PostgreSQL, 1 — pdftotext; 31 предупреждение зависимостей |
+| Frontend `npm test` & `npm run build` | **217 passed** (46 файлов), сборка успешна | Повторная проверка 2026-10-13 |
+| Линтер, форматирование, контракт | **PASS** | Проверены все 46 Python-файлов поставки; `app.contract --check` и `git diff --check` проходят |
+| Живой замер `tools/pilot_location_layout.py` | В текущей проверке не запускался | Предыдущий исполнитель сообщил о запуске, но замер с датой, моделью и расходами в отчёте отсутствует; успешный путь и fallback проверены сценарными тестами |
+
+Полный прогон выполнен командой:
+
+```powershell
+$env:LITELLM_LOCAL_MODEL_COST_MAP='True'
+.venv\Scripts\python.exe -m pytest -o addopts='' -n 4 -p no:cacheprovider --basetemp .tmp-delivery3-fixes-full -q -rs
+```
+
+Каталог `--basetemp` должен быть отдельным временным каталогом: pytest очищает его перед запуском.
+Параллельные изменения озвучки входили в рабочее дерево полного прогона и не относятся к исправлениям карт.

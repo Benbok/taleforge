@@ -175,13 +175,18 @@ def _lines(m: Mandate, *, mood: bool, purposes: bool) -> list[str]:
     return lines
 
 
+def input_estimate(m: Mandate, msgs: list) -> int:
+    """Оценка всего запроса: история с аргументами инструментов и схема submit_layout."""
+    return estimate(json.dumps({"messages": msgs, "tools": [spec(m)]}, ensure_ascii=False))
+
+
 def brief(m: Mandate) -> str | None:
     """Запрос в бюджете ``MAX_IN``: сначала уходит настроение, потом пояснения частей. Обязательное не урезается;
     не помещается и оно — None (исполнитель уходит в fallback ``context_budget``)."""
-    fixed = estimate(SYSTEM) + estimate(json.dumps(spec(m), ensure_ascii=False))
     for mood, purposes in ((True, True), (False, True), (False, False)):
         text = "\n".join(_lines(m, mood=mood, purposes=purposes))
-        if fixed + estimate(text) <= MAX_IN:
+        msgs = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}]
+        if input_estimate(m, msgs) <= MAX_IN:
             return text
     return None
 
@@ -213,6 +218,8 @@ async def ask(
         if text is None:
             raise Blocked("context_budget", "обязательные факты места не помещаются в бюджет запроса")
         msgs += [{"role": "system", "content": SYSTEM}, {"role": "user", "content": text}]
+    if input_estimate(m, msgs) > MAX_IN:
+        raise Blocked("context_budget", "запрос с историей исправления не помещается в бюджет")
     attempt = Attempt(model=model)
     try:
         reply = await asyncio.wait_for(

@@ -151,4 +151,3 @@ def home_of(entities: dict[str, Any], place_id: str | None, key: str) -> str | N
     if root is None or bp is None:
         return place_id
     return area_ids(root).get(bp.anchors.get(key) or bp.entry) or place_id
-

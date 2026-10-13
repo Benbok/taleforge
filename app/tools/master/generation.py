@@ -251,9 +251,7 @@ async def prepare_location(ctx: ToolContext, a: PrepareLocationArgs) -> dict:
     if row is None:
         if _visited(ctx, root):
             raise ToolError("отряд здесь уже был: устройство посещённого места не перестраивается")
-        kind, sketch = plot_mod._index(ctx.world.plot or {}).get(
-            (root.state or {}).get("plot_id") or "", (None, None)
-        )
+        kind, sketch = plot_mod._index(ctx.world.plot or {}).get((root.state or {}).get("plot_id") or "", (None, None))
         if kind != "location" or not (sketch or {}).get("spatial"):
             raise ToolError("у места нет пространственного замысла в каркасе: используйте prepare_complex")
         row = await layout_plan.reserve_from_plan(ctx, root, sketch, inverse)
@@ -317,5 +315,3 @@ async def preparation_cost(ctx: ToolContext, a: PreparationCostArgs) -> dict:
         return await preparation.location_cost(ctx.session, ctx.campaign.id, a.location_id)
     except NotFound as e:
         raise ToolError(str(e)) from e
-
-

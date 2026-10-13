@@ -9,6 +9,7 @@ from app.agents import layout_model
 from app.agents.llm import LLMError, LLMReply, ScriptedLLM, ToolCall
 from app.core.layout.contracts import LayoutError
 from app.core.layout.provider import DeterministicLayoutProvider
+from app.core.world_generation.contracts import Blocked
 from tests.layout_plan_pilot import model_layout, temple_mandate, temple_plan
 
 KEYS = ["clue_relic", "npc:npc_warden"]
@@ -60,8 +61,9 @@ def test_brief_trims_optional_context_but_not_obligations(monkeypatch):
     m = temple_mandate()
     full = layout_model.brief(m)
     assert full is not None
-    budget = layout_model.estimate(layout_model.SYSTEM + full)
-    budget += layout_model.estimate(json.dumps(layout_model.spec(m), ensure_ascii=False))
+    budget = layout_model.input_estimate(
+        m, [{"role": "system", "content": layout_model.SYSTEM}, {"role": "user", "content": full}]
+    )
     monkeypatch.setattr(layout_model, "MAX_IN", budget - 5)
     trimmed = layout_model.brief(m)
     assert trimmed is not None and m.mood not in trimmed and "clue_relic" in trimmed and "Крипта" in trimmed
@@ -146,3 +148,22 @@ def test_request_respects_output_budget():
     llm.complete = spy
     _ask(llm)
     assert seen["max_tokens"] == layout_model.MAX_OUT == 3000 and seen["tool_choice"] == "required"
+
+
+def test_correction_over_context_budget_does_not_call_model():
+    llm = ScriptedLLM([{"text": "x" * 25000}, {"tool_calls": [(layout_model.TOOL, model_layout(KEYS))]}])
+    msgs: list = []
+    assert _ask(llm, msgs)[0] is None
+    with pytest.raises(Blocked) as error:
+        _ask(llm, msgs)
+    assert error.value.reason == "context_budget"
+    assert len(llm.requests) == 1
+
+
+def test_correction_within_context_budget_still_accepts_plan():
+    llm = ScriptedLLM([{"text": "неверный ответ"}, {"tool_calls": [(layout_model.TOOL, model_layout(KEYS))]}])
+    msgs: list = []
+    assert _ask(llm, msgs)[0] is None
+    intent, attempt, retry = _ask(llm, msgs)
+    assert intent is not None and attempt.error is None and retry is None
+    assert len(llm.requests) == 2

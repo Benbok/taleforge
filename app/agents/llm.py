@@ -283,11 +283,8 @@ class LiteLLMClient:
             kwargs["api_base"] = api_base
         if tools:
             kwargs["tools"] = tools
-            # LiteLLM передаёт "required" в Gemini как невалидный режим; для gemini используем "auto"
-            if model.startswith("gemini/") and tool_choice == "required":
-                kwargs["tool_choice"] = "auto"
-            else:
-                kwargs["tool_choice"] = tool_choice if tool_choice is not None else "auto"
+            # Адаптер LiteLLM переводит required в Gemini ANY; auto разрешил бы ответ без инструмента.
+            kwargs["tool_choice"] = tool_choice if tool_choice is not None else "auto"
         # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
         if temperature is not None and not model.startswith("anthropic/"):
             kwargs["temperature"] = temperature

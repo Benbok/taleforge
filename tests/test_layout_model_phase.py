@@ -124,6 +124,19 @@ def test_context_over_budget_skips_model(client, admin, settings, monkeypatch):
     assert row.llm_attempt_count == 0 and "fallback:context_budget" in row.result_manifest["notes"]
 
 
+def test_correction_over_budget_uses_fallback_without_spending_second_call(client, admin, settings):
+    cid = _on(client, admin, settings)
+    _root, ref = _plan_root(settings, cid)
+    llm = ScriptedLLM([{"text": "x" * 25000}, _good])
+    assert _prepare(settings, cid, ref, _orch(llm)) == "ready"
+    row = _row(settings, ref)
+    assert row.quality == "fallback" and row.llm_attempt_count == 1
+    assert "fallback:context_budget" in row.result_manifest["notes"]
+    assert len(llm.requests) == 1
+    (call,) = rows(settings, LlmCall, LlmCall.generation_id == ref)
+    assert call.error is not None
+
+
 def test_late_answer_after_lost_lease_is_dropped(client, admin, settings):
     cid = _on(client, admin, settings)
     root, ref = _plan_root(settings, cid)

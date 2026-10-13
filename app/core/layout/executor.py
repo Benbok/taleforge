@@ -120,6 +120,9 @@ async def _ask_model(maker, claim, llm, model, mandate, provider, kw) -> tuple[L
 
     try:
         while True:
+            if msgs and layout_model.input_estimate(mandate, msgs) > layout_model.MAX_IN:
+                reason = "context_budget"
+                break  # не занимаем попытку и не пишем LlmCall без сетевого вызова
             held = await storage.reserve_llm_call(maker, claim, LLM_LIMIT)
             if held is None:
                 reason = reason if calls else "llm_limit"

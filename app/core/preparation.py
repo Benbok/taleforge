@@ -245,4 +245,3 @@ async def location_cost(session: AsyncSession, campaign_id: str, root_id: str) -
         for k in total:
             total[k] += b[k]
     return {"root_id": root.id, "phases": phases, "total": total}
-
