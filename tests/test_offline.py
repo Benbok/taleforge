@@ -96,7 +96,11 @@ def test_vote_hands_hero_to_other_player_and_back(game_client, admin_g, settings
         assert sheet["stand_in"] and "private_backstory" not in sheet and sheet["sheet"]["abilities"]
 
         # Гимли ведёт Брана: реплика от места Арагорна
-        llm.replies += [DONE, DONE, {"text": "Бран осторожно идёт вперёд."}]
+        llm.replies += [
+            {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "идёт вперёд"})]},
+            DONE,
+            {"text": "Бран осторожно идёт вперёд."},
+        ]
         w2.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран идёт", "as_seat": arag}})
         m = next_of(w2, "message.new")["payload"]
         assert m["seat_id"] == arag and m["content"] == "Бран идёт"
@@ -171,7 +175,7 @@ def test_everyone_gone_pauses_without_vote(game_client, admin_g, settings):
 
 
 def test_live_master_leaves_ai_takes_over_and_gives_back(game_client, admin_g, settings, llm):
-    c, (p1,), _ = party(game_client, admin_g, master={"type": "owner"})
+    c, (p1,), hero = party(game_client, admin_g, master={"type": "owner"})
     tune(settings, c["id"])
     with connect(game_client, p1, c["id"]) as (w1, snap):
         master = snap["payload"]["seats"][0]["id"]
@@ -186,7 +190,11 @@ def test_live_master_leaves_ai_takes_over_and_gives_back(game_client, admin_g, s
         seat = run(settings, lambda s: s.get(Seat, master))
         assert seat.occupant_type == "agent" and seat.agent_config_id and seat.delegated_from == seat.user_id
 
-        llm.replies += [DONE, DONE, {"text": "ИИ-мастер описывает зал."}]
+        llm.replies += [
+            {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "осматривается"})]},
+            DONE,
+            {"text": "ИИ-мастер описывает зал."},
+        ]
         w1.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Осматриваюсь"}})
         assert narration(w1) == "ИИ-мастер описывает зал."
         game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
@@ -222,7 +230,12 @@ def test_waiting_for_replies_skips_absent_player(game_client, admin_g, settings,
             pass
         presence_until(w2, arag, "reconnecting")
         # окно сбора — 5 минут, но ушедшего не ждём: мастер отвечает сразу
-        llm.replies += [DONE, DONE, {"text": "Торин открывает дверь."}]
+        torin = rows(settings, Character, Character.campaign_id == c["id"], Character.name == "Торин")[0]
+        llm.replies += [
+            {"tool_calls": [("auto_success", {"character_id": torin.id, "reason": "открывает дверь"})]},
+            DONE,
+            {"text": "Торин открывает дверь."},
+        ]
         w2.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Открываю дверь"}})
         assert narration(w2).endswith("открывает дверь.")
         game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])

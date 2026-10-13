@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import plot
 from app.core.campaigns import AccessDenied, Conflict, Viewer, master_seat
 from app.core.linker import autolink, link_text
+from app.core.scene_context import message_scene_context
 from app.core.world import get_scene, party_groups
 from app.db.models import Campaign, Character, GameSession, MasterTurn, Message, now
 
@@ -36,7 +37,8 @@ def message_payload(
     msg: Message,
     names: dict[str, str] | None = None,
     state: str | None = None,
-    *, effects: dict[str, str] | None = None,
+    *,
+    effects: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     content = autolink(msg.content, {}, effects=effects) if effects and msg.kind == "narration" else msg.content
     return {
@@ -50,6 +52,9 @@ def message_payload(
         "data": msg.data,
         "created_at": msg.created_at.isoformat() if msg.created_at else None,
         "state": state,
+        "scene_context": (msg.data or {}).get("scene_context"),
+        "scope": (msg.data or {}).get("scope")
+        or ("private" if msg.visible_to is not None else "party" if (msg.data or {}).get("place") else "public"),
     }
 
 
@@ -114,6 +119,21 @@ async def post_message(
         if len(groups) > 1:
             data = {"place": place}
             visible_to = audience(viewer.campaign, groups[place])
+
+    if kind != "ooc":
+        context_place = (data or {}).get("place") or place
+        context = await message_scene_context(session, viewer.campaign, context_place)
+        data = {
+            **(data or {}),
+            "scene_context": context,
+            "scope": (
+                "private"
+                if visible_to is not None and kind == "whisper"
+                else "party"
+                if visible_to is not None
+                else "public"
+            ),
+        }
 
     msg = Message(
         campaign_id=viewer.campaign.id,

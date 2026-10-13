@@ -12,9 +12,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, UserDep
-from app.core import audio
+from app.core import audio, menu_music
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
 from app.db.models import ContentPack
+from app.gateway.protocol import AudioTrack
 
 router = APIRouter(prefix="/api", tags=["audio"])
 FOREVER = {"Cache-Control": "private, max-age=31536000, immutable"}
@@ -27,6 +28,19 @@ def lib(request: Request) -> audio.Library:
 def _admin(user) -> None:
     if not is_admin(user):
         raise AccessDenied("библиотека звука доступна Admin и Super Admin")
+
+
+@router.get("/menu-music")
+async def menu_theme(request: Request) -> AudioTrack | None:
+    return menu_music.theme_track(request.app.state.settings.audio_dir)
+
+
+@router.get("/menu-music/file")
+async def menu_theme_file(request: Request) -> FileResponse:
+    path = menu_music.theme_path(request.app.state.settings.audio_dir)
+    if not path.is_file():
+        raise NotFound("тема главного меню не найдена")
+    return FileResponse(path, media_type="audio/mpeg", headers=FOREVER)
 
 
 @router.get("/audio/{track_id}")

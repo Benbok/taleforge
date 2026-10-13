@@ -27,6 +27,8 @@ def effects_committed(
     place: str | None,
     inputs: dict[str, Any],
     crew: list[str] | None = None,
+    reserved_fact_refs: list[str] | None = None,
+    adaptation_effects: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "version": VERSION,
@@ -39,6 +41,8 @@ def effects_committed(
         "attempts": 0,
         "inputs": inputs,
         **({"crew": crew} if crew is not None else {}),
+        "reserved_fact_refs": reserved_fact_refs or [],
+        "adaptation_effects": adaptation_effects or [],
     }
 
 

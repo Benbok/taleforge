@@ -1,12 +1,17 @@
-// Формы данных сервера, которые читает клиент. Неизвестные поля клиент игнорирует.
 import type { ServerEvent } from "./api.gen";
-export type { AudioSfxReady } from "./api.gen";
+export type { AudioSfxReady, NarrativePreparationStatusOut, NarrativeSettingsIn } from "./api.gen";
 import type { Spellbook } from "./spells";
+
+export interface MenuMusicPreferences {
+  enabled: boolean;
+  volume: number;
+}
 
 export interface User {
   id: string;
   name: string;
   platform_role: "super_admin" | "admin" | "player";
+  menu_music: MenuMusicPreferences;
 }
 
 export interface PartyMember {
@@ -101,11 +106,28 @@ export interface ChatMessage {
         voice_parts?: number;
         whisper_reply?: string;
         place?: string;
+        scene_context?: SceneContext | null;
+        scope?: "public" | "party" | "private" | null;
       })
     | null;
   created_at: string | null;
   state?: ReplyState | null;
+  scene_context?: SceneContext | null;
+  scope?: "public" | "party" | "private" | null;
   fresh?: boolean;
+}
+
+export interface SceneContext {
+  location_id: string;
+  location_name?: string | null;
+  presentation?: LocationPresentation | null;
+}
+
+export interface LocationPresentation {
+  preset?: "neutral" | "tavern" | "coast" | "forest" | "ruins" | "crypt" | "sanctuary";
+  period?: "dawn" | "day" | "dusk" | "night" | null;
+  weather?: "clear" | "cloudy" | "rain" | "fog" | "snow" | null;
+  illustration_key?: string | null;
 }
 
 export interface RollCard {
@@ -197,6 +219,7 @@ export interface Scene {
   mode: "free" | "combat";
   round: number;
   location: { id: string; name: string } | null;
+  presentation?: LocationPresentation | null;
   /** Есть, только когда отряд разделился. */
   party?: PartyPart[];
   entities: SceneEntity[];
@@ -258,6 +281,9 @@ export interface EntityCard {
   kind_name?: string;
   lore?: string;
   habits?: string;
+  /** Принятая роль и мотив из канона кампании — только то, что адресовано этому герою или отряду. */
+  role?: string;
+  motivation?: string;
   condition?: string | null;
   attacks?: string[];
   vulnerable?: string[];
@@ -450,6 +476,12 @@ export interface AudioTrack {
   layer: string; // music | sfx
   url: string;
   gain_db: number;
+  attribution?: {
+    author?: string;
+    url?: string;
+    license?: string;
+    license_url?: string;
+  };
   level?: number; // громкость музыки до настроек игрока, 0..1
   since?: number; // с какого момента по часам сервера звучит петля
   mood?: string | null; // настроение сцены, под которое подобрана музыка

@@ -17,7 +17,17 @@ from app.content.catalog import campaign_catalog
 from app.core import knowledge, plot, plot_anchors
 from app.core.brief import brief_text
 from app.core.campaigns import default_model_profile, master_seat
-from app.db.models import AgentConfig, Campaign, CampaignPlan, CampaignSecret, ContentPack, GameSession, LlmCall
+from app.db.models import (
+    AgentConfig,
+    Campaign,
+    CampaignPlan,
+    CampaignSecret,
+    ContentPack,
+    Event,
+    GameSession,
+    LlmCall,
+)
+from app.db.narrative import sync_plan_metadata
 from app.gateway.events import envelope
 
 log = logging.getLogger(__name__)
@@ -224,6 +234,7 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                     plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
                 secret.plot = plan
                 await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
+                await sync_plan_metadata(s, c, plan)  # адаптивной кампании — метаданные закрепления каркаса
                 settings = dict(c.settings or {})
                 settings["poster"] = plot.poster(plan)
                 if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
@@ -291,10 +302,55 @@ async def revise(svc, cid: str) -> str | None:
             if c is None or secret is None or not plot.has_plan(secret.plot):
                 return None
             seat = master_seat(c)
-            if seat.occupant_type != "agent" or (c.settings or {}).get("replan") is False:
+            if seat.occupant_type != "agent" or (c.settings or {}).get("replan") is False or c.status == "ended":
                 return None
             if not plot.open_acts(secret.plot):
                 return None
+            from app.db.narrative import ensure_state
+
+            n_state = await ensure_state(s, cid)
+            is_adaptive = n_state.mode == "adaptive"
+            policy_ver = n_state.policy_version
+            closing = None
+            if is_adaptive:
+                # основание пересмотра — само событие закрытия акта: без проверяемого источника режиссёр не правит
+                closing = await s.scalar(
+                    select(Event)
+                    .where(Event.campaign_id == cid, Event.tool == "end_act")
+                    .order_by(Event.created_at.desc(), Event.id.desc())
+                    .limit(1)
+                )
+                closing = closing.id if closing is not None else None
+                await s.rollback()
+
+        if is_adaptive:
+            if closing is None:
+                return None
+            from app.core.narrative.contracts import BoundaryRecord, EvidenceRef
+            from app.db.narrative_jobs import SqlNarrativeJobs
+
+            # тот же ключ, что у границы хода (act_closed:<id события>): два пути дают одно задание
+            boundary = BoundaryRecord(
+                campaign_id=cid,
+                kind="act_closed",
+                source_id=closing,
+                scope="future",
+                evidence_refs=(EvidenceRef(campaign_id=cid, kind="event", source_id=closing),),
+                audience=(),
+                session_budget_ref=f"sess_{cid}",
+                policy_version=policy_ver,
+            )
+            work_id = await SqlNarrativeJobs(svc.maker).enqueue(boundary)
+            if getattr(svc, "narrative_preparer", None) is not None:
+                await svc.narrative_preparer.prepare_once(cid)  # автор вне хода и транзакции
+            if hasattr(svc, "signal_recovery"):
+                svc.signal_recovery()  # применение черновика — штатный цикл восстановления
+            return work_id
+
+        async with svc.maker() as s:
+            c = await s.get(Campaign, cid)
+            secret = await s.get(CampaignSecret, cid)
+            seat = master_seat(c)
             provider, model, api_base, temperature = await model_of(s, c)
             catalog = await campaign_catalog(s, c)
             length = length_of(c)
@@ -374,6 +430,7 @@ async def revise(svc, cid: str) -> str | None:
                 s.add(row)
                 secret.plot = merged
                 await plot_anchors.sync_bindings(s, cid, merged)  # созданные носители пересмотр не переписывает
+                await sync_plan_metadata(s, c, merged)
                 # итог пересмотра — только в версии каркаса: настройки кампании видят и игроки
                 await set_status(s, c, version=version, revision={"status": "ready"})
                 await s.flush()

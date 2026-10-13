@@ -500,6 +500,32 @@ async def commit_result(
             "notes": notes,
         }
         _finish(row, manifest, quality)
+        used_fact_refs_to_seal = []
+        for slot in plan.slots:
+            obj = by_slot.get(slot.slot_ref)
+            refs_sources = []
+            if slot.used_fact_refs:
+                refs_sources.extend(slot.used_fact_refs)
+            if obj and obj.used_fact_refs:
+                refs_sources.extend(obj.used_fact_refs)
+            if slot.anchor_id is not None:
+                b = bindings.get(slot.anchor_id)
+                if b and b.source_snapshot and b.source_snapshot.get("used_fact_refs"):
+                    refs_sources.extend(b.source_snapshot["used_fact_refs"])
+            for r in refs_sources:
+                used_fact_refs_to_seal.append(r)
+
+        if used_fact_refs_to_seal:
+            from app.core.narrative.contracts import SnapshotRef
+            from app.tools.narrative.commitments import record_commitments
+
+            await record_commitments(
+                ctx,
+                tuple(used_fact_refs_to_seal),
+                reason="spatial_generation_committed",
+                snapshot_ref=SnapshotRef(kind="event", source_id=row.id, typed_address=f"world_gen:{row.id}"),
+            )
+
         await ctx.record(
             "prepare_scene",
             target_id=target.id,

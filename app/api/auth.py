@@ -13,7 +13,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def user_out(u: User) -> UserOut:
-    return UserOut(id=u.id, name=u.name, platform_role=u.platform_role)
+    from app.api.schemas import MenuMusicPreferences
+
+    return UserOut(
+        id=u.id,
+        name=u.name,
+        platform_role=u.platform_role,
+        menu_music=MenuMusicPreferences(enabled=u.menu_music_enabled, volume=u.menu_music_volume),
+    )
 
 
 @router.post("/login")

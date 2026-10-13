@@ -163,9 +163,11 @@ def test_parser_garbage_passes_through(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [intent({"verb": "fly"}), DONE, DONE, {"text": "Ничего не происходит."}]
     n = act(game_client, p1, c["id"], "Лечу к луне")
-    assert n["content"] == "Ничего не происходит."
+    assert "Бран" in n["content"] and "действие не выполнено" in n["content"]
     (msg,) = rows(settings, Message, Message.kind == "action")
     assert msg.intent is None
+    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
+    assert turn.trace["audit"]["cancel_fallback"]
 
 
 def test_describe_and_route_helpers():

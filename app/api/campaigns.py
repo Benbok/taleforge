@@ -46,6 +46,7 @@ from app.db.models import (
     ModelProfile,
     User,
 )
+from app.db.narrative import sync_plan_metadata
 from app.gateway.events import envelope, publish_message
 from app.rules.dnd5e import Dnd5eEngine
 
@@ -148,6 +149,16 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             raise NotFound("пакет не импортирован")
         if pack.manifest.get("ruleset") != "dnd5e":
             raise Conflict("пакет для другой системы правил")
+
+    if "narrative" in body.model_fields_set and body.narrative:
+        effective_mode = body.narrative.mode
+    elif "narrative_mode" in body.model_fields_set and body.narrative_mode:
+        effective_mode = body.narrative_mode
+    elif body.module_id:
+        effective_mode = "strict"
+    else:
+        effective_mode = "adaptive"
+
     campaign = await svc.create_campaign(
         session,
         user,
@@ -165,6 +176,11 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
             "allow_proposals": body.test_mode,
+            "narrative_mode": effective_mode,
+            "narrative": {
+                "mode": effective_mode,
+                "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
+            },
             "leveling": body.leveling,
             "tts_provider": body.tts_provider,
             "tts_enabled": body.tts_enabled,
@@ -210,6 +226,7 @@ async def _start_module(session, campaign: Campaign, module: AdventureModule, ho
     secret = await session.get(CampaignSecret, campaign.id)
     secret.plot = plan
     await plot_anchors.sync_bindings(session, campaign.id, plan)
+    await sync_plan_metadata(session, campaign, plan)
     settings = dict(campaign.settings or {})
     settings["module"] = {
         "id": module.id,
@@ -262,6 +279,7 @@ async def patch_campaign(
         "excluded_themes",
         "audio_enabled",
         "sfx_enabled",
+        "narrative_mode",
         "tts_provider",
         "tts_enabled",
         "tts_voice",
@@ -276,6 +294,26 @@ async def patch_campaign(
             or getattr(body, key) is not None
         ):
             settings[key] = getattr(body, key)
+    new_mode = None
+    if body.narrative is not None:
+        new_mode = body.narrative.mode
+    elif body.narrative_mode is not None:
+        new_mode = body.narrative_mode
+    if new_mode is not None:
+        settings["narrative_mode"] = new_mode
+        settings["narrative"] = {
+            "mode": new_mode,
+            "policy_version": (body.narrative.policy_version if body.narrative else None) or "2026-10-12",
+        }
+        from app.db.narrative import ensure_state, initialize_plan_metadata
+
+        st = await ensure_state(session, c.id)
+        st.mode = new_mode
+        if new_mode == "adaptive":  # каркас, принятый до включения, получает метаданные закрепления
+            secret_row = await session.get(CampaignSecret, c.id)
+            await initialize_plan_metadata(
+                session, c.id, (secret_row.plot if secret_row else None) or {}, mode=new_mode
+            )
     sound = bool(settings.get("audio_enabled")) != bool((c.settings or {}).get("audio_enabled"))
     if settings.get("scene_generation") and not (c.settings or {}).get("scene_generation"):
         from app.core.preparation import preserve_seen_places

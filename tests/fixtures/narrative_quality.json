@@ -1,0 +1,289 @@
+{
+  "cases": [
+    {
+      "id": "ally_alliance",
+      "title": "Переговоры и союз со стражником",
+      "rubric": ["choice_impact", "character_agency", "develop_existing"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["force_combat", "retroactive_enemy"],
+      "snapshot": {
+        "actors": [{"id": "creature.guard", "name": "Капитан Бран", "role": "Охрана ворот"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "develop_actor_role",
+            "actor_ref": {"campaign_id": "c1", "actor_id": "creature.guard"},
+            "new_role": "Тайный союзник отряда",
+            "ground": {"kind": "consequence", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "consequence", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["forced_complication_breaks_alliance"],
+        "operations": [
+          {
+            "kind": "develop_actor_role",
+            "actor_ref": {"campaign_id": "c1", "actor_id": "creature.guard"},
+            "new_role": "Внезапно нападает на отряд без причины",
+            "ground": {"kind": "assumed", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "assumed", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "secondary_npc",
+      "title": "Развитие второстепенного NPC трактирщика",
+      "rubric": ["develop_existing", "character_agency"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["spawn_redundant_clones"],
+      "snapshot": {
+        "actors": [{"id": "npc.innkeeper", "name": "Торин", "role": "Хозяин таверны"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "develop_actor_role",
+            "actor_ref": {"campaign_id": "c1", "actor_id": "npc.innkeeper"},
+            "new_role": "Связной сопротивления в порту",
+            "ground": {"kind": "interest", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "interest", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["redundant_npc_inflation"],
+        "operations": [
+          {
+            "kind": "add_campaign_fact",
+            "fact": {
+              "namespace": "campaign",
+              "subject_id": "npc.innkeeper_brother_5",
+              "key": "role",
+              "kind": "truth",
+              "value": "Ещё один одинаковый трактирщик"
+            },
+            "ground": {"kind": "assumed", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "assumed", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "mistaken_guess",
+      "title": "Ошибочная догадка игроков о невиновном бургомистре",
+      "rubric": ["canon_integrity", "no_false_truth_promotion"],
+      "allowed_no_change": true,
+      "forbidden_effects": ["promote_player_mistake_to_objective_truth"],
+      "snapshot": {
+        "actors": [{"id": "npc.mayor", "name": "Бургомистр", "role": "Честный чиновник"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "upsert_thread",
+            "thread": {
+              "id": "th_suspicion",
+              "status": "offered",
+              "audience": ["party"]
+            },
+            "ground": {"kind": "interest", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "interest", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["false_rumor_promoted_to_truth"],
+        "operations": [
+          {
+            "kind": "add_campaign_fact",
+            "fact": {
+              "namespace": "campaign",
+              "subject_id": "npc.mayor",
+              "key": "secret_truth",
+              "kind": "truth",
+              "value": "Бургомистр на самом деле культист, потому что игроки так подумали"
+            },
+            "ground": {"kind": "conjecture", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "conjecture", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "rejected_main_hook",
+      "title": "Отказ партии от предложения инквизитора",
+      "rubric": ["respect_player_refusal", "adaptive_alternative"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["railroad_refused_hook"],
+      "snapshot": {
+        "threads": [{"id": "th_inquisitor_hook", "status": "offered"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "transition_thread",
+            "thread_id": "th_inquisitor_hook",
+            "target_status": "abandoned",
+            "ground": {"kind": "consequence", "confidence": "explicit"}
+          },
+          {
+            "kind": "upsert_thread",
+            "thread": {
+              "id": "th_contraband_hook",
+              "status": "offered",
+              "audience": ["party"]
+            },
+            "ground": {"kind": "interest", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "consequence", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["player_refusal_reused_as_mandatory_goal"],
+        "operations": [
+          {
+            "kind": "transition_thread",
+            "thread_id": "th_inquisitor_hook",
+            "target_status": "active",
+            "ground": {"kind": "forced", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "forced", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "victory",
+      "title": "Убедительная победа над главарём бандитов",
+      "rubric": ["respect_victory", "resolve_threat"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["nullify_victory"],
+      "snapshot": {
+        "fronts": [{"id": "front.bandits", "status": "active"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "change_front_intent",
+            "front_ref": {"campaign_id": "c1", "source_kind": "front", "source_id": "front.bandits"},
+            "new_status": "stopped",
+            "ground": {"kind": "consequence", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "consequence", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["nullify_player_victory"],
+        "operations": [
+          {
+            "kind": "change_front_intent",
+            "front_ref": {"campaign_id": "c1", "source_kind": "front", "source_id": "front.bandits"},
+            "new_status": "active",
+            "intent_description": "Главарь воскресает без объяснений с удвоенной армией",
+            "ground": {"kind": "assumed", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "assumed", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "quiet_scene",
+      "title": "Спокойный привал у костра",
+      "rubric": ["pacing_breather", "no_mandatory_complication"],
+      "allowed_no_change": true,
+      "forbidden_effects": ["force_ambush_during_breather"],
+      "snapshot": {
+        "pacing": "breather"
+      },
+      "reference_good": {
+        "operations": [],
+        "grounds": [{"kind": "scene_dialogue", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["forced_complication_in_quiet_scene"],
+        "operations": [
+          {
+            "kind": "add_campaign_fact",
+            "fact": {
+              "namespace": "campaign",
+              "subject_id": "scene.camp",
+              "key": "situation_premise",
+              "kind": "intent",
+              "value": "Внезапная засада ассасинов прерывает отдых"
+            },
+            "ground": {"kind": "forced", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "forced", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "hidden_clue",
+      "title": "Скрытая улика в архиве",
+      "rubric": ["information_containment", "audience_isolation"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["leak_secret_to_public"],
+      "snapshot": {
+        "facts": [{"subject_id": "clue.ledger", "key": "secret_truth"}]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "reveal_fact",
+            "fact_ref": {"campaign_id": "c1", "namespace": "module", "subject_id": "clue.ledger", "key": "secret_truth", "version": 1},
+            "audience": ["party"],
+            "ground": {"kind": "investigation", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "investigation", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["leak_unearned_secret"],
+        "operations": [
+          {
+            "kind": "reveal_fact",
+            "fact_ref": {"campaign_id": "c1", "namespace": "module", "subject_id": "clue.ledger", "key": "secret_truth", "version": 1},
+            "audience": ["party", "world"],
+            "ground": {"kind": "none", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "none", "confidence": "low"}]
+      }
+    },
+    {
+      "id": "faction_conflict",
+      "title": "Столкновение интересов гильдии и стражи",
+      "rubric": ["faction_autonomy", "no_arbitrary_resolution"],
+      "allowed_no_change": false,
+      "forbidden_effects": ["erase_faction_identity"],
+      "snapshot": {
+        "factions": ["faction.guild", "faction.guard"]
+      },
+      "reference_good": {
+        "operations": [
+          {
+            "kind": "revise_future_situation",
+            "node_ref": "n_harbor_brawl",
+            "situation_patch": "Стража выставила патрули, а гильдия использует обходные каналы",
+            "ground": {"kind": "faction_agenda", "confidence": "explicit"}
+          }
+        ],
+        "grounds": [{"kind": "faction_agenda", "confidence": "explicit"}]
+      },
+      "reference_bad": {
+        "annotations": ["arbitrary_faction_destruction"],
+        "operations": [
+          {
+            "kind": "revise_future_situation",
+            "node_ref": "n_harbor_brawl",
+            "situation_patch": "Обе фракции бесследно исчезли из города",
+            "ground": {"kind": "none", "confidence": "low"}
+          }
+        ],
+        "grounds": [{"kind": "none", "confidence": "low"}]
+      }
+    }
+  ]
+}

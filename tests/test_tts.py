@@ -199,7 +199,9 @@ def test_master_turn_attaches_voice_when_tts_enabled(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
-        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
+        client.patch(
+            f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin
+        )  # реплики облаком
         llm.replies += [
             {
                 "tool_calls": [
@@ -254,7 +256,9 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
-        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
+        client.patch(
+            f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin
+        )  # реплики облаком
         llm.replies += [
             {
                 "tool_calls": [
@@ -321,7 +325,9 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
-        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin)  # реплики облаком
+        client.patch(
+            f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin
+        )  # реплики облаком
 
         # Выключаем озвучку мастера через PATCH кампании
         patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_enabled": False}, headers=admin)
@@ -357,6 +363,14 @@ def test_master_turn_skips_voice_when_tts_disabled_in_campaign(settings, tmp_pat
                     (
                         "roll_check",
                         {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "зала"},
+                    )
+                ]
+            },
+            {
+                "tool_calls": [
+                    (
+                        "learn_fact",
+                        {"character_ids": [ch["id"]], "subject_id": ch["id"], "fact": "Перед героем просторная зала."},
                     )
                 ]
             },
@@ -429,7 +443,11 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
         c, (p1,), ch = party(client, admin)
 
         # Меняем голос мастера на "Aoede" через PATCH кампании
-        patch_res = client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini", "tts_line_voice": "Aoede"}, headers=admin)
+        patch_res = client.patch(
+            f"/api/campaigns/{c['id']}",
+            json={"tts_line_provider": "gemini", "tts_line_voice": "Aoede"},
+            headers=admin,
+        )
         assert patch_res.status_code == 200
         assert patch_res.json()["settings"]["tts_line_voice"] == "Aoede"
 
@@ -509,7 +527,11 @@ def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
-        client.patch(f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini", "tts_text_enabled": True}, headers=admin)  # реплики облаком
+        client.patch(
+            f"/api/campaigns/{c['id']}",
+            json={"tts_line_provider": "gemini", "tts_text_enabled": True},
+            headers=admin,
+        )  # реплики облаком
 
         response = client.put(
             f"/api/campaigns/{c['id']}/master-persona",
@@ -647,7 +669,12 @@ def test_text_channel_without_line_skips_voice_line_request(settings, tmp_path):
         c, (p1,), ch = party(client, admin)
         res = client.patch(
             f"/api/campaigns/{c['id']}",
-            json={"tts_line_enabled": False, "tts_text_enabled": True, "tts_text_provider": "gemini", "tts_text_voice": "Kore"},
+            json={
+                "tts_line_enabled": False,
+                "tts_text_enabled": True,
+                "tts_text_provider": "gemini",
+                "tts_text_voice": "Kore",
+            },
             headers=admin,
         )
         assert res.status_code == 200
@@ -657,6 +684,14 @@ def test_text_channel_without_line_skips_voice_line_request(settings, tmp_path):
                     (
                         "roll_check",
                         {"character_id": ch["id"], "stat": "perception", "difficulty": "dc.medium", "reason": "река"},
+                    )
+                ]
+            },
+            {
+                "tool_calls": [
+                    (
+                        "learn_fact",
+                        {"character_ids": [ch["id"]], "subject_id": ch["id"], "fact": "Над рекой стелется туман."},
                     )
                 ]
             },

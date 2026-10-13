@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import get_args, get_type_hints
+
 from pydantic import BaseModel, Field
 
 from app.core import map_memory
 from app.core.layout import store
+from app.core.narrative.contracts import FactRef, SnapshotRef
 from app.core.object_policy import observe
 from app.db.models import Knowledge, KnownFact, now
 from app.tools.master.base import _character
@@ -128,6 +131,12 @@ class FactArgs(BaseModel):
         description="что герои теперь знают, одной фразой от третьего лица: «Староста боится леса». "
         "Только то, что они действительно узнали, без тайн, до которых не добрались",
     )
+    used_fact_refs: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="только если раскрыт сохранённый факт сюжета: его адрес «namespace:subject_id:key» "
+        "(например campaign:en_123:motivation). Обычно пусто; не пиши сюда текст факта",
+    )
 
 
 @tool(
@@ -144,6 +153,10 @@ async def learn_fact(ctx: ToolContext, a: FactArgs) -> dict:
     if subject is None:
         raise ToolError(f"нет сущности или героя {a.subject_id}")
     text = " ".join(a.fact.split())
+    if a.used_fact_refs:
+        # Сначала закрепление (атомарно, без частичной записи), потом знания героев: неверная ссылка
+        # от модели — отказ этого вызова, а не падение всего хода.
+        await _commit_used_refs(ctx, a)
     names = []
     for cid in dict.fromkeys(a.character_ids):
         ch = _character(ctx, cid)
@@ -160,4 +173,35 @@ async def learn_fact(ctx: ToolContext, a: FactArgs) -> dict:
             inverse=[{"table": "known_facts", "op": "delete", "id": row.id}],
         )
         names.append(ch.name)
+
     return {"learned": names, "subject": subject.name, "fact": text}
+
+
+FACT_NAMESPACES = get_args(get_type_hints(FactRef)["namespace"])
+FACT_KEYS = get_args(get_type_hints(FactRef)["key"])
+
+
+async def _commit_used_refs(ctx: ToolContext, a: FactArgs) -> None:
+    from app.tools.narrative.commitments import record_commitments
+
+    for ref in a.used_fact_refs:
+        parts = ref.split(":")
+        if len(parts) != 3 or parts[0] not in FACT_NAMESPACES or parts[2] not in FACT_KEYS or not parts[1]:
+            raise ToolError(
+                f"used_fact_refs: «{ref[:60]}» — не адрес факта. Формат namespace:subject_id:key, "
+                f"namespace из {', '.join(FACT_NAMESPACES)}, key из {', '.join(FACT_KEYS)}; "
+                "если сохранённый факт сюжета не раскрывается — оставь список пустым",
+                code="invalid_fact_ref",
+            )
+    snap_ref = SnapshotRef(
+        kind="event",
+        source_id=ctx.turn_id or ctx.campaign.id,
+        typed_address=f"learn_fact:{a.subject_id}",
+    )
+    try:
+        await record_commitments(ctx, tuple(a.used_fact_refs), reason="fact_learned", snapshot_ref=snap_ref)
+    except ValueError as e:
+        raise ToolError(
+            f"used_fact_refs: факт не закреплён ({e}); проверь адрес или оставь список пустым",
+            code="fact_commit_rejected",
+        ) from e

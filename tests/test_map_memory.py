@@ -51,10 +51,10 @@ def test_map_memory_sqlite_upgrade_downgrade(monkeypatch, tmp_path):
     config.set_main_option("script_location", str(root / "alembic"))
     db_path = tmp_path / "map-memory.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-    command.upgrade(config, "0022")
+    command.upgrade(config, "0025")
     with sqlite3.connect(db_path) as db:
         assert db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='map_memories'").fetchone()
-    command.downgrade(config, "0021")
+    command.downgrade(config, "0024")
     with sqlite3.connect(db_path) as db:
         assert (
             db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='map_memories'").fetchone() is None

@@ -54,12 +54,14 @@ def test_stalled_party_gets_new_opportunity(game_client, admin_g, llm, dice, set
         DONE,
         {"text": "Решётка не поддаётся, но в коридоре слышны шаги."},
     ]
-    assert act(game_client, p1, c["id"], "Снова тяну решётку")["content"].startswith("Решётка")
+    told = act(game_client, p1, c["id"], "Снова тяну решётку")["content"]
+    assert "Бран" in told and "действие не выполнено" in told
     decide = llm.requests[0]["messages"][1]["content"]
     assert "буксует уже 3 хода" in decide and "roll_fortune" in decide
     assert "Отряд долго буксовал" in llm.requests[-1]["messages"][1]["content"]
     last = rows(settings, MasterTurn, MasterTurn.campaign_id == c["id"], MasterTurn.status == "done")
     assert any(t.trace.get("stalled") for t in last)
+    assert last[-1].trace["audit"]["cancel_fallback"]
 
 
 def test_stall_counting():

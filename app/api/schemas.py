@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat
 
 Name = Field(min_length=2, max_length=64, pattern=r"^[\w .\-]+$")
 Password = Field(min_length=6, max_length=128)
@@ -42,6 +42,19 @@ class UserOut(Out):
     id: str
     name: str
     platform_role: Literal["super_admin", "admin", "player"]
+    menu_music: MenuMusicPreferences
+
+
+class MenuMusicPreferences(Out):
+    enabled: bool = True
+    volume: float = Field(default=0.2, ge=0, le=1)
+
+
+class MenuMusicPreferencesPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool = True
+    volume: StrictFloat = Field(default=0.2, ge=0, le=1)
 
 
 class UserCreateIn(BaseModel):
@@ -286,6 +299,21 @@ class CreationRulesIn(BaseModel):
     review: Literal["master", "auto"] = "master"
 
 
+class NarrativeSettingsIn(BaseModel):
+    mode: Literal["strict", "adaptive"] = "strict"
+    policy_version: str | None = None
+
+
+class NarrativeSettingsOut(Out):
+    mode: Literal["strict", "adaptive"] = "strict"
+    policy_version: str | None = None
+
+
+class NarrativePreparationStatusOut(Out):
+    status: Literal["pending", "preparing", "ready", "failed"]
+    error: str | None = None
+
+
 class CampaignCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     pack_id: str | None = None
@@ -304,6 +332,8 @@ class CampaignCreateIn(BaseModel):
         default="xp", description="рост уровней: xp — по опыту SRD, milestone — по вехам сюжета"
     )
     test_mode: bool = Field(default=False, description="тестовая кампания: видны черновые записи пакета")
+    narrative_mode: Literal["strict", "adaptive"] = Field(default="adaptive", description="Режим адаптации сюжета")
+    narrative: NarrativeSettingsIn | None = None
     module_id: str | None = Field(default=None, description="готовое приключение вместо анкеты и пакета мира")
     module_hook: str | None = Field(default=None, max_length=32, description="зацепка книги для вступления")
     owner_plays: bool = Field(default=True, description="владелец, если он не мастер, сразу занимает место игрока")
@@ -324,6 +354,8 @@ class CampaignCreateIn(BaseModel):
 class CampaignPatchIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     public_intro: str | None = Field(default=None, max_length=10000)
+    narrative_mode: Literal["strict", "adaptive"] | None = Field(default=None, description="Режим адаптации сюжета")
+    narrative: NarrativeSettingsIn | None = None
     difficulty: Literal["easy", "normal", "hard", "deadly"] | None = None
     turn_timeout_sec: int | None = Field(default=None, ge=30, le=300)
     spend_limit_usd: float | None = Field(default=None, ge=0)
@@ -414,6 +446,7 @@ class PackOut(Out):
     party_size: dict
     counts: dict
     imported_at: datetime
+    is_base: bool = False  # база правил (SRD), а не мир: в мастере кампании это пункт «без пакета»
 
 
 class SecretsIn(BaseModel):

@@ -115,6 +115,8 @@ export default function EntityPopover() {
           {card.kind_name && card.kind_name !== name && <p className="text-muted">{card.kind_name}</p>}
           {card.description && <p className="font-narration">{card.description}</p>}
           {card.lore && <p className="font-narration text-muted">{card.lore}</p>}
+          {card.role && <p>Роль: {card.role}</p>}
+          {card.motivation && <p>Чего хочет: {card.motivation}</p>}
           {card.habits && <p>Повадки: {card.habits}</p>}
           {card.condition && <p>Состояние: {card.condition}</p>}
           {card.attacks && card.attacks.length > 0 && <p>Оружие: {card.attacks.join(", ")}</p>}

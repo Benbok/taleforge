@@ -1,7 +1,7 @@
 """Location layout phases: complex structure and area geometry (generative location maps spec, §8).
 
-Revision ID: 0021
-Revises: 0020
+Revision ID: 0024
+Revises: 0023
 Create Date: 2026-10-12
 """
 
@@ -9,8 +9,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0021"
-down_revision: str | None = "0020"
+revision: str = "0024"
+down_revision: str | None = "0023"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

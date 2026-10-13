@@ -9,8 +9,9 @@ from sqlalchemy import func, select
 
 from app.agents import intent as intents
 from app.agents import rhythm, textcalls
-from app.agents.llm import LLMError, LLMReply, decide_model_for, model_for
+from app.agents.llm import LLMError, LLMQuotaError, LLMReply, decide_model_for, model_for, reply_audit_error
 from app.agents.master import checkpoint
+from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
 from app.agents.master.common import MAX_CALLS, MAX_STEPS, ROLL_TOOLS, _routable_cast, decision_tools, render
 from app.agents.master.creative import creative_context, creative_note
 from app.agents.master.helpers import (
@@ -25,10 +26,13 @@ from app.agents.master.helpers import (
     _unsettled_fails,
 )
 from app.agents.master.resolution import capture_attempt, permit_repair, resolution_prompt
+from app.agents.master.searches import unresolved_searches
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
+from app.core.narrative.view import master_canon_block
+from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
 from app.gateway.events import envelope, publish_message
@@ -45,6 +49,7 @@ from app.tools.action_plan import (
     maneuver_plan,
 )
 from app.tools.audio import AUDIO_TOOLS
+from app.tools.narrative.commitments import reserve_turn_claims
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
 from app.tools.resolution.requests import bound_tool_key
 from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -62,6 +67,12 @@ def _targets_hostile_with_spell(ctx: ToolContext, args: dict) -> bool:
     if not isinstance(caster_id, str) or not isinstance(spell_id, str) or not isinstance(target_ids, list):
         return False
     spell = spell_catalog(ctx.world.catalog).spells.get(spell_id)
+    if (
+        spell
+        and spell.get("on_fail") == ["charmed"]
+        and not any(spell.get(key) for key in ("attack", "damage", "auto_hit"))
+    ):
+        return False  # A charm save alone does not prove the target noticed an attack.
     if (
         caster_id not in ctx.world.characters
         or not spell
@@ -212,6 +223,7 @@ class TurnMixin:
             if self.players is not None:
                 self.players.reset_round(cid)
             self.schedule_summary(cid)  # сводка обновится, если набралось summary_every сообщений
+            self.signal_recovery()
         except Exception as e:  # noqa: BLE001 — сбой хода не должен ронять сервер; ход откатывается целиком
             log.exception("ход мастера %s не удался", turn_id)
             if committed:
@@ -234,6 +246,16 @@ class TurnMixin:
                         if conflict
                         else "Мастер не смог завершить ход. Ничего не изменилось: повторите действие."
                     )
+                    if isinstance(e, LLMQuotaError):
+                        text = (
+                            "У мастера исчерпан бюджет модели. Ничего не изменилось. "
+                            "Владелец кампании должен проверить лимит расходов проекта у провайдера модели "
+                            "и после восстановления бюджета перезапустить сервер."
+                            if e.budget_exhausted
+                            else "У мастера исчерпана квота запросов модели. Ничего не изменилось. "
+                            "Повторите действие через минуту; при повторном отказе владельцу нужно проверить "
+                            "квоты проекта у провайдера модели."
+                        )
                     msg = await system_message(s, c, text, None)
                     sc = await s.get(Scene, cid)
                     if sc is not None and (sc.state or {}).get("submitted"):
@@ -299,6 +321,7 @@ class TurnMixin:
                 tokens_out=reply.tokens_out,
                 cost=reply.cost,
                 latency_ms=reply.latency_ms,
+                error=reply_audit_error(reply, require_text=purpose == "narrate"),
             )
         )
         return reply
@@ -521,6 +544,7 @@ class TurnMixin:
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"{await resolution_prompt(ctx)}"
                     f"\n{creative_note(creative_context(ctx))}\n"
+                    f"{await adaptation_prompt(ctx)}\n"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
                     f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\nФаза решения: вызови нужные "
                     "инструменты. "
@@ -531,12 +555,13 @@ class TurnMixin:
         done_calls = retries = written_rounds = 0
         nudged = False
         spawn_retry = False
+        search_retry = False
         failed_transition = False
         allowed = decision_tools(ctx)
 
         async def run_call(name: str, args: dict, key: str) -> dict:
             nonlocal done_calls
-            if done_calls >= MAX_CALLS:
+            if done_calls >= MAX_CALLS and name != "adapt_story":
                 return {"ok": False, "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию"}
             if name not in allowed:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
@@ -650,7 +675,7 @@ class TurnMixin:
                 )
                 if request_key:
                     result = {**result, "request_key": request_key}
-            if name not in AUDIO_TOOLS:  # звук не отнимает вызовы у механики
+            if name not in AUDIO_TOOLS and name != "adapt_story":  # адаптация имеет собственный бюджет
                 done_calls += max(1, ctx.resolution_calls_used) if name == "adjudicate_action" else 1
             return result
 
@@ -700,6 +725,23 @@ class TurnMixin:
                     )
                     continue
                 open_ = required - ctx.closed
+                searches = unresolved_searches(ctx)
+                if searches and not search_retry and done_calls < MAX_CALLS:
+                    search_retry = True
+                    msgs.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "Результат исследования не закреплён после успешной проверки: "
+                                + ", ".join(searches)
+                                + ". До повествования запиши конкретный результат через learn_fact, "
+                                "reveal_knowledge или place_item в месте героя с discovery_check_event_id "
+                                "(event_id успешной проверки из её ответа). Если ничего ценного нет, "
+                                "запиши конкретный факт о проверенной области. Не описывай несуществующие находки."
+                            ),
+                        }
+                    )
+                    continue
                 fails = _unsettled_fails(ctx, trace_calls)
                 if fails and not nudged:
                     nudged = True  # критический провал словами не закрыть: последствие пишется в лист героя
@@ -772,7 +814,7 @@ class TurnMixin:
                     else:
                         failed_transition = True
                         failed_in_batch = True
-            admission_note = await resolution_prompt(ctx)
+            admission_note = (await resolution_prompt(ctx)) + (await adaptation_prompt(ctx))
             if admission_note:
                 msgs.append({"role": "user", "content": admission_note})
             if failed_in_batch:
@@ -787,8 +829,24 @@ class TurnMixin:
                         ),
                     }
                 )
-            if done_calls >= MAX_CALLS and all(not t["result"].get("ok") for t in trace_calls[-1:]):
+            if (
+                done_calls >= MAX_CALLS
+                and trace_calls[-1]["tool"] != "adapt_story"
+                and all(not t["result"].get("ok") for t in trace_calls[-1:])
+            ):
                 break
+
+        searches = unresolved_searches(ctx)
+        if searches:
+            diagnostics["unresolved_searches"] = searches
+            for actor in searches:
+                result = await execute(
+                    ctx,
+                    "cancel_action",
+                    {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."},
+                    key=f"{turn_id}:unresolved_search:{actor}",
+                )
+                trace_calls.append({"tool": "cancel_action", "auto": True, "result": result})
 
         # Контракт намерения: молчание запрещено — код сам фиксирует отказ (раздел 7.1)
         for cid_ in sorted(required - ctx.closed):
@@ -831,6 +889,7 @@ class TurnMixin:
             if m.kind == "roll" and heard is not None:
                 m.visible_to = heard
         # строка повествования резервируется один раз на ход; пока текста нет, её не видит никто
+        scene_context = await message_scene_context(s, c, place)
         msg = Message(
             campaign_id=cid,
             session_id=ctx.game_session_id,
@@ -839,7 +898,12 @@ class TurnMixin:
             kind="narration",
             visible_to=[],
             content="",
-            data={"pending": True},
+            data={
+                "pending": True,
+                "scene_context": scene_context,
+                "scope": "party" if heard is not None else "public",
+                **({"place": place} if place is not None else {}),
+            },
         )
         s.add(msg)
         await s.flush()
@@ -853,7 +917,44 @@ class TurnMixin:
             "plot_clock": plot_notes,
             "world": world_note,
             "stalled": bool(stall),
+            **({"unresolved_searches": searches} if searches else {}),
         }
+        adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
+        listeners = None if heard is None else tuple(h.id for h in ctx.world.characters.values() if h.seat_id in heard)
+        claims = await reserve_turn_claims(ctx, listeners)  # закрепление коммитится ниже, до LLM повествования
+        try:
+            from app.core.narrative.contracts import EvidenceRecord, EvidenceRef, NarrativePolicy, TurnBoundaryState
+            from app.core.narrative.triggers import derive_boundaries, enqueue_boundaries
+            from app.db.narrative import ensure_state
+
+            ev_recs = [
+                EvidenceRecord(
+                    ref=EvidenceRef(campaign_id=cid, kind="event", source_id=ev.id),
+                    status="applied",
+                    subject_refs=(ev.actor_id,) if ev.actor_id else (),
+                    audience=tuple(heard or ()),
+                    game_time=getattr(ev, "game_time", 0) or 0,
+                    applied_result=ev.tool,
+                )
+                for ev in ctx.events
+            ]
+            game_session = locals().get("game")
+            t_bound = TurnBoundaryState(
+                id=turn_id,
+                phase="turn",
+                session_id=getattr(game_session, "id", None) if game_session else None,
+                focus=place,
+                audience=tuple(heard or ()),
+                external_boundary=False,
+            )
+            n_st = await ensure_state(s, cid)
+            pol = NarrativePolicy(mode=n_st.mode, version=n_st.policy_version)
+            bounds = derive_boundaries(tuple(ev_recs), t_bound, pol)
+            if bounds:
+                await enqueue_boundaries(ctx, bounds)
+        except Exception:
+            log.exception("ошибка вычисления границ адаптации хода %s", turn_id)
+
         turn.generation_checkpoint = checkpoint.effects_committed(
             events=[ev.id for ev in ctx.events],
             operation_refs=sorted(ctx.operation_refs),
@@ -870,7 +971,9 @@ class TurnMixin:
                 "party_notes": party_notes,
                 "stalled": bool(stall),
                 "meet": meet,
+                "adaptation_notes": [e.description for e in adapt_effects] + claims,
             },
+            adaptation_effects=[e.model_dump() for e in adapt_effects],
         )
         await s.commit()
         return {"ctx": ctx, "messages": whispers, "names": names, "ids": [m.id for m in new], "skipped": False}
@@ -892,6 +995,8 @@ class TurnMixin:
                 secrets += "\n\nПо книге:\n" + book[:12000]
         elif secret and (secret.setting or secret.plot):
             secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
+        if canon := master_canon_block(ctx.world):
+            secrets = (secrets + "\n\n" if secrets else "") + canon
         ties = [
             f"{ch.name} ({ch.id}):\n{text}"
             for ch in ctx.world.characters.values()

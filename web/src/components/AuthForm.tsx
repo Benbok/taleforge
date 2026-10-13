@@ -54,7 +54,7 @@ export default function AuthForm({
               type="button"
               role="tab"
               aria-selected={isActive}
-              className={`flex-1 rounded-[8px] py-2 font-mono text-xs font-semibold tracking-wider transition uppercase ${
+              className={`flex-1 rounded-[8px] py-2 font-mono text-xs font-semibold tracking-wider transition-colors duration-150 ease-out uppercase ${
                 isActive
                   ? "bg-surface border border-accent/40 text-accent shadow-sm"
                   : "text-muted hover:text-ink"
@@ -67,7 +67,7 @@ export default function AuthForm({
         })}
       </div>
 
-      <div className="flex flex-col gap-3.5 pt-1">
+      <div key={mode} className="tf-tab-content flex flex-col gap-3.5 pt-1">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-semibold text-ink text-xs uppercase tracking-wider font-mono">
             Имя исследователя

@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -57,6 +58,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(64), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     platform_role: Mapped[str] = mapped_column(String(16), default="player")  # super_admin | admin | player
+    menu_music_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true(), nullable=False)
+    menu_music_volume: Mapped[float] = mapped_column(Float, default=0.2, server_default=text("0.2"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -585,6 +588,10 @@ class MapMemory(Base):
     """Персональный снимок геометрии участка и выданных проходов."""
 
     __tablename__ = "map_memories"
+    __table_args__ = (
+        Index("ix_map_memories_character_id", "character_id"),
+        Index("ix_map_memories_entity_id", "entity_id"),
+    )
 
     character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), primary_key=True)
     entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
@@ -716,3 +723,124 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --- Повествовательная адаптация ---
+
+
+class NarrativeState(Base):
+    """Повествовательное состояние кампании: режим, ревизия, счетчики и границы."""
+
+    __tablename__ = "narrative_states"
+
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    policy_version: Mapped[int] = mapped_column(Integer, default=1)
+    mode: Mapped[str] = mapped_column(String(16), default="strict")  # strict | adaptive
+    recent_boundaries: Mapped[list[Any]] = mapped_column(default=list)
+    budget_counters: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    initialized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class NarrativeFact(Base):
+    """Текущее состояние метаданных фактов: истинность, временная семантика, закрепленность и аудитория."""
+
+    __tablename__ = "narrative_facts"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "namespace", "subject_id", "key"),
+        Index("ix_narrative_facts_subject", "campaign_id", "namespace", "subject_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("nf"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    namespace: Mapped[str] = mapped_column(String(16))  # plan | module | campaign
+    subject_id: Mapped[str] = mapped_column(String(64))
+    key: Mapped[str] = mapped_column(String(32))  # role | motivation | relationship | secret_truth | situation_premise
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    kind: Mapped[str] = mapped_column(String(16))  # truth | testimony | intent
+    temporal_semantics: Mapped[str] = mapped_column(String(16))  # historical | current_state
+    freedom: Mapped[str] = mapped_column(String(16))  # draft | committed
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    depends_on: Mapped[list[Any]] = mapped_column(default=list)
+    source_refs: Mapped[list[Any]] = mapped_column(default=list)
+    snapshot_ref: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class NarrativeThread(Base):
+    """Сюжетная нить кампании: жизненный цикл, внимание и связи."""
+
+    __tablename__ = "narrative_threads"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "thread_id"),
+        Index("ix_narrative_threads_status", "campaign_id", "status", "last_developed_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("nth"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    thread_id: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), default="offered"
+    )  # offered | active | resolved | abandoned | dormant | hidden
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    subject_refs: Mapped[list[Any]] = mapped_column(default=list)
+    plan_refs: Mapped[list[Any]] = mapped_column(default=list)
+    parent_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_refs: Mapped[list[Any]] = mapped_column(default=list)
+    last_developed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class NarrativeWork(Base):
+    """Устойчивые задания фонового режиссёра (spec §15.1)."""
+
+    __tablename__ = "narrative_work"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "source_key", name="uq_narrative_work_source"),
+        Index("ix_narrative_work_status", "status", "retry_after", "lease_until"),
+        Index("ix_narrative_work_campaign_created", "campaign_id", "created_at"),
+        Index(
+            "ix_narrative_work_capacity_slot",
+            "capacity_slot",
+            unique=True,
+            sqlite_where=text("capacity_slot IS NOT NULL"),
+            postgresql_where=text("capacity_slot IS NOT NULL"),
+        ),
+        Index(
+            "ix_narrative_work_campaign_preparing",
+            "campaign_id",
+            unique=True,
+            sqlite_where=text("status = 'preparing'"),
+            postgresql_where=text("status = 'preparing'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("nw"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    source_key: Mapped[str] = mapped_column(String(128))
+    scope: Mapped[str] = mapped_column(String(16), default="future")
+    kind: Mapped[str] = mapped_column(String(32))
+    source_id: Mapped[str] = mapped_column(String(64))
+    audience: Mapped[list[Any]] = mapped_column(default=list)
+    focus: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    session_budget_ref: Mapped[str] = mapped_column(String(64))
+    policy_version: Mapped[int] = mapped_column(Integer, default=1)
+    evidence_refs: Mapped[list[Any]] = mapped_column(default=list)
+    base: Mapped[dict[str, Any] | None] = mapped_column(default=dict, nullable=True)
+    proposal_id: Mapped[str] = mapped_column(String(64))
+    draft: Mapped[dict[str, Any] | None] = mapped_column(default=dict, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    lease_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    capacity_slot: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    llm_calls: Mapped[int] = mapped_column(Integer, default=0)
+    resnapshots: Mapped[int] = mapped_column(Integer, default=0)
+    retry_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    receipt_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

@@ -39,7 +39,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "roll" && m.data) return <RollCardView card={m.data} />;
   if (m.kind === "narration" && !m.whisper) {
     return (
-      <div className="tf-pop max-w-[70ch] whitespace-pre-line font-narration text-[18px] leading-relaxed">
+      <div className={`tf-pop max-w-[70ch] whitespace-pre-line font-narration text-[18px] leading-relaxed ${m.scope === "party" ? "tf-narration-party" : ""}`}>
         {(m.data?.voice || m.data?.voice_parts) && (
           <VoiceClip clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])} expected={m.data.voice_parts} autoPlay={m.fresh} />
         )}

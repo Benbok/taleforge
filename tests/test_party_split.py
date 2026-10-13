@@ -218,7 +218,11 @@ def _seen(client, head, cid):
 
 def test_split_party_has_own_chat_and_meets_again(game_client, admin_g, llm, settings):
     cid, (p1, p2), (h1, h2), ids = _split_party(game_client, admin_g, settings)
-    llm.replies += [DONE, DONE, {"text": "В доках пахнет тиной."}]
+    llm.replies += [
+        {"tool_calls": [("auto_success", {"character_id": h2["id"], "reason": "осматривает доки"})]},
+        DONE,
+        {"text": "В доках пахнет тиной."},
+    ]
     n = act(game_client, p2, cid, "Осматриваю доки")
     assert n["content"] == "В доках пахнет тиной." and n["whisper"]  # ответ только части отряда
 

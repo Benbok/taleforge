@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import AccountSection, { type Profile } from "../profile/AccountSection";
 import MasterPresetsSection from "../profile/MasterPresetsSection";
 import PersonasSection from "../profile/PersonasSection";
+import AudioSettingsSection from "../profile/AudioSettingsSection";
 
 /** Профиль: аккаунт у всех, персоны мастера — у админов. Модели, пакеты, расходы и пользователи — в админке. */
 export default function ProfilePage() {
@@ -73,6 +74,7 @@ export default function ProfilePage() {
         {p && (
           <div className="flex flex-col gap-6">
             <AccountSection profile={p} onChange={() => profile.refetch()} />
+            <AudioSettingsSection />
 
             {/* Quick Links Card */}
             <section className="card p-5 border border-line bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4">

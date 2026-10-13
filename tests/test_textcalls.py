@@ -50,6 +50,40 @@ def test_strip_leaves_only_story():
     assert textcalls.clean(plain) == plain  # без вызовов текст не трогаем
 
 
+def test_markdown_wrapped_tool_name_and_dangling_heading_are_removed():
+    sample = (
+        "В камере тихо.\n\n***\nВызовы, сделанные в этом ходе:\n"
+        "_`describe_place` (loc_id=`en_secret`, description='камера')_\n"
+        "**`reposition`** (target='ch_private', cell='corridor')\n"
+    )
+    assert textcalls.contains(sample, textcalls.tool_names())
+    assert textcalls.clean(sample) == "В камере тихо."
+    assert textcalls.clean("_`reposition` (target='ch_private'\n") == ""
+
+
+def test_underscore_wrapped_name_is_recognized_without_consuming_wrapper():
+    sample = "Тишина.\n_reposition_ (target='ch_private')\n"
+    assert textcalls.contains(sample, {"reposition"})
+    assert textcalls.strip(sample, {"reposition"}) == "Тишина."
+
+
+def test_wrapped_calls_never_leak_into_fragmented_stream():
+    sample = "Тишина.\nВызовы, сделанные в этом ходе:\n_`reposition` (target=`ch_private`,\ncell='secret')_\n"
+    chunks = []
+
+    async def feed():
+        async def push(chunk):
+            chunks.append(chunk)
+
+        stream = textcalls.StreamFilter(push, {"reposition"})
+        for char in sample:
+            await stream(char)
+        await stream.finish()
+
+    asyncio.run(feed())
+    assert "".join(chunks).strip() == "Тишина."
+
+
 def test_stream_filter_hides_calls_in_any_chunking():
     for seed in range(40):
         rnd = random.Random(seed)
@@ -183,7 +217,7 @@ def test_master_rejects_markdown_commands_and_regenerates_story(game_client, adm
         {"text": "Бран заглядывает в пустую комнату."},
     ]
     n = act(game_client, p1, c["id"], "Оглядываюсь по сторонам")
-    assert "Бран" in n["content"] and n["content"].endswith("заглядывает в пустую комнату.")
+    assert "Бран" in n["content"] and "действие не выполнено" in n["content"]
     assert "spawn_entity" not in n["content"]
     assert rows(settings, Event, Event.tool == "spawn_entity") == []
     assert rows(settings, Event, Event.tool == "resolve_attack") == []
@@ -265,7 +299,7 @@ def test_decide_rejects_json_calls_and_asks_for_native(game_client, admin_g, llm
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
         {"text": JSON_SAMPLE},
-        DONE,
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "оглядывается"})]},
         DONE,
         {"text": "Бран оглядывается."},
     ]
@@ -281,7 +315,7 @@ def test_decide_rejects_json_calls_and_asks_for_native(game_client, admin_g, llm
 def test_narration_rewrites_markup_of_unregistered_place(game_client, admin_g, llm, settings):  # noqa: F811
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
-        DONE,
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "задаёт вопрос"})]},
         DONE,
         {"text": "Капитан указывает на [[Группа Складов]]."},
         {"text": "Капитан указывает на склады к северу."},

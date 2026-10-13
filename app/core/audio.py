@@ -19,6 +19,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -115,6 +116,7 @@ class Track:
     cues: list[str] = field(default_factory=list)
     off: bool = False
     version: str = ""  # меняется вместе с файлом: адрес с ним кэшируется браузером навсегда
+    attribution: dict[str, str] = field(default_factory=dict)
 
     def card(self) -> dict[str, Any]:
         out: dict[str, Any] = {"id": self.id, "file": self.file, "layer": self.layer, "title": self.title}
@@ -129,17 +131,22 @@ class Track:
             out["gain_db"] = self.gain_db
         if self.off:
             out["off"] = True
+        if self.attribution:
+            out["attribution"] = dict(self.attribution)
         return out
 
     def public(self) -> dict[str, Any]:
         """Что нужно плееру: адрес и громкость."""
-        return {
+        out = {
             "id": self.id,
             "title": self.title,
             "layer": self.layer,
             "url": f"/api/audio/{self.id}?v={self.version}",
             "gain_db": self.gain_db,
         }
+        if self.attribution:
+            out["attribution"] = dict(self.attribution)
+        return out
 
     def line(self, world: bool) -> str:
         """Строка каталога эффектов для мастера: коротко, чтобы не тратить токены."""
@@ -182,6 +189,15 @@ def parse_card(raw: Any) -> Track:
         raise Conflict(f"трек {tid}: неизвестные события {', '.join(bad)}; допустимо: {', '.join(CUES)}")
     if cues and layer != "sfx":
         raise Conflict(f"трек {tid}: события (cue) бывают только у эффектов")
+    source = raw.get("attribution") or {}
+    if not isinstance(source, dict):
+        raise Conflict(f"трек {tid}: attribution — сведения об авторе и лицензии")
+    attribution = {k: str(source[k]).strip() for k in ("author", "url", "license", "license_url") if source.get(k)}
+    for k in ("url", "license_url"):
+        if k in attribution:
+            url = urlsplit(attribution[k])
+            if url.scheme != "https" or not url.netloc:
+                raise Conflict(f"трек {tid}: {k} — ссылка https://")
     return Track(
         id=tid,
         file=file,
@@ -194,6 +210,7 @@ def parse_card(raw: Any) -> Track:
         packs=[str(p) for p in raw.get("packs") or []],
         cues=list(dict.fromkeys(cues)),
         off=bool(raw.get("off")),
+        attribution=attribution,
     )
 
 

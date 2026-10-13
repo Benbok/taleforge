@@ -23,9 +23,9 @@ def test_sqlite_alembic_layout_phases_upgrade_and_downgrade(monkeypatch, tmp_pat
         with sqlite3.connect(db_path) as db:
             return db.execute("SELECT sql FROM sqlite_master WHERE name = 'world_generation_states'").fetchone()[0]
 
-    command.upgrade(config, "0020")
+    command.upgrade(config, "0023")
     assert "location_layout" not in table_sql()
-    command.upgrade(config, "0021")
+    command.upgrade(config, "0024")
     assert "location_layout" in table_sql() and "location_geometry" in table_sql()
     with sqlite3.connect(db_path) as db:  # внешние ключи в sqlite3 по умолчанию выключены
         cols = db.execute("PRAGMA table_info(world_generation_states)").fetchall()
@@ -38,7 +38,7 @@ def test_sqlite_alembic_layout_phases_upgrade_and_downgrade(monkeypatch, tmp_pat
             f"INSERT INTO world_generation_states ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",
             list(row.values()),
         )
-    command.downgrade(config, "0020")
+    command.downgrade(config, "0023")
     with sqlite3.connect(db_path) as db:
         assert db.execute("SELECT COUNT(*) FROM world_generation_states").fetchone()[0] == 0
     assert "location_layout" not in table_sql() and "container_contents" in table_sql()

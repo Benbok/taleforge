@@ -59,6 +59,7 @@ class MasterService(
         media_dir: Path | None = None,
         tts: Any = None,
         coordination: Coordination | None = None,
+        narrative_preparer: Any = None,
     ):
         self.maker = sessionmaker
         self.bus = bus
@@ -71,6 +72,7 @@ class MasterService(
         self.coordination = coordination or InMemoryCoordination()
         # исполнитель подготовок мира: ход ждёт его перед описанием, восстановитель доводит активированные фазы
         self.preparer = Orchestrator(self.coordination, bus, dice_factory=dice_factory, llm=llm)
+        self.narrative_preparer = narrative_preparer
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._background: set[asyncio.Task] = set()
@@ -155,8 +157,19 @@ class MasterService(
                 await self._safe(rhythm.epilogue(self, campaign_id), "эпилог")
             else:
                 await self._safe(rhythm.session_hook(self, campaign_id, session_id), "зацепка на следующую сессию")
+                if session_id and await self._safe(self._session_boundary(campaign_id, session_id), "граница сессии"):
+                    self.signal_recovery()  # режиссёр готовит следующую сессию в перерыве
 
         self._spawn(run())
+
+    async def _session_boundary(self, campaign_id: str, session_id: str) -> str | None:
+        from app.tools.narrative.triggers import enqueue_session_closed
+
+        async with self.maker() as s:
+            c = await s.get(Campaign, campaign_id)
+            work_id = await enqueue_session_closed(s, c, session_id) if c is not None else None
+            await s.commit()
+        return work_id
 
     async def _safe(self, coro, what: str):
         try:

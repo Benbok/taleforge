@@ -38,7 +38,12 @@ def test_campaign_before_channels_keeps_line_voice_and_text_off():
 
 def test_intro_always_cloud_with_cloud_channel_voice():
     assert voicing.intro({"tts_line_provider": "voicestudio", "tts_line_voice": "clone01"}) == Channel("gemini", None)
-    st = {"tts_line_provider": "gemini", "tts_line_voice": "Puck", "tts_text_provider": "gemini", "tts_text_voice": "Aoede"}
+    st = {
+        "tts_line_provider": "gemini",
+        "tts_line_voice": "Puck",
+        "tts_text_provider": "gemini",
+        "tts_text_voice": "Aoede",
+    }
     assert voicing.intro(st) == Channel("gemini", "Aoede")  # голос текста ближе к вступлению, чем голос реплики
 
 

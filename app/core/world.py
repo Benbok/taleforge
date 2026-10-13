@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -14,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogView, Entry
-from app.core.world_objects import is_nested
+from app.core.world_objects import container_parent, is_nested
 from app.db.models import (
     ActiveEffect,
     Campaign,
@@ -69,6 +70,17 @@ class Actor:
     features: frozenset[str] = frozenset()  # ключи умений класса героя на его уровне (app/rules/dnd5e/features.py)
     class_numbers: dict = field(default_factory=dict)  # числа класса: скрытая атака, урон ярости, кость ци…
     level: int = 0
+
+    def can_target_harmfully(self, target: Actor) -> bool:
+        """Source-scoped conditions protect their source, not every other actor."""
+        return not any(
+            effect.source in (target.id, target.name)
+            and any(
+                modifier.get("target") == "can_target_source_harmfully" and modifier.get("value") is False
+                for modifier in record.data.get("modifiers") or []
+            )
+            for effect, record in self.effects
+        )
 
     @property
     def alive(self) -> bool:
@@ -370,6 +382,22 @@ class World:
     # ревизия мира, от которой прочитан этот снимок (app/core/world_tx.py)
     revision: int = 0
     _actors: dict[str, Actor] = field(default_factory=dict)
+    # принятый канон кампании (app/core/narrative/view.py): роли, мотивы и переопределения модуля
+    narrative_view: Any | None = None
+
+    def narrative_entry(self, rec: Entry | None, *, audience: tuple[str, ...] | None = None) -> Entry | None:
+        """Запись пакета с переопределениями этой кампании; общий каталог не мутируется."""
+        if rec is None or self.narrative_view is None:
+            return rec
+        from app.core.narrative.view import effective_module_entry
+
+        return effective_module_entry(rec, self.narrative_view, audience=audience)
+
+    def narrative_facts(self, subject_ids: Iterable[str | None], *, audience: tuple[str, ...] | None = None) -> tuple:
+        """Принятые повествовательные свойства субъектов, видимые аудитории (None — мастер)."""
+        if self.narrative_view is None:
+            return ()
+        return self.narrative_view.facts_for(tuple(i for i in subject_ids if i), audience=audience)
 
     def actor(self, actor_id: str) -> Actor:
         if actor_id in self._actors:
@@ -562,10 +590,34 @@ class World:
             "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
             # предметы, лежащие в сцене: их можно подобрать
-            "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)],
+            "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)]
+            + [item.id for item, _ in self.known_scene_possessions()],
             # все существа мира, включая ушедших со сцены: за побеждённых без убийства дают опыт
             "creatures": [e.id for e in self.entities.values() if e.kind == "creature"],
         }
+
+    def known_scene_possessions(self) -> list[tuple[Entity, Entity]]:
+        """Known possessions of present NPCs, for master tool selection only."""
+        from app.core.object_policy import concealed
+
+        present = {en.id for en in self.in_scene_entities() if en.kind == "creature"}
+        heroes = [h for h in self.characters.values() if h.status in PLAYABLE]
+        return [
+            (item, owner)
+            for item in self.entities.values()
+            if item.campaign_id == self.campaign.id
+            and is_scene_item(item)
+            and (owner := self.entities.get(container_parent(item) or "")) is not None
+            and owner.id in present
+            and owner.campaign_id == self.campaign.id
+            and (item.state or {}).get("world_object", {}).get("physical") != "destroyed"
+            and any(
+                item.id in self.revealed.get(hero.id, set())
+                and self.place_of(hero) == owner.location_id
+                and not concealed(owner, self.entities, self.revealed.get(hero.id, set()))
+                for hero in heroes
+            )
+        ]
 
     def scene_table(self) -> str:
         """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1). Разделившийся отряд
@@ -616,6 +668,13 @@ class World:
             )
         ids = {ch.id for ch in shown} | {e.id for e in self.in_scene_entities(None)}
         lines += self._condition_rules(ids)
+        possessions = self.known_scene_possessions()
+        if possessions:
+            lines.append("Известные вещи у NPC (получить или украсть через pick_up_item):")
+            lines += [
+                f"  {item.id} {item.name} ×{int((item.state or {}).get('qty') or 1)} — владелец {owner.id} {owner.name}"
+                for item, owner in possessions
+            ]
         if apart:
             lines.append(
                 "Отряд разделён, этот ход — только для героев выше. Другие части отряда (не описывай их, они услышат "
@@ -880,6 +939,11 @@ async def load_world(
         ).all()
     )
     secret = await session.get(CampaignSecret, campaign.id, populate_existing=refresh)
+    plot = copy.deepcopy(secret.plot) if secret and secret.plot else {}
+    from app.db.narrative import load_narrative_view
+
+    # единое представление канона: общий каталог пакета не меняется, переопределения кампании — поверх него
+    narrative_view = await load_narrative_view(session, campaign.id, plot, tuple(campaign.content_chain or ()))
     revealed: dict[str, set[str]] = {}
     if ids:
         q = select(Knowledge.character_id, Knowledge.entity_id).where(
@@ -902,8 +966,9 @@ async def load_world(
         entities={e.id: e for e in ents},
         inventory=inventory,
         effects=effects,
-        plot=copy.deepcopy(secret.plot) if secret and secret.plot else {},
+        plot=plot,
         revealed=revealed,
         map_known=map_known,
+        narrative_view=narrative_view,
         revision=revision if (base := world_tx.base_revision(session, campaign.id)) is None else base,
     )

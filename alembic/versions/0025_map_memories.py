@@ -4,11 +4,14 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
-revision: str = "0022"
-down_revision: str | None = "0021"
+revision: str = "0025"
+down_revision: str | None = "0024"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+JSON = sa.JSON().with_variant(postgresql.JSONB(), "postgresql")
 
 
 def upgrade() -> None:
@@ -16,10 +19,10 @@ def upgrade() -> None:
         "map_memories",
         sa.Column("character_id", sa.String(length=32), nullable=False),
         sa.Column("entity_id", sa.String(length=32), nullable=False),
-        sa.Column("snapshot", sa.JSON(), nullable=True),
-        sa.Column("discovered_passages", sa.JSON(), nullable=False, server_default="[]"),
+        sa.Column("snapshot", JSON, nullable=True),
+        sa.Column("discovered_passages", JSON, nullable=False, server_default="[]"),
         sa.Column("revision", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["character_id"], ["characters.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["entity_id"], ["entities.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("character_id", "entity_id"),

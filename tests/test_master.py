@@ -124,7 +124,7 @@ def test_silent_model_gets_auto_cancel(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [DONE, DONE, {"text": "Ничего не происходит."}]
     n = act(game_client, p1, c["id"], "Лезу на башню")
-    assert n["content"] == "Ничего не происходит."
+    assert "действие не выполнено" in n["content"]
     # после молчания модель переспросили про незакрытое действие
     assert "Не закрыты действия" in llm.requests[1]["messages"][-1]["content"]
     (ev,) = rows(settings, Event, Event.tool == "cancel_action")
@@ -237,16 +237,16 @@ def test_narration_corrects_unregistered_numbered_enemies(game_client, admin_g, 
 
 
 def test_narration_blocks_repeated_unregistered_enemies(game_client, admin_g, llm, settings):
-    c, (p1,), _ = party(game_client, admin_g)
+    c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
-        DONE,
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "осматривается"})]},
         DONE,
         {"text": "Скелет 1 бежит на вас."},
         {"text": "Скелет 1 уже стоит перед вами."},
     ]
     msg = act(game_client, p1, c["id"], "Осматриваюсь")
     assert "Скелет 1" not in msg["content"]
-    assert "отсутствуют в реестре мира" in msg["content"]
+    assert "Появление новых участников не подтверждено текущей сценой" in msg["content"]
     (turn,) = rows(settings, MasterTurn)
     assert turn.trace["audit"]["blocked_actors"] == ["Скелет 1"]
 

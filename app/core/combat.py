@@ -472,7 +472,7 @@ def _multiattack(ctx: ToolContext, act: Actor) -> list[str]:
 def _pick_target(ctx: ToolContext, act: Actor) -> Actor | None:
     """Цель — стоящий на ногах герой с наименьшими хитами (добить слабого — поведение обоих профилей SRD-монстров).
     Только в месте существа: героев другой части отряда оно не достаёт."""
-    heroes = _heroes_standing(ctx, _at(ctx, act.id))
+    heroes = [hero for hero in _heroes_standing(ctx, _at(ctx, act.id)) if act.can_target_harmfully(hero)]
     return min(heroes, key=lambda a: (a.hp.current, a.id)) if heroes else None
 
 
@@ -495,12 +495,18 @@ async def creature_turn(ctx: ToolContext, act: Actor, key: str, notes: list[str]
         return
     target = _pick_target(ctx, act)
     if target is None:
+        if any(record.id == "condition.charmed" for _, record in act.effects):
+            notes.append(f"{act.name} не атакует: доступная цель защищена очарованием.")
         return
     melee = [a for a in act.attacks if a["kind"] == "melee"]
     ranged = [a for a in act.attacks if a["kind"] == "ranged" or a.get("normal_ft")]
     if _on_grid(ctx, en.id):
         # бой на сетке: бьёт того, кто рядом; иначе идёт к соседней с целью клетке в пределах скорости
-        near = [h for h in _heroes_standing(ctx, _at(ctx, en.id)) if ctx.world.distance_ft(act, h) <= REACH_FT]
+        near = [
+            h
+            for h in _heroes_standing(ctx, _at(ctx, en.id))
+            if ctx.world.distance_ft(act, h) <= REACH_FT and act.can_target_harmfully(h)
+        ]
         if near:
             target = min(near, key=lambda a: (a.hp.current, a.id))
         close = ctx.world.distance_ft(act, target) <= REACH_FT
@@ -617,6 +623,10 @@ def _attack_note(who: str, target: str, r: dict) -> str:
 
 
 def _melee_attack(a: Actor) -> str | None:
+    """Оружие автоатаки (вдогонку): то, что в руках, затем любое рукопашное из инвентаря, затем безоружный удар."""
+    for x in a.attacks:
+        if x["kind"] == "melee" and x.get("inventory_id") and x.get("equipped"):
+            return x["inventory_id"]
     for x in a.attacks:
         if x["kind"] == "melee" and x.get("inventory_id"):
             return x["inventory_id"]

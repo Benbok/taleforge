@@ -148,6 +148,12 @@ class FinishMixin:
             ids = list(cp.get("event_ids") or [])
             found = {ev.id: ev for ev in await s.scalars(select(Event).where(Event.id.in_(ids)))} if ids else {}
             ctx.events = [found[i] for i in ids if i in found]
+            audience = cp.get("audience")
+            ctx.narration_viewer_ids = {
+                character.id
+                for character in ctx.world.characters.values()
+                if audience is None or character.seat_id in audience
+            }
             system = await self._system_prompt(s, c, cfg, ctx) + (inputs.get("mood") or "")
             head = await s.get(Message, cp["narration_message_id"])
             tool_attempts = (turn.trace or {}).get("calls") or []
@@ -188,6 +194,7 @@ class FinishMixin:
                 stalled=bool(inputs.get("stalled")),
                 meet=meet,
                 tool_attempts=tool_attempts,
+                adaptation_notes=inputs.get("adaptation_notes") or [],
             )
         except BaseException:
             if voice_task is not None:
@@ -215,7 +222,11 @@ class FinishMixin:
             msg.content = await link_text(s, cid, narration)
             msg.visible_to = self._audience_for(c, cp.get("audience"))
             place = cp.get("place")
-            data = {"place": place} if msg.visible_to is not None and place is not None else {}
+            data = {
+                **({"place": place} if msg.visible_to is not None and place is not None else {}),
+                "scene_context": (msg.data or {}).get("scene_context"),
+                "scope": (msg.data or {}).get("scope") or ("party" if msg.visible_to is not None else "public"),
+            }
             voices = [{**voice_data, "text": voice_line}] if voice_data else []
             spoken = MARKUP.sub(r"\2", narration)
             text_ch = self._tts_for(c, voicing.TEXT)
@@ -376,6 +387,14 @@ class FinishMixin:
                 await run_due(self.maker)
             except Exception:  # noqa: BLE001
                 log.exception("подготовка мира не удалась")
+        narrative_preparer = getattr(self, "narrative_preparer", None)
+        if narrative_preparer is not None:
+            narrative_due = getattr(narrative_preparer, "run_due", None)
+            if narrative_due is not None:
+                try:
+                    await narrative_due()
+                except Exception:  # noqa: BLE001
+                    log.exception("фоновая адаптация сюжета не удалась")
 
         async with self.maker() as s:
             pending = [sc.campaign_id for sc in await s.scalars(select(Scene)) if (sc.state or {}).get("transits")]

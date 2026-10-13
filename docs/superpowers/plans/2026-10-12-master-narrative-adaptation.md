@@ -21,8 +21,26 @@ Alembic, SQLite/PostgreSQL, pytest/xdist, Jinja2, существующий LLM P
 Связанный [спек локаций](../specs/2026-10-12-generative-location-maps-design.md)
 используется только для used_fact_refs; SVG-генератор здесь не реализуется.
 
-Статус: план для ревью. Задачи ещё не выполнены; команды ниже являются
-будущими проверками, не отчётом об уже прошедших тестах.
+Статус на 2026-10-13: реализация Tasks 1–21 существует, после исходного Gate D
+выполнены исправления F1–F11 и дополнительная приёмка F12. Актуальные результаты
+и ограничения: [отчёт повторного Gate D](../reviews/2026-10-13-master-narrative-adaptation-gate-d.md).
+Исторические шаги red/commit ниже сохраняются как инструкции исполнения;
+их незаполненные флажки не являются статусом текущей поставки.
+
+### Checklist текущей поставки
+
+- [x] Tasks 1–6: contracts, admission, storage, view, commitments и threads.
+- [x] Tasks 7–11: operation groups, plan patches, receipts, master и первый игровой срез.
+- [x] Tasks 12–15: durable jobs, director, recovery и committed boundaries.
+- [x] Tasks 16–18: actors, permitted drafts, module permissions и spatial dependencies.
+- [x] Tasks 19–20: front clocks, questions, настройки и безопасная диагностика.
+- [x] Task 21: структурные эталоны, реальные ограничения snapshot и adaptive default.
+- [x] Итоговая повторная приёмка Gate D (полные SQLite/PostgreSQL и пакет ревью F12).
+
+Наличие DTO `advance_front` не означает доступность операции модели:
+она отсутствует в `ACTIVE_OPERATION_KINDS`. Автоматические front clocks работают
+через `tick_fronts`; это текущая граница функциональности, а не завершённая
+проверка произвольного LLM-продвижения угроз.
 
 ## Global Constraints
 
@@ -413,8 +431,7 @@ Modify app/db/narrative.py.
   приватный отказ и наложение audience.
   ~~~python
   def test_offered_does_not_become_active_without_player_choice():
-      result = transition_thread(thread(status="offered"), "active",
-                                 interest_ground())
+      result = transition_thread(thread(status="offered"), "active", interest_ground())
       assert result.violation == "player_choice_required"
   ~~~
   interest_ground определить через Ground в test_narrative_threads.py.
@@ -814,9 +831,7 @@ finish.py, app/tools/plot.py, app/core/narrative/contracts.py.
   отказ от главного узла, replan=false, pause и прежний strict replan.
   ~~~python
   def test_adaptation_events_do_not_spawn_recursive_director_jobs():
-      boundaries = derive_boundaries((adaptation_evidence(),),
-                                     turn_boundary(external_boundary=False),
-                                     policy())
+      boundaries = derive_boundaries((adaptation_evidence(),), turn_boundary(external_boundary=False), policy())
       assert boundaries == ()
   ~~~
   Фабрики определить через DTO в test_narrative_triggers.py.

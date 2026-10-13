@@ -14,7 +14,9 @@ import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
 import InvitePage from "./pages/InvitePage";
 import Welcome from "./pages/Welcome";
+import WorldDetailPage from "./pages/WorldDetailPage";
 import { useSession } from "./stores/session";
+import ApplicationAudio from "./audio/ApplicationAudio";
 
 const queries = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } });
 
@@ -30,9 +32,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queries}>
       <BrowserRouter>
+        <ApplicationAudio />
         <Routes>
           <Route path="/" element={user ? <Home /> : <Welcome />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+          <Route path="/worlds/:worldId" element={<WorldDetailPage />} />
           <Route path="/c/:id" element={user ? <GamePage /> : <Navigate to="/" replace />} />
           <Route path="/new" element={user ? <NewCampaignPage /> : <Navigate to="/" replace />} />
           <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/" replace />} />

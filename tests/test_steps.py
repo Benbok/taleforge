@@ -118,3 +118,31 @@ def test_walls_are_full_barrier_for_steps_and_attacks(client, admin, settings):
     assert step["cell"] == [2, 2] and step["moved_ft"] > 5  # стена — полная преграда (решение Arty)
     assert diag["cell"] == [3, 3] and diag["moved_ft"] == 5
     assert not shot["ok"] and "стена" in shot["error"], shot
+
+
+def test_world_conflict_on_step_answers_and_keeps_the_socket(client, admin, settings, monkeypatch):
+    """Шаг попал на одновременное изменение мира (второй игрок, ход мастера): игрок получает отказ шага,
+    а соединение живёт — следующий запрос на том же сокете отвечает (плейтест вдвоём, 12:48)."""
+    import app.tools.movement as movement
+    from app.core.world_tx import WorldConflict
+
+    import_base(settings)
+    c, (p1,), _hero = party(client, admin)
+    cid = c["id"]
+
+    async def walk(ctx):
+        await _ok(ctx, "create_location", {"name": "Камера", "make_current": True})
+        await _ok(ctx, "sketch_place", CELL)
+
+    _play(settings, cid, walk)
+
+    async def conflicting_step(ctx, *_a, **_kw):
+        raise WorldConflict(cid, 1)
+
+    monkeypatch.setattr(movement, "hero_step", conflicting_step)
+    with connect(client, p1, cid) as (ws, _):
+        ws.send_json({"type": "map.step", "payload": {"cell": [2, 0], "request_id": "r1"}})
+        res = next_of(ws, "map.step.result")["payload"]
+        assert res["ok"] is False and res["request_id"] == "r1" and "мир изменился" in res["error"]
+        ws.send_json({"type": "map.step", "payload": {"cell": [2, 0], "request_id": "r2"}})
+        assert next_of(ws, "map.step.result")["payload"]["request_id"] == "r2"  # сокет жив

@@ -86,7 +86,7 @@ export function useGameSocket(campaignId: string): void {
     sound.onError = (text) => toast.error(text);
     sock.start();
     return () => {
-      sound.stop();
+      sound.clearScene();
       sock.stop();
       // экран следующей кампании не должен даже на один кадр увидеть чат этой: иначе свежая озвучка отсюда
       // заиграет там, пока не придёт новый снимок

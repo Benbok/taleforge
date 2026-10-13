@@ -166,3 +166,64 @@ def test_threshold_gives_second_race_and_caste(client, admin, worlds, settings):
     assert after["sheet"]["class_id"] == "class.fighter" and after["sheet"]["origin_id"] == "origin.tushevik"
     assert after["derived"]["ac"] >= before["derived"]["ac"] + 1
     assert after["derived"]["skills"]["athletics"] == before["derived"]["skills"]["athletics"]
+
+
+def test_list_worlds_endpoint(client, worlds):
+    res = ok(client.get("/api/worlds"))
+    assert len(res) >= 2
+    ids = [w["id"] for w in res]
+    assert "echo-leviathans" in ids and "dnd5e-srd" in ids
+    echo = next(w for w in res if w["id"] == "echo-leviathans")
+    assert echo["name"] == "Эхо Левиафанов"
+    assert "БИОПАНК" in echo["category"]
+    assert len(echo["badges"]) >= 3
+
+
+def test_get_world_detail_endpoint(client, worlds):
+    echo = ok(client.get("/api/worlds/echo-leviathans"))
+    assert echo["name"] == "Эхо Левиафанов"
+    assert len(echo["lore_topics"]) > 0
+    assert len(echo["factions"]) >= 5
+    assert len(echo["locations"]) >= 5
+    assert len(echo["origins"]) >= 5
+    assert len(echo["classes"]) >= 10
+    assert len(echo["scales"]) >= 3
+    assert len(echo["clocks"]) >= 2
+    assert len(echo["bestiary"]) >= 5
+
+    # Проверка русской локализации происхождений Эхо Левиафанов
+    tushevik = next(o for o in echo["origins"] if o["id"] == "origin.tushevik")
+    assert "+2 к Телосложению" in tushevik["formatted_bonuses"]
+    assert tushevik["speed_display"] == "30 футов (9 м)"
+    assert tushevik["size_display"] == "Средний"
+    assert any(f["name"] == "Привычка к газу" for f in tushevik["features"])
+
+    srd = ok(client.get("/api/worlds/dnd5e-srd"))
+    assert "SRD" in srd["name"]
+    assert len(srd["classes"]) == 12
+    assert len(srd["origins"]) == 9
+    assert len(srd["bestiary"]) > 0
+
+    # Проверка русской локализации рас D&D 5e SRD
+    dwarf = next(o for o in srd["origins"] if o["id"] == "origin.dwarf_hill")
+    assert dwarf["formatted_bonuses"] == "+2 к Телосложению, +1 к Мудрости"
+    assert dwarf["speed_display"] == "25 футов (7.5 м)"
+    assert dwarf["size_display"] == "Средний"
+    assert len(dwarf["highlights"]) > 0
+    # Черты должны быть русифицированы
+    dwarf_feat_names = {f["name"] for f in dwarf["features"]}
+    assert "Тёмное зрение" in dwarf_feat_names
+    assert "Дварфийская стойкость" in dwarf_feat_names
+    assert "Darkvision" not in dwarf_feat_names
+
+    human = next(o for o in srd["origins"] if o["id"] == "origin.human")
+    assert human["formatted_bonuses"] == "+1 ко всем характеристикам"
+
+    half_elf = next(o for o in srd["origins"] if o["id"] == "origin.half_elf")
+    assert "+2 к Харизме" in half_elf["formatted_bonuses"]
+    assert "+1 к двум другим характеристикам на выбор" in half_elf["formatted_bonuses"]
+
+
+def test_get_unknown_world_404(client, worlds):
+    r = client.get("/api/worlds/nonexistent-world")
+    assert r.status_code == 404

@@ -110,7 +110,8 @@ def set_plan(settings, cid, p):
 
 
 def test_master_leads_by_plan(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g, brief={"length": "short"})
+    # прежний пересмотр каркаса моделью — путь strict; адаптивный пересмотр ведёт режиссёр (test_narrative_startup)
+    c, (p1,), hero = party(game_client, admin_g, brief={"length": "short"}, narrative_mode="strict")
     cid = c["id"]
 
     # без каркаса инструментов сюжета у мастера нет

@@ -272,6 +272,7 @@ class Attack:
     normal_ft: int | None = None
     long_ft: int | None = None
     inventory_id: str | None = None
+    equipped: bool | None = None  # оружие в руках; None — не надето (в as_dict не попадает)
     ability: str = "str"  # от какой характеристики удар: ярость — только Силой, скрытая атака — фехтовальным
     properties: list[str] = field(default_factory=list)
 
@@ -431,6 +432,10 @@ def derive(
         for inv_id, item, _, name in inventory
         if item.get("category") == "weapon"
     ]
+    worn = {inv_id for inv_id, item, equipped, _ in inventory if equipped and item.get("category") == "weapon"}
+    for at in attacks:
+        if at.inventory_id in worn:
+            at.equipped = True
     for at in attacks:
         if style == "archery" and at.kind == "ranged":
             at.attack_bonus += 2

@@ -37,6 +37,7 @@ class Slot:
     visual_key: str | None = None
     parent: str | None = None  # slot_ref контейнера внутри этого же плана
     anchor_id: str | None = None  # сюжетный носитель: создаётся по привязке, имя — факт сюжета
+    used_fact_refs: tuple[str, ...] = ()
 
 
 @dataclass
@@ -61,6 +62,7 @@ class ProposedObject:
     description: str = ""
     template_id: str | None = None
     anchor_id: str | None = None
+    used_fact_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

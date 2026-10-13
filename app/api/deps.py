@@ -40,3 +40,15 @@ async def current_user(
 
 
 UserDep = Annotated[User, Depends(current_user)]
+
+
+async def optional_user(
+    session: SessionDep,
+    settings: SettingsDep,
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+) -> User | None:
+    user_id = read_token(creds.credentials, settings.jwt_secret) if creds else None
+    return await session.get(User, user_id) if user_id else None
+
+
+OptionalUserDep = Annotated[User | None, Depends(optional_user)]

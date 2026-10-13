@@ -70,7 +70,7 @@ export default function SoundControl() {
         <span className="hidden truncate sm:inline">{muted ? "звук выключен" : (music?.title ?? "тишина")}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-40 flex w-72 flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-lg">
+        <div className="absolute right-0 top-10 z-50 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="font-heading text-sm text-ink">Звук сцены</span>
             <button
@@ -106,6 +106,20 @@ export default function SoundControl() {
             </ActionButton>
           )}
           {s.error && <p className="text-xs text-bad">{s.error}</p>}
+          {music?.attribution && (
+            <p className="text-[11px] text-muted">
+              Музыка: {music.attribution.url ? (
+                <a className="underline" href={music.attribution.url} target="_blank" rel="noopener noreferrer">
+                  {music.attribution.author ?? music.title}
+                </a>
+              ) : music.attribution.author}
+              {music.attribution.license && <> · {music.attribution.license_url ? (
+                <a className="underline" href={music.attribution.license_url} target="_blank" rel="noopener noreferrer">
+                  {music.attribution.license}
+                </a>
+              ) : music.attribution.license}</>}
+            </p>
+          )}
           <p className="text-[11px] text-muted">Громкость хранится в этом браузере и не меняет звук у других игроков.</p>
         </div>
       )}

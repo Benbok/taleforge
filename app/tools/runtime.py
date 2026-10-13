@@ -16,6 +16,7 @@ from app.core import audio, combat, rolls
 from app.core.campaigns import master_seat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
+from app.core.scene_presentation import scene_presentation
 from app.core.scene_view import VisibleScene, visible_scene
 from app.core.world import ZONE_NAMES, World, is_scene_item, load_world
 from app.db.models import Campaign, Entity, Message, SfxPlayback, SfxSound
@@ -28,6 +29,7 @@ from app.tools import progress as _progress_tools  # noqa: F401 — опыт и 
 from app.tools import rest as _rest_tools  # noqa: F401 — отдых и умения с перезарядкой
 from app.tools import spells as _spell_tools  # noqa: F401 — сотворение заклинаний
 from app.tools.master import adjudication as _adjudication_tools  # noqa: F401
+from app.tools.narrative import tools as _narrative_tools  # noqa: F401
 from app.tools.registry import ToolContext
 
 # Кто ещё слушает события хода в этом процессе: например, таймер голосования за отдых (app/gateway/rest.py)
@@ -168,6 +170,7 @@ def scene_payload(scene, entities: dict, characters: dict, view: VisibleScene) -
     return {
         **({"party": split} if split else {}),
         "location": {"id": loc.id, "name": loc.name} if loc else None,
+        "presentation": scene_presentation(loc).model_dump() if loc is not None else None,
         "entities": [public_entity(e) for e in view.entities],
         **battle,
     }

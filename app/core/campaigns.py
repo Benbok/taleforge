@@ -35,6 +35,11 @@ DEFAULT_SETTINGS = {
     "spend_limit_usd": None,  # лимит расходов задаёт Admin, по умолчанию нет
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
     "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
+    "narrative_mode": "adaptive",  # режим адаптации сюжета: strict / adaptive
+    "narrative": {
+        "mode": "adaptive",
+        "policy_version": "2026-10-12",
+    },
     **voicing.DEFAULTS,  # каналы озвучки: реплики локально, текст выключен
 }
 
@@ -289,6 +294,18 @@ async def create_campaign(
     else:
         raise Conflict("мастер: {type: owner} или {type: agent, provider, model}")
 
+    merged_settings = {**DEFAULT_SETTINGS, **(settings or {})}
+    n_mode = (
+        (settings or {}).get("narrative", {}).get("mode")
+        if (settings or {}).get("narrative")
+        else (settings or {}).get("narrative_mode", merged_settings.get("narrative_mode", "adaptive"))
+    )
+    merged_settings["narrative_mode"] = n_mode
+    merged_settings["narrative"] = {
+        "mode": n_mode,
+        "policy_version": (settings or {}).get("narrative", {}).get("policy_version") or "2026-10-12",
+    }
+
     campaign = Campaign(
         owner_id=owner.id,
         name=name,
@@ -299,7 +316,7 @@ async def create_campaign(
         public_intro=public_intro,
         difficulty=difficulty,
         party_size_recommended=rec["recommended"],
-        settings={**DEFAULT_SETTINGS, **(settings or {})},
+        settings=merged_settings,
         brief=brief or {},
         seats=[m, *(Seat(role="player", position=i) for i in range(1, count + 1))],
     )
@@ -310,6 +327,11 @@ async def create_campaign(
     session.add(campaign)
     await session.flush()
     session.add(CampaignSecret(campaign_id=campaign.id))
+    await session.flush()
+    from app.db.narrative import ensure_state
+
+    st = await ensure_state(session, campaign.id)
+    st.mode = n_mode
     await session.flush()
     return campaign
 

@@ -27,6 +27,7 @@ from app.api import (
     plan,
     profile,
     voice,
+    worlds,
 )
 from app.api import audio as audio_api
 from app.api import generation as generation_api
@@ -93,16 +94,59 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         if settings.sfx_enabled and settings.sfx_worker_embedded:
             app.state.sfx_worker.start()
         app.state.dice_factory = dice_factory
+        from datetime import UTC, datetime
+
+        from app.agents.director import LlmNarrativeAuthor, approx_tokens
         from app.agents.tts import TTSManager
+        from app.core.narrative.contracts import NarrativePolicy
+        from app.core.narrative.service import NarrativeService
+        from app.db.narrative_jobs import SqlNarrativeJobs
+        from app.gateway.coordination import InMemoryCoordination
+        from app.tools.narrative.reader import DbNarrativeReader
+        from app.tools.narrative.runtime import NarrativePreparerAdapter, RuntimeNarrativeApplier
 
         app.state.tts = TTSManager(settings)
+        effective_llm = llm or LiteLLMClient()
+        app.state.coordination = InMemoryCoordination()
+        app.state.narrative_jobs = SqlNarrativeJobs(app.state.sessionmaker)
+        app.state.narrative_reader = DbNarrativeReader(
+            app.state.sessionmaker,
+            policy_provider=lambda _cid=None: NarrativePolicy(mode="adaptive"),
+        )
+        app.state.narrative_applier = RuntimeNarrativeApplier(
+            app.state.sessionmaker,
+            app.state.bus,
+            coordination=app.state.coordination,
+            policy_provider=lambda _cid: NarrativePolicy(mode="adaptive"),
+            dice_factory=dice_factory,
+        )
+        app.state.narrative_author = LlmNarrativeAuthor(
+            effective_llm,
+            token_counter=approx_tokens,
+            session_maker=app.state.sessionmaker,
+        )
+        app.state.narrative_service = NarrativeService(
+            reader=app.state.narrative_reader,
+            author=app.state.narrative_author,
+            applier=app.state.narrative_applier,
+            jobs=app.state.narrative_jobs,
+            clock=lambda: datetime.now(UTC),
+        )
+        app.state.narrative_preparer = NarrativePreparerAdapter(
+            app.state.narrative_service,
+            session_maker=app.state.sessionmaker,
+            quota_check=getattr(effective_llm, "check_quota", None),
+        )
+
         app.state.master = MasterService(
             app.state.sessionmaker,
             app.state.bus,
-            llm or LiteLLMClient(),
+            effective_llm,
             dice_factory,
             media_dir=settings.media_dir,
             tts=app.state.tts,
+            coordination=app.state.coordination,
+            narrative_preparer=app.state.narrative_preparer,
         )
         await app.state.master.resume_timers()
         app.state.master.start_recovery()  # ходы с сохранёнными действиями дописываются (поставка 2)
@@ -151,6 +195,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(plan.router)
     app.include_router(profile.router)
     app.include_router(voice.router)
+    app.include_router(worlds.router)
     app.include_router(audio_api.router)
     app.include_router(sfx_api.router)
     app.include_router(ws.router)

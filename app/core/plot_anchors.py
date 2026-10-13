@@ -32,6 +32,7 @@ def carriers(plan: dict | None) -> dict[str, dict[str, Any]]:
                     "at": c.get("at"),
                     "text": c.get("text"),
                     "carrier": c["carrier"],
+                    "used_fact_refs": list(c.get("used_fact_refs") or []),
                 }
     return out
 
@@ -51,7 +52,12 @@ def _target(plan: dict, at: str | None) -> str | None:
 
 
 def snapshot(data: dict[str, Any]) -> dict[str, Any]:
-    return {"reveal_id": data["reveal_id"], "text": data.get("text"), "carrier": dict(data["carrier"])}
+    return {
+        "reveal_id": data["reveal_id"],
+        "text": data.get("text"),
+        "carrier": dict(data["carrier"]),
+        "used_fact_refs": list(data.get("used_fact_refs") or []),
+    }
 
 
 async def sync_bindings(session: AsyncSession, campaign_id: str, plan: dict | None) -> None:
@@ -179,6 +185,25 @@ async def place(ctx, binding: PlotAnchorBinding, *, place_id: str, parent: str |
     en.state = {**(en.state or {}), "plot_anchor": binding.anchor_id}
     binding.holder_entity_id = en.id
     binding.state = "materialized"
+
+    used_refs = (binding.source_snapshot or {}).get("used_fact_refs") or []
+    if used_refs:
+        to_seal = [r for r in used_refs if r]
+        if to_seal:
+            from app.core.narrative.contracts import SnapshotRef
+            from app.tools.narrative.commitments import record_commitments
+
+            await record_commitments(
+                ctx,
+                tuple(to_seal),
+                reason="plot_anchor_materialized",
+                snapshot_ref=SnapshotRef(
+                    kind="event",
+                    source_id=ref,
+                    typed_address=f"plot_anchor:{binding.anchor_id}",
+                ),
+            )
+
     return en
 
 

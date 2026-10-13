@@ -132,6 +132,10 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
         raise ToolError(f"{act.name} не заклинатель: его класс не творит заклинаний")
     if a.spell_id in sc.forbidden:
         raise ToolError(f"«{spell['name']}» героям этого мира недоступно")
+    if any(spell.get(key) for key in ("attack", "save", "damage", "auto_hit")):
+        for target_id in a.target_ids:
+            if not act.can_target_harmfully(w.actor(target_id)):
+                raise ToolError("очарованный не может выбирать источник очарования целью вредного заклинания")
     why = rules.can_cast_now(caster, rules.Choice.of(ch.sheet or {}), a.spell_id, spell, a.ritual)
     if why:
         raise ToolError(f"{act.name}: {why}")
@@ -315,7 +319,7 @@ async def resolve(
 
     async def apply(t: Actor, ref: str) -> str | None:
         rec = w.catalog.condition(ref) if "." not in ref else w.catalog.get(ref)
-        e, note = await fx.add_effect(ctx, t, rec, seconds)
+        e, note = await fx.add_effect(ctx, t, rec, seconds, source=act.id)
         outcomes.append({"target_id": t.id, "effect": rec.id, "note": note})
         if e is not None and spell.get("concentration"):
             effects_made.append(e.id)

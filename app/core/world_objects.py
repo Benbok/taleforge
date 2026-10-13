@@ -107,7 +107,9 @@ def container_chain(entity: Entity, entities: dict[str, Entity]) -> list[Entity]
         parent = entities.get(parent_id)
         if parent is None or parent.campaign_id != entity.campaign_id:
             raise ValueError("контейнер отсутствует или принадлежит другой кампании")
-        if read_world_object(parent).role != "container":
+        # Creature-owned possessions use the same nesting relation as containers.
+        # Their inventory remains closed to public visibility and container tools.
+        if parent.kind != "creature" and read_world_object(parent).role != "container":
             raise ValueError("родитель не является контейнером")
         chain.append(parent)
         current = parent

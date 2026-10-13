@@ -30,7 +30,10 @@ def test_pack_upload_checks_then_imports(client, admin):
     assert ok(client.get("/api/packs", headers=admin)) == []
     done = ok(client.post("/api/admin/packs", content=data, headers={**admin, **ZIP}))
     assert done["imported"][0]["state"] == "imported"
-    assert [p["id"] for p in ok(client.get("/api/packs", headers=admin))] == ["dnd5e-srd"]
+    listed = ok(client.get("/api/packs", headers=admin))
+    assert [p["id"] for p in listed] == ["dnd5e-srd"]
+    # база правил — не мир: мастер кампании показывает её как «без пакета», а не отдельным пунктом
+    assert listed[0]["is_base"] is True
     again = ok(client.post("/api/admin/packs", content=data, headers={**admin, **ZIP}))
     assert again["imported"][0]["state"] == "unchanged"
 

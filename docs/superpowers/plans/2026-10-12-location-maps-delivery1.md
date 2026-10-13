@@ -193,8 +193,16 @@ def test_hero_cannot_step_into_void_or_squeeze_between_void_corners(client, admi
         en = ctx.world.entities[place]
         en.state = {
             **(en.state or {}),
-            "sketch": {"shape": "cave", "cols": 4, "rows": 3, "party": [0, 0], "walls": [], "exits": [],
-                       "features": [], "mask": [".#..", "#...", "...."]},  # fmt: skip
+            "sketch": {
+                "shape": "cave",
+                "cols": 4,
+                "rows": 3,
+                "party": [0, 0],
+                "walls": [],
+                "exits": [],
+                "features": [],
+                "mask": [".#..", "#...", "...."],
+            },  # fmt: skip
         }
         w = ctx.world
         void = grid.cell_problem(w, place, (1, 0), hid)
@@ -261,13 +269,11 @@ def exit_cells(sk: dict, x: dict) -> list[tuple[int, int]]:
 В начале `check`, сразу после `inside = ...`:
 
 ```python
-    mask = sk.get("mask")
-    if mask is not None and (
-        len(mask) != rows or any(len(row) != cols or set(row) - {".", "#"} for row in mask)
-    ):
-        errors.append(f"маска пола: {rows} строк по {cols} символов «.» или «#»")
-        mask = None
-    void = (solid_cells({**sk, "walls": []}) if mask is not None else set())
+mask = sk.get("mask")
+if mask is not None and (len(mask) != rows or any(len(row) != cols or set(row) - {".", "#"} for row in mask)):
+    errors.append(f"маска пола: {rows} строк по {cols} символов «.» или «#»")
+    mask = None
+void = solid_cells({**sk, "walls": []}) if mask is not None else set()
 ```
 
 В цикле по клеткам детали заменить `if (c, r) in walls:` на `if (c, r) in walls or (c, r) in void:`.
@@ -678,8 +684,14 @@ class Blueprint:
                 description=a.get("description") or "",
                 secret=bool(a.get("secret")),
                 details=tuple(
-                    Detail(x["detail_ref"], x["name"], x.get("kind") or "object", rects(x["cells"]),
-                           bool(x.get("solid")), bool(x.get("hidden")))  # fmt: skip
+                    Detail(
+                        x["detail_ref"],
+                        x["name"],
+                        x.get("kind") or "object",
+                        rects(x["cells"]),
+                        bool(x.get("solid")),
+                        bool(x.get("hidden")),
+                    )  # fmt: skip
                     for x in a.get("details") or ()
                 ),
                 terrain=tuple(Terrain(x["kind"], rects(x["cells"])) for x in a.get("terrain") or ()),
@@ -691,8 +703,13 @@ class Blueprint:
         )
         passages = tuple(
             Passage(
-                p["passage_ref"], p["kind"], p["name"], p.get("public_name") or p["name"],
-                (end(p["ends"][0]), end(p["ends"][1])), p.get("state") or "open", bool(p.get("hidden")),
+                p["passage_ref"],
+                p["kind"],
+                p["name"],
+                p.get("public_name") or p["name"],
+                (end(p["ends"][0]), end(p["ends"][1])),
+                p.get("state") or "open",
+                bool(p.get("hidden")),
             )  # fmt: skip
             for p in d["passages"]
         )
@@ -805,10 +822,7 @@ def inner_cell(floor_: set[Cell], cols: int, rows: int, side: str, at: int) -> C
 def _ellipse(cols: int, rows: int) -> set[Cell]:
     a, b = cols / 2, rows / 2
     return {
-        (c, r)
-        for c in range(cols)
-        for r in range(rows)
-        if ((c + 0.5 - a) / a) ** 2 + ((r + 0.5 - b) / b) ** 2 <= 1.0
+        (c, r) for c in range(cols) for r in range(rows) if ((c + 0.5 - a) / a) ** 2 + ((r + 0.5 - b) / b) ** 2 <= 1.0
     }
 
 
@@ -1388,7 +1402,9 @@ def _edges(bp: Blueprint) -> list[str]:
                 else:
                     want, ok = "obstacle", seg is not None and seg.meaning == "obstacle"
                 if not ok:
-                    e.append(f"{a.area_ref}: проход {p.passage_ref} на стороне {side} — нужен край «{want}» точно по нему")
+                    e.append(
+                        f"{a.area_ref}: проход {p.passage_ref} на стороне {side} — нужен край «{want}» точно по нему"
+                    )
             for g in segs:
                 if g.meaning != "obstacle" and not any(
                     p.kind == "edge" and x.side == side and (x.start, x.width) == (g.start, g.length) for p, x in ends
@@ -1923,7 +1939,9 @@ class DeterministicLayoutProvider:
             c_taken = taken.get((part.part_ref, OPPOSITE[side]), [])
             if both_out:
                 spot, width = lo, hi - lo
-                if not (_free(p_taken, spot - pbox.along(side), width) and _free(c_taken, spot - box.along(side), width)):
+                if not (
+                    _free(p_taken, spot - pbox.along(side), width) and _free(c_taken, spot - box.along(side), width)
+                ):
                     continue
             else:
                 width = 1
@@ -2181,10 +2199,12 @@ Expected: FAIL — `alembic.util.exc.CommandError: Can't locate revision identif
 `app/db/models.py` (`WorldGenerationState.__table_args__`):
 
 ```python
-        CheckConstraint(
-            "phase IN ('location_initial', 'container_contents', 'location_layout', 'location_geometry')",
-            name="ck_world_generation_phase",
-        ),
+(
+    CheckConstraint(
+        "phase IN ('location_initial', 'container_contents', 'location_layout', 'location_geometry')",
+        name="ck_world_generation_phase",
+    ),
+)
 ```
 
 `app/core/world_generation/contracts.py`:
@@ -2721,19 +2741,20 @@ async def _publish_geometry(ctx, row: WorldGenerationState) -> dict[str, Any]:
 - [ ] **Step 5: Wire the executor into `Orchestrator`** (`app/core/world_generation/service.py`)
 
 ```python
-    def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice, llm=None, layout_provider=None):
-        ...  # прежние присваивания
-        from app.core.layout.provider import DeterministicLayoutProvider
+def __init__(self, coordination, bus=None, provider=None, dice_factory=Dice, llm=None, layout_provider=None):
+    ...  # прежние присваивания
+    from app.core.layout.provider import DeterministicLayoutProvider
 
-        self.layout_provider = layout_provider or DeterministicLayoutProvider()
+    self.layout_provider = layout_provider or DeterministicLayoutProvider()
 
-    async def prepare(self, maker, campaign_id: str, ref: str) -> str:
-        """Довести фазу до ``ready``/``blocked``. Иначе вернуть, почему остановились. Обстановка участка комплекса
-        сначала ждёт его геометрию: размещать её не на чем."""
-        for dep in await _dependencies(maker, campaign_id, ref):
-            await self.prepare(maker, campaign_id, dep)
-        async with self.coordination.generation_lock(campaign_id):
-            ...  # прежнее тело без изменений
+
+async def prepare(self, maker, campaign_id: str, ref: str) -> str:
+    """Довести фазу до ``ready``/``blocked``. Иначе вернуть, почему остановились. Обстановка участка комплекса
+    сначала ждёт его геометрию: размещать её не на чем."""
+    for dep in await _dependencies(maker, campaign_id, ref):
+        await self.prepare(maker, campaign_id, dep)
+    async with self.coordination.generation_lock(campaign_id):
+        ...  # прежнее тело без изменений
 ```
 
 В `_run` первые строки блока `try`:
@@ -2970,7 +2991,7 @@ def _live_passages(sk: dict, entities: dict) -> dict:
 В `describe`, в сборке строки выхода, перед `+ (", тайный" ...)`:
 
 ```python
-        + (f", проход {x['passage_ref']}" if x.get("passage_ref") else "")
++(f", проход {x['passage_ref']}" if x.get("passage_ref") else "")
 ```
 
 - [ ] **Step 4: Route passage edits to the root in `app/tools/master/places.py`**
@@ -3231,9 +3252,7 @@ async def reserved_for(session: AsyncSession, campaign_id: str, location_id: str
     blueprint их уже не держит (спецификация 2026-10-12, §3.1)."""
     from app.core.layout import store
 
-    base = _of(campaign_id).where(
-        PlotAnchorBinding.state == "reserved", PlotAnchorBinding.holder_entity_id.is_(None)
-    )
+    base = _of(campaign_id).where(PlotAnchorBinding.state == "reserved", PlotAnchorBinding.holder_entity_id.is_(None))
     place = await session.get(Entity, location_id)
     cx = store.complex_of(place)
     if cx is not None:
@@ -3344,7 +3363,9 @@ def test_generated_furnishing_is_bound_to_area_cells(client, admin, settings):
 
     async def resolve(ctx):
         ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
-        out = await _ok(ctx, "resolve_location", {"location_id": ids["chapel"], "profile_id": "scene_profile.warehouse"})
+        out = await _ok(
+            ctx, "resolve_location", {"location_id": ids["chapel"], "profile_id": "scene_profile.warehouse"}
+        )
         return out["operation_ref"]
 
     ref = _play(settings, cid, resolve)
@@ -4142,7 +4163,11 @@ async def traverse_passage(ctx: ToolContext, a: TraverseArgs) -> dict:
     ctx.operation_refs.update(req.refs)
     payload = {"queued": True, "passage_ref": a.passage_ref, "refs": list(req.refs)}
     await ctx.record("traverse_passage", target_id=req.dest_id, payload=payload, inverse=inverse, hidden=True)
-    return {"queued": True, "passage": a.passage_ref, "note": "участок за проходом готовится; герои перейдут до описания"}
+    return {
+        "queued": True,
+        "passage": a.passage_ref,
+        "note": "участок за проходом готовится; герои перейдут до описания",
+    }
 ```
 
 - [ ] **Step 5: Complete queued transits in the turn** (`app/agents/master/finish.py`)

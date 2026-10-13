@@ -33,6 +33,10 @@ class Stream:
     def __init__(self, bus, cid: str, msg: Message, to: list[str] | None = None) -> None:
         self.bus, self.cid, self.to = bus, cid, to  # to: места, которым виден ответ (отряд разделён)
         self.head = {"id": msg.id, "seq": msg.seq, "seat_id": msg.seat_id, "kind": msg.kind}
+        if msg.data:
+            for key in ("scene_context", "scope"):
+                if msg.data.get(key) is not None:
+                    self.head[key] = msg.data[key]
 
     async def push(self, chunk: str) -> None:
         await self.bus.publish(self.cid, envelope("message.chunk", self.cid, {**self.head, "chunk": chunk}), self.to)

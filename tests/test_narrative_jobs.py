@@ -1,0 +1,900 @@
+"""Tests for durable director jobs, leases, and state machine (spec §15, Task 12)."""
+
+import asyncio
+
+import pytest
+from sqlalchemy import select
+
+from app.core import world_tx
+from app.core.narrative.contracts import (
+    AdaptationResult,
+    EvidenceRecord,
+    EvidenceRef,
+    LeaseLost,
+    WorkClaim,
+)
+from app.db.models import Campaign, NarrativeWork, User, as_utc
+from app.db.narrative_jobs import SqlNarrativeJobs
+from app.db.session import make_sessionmaker
+from tests.game import import_base, party
+from tests.narrative_helpers import FakeClock, boundary, policy, proposal, snapshot
+
+
+@pytest.fixture
+def session_maker(client):
+    return make_sessionmaker(client.app.state.engine)
+
+
+@pytest.fixture
+def campaign_fixture(settings, client, admin):
+    import_base(settings)
+    c, _heads, _hero = party(client, admin)
+    return c
+
+
+async def _ensure_campaigns(session_maker, *cids: str) -> None:
+    async with session_maker() as session:
+        user = await session.scalar(select(User).where(User.id == "job-test-user"))
+        if not user:
+            user = User(id="job-test-user", name="tester", password_hash="hash")
+            session.add(user)
+            await session.flush()
+        for cid in cids:
+            camp = await session.scalar(select(Campaign).where(Campaign.id == cid))
+            if not camp:
+                camp = Campaign(id=cid, name=f"Camp {cid}", owner_id=user.id, ruleset_version="1.0.0")
+                session.add(camp)
+        await session.commit()
+
+
+def test_finish_links_parent_receipt_instead_of_first_child(session_maker):
+    from app.db.models import Event
+    from app.tools.narrative.executor import narrative_key
+
+    async def go():
+        await _ensure_campaigns(session_maker, "camp-receipt")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker)
+        wid = await jobs.enqueue(boundary(campaign_id="camp-receipt"))
+        claim = await jobs.claim(clock())
+        async with session_maker() as session:
+            child = Event(campaign_id=claim.campaign_id, tool="apply_future_situation", payload={})
+            parent = Event(
+                campaign_id=claim.campaign_id,
+                tool="adapt_story",
+                idempotency_key=narrative_key(claim.source),
+                payload={"source": claim.source.model_dump()},
+            )
+            session.add_all([child, parent])
+            await session.commit()
+            child_id, parent_id = child.id, parent.id
+        await jobs.finish(
+            claim, AdaptationResult(status="applied", reason_code="ok", event_ids=(child_id, parent_id)), clock()
+        )
+        async with session_maker() as session:
+            work = await session.get(NarrativeWork, wid)
+            assert work.receipt_event_id == parent_id
+
+    asyncio.run(go())
+
+
+def lease_takeover_scenario(settings, client, admin) -> dict:
+    """Simulates a slow worker whose lease expires and gets taken over by a second worker."""
+    import_base(settings)
+    c, _heads, _hero = party(client, admin)
+    cid = c["id"]
+
+    maker = make_sessionmaker(client.app.state.engine)
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(maker, max_author_slots=2)
+
+    b = boundary(campaign_id=cid, source_id="takeover-1")
+
+    async def _run():
+        await jobs.enqueue(b)
+
+        # Worker 1 claims job
+        claim1 = await jobs.claim(clock())
+        assert claim1 is not None
+        assert claim1.phase == "author"
+
+        # Worker 1 reserves 1st LLM call
+        reserved1 = await jobs.reserve_call(claim1, clock())
+        assert reserved1 is not None
+        assert reserved1.llm_calls == 1
+
+        # Time passes beyond 120s lease duration
+        clock.advance(150)
+
+        # Worker 2 claims the same job whose lease expired
+        claim2 = await jobs.claim(clock())
+        assert claim2 is not None
+        assert claim2.work_id == claim1.work_id
+        assert claim2.lease_token != claim1.lease_token
+
+        # Worker 2 reserves 2nd LLM call
+        reserved2 = await jobs.reserve_call(claim2, clock())
+        assert reserved2 is not None
+        assert reserved2.llm_calls == 2
+
+        # Worker 2 successfully saves draft
+        prop2 = proposal(summary="Новый владелец")
+        await jobs.save_draft(claim2, prop2, clock())
+
+        # Worker 1 wakes up late and attempts to save draft
+        old_save_rejected = False
+        try:
+            prop1 = proposal(summary="Старый владелец")
+            await jobs.save_draft(claim1, prop1, clock())
+        except LeaseLost:
+            old_save_rejected = True
+
+        # Read active job from DB
+        async with maker() as session:
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == claim1.work_id))
+            assert work is not None
+            active_draft_summary = work.draft.get("summary") if work.draft else None
+            llm_calls = work.llm_calls
+
+        return {
+            "old_save_rejected": old_save_rejected,
+            "active_draft_summary": active_draft_summary,
+            "llm_calls": llm_calls,
+        }
+
+    return asyncio.run(_run())
+
+
+def test_old_lease_cannot_replace_saved_draft(settings, client, admin):
+    report = lease_takeover_scenario(settings, client, admin)
+    assert report["old_save_rejected"]
+    assert report["active_draft_summary"] == "Новый владелец"
+    assert report["llm_calls"] <= 2
+
+
+def test_duplicate_enqueue_returns_same_job_id(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-dup")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        b = boundary(campaign_id="camp-dup", source_id="src-dup")
+
+        job_id_1 = await jobs.enqueue(b)
+        job_id_2 = await jobs.enqueue(b)
+
+        assert job_id_1 == job_id_2
+        async with session_maker() as session:
+            records = (
+                await session.scalars(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-dup"))
+            ).all()
+            assert len(records) == 1
+            assert records[0].status == "pending"
+
+    asyncio.run(_test())
+
+
+def test_claim_author_capacity_slots_limit(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-c1", "camp-c2", "camp-c3")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        # 3 different campaigns
+        b1 = boundary(campaign_id="camp-c1", source_id="src-1")
+        b2 = boundary(campaign_id="camp-c2", source_id="src-2")
+        b3 = boundary(campaign_id="camp-c3", source_id="src-3")
+
+        await jobs.enqueue(b1)
+        await jobs.enqueue(b2)
+        await jobs.enqueue(b3)
+
+        claim1 = await jobs.claim(clock())
+        assert claim1 is not None
+        assert claim1.capacity_slot == 0
+        assert claim1.phase == "author"
+
+        claim2 = await jobs.claim(clock())
+        assert claim2 is not None
+        assert claim2.capacity_slot == 1
+        assert claim2.phase == "author"
+
+        # Both slots are occupied: 3rd claim returns None
+        claim3 = await jobs.claim(clock())
+        assert claim3 is None
+
+        # Enqueue a second job for camp-c1
+        b1_next = boundary(campaign_id="camp-c1", source_id="src-1-next")
+        await jobs.enqueue(b1_next)
+
+        # Finish claim2 (frees slot 1)
+        prop2 = proposal(summary="Завершено c2")
+        await jobs.save_draft(claim2, prop2, clock())
+
+        # Claim prepared camp-c2 for apply and finish it
+        claim2_apply = await jobs.claim(clock())
+        assert claim2_apply is not None
+        assert claim2_apply.phase == "apply"
+        await jobs.finish(
+            claim2_apply,
+            AdaptationResult(status="applied", reason_code="ok"),
+            clock(),
+        )
+
+        # Now slot 1 is free, but camp-c1 is already preparing (claim1 is active)!
+        # Trying to claim should skip camp-c1 and claim camp-c3 for authoring
+        claim3_now = await jobs.claim(clock())
+        assert claim3_now is not None
+        assert claim3_now.campaign_id == "camp-c3"
+        assert claim3_now.capacity_slot == 1
+        assert claim3_now.phase == "author"
+
+    asyncio.run(_test())
+
+
+def test_reserve_call_budget_limit(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-calls")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-calls", source_id="src-calls")
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+
+        r1 = await jobs.reserve_call(claim, clock())
+        assert r1 is not None
+        assert r1.llm_calls == 1
+
+        r2 = await jobs.reserve_call(claim, clock())
+        assert r2 is not None
+        assert r2.llm_calls == 2
+
+        # 3rd call exceeds budget limit (max 2)
+        r3 = await jobs.reserve_call(claim, clock())
+        assert r3 is None
+
+    asyncio.run(_test())
+
+
+def test_claim_attempts_limit_and_rejected_status(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-attempts")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-attempts", source_id="src-attempts")
+        await jobs.enqueue(b)
+
+        # 6 allowed claim attempts
+        for i in range(1, 7):
+            c = await jobs.claim(clock())
+            assert c is not None, f"Claim attempt {i} should succeed"
+            assert c.attempts == i
+            # Expire lease and advance past max retry backoff (60s): 120s lease + 80s = 200s
+            clock.advance(200)
+
+        # 7th claim: exceeds max 6 attempts -> transitions to rejected, returns None
+        c7 = await jobs.claim(clock())
+        assert c7 is None
+
+        async with session_maker() as session:
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-attempts"))
+            assert work is not None
+            assert work.status == "rejected"
+
+    asyncio.run(_test())
+
+
+def test_resnapshot_limit(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-resnap")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-resnap", source_id="src-resnap")
+
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+        old_prop_id = claim.proposal_id
+
+        # 1st resnapshot succeeds
+        updated_claim = await jobs.resnapshot(claim, clock())
+        assert updated_claim is not None
+        assert updated_claim.proposal_id != old_prop_id
+
+        # 2nd resnapshot on the same job returns None (max 1 resnapshot per job)
+        failed_claim = await jobs.resnapshot(claim, clock())
+        assert failed_claim is None
+
+    asyncio.run(_test())
+
+
+def test_prepared_job_claimed_for_apply_phase(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-apply")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-apply", source_id="src-apply")
+        await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+        assert author_claim.phase == "author"
+
+        prop = proposal(summary="Черновик для применения")
+        await jobs.save_draft(author_claim, prop, clock())
+
+        # Next claim should yield phase="apply"
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+        assert apply_claim.phase == "apply"
+        assert apply_claim.draft is not None
+        assert apply_claim.draft.summary == "Черновик для применения"
+        assert apply_claim.capacity_slot is None
+
+    asyncio.run(_test())
+
+
+def test_deferred_result_keeps_prepared_status_without_reauthoring(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-defer")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-defer", source_id="src-defer")
+        await jobs.enqueue(b)
+
+        claim_author = await jobs.claim(clock())
+        prop = proposal(summary="Отложенное предложение")
+        await jobs.save_draft(claim_author, prop, clock())
+
+        claim_apply = await jobs.claim(clock())
+        assert claim_apply is not None
+        assert claim_apply.phase == "apply"
+
+        # Finish with deferred result
+        defer_res = AdaptationResult(
+            status="deferred",
+            reason_code="combat_active",
+        )
+        await jobs.finish(claim_apply, defer_res, clock())
+
+        # Status remains prepared with retry_after
+        async with session_maker() as session:
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.campaign_id == "camp-defer"))
+            assert work is not None
+            assert work.status == "prepared"
+            assert work.retry_after is not None
+
+        # Before retry_after: claim returns None
+        claim_too_early = await jobs.claim(clock())
+        assert claim_too_early is None
+
+        # Advance clock past retry_after
+        clock.advance(60)
+
+        # Claim again: still in phase="apply" with same draft, without needing to author again
+        claim_retry = await jobs.claim(clock())
+        assert claim_retry is not None
+        assert claim_retry.phase == "apply"
+        assert claim_retry.draft is not None
+        assert claim_retry.draft.summary == "Отложенное предложение"
+
+    asyncio.run(_test())
+
+
+def test_renew_extends_lease(session_maker):
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-renew")
+        clock = FakeClock()
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+        b = boundary(campaign_id="camp-renew", source_id="src-renew")
+
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+        orig_lease_until = claim.lease_until
+
+        clock.advance(30)
+        renewed = await jobs.renew(claim, clock())
+        assert renewed is True
+
+        async with session_maker() as session:
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == claim.work_id))
+            assert work is not None
+            assert as_utc(work.lease_until) > orig_lease_until
+
+        # Renew with invalid token fails
+        fake_claim = WorkClaim(
+            work_id=claim.work_id,
+            campaign_id=claim.campaign_id,
+            source=claim.source,
+            proposal_id=claim.proposal_id,
+            lease_token="invalid-token",
+            lease_until=clock(),
+            session_budget_ref="sess-1",
+        )
+        renewed_fake = await jobs.renew(fake_claim, clock())
+        assert renewed_fake is False
+
+    asyncio.run(_test())
+
+
+def test_job_operations_do_not_increase_world_revision(session_maker, campaign_fixture):
+    cid = campaign_fixture["id"]
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+
+    async def _test():
+        async with session_maker() as session:
+            rev_start = await world_tx.read_revision(session, cid)
+
+        b = boundary(campaign_id=cid, source_id="src-rev-test")
+        await jobs.enqueue(b)
+
+        async with session_maker() as session:
+            assert await world_tx.read_revision(session, cid) == rev_start
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+
+        async with session_maker() as session:
+            assert await world_tx.read_revision(session, cid) == rev_start
+
+        await jobs.reserve_call(claim, clock())
+
+        async with session_maker() as session:
+            assert await world_tx.read_revision(session, cid) == rev_start
+
+        prop = proposal(summary="Черновик без ревизии мира")
+        await jobs.save_draft(claim, prop, clock())
+
+        async with session_maker() as session:
+            assert await world_tx.read_revision(session, cid) == rev_start
+
+        claim_apply = await jobs.claim(clock())
+        assert claim_apply is not None
+
+        res = AdaptationResult(
+            status="no_change",
+            reason_code="evaluated_no_change",
+        )
+        await jobs.finish(claim_apply, res, clock())
+
+        async with session_maker() as session:
+            rev_end = await world_tx.read_revision(session, cid)
+            assert rev_end == rev_start
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R11 — claim carries boundary evidence, audience and focus (not empty defaults)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_claim_carries_evidence_audience_focus(session_maker):
+    """R11: WorkClaim must propagate evidence_refs, audience and focus from the saved job.
+
+    The SnapshotRequest built in service.py must not silently discard the
+    alliance event, character scope and scene focus that triggered the job.
+    """
+    from app.core.narrative.contracts import EvidenceRef
+
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-boundary-ctx")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        ev_ref = EvidenceRef(
+            campaign_id="camp-boundary-ctx",
+            kind="event",
+            source_id="alliance-evt-1",
+        )
+        b = boundary(
+            campaign_id="camp-boundary-ctx",
+            source_id="alliance-1",
+            kind="alliance",
+            evidence_refs=(ev_ref,),
+            audience=("hero-1", "hero-2"),
+            focus="guild-hall",
+        )
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None, "claim must succeed"
+
+        # Boundary context must survive the round-trip through the DB
+        assert len(claim.evidence_refs) == 1, "evidence_refs must not be empty"
+        assert claim.evidence_refs[0].source_id == "alliance-evt-1"
+        assert claim.audience == ("hero-1", "hero-2"), "audience lost in claim"
+        assert claim.focus == "guild-hall", "focus lost in claim"
+
+        # source.source_id must be the stable work id, not the raw boundary source_id
+        assert claim.source.source_id == claim.work_id, "source_id must equal work_id for stable receipt identity"
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R13 — two boundaries with identical source_id but different kind
+#            must produce different receipt source_key values
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_boundary_kinds_produce_distinct_receipt_sources(session_maker):
+    """R13: choice:npc-1 and relationship:npc-1 are separate jobs with distinct identities.
+
+    After each job is processed, their NarrativeSource.source_key() values must
+    differ so that receipts for the two operations never collide.
+    """
+
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-r13")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        b_choice = boundary(
+            campaign_id="camp-r13",
+            source_id="npc-1",
+            kind="choice",
+        )
+        b_rel = boundary(
+            campaign_id="camp-r13",
+            source_id="npc-1",
+            kind="relationship",
+        )
+        id_choice = await jobs.enqueue(b_choice)
+        id_rel = await jobs.enqueue(b_rel)
+
+        assert id_choice != id_rel, "distinct boundary kinds must create distinct jobs"
+
+        # Claim and finish the first job, then claim the second.
+        # (One campaign can only author one job at a time.)
+        claim_a = await jobs.claim(clock())
+        assert claim_a is not None
+
+        key_a = claim_a.source.source_key()
+        assert claim_a.source.source_id == claim_a.work_id, (
+            "source_id must be the stable work id, not the raw boundary source_id"
+        )
+
+        # Finish job A so the campaign slot is freed for job B
+        prop_a = proposal(summary="Choice draft")
+        await jobs.save_draft(claim_a, prop_a, clock())
+        apply_a = await jobs.claim(clock())
+        assert apply_a is not None and apply_a.phase == "apply"
+        await jobs.finish(apply_a, AdaptationResult(status="applied", reason_code="ok"), clock())
+
+        # Now claim job B
+        claim_b = await jobs.claim(clock())
+        assert claim_b is not None, "second job must be claimable after first is done"
+        assert claim_b.work_id != claim_a.work_id
+
+        key_b = claim_b.source.source_key()
+        assert claim_b.source.source_id == claim_b.work_id, "source_id must be the stable work id for job B"
+        assert key_a != key_b, f"receipt source_key must differ for different jobs: {key_a!r} == {key_b!r}"
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F7 / R11 — enqueue → claim round-trip preserves evidence_refs
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_enqueue_claim_roundtrip_preserves_evidence(session_maker):
+    """R11: evidence_refs stored via enqueue must survive the DB round-trip into claim."""
+    from app.core.narrative.contracts import EvidenceRef
+
+    async def _test():
+        await _ensure_campaigns(session_maker, "camp-evrt")
+        jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+        clock = FakeClock()
+
+        ev = EvidenceRef(campaign_id="camp-evrt", kind="event", source_id="evt-rt")
+        b = boundary(
+            campaign_id="camp-evrt",
+            source_id="turn-rt",
+            kind="turn",
+            evidence_refs=(ev,),
+            audience=("hero-x",),
+            focus="temple",
+        )
+        await jobs.enqueue(b)
+
+        claim = await jobs.claim(clock())
+        assert claim is not None
+        assert len(claim.evidence_refs) == 1, "evidence_refs must survive enqueue→claim"
+        assert claim.evidence_refs[0].source_id == "evt-rt"
+        assert claim.audience == ("hero-x",), "audience must survive enqueue→claim"
+        assert claim.focus == "temple", "focus must survive enqueue→claim"
+        # Stable identity: source_id is the internal work id
+        assert claim.source.source_id == claim.work_id
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R12 — applied proposal strictly belongs to the claimed job
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_applied_proposal_strictly_belongs_to_claimed_job(session_maker, campaign_fixture):
+    """R12: RuntimeNarrativeApplier verifies work/source/proposal alignment against claim.
+
+    Attempting to apply proposal B using claim A must be rejected before commit.
+    """
+    cid = campaign_fixture["id"]
+    from app.core.narrative.contracts import LeaseLost
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        b1 = boundary(campaign_id=cid, source_id="src-prop-align-1")
+        await jobs.enqueue(b1)
+
+        claim1 = await jobs.claim(clock())
+        assert claim1 is not None
+
+        # Build proposal matching claim 1
+        snap1 = snapshot(
+            source=claim1.source,
+            proposal_id=claim1.proposal_id,
+        )
+        prop1 = proposal(snap1, summary="Proposal 1")
+        await jobs.save_draft(claim1, prop1, clock())
+
+        apply_claim1 = await jobs.claim(clock())
+        assert apply_claim1 is not None
+
+        # Mismatched proposal (different proposal_id)
+        mismatched_prop = proposal(
+            snap1,
+            proposal_id="foreign-prop-999",
+            summary="Foreign Proposal",
+        )
+
+        with pytest.raises(LeaseLost, match="mismatch"):
+            await applier.apply(mismatched_prop, claim=apply_claim1)
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R14 — no_change proposal records exactly one Event and populates receipt_event_id
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_no_change_creates_single_event_and_receipt_event_id(session_maker, campaign_fixture):
+    """R14: A no_change proposal must create an adapt_story Event and record receipt_event_id."""
+    cid = campaign_fixture["id"]
+    from app.db.models import Event
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        async with session_maker() as session:
+            ev_row = Event(
+                id="evt-nc-1",
+                campaign_id=cid,
+                tool="roll_check",
+                actor_id=None,
+                hidden=False,
+                payload={},
+            )
+            session.add(ev_row)
+            await session.commit()
+
+        b = boundary(campaign_id=cid, source_id="src-nc-test")
+        work_id = await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        async with session_maker() as session:
+            current_rev = await world_tx.read_revision(session, cid)
+
+        ev = EvidenceRef(campaign_id=cid, kind="event", source_id="evt-nc-1")
+        ev_rec = EvidenceRecord(
+            ref=ev,
+            status="applied",
+            subject_refs=("npc-1",),
+            audience=("party",),
+            game_time=1000,
+            applied_result="divergence_noted",
+        )
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+            evidence=(ev_rec,),
+            base=snapshot().base.model_copy(update={"world_revision": current_rev}),
+        )
+        nc_prop = proposal(snap, summary="Никаких изменений", operations=())
+        await jobs.save_draft(author_claim, nc_prop, clock())
+
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+        assert apply_claim.phase == "apply"
+
+        res = await applier.apply(apply_claim.draft, claim=apply_claim)
+        assert res.status == "no_change", f"Unexpected status: {res.status}, reason: {res.reason_code}"
+        assert len(res.event_ids) == 1, "no_change must produce exactly one receipt event"
+
+        receipt_id = res.event_ids[0]
+        await jobs.finish(apply_claim, res, clock())
+
+        async with session_maker() as session:
+            work = await session.scalar(select(NarrativeWork).where(NarrativeWork.id == work_id))
+            assert work is not None
+            assert work.status == "no_change"
+            assert work.receipt_event_id == receipt_id
+
+            ev = await session.scalar(select(Event).where(Event.id == receipt_id))
+            assert ev is not None
+            assert ev.tool == "adapt_story"
+            assert ev.payload.get("proposal_id") == author_claim.proposal_id
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 — late worker with expired lease cannot write world and raises LeaseLost
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_late_worker_cannot_write_world_on_expired_lease(session_maker, campaign_fixture):
+    """F8: Worker whose lease expired before commit must raise LeaseLost and not advance world revision."""
+    cid = campaign_fixture["id"]
+    from app.core.narrative.contracts import LeaseLost
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=None,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        b = boundary(campaign_id=cid, source_id="src-late-worker")
+        await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+        )
+        prop = proposal(snap, summary="Черновик")
+        await jobs.save_draft(author_claim, prop, clock())
+
+        # Worker 1 claims for apply
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+
+        # Time passes past 120s lease duration
+        clock.advance(150)
+
+        # Worker 1 tries to commit using expired lease
+        with pytest.raises(LeaseLost, match="Lease lost or expired"):
+            await applier.apply(apply_claim.draft, claim=apply_claim)
+
+    asyncio.run(_test())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F8 / R14 — recording bus publishes only after successful commit
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_recording_bus_publishes_only_after_successful_commit(session_maker, campaign_fixture):
+    """R14: Bus messages are published only after database commit; rollback publishes nothing."""
+    cid = campaign_fixture["id"]
+    from app.db.models import Event
+    from app.tools.narrative.runtime import RuntimeNarrativeApplier
+
+    class RecordingBus:
+        def __init__(self):
+            self.published: list[tuple[str, dict, list[str] | None]] = []
+
+        async def publish(self, campaign_id, envelope, seats=None):
+            self.published.append((campaign_id, envelope, seats))
+
+    rec_bus = RecordingBus()
+    clock = FakeClock()
+    jobs = SqlNarrativeJobs(session_maker, max_author_slots=2)
+    applier = RuntimeNarrativeApplier(
+        session_maker,
+        bus=rec_bus,
+        coordination=None,
+        policy_provider=lambda _c: policy(),
+        clock=clock,
+    )
+
+    async def _test():
+        async with session_maker() as session:
+            ev_row = Event(
+                id="evt-bus-1",
+                campaign_id=cid,
+                tool="roll_check",
+                actor_id=None,
+                hidden=False,
+                payload={},
+            )
+            session.add(ev_row)
+            await session.commit()
+
+        b = boundary(campaign_id=cid, source_id="src-bus-test")
+        await jobs.enqueue(b)
+
+        author_claim = await jobs.claim(clock())
+        assert author_claim is not None
+
+        async with session_maker() as session:
+            current_rev = await world_tx.read_revision(session, cid)
+
+        ev = EvidenceRef(campaign_id=cid, kind="event", source_id="evt-bus-1")
+        ev_rec = EvidenceRecord(
+            ref=ev,
+            status="applied",
+            subject_refs=("npc-1",),
+            audience=("party",),
+            game_time=1000,
+            applied_result="divergence_noted",
+        )
+        snap = snapshot(
+            source=author_claim.source,
+            proposal_id=author_claim.proposal_id,
+            evidence=(ev_rec,),
+            base=snapshot().base.model_copy(update={"world_revision": current_rev}),
+        )
+        prop = proposal(snap, summary="No-change for bus", operations=())
+        await jobs.save_draft(author_claim, prop, clock())
+
+        apply_claim = await jobs.claim(clock())
+        assert apply_claim is not None
+
+        # Successful apply publishes changes
+        res = await applier.apply(apply_claim.draft, claim=apply_claim)
+        assert res.status == "no_change"
+        assert len(rec_bus.published) > 0, "bus must have published messages after commit"
+
+        # Now clear bus and verify failed apply (expired lease) does NOT publish anything
+        rec_bus.published.clear()
+        clock.advance(300)
+        try:
+            await applier.apply(apply_claim.draft, claim=apply_claim)
+        except Exception:
+            pass
+        assert len(rec_bus.published) == 0, "failed/rolled back apply must NOT publish any messages"
+
+    asyncio.run(_test())

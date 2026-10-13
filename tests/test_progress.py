@@ -263,12 +263,12 @@ def test_keep_anything_found_in_the_world(client, admin, settings):
     cid, hero, _, _ = two_heroes(client, admin, settings)
 
     async def fn(ctx):
-        sp = await call(
+        check = await call(
             ctx,
-            "spawn_entity",
-            {"creature_template_id": "creature.commoner", "name": "Прохожий", "attitude": "neutral"},
+            "roll_check",
+            {"character_id": hero, "stat": "str", "difficulty": "dc.easy", "reason": "выломать арматуру"},
         )
-        npc = sp["result"]["spawned"][0]["id"]
+        assert check["ok"] and check["result"]["success"], check
         rebar = await call(
             ctx,
             "keep_found_item",
@@ -287,9 +287,8 @@ def test_keep_anything_found_in_the_world(client, admin, settings):
                 "character_id": hero,
                 "name": "Шляпа прохожего",
                 "kind": "object",
-                "from_id": npc,
-                "how": "stolen",
-                "reason": "стянул незаметно",
+                "how": "found",
+                "reason": "нашёл брошенную шляпу",
             },
         )
         dagger = await call(
@@ -300,8 +299,8 @@ def test_keep_anything_found_in_the_world(client, admin, settings):
                 "name": "Кинжал",
                 "kind": "template",
                 "item_template_id": "item.dagger",
-                "how": "stolen",
-                "reason": "срезал с пояса",
+                "how": "found",
+                "reason": "нашёл в траве",
             },
         )
         no_tpl = await call(
@@ -315,9 +314,8 @@ def test_keep_anything_found_in_the_world(client, admin, settings):
         attacks = [x["name"] for x in ctx.world.actor(hero).attacks]
         return rebar, hat, dagger, no_tpl, use, back, attacks
 
-    rebar, hat, dagger, no_tpl, use, back, attacks = play(settings, cid, [], fn)
+    rebar, hat, dagger, no_tpl, use, back, attacks = play(settings, cid, [20], fn)
     assert rebar["ok"] and hat["ok"] and dagger["ok"], (rebar, hat, dagger)
-    assert hat["result"]["from"] == "Прохожий"
     assert not no_tpl["ok"] and "item_template_id" in no_tpl["error"]
     assert not use["ok"] and "без механики" in use["error"]
     assert back["ok"], back
@@ -328,4 +326,4 @@ def test_keep_anything_found_in_the_world(client, admin, settings):
         return {r.display_name for r in rows}
 
     assert {"Арматура", "Шляпа прохожего", "Кинжал"} <= run(settings, names)
-    assert any("Бран крадёт «Шляпа прохожего»" in x for x in system_lines(settings))
+    assert any("Бран находит «Шляпа прохожего»" in x for x in system_lines(settings))

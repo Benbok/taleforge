@@ -45,7 +45,11 @@ def test_mood_lives_in_scene_and_reaches_narration(game_client, admin_g, llm, se
         await s.commit()
 
     run(settings, angry)
-    llm.replies += [DONE, DONE, {"text": "Стражник хмурится."}]
+    llm.replies += [
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "пинает ведро"})]},
+        DONE,
+        {"text": "Стражник хмурится."},
+    ]
     with connect(game_client, p1, c["id"]) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Пинаю ведро"}})
         chunk = new = None

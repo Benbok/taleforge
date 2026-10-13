@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import ConnectionBanner from "../components/ConnectionBanner";
 import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
+import LocationHeader from "../game/LocationHeader";
+import { sceneLighting } from "../game/scenePresentation";
 import { useTurnAlerts } from "../game/combat";
 import CombatStrip from "../game/CombatStrip";
 import Composer from "../game/Composer";
@@ -62,6 +64,7 @@ export default function GamePage() {
   useGameSocket(id);
   useTurnAlerts();
   const snapshot = useGame((s) => s.snapshot);
+  const scene = useGame((s) => s.scene);
   const setTheme = useSession((s) => s.setTheme);
   const [tab, setTab] = useState<Tab>("chat");
   const heroes = useGame((s) => s.heroes);
@@ -97,6 +100,8 @@ export default function GamePage() {
   const status = card ? STATUS_TEXT[statusOf(card)] : null;
   const live = !!snapshot?.session;
   const master = snapshot?.me.role === "master";
+  const mode = useSession((s) => s.mode);
+  const lighting = sceneLighting(scene?.presentation, mode, scene?.mode === "combat");
   const manage = !!card?.is_owner || master;
 
   const side = (
@@ -108,7 +113,7 @@ export default function GamePage() {
   );
 
   return (
-    <div className="flex h-dvh flex-col bg-bg">
+    <div className="tf-game-atmosphere flex h-dvh flex-col bg-bg" style={lighting}>
       <Header>
         <Link
           className="btn btn-outline-copper h-8 px-2.5 text-xs font-mono tracking-wider flex items-center gap-1 shrink-0"
@@ -185,6 +190,7 @@ export default function GamePage() {
             tab === "chat" ? "flex" : "hidden"
           }`}
         >
+          <LocationHeader scene={scene} />
           <CombatStrip />
           <ChatFeed campaignId={id} />
           <VotePanel />
@@ -223,7 +229,7 @@ export default function GamePage() {
         {TABS.map(([t, name]) => (
           <button
             key={t}
-            className={`py-3 text-center transition ${
+            className={`py-3 text-center transition-colors duration-150 ease-out ${
               tab === t
                 ? "border-t-2 border-accent bg-raised/50 font-bold text-accent"
                 : "border-t-2 border-transparent text-muted hover:text-ink"

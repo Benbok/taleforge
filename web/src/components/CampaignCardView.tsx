@@ -10,6 +10,7 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
   const isLive = c.session_live;
   const status = statusOf(c);
   const action = actionOf(c);
+  const canManage = Boolean(c.is_owner || c.my_role === "master");
 
   const heroDesc = c.hero
     ? `герой ${c.hero.name}${c.hero.level ? `, ${c.hero.level} ур.` : ""}`
@@ -80,7 +81,7 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
           </p>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-3 pt-3 border-t border-line-soft">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-line-soft">
           <div className="flex items-center gap-1.5" aria-label="Отряд">
             {c.party.map((m) => (
               <Avatar
@@ -100,18 +101,30 @@ export default function CampaignCardView({ c }: { c: CampaignCard }) {
             ))}
           </div>
 
-          <Link
-            to={action.href}
-            className={`btn h-10 px-4 text-sm font-medium ${
-              action.primary && isLive
-                ? "btn-primary"
-                : action.primary
-                ? "btn-outline-copper"
-                : "border-line text-ink hover:border-accent"
-            }`}
-          >
-            {action.label}
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            {canManage && (
+              <Link
+                to={`/c/${c.id}/manage`}
+                className="btn h-10 px-3.5 text-sm font-medium border-line text-muted hover:text-ink hover:border-accent bg-surface/80 transition-colors"
+                title="Кабинет стола"
+              >
+                Кабинет
+              </Link>
+            )}
+
+            <Link
+              to={action.href === `/c/${c.id}/manage` ? `/c/${c.id}` : action.href}
+              className={`btn h-10 px-4 text-sm font-medium ${
+                action.primary && isLive
+                  ? "btn-primary"
+                  : action.primary
+                  ? "btn-outline-copper"
+                  : "border-line text-ink hover:border-accent"
+              }`}
+            >
+              {action.href === `/c/${c.id}/manage` ? "К столу" : action.label}
+            </Link>
+          </div>
         </div>
       </div>
     </article>

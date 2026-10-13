@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.core import positions as grid
+from app.core.narrative.contracts import ActorAdmission
 from app.core.positions import areas_at
 from app.core.world import PLAYABLE
 from app.db.models import Entity, MasterTurn
@@ -115,6 +116,43 @@ class SpawnArgs(BaseModel):
         "не пиши",
     )
     location_id: str | None = Field(None, description=PLACE_HINT)
+    actor_slot: str | None = Field(None, description="уникальный слот персонажа в сюжете для дедупликации")
+
+
+async def authorize_actor_slot(ctx: ToolContext, slot_id: str, args: SpawnArgs) -> ActorAdmission:
+    """Authorize an actor slot for introduction, deduplication or encounter budget."""
+    for en in ctx.world.entities.values():
+        st = en.state or {}
+        if st.get("actor_slot") == slot_id or st.get("slot") == slot_id:
+            if st.get("dead") or st.get("hp", 1) <= 0:
+                return ActorAdmission(
+                    allowed=False,
+                    reason_code="actor_already_dead",
+                    existing_entity_id=en.id,
+                )
+            return ActorAdmission(
+                allowed=True,
+                reason_code="existing_actor",
+                existing_entity_id=en.id,
+            )
+
+    if args.attitude == "hostile":
+        rec = ctx.world.catalog.find(args.creature_template_id, "creature_template")
+        xp = int((rec.data.get("xp") if rec else 0) or 0)
+        place = ctx.world.place_arg(args.location_id, "появляется существо")
+        b = encounter_budget(ctx, [{"xp": xp} for _ in range(args.count)], place)
+        if not b["ok"]:
+            return ActorAdmission(
+                allowed=False,
+                reason_code="encounter_budget_exceeded",
+                existing_entity_id=None,
+            )
+
+    return ActorAdmission(
+        allowed=True,
+        reason_code="ok",
+        existing_entity_id=None,
+    )
 
 
 @tool(
@@ -129,6 +167,28 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     rec = ctx.world.catalog.get(a.creature_template_id, "creature_template")
     creature_stats(rec.data)  # без блока статов существо в сцену не выходит
     place = ctx.world.place_arg(a.location_id, "появляется существо")
+
+    if a.actor_slot:
+        adm = await authorize_actor_slot(ctx, a.actor_slot, a)
+        if not adm.allowed:
+            raise ToolError(
+                f"Слот персонажа '{a.actor_slot}' не разрешён: {adm.reason_code}",
+                code=adm.reason_code,
+                category="rule_denial",
+            )
+        if adm.existing_entity_id:
+            existing = ctx.world.entities[adm.existing_entity_id]
+            if place and existing.location_id != place:
+                existing.location_id = place
+                ctx.changed.add(existing.id)
+            return {
+                "spawned": [{"id": existing.id, "name": existing.name}],
+                "template": existing.template_id,
+                "hp": (existing.state or {}).get("hp", 1),
+                "ac": rec.data.get("ac"),
+                "reused": True,
+            }
+
     if a.attitude != "hostile" and ctx.turn_id:
         turn = await ctx.session.get(MasterTurn, ctx.turn_id)
         if turn is not None and turn.status == "running":
@@ -163,13 +223,21 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
     created = []
     for i in range(a.count):
         name = a.name if a.count == 1 else f"{a.name} {i + 1}"
+        state_dict = {
+            "hp": hp,
+            "hp_max": hp,
+            "attitude": a.attitude,
+            **({"bearing": a.bearing} if a.bearing else {}),
+        }
+        if a.actor_slot:
+            state_dict["actor_slot"] = a.actor_slot
         en = Entity(
             campaign_id=ctx.campaign.id,
             kind="creature",
             name=name,
             template_id=rec.id,
             description=a.description,
-            state={"hp": hp, "hp_max": hp, "attitude": a.attitude, **({"bearing": a.bearing} if a.bearing else {})},
+            state=state_dict,
             location_id=place,
             zone=a.zone,
         )
@@ -191,6 +259,9 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
 class UpdateEntityArgs(BaseModel):
     entity_id: str
     attitude: Literal["hostile", "neutral", "friendly"] | None = None
+    attitude_basis_event_id: str | None = Field(
+        None, description="id события этого хода: успешная социальная проверка или передача вещи"
+    )
     mood: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500, description="нарративная пометка: мотив, что пообещал")
     zone: Zone | None = Field(
@@ -205,7 +276,8 @@ class UpdateEntityArgs(BaseModel):
 @tool(
     "update_entity",
     "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки. Хиты и статы так "
-    "не меняются.",
+    "не меняются. Новое отношение требует успешной социальной roll_check с target_id этой сущности "
+    "либо attitude_basis_event_id подтверждённого события этого хода.",
     UpdateEntityArgs,
     ids={"entity_id": "entities"},
     closes=False,
@@ -214,6 +286,8 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
     en = ctx.world.entities.get(a.entity_id)
     if en is None:
         raise ToolError(f"нет сущности {a.entity_id}")
+    if a.attitude is not None and a.attitude != (en.state or {}).get("attitude", "hostile"):
+        _attitude_ground(ctx, en, a)
     if en.kind == "object" and (a.zone is not None or a.bearing is not None):
         from app.core.reach import object_feature
 
@@ -250,3 +324,31 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
         if hit:
             out["areas"] = hit
     return out
+
+
+def _attitude_ground(ctx: ToolContext, entity: Entity, args: UpdateEntityArgs) -> None:
+    """Evidence is tied to this NPC and this turn; an unrelated success is not a ground."""
+    social = [
+        event
+        for event in ctx.events
+        if event.tool == "roll_check"
+        and event.target_id == entity.id
+        and event.payload.get("kind") == "check"
+        and event.payload.get("stat") in {"persuasion", "deception", "intimidation", "performance"}
+    ]
+    if args.attitude_basis_event_id:
+        event = next((event for event in ctx.events if event.id == args.attitude_basis_event_id), None)
+        if event is not None and event.target_id == entity.id:
+            if event in social and event.payload.get("success") and event is social[-1]:
+                return
+            if event.tool == "pass_item" and not event.hidden:
+                return
+            if event.tool == "resolve_attack" and args.attitude == "hostile" and not event.hidden:
+                return
+        raise ToolError("основание отношения не подтверждено событием этого хода для этого NPC")
+    if social and social[-1].payload.get("success"):
+        return
+    raise ToolError(
+        "отношение не изменено: нужна успешная социальная roll_check с target_id этого NPC "
+        "или attitude_basis_event_id реальной передачи вещи; провал проверки не даёт успеха"
+    )

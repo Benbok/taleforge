@@ -73,39 +73,41 @@ export default function MasterPanel({ campaignId }: { campaignId: string }) {
           setOpen(null);
         }}
       />
-      {tab === "scene" && (
-        <>
-          <SceneNow campaignId={campaignId} />
-          <ToolButtons tools={group(["scene"]).filter((t) => t.name !== "get_scene")} onPick={(t) => pick(t)} active={open?.tool} />
-          {form}
-        </>
-      )}
-      {tab === "tools" && (
-        <>
-          <p className="text-xs text-muted">Броски, атаки и решения по действиям игроков. Сервер проверяет каждый вызов по правилам.</p>
-          <ToolButtons tools={group(["checks", "other"])} onPick={(t) => pick(t)} active={open?.tool} />
-          {form}
-        </>
-      )}
-      {tab === "templates" && (
-        <Templates onUse={(tool, prefill) => pick(tool, prefill, ["spawn_entity", "create_location", "apply_hazard"].includes(tool) ? "scene" : "players")} />
-      )}
-      {tab === "secrets" && (
-        <>
-          <Secrets campaignId={campaignId} hasPlot={data.has_plot} version={panel.dataUpdatedAt} />
-          {data.has_plot && <ToolButtons tools={group(["plot"]).filter((t) => t.name !== "get_plot")} onPick={(t) => pick(t)} active={open?.tool} />}
-          <p className="text-xs text-muted">Последствия поступков: как к отряду относятся NPC, фракции и места, и кто хочет отблагодарить или отомстить.</p>
-          <ToolButtons tools={group(["standing"])} onPick={(t) => pick(t)} active={open?.tool} />
-          {form}
-        </>
-      )}
-      {tab === "players" && (
-        <>
-          <Players tools={group(["players"])} labels={data.labels} onPick={(t, p) => pick(t, p)} />
-          {form}
-        </>
-      )}
-      {tab === "log" && <MasterLog campaignId={campaignId} />}
+      <div key={tab} className="tf-tab-content flex flex-col gap-3">
+        {tab === "scene" && (
+          <>
+            <SceneNow campaignId={campaignId} />
+            <ToolButtons tools={group(["scene"]).filter((t) => t.name !== "get_scene")} onPick={(t) => pick(t)} active={open?.tool} />
+            {form}
+          </>
+        )}
+        {tab === "tools" && (
+          <>
+            <p className="text-xs text-muted">Броски, атаки и решения по действиям игроков. Сервер проверяет каждый вызов по правилам.</p>
+            <ToolButtons tools={group(["checks", "other"])} onPick={(t) => pick(t)} active={open?.tool} />
+            {form}
+          </>
+        )}
+        {tab === "templates" && (
+          <Templates onUse={(tool, prefill) => pick(tool, prefill, ["spawn_entity", "create_location", "apply_hazard"].includes(tool) ? "scene" : "players")} />
+        )}
+        {tab === "secrets" && (
+          <>
+            <Secrets campaignId={campaignId} hasPlot={data.has_plot} version={panel.dataUpdatedAt} />
+            {data.has_plot && <ToolButtons tools={group(["plot"]).filter((t) => t.name !== "get_plot")} onPick={(t) => pick(t)} active={open?.tool} />}
+            <p className="text-xs text-muted">Последствия поступков: как к отряду относятся NPC, фракции и места, и кто хочет отблагодарить или отомстить.</p>
+            <ToolButtons tools={group(["standing"])} onPick={(t) => pick(t)} active={open?.tool} />
+            {form}
+          </>
+        )}
+        {tab === "players" && (
+          <>
+            <Players tools={group(["players"])} labels={data.labels} onPick={(t, p) => pick(t, p)} />
+            {form}
+          </>
+        )}
+        {tab === "log" && <MasterLog campaignId={campaignId} />}
+      </div>
     </section>
   );
 }

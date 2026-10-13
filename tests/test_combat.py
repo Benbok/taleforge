@@ -604,3 +604,23 @@ def test_grappled_creature_cannot_flee_by_skipping_movement_rules(game):
         assert any("схвачен" in note for note in notes)
 
     play(settings, cid, [10, 10], fn)
+
+
+def test_opportunity_attack_uses_the_equipped_weapon(game):
+    """Плейтест: друид с посохом (под «Дубинкой») бил вдогонку неэкипированной дубинкой — первой в инвентаре."""
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        club = await call(ctx, "give_item", {"character_id": hero, "item_template_id": "item.club", "reason": "т"})
+        staff = await call(
+            ctx, "give_item", {"character_id": hero, "item_template_id": "item.quarterstaff", "reason": "т"}
+        )
+        assert club["ok"] and staff["ok"], (club, staff)
+        staff_id = staff["result"]["inventory_id"]
+        r = await call(ctx, "equip_item", {"character_id": hero, "inventory_id": staff_id})
+        assert r["ok"], r
+        ctx.world.invalidate(hero)
+        return combat._melee_attack(ctx.world.actor(hero)), staff_id
+
+    chosen, staff_id = play(settings, cid, [], fn)
+    assert chosen == staff_id
