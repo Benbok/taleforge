@@ -73,33 +73,40 @@ def transition_thread(
         return ThreadTransition(violation="invalid_transition")
 
     if not ground.evidence_refs:
-        return ThreadTransition(
-            violation="player_choice_required" if target == "active" else "source_not_applied"
-        )
+        return ThreadTransition(violation="player_choice_required" if target == "active" else "source_not_applied")
 
-    evidence_map = {e.ref.source_id: e for e in evidence}
+    evidence_map = {e.ref: e for e in evidence}
 
     # Target-specific ground validations
     if target == "active":
         if ground.kind != "consequence":
             return ThreadTransition(violation="player_choice_required")
+        confirmed_choice = False
         for ev_ref in ground.evidence_refs:
-            if ev_ref.kind == "message":
-                return ThreadTransition(violation="player_choice_required")
-            rec = evidence_map.get(ev_ref.source_id)
-            if rec is not None:
-                if rec.status in ("question", "draft", "rejected"):
-                    return ThreadTransition(violation="source_not_applied")
-                if rec.utterance_text is not None and rec.applied_result is None:
-                    return ThreadTransition(violation="player_choice_required")
-                if rec.applied_result is None:
-                    return ThreadTransition(violation="player_choice_required")
+            rec = evidence_map.get(ev_ref)
+            if rec is None:
+                return ThreadTransition(violation="source_not_applied")
+            if rec.status in ("question", "rejected"):
+                return ThreadTransition(violation="source_not_applied")
+            source = rec.player_action_source
+            if (
+                ev_ref.kind == "event"
+                and rec.status == "applied"
+                and rec.applied_result is not None
+                and source is not None
+                and source.kind == "message"
+                and source.campaign_id == ev_ref.campaign_id
+                and set(state.subject_refs).intersection(rec.player_action_targets)
+            ):
+                confirmed_choice = True
+        if not confirmed_choice:
+            return ThreadTransition(violation="player_choice_required")
 
     elif target == "resolved":
         if ground.kind != "consequence":
             return ThreadTransition(violation="consequence_ground_required")
         for ev_ref in ground.evidence_refs:
-            rec = evidence_map.get(ev_ref.source_id)
+            rec = evidence_map.get(ev_ref)
             if rec is not None:
                 if rec.status in ("question", "draft", "rejected"):
                     return ThreadTransition(violation="source_not_applied")
@@ -108,14 +115,14 @@ def transition_thread(
 
     else:
         for ev_ref in ground.evidence_refs:
-            rec = evidence_map.get(ev_ref.source_id)
+            rec = evidence_map.get(ev_ref)
             if rec is not None and rec.status in ("question", "draft", "rejected"):
                 return ThreadTransition(violation="source_not_applied")
 
     # Audience check: evidence must be authorized
     if state.audience and "party" not in state.audience:
         for ev_ref in ground.evidence_refs:
-            rec = evidence_map.get(ev_ref.source_id)
+            rec = evidence_map.get(ev_ref)
             if rec is not None and rec.audience and "party" not in rec.audience:
                 if not any(a in state.audience for a in rec.audience):
                     return ThreadTransition(violation="audience_mismatch")
@@ -124,7 +131,7 @@ def transition_thread(
     new_audience = state.audience
     if target == "abandoned":
         for ev_ref in ground.evidence_refs:
-            rec = evidence_map.get(ev_ref.source_id)
+            rec = evidence_map.get(ev_ref)
             if rec is not None and rec.audience and "party" not in rec.audience:
                 if not state.audience or "party" in state.audience:
                     new_audience = rec.audience

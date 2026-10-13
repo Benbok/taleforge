@@ -76,6 +76,26 @@ class FakeDirectorLLM:
         return self._reply
 
 
+def test_director_failure_report_does_not_store_provider_exception_text():
+    import asyncio
+
+    class BrokenLLM:
+        async def complete(self, *args, **kwargs):
+            raise RuntimeError("secret-provider-test-marker")
+
+    reports = []
+
+    async def observe(report):
+        reports.append(report)
+
+    author = LlmNarrativeAuthor(BrokenLLM(), call_observer=observe)
+    with pytest.raises(RuntimeError):
+        asyncio.run(author.propose(snapshot()))
+    assert len(reports) == 1
+    assert reports[0].error == "RuntimeError"
+    assert "secret-provider-test-marker" not in repr(reports)
+
+
 def test_context_limit_does_not_turn_omitted_fact_into_freedom():
     snap = snapshot_with_required_dependency_too_large()
     packed = pack_director_input(snap, token_counter=len, max_tokens=6000)
@@ -246,4 +266,3 @@ def test_llm_narrative_author_incomplete_context_returns_no_change():
         assert len(llm.last_messages) == 0
 
     asyncio.run(_run())
-

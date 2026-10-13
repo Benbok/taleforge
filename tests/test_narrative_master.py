@@ -172,7 +172,7 @@ def test_fake_slot_ref_rejected(settings, client, admin):
     play(settings, cid, [], scenario)
 
 
-def _adapt_with_message(game_client, admin_g, llm, source_id: str, thread_id: str):
+def _adapt_with_message(game_client, admin_g, llm, source_id: str | None, thread_id: str):
     c, (p1,), _hero = party(game_client, admin_g, narrative_mode="adaptive")
     cid = c["id"]
     adapt = {
@@ -218,3 +218,16 @@ def test_adapt_story_binds_current_message_marker(game_client, admin_g, llm, set
 
     row = run(settings, thread)
     assert row is not None and row.status == "offered"
+
+
+@pytest.mark.parametrize("source_id", [None, ""])
+def test_empty_message_id_is_not_current(source_id, game_client, admin_g, llm, settings):
+    cid = _adapt_with_message(game_client, admin_g, llm, source_id, "th-empty")
+
+    async def verify(s):
+        row = await s.scalar(
+            select(NarrativeThread).where(NarrativeThread.campaign_id == cid, NarrativeThread.thread_id == "th-empty")
+        )
+        assert row is None
+
+    run(settings, verify)

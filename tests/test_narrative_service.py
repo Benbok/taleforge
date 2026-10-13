@@ -45,9 +45,7 @@ class FakeApplier:
         self.last_proposal: AdaptationProposal | None = None
         self.last_claim: WorkClaim | None = None
 
-    async def apply(
-        self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None
-    ) -> AdaptationResult:
+    async def apply(self, proposal: AdaptationProposal, *, claim: WorkClaim | None = None) -> AdaptationResult:
         self.calls += 1
         self.last_proposal = proposal
         self.last_claim = claim
@@ -77,9 +75,7 @@ class FakeJobs:
     async def renew(self, claim: WorkClaim, now: datetime) -> bool:
         return True
 
-    async def save_draft(
-        self, claim: WorkClaim, prop: AdaptationProposal, now: datetime | None = None
-    ) -> None:
+    async def save_draft(self, claim: WorkClaim, prop: AdaptationProposal, now: datetime | None = None) -> None:
         self.saved_drafts.append(prop)
         self.saved_draft_unchanged = False
 
@@ -296,6 +292,7 @@ def test_service_run_due_batches():
 # F7 / R11 — service builds SnapshotRequest from claim, not empty defaults
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def test_snapshot_request_built_from_claim_context():
     """R11: service.prepare_once must pass evidence/audience/focus from claim to reader.
 
@@ -346,6 +343,7 @@ def test_snapshot_request_built_from_claim_context():
 # ──────────────────────────────────────────────────────────────────────────────
 # F8 / R15 — batch processing isolates author errors across campaigns
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_batch_isolates_author_error_and_allows_subsequent_campaign():
     """R15: Failure in campaign 1 must not abort the batch for campaign 2."""
@@ -401,7 +399,7 @@ def test_batch_isolates_author_error_and_allows_subsequent_campaign():
         # Campaign 1 failed gracefully and was recorded
         assert reports[0].work_id == "w-err"
         assert reports[0].status == "failed"
-        assert "503" in reports[0].reason_code
+        assert reports[0].reason_code == "author_error"
         # Campaign 2 succeeded despite campaign 1 failure!
         assert reports[1].work_id == "w-ok"
         assert reports[1].status == "prepared"
@@ -412,6 +410,7 @@ def test_batch_isolates_author_error_and_allows_subsequent_campaign():
 # ──────────────────────────────────────────────────────────────────────────────
 # F8 — stale conflict triggers 1 resnapshot, second stale is rejected
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_stale_triggers_one_resnapshot_then_terminal_rejection():
     """F8: 1st stale read set collision triggers resnapshot; 2nd stale is rejected."""
@@ -468,6 +467,7 @@ def test_stale_triggers_one_resnapshot_then_terminal_rejection():
 # ──────────────────────────────────────────────────────────────────────────────
 # F8 — model-correctable denial persists feedback for next attempt
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def test_model_correctable_denial_persists_feedback_and_reschedules():
     """F8: A correctable denial (novelty_exceeded) passes feedback into jobs.finish."""

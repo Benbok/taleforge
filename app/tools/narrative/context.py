@@ -22,6 +22,7 @@ from app.core.narrative.contracts import (
 from app.core.narrative.operations import ACTIVE_OPERATION_KINDS
 from app.db.models import Event, Message, NarrativeThread
 from app.db.narrative import ensure_state, load_subject_facts
+from app.tools.narrative.evidence import action_message_id, verified_player_action
 from app.tools.registry import ToolContext
 
 
@@ -65,6 +66,10 @@ async def load_snapshot(
                     await ctx.session.scalars(select(Event).where(Event.campaign_id == cid, Event.id.in_(event_ids)))
                 ).all()
             }
+        # At most one extra source message per cited event; still one batched query.
+        message_ids = tuple(
+            dict.fromkeys((*message_ids, *(mid for row in event_rows.values() if (mid := action_message_id(row)))))
+        )
         if message_ids:
             message_rows = {
                 row.id: row
@@ -99,6 +104,7 @@ async def load_snapshot(
                 else:
                     audience = ("party",)
 
+                player_source, player_targets = verified_player_action(ctx, ev_row, message_rows)
                 evidence_records.append(
                     EvidenceRecord(
                         ref=ev_ref,
@@ -107,6 +113,8 @@ async def load_snapshot(
                         audience=audience,
                         game_time=ev_row.game_time,
                         applied_result=ev_row.tool,
+                        player_action_source=player_source,
+                        player_action_targets=player_targets,
                     )
                 )
 

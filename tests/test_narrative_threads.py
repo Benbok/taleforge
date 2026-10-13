@@ -88,7 +88,7 @@ def test_offered_does_not_become_active_on_request_utterance_without_applied_out
     # Via message kind
     ground_msg = consequence_ground(kind="message", source_id="msg-req")
     result_msg = transition_thread(thread(status="offered"), "active", ground_msg)
-    assert result_msg.violation == "player_choice_required"
+    assert result_msg.violation == "source_not_applied"
     assert result_msg.new_state is None
 
     # Via evidence record with utterance but no applied result
@@ -105,8 +105,14 @@ def test_offered_does_not_become_active_on_request_utterance_without_applied_out
 
 def test_offered_becomes_active_with_confirmed_player_choice():
     ground = consequence_ground(source_id="evt-accept")
-    t = thread(status="offered", version=1)
+    t = thread(status="offered", version=1, subject_refs=("quest-1",))
     rec = evidence_record("evt-accept", applied_result="quest_accepted")
+    rec = rec.model_copy(
+        update={
+            "player_action_source": EvidenceRef(campaign_id="camp-1", kind="message", source_id="msg-player"),
+            "player_action_targets": ("quest-1",),
+        }
+    )
     result = transition_thread(t, "active", ground, (rec,))
     assert result.violation is None
     assert result.new_state is not None

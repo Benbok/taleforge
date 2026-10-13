@@ -568,7 +568,7 @@ async def adapt_story(ctx: ToolContext, args: AdaptStoryArgs) -> dict[str, Any]:
                 if not ev_dict.get("campaign_id"):
                     ev_dict["campaign_id"] = ctx.campaign.id
                 # только явный маркер реплики этого хода; выдуманный id не подменяется и будет отклонён допуском
-                if ev_dict.get("kind") == "message" and ev_dict.get("source_id") in (None, "", CURRENT_MESSAGE):
+                if ev_dict.get("kind") == "message" and ev_dict.get("source_id") == CURRENT_MESSAGE:
                     if turn_msg is None:
                         raise ToolError("в этом ходе нет реплики игрока для основания", code="evidence_not_found")
                     ev_dict["source_id"] = turn_msg.id

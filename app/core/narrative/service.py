@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime
 
@@ -18,6 +19,8 @@ from app.core.narrative.ports import (
     NarrativeJobs,
     NarrativeReader,
 )
+
+log = logging.getLogger(__name__)
 
 NON_CORRECTABLE_DENIALS: frozenset[str] = frozenset(
     {
@@ -69,141 +72,187 @@ class NarrativeService:
         if claim is None:
             return None
 
-        if claim.phase == "author":
-            # 1. Assemble snapshot from saved boundary context (R11)
-            req = SnapshotRequest(
-                source=claim.source,
-                focus=claim.focus,
-                audience=claim.audience,
-                evidence_refs=claim.evidence_refs,
-                mutable_subject_refs=claim.mutable_subject_refs,
-                feedback=claim.feedback,
-            )
-            snapshot = await self._reader.snapshot(req)
+        stage = "snapshot"
+        pending_finish: tuple[AdaptationResult, PreparationReport, tuple[Violation, ...] | None] | None = None
 
-            # 2. Reserve LLM call quota before invoking model
-            now = self._clock()
-            reserved = await self._jobs.reserve_call(claim, now)
-            if reserved is None:
-                result = AdaptationResult(
-                    status="denied",
-                    reason_code="call_budget_exhausted",
+        async def finish(
+            result: AdaptationResult,
+            report: PreparationReport,
+            *,
+            feedback: tuple[Violation, ...] | None = None,
+        ) -> PreparationReport:
+            nonlocal stage, pending_finish
+            stage = "finish"
+            pending_finish = (result, report, feedback)
+            await self._jobs.finish(claim, result, self._clock(), feedback=feedback)
+            return report
+
+        try:
+            if claim.phase == "author":
+                # 1. Assemble snapshot from saved boundary context (R11)
+                req = SnapshotRequest(
+                    source=claim.source,
+                    focus=claim.focus,
+                    audience=claim.audience,
+                    evidence_refs=claim.evidence_refs,
+                    mutable_subject_refs=claim.mutable_subject_refs,
+                    feedback=claim.feedback,
                 )
-                await self._jobs.finish(claim, result, now)
-                return PreparationReport(
-                    work_id=claim.work_id,
-                    status="rejected",
-                    reason_code="call_budget_exhausted",
-                    calls_reserved=claim.llm_calls,
-                )
+                snapshot = await self._reader.snapshot(req)
 
-            # Heartbeat lease renewal
-            await self._jobs.renew(reserved, now)
-
-            # 3. Author proposal
-            snapshot = snapshot.model_copy(update={"author_attempt": reserved.llm_calls})
-            try:
-                proposal = await self._author.propose(snapshot)
-            except Exception as e:
+                # 2. Reserve LLM call quota before invoking model
                 now = self._clock()
-                result = AdaptationResult(
-                    status="failed",
-                    reason_code=f"author_error: {e}",
-                )
-                await self._jobs.finish(reserved, result, now)
+                stage = "reserve_call"
+                reserved = await self._jobs.reserve_call(claim, now)
+                if reserved is None:
+                    result = AdaptationResult(
+                        status="denied",
+                        reason_code="call_budget_exhausted",
+                    )
+                    return await finish(
+                        result,
+                        PreparationReport(
+                            work_id=claim.work_id,
+                            status="rejected",
+                            reason_code="call_budget_exhausted",
+                            calls_reserved=claim.llm_calls,
+                        ),
+                    )
+
+                claim = reserved
+                stage = "renew"
+                if not await self._jobs.renew(claim, self._clock()):
+                    raise LeaseLost("lease renewal denied")
+
+                # 3. Author proposal
+                snapshot = snapshot.model_copy(update={"author_attempt": reserved.llm_calls})
+                stage = "author"
+                proposal = await self._author.propose(snapshot)
+
+                # 4. Save draft -> prepared (R12: both normal operations and no_change return prepared)
+                now = self._clock()
+                stage = "save_draft"
+                await self._jobs.save_draft(claim, proposal, now)
+
                 return PreparationReport(
                     work_id=claim.work_id,
-                    status="failed",
-                    reason_code=f"author_error: {e}",
+                    status="prepared",
+                    reason_code="draft_saved",
                     calls_reserved=reserved.llm_calls,
                 )
 
-            # 4. Save draft -> prepared (R12: both normal operations and no_change return prepared)
-            now = self._clock()
-            await self._jobs.save_draft(reserved, proposal, now)
+            elif claim.phase == "apply":
+                if claim.draft is None:
+                    res = AdaptationResult(status="failed", reason_code="missing_draft")
+                    return await finish(
+                        res,
+                        PreparationReport(
+                            work_id=claim.work_id,
+                            status="failed",
+                            reason_code="missing_draft",
+                            calls_reserved=claim.llm_calls,
+                        ),
+                    )
 
-            return PreparationReport(
-                work_id=claim.work_id,
-                status="prepared",
-                reason_code="draft_saved",
-                calls_reserved=reserved.llm_calls,
-            )
+                stage = "renew"
+                if not await self._jobs.renew(claim, self._clock()):
+                    raise LeaseLost("lease renewal denied")
 
-        elif claim.phase == "apply":
-            if claim.draft is None:
-                res = AdaptationResult(status="failed", reason_code="missing_draft")
-                await self._jobs.finish(claim, res, now)
-                return PreparationReport(
-                    work_id=claim.work_id,
-                    status="failed",
-                    reason_code="missing_draft",
-                    calls_reserved=claim.llm_calls,
-                )
-
-            # Heartbeat lease renewal
-            await self._jobs.renew(claim, now)
-
-            try:
+                stage = "apply"
                 res = await self._applier.apply(claim.draft, claim=claim)
-            except LeaseLost:
-                # Expired or superseded lease: world was not written, abort cleanly
-                return PreparationReport(
-                    work_id=claim.work_id,
-                    status="failed",
-                    reason_code="lease_lost",
-                    calls_reserved=claim.llm_calls,
-                )
-            except Exception as e:
+
                 now = self._clock()
-                res = AdaptationResult(status="failed", reason_code=f"apply_error: {e}")
 
-            now = self._clock()
+                if res.status == "stale":
+                    # Stale read set collision: allow max 1 resnapshot attempt
+                    stage = "resnapshot"
+                    resnap = await self._jobs.resnapshot(claim, now)
+                    if resnap is not None:
+                        return await finish(
+                            res,
+                            PreparationReport(
+                                work_id=claim.work_id,
+                                status="retry_wait",
+                                reason_code="stale_resnapshot",
+                                calls_reserved=claim.llm_calls,
+                            ),
+                        )
+                    else:
+                        denied_res = AdaptationResult(
+                            status="denied",
+                            reason_code="conflict_limit_exceeded",
+                        )
+                        return await finish(
+                            denied_res,
+                            PreparationReport(
+                                work_id=claim.work_id,
+                                status="rejected",
+                                reason_code="conflict_limit_exceeded",
+                                calls_reserved=claim.llm_calls,
+                            ),
+                        )
 
-            if res.status == "stale":
-                # Stale read set collision: allow max 1 resnapshot attempt
-                resnap = await self._jobs.resnapshot(claim, now)
-                if resnap is not None:
-                    await self._jobs.finish(claim, res, now)
-                    return PreparationReport(
+                if res.status == "denied":
+                    # Check for model-correctable denial (max 2 calls) with feedback
+                    if res.reason_code not in NON_CORRECTABLE_DENIALS and claim.llm_calls < 2:
+                        fb = (Violation(code=res.reason_code),)
+                        return await finish(
+                            res,
+                            PreparationReport(
+                                work_id=claim.work_id,
+                                status="retry_wait",
+                                reason_code=f"correctable_denial: {res.reason_code}",
+                                calls_reserved=claim.llm_calls,
+                            ),
+                            feedback=fb,
+                        )
+
+                return await finish(
+                    res,
+                    PreparationReport(
                         work_id=claim.work_id,
-                        status="retry_wait",
-                        reason_code="stale_resnapshot",
+                        status=res.status,
+                        reason_code=res.reason_code,
                         calls_reserved=claim.llm_calls,
-                    )
-                else:
-                    denied_res = AdaptationResult(
-                        status="denied",
-                        reason_code="conflict_limit_exceeded",
-                    )
-                    await self._jobs.finish(claim, denied_res, now)
-                    return PreparationReport(
-                        work_id=claim.work_id,
-                        status="rejected",
-                        reason_code="conflict_limit_exceeded",
-                        calls_reserved=claim.llm_calls,
-                    )
+                    ),
+                )
 
-            if res.status == "denied":
-                # Check for model-correctable denial (max 2 calls) with feedback
-                if res.reason_code not in NON_CORRECTABLE_DENIALS and claim.llm_calls < 2:
-                    fb = (Violation(code=res.reason_code),)
-                    await self._jobs.finish(claim, res, now, feedback=fb)
-                    return PreparationReport(
-                        work_id=claim.work_id,
-                        status="retry_wait",
-                        reason_code=f"correctable_denial: {res.reason_code}",
-                        calls_reserved=claim.llm_calls,
-                    )
+            return None
 
-            await self._jobs.finish(claim, res, now)
+        except LeaseLost:
             return PreparationReport(
                 work_id=claim.work_id,
-                status=res.status,
-                reason_code=res.reason_code,
+                status="failed",
+                reason_code="lease_lost",
                 calls_reserved=claim.llm_calls,
             )
-
-        return None
+        except Exception as exc:
+            # Never copy provider/SQL exception text or traceback into reports/logs.
+            log.warning("narrative work %s stage %s failed (%s)", claim.work_id, stage, type(exc).__name__)
+            reason_code = f"{stage}_error"
+            try:
+                if stage == "finish" and pending_finish is not None:
+                    result, report, feedback = pending_finish
+                    # Finalization failure must preserve an already committed outcome.
+                    await self._jobs.finish(claim, result, self._clock(), feedback=feedback)
+                    return report
+                await self._jobs.finish(
+                    claim,
+                    AdaptationResult(status="failed", reason_code=reason_code),
+                    self._clock(),
+                )
+            except LeaseLost:
+                reason_code = "lease_lost"
+            except Exception as finish_exc:
+                # Storage is unavailable: lease expiry remains the recovery path.
+                log.warning("narrative work %s failure recording failed (%s)", claim.work_id, type(finish_exc).__name__)
+                reason_code = "failure_recording_error"
+            return PreparationReport(
+                work_id=claim.work_id,
+                status="failed",
+                reason_code=reason_code,
+                calls_reserved=claim.llm_calls,
+            )
 
     async def run_due(self, *, limit: int = 20) -> tuple[PreparationReport, ...]:
         """Runs due background director tasks up to limit with batch failure isolation (R15)."""
@@ -211,13 +260,14 @@ class NarrativeService:
         for _ in range(limit):
             try:
                 report = await self.prepare_once()
-            except Exception as e:
+            except Exception as exc:
+                log.warning("narrative batch claim failed (%s)", type(exc).__name__)
                 # Failure of one campaign does not break batch processing of remaining items
                 reports.append(
                     PreparationReport(
                         work_id="unknown",
                         status="failed",
-                        reason_code=f"batch_error: {e}",
+                        reason_code="batch_error",
                     )
                 )
                 continue

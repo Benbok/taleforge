@@ -85,6 +85,9 @@ class EvidenceRecord(NarrativeContractModel):
     game_time: int = 0
     applied_result: str | None = None
     utterance_text: str | None = None
+    # Server-derived provenance; never accepted from an author proposal.
+    player_action_source: EvidenceRef | None = None
+    player_action_targets: tuple[str, ...] = ()
 
 
 class Ground(NarrativeContractModel):

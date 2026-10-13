@@ -71,7 +71,10 @@ def _format_facts(snapshot: NarrativeSnapshot) -> str:
 def _format_evidence(snapshot: NarrativeSnapshot) -> str:
     lines = []
     for ev in snapshot.evidence:
-        lines.append(f"- {ev.ref.kind}:{ev.ref.source_id} status={ev.status} result={ev.applied_result}")
+        lines.append(
+            f"- {ev.ref.kind}:{ev.ref.source_id} status={ev.status} result={ev.applied_result} "
+            f"player_action={ev.player_action_source} targets={ev.player_action_targets}"
+        )
     return "\n".join(lines)
 
 
@@ -311,7 +314,7 @@ class LlmNarrativeAuthor:
                 timeout=self._timeout_seconds,
             )
         except Exception as exc:
-            error_msg = str(exc)
+            error_msg = type(exc).__name__
             raise
         finally:
             latency_ms = int((time.perf_counter() - t0) * 1000)
