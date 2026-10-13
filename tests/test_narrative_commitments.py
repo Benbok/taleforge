@@ -544,3 +544,26 @@ def test_learn_fact_seals_only_exact_used_refs(settings, client, admin):
         assert (await s.get(NarrativeFact, f_motive.id)).freedom == "draft"
 
     run(settings, go)
+
+
+def test_learn_fact_with_malformed_used_refs_is_a_rejected_call_not_a_crash(settings, client, admin):
+    """Неверный used_fact_refs от модели — отказ одного вызова; ход не падает, знание не записывается."""
+    from sqlalchemy import select
+
+    from app.db.models import KnownFact
+    from tests.test_tools import call, play
+
+    import_base(settings)
+    c, _heads, hero = party(client, admin)
+    cid = c["id"]
+
+    async def scenario(ctx):
+        subject = next(iter(ctx.world.characters))
+        for refs in (["Шептун знает о тёмных делах"], ["campaign:npc-1:crime"], ["campaign:npc-missing:motivation"]):
+            args = {"character_ids": [hero["id"]], "subject_id": subject, "fact": "Он что-то скрывает"}
+            r = await call(ctx, "learn_fact", {**args, "used_fact_refs": refs})
+            assert r["ok"] is False, (refs, r)
+        rows = (await ctx.session.scalars(select(KnownFact).where(KnownFact.campaign_id == cid))).all()
+        assert rows == []
+
+    play(settings, cid, [], scenario)
