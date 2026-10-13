@@ -353,6 +353,35 @@ async def pending(s, c: Campaign) -> list[Character]:
     return [ch for ch in rows if ch.id not in done]
 
 
+async def _opening_npcs(ctx, node, fresh_where, where) -> bool:
+    from app.tools.registry import execute
+
+    if not (node and fresh_where and fresh_where["id"] == where["id"]):
+        return True
+    for npc in ctx.world.plot.get("npcs") or []:
+        if npc["id"] not in (node.get("npc_ids") or []):
+            continue
+        if npc.get("location_id") not in (None, where["id"]):
+            continue
+        if npc.get("entity_id") in ctx.world.entities:
+            continue
+        result = await execute(
+            ctx,
+            "develop",
+            {
+                "sketch_id": npc["id"],
+                "details": npc.get("look") or npc["name"],
+                "here": True,
+                "attitude": "neutral",
+                "location_id": ctx.world.scene.location_id,
+            },
+        )
+        if not result.get("ok"):
+            log.warning("NPC первой сцены не появился: %s", result.get("error"))
+            return False
+    return True
+
+
 async def _open_first_place(svc, cid: str, where: dict) -> bool:
     """Место первой сцены попадает в мир до вступления: у него появляется карточка, и имя в тексте становится
     ссылкой. Детали и тайна места остаются в каркасе, в карточку идёт только настроение («mood»)."""
@@ -388,34 +417,34 @@ async def _open_first_place(svc, cid: str, where: dict) -> bool:
                 return False
         # Only NPCs explicitly participating in the first node are visible at
         # the opening. Other inhabitants and antagonists remain undisclosed.
-        if node and fresh_where and fresh_where["id"] == where["id"]:
-            for npc in ctx.world.plot.get("npcs") or []:
-                if npc["id"] not in (node.get("npc_ids") or []):
-                    continue
-                if npc.get("location_id") not in (None, where["id"]):
-                    continue
-                if npc.get("entity_id") in ctx.world.entities:
-                    continue
-                result = await execute(
-                    ctx,
-                    "develop",
-                    {
-                        "sketch_id": npc["id"],
-                        "details": npc.get("look") or npc["name"],
-                        "here": True,
-                        "attitude": "neutral",
-                        "location_id": ctx.world.scene.location_id,
-                    },
-                )
-                if not result.get("ok"):
-                    log.warning("NPC первой сцены не появился: %s", result.get("error"))
-                    await s.rollback()
-                    return False
+        from app.core.world_generation import storage
+
+        layout = await storage.find(s, cid, place.id, "location_layout")
+        deferred = layout is not None  # комплекс: участники узла встанут рядом с героями уже внутри
+        if not deferred and not await _opening_npcs(ctx, node, fresh_where, where):
+            await s.rollback()
+            return False
         messages = await flush_outbox(s, ctx)
         await s.commit()
     await publish_changes(svc.bus, ctx, messages)
     if ctx.operation_refs:
         await svc._settle_preparation(cid, list(ctx.operation_refs))
+    if deferred:
+        from app.core.layout import entry
+
+        await entry.enter_complex(svc.maker, svc.preparer, svc.dice_factory, cid, place.id, bus=svc.bus)
+        async with svc.maker() as s:
+            c = await s.get(Campaign, cid)
+            ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
+            node, fresh_where = _first_scene(ctx.world.plot)
+            if not await _opening_npcs(ctx, node, fresh_where, where):
+                await s.rollback()
+                return False
+            messages = await flush_outbox(s, ctx)
+            await s.commit()
+        await publish_changes(svc.bus, ctx, messages)
+        if ctx.operation_refs:
+            await svc._settle_preparation(cid, list(ctx.operation_refs))
     return True
 
 

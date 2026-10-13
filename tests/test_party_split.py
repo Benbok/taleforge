@@ -14,7 +14,7 @@ from app.main import create_app
 from app.tools.registry import execute
 from app.tools.runtime import open_context, scene_views
 from tests.conftest import login
-from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
+from tests.game import FIGHTER, QueueDice, import_base, ok, party, quiet, run
 from tests.test_map import _ok, _play
 from tests.test_master import DONE
 from tests.test_ws import connect, next_of
@@ -42,6 +42,7 @@ def _split_party(client, admin, settings, **kw):
         return {"square": square, "docks": docks, "fountain": fountain, "gob": gob["spawned"][0]["id"]}
 
     ids = _play(settings, cid, build)
+    quiet(client)
     return cid, (p1, p2), (h1, h2), ids
 
 
@@ -306,8 +307,13 @@ def test_fight_is_only_where_the_foes_are(client, admin, settings):
         assert scene["mode"] == "free" and scene["turn"] is None and snap["payload"]["turn"] is None
         ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Пью из фонтана"}})
         assert next_of(ws, "message.new")["payload"]["content"] == "Пью из фонтана"
+        for _ in range(40):
+            e = ws.receive_json()
+            if e["type"] == "message.new" and e["payload"]["kind"] in ("narration", "system"):
+                break
     with connect(client, p2, cid) as (_, snap):
         assert snap["payload"]["scene"]["mode"] == "combat" and snap["payload"]["turn"] is not None
+    client.portal.call(client.app.state.master.wait_idle, cid)
 
     async def target(ctx):
         gob = ctx.world.actor(ids["gob"])

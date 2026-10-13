@@ -232,6 +232,9 @@ async def finish(ctx, req: Request, inverse: list | None = None) -> dict[str, An
     heroes = [w.characters[h] for h in req.hero_ids]
     joined = await move_heroes(ctx, heroes, dest, inverse, dice)
     cell = _arrive(ctx, heroes, dest, p, other, req.lane, inverse)
+    from app.core.layout import ahead
+
+    await ahead.request_ahead(ctx, dest)
     out = {"moved": True, "area_id": dest.id, "area": dest.name, "passage": p.public_name,
            "from_cell": list(before), "cell": list(cell) if cell else None, **joined}  # fmt: skip
     ev = await ctx.record("traverse_passage", actor_id=first, target_id=dest.id, payload=out, dice=dice or None,

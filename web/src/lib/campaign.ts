@@ -41,6 +41,8 @@ export interface Room {
     sfx_enabled?: boolean;
     scene_generation?: boolean;
     scene_generation_llm?: boolean;
+    location_layouts?: boolean;
+    location_layouts_llm?: boolean;
     tts_enabled?: boolean;
     tts_voice?: string | null;
     tts_provider?: string;

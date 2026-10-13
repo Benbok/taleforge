@@ -131,9 +131,11 @@ class Orchestrator:
                         model=attempt.model,
                         tokens_in=attempt.tokens_in,
                         tokens_out=attempt.tokens_out,
+                        tokens_reasoning=attempt.tokens_reasoning,
                         cost=attempt.cost,
                         latency_ms=attempt.latency_ms,
                         error=attempt.error,
+                        generation_id=claim.ref,
                     )
                 )
                 if got is not None:
@@ -156,7 +158,7 @@ class Orchestrator:
         try:
             phase = await storage.phase_of(maker, claim.ref)
             if phase in executor.PHASES:
-                await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider)
+                await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider, llm=self.llm)
             else:
                 draft = await self._plan(maker, claim)
                 proposal, quality, claim = await self._propose(maker, claim, draft)
@@ -217,14 +219,18 @@ async def _model_of(s, campaign) -> tuple[str, str | None, str | None] | None:
 
 
 async def _dependencies(maker, campaign_id: str, ref: str) -> list[str]:
-    """Неготовые фазы, без которых эту не выполнить: обстановке участка комплекса нужна его геометрия."""
+    """Неготовые фазы, без которых эту не выполнить: обстановке корня нужна структура комплекса (иначе носители
+    лягут у корня), обстановке участка — его геометрия."""
     async with maker() as s:
         row = await s.get(WorldGenerationState, ref)
         if row is None or row.campaign_id != campaign_id or row.phase != "location_initial":
             return []
-        dep = await storage.find(s, campaign_id, row.target_entity_id, "location_geometry")
-        if dep is None or dep.status in ("ready", "blocked"):
-            return []
-        if await storage.activate_cas(s, dep):
-            await s.commit()
-        return [dep.id]
+        deps = []
+        for phase in ("location_layout", "location_geometry"):
+            dep = await storage.find(s, campaign_id, row.target_entity_id, phase)
+            if dep is None or dep.status in ("ready", "blocked"):
+                continue
+            if await storage.activate_cas(s, dep):
+                await s.commit()
+            deps.append(dep.id)
+        return deps

@@ -31,8 +31,14 @@ def _env(name: str, default: str | None = None) -> str | None:
     return v if v not in (None, "") else default
 
 
-# флаги настроек кампании, которые можно включить новым кампаниям через NEW_CAMPAIGN_FLAGS
-CAMPAIGN_FLAGS = ("audio_enabled", "sfx_enabled", "scene_generation", "scene_generation_llm")
+CAMPAIGN_FLAGS = (
+    "audio_enabled",
+    "sfx_enabled",
+    "scene_generation",
+    "scene_generation_llm",
+    "location_layouts",
+    "location_layouts_llm",
+)
 
 
 def _flags(raw: str) -> tuple[str, ...]:

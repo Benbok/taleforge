@@ -1009,6 +1009,28 @@
       ],
       "title": "Leveling"
      },
+     "location_layouts": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Layouts"
+     },
+     "location_layouts_llm": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Layouts Llm"
+     },
      "name": {
       "anyOf": [
        {

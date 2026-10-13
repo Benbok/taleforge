@@ -250,7 +250,7 @@ def test_architect_retries_then_saves_plan(game_client, admin_g, llm, settings):
     c = make_campaign(game_client, admin_g, brief={"length": "short", "pillars": {"mystery": "high"}})
     opts = ok(game_client.get(f"/api/campaigns/{c['id']}/plan/options", headers=admin_g))
     assert opts["structures"][0]["best"] and opts["structure_id"] == opts["structures"][0]["id"]
-    assert len(opts["structures"]) == 7 and opts["estimate"]["tokens_out"] == 6000
+    assert len(opts["structures"]) == 7 and opts["estimate"]["tokens_out"] == 6600
 
     bad = good_plan()
     bad["npcs"][0]["template_id"] = "creature.nope"

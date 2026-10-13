@@ -17,7 +17,16 @@ from app.tools.master.items import _accessible_container, _approach, container_c
 from app.tools.registry import ToolContext, ToolError, tool
 
 # Команды ведущего: ИИ-мастер их не видит (app/agents/master/common.py)
-HOST_TOOLS = frozenset({"resolve_location", "retry_preparation", "bind_plot_anchor", "prepare_complex"})
+HOST_TOOLS = frozenset(
+    {
+        "resolve_location",
+        "retry_preparation",
+        "bind_plot_anchor",
+        "prepare_complex",
+        "prepare_location",
+        "preparation_cost",
+    }
+)
 
 
 class ResolveLocationArgs(BaseModel):
@@ -206,3 +215,103 @@ async def prepare_complex(ctx: ToolContext, a: PrepareComplexArgs) -> dict:
     result = {"location_id": root.id, **receipt(row.id)}
     await ctx.record("prepare_complex", target_id=root.id, payload=result, inverse=inverse, hidden=True)
     return result
+
+
+class PrepareLocationArgs(BaseModel):
+    location_id: str = Field(description="реальный id места каркаса с пространством")
+    furnish: bool = Field(False, description="ещё и наполнить все участки обстановкой (вызовы модели — по бюджету)")
+
+
+def _visited(ctx: ToolContext, place) -> bool:
+    w = ctx.world
+    here = {w.actor_place(h.id) for h in w.characters.values()} | {w.scene.location_id}
+    return place.id in here or bool((place.state or {}).get("visited_by"))
+
+
+@tool(
+    "prepare_location",
+    "Команда ведущего: заранее готовит место каркаса с пространством — структуру, затем геометрию всех участков и "
+    "по желанию обстановку. Героям ничего не открывает и никого не перемещает. Первый вызов принимает структуру; "
+    "после её готовности повторный вызов готовит участки. Возвращает квитанции и верхнюю оценку вызовов модели.",
+    PrepareLocationArgs,
+    ids={"location_id": "locations"},
+    closes=False,
+)
+async def prepare_location(ctx: ToolContext, a: PrepareLocationArgs) -> dict:
+    from app.core import plot as plot_mod
+    from app.core.layout import plan as layout_plan
+    from app.core.layout import store as layout_store
+    from app.core.world_generation.service import LLM_LIMIT
+
+    root = ctx.world.entities.get(a.location_id)
+    if root is None or root.kind != "location" or root.campaign_id != ctx.campaign.id:
+        raise ToolError("локация не принадлежит этой кампании")
+    row = await storage.find(ctx.session, ctx.campaign.id, root.id, "location_layout")
+    inverse: list = []
+    if row is None:
+        if _visited(ctx, root):
+            raise ToolError("отряд здесь уже был: устройство посещённого места не перестраивается")
+        kind, sketch = plot_mod._index(ctx.world.plot or {}).get((root.state or {}).get("plot_id") or "", (None, None))
+        if kind != "location" or not (sketch or {}).get("spatial"):
+            raise ToolError("у места нет пространственного замысла в каркасе: используйте prepare_complex")
+        row = await layout_plan.reserve_from_plan(ctx, root, sketch, inverse)
+        if row is None:
+            raise ToolError("это место не становится комплексом (готовое приключение или уже есть план)")
+    storage.activate(row)
+    refs = [row.id]
+    settings = ctx.campaign.settings or {}
+    furnish_calls = 0
+    bp = layout_store.blueprint_of(root)
+    if bp is not None:
+        for area_id in layout_store.area_ids(root).values():
+            area = ctx.world.entities[area_id]
+            geo = await storage.find(ctx.session, ctx.campaign.id, area_id, "location_geometry")
+            if geo is not None and storage.activate(geo):
+                refs.append(geo.id)
+            if a.furnish:
+                initial = await storage.find(ctx.session, ctx.campaign.id, area_id, "location_initial")
+                if initial is None:
+                    initial = await storage.reserve_root(
+                        ctx.session, ctx.campaign, ctx.world, area, minimal=not settings.get("scene_generation")
+                    )
+                    inverse.append({"table": "world_generation_states", "op": "delete", "id": initial.id})
+                if storage.activate(initial):
+                    refs.append(initial.id)
+                    if settings.get("scene_generation_llm"):
+                        furnish_calls += max(0, LLM_LIMIT - int(initial.llm_attempt_count or 0))
+    structure_calls = 0
+    if row.status not in ("ready", "blocked") and settings.get("location_layouts_llm"):
+        structure_calls = max(0, LLM_LIMIT - int(row.llm_attempt_count or 0))
+    ctx.operation_refs.update(refs)
+    result = {
+        "location_id": root.id,
+        "structure": receipt(row.id),
+        "operation_refs": refs,
+        "blueprint_ready": bp is not None,
+        "estimate": {"structure_calls_max": structure_calls, "furnish_calls_max": furnish_calls},
+    }
+    await ctx.record("prepare_location", target_id=root.id, payload=result, inverse=inverse, hidden=True)
+    return result
+
+
+class PreparationCostArgs(BaseModel):
+    location_id: str = Field(description="реальный id места (корня комплекса или обычного)")
+
+
+@tool(
+    "preparation_cost",
+    "Только чтение: сколько стоила подготовка места — по фазам: вызовы модели, исправления, токены (и рассуждений), "
+    "цена и длительность. Ничего не запускает и не меняет.",
+    PreparationCostArgs,
+    ids={"location_id": "locations"},
+    mutating=False,
+    closes=False,
+)
+async def preparation_cost(ctx: ToolContext, a: PreparationCostArgs) -> dict:
+    from app.core import preparation
+    from app.core.campaigns import NotFound
+
+    try:
+        return await preparation.location_cost(ctx.session, ctx.campaign.id, a.location_id)
+    except NotFound as e:
+        raise ToolError(str(e)) from e

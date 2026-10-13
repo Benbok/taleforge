@@ -18,6 +18,9 @@
 - [stage8/](stage8/) — снимки этапа 8 «Офлайн и голосования»: переподключение, голосование, игра за ушедшего, возврат со сводкой. Как устроено — в конце раздела 11 [ТЗ](tz-ai-master.md).
 - [ai-players-stage9.md](ai-players-stage9.md) — план этапа 9 «ИИ-игроки и живой характер» и как сделана часть 9а; снимки — [stage9/](stage9/).
 - [audio-mixer.md](audio-mixer.md) — звуковой микшер ИИ-мастера: слои, библиотека `audio/`, инструменты, синхронизация. Треки для подготовки — [audio-tracklist.md](audio-tracklist.md).
+- [location-maps-delivery1.md](location-maps-delivery1.md) — генерация локаций, поставка 1: blueprint, геометрия и переходы.
+- [location-maps-delivery2.md](location-maps-delivery2.md) — генеративные карты локаций, поставка 2: визуальная SVG-карта, память героев и переходы на карте.
+- [location-maps-delivery3.md](location-maps-delivery3.md) — генеративные карты локаций, поставка 3: каркас, модель структуры, первая сцена и учёт расходов.
 
 ## Мир «Эхо Левиафанов»
 

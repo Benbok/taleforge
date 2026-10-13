@@ -2647,6 +2647,10 @@ export interface components {
             excluded_themes?: string[] | null;
             /** Leveling */
             leveling?: ("xp" | "milestone") | null;
+            /** Location Layouts */
+            location_layouts?: boolean | null;
+            /** Location Layouts Llm */
+            location_layouts_llm?: boolean | null;
             /** Name */
             name?: string | null;
             narrative?: components["schemas"]["NarrativeSettingsIn"] | null;

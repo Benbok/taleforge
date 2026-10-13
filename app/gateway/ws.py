@@ -729,6 +729,7 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
         for ctx, messages in published:
             await publish_changes(app.state.bus, ctx, messages)
         if published:
+            app.state.master.signal_recovery()  # подготовка вперёд не ждёт 15 с
             await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
             await _publish_turn(app, published[-1][0])
 

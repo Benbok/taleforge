@@ -103,6 +103,11 @@ def client(settings):
         # здесь настоящий LiteLLM-клиент: фоновый режиссёр не должен ходить в сеть и забирать задания,
         # которые тест ведёт сам. Подключение режиссёра проверяет tests/test_narrative_startup.py
         c.app.state.master.narrative_preparer = None
+        c.app.state.master.signal_recovery = lambda: None
+        if getattr(c.app.state.master, "_recovery", None):
+            c.app.state.master._recovery.cancel()
+        if getattr(c.app.state, "sfx_delivery", None) and c.app.state.sfx_delivery.task:
+            c.app.state.sfx_delivery.task.cancel()
         yield c
 
 

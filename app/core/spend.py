@@ -17,11 +17,15 @@ from app.db.models import Campaign, LlmCall, User, as_utc, now
 
 
 def _add(bucket: dict[str, dict[str, Any]], key: str, c: LlmCall) -> None:
-    b = bucket.setdefault(key, {"cost": 0.0, "calls": 0, "tokens_in": 0, "tokens_out": 0, "errors": 0})
+    b = bucket.setdefault(
+        key,
+        {"cost": 0.0, "calls": 0, "tokens_in": 0, "tokens_out": 0, "tokens_reasoning": 0, "errors": 0},
+    )
     b["cost"] += c.cost or 0.0
     b["calls"] += 1
     b["tokens_in"] += c.tokens_in or 0
     b["tokens_out"] += c.tokens_out or 0
+    b["tokens_reasoning"] += c.tokens_reasoning or 0
     b["errors"] += 1 if c.error else 0
 
 
@@ -75,7 +79,10 @@ async def report(s: AsyncSession, user: User, days: int) -> dict[str, Any]:
             }
         )
     days_rows = sorted(_rows(by_day, "day"), key=lambda r: r["day"])
-    summary = total.get("all", {"cost": 0.0, "calls": 0, "tokens_in": 0, "tokens_out": 0, "errors": 0})
+    summary = total.get(
+        "all",
+        {"cost": 0.0, "calls": 0, "tokens_in": 0, "tokens_out": 0, "tokens_reasoning": 0, "errors": 0},
+    )
     return {
         "days": days,
         "scope": "all" if everything else "own",

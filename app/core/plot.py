@@ -61,6 +61,44 @@ def _id(desc: str) -> dict:
     return {"type": "string", "description": desc + " Латиница, цифры и _, до 32 знаков, например loc_harbor."}
 
 
+def spatial_schema() -> dict:
+    """Пространство места (спецификация 2026-10-12, §3.1): только для мест, которые исследуют по частям."""
+    part = {
+        "type": "object",
+        "properties": {
+            "ref": _id("id части."),
+            "name": _str("Название для героев, без тайн.", 80),
+            "purpose": _str("Что здесь, одной фразой.", 300),
+            "outdoor": {"type": "boolean", "description": "открытая местность"},
+            "below": {"type": "boolean", "description": "уровнем ниже входа: подвал, крипта"},
+            "secret": {"type": "boolean", "description": "за тайным проходом"},
+            "required": {"type": "boolean", "description": "сюжетная цель: к ней ведёт открытый путь"},
+        },
+        "required": ["ref", "name"],
+    }
+    approach = {
+        "type": "object",
+        "properties": {
+            "name": _str("Как герои подходят.", 60),
+            "kind": {"type": "string", "enum": ["road", "path", "door", "gate", "gap"]},
+        },
+        "required": ["name"],
+    }
+    return {
+        "type": "object",
+        "description": "Только для места, которое отряд будет исследовать по частям (храм, руины, усадьба, поле у "
+        "моста): из чего оно состоит. Без клеток и предметов — план построит сервер.",
+        "properties": {
+            "environment": {"type": "string", "enum": ["indoor", "outdoor", "mixed"]},
+            "scale": {"type": "string", "enum": ["small", "medium", "large"]},
+            "parts": {"type": "array", "minItems": 1, "maxItems": 6, "description": "Первая — вход.", "items": part},
+            "approaches": {"type": "array", "minItems": 1, "maxItems": 3, "items": approach},
+            "links": {"type": "array", "maxItems": 4, "items": {"type": "string"}, "description": "id мест рядом"},
+        },
+        "required": ["environment", "parts", "approaches"],
+    }
+
+
 def tool_spec() -> dict:
     """Инструмент, которым архитектор сдаёт каркас. Поля короткие: это наброски, детали появятся в игре."""
     person = {
@@ -113,6 +151,7 @@ def tool_spec() -> dict:
                         "role": _str("Роль в сюжете, одна фраза.", 300),
                         "mood": _str("Атмосфера, одна-две фразы.", 300),
                         "secret": _str("Секрет места, одна фраза.", 300),
+                        "spatial": spatial_schema(),
                     },
                     "required": ["id", "name", "role", "mood", "secret"],
                 },
@@ -441,6 +480,16 @@ def check(
             template("location_template", loc.get("template_id"), f"локация {oid}", has_locations)
             if loc.get("lore_ref") and catalog.find(str(loc["lore_ref"])) is None:
                 errors.append(f"локация {oid}: нет записи лора {loc['lore_ref']}")
+            if loc.get("spatial") is not None:
+                from pydantic import ValidationError
+
+                from app.core.layout.spatial import SpatialPlan
+
+                try:
+                    loc["spatial"] = SpatialPlan.model_validate(loc["spatial"]).model_dump(mode="json")
+                except ValidationError as e:
+                    why = "; ".join(f"{'.'.join(map(str, x['loc'])) or '-'}: {x['msg']}" for x in e.errors()[:3])
+                    errors.append(f"локация {oid}: пространство — {why}")
             state(loc, "status", "sketch")
     for npc in plan["npcs"]:
         oid = reg("NPC", npc)
@@ -485,6 +534,11 @@ def check(
             "завязка говорит об изъятом снаряжении, но opening.gear не установлен в confiscated со ссылкой на stash"
         )
 
+    for loc in plan["locations"]:
+        links = ((loc.get("spatial") or {}).get("links") or []) if isinstance(loc, dict) else []
+        for link in links:
+            if link not in loc_ids:
+                errors.append(f"локация {loc.get('id')}: пространство — нет места {link}")
     npc_ids = {k for k, v in seen.items() if v == "NPC"}
     for npc in plan["npcs"]:
         if isinstance(npc, dict) and npc.get("location_id") and npc["location_id"] not in loc_ids:
@@ -587,6 +641,9 @@ SYSTEM = """Ты — архитектор кампании для текстов
 - Завязка (public_intro), название, фраза-приманка и теги видны игрокам: в них не должно быть тайн.
 - Если завязка утверждает, что у героев отняли снаряжение или оружие, обязательно укажи opening:
   {gear: "confiscated", stash: "<id места каркаса>", note: "..."}. Иначе вещи остаются при героях.
+- Для 1–3 мест, которые отряд будет исследовать по частям (храм, руины, усадьба, поле у моста), заполни spatial:
+  первая часть — вход, тайные части — secret, сюжетная цель — required, подвал и крипта — below.
+  Без клеток и предметов; названия частей видны игрокам.
 - Запретные темы нельзя упоминать нигде.
 Сдай каркас одним вызовом submit_campaign_plan."""
 

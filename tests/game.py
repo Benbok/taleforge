@@ -71,14 +71,14 @@ def ok(r, code=200):
     return r.json()
 
 
-def party(client, admin, *, players=1, master=None, rules=None, **kw):
+def party(client, admin, *, players=1, master=None, rules=None, names=None, **kw):
     """Кампания с базовым пакетом, игроки и одобренный воин у первого игрока, сессия начата."""
     body = {"creation_rules": {"review": "auto", **(rules or {})}, "collect_window_sec": 0, **kw}
     if master:
         body["master"] = master
     c = make_campaign(client, admin, players=players, **body)
     inv = invite(client, admin, c["id"])
-    names = ["Арагорн", "Гимли", "Леголас"]
+    names = names or ["Арагорн", "Гимли", "Леголас"]
     heads = [register(client, inv["token"], names[i]) for i in range(players)]
     ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=heads[0]), 201)
     res = ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=heads[0]))

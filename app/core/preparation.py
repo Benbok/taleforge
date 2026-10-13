@@ -182,3 +182,66 @@ async def preserve_seen_places(session: AsyncSession, campaign_id: str) -> int:
             )
         )
     return len(seen)
+
+
+def _bucket() -> dict[str, Any]:
+    return {
+        "rows": 0,
+        "ready": 0,
+        "pending": 0,
+        "blocked": 0,
+        "calls": 0,
+        "errors": 0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "tokens_reasoning": 0,
+        "cost": 0.0,
+        "duration_ms": 0,
+    }
+
+
+async def location_cost(session: AsyncSession, campaign_id: str, root_id: str) -> dict[str, Any]:
+    """Расходы подготовки места по фазам (спецификация 2026-10-12, §8): структура, геометрия участков, обстановка
+    и содержимое контейнеров в них; вызовы модели — по ``LlmCall.generation_id``, включая отклонённые ответы и
+    токены рассуждений. Длительность фазы — от запроса до готовности. Только чтение."""
+    from app.core.layout import store
+    from app.db.models import LlmCall, as_utc
+
+    root = await session.get(Entity, root_id)
+    if root is None or root.campaign_id != campaign_id or root.kind != "location":
+        raise NotFound("место не найдено")
+    places = [root.id, *store.area_ids(root).values()]
+    containers = list(
+        await session.scalars(
+            select(Entity.id).where(
+                Entity.campaign_id == campaign_id, Entity.location_id.in_(places), Entity.kind == "object"
+            )
+        )
+    )
+    q = select(WorldGenerationState).where(
+        WorldGenerationState.campaign_id == campaign_id,
+        WorldGenerationState.target_entity_id.in_(places + containers),
+    )
+    found = {r.id: r for r in await session.scalars(q)}
+    phases: dict[str, dict[str, Any]] = {}
+    for r in found.values():
+        b = phases.setdefault(r.phase, _bucket())
+        b["rows"] += 1
+        status = public_status(r)
+        b[{"ready": "ready", "blocked": "blocked"}.get(status, "pending")] += 1
+        if r.requested_at is not None and r.completed_at is not None:
+            b["duration_ms"] += max(0, int((as_utc(r.completed_at) - as_utc(r.requested_at)).total_seconds() * 1000))
+    if found:
+        for c in await session.scalars(select(LlmCall).where(LlmCall.generation_id.in_(list(found)))):
+            b = phases[found[c.generation_id].phase]
+            b["calls"] += 1
+            b["errors"] += 1 if c.error else 0
+            b["tokens_in"] += c.tokens_in or 0
+            b["tokens_out"] += c.tokens_out or 0
+            b["tokens_reasoning"] += c.tokens_reasoning or 0
+            b["cost"] += c.cost or 0.0
+    total = _bucket()
+    for b in phases.values():
+        for k in total:
+            total[k] += b[k]
+    return {"root_id": root.id, "phases": phases, "total": total}

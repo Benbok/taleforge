@@ -719,9 +719,13 @@ class LlmCall(Base):
     model: Mapped[str] = mapped_column(String(128))
     tokens_in: Mapped[int] = mapped_column(Integer, default=0)
     tokens_out: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_reasoning: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )  # часть tokens_out у большинства провайдеров
     cost: Mapped[float] = mapped_column(Float, default=0.0)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
+    generation_id: Mapped[str | None] = mapped_column(String(32), index=True)  # строка WorldGenerationState
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
