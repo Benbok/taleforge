@@ -295,3 +295,27 @@ async def prepare_location(ctx: ToolContext, a: PrepareLocationArgs) -> dict:
     await ctx.record("prepare_location", target_id=root.id, payload=result, inverse=inverse, hidden=True)
     return result
 
+
+class PreparationCostArgs(BaseModel):
+    location_id: str = Field(description="реальный id места (корня комплекса или обычного)")
+
+
+@tool(
+    "preparation_cost",
+    "Только чтение: сколько стоила подготовка места — по фазам: вызовы модели, исправления, токены (и рассуждений), "
+    "цена и длительность. Ничего не запускает и не меняет.",
+    PreparationCostArgs,
+    ids={"location_id": "locations"},
+    mutating=False,
+    closes=False,
+)
+async def preparation_cost(ctx: ToolContext, a: PreparationCostArgs) -> dict:
+    from app.core import preparation
+    from app.core.campaigns import NotFound
+
+    try:
+        return await preparation.location_cost(ctx.session, ctx.campaign.id, a.location_id)
+    except NotFound as e:
+        raise ToolError(str(e)) from e
+
+
