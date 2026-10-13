@@ -233,7 +233,11 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
         rec = ctx.world.catalog.get(sketch["template_id"], "creature_template")
         creature_stats(rec.data)  # без блока статов существо в мир не выходит
         hp = int((rec.data.get("hp") or {}).get("average", 1))
-        home = plot.sketch_entity(p, sketch.get("location_id"))
+        from app.core.layout import store as layout_store
+
+        home = layout_store.home_of(
+            ctx.world.entities, plot.sketch_entity(p, sketch.get("location_id")), f"npc:{sketch['id']}"
+        )
         en = Entity(
             campaign_id=ctx.campaign.id,
             kind="creature",

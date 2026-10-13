@@ -183,6 +183,14 @@ async def _publish_layout(
         await ctx.session.flush()
         ctx.world.entities[en.id] = en
         ids[area.area_ref] = en.id
+    residents: list[str] = []
+    for key, ref in bp.anchors.items():
+        if not key.startswith("npc:"):
+            continue
+        for en in list(ctx.world.entities.values()):
+            if en.kind == "creature" and en.location_id == root.id and (en.state or {}).get("plot_id") == key[4:]:
+                en.location_id = ids[ref]  # житель каркаса переходит в свой участок вместе с публикацией
+                residents.append(en.id)
     passages = {p.passage_ref: {"state": p.state, "hidden": p.hidden} for p in bp.passages}
     root.state = {**(root.state or {}), "blueprint": bp.to_json(), "areas": ids, "passages": passages}
     rows_ = {}
@@ -193,7 +201,14 @@ async def _publish_layout(
                      hidden=True)  # fmt: skip
     if notes is None:
         notes = [] if quality == "normal" else ["fallback:layout"]
-    return {"schema_version": 1, "phase": "location_layout", "areas": ids, "geometry": rows_, "notes": notes}
+    return {
+        "schema_version": 1,
+        "phase": "location_layout",
+        "areas": ids,
+        "geometry": rows_,
+        "residents": residents,
+        "notes": notes,
+    }
 
 
 async def _publish_geometry(ctx, row: WorldGenerationState) -> dict[str, Any]:
