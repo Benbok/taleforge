@@ -27,6 +27,29 @@ PG_URL = os.environ.get("TEST_DATABASE_URL")
 WORKER = os.environ.get("PYTEST_XDIST_WORKER")  # gw0, gw1… при запуске с -n
 
 
+@pytest.fixture(autouse=True)
+def _postgres_test_loops(monkeypatch):
+    """TestClient and asyncio.run use different loops; asyncpg connections cannot cross them.
+
+    Disable connection reuse only in PostgreSQL tests. Production retains its
+    normal pool; row locks and real two-session concurrency are still tested.
+    """
+    if not PG_URL:
+        return
+    from sqlalchemy.pool import NullPool
+
+    from app.db import session as db_session
+
+    create_engine = db_session.create_async_engine
+
+    def test_engine(url, **options):
+        if str(url).startswith("postgresql"):
+            options.setdefault("poolclass", NullPool)
+        return create_engine(url, **options)
+
+    monkeypatch.setattr(db_session, "create_async_engine", test_engine)
+
+
 async def _reset(url: str) -> None:
     engine = make_engine(url)
     async with engine.begin() as conn:
@@ -59,7 +82,7 @@ def database_url(tmp_path_factory) -> str | None:
 
 
 @pytest.fixture
-def settings(tmp_path, database_url):
+def settings(tmp_path, database_url, _postgres_test_loops):
     url = database_url or f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
     asyncio.run(_reset(url))
     return Settings(
