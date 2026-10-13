@@ -26,38 +26,56 @@ log = logging.getLogger(__name__)
 PHASES = ("location_layout", "location_geometry")
 
 
-async def run(maker, dice_factory, claim: storage.Claim, phase: str, provider) -> dict[str, Any]:
+async def run(maker, dice_factory, claim: storage.Claim, phase: str, provider, llm=None) -> dict[str, Any]:
     if phase == "location_layout":
-        bp, quality = await _draft(maker, claim, provider)
+        bp, quality, notes, claim = await _draft(maker, claim, provider, llm)
 
         async def publish(ctx, row):
-            return await _publish_layout(ctx, row, bp, quality)
+            return await _publish_layout(ctx, row, bp, quality, notes)
 
         return await storage.commit_with(maker, dice_factory, claim, publish, quality=quality)
     return await storage.commit_with(maker, dice_factory, claim, _publish_geometry)
 
 
-async def _draft(maker, claim: storage.Claim, provider) -> tuple[Blueprint, str]:
+async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Blueprint, str, list[str], storage.Claim]:
+    """Замысел резерва → blueprint. Ручной замысел ведущего — как в поставке 1; мандат каркаса — лестница
+    детерминированных замыслов (модель добавляется в поставке 3, Task 6). Ни один не лёг — ``blocked``."""
+    from app.core import plot_anchors
+    from app.core.layout import spatial
+
     async with maker() as s:
         row = await s.get(WorldGenerationState, claim.ref)
         res = dict(row.reservation or {})
-        from app.core import plot_anchors
-
         waiting = [b.anchor_id for b in await plot_anchors.reserved_for(s, claim.campaign_id, row.target_entity_id)]
+    kw = {"seed": int(res["seed"]), "root_id": res["root_id"], "plot_id": res.get("plot_id")}
+    notes: list[str] = []
     try:
-        intent = LayoutIntent.model_validate(res["intent"])
+        if "mandate" in res:
+            candidates = spatial.intent_candidates(spatial.Mandate.model_validate(res["mandate"]))
+        else:
+            candidates = [LayoutIntent.model_validate(res["intent"])]
     except (KeyError, ValidationError) as e:
         raise Blocked("unsupported_source", str(e)[:500]) from e
-    kw = {"seed": int(res["seed"]), "root_id": res["root_id"], "plot_id": res.get("plot_id")}
-    try:
-        return _with_anchors(provider.propose(intent, **kw), waiting), "normal"
-    except LayoutError as e:
-        first = e.errors
-        log.info("структура %s: обычная раскладка не прошла (%s)", claim.ref, "; ".join(first[:3]))
-    try:
-        return _with_anchors(provider.propose(intent, fallback=True, **kw), waiting), "fallback"
-    except LayoutError as e:
-        raise Blocked("layout_unsatisfiable", "; ".join((first + e.errors)[:6])) from e
+    errors: list[str] = []
+    for i, intent in enumerate(candidates):
+        for fallback in (False, True):
+            try:
+                bp = provider.propose(intent, fallback=fallback, **kw)
+            except LayoutError as e:
+                errors += e.errors[:3]
+                log.info(
+                    "структура %s: замысел %d%s не прошёл (%s)",
+                    claim.ref,
+                    i,
+                    " fallback" if fallback else "",
+                    "; ".join(e.errors[:3]),
+                )
+                continue
+            quality = "normal" if i == 0 and not fallback and not notes else "fallback"
+            if quality == "fallback":
+                notes.append("fallback:layout")
+            return _with_anchors(bp, waiting), quality, notes, claim
+    raise Blocked("layout_unsatisfiable", "; ".join(errors[:6]))
 
 
 def _with_anchors(bp: Blueprint, waiting: list[str]) -> Blueprint:
@@ -66,7 +84,9 @@ def _with_anchors(bp: Blueprint, waiting: list[str]) -> Blueprint:
     return replace(bp, anchors={**bp.anchors, **extra}) if extra else bp
 
 
-async def _publish_layout(ctx, row: WorldGenerationState, bp: Blueprint, quality: str) -> dict[str, Any]:
+async def _publish_layout(
+    ctx, row: WorldGenerationState, bp: Blueprint, quality: str, notes: list[str] | None = None
+) -> dict[str, Any]:
     root = ctx.world.entities.get(row.target_entity_id)
     if root is None or root.kind != "location":
         raise Blocked("target_missing", "корневого места больше нет")
@@ -91,7 +111,8 @@ async def _publish_layout(ctx, row: WorldGenerationState, bp: Blueprint, quality
         rows_[area.area_ref] = g.id
     await ctx.record("prepare_layout", target_id=root.id, payload={"generation_id": row.id, "areas": len(ids)},
                      hidden=True)  # fmt: skip
-    notes = [] if quality == "normal" else ["fallback:layout"]
+    if notes is None:
+        notes = [] if quality == "normal" else ["fallback:layout"]
     return {"schema_version": 1, "phase": "location_layout", "areas": ids, "geometry": rows_, "notes": notes}
 
 

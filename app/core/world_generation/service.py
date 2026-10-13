@@ -156,7 +156,7 @@ class Orchestrator:
         try:
             phase = await storage.phase_of(maker, claim.ref)
             if phase in executor.PHASES:
-                await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider)
+                await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider, llm=self.llm)
             else:
                 draft = await self._plan(maker, claim)
                 proposal, quality, claim = await self._propose(maker, claim, draft)

@@ -6,13 +6,16 @@
 from __future__ import annotations
 
 import zlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.layout.contracts import BUILDER_VERSION, Blueprint, LayoutError
 from app.core.layout.intent import LayoutIntent
 from app.db.models import Campaign, Entity, WorldGenerationState
+
+if TYPE_CHECKING:
+    from app.core.layout.spatial import Mandate
 
 
 def _state(e: Any) -> dict:
@@ -107,3 +110,45 @@ async def request_geometry(ctx: Any, area: Any) -> str | None:
         return None
     storage.activate(row)
     return row.id
+
+
+async def reserve_plan_layout(
+    session: AsyncSession, campaign: Campaign, root: Entity, mandate: Mandate
+) -> WorldGenerationState:
+    """Резерв структуры из каркаса: мандат и seed фиксируются один раз; повтор возвращает ту же строку."""
+    from app.core.world_generation import storage
+
+    row = await storage.find(session, campaign.id, root.id, "location_layout")
+    if row is not None:
+        return row
+    seed = layout_seed(campaign.id, root.id)
+    reservation = {
+        "phase": "location_layout",
+        "seed": seed,
+        "root_id": root.id,
+        "plot_id": _state(root).get("plot_id"),
+        "source": "plan",
+        "mandate": mandate.model_dump(mode="json"),
+    }
+    row = WorldGenerationState(
+        campaign_id=campaign.id,
+        target_entity_id=root.id,
+        phase="location_layout",
+        status="unprepared",
+        reservation=reservation,
+        seed=seed,
+        generator_version=BUILDER_VERSION,
+    )
+    session.add(row)
+    await session.flush()
+    return row
+
+
+def home_of(entities: dict[str, Any], place_id: str | None, key: str) -> str | None:
+    """Где в комплексе держать жителя или носителя ``key``: его участок, иначе входной; без blueprint — само место."""
+    root = entities.get(place_id or "")
+    bp = blueprint_of(root)
+    if root is None or bp is None:
+        return place_id
+    return area_ids(root).get(bp.anchors.get(key) or bp.entry) or place_id
+
