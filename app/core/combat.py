@@ -623,6 +623,10 @@ def _attack_note(who: str, target: str, r: dict) -> str:
 
 
 def _melee_attack(a: Actor) -> str | None:
+    """Оружие автоатаки (вдогонку): то, что в руках, затем любое рукопашное из инвентаря, затем безоружный удар."""
+    for x in a.attacks:
+        if x["kind"] == "melee" and x.get("inventory_id") and x.get("equipped"):
+            return x["inventory_id"]
     for x in a.attacks:
         if x["kind"] == "melee" and x.get("inventory_id"):
             return x["inventory_id"]
