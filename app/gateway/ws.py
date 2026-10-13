@@ -602,6 +602,7 @@ async def _step(app, user: User, conn: Connection, payload: dict) -> None:
     """Игрок нажал клетку схемы: его герой идёт туда (app/tools/movement.py). Ответ ``map.step.result`` — только
     этому сокету; схема у всех обновляется по ``map.changed``."""
     from app.core.inspect import viewer_hero
+    from app.core.world_tx import WorldConflict
     from app.tools.movement import hero_step
     from app.tools.registry import ToolError
     from app.tools.runtime import flush_outbox, open_context, publish_changes
@@ -641,12 +642,19 @@ async def _step(app, user: User, conn: Connection, payload: dict) -> None:
                 bool(payload.get("confirm")),
                 [(c[0], c[1]) for c in near] if near else None,
             )
-        except ToolError as e:
+        except (ToolError, WorldConflict) as e:
+            # WorldConflict — мир одновременно изменил другой игрок или ход мастера: отказ этого шага,
+            # а не обрыв всего соединения игрока
             await session.rollback()
             await answer({"ok": False, "error": str(e)})
             return
         messages = await flush_outbox(session, ctx)
-        await session.commit()
+        try:
+            await session.commit()
+        except WorldConflict as e:
+            await session.rollback()
+            await answer({"ok": False, "error": str(e)})
+            return
     await answer({"ok": True, **out})
     if out.get("confirm_needed"):
         return
