@@ -752,7 +752,9 @@ def _plan_root(settings, cid, mandate=None):
     async def go(ctx):
         root = (await _ok(ctx, "create_location", {"name": "Старый храм"}))["location_id"]
         campaign = await ctx.session.get(Campaign, cid)
-        row = await store.reserve_plan_layout(ctx.session, campaign, ctx.world.entities[root], mandate or temple_mandate())
+        row = await store.reserve_plan_layout(
+            ctx.session, campaign, ctx.world.entities[root], mandate or temple_mandate()
+        )
         storage.activate(row)
         return root, row.id
 
@@ -1176,8 +1178,10 @@ def test_valid_answer_becomes_intent_with_tokens():
         (lambda r: r["parts"].pop(), "нет обязательной части crypt"),
         (lambda r: r.update(colour="red"), "только"),
         (lambda r: r["approaches"][0].update(outside_id="en_x"), "outside_id"),
-        (lambda r: next(p for p in r["parts"] if p["part_ref"] == "vault").update(secret=False, required=True),
-         "vault"),
+        (
+            lambda r: next(p for p in r["parts"] if p["part_ref"] == "vault").update(secret=False, required=True),
+            "vault",
+        ),
     ],
 )
 def test_invalid_answer_returns_correction(mutate, text):
@@ -1418,8 +1422,15 @@ async def ask(
     attempt = Attempt(model=model)
     try:
         reply = await asyncio.wait_for(
-            llm.complete(msgs, model=model, tools=[spec(m)], tool_choice="required", max_tokens=MAX_OUT,
-                         temperature=0.7, api_base=api_base),  # fmt: skip
+            llm.complete(
+                msgs,
+                model=model,
+                tools=[spec(m)],
+                tool_choice="required",
+                max_tokens=MAX_OUT,
+                temperature=0.7,
+                api_base=api_base,
+            ),  # fmt: skip
             TIMEOUT,
         )
     except Exception as e:  # noqa: BLE001 — сбой или таймаут модели ведёт к fallback, а не к ошибке хода
@@ -2295,13 +2306,29 @@ async def enter_complex(maker, preparer, dice_factory, campaign_id: str, root_id
 - [ ] **Step 4: Перестроить `_open_first_place`.** Вынести цикл NPC первого узла в `async def _opening_npcs(ctx, node, fresh_where, where) -> bool` без изменения логики (возвращает False при ошибке `develop`). Новый порядок:
 
 ```python
-    async with svc.maker() as s:
-        ... # как сейчас: свежий каркас, develop места (если не создано), ветка готового приключения
-        from app.core.world_generation import storage
+async with svc.maker() as s:
+    ...  # как сейчас: свежий каркас, develop места (если не создано), ветка готового приключения
+    from app.core.world_generation import storage
 
-        layout = await storage.find(s, cid, place.id, "location_layout")
-        deferred = layout is not None  # комплекс: участники узла встанут рядом с героями уже внутри
-        if not deferred and not await _opening_npcs(ctx, node, fresh_where, where):
+    layout = await storage.find(s, cid, place.id, "location_layout")
+    deferred = layout is not None  # комплекс: участники узла встанут рядом с героями уже внутри
+    if not deferred and not await _opening_npcs(ctx, node, fresh_where, where):
+        await s.rollback()
+        return False
+    messages = await flush_outbox(s, ctx)
+    await s.commit()
+await publish_changes(svc.bus, ctx, messages)
+if ctx.operation_refs:
+    await svc._settle_preparation(cid, list(ctx.operation_refs))
+if deferred:
+    from app.core.layout import entry
+
+    await entry.enter_complex(svc.maker, svc.preparer, svc.dice_factory, cid, place.id, bus=svc.bus)
+    async with svc.maker() as s:
+        c = await s.get(Campaign, cid)
+        ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
+        node, fresh_where = _first_scene(ctx.world.plot)
+        if not await _opening_npcs(ctx, node, fresh_where, where):
             await s.rollback()
             return False
         messages = await flush_outbox(s, ctx)
@@ -2309,23 +2336,7 @@ async def enter_complex(maker, preparer, dice_factory, campaign_id: str, root_id
     await publish_changes(svc.bus, ctx, messages)
     if ctx.operation_refs:
         await svc._settle_preparation(cid, list(ctx.operation_refs))
-    if deferred:
-        from app.core.layout import entry
-
-        await entry.enter_complex(svc.maker, svc.preparer, svc.dice_factory, cid, place.id, bus=svc.bus)
-        async with svc.maker() as s:
-            c = await s.get(Campaign, cid)
-            ctx = await open_context(s, c, svc.dice_factory(), turn_id=None, seat_id=master_seat(c).id)
-            node, fresh_where = _first_scene(ctx.world.plot)
-            if not await _opening_npcs(ctx, node, fresh_where, where):
-                await s.rollback()
-                return False
-            messages = await flush_outbox(s, ctx)
-            await s.commit()
-        await publish_changes(svc.bus, ctx, messages)
-        if ctx.operation_refs:
-            await svc._settle_preparation(cid, list(ctx.operation_refs))
-    return True
+return True
 ```
 
   `_opening_npcs` использует `ctx.world.scene.location_id` как `location_id` NPC — после входа это входной участок; при `blocked` — корень (герои снаружи, вступление описывает место без выдуманной комнаты). Повторный вызов: место уже есть (`created=False`), `enter_complex` возвращает `no_heroes`, участники узла уже в реестре и пропускаются существующей проверкой `npc.get("entity_id") in ctx.world.entities`.
@@ -2673,7 +2684,9 @@ def _priced(messages, tools):
 def test_cost_sums_structure_corrections_and_reasoning(client, admin, settings):
     cid = _on(client, admin, settings)
     root, ref = _plan_root(settings, cid)
-    assert _prepare(settings, cid, ref, Orchestrator(InMemoryCoordination(), llm=ScriptedLLM([_bad, _priced]))) == "ready"
+    assert (
+        _prepare(settings, cid, ref, Orchestrator(InMemoryCoordination(), llm=ScriptedLLM([_bad, _priced]))) == "ready"
+    )
     cost = run(settings, lambda s: preparation.location_cost(s, cid, root))
     layout = cost["phases"]["location_layout"]
     assert layout["calls"] == 2 and layout["errors"] == 1 and layout["tokens_reasoning"] == 300

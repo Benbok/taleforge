@@ -17,9 +17,11 @@ pytest/xdist, Jinja2, существующий LLM Protocol и клиент Reac
 и [исходный план Tasks 1–21](2026-10-12-master-narrative-adaptation.md).
 
 База ревью: feat/narrative-adaptation, коммит f81c3a3.
-План подготовлен для самостоятельной реализации пользователем.
-Приведённые проверки являются требованиями будущего прогона; исправления
-ещё не внесены. Слияние с main остаётся отдельным действием.
+План первоначально подготовлен для самостоятельной реализации пользователем.
+На 2026-10-13 F1–F12 и дополнительные A–C, G/G2/H реализованы и прошли
+повторную приёмку. Результаты и соответствие R1–R20 приведены в
+[отчёте Gate D](../reviews/2026-10-13-master-narrative-adaptation-gate-d.md).
+Слияние с main остаётся отдельным действием.
 
 ## Global Constraints
 
@@ -524,21 +526,31 @@ LLM-классификатор или новый UI не вводятся. Ни�
 добавить воспроизводящий тест и отдельное исправление, затем повторить
 затронутые проверки.
 
-- [ ] SQLite: полный python -m pytest -q; сохранить summary и skipped reasons.
-- [ ] PostgreSQL: отдельная test database + TEST_DATABASE_URL;
+- [x] SQLite: полный python -m pytest -q; сохранить summary и skipped reasons.
+- [x] PostgreSQL: отдельная test database + TEST_DATABASE_URL;
   alembic upgrade head, alembic check, downgrade base и повтор upgrade head,
   полный pytest с настоящими двухсессионными гонками.
-- [ ] Ruff: check и format --check всего проверяемого commit;
+- [x] Ruff: check и format --check всего проверяемого commit;
   app.contract --check; SRD content strict validate.
-- [ ] Клиент: npm test, npm run gen:api + проверка отсутствия нового diff
+- [x] Клиент: npm test, npm run gen:api + проверка отсутствия нового diff
   generated-типов, npm run build. Указать commit и окружение.
-- [ ] Реальный create_app сценарий: союз → future job → режиссёр →
+- [x] Реальный create_app сценарий: союз → future job → режиссёр →
   исправленный план → следующая сцена → reconnect; no_change/error/lease
   варианты не создают повторного эффекта.
-- [ ] Обновить ограничения/статус документации и checklist исходного плана
+- [x] Обновить ограничения/статус документации и checklist исходного плана
   по реально выполненным пунктам. Изменившиеся контракты F4/F7/F8 зафиксировать
   в спеке; не заменять отчёт обещанием «всё должно пройти».
-- [ ] Коммит test(narrative): complete repaired Gate D verification.
+- [x] Коммит test(narrative): complete repaired Gate D verification.
+
+**Итог 2026-10-13:** проверенный код `413eb8b`, отдельный worktree.
+SQLite: 1024 passed / 3 skipped / 0 failed. PostgreSQL 16: 1025 passed /
+2 skipped / 0 failed, workers завершились штатно. Миграционный круг, контракт,
+SRD, quality 8/8, клиент (тесты, gen:api без diff, build) и Ruff check/format
+--check по всему дереву — PASS. Промежуточное падение first-slice на PostgreSQL
+оказалось гонкой теста со вступлением кампании (`be30787`). При итоговом обзоре
+найдены и исправлены G/H (вход живого режиссёра, `403070a`) и G2 (формат
+операций мастера, `413eb8b`). Подробности и соответствие R1–R20 —
+[отчёт Gate D](../reviews/2026-10-13-master-narrative-adaptation-gate-d.md).
 
 ## Что прислать на повторное ревью
 
