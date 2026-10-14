@@ -79,6 +79,11 @@ class ActionProgress(Contract):
     blocked_by: list[int] = Field(default_factory=list)
 
 
+class ToolActionBinding(Contract):
+    ref: ActionRef
+    role: Literal["prepare", "check", "consequence", "finish"]
+
+
 def normalize_result(raw: dict[str, Any], *, attempt_id: str) -> ResolutionResult:
     """Adapt legacy tool responses without inferring permission from error text."""
     if raw.get("ok") is True:

@@ -40,6 +40,7 @@ from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.core.narrative.view import master_canon_block
+from app.core.resolution.contracts import ActionRef, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
@@ -59,7 +60,7 @@ from app.tools.action_plan import (
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.narrative.commitments import reserve_turn_claims
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
-from app.tools.resolution.requests import bound_tool_key
+from app.tools.resolution.requests import action_key, bound_tool_key
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
 log = logging.getLogger(__name__)
@@ -522,9 +523,19 @@ class TurnMixin:
                 continue
             if combat.in_combat(ctx) and (hero_turn is None or actor != hero_turn.id):
                 continue
+            m_actions = (m.data or {}).get("resolution_actions") or []
+            call_args = dict(args)
+            if m_actions:
+                call_args["action_ref"] = m_actions[0]["ref"]
             await self._status(cid, "rolling")
-            r = await execute(ctx, name, args, key=f"{turn_id}:route:{m.id}")
-            request_key = await capture_attempt(ctx, actor, r)
+            r = await execute(ctx, name, call_args, key=f"{turn_id}:route:{m.id}")
+            if m_actions:
+                binding = ctx.current_binding or ToolActionBinding(
+                    ref=ActionRef.model_validate(m_actions[0]["ref"]), role="finish"
+                )
+            else:
+                binding = ctx.current_binding or actor
+            request_key = await capture_attempt(ctx, binding, r)
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True, "request_key": request_key})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
@@ -662,13 +673,16 @@ class TurnMixin:
                 await self._status(cid, "rolling")
             ctx.remaining_resolution_calls = MAX_CALLS - done_calls
             ctx.resolution_calls_used = 0
+            repair_target = (
+                ActionRef.model_validate(args["action_ref"])
+                if isinstance(args.get("action_ref"), dict)
+                else (args.get("character_id") or args.get("attacker_id") or args.get("caster_id"))
+            )
             if (
                 name != "adjudicate_action"
                 and REGISTRY[name].mutating
                 and REGISTRY[name].closes_actions
-                and not await permit_repair(
-                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
-                )
+                and not await permit_repair(ctx, repair_target)
             ):
                 done_calls += 1
                 return {
@@ -681,14 +695,11 @@ class TurnMixin:
                 key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
             result = await execute(ctx, name, args, key=key)
             if name == "adjudicate_action" and result.get("ok"):
-                from app.core.resolution.contracts import ActionRef
-                from app.tools.resolution.requests import action_key
-
                 result = {**result, "request_key": action_key(ActionRef.model_validate(args["proposal"]["ref"]))}
             if name != "adjudicate_action" and REGISTRY[name].mutating and REGISTRY[name].closes_actions:
-                request_key = await capture_attempt(
-                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id"), result
-                )
+                actor = args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
+                binding = ctx.current_binding or actor
+                request_key = await capture_attempt(ctx, binding, result)
                 if request_key:
                     result = {**result, "request_key": request_key}
             if name not in AUDIO_TOOLS and name != "adapt_story":  # адаптация имеет собственный бюджет

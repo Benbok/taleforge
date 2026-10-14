@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogError
-from app.core.resolution.contracts import ActionProgress, ActionRef, FailureCategory, FailureInfo
+from app.core.resolution.contracts import ActionProgress, ActionRef, FailureCategory, FailureInfo, ToolActionBinding
 from app.core.world import World, WorldError, load_world
 from app.db.models import Campaign, Event
 from app.rules.dice import Dice, DiceError, DiceRoll
@@ -81,6 +81,7 @@ class ToolContext:
     resolved_actions: set[str] = field(default_factory=set)
     required_actions: list[ActionRef] = field(default_factory=list)
     action_progress: dict[str, ActionProgress] = field(default_factory=dict)
+    current_binding: ToolActionBinding | None = None
     remaining_resolution_calls: int = 0
     resolution_calls_used: int = 0
     turn_diagnostics: dict = field(default_factory=dict)
@@ -242,6 +243,23 @@ def schema_for(t: Tool, world: World) -> dict[str, Any]:
             p["enum"] = values
     for p in props.values():
         p.pop("title", None)
+    if not t.internal and (
+        t.mutating
+        or t.closes_actions
+        or t.name in {"cast_spell", "resolve_attack", "use_item", "roll_check"}
+    ):
+        props["action_ref"] = {
+            "type": "object",
+            "description": "Привязка к конкретной части заявки игрока",
+            "properties": {
+                "campaign_id": {"type": "string"},
+                "source_kind": {"type": "string", "enum": ["message", "standing_response", "event"]},
+                "source_id": {"type": "string"},
+                "actor_id": {"type": "string"},
+                "part": {"type": "integer", "minimum": 0},
+            },
+            "required": ["campaign_id", "source_kind", "source_id", "actor_id", "part"],
+        }
     return schema
 
 
@@ -285,6 +303,24 @@ async def execute(
     t = REGISTRY.get(name)
     if t is None:
         return _failure(f"нет инструмента {name}; доступны: {', '.join(REGISTRY)}", "unknown_tool", "unknown", key)
+    raw_args = dict(raw_args or {})
+    raw_action_ref = raw_args.pop("action_ref", None)
+    explicit_ref = None
+    if raw_action_ref is not None:
+        try:
+            explicit_ref = ActionRef.model_validate(raw_action_ref)
+        except ValidationError as e:
+            return _failure(f"неверный формат action_ref: {e}", "invalid_arguments", "invalid_arguments", key)
+    if not t.internal:
+        from app.agents.master.action_binding import bind_tool_action
+
+        try:
+            binding = await bind_tool_action(ctx, name, raw_args, explicit=explicit_ref)
+        except ToolError as e:
+            return _failure(str(e), e.code, e.category, key)
+        ctx.current_binding = binding
+    else:
+        ctx.current_binding = None
     if t.internal:
         if grant is None:
             return _failure(

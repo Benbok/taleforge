@@ -77,11 +77,11 @@
 - Зарезервированный аргумент обычных LLM-инструментов `action_ref`; извлечь из raw args до валидации handler, автоматически добавить в опубликованную JSON schema только подходящих инструментов. Внутренние вызовы execute не требуют этого поля.
 - `capture_attempt(ctx, binding: ToolActionBinding, raw: dict) -> str`: вместо выбора по actor_id; ключ возвращается для точной части. `permit_repair(ctx, ref: ActionRef) -> bool`.
 
-- [ ] Написать тесты `test_explicit_cast_selects_second_part`, `test_two_messages_same_actor_require_source`, `test_ambiguous_check_changes_nothing`, `test_wrong_target_or_foreign_ref_changes_nothing`, `test_auxiliary_world_call_does_not_claim_player_part`, `test_tool_schema_accepts_metadata_without_handler_field`. Проверять отсутствие новых событий/расхода при отказе привязки.
-- [ ] Запустить `tests/test_action_binding.py` и увидеть FAIL.
-- [ ] Реализовать таблицу совместимости по фактическому REGISTRY и IntentAction: actor, verb, spell_id, цели, skill; неизвестное соответствие не угадывать. До execute валидировать текущий ход и обязательные ссылки. Ошибка неоднозначности возвращает модели кандидатов. Отдельно разрешить явно вспомогательные вызовы; они не получают завершение или fallback заявки.
-- [ ] Серверный маршрут выбирает ActionRef исходного действия; не использовать только tuple(hero, spell). Модель получает refs в списке заявок. adjudicate_action использует уже существующий proposal.ref, без второго идентификатора.
-- [ ] Запустить `tests/test_action_binding.py tests/test_resolution_safe_failure.py tests/test_resolution_end_to_end.py tests/test_master.py`; PASS. Коммит: `feat: bind tool calls to verified action parts`.
+- [x] Написать тесты `test_explicit_cast_selects_second_part`, `test_two_messages_same_actor_require_source`, `test_ambiguous_check_changes_nothing`, `test_wrong_target_or_foreign_ref_changes_nothing`, `test_auxiliary_world_call_does_not_claim_player_part`, `test_tool_schema_accepts_metadata_without_handler_field`. Проверять отсутствие новых событий/расхода при отказе привязки.
+- [x] Запустить `tests/test_action_binding.py` и увидеть FAIL.
+- [x] Реализовать таблицу совместимости по фактическому REGISTRY и IntentAction: actor, verb, spell_id, цели, skill; неизвестное соответствие не угадывать. До execute валидировать текущий ход и обязательные ссылки. Ошибка неоднозначности возвращает модели кандидатов. Отдельно разрешить явно вспомогательные вызовы; они не получают завершение или fallback заявки.
+- [x] Серверный маршрут выбирает ActionRef исходного действия; не использовать только tuple(hero, spell). Модель получает refs в списке заявок. adjudicate_action использует уже существующий proposal.ref, без второго идентификатора.
+- [x] Запустить `tests/test_action_binding.py tests/test_resolution_safe_failure.py tests/test_resolution_end_to_end.py tests/test_master.py`; PASS. Коммит: `feat: bind tool calls to verified action parts`.
 
 ### Task 3: Повторы и расход ресурсов по ActionRef
 
