@@ -28,6 +28,12 @@ describe("единая карта комплекса", () => {
     expect(container.querySelector('[data-area-id="remembered"]')?.getAttribute("transform")).toBe("translate(0 -4)");
     expect(screen.getByRole("button", { name: /уровень -1/i })).not.toBeNull();
   });
+
+  it("приглушает подготовленный, но ещё не исследованный участок", () => {
+    const prepared = { ...map.areas[1], id: "prepared", status: "prepared" as const };
+    const { container } = render(<LocationMap map={{ ...map, areas: [map.areas[0], prepared] }} />);
+    expect(container.querySelector('[data-area-status="prepared"]')?.getAttribute("opacity")).toBe("0.22");
+  });
 });
 
 describe("подход к проходу", () => {
