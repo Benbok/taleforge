@@ -18,7 +18,7 @@ from app.core import spells as spellbook
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.features import sheet_rows, uses_view, wild_shape_forms
 from app.core.world import character_actor, get_scene, lineage_features
-from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, as_utc
+from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, MasterTurn, as_utc
 from app.rules.dice import Dice
 from app.rules.dnd5e import features as cf
 from app.rules.dnd5e.advancement import progress_view
@@ -281,10 +281,45 @@ async def roll_abilities(session: AsyncSession, viewer: Viewer, ch: Character, d
     return totals
 
 
+ADMISSION_CONFLICT = "Новый герой может вступить до старта или на паузе после завершения боя и хода мастера"
+
+
+async def ensure_character_admission_allowed(session: AsyncSession, campaign: Campaign) -> None:
+    c = await session.get(Campaign, campaign.id, with_for_update=True)
+    if c is None or c.status == "ended":
+        raise Conflict(ADMISSION_CONFLICT)
+
+    from app.core import chat
+
+    active = await chat.active_session(session, campaign.id)
+    if active is not None or c.status == "active":
+        raise Conflict(ADMISSION_CONFLICT)
+
+    scene = await get_scene(session, campaign.id)
+    if scene is not None:
+        if scene.mode == "combat" or bool(scene.turn_order):
+            raise Conflict(ADMISSION_CONFLICT)
+        st = scene.state or {}
+        if bool(st.get("combats")) or bool(st.get("combat")):
+            raise Conflict(ADMISSION_CONFLICT)
+
+    running_turn = (
+        await session.scalars(
+            select(MasterTurn).where(
+                MasterTurn.campaign_id == campaign.id,
+                MasterTurn.status == "running",
+            )
+        )
+    ).first()
+    if running_turn is not None:
+        raise Conflict(ADMISSION_CONFLICT)
+
+
 async def submit(session: AsyncSession, viewer: Viewer, ch: Character, cat: CatalogView, rules: dict) -> list[str]:
     _own(viewer, ch)
     if ch.status != "draft":
         raise Conflict("отправить на проверку можно только черновик")
+    await ensure_character_admission_allowed(session, viewer.campaign)
     errs = errors_for(ch, cat, rules)
     if errs:
         return errs
@@ -360,6 +395,7 @@ def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, An
 
 async def approve_character(session: AsyncSession, campaign: Campaign, ch: Character, cat: CatalogView) -> None:
     """Одобрение: стартовое снаряжение класса (если его ещё нет), полные хиты и кости хитов, место в сцене."""
+    await ensure_character_admission_allowed(session, campaign)
     sheet = ch.sheet or {}
     cls = cat.find(sheet.get("class_id") or "", "class")
     have = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
@@ -459,6 +495,7 @@ async def claim(session: AsyncSession, viewer: Viewer, ch: Character, cat: Catal
         raise AccessDenied("выбрать героя может игрок на своём месте")
     if ch.status != "premade":
         raise Conflict("этого героя уже выбрали")
+    await ensure_character_admission_allowed(session, viewer.campaign)
     q = select(Character).where(Character.seat_id == viewer.seat.id, Character.status.in_(ACTIVE))
     mine = (await session.scalars(q)).first()
     if mine is not None:

@@ -719,7 +719,7 @@ async def add_seat(
         except IntegrityError:
             await session.rollback()
             if attempt == 2:
-                raise Conflict("конфликт при добавлении места: повторите запрос")
+                raise Conflict("конфликт при добавлении места: повторите запрос") from None
             current_user = await session.get(User, user_id)
             await asyncio.sleep(0.02 * (attempt + 1))
     c = await session.get(Campaign, campaign_id)
@@ -853,22 +853,27 @@ async def accept(token: str, user: UserDep, session: SessionDep, request: Reques
 async def control_session(
     campaign_id: str, action: str, user: UserDep, session: SessionDep, request: Request
 ) -> CampaignOut:
-    v = await _viewer(session, user, campaign_id)
-    recap = None
-    if action == "start":
-        game, msg = await chat.start_session(session, v)
-        event = "session.started"
-        last = await memory.latest(session, campaign_id)
-        if last is not None and last.content.get("recap"):
-            # мастер открывает сессию коротким «Ранее в кампании…» по сводке (раздел 5)
-            recap = await chat.system_message(session, v.campaign, "Ранее в кампании: " + last.content["recap"], game)
-    elif action in ("pause", "end"):
-        game, msg = await chat.stop_session(session, v, "paused" if action == "pause" else "ended")
-        event = "session.paused" if action == "pause" else "session.ended"
-    else:
-        raise NotFound("действие: start, pause или end")
-    game_id = game.id if game else None
-    await session.commit()
+    lock = request.app.state.master.turn_lock(campaign_id)
+    async with lock:
+        await session.get(Campaign, campaign_id, with_for_update=True)
+        v = await _viewer(session, user, campaign_id)
+        recap = None
+        if action == "start":
+            game, msg = await chat.start_session(session, v)
+            event = "session.started"
+            last = await memory.latest(session, campaign_id)
+            if last is not None and last.content.get("recap"):
+                # мастер открывает сессию коротким «Ранее в кампании…» по сводке (раздел 5)
+                recap = await chat.system_message(
+                    session, v.campaign, "Ранее в кампании: " + last.content["recap"], game
+                )
+        elif action in ("pause", "end"):
+            game, msg = await chat.stop_session(session, v, "paused" if action == "pause" else "ended")
+            event = "session.paused" if action == "pause" else "session.ended"
+        else:
+            raise NotFound("действие: start, pause или end")
+        game_id = game.id if game else None
+        await session.commit()
     bus = request.app.state.bus
     await publish_message(bus, msg)
     if recap is not None:

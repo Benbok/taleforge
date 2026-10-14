@@ -38,8 +38,14 @@ def build_hero(client, admin, cid, seat, body=None):
     body = body or {**FIGHTER, "name": "Торин", "private_backstory": "Потерял брата в шахтах."}
     q = f"?as_seat={seat}"
     ch = ok(client.post(f"/api/campaigns/{cid}/characters{q}", json=body, headers=admin), 201)
+    camp = client.get(f"/api/campaigns/{cid}", headers=admin).json()
+    was_active = camp["status"] == "active"
+    if was_active:
+        ok(client.post(f"/api/campaigns/{cid}/session/pause", headers=admin))
     res = ok(client.post(f"/api/campaigns/{cid}/characters/{ch['id']}/submit{q}", headers=admin))
     assert res["status"] == "approved", res
+    if was_active:
+        ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     return ch
 
 
@@ -178,9 +184,11 @@ def test_ai_player_reaction_follows_mood(game_client):
 
 def test_vote_hands_hero_to_ai_and_back(game_client, admin_g, settings, llm):
     c, (p1, p2), hero = party(game_client, admin_g, players=2)
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/pause", headers=admin_g))
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json={**FIGHTER, "name": "Торин"}, headers=p2), 201)
     tid = rows(settings, Character, Character.name == "Торин")[0].id
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{tid}/submit", headers=p2))
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
     tune(settings, c["id"])
     with connect(game_client, p2, c["id"]) as (w2, snap):
         arag = seat_of(snap, "Арагорн")

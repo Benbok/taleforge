@@ -225,19 +225,25 @@ async def submit(
     request: Request,
     as_seat: str | None = None,
 ) -> dict:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    cat = await campaign_catalog(session, v.campaign)
-    errors = await svc.submit(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
-    await session.commit()
-    if errors:
-        return {"status": ch.status, "errors": errors}
-    bus = request.app.state.bus
-    await bus.publish(campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None)
-    if ch.status == "submitted" and master_seat(v.campaign).occupant_type == "agent":
-        # проверку ведёт ИИ-мастер; ответ придёт событием character.reviewed
-        request.app.state.master.schedule_review(campaign_id, ch.id)
-    return {"status": ch.status, "errors": []}
+    lock = request.app.state.master.turn_lock(campaign_id)
+    if lock.locked():
+        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
+    async with lock:
+        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+        ch = await svc.get_character(session, v, character_id)
+        cat = await campaign_catalog(session, v.campaign)
+        errors = await svc.submit(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
+        await session.commit()
+        if errors:
+            return {"status": ch.status, "errors": errors}
+        bus = request.app.state.bus
+        await bus.publish(
+            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
+        )
+        if ch.status == "submitted" and master_seat(v.campaign).occupant_type == "agent":
+            # проверку ведёт ИИ-мастер; ответ придёт событием character.reviewed
+            request.app.state.master.schedule_review(campaign_id, ch.id)
+        return {"status": ch.status, "errors": []}
 
 
 @router.post("/characters/{character_id}/review", response_model_exclude_unset=True)
@@ -250,20 +256,26 @@ async def review(
     request: Request,
     as_seat: str | None = None,
 ) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    await svc.review(session, v, ch, await campaign_catalog(session, v.campaign), body.approve, body.comment)
-    await session.commit()
-    view = await _view(session, v, ch)
-    bus = request.app.state.bus
-    await bus.publish(campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None)
-    if ch.seat_id:
+    lock = request.app.state.master.turn_lock(campaign_id)
+    if lock.locked():
+        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
+    async with lock:
+        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+        ch = await svc.get_character(session, v, character_id)
+        await svc.review(session, v, ch, await campaign_catalog(session, v.campaign), body.approve, body.comment)
+        await session.commit()
+        view = await _view(session, v, ch)
+        bus = request.app.state.bus
         await bus.publish(
-            campaign_id,
-            envelope("character.reviewed", campaign_id, {"status": ch.status, "comment": ch.review_comment}),
-            [ch.seat_id],
+            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
         )
-    return view
+        if ch.seat_id:
+            await bus.publish(
+                campaign_id,
+                envelope("character.reviewed", campaign_id, {"status": ch.status, "comment": ch.review_comment}),
+                [ch.seat_id],
+            )
+        return view
 
 
 @router.post("/characters/{character_id}/review/retry-ai", status_code=202)
@@ -338,15 +350,19 @@ async def claim(
     request: Request,
     as_seat: str | None = None,
 ) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    cat = await campaign_catalog(session, v.campaign)
-    await svc.claim(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
-    await session.commit()
-    await request.app.state.bus.publish(
-        campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
-    )
-    return await _view(session, v, ch)
+    lock = request.app.state.master.turn_lock(campaign_id)
+    if lock.locked():
+        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
+    async with lock:
+        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+        ch = await svc.get_character(session, v, character_id)
+        cat = await campaign_catalog(session, v.campaign)
+        await svc.claim(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
+        await session.commit()
+        await request.app.state.bus.publish(
+            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
+        )
+        return await _view(session, v, ch)
 
 
 @router.post("/characters/from-library/{library_id}", status_code=201, response_model_exclude_unset=True)
