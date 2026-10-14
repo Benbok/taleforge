@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -30,6 +30,9 @@ class SpatialPart(BaseModel):
     below: bool = Field(False, description="уровнем ниже входа: подвал, крипта")
     secret: bool = Field(False, description="за тайным проходом")
     required: bool = Field(False, description="сюжетная цель: к ней обязан вести открытый путь")
+    shape: Literal["rect", "cave", "open"] | None = None
+    material: Literal["stone", "earth", "grass", "water", "wood"] | None = None
+    scenery: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
     def _shape(self) -> SpatialPart:
@@ -71,19 +74,44 @@ class SpatialPlan(BaseModel):
         return self
 
 
-OUTDOOR_TAGS = {"wild", "rural"}  # теги шаблонов локаций (content/*/data/locations.yaml): место под открытым небом
+OUTDOOR_TAGS = {"wild", "rural", "city", "district", "settlement", "region", "belt", "strip", "route",
+                "road", "rail", "coast", "sea", "river", "lake", "rift", "ruins", "port", "harbor",
+                "village", "station", "crater", "carcass", "skeleton", "landmark"}
 
 
-def default_spatial(name: str, tags=()) -> SpatialPlan:
-    """Замысел места, у которого его нет в каркасе: одна часть с подходом по типу шаблона. Карту за столом рисуют
-    и для поляны; модель структуры или лестница замыслов сами разобьют её на участки, если место того стоит."""
+def default_spatial(name: str, tags=(), *, template_id: str = "") -> SpatialPlan:
+    """Публичный план по шаблону; неизвестные шаблоны сохраняют общий план по тегам."""
+    from app.core.layout.presets import INDOOR_LOCATIONS, MATERIALS, PRESETS
+
+    if preset := PRESETS.get(template_id):
+        parts = [
+            SpatialPart(ref="main" if i == 0 else f"part_{i}", name=title,
+                        outdoor=kind == "open", below=kind == "below",
+                        shape=kind if kind in {"open", "cave"} else None, scenery=list(scenery),
+                        material=MATERIALS[template_id][i] if template_id in MATERIALS else None,
+                        purpose=", ".join(scenery))
+            for i, (title, kind, scenery) in enumerate(preset)
+        ]
+        outdoor = {p.outdoor for p in parts}
+        environment = "mixed" if len(outdoor) == 2 else "outdoor" if parts[0].outdoor else "indoor"
+        return SpatialPlan(environment=environment, parts=parts,
+                           approaches=[SpatialApproach(name="Подход к месту" if parts[0].outdoor else "Вход",
+                                                       kind="gap" if template_id in {"location.ship", "location.cave",
+                                                                                    "location.lair"} else
+                                                       "path" if parts[0].outdoor else "door")])
     tags = set(tags)
-    outdoor = bool(tags & OUTDOOR_TAGS) and "underground" not in tags
+    outdoor = (bool(tags & OUTDOOR_TAGS) and not tags & {"underground", "underwater"}
+               and template_id not in INDOOR_LOCATIONS)
     kind, way = ("gap", "Расщелина") if "underground" in tags else ("path", "Тропа") if outdoor else ("door", "Вход")
     return SpatialPlan(
         environment="outdoor" if outdoor else "indoor",
-        scale="small",
-        parts=[SpatialPart(ref="main", name=name.strip()[:80] or "Место", outdoor=outdoor)],
+        parts=[
+            SpatialPart(ref="main" if i == 0 else f"part_{i}",
+                        name=(name.strip()[:80] or "Место") if i == 0 else title, outdoor=outdoor,
+                        shape="open" if outdoor else "cave" if "underground" in tags else None)
+            for i, title in enumerate(("Вход", "Основной участок" if outdoor else "Основное помещение",
+                                       "Дальний участок" if outdoor else "Дальнее помещение"))
+        ],
         approaches=[SpatialApproach(name=way, kind=kind)],
     )
 
@@ -147,13 +175,19 @@ def _intent(m: Mandate, *, bands: bool, approaches: int) -> LayoutIntent:
             "name": p.name,
             "public_name": p.name,
             "description": p.purpose,
+            "material": p.material,
             "environment": "outdoor" if outdoor else "indoor",
-            "shape": "open" if outdoor else "rect",
+            "shape": p.shape or ("open" if outdoor else "rect"),
             "size": "small" if p.secret else sp.scale,
             "level": level,
             "secret": p.secret,
             "required": p.required,
             "anchors": [],
+            "details": [
+                {"detail_ref": f"scenery_{j}", "name": title, "kind": "nature" if outdoor else "furniture",
+                 "cells": [[1 + j, 1, 1 + j, 1]], "solid": False}
+                for j, title in enumerate(p.scenery)
+            ],
         }
         if i > 0:
             parent = (last[0] if level == 0 else (last[-1] or last[0])) or entry
@@ -185,7 +219,8 @@ def _intent(m: Mandate, *, bands: bool, approaches: int) -> LayoutIntent:
     outdoor_entry = out[0]["environment"] == "outdoor"
     approaches_out, bands_out = [], []
     for side, ap in zip(ap_sides, aps, strict=True):
-        a = {"part_ref": entry, "side": side, "kind": "edge" if outdoor_entry else "door", "public_name": ap.name}
+        kind = "edge" if outdoor_entry else ap.kind if ap.kind in {"door", "gate", "gap"} else "door"
+        a = {"part_ref": entry, "side": side, "kind": kind, "public_name": ap.name}
         if bands and outdoor_entry and side == "w" and ap.kind in ROAD_KINDS:
             rows = OUTDOOR_ROWS[out[0]["size"]]
             bands_out.append({"band_ref": "road", "kind": ap.kind, "axis": "we", "at": rows // 2 - 1, "width": 2})
@@ -208,6 +243,12 @@ def obligations(intent: LayoutIntent, m: Mandate) -> list[str]:
             continue
         if p.secret != sp.secret:
             errors.append(f"{sp.ref}: тайность части задана каркасом — {'тайная' if sp.secret else 'открытая'}")
+        if p.environment != ("outdoor" if sp.outdoor else "indoor"):
+            errors.append(f"{sp.ref}: окружение задано каркасом — {'outdoor' if sp.outdoor else 'indoor'}")
+        if sp.shape is not None and p.shape != sp.shape:
+            errors.append(f"{sp.ref}: форма задана планом — {sp.shape}")
+        if sp.material is not None and p.material != sp.material:
+            errors.append(f"{sp.ref}: материал задан планом — {sp.material}")
         if sp.below and p.level >= 0:
             errors.append(f"{sp.ref}: часть уровнем ниже входа (level < 0)")
         if sp.required and not p.required:

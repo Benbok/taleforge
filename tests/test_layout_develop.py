@@ -53,7 +53,7 @@ def test_develop_reserves_layout_with_mandate(client, admin, settings):
 
 
 def test_no_layout_without_flag_or_for_modules(client, admin, settings):
-    cid = _campaign(client, admin, settings)
+    cid = _campaign(client, admin, settings, location_layouts=False, location_layouts_llm=False)
     assert "layout" not in _develop(settings, cid)
     assert not rows(settings, WGS, WGS.phase == "location_layout")
 
@@ -82,7 +82,7 @@ def test_no_layout_without_flag_or_for_modules(client, admin, settings):
     assert not rows(settings, WGS, WGS.campaign_id == c["id"], WGS.phase == "location_layout")
 
 
-def test_place_without_spatial_gets_single_part_plan(client, admin, settings):
+def test_place_without_spatial_gets_template_plan(client, admin, settings):
     plan = temple_plan()
     for loc in plan["locations"]:
         loc.pop("spatial", None)
@@ -90,10 +90,11 @@ def test_place_without_spatial_gets_single_part_plan(client, admin, settings):
     out = _develop(settings, cid, sketch_id="loc_tavern")
     row = _row(settings, out["layout"]["operation_ref"])
     sp = row.reservation["mandate"]["spatial"]
-    assert sp["environment"] == "indoor" and [p["name"] for p in sp["parts"]] == [out["name"]]
+    assert sp["environment"] == "indoor"
+    assert [p["name"] for p in sp["parts"]] == ["Общий зал", "Гостевые комнаты", "Погреб"]
     assert sp["approaches"][0]["kind"] == "door"
     assert _prepare(settings, cid, row.id) == "ready"
-    assert rows(settings, Entity, Entity.location_id == out["entity_id"])  # таверна стала комплексом из участка
+    assert len(rows(settings, Entity, Entity.location_id == out["entity_id"])) == 3
 
 
 def test_wild_place_without_spatial_is_outdoor(client, admin, settings):
@@ -104,7 +105,7 @@ def test_wild_place_without_spatial_is_outdoor(client, admin, settings):
     out = _develop(settings, cid, sketch_id="loc_port")  # Старый храм на шаблоне руин: wild
     row = _row(settings, out["layout"]["operation_ref"])
     sp = row.reservation["mandate"]["spatial"]
-    assert sp["environment"] == "outdoor" and sp["parts"][0]["outdoor"] and sp["approaches"][0]["kind"] == "path"
+    assert sp["environment"] == "mixed" and sp["parts"][0]["outdoor"] and sp["approaches"][0]["kind"] == "path"
     assert _prepare(settings, cid, row.id) == "ready"
 
 
@@ -138,7 +139,7 @@ def test_flags_are_patchable_and_known(client, admin, settings):
 
 
 def test_enabling_mid_campaign_keeps_developed_places(client, admin, settings):
-    cid = _campaign(client, admin, settings)
+    cid = _campaign(client, admin, settings, location_layouts=False, location_layouts_llm=False)
     out = _develop(settings, cid, here=True)
 
     async def on(s):

@@ -37,6 +37,10 @@ SYSTEM = (
     "- Можно добавить коридоры и комнаты (всего до 12 частей), но не убирать обязательные.\n"
     "- connects_to — часть выше по списку, side — с какой стороны родителя (n, e, s, w).\n"
     "- Каждую привязку из списка укажи ровно в одной части, в её anchors.\n"
+    "- Сохраняй окружение обязательных частей: открытая местность — outdoor, помещения — indoor. "
+    "Если заданы форма или материал, сохрани их в shape и material. "
+    "Для каждой части предложи хотя бы две характерные декоративные детали; учитывай назначение места. "
+    "Детали не должны перекрывать проходы. Не делай маленькую пустую комнату вместо целого места.\n"
     "- Подходы ведут снаружи к частям (kind: edge для дорог и открытых границ, door/gate/arch для входов); "
     "outside_id не задаётся.\n"
     "- Дорога, тропа и ручей — полосы bands в клетках плана (координаты клеток должны попадать внутрь "
@@ -83,6 +87,7 @@ def spec(m: Mandate) -> dict[str, Any]:
             "description": {"type": "string", "maxLength": 1000},
             "environment": {"type": "string", "enum": _enum(PartIntent, "environment")},
             "shape": {"type": "string", "enum": _enum(PartIntent, "shape")},
+            "material": {"type": "string", "enum": ["stone", "earth", "grass", "water", "wood"]},
             "size": {"type": "string", "enum": _enum(PartIntent, "size")},
             "cols": {"type": "integer", "minimum": 1, "maximum": MAX_SIDE},
             "rows": {"type": "integer", "minimum": 1, "maximum": MAX_SIDE},
@@ -166,6 +171,10 @@ def _lines(m: Mandate, *, mood: bool, purposes: bool) -> list[str]:
             if on
         ]
         what = f" — {p.purpose}" if purposes and p.purpose else ""
+        if p.shape is not None:
+            flags.append(f"форма — {p.shape}")
+        if p.material is not None:
+            flags.append(f"материал — {p.material}")
         lines.append(f"- {p.ref} «{p.name}»{what}" + (f" [{'; '.join(flags)}]" if flags else ""))
     lines.append("Подходы снаружи: " + "; ".join(f"«{a.name}» ({a.kind})" for a in sp.approaches))
     if m.holders():

@@ -36,6 +36,10 @@ DEFAULT_SETTINGS = {
     "tts_enabled": True,  # озвучка реплик мастера по умолчанию включена
     "tts_voice": "Fenrir",  # голос озвучки мастера по умолчанию (Fenrir, Puck, Charon, Kore, Aoede)
     "narrative_mode": "adaptive",  # режим адаптации сюжета: strict / adaptive
+    # Кампании по умолчанию строятся моделью из сгенерированного пространственного плана.
+    # Владелец может отключить эти флаги настройками кампании.
+    "location_layouts": True,
+    "location_layouts_llm": True,
     "narrative": {
         "mode": "adaptive",
         "policy_version": "2026-10-12",
