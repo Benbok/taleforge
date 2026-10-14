@@ -601,6 +601,25 @@ class MapMemory(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class PartyMapMemory(Base):
+    """Общий снимок карты комплекса, принадлежащий кампании, а не герою."""
+
+    __tablename__ = "party_map_memories"
+    __table_args__ = (
+        Index("ix_party_map_memories_campaign_root", "campaign_id", "root_id"),
+        Index("ix_party_map_memories_entity_id", "entity_id"),
+    )
+
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    root_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    discovered_passages: Mapped[list[Any]] = mapped_column(JSONType, default=list, server_default="[]")
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 class KnownFact(Base):
     """Факт, который герой узнал о сущности, месте или другом герое (просьба Arty, этап 7): карточка по клику
     показывает ровно то, что этот герой знает. Пишет мастер инструментом ``learn_fact``."""

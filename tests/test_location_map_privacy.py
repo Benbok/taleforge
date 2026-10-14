@@ -6,7 +6,7 @@ import json
 from app.core.layout import store, transit
 from app.core.map_memory import discover_passage, observe_area
 from app.core.map_projection import location_plan
-from app.db.models import Character, MapMemory
+from app.db.models import Character, MapMemory, PartyMapMemory
 from tests.test_layout_passages import _built
 from tests.test_map import _ok, _play
 from tests.test_world_generation import _fast_retry  # noqa: F401 — фикстура
@@ -185,3 +185,20 @@ def test_left_area_memory_ignores_later_changes(client, admin, settings):
 
     assert after == before and door(after) == "closed"
     assert door(witness) == "open"
+
+
+def test_party_map_memory_survives_personal_memory_removal(client, admin, settings):
+    """Общий снимок карты не исчезает вместе с личной памятью героя."""
+    cid, _heads, hid, _village, _root, ids = _built(client, admin, settings, "road", "sacristy")
+
+    async def go(ctx):
+        await _ok(ctx, "move", {"character_ids": [hid], "location_id": ids["road"]})
+        shared = await ctx.session.get(PartyMapMemory, (cid, ids["sacristy"], ids["road"]))
+        assert shared is not None and shared.snapshot is not None
+        await ctx.session.delete(await ctx.session.get(MapMemory, (hid, ids["road"])))
+        await ctx.session.flush()
+        return await location_plan(ctx.session, ctx.world.characters[hid], ctx.world.entities, ids["sacristy"])
+
+    plan = _play(settings, cid, go)
+    remembered = next(area for area in plan["areas"] if area["id"] == ids["road"])
+    assert remembered["status"] == "remembered"

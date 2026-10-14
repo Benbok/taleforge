@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import map_memory
 from app.core.layout import geometry, store
-from app.db.models import Character, Entity, MapMemory
+from app.db.models import Character, Entity, MapMemory, PartyMapMemory
 
 
 def _area_meta(bp, place: Entity) -> tuple[dict[str, Any], Any] | None:
@@ -89,17 +89,21 @@ async def location_plan(
         hero_id = viewer
     rows = []
     if root_id:
-        # Exploration is shared by the party. Keep the newest snapshot for a
-        # location when more than one hero has observed it.
-        q = (
+        shared_q = select(PartyMapMemory).where(
+            PartyMapMemory.campaign_id == root.campaign_id,
+            PartyMapMemory.root_id == root.id,
+        ).order_by(PartyMapMemory.updated_at.desc())
+        shared_rows = list((await session.scalars(shared_q)).all())
+        # Legacy personal rows remain a read fallback during migration/backfill.
+        personal_q = (
             select(MapMemory)
             .join(Character, Character.id == MapMemory.character_id)
             .where(Character.campaign_id == root.campaign_id)
             .order_by(MapMemory.updated_at.desc(), MapMemory.character_id.asc())
         )
-        all_rows = list((await session.scalars(q)).all())
+        personal_rows = list((await session.scalars(personal_q)).all())
         seen: set[str] = set()
-        for row in all_rows:
+        for row in [*shared_rows, *personal_rows]:
             if row.snapshot is None:
                 continue
             place = entities.get(row.entity_id)
@@ -113,7 +117,7 @@ async def location_plan(
     if root_id:
         grants |= frozenset(
             (str(item.get("root_id")), str(item.get("passage_ref")))
-            for row in all_rows
+            for row in [*shared_rows, *personal_rows]
             for item in (row.discovered_passages or [])
             if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
         )
