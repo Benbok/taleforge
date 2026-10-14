@@ -22,6 +22,7 @@ from app.core.layout.contracts import (
     Edge,
     End,
     LayoutError,
+    ObjectSlot,
     Passage,
     Terrain,
     rect_cells,
@@ -343,6 +344,9 @@ def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[st
         material=part.material or ("grass" if outdoor else "stone"),
         description=part.description,
         secret=part.secret,
+        scene_profile=part.scene_profile,
+        object_slots=tuple(ObjectSlot(s.slot_ref, s.role, tuple(tuple(r) for r in s.cells),
+                                     s.detail_ref, s.hidden, s.max_cols, s.max_rows) for s in part.object_slots),
         details=details,
         terrain=tuple(Terrain(k, tuple(runs(cells))) for k, cells in sorted(terrain.items()) if cells),
         edges=_edges(part.part_ref, box, passages) if outdoor else (),
@@ -392,7 +396,10 @@ def _place_details(bp: Blueprint) -> Blueprint:
             if cells & (entrances | occupied):
                 return False
             try:
-                geometry.build_area(bp, replace(area, details=tuple([*placed, detail])))
+                interim = {d.detail_ref: d for d in [*placed, detail]}
+                slots = tuple(replace(s, cells=interim[s.detail_ref].cells) if s.detail_ref else s
+                              for s in area.object_slots if not s.detail_ref or s.detail_ref in interim)
+                geometry.build_area(bp, replace(area, details=tuple([*placed, detail]), object_slots=slots))
             except geometry.GeometryError:
                 return False
             return True
@@ -423,7 +430,19 @@ def _place_details(bp: Blueprint) -> Blueprint:
                     continue  # optional scenery cannot invalidate an authored room
                 raise LayoutError([f"{area.area_ref}: деталь «{d.name}» не помещается без перекрытия проходов"])
         by_ref = {d.detail_ref: d for d in placed}
-        areas.append(replace(area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref)))
+        slots = tuple(replace(s, cells=by_ref[s.detail_ref].cells) if s.detail_ref in by_ref else s
+                      for s in area.object_slots)
+        if not slots and area.role in {"market", "cache", "pier"}:
+            from app.core.layout import furnish
+
+            base = geometry.build_area(bp, replace(area, details=tuple(by_ref.values()), object_slots=()))
+            proposed, unplaced = furnish.place(base, [("slot_candidate", "Container")], bp.seed)
+            if not unplaced:
+                feature = next(f for f in proposed["features"] if f.get("entity_id") == "slot_candidate")
+                slots = (ObjectSlot(f"{area.role}_container", "container",
+                                    tuple(tuple(r) for r in feature["cells"])),)
+        areas.append(replace(area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref),
+                             object_slots=slots))
     result = replace(bp, areas=tuple(areas))
     for area in result.areas:
         geometry.build_area(result, area)

@@ -37,6 +37,21 @@ class DetailIntent(BaseModel):
         return rects
 
 
+class ObjectSlotIntent(BaseModel):
+    slot_ref: str = Field(pattern=REF)
+    role: Literal["prop", "container", "item"]
+    cells: list[list[int]] = Field(min_length=1, max_length=4)
+    detail_ref: str | None = Field(None, pattern=REF)
+    hidden: bool = False
+    max_cols: int = Field(1, ge=1, le=30)
+    max_rows: int = Field(1, ge=1, le=30)
+
+    @field_validator("cells")
+    @classmethod
+    def _cells(cls, rects: list[list[int]]) -> list[list[int]]:
+        return DetailIntent._cells(rects)
+
+
 class PartIntent(BaseModel):
     part_ref: str = Field(pattern=REF)
     role: str = Field("room", max_length=32)
@@ -59,6 +74,8 @@ class PartIntent(BaseModel):
     required: bool = Field(False, description="к части обязан вести не тайный путь")
     anchors: list[str] = Field(default_factory=list, max_length=8, description="зацепки каркаса в этой части")
     details: list[DetailIntent] = Field(default_factory=list, max_length=16)
+    scene_profile: str | None = Field(None, max_length=128)
+    object_slots: list[ObjectSlotIntent] = Field(default_factory=list, max_length=32)
 
 
 class ApproachIntent(BaseModel):
@@ -97,6 +114,9 @@ class LayoutIntent(BaseModel):
             raise ValueError(f"entry {self.entry}: нет такой части")
         seen = {self.entry}
         for p in self.parts:
+            slots = [s.slot_ref for s in p.object_slots]
+            if len(set(slots)) != len(slots):
+                raise ValueError(f"{p.part_ref}: slot_ref повторяется")
             if p.part_ref == self.entry:
                 continue
             if p.connects_to is not None and p.connects_to not in seen:
