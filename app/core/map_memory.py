@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core import sketch
-from app.db.models import MapMemory
+from app.db.models import Character, MapMemory, PartyMapMemory, now
 
 _SKETCH_FIELDS = (
     "shape",
@@ -127,6 +127,7 @@ async def observe_area(
         return False
     complex_state = (place.state or {}).get("complex") or {}
     root = world.entities.get(complex_state.get("root_id")) or place
+    root_id = str(root.id)
     blueprint = (root.state or {}).get("blueprint")
     if not blueprint:
         return False
@@ -155,6 +156,29 @@ async def observe_area(
         )
         if snapshot is None:
             continue
+        party_key = (str(campaign.id), root_id, place_id) if campaign is not None else None
+        party_row = await session.get(PartyMapMemory, party_key) if party_key else None
+        party_changed = False
+        if party_row is None and party_key:
+            party_row = PartyMapMemory(
+                campaign_id=party_key[0], root_id=party_key[1], entity_id=party_key[2],
+                snapshot=snapshot, discovered_passages=[], revision=1,
+            )
+            session.add(party_row)
+            party_changed = True
+            if inverse is not None:
+                inverse.append({"table": "party_map_memories", "op": "delete", "id": list(party_key)})
+        elif party_row is not None and party_row.snapshot != snapshot:
+            if inverse is not None:
+                inverse += [
+                    {"table": "party_map_memories", "id": list(party_key), "field": "snapshot", "before": copy.deepcopy(party_row.snapshot)},
+                    {"table": "party_map_memories", "id": list(party_key), "field": "revision", "before": party_row.revision},
+                ]
+            party_row.snapshot = snapshot
+            party_row.revision = int(party_row.revision or 0) + 1
+            party_changed = True
+        if party_row is not None and party_changed:
+            party_row.observed_at = now()
         key = [hero_id, place_id]
         if row is None:
             row = MapMemory(character_id=hero_id, entity_id=place_id, snapshot=snapshot, revision=1)
@@ -192,6 +216,29 @@ async def known_passages(session: Any, hero_id: str, place_id: str) -> frozenset
     )
 
 
+async def known_passages_campaign(session: Any, campaign_id: str) -> frozenset[tuple[str, str]]:
+    """Return passage discoveries shared by every hero in a campaign."""
+    shared = await session.scalars(select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign_id))
+    grants = {
+        (str(item["root_id"]), str(item["passage_ref"]))
+        for row in shared
+        for item in (row.discovered_passages or [])
+        if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
+    }
+    rows = await session.scalars(
+        select(MapMemory)
+        .join(Character, Character.id == MapMemory.character_id)
+        .where(Character.campaign_id == campaign_id)
+    )
+    grants |= {
+        (str(item["root_id"]), str(item["passage_ref"]))
+        for row in rows
+        for item in (row.discovered_passages or [])
+        if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
+    }
+    return frozenset(grants)
+
+
 async def opened_areas(session: Any, hero_id: str) -> frozenset[str]:
     rows = await session.scalars(
         select(MapMemory.entity_id).where(MapMemory.character_id == hero_id, MapMemory.snapshot.is_not(None))
@@ -206,7 +253,25 @@ async def discover_passage(
     hero_ids: list[str] | tuple[str, ...] | set[str],
     inverse: list[dict[str, Any]] | None = None,
 ) -> None:
-    session, world, _ = _context_parts(ctx)
+    session, world, campaign = _context_parts(ctx)
+    shared_rows = await session.scalars(
+        select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign.id, PartyMapMemory.root_id == root_id)
+    ) if campaign is not None else []
+    shared_rows = list(shared_rows)
+    if campaign is not None and not shared_rows:
+        location_id = next((world.characters[h].location_id for h in hero_ids if h in world.characters and world.characters[h].location_id), None)
+        if location_id:
+            shared_rows = [PartyMapMemory(campaign_id=campaign.id, root_id=root_id, entity_id=location_id)]
+            session.add(shared_rows[0])
+            if inverse is not None:
+                inverse.append({"table": "party_map_memories", "op": "delete", "id": [campaign.id, root_id, location_id]})
+    for shared in shared_rows:
+        grants = list(shared.discovered_passages or [])
+        grant = {"root_id": root_id, "passage_ref": passage_ref}
+        if grant not in grants:
+            if inverse is not None:
+                inverse.append({"table": "party_map_memories", "id": [shared.campaign_id, shared.root_id, shared.entity_id], "field": "discovered_passages", "before": copy.deepcopy(grants)})
+            shared.discovered_passages = [*grants, grant]
     for hero_id in hero_ids:
         hero = world.characters.get(hero_id)
         if hero is None:

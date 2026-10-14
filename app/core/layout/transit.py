@@ -179,9 +179,9 @@ async def begin(
     w = ctx.world
     check_heroes(ctx, hero_ids, by_player)
     if known_passages is None:
-        from app.core.map_memory import known_passages as read_known_passages
+        from app.core.map_memory import known_passages_campaign
 
-        known_passages = await read_known_passages(ctx.session, hero_ids[0], w.actor_place(hero_ids[0]))
+        known_passages = await known_passages_campaign(ctx.session, ctx.campaign.id)
     here, root, bp, p, end, other = check(w, hero_ids, passage_ref, known_passages=known_passages)
     lane = _approach(ctx, hero_ids[0], here, end, p, inverse)
     dest_id = store.area_ids(root).get(other.area_ref) if other.area_ref else other.place_id
@@ -210,9 +210,9 @@ async def finish(ctx, req: Request, inverse: list | None = None) -> dict[str, An
     w = ctx.world
     try:
         check_heroes(ctx, req.hero_ids, req.by_player)
-        from app.core.map_memory import known_passages as read_known_passages
+        from app.core.map_memory import known_passages_campaign
 
-        known = await read_known_passages(ctx.session, req.hero_ids[0], w.actor_place(req.hero_ids[0]))
+        known = await known_passages_campaign(ctx.session, ctx.campaign.id)
         here, root, bp, p, end, other = check(w, list(req.hero_ids), req.passage_ref, known_passages=known)
     except ToolError as e:
         return {"moved": False, "reason": str(e)}

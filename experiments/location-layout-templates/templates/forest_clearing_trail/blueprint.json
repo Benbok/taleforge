@@ -1,0 +1,437 @@
+{
+  "seed": 7,
+  "entry": "forest_verge",
+  "areas": [
+    {
+      "area_ref": "forest_verge",
+      "role": "field",
+      "name": "Лесная опушка",
+      "public_name": "Опушка леса",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Редколесье на краю дремучей чащи, сквозь которое петляет протоптанная тропа.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "brambles",
+          "name": "Колючий кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              3,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "fallen_trunk",
+          "name": "Поваленный ствол",
+          "kind": "cover",
+          "cells": [
+            [
+              7,
+              7,
+              9,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "moss_rock",
+          "name": "Мшистый валун",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              7,
+              4,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "path",
+          "cells": [
+            [
+              0,
+              4,
+              11,
+              4
+            ],
+            [
+              0,
+              5,
+              11,
+              5
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 4,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 4,
+          "length": 2,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 6,
+          "length": 4,
+          "meaning": "obstacle"
+        }
+      ]
+    },
+    {
+      "area_ref": "sunlit_clearing",
+      "role": "field",
+      "name": "Солнечная поляна",
+      "public_name": "Лесная поляна",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 14,
+      "rows": 10,
+      "offset": [
+        12,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Широкая открытая поляна с могучим дубом в центре и следами привала.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "ancient_oak",
+          "name": "Вековой дуб",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              1,
+              7,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "campfire",
+          "name": "Охотничье кострище",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              7,
+              7,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "log_seat",
+          "name": "Бревно у костра",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              8,
+              8,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "mushrooms",
+          "name": "Ведьмино кольцо грибов",
+          "kind": "nature",
+          "cells": [
+            [
+              11,
+              2,
+              12,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "path",
+          "cells": [
+            [
+              0,
+              4,
+              13,
+              4
+            ],
+            [
+              0,
+              5,
+              13,
+              5
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 2,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "n",
+          "start": 2,
+          "length": 10,
+          "meaning": "continuation"
+        },
+        {
+          "side": "n",
+          "start": 12,
+          "length": 2,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        }
+      ]
+    },
+    {
+      "area_ref": "dense_thicket",
+      "role": "field",
+      "name": "Густая чаща",
+      "public_name": "Чаща",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 10,
+      "rows": 8,
+      "offset": [
+        14,
+        -8
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Сгустившиеся заросли, где ветви сплетаются над головой плотным пологом.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "twisted_roots",
+          "name": "Узловатые корни",
+          "kind": "hazard",
+          "cells": [
+            [
+              3,
+              3,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "granite_outcrop",
+          "name": "Гранитные выступы",
+          "kind": "cover",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "ancient_stump",
+          "name": "Трухлявый пень-великан",
+          "kind": "object",
+          "cells": [
+            [
+              7,
+              5,
+              8,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 8,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 8,
+          "meaning": "obstacle"
+        }
+      ]
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_sunlit_clearing",
+      "kind": "edge",
+      "name": "Тропа через деревья",
+      "public_name": "Тропа через деревья",
+      "ends": [
+        {
+          "area_ref": "forest_verge",
+          "side": "e",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        },
+        {
+          "area_ref": "sunlit_clearing",
+          "side": "w",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_dense_thicket",
+      "kind": "edge",
+      "name": "Просека в чащу",
+      "public_name": "Просека в чащу",
+      "ends": [
+        {
+          "area_ref": "sunlit_clearing",
+          "side": "n",
+          "start": 2,
+          "width": 10,
+          "place_id": null
+        },
+        {
+          "area_ref": "dense_thicket",
+          "side": "s",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_forest_verge_w",
+      "kind": "edge",
+      "name": "Тропа из предгорий",
+      "public_name": "Тропа из предгорий",
+      "ends": [
+        {
+          "area_ref": "forest_verge",
+          "side": "w",
+          "start": 4,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_forest_clearing_trail"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

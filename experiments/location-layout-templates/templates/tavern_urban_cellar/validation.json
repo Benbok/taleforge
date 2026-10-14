@@ -1,0 +1,40 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    -1,
+    0
+  ],
+  "detail_preservation": {
+    "taproom": {
+      "long_bar": "preserved",
+      "round_tables": "preserved",
+      "iron_stove": "preserved",
+      "ale_casks": "preserved"
+    },
+    "private_parlor": {
+      "leather_chairs": "preserved",
+      "bookcase": "preserved",
+      "wall_sconce": "preserved"
+    },
+    "cold_cellar": {
+      "wine_tuns": "preserved",
+      "bottle_racks": "preserved",
+      "ice_pit": "preserved",
+      "cellar_lantern": "preserved"
+    },
+    "secret_vault": {
+      "iron_strongbox": "preserved",
+      "smuggled_crates": "preserved"
+    }
+  }
+}

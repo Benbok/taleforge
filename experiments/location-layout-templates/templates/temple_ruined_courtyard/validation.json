@@ -1,0 +1,37 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    -1,
+    0
+  ],
+  "detail_preservation": {
+    "overgrown_courtyard": {
+      "fallen_statue": "preserved",
+      "rubble_piles": "preserved",
+      "dry_well": "preserved",
+      "weed_thicket": "preserved"
+    },
+    "ruined_nave": {
+      "cracked_altar": "preserved",
+      "standing_pillars": "preserved",
+      "ash_remains": "preserved",
+      "collapsed_arch": "preserved"
+    },
+    "crypt_undercroft": {
+      "sarcophagi_north": "preserved",
+      "sarcophagi_south": "preserved",
+      "burial_niche": "preserved",
+      "eternal_flame": "preserved"
+    }
+  }
+}

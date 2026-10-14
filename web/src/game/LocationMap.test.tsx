@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LocationMap } from "./LocationMap";
+import { SketchSurface } from "./SketchSurface";
 import { useMapWindow, type MapLocationPlan, type MapState } from "./map";
 
 const map: MapLocationPlan = {
@@ -11,12 +12,27 @@ const map: MapLocationPlan = {
   ],
 };
 
+it("рисует твёрдую мебель без повторной заливки стены", () => {
+  const sketch = { ...map.areas[0].sketch, walls: [[0, 0], [1, 1]] as [number, number][],
+    features: [{ id: "table", name: "Стол", kind: "furniture" as const, solid: true, cells: [[0, 0, 0, 0]] }] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="solid-test" /></svg>);
+  expect(container.querySelector('[data-feature-solid="true"] title')?.textContent).toBe("Стол");
+  expect(container.querySelectorAll('rect[fill="var(--tf-map-wall, #111)"]')).toHaveLength(1);
+  expect(sketch.walls).toEqual([[0, 0], [1, 1]]);
+});
+
 describe("единая карта комплекса", () => {
   it("рисует текущий и запомненный участок в общих offsets", () => {
     const { container } = render(<LocationMap map={map} />);
     expect(container.querySelectorAll('[data-area-status="remembered"]')).toHaveLength(1);
     expect(container.querySelector('[data-area-id="remembered"]')?.getAttribute("transform")).toBe("translate(0 -4)");
     expect(screen.getByRole("button", { name: /уровень -1/i })).not.toBeNull();
+  });
+
+  it("приглушает подготовленный, но ещё не исследованный участок", () => {
+    const prepared = { ...map.areas[1], id: "prepared", status: "prepared" as const };
+    const { container } = render(<LocationMap map={{ ...map, areas: [map.areas[0], prepared] }} />);
+    expect(container.querySelector('[data-area-status="prepared"]')?.getAttribute("opacity")).toBe("0.22");
   });
 });
 

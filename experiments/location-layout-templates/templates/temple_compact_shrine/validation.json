@@ -1,0 +1,35 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "narthex": {
+      "holy_water_font": "preserved",
+      "prayer_benches": "preserved",
+      "candle_stand": "shifted: [[3, 0, 4, 0]] -> [[2, 0, 3, 0]]"
+    },
+    "sanctuary": {
+      "grand_altar": "preserved",
+      "columns_west": "preserved",
+      "columns_east": "preserved",
+      "incense_braziers": "preserved",
+      "lectern": "preserved"
+    },
+    "sacristy": {
+      "relic_chest": "preserved",
+      "vestment_press": "preserved",
+      "study_desk": "preserved"
+    }
+  }
+}

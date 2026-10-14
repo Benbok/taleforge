@@ -32,6 +32,22 @@ def test_solid_detail_on_a_door_is_rejected():
     assert any("загорожен" in m for m in e.value.errors)
 
 
+def test_solid_detail_keeps_visual_identity_and_blocking_cells():
+    from app.core import reach
+
+    bp = two_rooms()
+    sk = build_area(bp, bp.area("hall"))
+    solid_features = [f for f in sk["features"] if f.get("solid")]
+    assert solid_features
+    for feature in solid_features:
+        cells = reach.footprint(feature)
+        assert cells <= sketch.solid_cells(sk)
+        assert cells <= reach.blocked_cells(sk)
+        assert feature["name"] and feature["kind"]
+        assert feature["cover"] == "none"
+    assert sketch.check(sk, {x["to"] for x in sk["exits"] if x["to"]}) == []
+
+
 def test_rubble_cutting_the_room_is_rejected():
     bp = two_rooms()
     hall = replace(bp.area("hall"), details=(Detail("rubble", "Завал", "nature", ((3, 0, 3, 3),), solid=True),))

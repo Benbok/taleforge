@@ -1,0 +1,538 @@
+{
+  "template_id": "temple_ruined_courtyard",
+  "root_id": "tpl_temple_ruined_courtyard",
+  "entry": "overgrown_courtyard",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "overgrown_courtyard",
+      "name": "Храмовый двор",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Старая храмовая дорога",
+            "side": "w",
+            "at": 4,
+            "width": 2,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_temple_ruined_courtyard",
+            "beyond": null,
+            "passage_ref": "in_overgrown_courtyard_w",
+            "cells": [
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ]
+            ]
+          },
+          {
+            "name": "Обветшалый портал храма",
+            "side": "e",
+            "at": 5,
+            "width": 1,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "ruined_nave",
+            "beyond": null,
+            "passage_ref": "p_ruined_nave",
+            "cells": [
+              [
+                11,
+                5
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_overgrown_courtyard_fallen_st",
+            "name": "Поваленная статуя божества",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_overgrown_courtyard_rubble_pi",
+            "name": "Груды битого камня",
+            "kind": "hazard",
+            "cells": [
+              [
+                8,
+                2,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_overgrown_courtyard_dry_well",
+            "name": "Осквернённый сухой колодец",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                6,
+                6,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_overgrown_courtyard_weed_thic",
+            "name": "Заросли колючей травы",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                7,
+                3,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "road",
+            "cells": [
+              [
+                0,
+                4,
+                11,
+                4
+              ],
+              [
+                0,
+                5,
+                11,
+                5
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 4,
+            "length": 2,
+            "meaning": "boundary"
+          },
+          {
+            "side": "w",
+            "start": 6,
+            "length": 4,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_temple_ruined_courtyard",
+          "area_ref": "overgrown_courtyard",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "ruined_nave",
+      "name": "Разрушенный неф",
+      "offset": [
+        12,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            8,
+            4
+          ],
+          [
+            8,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Ступени в подземный склеп",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "crypt_undercroft",
+            "beyond": null,
+            "passage_ref": "p_crypt_undercroft",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Обветшалый портал храма",
+            "side": "w",
+            "at": 5,
+            "width": 1,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "overgrown_courtyard",
+            "beyond": null,
+            "passage_ref": "p_ruined_nave",
+            "cells": [
+              [
+                0,
+                5
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_ruined_nave_cracked_altar",
+            "name": "Расколотый алтарный камень",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                4,
+                8,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_ruined_nave_standing_pillars",
+            "name": "Уцелевшие пилоны свода",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                2,
+                3,
+                2
+              ],
+              [
+                3,
+                7,
+                3,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_ruined_nave_ash_remains",
+            "name": "Остывшее кострище бродяг",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_ruined_nave_collapsed_arch",
+            "name": "Обвал каменной кладки",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_ruined_courtyard",
+          "area_ref": "ruined_nave",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "crypt_undercroft",
+      "name": "Древняя крипта",
+      "offset": [
+        12,
+        0
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            6
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            3,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Ступени в подземный склеп",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "ruined_nave",
+            "beyond": null,
+            "passage_ref": "p_crypt_undercroft",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_crypt_undercroft_sarcophagi_n",
+            "name": "Ряд надгробных саркофагов",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                3,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_crypt_undercroft_sarcophagi_s",
+            "name": "Южные надгробия",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                6,
+                3,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_crypt_undercroft_burial_niche",
+            "name": "Стена с погребальными урнами",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                2,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_crypt_undercroft_eternal_flam",
+            "name": "Угасший жертвенник",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_ruined_courtyard",
+          "area_ref": "crypt_undercroft",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

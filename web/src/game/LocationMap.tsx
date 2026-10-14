@@ -41,7 +41,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
       {sortedAreas.map((area) => {
         const isCurrent = area.id === map.here_id || area.status === "here";
         return (
-          <g key={area.id} data-area-id={area.id} data-area-status={area.status} opacity={area.status === "remembered" ? .45 : 1} transform={`translate(${area.offset[0]} ${area.offset[1]})`}>
+          <g key={area.id} data-area-id={area.id} data-area-status={area.status} opacity={area.status === "prepared" ? .22 : area.status === "remembered" ? .45 : 1} transform={`translate(${area.offset[0]} ${area.offset[1]})`}>
             <SketchSurface
               sketch={isCurrent ? liveSketch ?? area.sketch : area.sketch}
               areaId={area.id}

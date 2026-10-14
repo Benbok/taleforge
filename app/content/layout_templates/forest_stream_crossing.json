@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "id": "forest_stream_crossing",
+  "version": "1.0.0",
+  "archetype": "forest",
+  "template_ids": [
+    "location.forest"
+  ],
+  "tags": [],
+  "environment": "outdoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "west_bank",
+    "part_1": "stream_crossing",
+    "part_2": "east_bluff"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "west_bank",
+    "parts": [
+      {
+        "part_ref": "west_bank",
+        "role": "field",
+        "name": "Западный пологий берег",
+        "public_name": "Западный берег",
+        "description": "Пологий лесной берег с накатанной грунтовой дорогой, ведущей к деревянному мосту.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 10,
+        "rows": 10,
+        "level": 0,
+        "material": "grass",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "mile_marker",
+            "name": "Дорожный верстовой столб",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                3,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "wayside_shrine",
+            "name": "Придорожная божница",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                7,
+                4,
+                7
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "willow_tree",
+            "name": "Плакучая ива у воды",
+            "kind": "nature",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "stream_crossing",
+        "role": "crossing",
+        "name": "Мост через лесной ручей",
+        "public_name": "Переправа через ручей",
+        "description": "Быстрый журчащий ручей с каменистым руслом, пересекаемый крепким настилом из бревен.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "grass",
+        "connects_to": "west_bank",
+        "side": "e",
+        "passage_kind": "passage",
+        "passage_name": "Выход на мост",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "bridge_railings",
+            "name": "Перила моста",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                3,
+                7,
+                3
+              ],
+              [
+                5,
+                6,
+                7,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "river_stones",
+            "name": "Скользкие валуны в русле",
+            "kind": "nature",
+            "cells": [
+              [
+                6,
+                1,
+                6,
+                1
+              ],
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "reeds_bed",
+            "name": "Заросли речного камыша",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                7,
+                3,
+                8
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "east_bluff",
+        "role": "field",
+        "name": "Восточный лесистый откос",
+        "public_name": "Восточный холм",
+        "description": "Приподнятый откос над ручьем, с которого открывается отличный обзор на переправу.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 10,
+        "rows": 10,
+        "level": 0,
+        "material": "grass",
+        "connects_to": "stream_crossing",
+        "side": "e",
+        "passage_kind": "passage",
+        "passage_name": "Подъем на откос",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "hunter_blind",
+            "name": "Охотничья засидка за валунами",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "lookout_pine",
+            "name": "Высокая сосна",
+            "kind": "nature",
+            "cells": [
+              [
+                7,
+                7,
+                8,
+                8
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "camp_embers",
+            "name": "Следы старого привала",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                7,
+                5,
+                7
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "west_bank",
+        "side": "w",
+        "kind": "edge",
+        "public_name": "Тракт с запада",
+        "outside_id": null,
+        "band": "trade_road",
+        "width": 2
+      }
+    ],
+    "bands": [
+      {
+        "band_ref": "trade_road",
+        "kind": "road",
+        "axis": "we",
+        "at": 4,
+        "width": 2,
+        "start": null,
+        "end": null
+      },
+      {
+        "band_ref": "forest_brook",
+        "kind": "stream",
+        "axis": "ns",
+        "at": 16,
+        "width": 2,
+        "start": null,
+        "end": null
+      }
+    ]
+  }
+}

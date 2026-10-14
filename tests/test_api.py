@@ -58,6 +58,7 @@ def test_create_campaign_seats_and_party_size(client, admin):
 def test_new_campaign_flags_from_server_settings(client, admin, settings):
     off = make_campaign(client, admin)["settings"]
     assert off["location_layouts"] is True and off["location_layouts_llm"] is True
+    assert off["location_layout_templates"] is True
     assert not any(off.get(k) for k in ("audio_enabled", "sfx_enabled", "scene_generation", "scene_generation_llm"))
     client.app.state.settings = replace(settings, new_campaign_flags=("audio_enabled", "scene_generation"))
     on = make_campaign(client, admin)
@@ -66,6 +67,8 @@ def test_new_campaign_flags_from_server_settings(client, admin, settings):
     # владелец по-прежнему выключает флаг сам
     r = client.patch(f"/api/campaigns/{on['id']}", json={"audio_enabled": False}, headers=admin)
     assert r.json()["settings"]["audio_enabled"] is False
+    r = client.patch(f"/api/campaigns/{on['id']}", json={"location_layout_templates": False}, headers=admin)
+    assert r.status_code == 200 and r.json()["settings"]["location_layout_templates"] is False
     with pytest.raises(ValueError, match="неизвестные флаги"):
         _flags("audio_enabled, tts")
 

@@ -1009,6 +1009,17 @@
       ],
       "title": "Leveling"
      },
+     "location_layout_templates": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location Layout Templates"
+     },
      "location_layouts": {
       "anyOf": [
        {

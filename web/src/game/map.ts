@@ -150,6 +150,7 @@ export interface SketchFeature {
   cells: number[][];
   cover?: Cover;
   hidden?: boolean;
+  solid?: boolean;
 }
 
 export interface Sketch {

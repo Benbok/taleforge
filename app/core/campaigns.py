@@ -41,6 +41,7 @@ DEFAULT_SETTINGS = {
     # Владелец может отключить эти флаги настройками кампании.
     "location_layouts": True,
     "location_layouts_llm": True,
+    "location_layout_templates": True,
     "narrative": {
         "mode": "adaptive",
         "policy_version": "2026-10-12",

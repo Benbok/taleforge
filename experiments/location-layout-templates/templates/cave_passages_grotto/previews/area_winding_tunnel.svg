@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Карта известных участков локации" class="block w-full" viewBox="-6 -5 18 12" data-location-map="tpl_cave_passages_grotto">
+
+<defs>
+  <style>
+    :root, svg {
+      --tf-bg: #0f1012;
+      --tf-surface: #17181c;
+      --tf-surface-2: #1b1c20;
+      --tf-raised: #121316;
+      --tf-border: #2a2b31;
+      --tf-border-soft: #24252a;
+      --tf-text: #ece6dc;
+      --tf-text-2: #cfc8bb;
+      --tf-muted: #a8a296;
+      --tf-faint: #8a857c;
+      --tf-accent: #c98a4b;
+      --tf-accent-hi: #d59a5c;
+      --tf-accent-text: #1a120a;
+      --tf-patina: #5fae9f;
+      --tf-patina-hi: #7fc2b4;
+      --tf-ember: #c4553f;
+      --tf-ember-hi: #e0876f;
+      --tf-ember-bg: #16120f;
+      --tf-warn: #d99a2b;
+      --tf-ok: #72c491;
+      --tf-bad: #ed8b85;
+      --tf-map-floor: #272c30;
+      --tf-map-stone: #2e3338;
+      --tf-map-wood: #3a2e24;
+      --tf-map-grass: #26382b;
+      --tf-map-earth: #362e26;
+      --tf-map-water: #1b3244;
+      --tf-map-water-mark: #4a7a9e33;
+      --tf-map-wall-stroke: #222428;
+      --tf-map-edge: #756;
+      --tf-map-road: #8c7b58;
+      --tf-map-path: #b6a66a;
+      --tf-map-stream: #497b98;
+      --tf-map-bridge: #8a623c;
+      --tf-map-mark: #ffffff18;
+      --tf-map-wall: #74777e;
+      --tf-map-opening: #db9d5f;
+      --tf-entity-creature: #e06c5f;
+      --tf-entity-npc: #6ea8e0;
+      --tf-entity-item: #d9b44a;
+      --tf-entity-location: #6fbf86;
+      --tf-entity-lore: #9a9fa8;
+      background-color: #0f1012;
+    }
+  </style>
+</defs>
+<g data-area-id="winding_tunnel" data-area-status="here" opacity="1" transform="translate(0 0)"><g role="img" data-sketch-surface="winding_tunnel"><defs><pattern id="preview-cave_passages_grotto-area-winding_tunnel-winding_tunnel-pattern-stone" width="1" height="1" patternUnits="userSpaceOnUse"><rect width="1" height="1" fill="var(--tf-map-stone, var(--tf-map-floor, #3b3b3b))"></rect><path d="M1 0H0V1" fill="none" stroke="var(--tf-map-mark, #ffffff18)" stroke-width=".04"></path></pattern><clipPath id="preview-cave_passages_grotto-area-winding_tunnel-winding_tunnel-floor"><rect x="0" y="0" width="1" height="1"></rect><rect x="1" y="0" width="1" height="1"></rect><rect x="2" y="0" width="1" height="1"></rect><rect x="3" y="0" width="1" height="1"></rect><rect x="4" y="0" width="1" height="1"></rect><rect x="5" y="0" width="1" height="1"></rect><rect x="0" y="1" width="1" height="1"></rect><rect x="1" y="1" width="1" height="1"></rect><rect x="2" y="1" width="1" height="1"></rect><rect x="3" y="1" width="1" height="1"></rect><rect x="4" y="1" width="1" height="1"></rect><rect x="5" y="1" width="1" height="1"></rect></clipPath></defs><rect width="6" height="2" fill="url(#preview-cave_passages_grotto-area-winding_tunnel-winding_tunnel-pattern-stone)" clip-path="url(#preview-cave_passages_grotto-area-winding_tunnel-winding_tunnel-floor)"></rect><g data-layer="contours"><line x1="0" y1="0" x2="1" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="0" y1="1" x2="0" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="1" y1="2" x2="0" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="0" y1="2" x2="0" y2="1" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="1" y1="0" x2="2" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="2" y1="2" x2="1" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="2" y1="0" x2="3" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="3" y1="2" x2="2" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="3" y1="0" x2="4" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="4" y1="2" x2="3" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="4" y1="0" x2="5" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="5" y1="2" x2="4" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="5" y1="0" x2="6" y2="0" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="6" y1="0" x2="6" y2="1" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="6" y1="1" x2="6" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line><line x1="6" y1="2" x2="5" y2="2" data-wall="true" stroke="var(--tf-map-wall, #111)" stroke-width=".12"></line></g><g data-feature-id="sf_winding_tunnel_stalactites"><rect x="2.1" y="0.1" width="0.8" height="0.8" rx="0.1" ry="0.1" fill="var(--tf-patina)" opacity="0.18"></rect><rect x="3.1" y="0.1" width="0.8" height="0.8" rx="0.1" ry="0.1" fill="var(--tf-patina)" opacity="0.18"></rect><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" x="2.15" y="0.15" width="0.7" height="0.7" color="var(--tf-patina)"><path d="M12 2v20"></path><path d="M12 12c-7-1-9-6-9-9 5 0 9 3 9 9Z"></path><path d="M12 17c7-1 9-6 9-9-5 0-9 3-9 9Z"></path></svg><title>Острые сталактиты</title></g><g data-passage-ref="p_great_grotto" role="button" tabindex="0" aria-label="Проход: Высокий скальный свод" class="tf-map-passage cursor-pointer "><rect x="5.45" y="0.44999999999999996" width="1.1" height="2.1" fill="transparent" pointer-events="all"></rect><line x1="6" y1="1" x2="6" y2="2" data-opening="true" stroke="var(--tf-map-opening, #e9d8a6)" stroke-width=".2"></line><title>Высокий скальный свод</title></g><g data-passage-ref="p_winding_tunnel" role="button" tabindex="0" aria-label="Проход: Узкий лаз" class="tf-map-passage cursor-pointer "><rect x="-0.55" y="0.44999999999999996" width="1.1" height="2.1" fill="transparent" pointer-events="all"></rect><line x1="0" y1="1" x2="0" y2="2" data-opening="true" stroke="var(--tf-map-opening, #e9d8a6)" stroke-width=".2"></line><title>Узкий лаз</title></g></g><title>Каменный проход</title></g><g data-party-marker="true" pointer-events="none" transform="translate(5.5 1.5)"><circle r=".38" fill="var(--tf-surface)" stroke="var(--tf-accent)" stroke-width=".09"></circle><path d="M0 -.23 L.17 .19 L0 .1 L-.17 .19 Z" fill="var(--tf-accent)"></path><title>Позиция отряда</title></g></svg>

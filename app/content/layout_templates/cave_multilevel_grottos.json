@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "id": "cave_multilevel_grottos",
+  "version": "1.0.0",
+  "archetype": "cave",
+  "template_ids": [
+    "location.cave"
+  ],
+  "tags": [],
+  "environment": "indoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "upper_gallery",
+    "part_1": "chasm_overlook",
+    "part_2": "lower_wet_cavern"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "upper_gallery",
+    "parts": [
+      {
+        "part_ref": "upper_gallery",
+        "role": "cave_entrance",
+        "name": "Верхняя карстовая галерея",
+        "public_name": "Верхняя галерея",
+        "description": "Сухой карстовый грот со следами копоти от факелов и естественными каменными ступенями.",
+        "environment": "indoor",
+        "shape": "cave",
+        "size": "medium",
+        "cols": 8,
+        "rows": 8,
+        "level": 0,
+        "material": "stone",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "torch_bracket",
+            "name": "Факельное кострище",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "rocky_ledge",
+            "name": "Каменный карниз",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                4,
+                5,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "crystal_cluster",
+            "name": "Друза горных кристаллов",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                4,
+                2,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "chasm_overlook",
+        "role": "chasm",
+        "name": "Край глубокого провала",
+        "public_name": "Край провала",
+        "description": "Широкий скальный балкон над зияющей бездной, откуда доносится шум подземного водопада.",
+        "environment": "indoor",
+        "shape": "cave",
+        "size": "medium",
+        "cols": 8,
+        "rows": 8,
+        "level": 0,
+        "material": "stone",
+        "connects_to": "upper_gallery",
+        "side": "e",
+        "passage_kind": "arch",
+        "passage_name": "Широкий скальный пролом",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "climbing_rig",
+            "name": "Вбитые альпинистские крючья",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "stalagmites_brink",
+            "name": "Сталагмиты у края обрыва",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                2,
+                4,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "lower_wet_cavern",
+        "role": "cavern",
+        "name": "Нижняя сырая каверна",
+        "public_name": "Нижний грот",
+        "description": "Огромный сырой грот на дне провала, куда стекают струи ледяной воды со стен.",
+        "environment": "indoor",
+        "shape": "cave",
+        "size": "medium",
+        "cols": 10,
+        "rows": 10,
+        "level": -1,
+        "material": "earth",
+        "connects_to": "chasm_overlook",
+        "side": null,
+        "passage_kind": "stairs",
+        "passage_name": "Скальный спуск по расщелине",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "dripping_basin",
+            "name": "Мокрая каменная чаша",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                4,
+                6,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "luminescent_spores",
+            "name": "Светящиеся споровики",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "mossy_pillar",
+            "name": "Замшелая каменная колонна",
+            "kind": "cover",
+            "cells": [
+              [
+                6,
+                7,
+                7,
+                7
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "submerged_lair",
+        "role": "den",
+        "name": "Затопленное логово",
+        "public_name": "Затопленный карман",
+        "description": "Глубокая полузатопленная ниша, уходящая в чёрную неподвижную воду.",
+        "environment": "indoor",
+        "shape": "cave",
+        "size": "medium",
+        "cols": 6,
+        "rows": 6,
+        "level": -1,
+        "material": "water",
+        "connects_to": "lower_wet_cavern",
+        "side": "s",
+        "passage_kind": "passage",
+        "passage_name": "Затопленный проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "floating_debris",
+            "name": "Плавающий топляк и кости",
+            "kind": "hazard",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "dry_nest",
+            "name": "Сухой уступ гнездовища",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                2,
+                4,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "upper_gallery",
+        "side": "s",
+        "kind": "gap",
+        "public_name": "Входная расщелина с поверхности",
+        "outside_id": null,
+        "band": null,
+        "width": 1
+      }
+    ],
+    "bands": []
+  }
+}

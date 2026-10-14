@@ -38,6 +38,7 @@ from app.db.models import (
     NarrativeState,
     NarrativeThread,
     PlotAnchorBinding,
+    PartyMapMemory,
     Scene,
     Seat,
     WorldGenerationState,
@@ -59,6 +60,7 @@ _BY_CAMPAIGN = (
     CampaignSecret,
     WorldGenerationState,
     PlotAnchorBinding,
+    PartyMapMemory,
     Seat,
 )
 _BY_CHARACTER = (InventoryItem, Knowledge, MapMemory)

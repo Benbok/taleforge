@@ -1,0 +1,38 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "common_room": {
+      "hearth": "preserved",
+      "bar_counter": "preserved",
+      "bar_stools": "preserved",
+      "table_north": "preserved",
+      "benches_north": "preserved",
+      "table_south": "preserved",
+      "benches_south": "preserved",
+      "ale_casks": "preserved"
+    },
+    "kitchen_pantry": {
+      "stove": "preserved",
+      "pantry_shelves": "preserved",
+      "prep_table": "preserved"
+    },
+    "guest_rooms": {
+      "bunks_north": "preserved",
+      "bunks_south": "preserved",
+      "traveler_chests": "preserved"
+    }
+  }
+}

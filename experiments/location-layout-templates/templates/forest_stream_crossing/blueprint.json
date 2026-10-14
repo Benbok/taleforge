@@ -1,0 +1,522 @@
+{
+  "seed": 7,
+  "entry": "west_bank",
+  "areas": [
+    {
+      "area_ref": "west_bank",
+      "role": "field",
+      "name": "Западный пологий берег",
+      "public_name": "Западный берег",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 10,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Пологий лесной берег с накатанной грунтовой дорогой, ведущей к деревянному мосту.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "mile_marker",
+          "name": "Дорожный верстовой столб",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              2,
+              3,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "wayside_shrine",
+          "name": "Придорожная божница",
+          "kind": "light",
+          "cells": [
+            [
+              3,
+              7,
+              4,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "willow_tree",
+          "name": "Плакучая ива у воды",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              1,
+              8,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "road",
+          "cells": [
+            [
+              0,
+              4,
+              9,
+              4
+            ],
+            [
+              0,
+              5,
+              9,
+              5
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 4,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 4,
+          "length": 2,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 6,
+          "length": 4,
+          "meaning": "obstacle"
+        }
+      ]
+    },
+    {
+      "area_ref": "stream_crossing",
+      "role": "crossing",
+      "name": "Мост через лесной ручей",
+      "public_name": "Переправа через ручей",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        10,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Быстрый журчащий ручей с каменистым руслом, пересекаемый крепким настилом из бревен.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "bridge_railings",
+          "name": "Перила моста",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              3,
+              7,
+              3
+            ],
+            [
+              5,
+              6,
+              7,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "river_stones",
+          "name": "Скользкие валуны в русле",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              1,
+              6,
+              1
+            ],
+            [
+              6,
+              8,
+              6,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "reeds_bed",
+          "name": "Заросли речного камыша",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              7,
+              3,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "bridge",
+          "cells": [
+            [
+              6,
+              4,
+              7,
+              4
+            ],
+            [
+              6,
+              5,
+              7,
+              5
+            ]
+          ]
+        },
+        {
+          "kind": "road",
+          "cells": [
+            [
+              0,
+              4,
+              5,
+              4
+            ],
+            [
+              8,
+              4,
+              11,
+              4
+            ],
+            [
+              0,
+              5,
+              5,
+              5
+            ],
+            [
+              8,
+              5,
+              11,
+              5
+            ]
+          ]
+        },
+        {
+          "kind": "stream",
+          "cells": [
+            [
+              6,
+              0,
+              7,
+              0
+            ],
+            [
+              6,
+              1,
+              7,
+              1
+            ],
+            [
+              6,
+              2,
+              7,
+              2
+            ],
+            [
+              6,
+              3,
+              7,
+              3
+            ],
+            [
+              6,
+              6,
+              7,
+              6
+            ],
+            [
+              6,
+              7,
+              7,
+              7
+            ],
+            [
+              6,
+              8,
+              7,
+              8
+            ],
+            [
+              6,
+              9,
+              7,
+              9
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        }
+      ]
+    },
+    {
+      "area_ref": "east_bluff",
+      "role": "field",
+      "name": "Восточный лесистый откос",
+      "public_name": "Восточный холм",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 10,
+      "rows": 10,
+      "offset": [
+        22,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Приподнятый откос над ручьем, с которого открывается отличный обзор на переправу.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "hunter_blind",
+          "name": "Охотничья засидка за валунами",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              2,
+              3,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "lookout_pine",
+          "name": "Высокая сосна",
+          "kind": "nature",
+          "cells": [
+            [
+              7,
+              7,
+              8,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "camp_embers",
+          "name": "Следы старого привала",
+          "kind": "light",
+          "cells": [
+            [
+              4,
+              7,
+              5,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "road",
+          "cells": [
+            [
+              0,
+              4,
+              9,
+              4
+            ],
+            [
+              0,
+              5,
+              9,
+              5
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 10,
+          "meaning": "continuation"
+        }
+      ]
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_stream_crossing",
+      "kind": "edge",
+      "name": "Выход на мост",
+      "public_name": "Выход на мост",
+      "ends": [
+        {
+          "area_ref": "west_bank",
+          "side": "e",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        },
+        {
+          "area_ref": "stream_crossing",
+          "side": "w",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_east_bluff",
+      "kind": "edge",
+      "name": "Подъем на откос",
+      "public_name": "Подъем на откос",
+      "ends": [
+        {
+          "area_ref": "stream_crossing",
+          "side": "e",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        },
+        {
+          "area_ref": "east_bluff",
+          "side": "w",
+          "start": 0,
+          "width": 10,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_west_bank_w",
+      "kind": "edge",
+      "name": "Тракт с запада",
+      "public_name": "Тракт с запада",
+      "ends": [
+        {
+          "area_ref": "west_bank",
+          "side": "w",
+          "start": 4,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_forest_stream_crossing"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

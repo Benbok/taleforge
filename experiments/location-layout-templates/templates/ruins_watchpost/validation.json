@@ -1,0 +1,34 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    -1,
+    0
+  ],
+  "detail_preservation": {
+    "outer_barbican": {
+      "broken_gate_timber": "preserved",
+      "weapon_rack_ruin": "preserved",
+      "watch_brazier": "preserved"
+    },
+    "watchtower_ruin": {
+      "spiral_stairs_center": "preserved",
+      "archer_embrasures": "preserved",
+      "oil_lantern": "preserved"
+    },
+    "dungeon_casemate": {
+      "armory_crates": "preserved",
+      "iron_grate_cell": "preserved",
+      "interrogation_table": "preserved"
+    }
+  }
+}

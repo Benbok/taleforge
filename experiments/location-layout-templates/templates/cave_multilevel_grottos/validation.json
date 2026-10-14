@@ -1,0 +1,37 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    -1,
+    0
+  ],
+  "detail_preservation": {
+    "upper_gallery": {
+      "torch_bracket": "preserved",
+      "rocky_ledge": "preserved",
+      "crystal_cluster": "preserved"
+    },
+    "chasm_overlook": {
+      "climbing_rig": "preserved",
+      "stalagmites_brink": "preserved"
+    },
+    "lower_wet_cavern": {
+      "dripping_basin": "preserved",
+      "luminescent_spores": "preserved",
+      "mossy_pillar": "preserved"
+    },
+    "submerged_lair": {
+      "floating_debris": "preserved",
+      "dry_nest": "preserved"
+    }
+  }
+}

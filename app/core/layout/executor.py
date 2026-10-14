@@ -56,18 +56,37 @@ async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Bluep
         over = wants and await _over_spend(s, campaign)
     kw = {"seed": int(res["seed"]), "root_id": res["root_id"], "plot_id": res.get("plot_id")}
     notes: list[str] = []
+    diagnostics: list[str] = []
     try:
         mandate = spatial.Mandate.model_validate(res["mandate"]) if "mandate" in res else None
         intent0 = None if mandate is not None else LayoutIntent.model_validate(res["intent"])
     except (KeyError, ValidationError) as e:
         raise Blocked("unsupported_source", str(e)[:500]) from e
     if mandate is not None:
+        selection = res.get("template_selection")
+        if isinstance(selection, dict) and selection.get("outcome") == "selected":
+            try:
+                if selection.get("schema_version") != 1:
+                    raise ValueError("unsupported template snapshot")
+                template_intent = LayoutIntent.model_validate(selection["intent"])
+                if spatial.obligations(template_intent, mandate):
+                    raise ValueError("template violates mandate")
+                blueprint = provider.propose(template_intent, **kw)
+            except (KeyError, ValueError, ValidationError, LayoutError):
+                log.info("layout %s: template snapshot rejected", claim.ref)
+                diagnostics.append("template_rejected:snapshot_invalid")
+            else:
+                return _with_anchors(blueprint, waiting), "normal", [
+                    f"source:template:{selection.get('id')}:{selection.get('version')}"
+                ], claim
+        elif isinstance(selection, dict):
+            diagnostics.append(f"template_rejected:{selection.get('reason', 'no_candidate')}")
         if over:
             notes.append("fallback:spend_limit")
         elif model is not None:
             intent, reason, claim = await _ask_model(maker, claim, llm, model, mandate, provider, kw)
             if intent is not None:
-                return _with_anchors(provider.propose(intent, **kw), waiting), "normal", notes, claim
+                return _with_anchors(provider.propose(intent, **kw), waiting), "normal", notes + diagnostics, claim
             notes.append(f"fallback:{reason}")
         candidates = spatial.intent_candidates(mandate)
     else:
@@ -90,7 +109,7 @@ async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Bluep
             quality = "normal" if i == 0 and not fallback and not notes else "fallback"
             if i > 0 or fallback:
                 notes.append("fallback:layout")
-            return _with_anchors(bp, waiting), quality, notes, claim
+            return _with_anchors(bp, waiting), quality, notes + diagnostics, claim
     raise Blocked("layout_unsatisfiable", "; ".join(errors[:6]))
 
 
@@ -210,7 +229,10 @@ async def _publish_layout(
         "areas": ids,
         "geometry": rows_,
         "residents": residents,
-        "notes": notes,
+        "notes": [n for n in notes if not n.startswith(("source:template:", "template_rejected:"))],
+        "source": next((n for n in notes if n.startswith("source:template:")), "generated"),
+        "template_fallback": next((n.removeprefix("template_rejected:") for n in notes
+                                   if n.startswith("template_rejected:")), None),
     }
 
 
