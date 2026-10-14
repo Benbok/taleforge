@@ -158,12 +158,14 @@ async def observe_area(
             continue
         party_key = (str(campaign.id), root_id, place_id) if campaign is not None else None
         party_row = await session.get(PartyMapMemory, party_key) if party_key else None
+        party_changed = False
         if party_row is None and party_key:
             party_row = PartyMapMemory(
                 campaign_id=party_key[0], root_id=party_key[1], entity_id=party_key[2],
                 snapshot=snapshot, discovered_passages=[], revision=1,
             )
             session.add(party_row)
+            party_changed = True
             if inverse is not None:
                 inverse.append({"table": "party_map_memories", "op": "delete", "id": list(party_key)})
         elif party_row is not None and party_row.snapshot != snapshot:
@@ -174,7 +176,8 @@ async def observe_area(
                 ]
             party_row.snapshot = snapshot
             party_row.revision = int(party_row.revision or 0) + 1
-        if party_row is not None:
+            party_changed = True
+        if party_row is not None and party_changed:
             party_row.observed_at = now()
         key = [hero_id, place_id]
         if row is None:
