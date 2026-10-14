@@ -272,18 +272,99 @@ async def finalize_action_parts(ctx: ToolContext) -> list[tuple[ActionRef, Actio
     return finalized
 
 
+PUBLIC_REASONS: dict[str, str] = {
+    "unconfirmed_search": "находка не зафиксирована",
+    "unsupported_mechanic": "действие не поддерживается правилами",
+    "dependency_failed": "предшествующее действие не удалось",
+    "rule_denial": "действие отклонено правилами",
+    "not_processed": "мастер не обработал действие",
+    "locked": "проход заперт",
+}
+
+
 def public_action_notice(ctx: ToolContext, ref: ActionRef, progress: ActionProgress) -> str | None:
     """Format a public notice for uncompleted action parts."""
     if progress.status == "completed":
         return None
+
+    action_title = ""
+    dep_summary = ""
+
+    msg = None
+    if ref.source_kind == "message" and hasattr(ctx, "session") and ctx.session is not None:
+        for obj in ctx.session.identity_map.values():
+            if isinstance(obj, Message) and obj.id == ref.source_id:
+                msg = obj
+                break
+
+    if msg is not None:
+        bound = (msg.data or {}).get("resolution_actions") or []
+        act = bound[ref.part].get("action") if ref.part < len(bound) else None
+        if not act:
+            actions = (msg.intent or {}).get("actions") or []
+            act = actions[ref.part] if ref.part < len(actions) else None
+        if act:
+            summary = act.get("summary") or ""
+            verb = act.get("verb") or ""
+            if summary:
+                action_title = summary
+            elif verb in ("search", "inspect"):
+                action_title = "Осмотр"
+            elif verb:
+                from app.agents.intent import VERB_RU
+
+                action_title = VERB_RU.get(verb, verb).capitalize()
+
+            blocked_indices = progress.blocked_by
+            if not blocked_indices and act.get("depends_on"):
+                blocked_indices = [
+                    d.get("part") for d in act["depends_on"] if isinstance(d, dict) and "part" in d
+                ]
+
+            if blocked_indices:
+                for b_idx in blocked_indices:
+                    if b_idx < len(bound):
+                        dep_act = bound[b_idx].get("action") or {}
+                        dep_summary = dep_act.get("summary") or ""
+                        if not dep_summary:
+                            dep_verb = dep_act.get("verb") or ""
+                            from app.agents.intent import VERB_RU
+
+                            dep_summary = VERB_RU.get(dep_verb, dep_verb)
+                        break
+
+    if not action_title:
+        action_title = "Действие"
+
+    action_title = action_title[0].upper() + action_title[1:] if action_title else "Действие"
+
+    if progress.status == "blocked":
+        reason = "предшествующее действие не удалось"
+        if "открыть" in dep_summary.lower():
+            after_open = dep_summary.lower().split("открыть", 1)[1].strip()
+            reason = f"{after_open} не открыт" if after_open else "проход не открыт"
+        elif dep_summary:
+            reason = f"«{dep_summary}» не выполнено"
+        elif progress.reason_code:
+            reason = PUBLIC_REASONS.get(progress.reason_code, "предшествующее действие не удалось")
+        return f"{action_title} невозможен: {reason}"
+
     if progress.status == "unhandled":
         if progress.reason_code == "unconfirmed_search":
-            return "Осмотр не обработан: находка не зафиксирована"
+            return f"{action_title} не обработан: находка не зафиксирована"
         if progress.reason_code == "unsupported_mechanic":
-            return "Действие с предметом не поддерживается правилами"
-        return "Действие не обработано"
+            return f"{action_title} не поддерживается правилами"
+        if progress.reason_code:
+            reason = PUBLIC_REASONS.get(progress.reason_code, "действие не обработано")
+            return f"{action_title} не обработан: {reason}"
+        return f"{action_title} не обработан"
+
     if progress.status == "denied":
-        return "Действие отклонено правилами"
-    if progress.status == "blocked":
-        return "Действие заблокировано"
+        reason = "действие отклонено правилами"
+        if progress.reason_code:
+            reason = PUBLIC_REASONS.get(progress.reason_code, reason)
+        elif progress.failure and progress.failure.code:
+            reason = PUBLIC_REASONS.get(progress.failure.code, reason)
+        return f"{action_title} отклонён: {reason}"
+
     return None

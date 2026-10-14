@@ -41,6 +41,7 @@ async def whisper(ctx: ToolContext, a: WhisperArgs) -> dict:
 class ReasonArgs(BaseModel):
     character_id: str
     reason: str = Field(min_length=1, max_length=500)
+    action_ref: dict | None = None
 
 
 @tool(
@@ -51,7 +52,11 @@ class ReasonArgs(BaseModel):
 )
 async def cancel_action(ctx: ToolContext, a: ReasonArgs) -> dict:
     ch = _character(ctx, a.character_id)
-    await ctx.record("cancel_action", target_id=ch.id, payload={"reason": a.reason})
+    payload = {"reason": a.reason}
+    ref = a.action_ref or (ctx.current_binding.ref.model_dump() if ctx.current_binding else None)
+    if ref:
+        payload["action_ref"] = ref
+    await ctx.record("cancel_action", target_id=ch.id, payload=payload)
     return {"character": ch.name, "cancelled": a.reason}
 
 
