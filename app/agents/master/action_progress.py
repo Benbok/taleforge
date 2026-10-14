@@ -138,6 +138,8 @@ async def apply_tool_progress(
             if discovery_check_id:
                 # Match against search checks of current actions
                 for r in ctx.required_actions:
+                    if r != ref:
+                        continue
                     k = action_key(r)
                     if ctx.turn_diagnostics.get("search_checks", {}).get(k) == discovery_check_id:
                         check_ev_ids = [discovery_check_id, *event_ids]
@@ -242,6 +244,17 @@ async def finalize_action_parts(ctx: ToolContext) -> list[tuple[ActionRef, Actio
         key = action_key(ref)
         prog = ctx.action_progress.get(key)
         if prog and prog.status in {"completed", "denied", "blocked"}:
+            continue
+
+        from app.agents.master.action_order import blocked_dependencies
+
+        dependencies = blocked_dependencies(ctx, ref)
+        if dependencies:
+            new_prog = ActionProgress(
+                status="blocked", reason_code="dependency_failed", blocked_by=dependencies
+            )
+            await set_action_progress(ctx, ref, new_prog)
+            finalized.append((ref, new_prog))
             continue
 
         if key in unresolved_keys:

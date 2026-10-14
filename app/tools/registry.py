@@ -299,6 +299,7 @@ async def execute(
     grant: InternalGrant | None = None,
 ) -> dict:
     """Выполняет вызов. Повтор с тем же ключом идемпотентности возвращает прежний результат и ничего не меняет."""
+    ctx.current_binding = None
     key = _fit_key(key)
     t = REGISTRY.get(name)
     if t is None:

@@ -129,6 +129,10 @@ def test_two_part_search_and_cast_completes_both(game_client, admin_g, llm, dice
 
     (turn,) = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)
     assert turn.status == "done"
+    assert not any(
+        call.get("routed") and (call.get("result", {}).get("failure") or {}).get("code") == "verb_mismatch"
+        for call in (turn.trace or {}).get("calls", [])
+    )
 
 
 def test_turn_rollback_reverts_effects_and_progress(game_client, admin_g, llm, settings, monkeypatch):

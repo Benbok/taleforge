@@ -110,7 +110,7 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
     if name == "use_item":
         if verb not in {"use_item", "interact"}:
             return False
-        if act.get("instrument_id") and args.get("item_id") and act["instrument_id"] != args["item_id"]:
+        if act.get("instrument_id") and args.get("inventory_id") and act["instrument_id"] != args["inventory_id"]:
             return False
         return True
 
@@ -133,6 +133,9 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
         return verb in {"use_item", "interact", "pick_up"}
 
     if name in {"edit_sketch", "place_item", "learn_fact", "reveal_knowledge"}:
+        if name == "edit_sketch" and args.get("action") == "unlock":
+            if action_target and args.get("target") and action_target != args["target"]:
+                return False
         return verb in {"search", "inspect", "interact", "use_item", "custom"}
 
     return False
@@ -187,6 +190,15 @@ async def bind_tool_action(
                     category="rule_denial",
                 )
 
+        if name != "cancel_action":
+            from app.agents.master.action_order import blocked_dependencies
+
+            if blocked_dependencies(ctx, explicit):
+                raise ToolError(
+                    "предшествующее действие не выполнено",
+                    code="dependency_pending",
+                    category="invalid_arguments",
+                )
         return ToolActionBinding(ref=explicit, role=role)
 
     if not ctx.required_actions:
@@ -238,4 +250,4 @@ async def bind_tool_action(
             category="invalid_arguments",
         )
 
-    return ToolActionBinding(ref=matching_refs[0], role=role)
+    return await bind_tool_action(ctx, name, args, explicit=matching_refs[0])
