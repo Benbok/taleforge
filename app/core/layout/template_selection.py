@@ -11,6 +11,7 @@ from app.core.layout.intent import LayoutIntent
 from app.core.layout.provider import DeterministicLayoutProvider
 from app.core.layout.spatial import Mandate, intent_candidates, obligations
 from app.core.layout.template_catalog import LayoutTemplate
+from app.core.layout.template_roles import infer_role
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,42 @@ def adapt_template(template: LayoutTemplate, mandate: Mandate) -> tuple[LayoutIn
     return intent, bindings
 
 
+def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[LayoutIntent, dict[str, str]]:
+    """Keep every mandated part and decorate only uniquely role-matched parts."""
+    if template.environment != mandate.spatial.environment or template.scale != mandate.spatial.scale:
+        raise ValueError('environment_or_scale')
+    base = intent_candidates(mandate)[0]
+    source = {p.role: p for p in template.intent.parts}
+    used: set[str] = set()
+    bindings: dict[str, str] = {}
+    data = base.model_dump(mode='json')
+    for part in data['parts']:
+        requested = next(p for p in mandate.spatial.parts if p.ref == part['part_ref'])
+        role = infer_role(requested.ref, requested.name, requested.purpose)
+        candidate = source.get(role) if role else None
+        if candidate is None or candidate.part_ref in used:
+            continue
+        if candidate.environment != part['environment'] or candidate.secret != part['secret']:
+            continue
+        if requested.shape is not None and candidate.shape != requested.shape:
+            continue
+        if requested.material is not None and candidate.material != requested.material:
+            continue
+        part.update(
+            shape=candidate.shape, material=candidate.material,
+            size=candidate.size, cols=candidate.cols, rows=candidate.rows,
+            details=[d.model_dump(mode='json') for d in candidate.details],
+        )
+        bindings[candidate.part_ref] = requested.ref
+        used.add(candidate.part_ref)
+    if not bindings:
+        raise ValueError('no_role_match')
+    intent = LayoutIntent.model_validate(data)
+    if obligations(intent, mandate):
+        raise ValueError('mandate_obligations')
+    return intent, bindings
+
+
 def select_template(mandate: Mandate, context: TemplateContext, seed: int,
                     catalog: tuple[LayoutTemplate, ...]) -> dict:
     candidates = [t for t in catalog if context.template_id in t.template_ids
@@ -96,6 +133,14 @@ def select_template(mandate: Mandate, context: TemplateContext, seed: int,
             reason = str(error)[:200]
             continue
         compatible.append((template, intent, bindings))
+    if not compatible:
+        for template in candidates:
+            try:
+                intent, bindings = adapt_template_hybrid(template, mandate)
+            except (ValueError, ValidationError) as error:
+                reason = str(error)[:200]
+                continue
+            compatible.append((template, intent, bindings))
     compatible.sort(key=lambda entry: hashlib.sha256(
         f'{seed}:{entry[0].id}:{entry[0].version}'.encode()).hexdigest())
     for template, intent, bindings in compatible[:3]:

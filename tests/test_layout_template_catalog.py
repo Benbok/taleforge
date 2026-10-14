@@ -2,7 +2,52 @@
 from app.core.layout.intent import LayoutIntent
 from app.core.layout.spatial import Mandate, default_spatial, obligations
 from app.core.layout.template_catalog import load_catalog
+from app.core.layout.template_roles import infer_role
 from app.core.layout.template_selection import TemplateContext, select_template
+
+
+def test_role_inference_is_conservative_for_location_parts():
+    assert infer_role('part_warehouse', 'Склад контрабандистов', '') == 'warehouse'
+    assert infer_role('part_flooded_pier', 'Затопленный край пирса', 'Глубокая вода') == 'harbor'
+    assert infer_role('part_unknown', 'Таинственное место', '') is None
+
+
+def _greihall_port() -> Mandate:
+    from app.core.layout.spatial import SpatialApproach, SpatialPart, SpatialPlan
+    return Mandate(
+        place='Порт Грейхолла',
+        spatial=SpatialPlan(
+            environment='mixed', scale='medium',
+            parts=[
+                SpatialPart(ref='part_pier', name='Причал с лодками', outdoor=True, required=True,
+                            purpose='Швартовка рыбацких баркасов.'),
+                SpatialPart(ref='part_market', name='Рыбный рынок', outdoor=True,
+                            purpose='Прилавки под навесами.'),
+                SpatialPart(ref='part_warehouse', name='Склад контрабандистов', outdoor=False,
+                            purpose='Запертый склад с бочками.'),
+                SpatialPart(ref='part_flooded_pier', name='Затопленный край пирса', outdoor=True,
+                            purpose='Глубокая вода у деревянного пирса.'),
+                SpatialPart(ref='part_alley', name='Переулок', outdoor=True,
+                            purpose='Переулок к складу.'),
+                SpatialPart(ref='part_cache', name='Тайник', outdoor=False, secret=True,
+                            purpose='Скрытый тайник.'),
+            ],
+            approaches=[SpatialApproach(name='Дорога к порту', kind='path')],
+        ),
+    )
+
+
+def test_generated_port_plan_uses_template_details_and_keeps_extra_parts():
+    result = select_template(
+        _greihall_port(), TemplateContext(template_id='location.port'), 22325528, load_catalog()
+    )
+    assert result['outcome'] == 'selected'
+    assert {p['part_ref'] for p in result['intent']['parts']} == {
+        'part_pier', 'part_market', 'part_warehouse', 'part_flooded_pier', 'part_alley', 'part_cache'
+    }
+    pier = next(p for p in result['intent']['parts'] if p['part_ref'] == 'part_pier')
+    assert pier['material'] == 'wood'
+    assert pier['details']
 
 
 def test_runtime_catalog_contains_twelve_valid_templates():
