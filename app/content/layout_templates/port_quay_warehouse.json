@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "id": "port_quay_warehouse",
+  "version": "1.1.0",
+  "archetype": "port",
+  "template_ids": [
+    "location.port"
+  ],
+  "tags": [],
+  "environment": "mixed",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "granite_quay",
+    "part_1": "cargo_pier",
+    "part_2": "harbor_warehouse"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "granite_quay",
+    "parts": [
+      {
+        "part_ref": "granite_quay",
+        "role": "quay",
+        "name": "Гранитная набережная",
+        "public_name": "Портовая набережная",
+        "description": "Широкая мощеная набережная с причальными тумбами, бухтами смоленых канатов и фонарными столбами.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 12,
+        "rows": 6,
+        "level": 0,
+        "material": "stone",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "mooring_bollards",
+            "name": "Чугунные причальные тумбы",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                5,
+                4,
+                5
+              ],
+              [
+                7,
+                5,
+                8,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "cargo_pallets",
+            "name": "Штабель грузовых поддонов",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                2
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "quay_lantern",
+            "name": "Портовый масляный фонарь",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "cargo_pier",
+        "role": "pier",
+        "name": "Грузовой деревянный причал",
+        "public_name": "Причал",
+        "description": "Деревянный пирс на просмоленных сваях, уходящий в открытую акваторию гавани.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 6,
+        "rows": 8,
+        "level": 0,
+        "material": "wood",
+        "connects_to": "granite_quay",
+        "side": "s",
+        "passage_kind": "passage",
+        "passage_name": "Сходни на пирс",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "cargo_crane",
+            "name": "Поворотный грузовой кран",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                3,
+                2,
+                4
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "coiled_hawsers",
+            "name": "Бухты тяжелых канатов",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                2,
+                4,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "cleats",
+            "name": "Швартовочные утки",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                6,
+                1,
+                7
+              ],
+              [
+                4,
+                6,
+                4,
+                7
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "harbor_warehouse",
+        "role": "warehouse",
+        "name": "Портовый пакгауз",
+        "public_name": "Портовый склад",
+        "description": "Высокое прохладное здание склада со стеллажами, опечатанными ящиками и конторкой смотрителя.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 8,
+        "rows": 6,
+        "level": 0,
+        "material": "wood",
+        "connects_to": "granite_quay",
+        "side": "e",
+        "passage_kind": "gate",
+        "passage_name": "Складские ворота",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "crate_stacks",
+            "name": "Штабеля опечатанных ящиков",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                1,
+                3,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "storage_racks",
+            "name": "Многоярусные стеллажи",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                1,
+                6,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "overseer_desk",
+            "name": "Конторка портового смотрителя",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "harbor_water_west",
+        "role": "harbor",
+        "name": "Западная гавань",
+        "public_name": "Западная акватория",
+        "description": "Глубокая портовая вода у западной стороны деревянного причала.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 6,
+        "rows": 8,
+        "level": 0,
+        "material": "water",
+        "connects_to": "cargo_pier",
+        "side": "w",
+        "passage_kind": "passage",
+        "passage_name": "Открытая вода",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "floating_buoy",
+            "name": "Сигнальный буй",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "harbor_water_east",
+        "role": "harbor",
+        "name": "Восточная гавань",
+        "public_name": "Восточная акватория",
+        "description": "Участок гавани между пакгаузом и восточным рейдом со сваями.",
+        "environment": "outdoor",
+        "shape": "open",
+        "size": "medium",
+        "cols": 8,
+        "rows": 8,
+        "level": 0,
+        "material": "water",
+        "connects_to": "harbor_warehouse",
+        "side": "s",
+        "passage_kind": "passage",
+        "passage_name": "Прискладская вода",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "wooden_piles",
+            "name": "Торчащие сваи",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                2
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "granite_quay",
+        "side": "w",
+        "kind": "edge",
+        "public_name": "Вход с припортовой улицы",
+        "outside_id": null,
+        "band": null,
+        "width": 2
+      }
+    ],
+    "bands": []
+  }
+}

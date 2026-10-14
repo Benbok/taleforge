@@ -382,6 +382,7 @@ class CampaignPatchIn(BaseModel):
     scene_generation_llm: bool | None = None  # имена и описания сцены от технической модели
     location_layouts: bool | None = None  # места каркаса с пространством становятся комплексами при развороте
     location_layouts_llm: bool | None = None  # устройство места предлагает техническая модель
+    location_layout_templates: bool | None = None  # проверенные заготовки перед модельной генерацией
     brief: BriefIn | None = None
 
 

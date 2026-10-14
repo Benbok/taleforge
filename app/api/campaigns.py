@@ -290,6 +290,7 @@ async def patch_campaign(
         "scene_generation_llm",
         "location_layouts",
         "location_layouts_llm",
+        "location_layout_templates",
     ):
         if key in body.model_fields_set and (
             key
@@ -300,6 +301,7 @@ async def patch_campaign(
                 "scene_generation_llm",
                 "location_layouts",
                 "location_layouts_llm",
+                "location_layout_templates",
             )
             or getattr(body, key) is not None
         ):

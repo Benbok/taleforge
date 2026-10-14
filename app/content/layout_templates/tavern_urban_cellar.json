@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "id": "tavern_urban_cellar",
+  "version": "1.0.0",
+  "archetype": "tavern",
+  "template_ids": [
+    "location.tavern"
+  ],
+  "tags": [],
+  "environment": "indoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "taproom",
+    "part_1": "private_parlor",
+    "part_2": "cold_cellar"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "taproom",
+    "parts": [
+      {
+        "part_ref": "taproom",
+        "role": "tavern_hall",
+        "name": "Городской питейный зал",
+        "public_name": "Питейный зал",
+        "description": "Высокий каменный зал с дубовыми круглыми столами, витражными окнами на улицу и массивной стойкой.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 10,
+        "rows": 8,
+        "level": 0,
+        "material": "stone",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "long_bar",
+            "name": "Массивная барная стойка",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                2,
+                2,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "round_tables",
+            "name": "Круглые столы горожан",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                2,
+                7,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "iron_stove",
+            "name": "Чугунная печь",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                1
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "ale_casks",
+            "name": "Ряд пивных бочек",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                2,
+                1,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "private_parlor",
+        "role": "parlor",
+        "name": "Приватный кабинет",
+        "public_name": "Отдельный кабинет",
+        "description": "Кабинет с обитыми кожей креслами, тяжёлыми портьерами и шкафом для документов.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 6,
+        "rows": 6,
+        "level": 0,
+        "material": "wood",
+        "connects_to": "taproom",
+        "side": "e",
+        "passage_kind": "door",
+        "passage_name": "Дверь с замком",
+        "passage_state": "locked",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "leather_chairs",
+            "name": "Кожаные кресла и круглый столик",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "bookcase",
+            "name": "Шкаф с бухгалтерскими книгами",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                0,
+                4,
+                0
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "wall_sconce",
+            "name": "Бронзовый настенный светильник",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                2,
+                5,
+                2
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "cold_cellar",
+        "role": "cellar",
+        "name": "Холодный винный погреб",
+        "public_name": "Винный погреб",
+        "description": "Сырой каменный подвал с ровными рядами дубовых винных бочек и стеллажами для бутылей.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 8,
+        "rows": 8,
+        "level": -1,
+        "material": "stone",
+        "connects_to": "taproom",
+        "side": null,
+        "passage_kind": "stairs",
+        "passage_name": "Каменная лестница в подвал",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "wine_tuns",
+            "name": "Большие дубовые чаны",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "bottle_racks",
+            "name": "Стеллажи с винами",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                6,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "ice_pit",
+            "name": "Ледник для скоропортящихся продуктов",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          },
+          {
+            "detail_ref": "cellar_lantern",
+            "name": "Подвесной масляный фонарь",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                4,
+                3,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      },
+      {
+        "part_ref": "secret_vault",
+        "role": "vault",
+        "name": "Потайное хранилище гильдии",
+        "public_name": "Потайная каморка",
+        "description": "Узкая ниша за фальшивой стеной, где спрятаны запрещённые товары и гильдейская казна.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 4,
+        "rows": 4,
+        "level": -1,
+        "material": "stone",
+        "connects_to": "cold_cellar",
+        "side": "w",
+        "passage_kind": "door",
+        "passage_name": "Откидная панель стеллажа",
+        "passage_state": "closed",
+        "secret": true,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "iron_strongbox",
+            "name": "Кованый сундук гильдии",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "solid": true,
+            "hidden": false
+          },
+          {
+            "detail_ref": "smuggled_crates",
+            "name": "Ящики с контрабандой",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                2,
+                2,
+                2
+              ]
+            ],
+            "solid": false,
+            "hidden": false
+          }
+        ]
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "taproom",
+        "side": "w",
+        "kind": "door",
+        "public_name": "Вход с городской площади",
+        "outside_id": null,
+        "band": null,
+        "width": 1
+      }
+    ],
+    "bands": []
+  }
+}

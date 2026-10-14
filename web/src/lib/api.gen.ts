@@ -2647,6 +2647,8 @@ export interface components {
             excluded_themes?: string[] | null;
             /** Leveling */
             leveling?: ("xp" | "milestone") | null;
+            /** Location Layout Templates */
+            location_layout_templates?: boolean | null;
             /** Location Layouts */
             location_layouts?: boolean | null;
             /** Location Layouts Llm */
