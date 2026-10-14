@@ -11,6 +11,7 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMQuotaError, LLMReply, decide_model_for, model_for, reply_audit_error
 from app.agents.master import checkpoint
+from app.agents.master.action_order import ready_action_refs
 from app.agents.master.action_progress import finalize_action_parts
 from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
 from app.agents.master.common import (
@@ -41,7 +42,7 @@ from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.core.narrative.view import master_canon_block
-from app.core.resolution.contracts import ActionRef, ToolActionBinding
+from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
@@ -61,7 +62,7 @@ from app.tools.action_plan import (
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.narrative.commitments import reserve_turn_claims
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
-from app.tools.resolution.requests import action_key, bound_tool_key
+from app.tools.resolution.requests import action_key, bound_tool_key, mark_resolved
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
 log = logging.getLogger(__name__)
@@ -113,6 +114,17 @@ def _hostile_opening_spell(ctx: ToolContext, intent: dict | None) -> dict | None
         return None
     args = _routable_cast(ctx, intent)
     return args if args and _targets_hostile_with_spell(ctx, args) else None
+
+
+def _mark_actor_opening(ctx: ToolContext, actor_id: str) -> None:
+    for r in ctx.required_actions:
+        if r.actor_id == actor_id:
+            mark_resolved(ctx, r)
+            ctx.action_progress[action_key(r)] = ActionProgress(
+                status="completed",
+                result=ResolutionResult(execution="applied", game_outcome="success"),
+            )
+    ctx.closed.add(actor_id)
 
 
 class TurnMixin:
@@ -414,7 +426,7 @@ class TurnMixin:
                 if opened.get("ok"):
                     combat.queue_opening_plan(ctx, plan)
                     opening_actors.add(actor)
-                    ctx.closed.add(actor)
+                    _mark_actor_opening(ctx, actor)
                     description = (
                         "Манёвр" if plan.get("kind") in ("shove", "grapple") else "Движение и последующее действие"
                     )
@@ -458,7 +470,7 @@ class TurnMixin:
                     else:
                         combat.queue_opening_spell(ctx, spell)
                     opening_actors.add(actor_id)
-                    ctx.closed.add(actor_id)
+                    _mark_actor_opening(ctx, actor_id)
                     action_name = "атака" if attack is not None else "заклинание"
                     routed.append(
                         f"{actor_id}: запуск инициативы уже выполнен сервером; {action_name} заявлено "
@@ -495,7 +507,7 @@ class TurnMixin:
                         f"{actor}: составная заявка проверена сервером: {'; '.join(result['notes'])}. "
                         "Не дублируй перемещение или атаку"
                     )
-                    ctx.closed.add(actor)
+                    _mark_actor_opening(ctx, actor)
                     if not result["completed"]:
                         blocked_actors.add(actor)
                         combat._set(ctx, submitted=False)
@@ -527,6 +539,9 @@ class TurnMixin:
             m_actions = (m.data or {}).get("resolution_actions") or []
             call_args = dict(args)
             if m_actions:
+                target_ref = ActionRef.model_validate(m_actions[0]["ref"])
+                if target_ref not in ready_action_refs(ctx):
+                    continue
                 call_args["action_ref"] = m_actions[0]["ref"]
             await self._status(cid, "rolling")
             call_key = await bound_tool_key(ctx, name, call_args, f"{turn_id}:route:{m.id}")
@@ -617,7 +632,7 @@ class TurnMixin:
                         else:
                             combat.queue_opening_attack(ctx, args)
                         opening_actors.add(attacker)
-                        ctx.closed.add(attacker)
+                        _mark_actor_opening(ctx, attacker)
                         done_calls += 1
                         return {"ok": True, "result": {"opening_attack": "queued by initiative"}}
                 # The model may initiate an attack that was not recognized by the
@@ -641,7 +656,7 @@ class TurnMixin:
                     else:
                         combat.queue_opening_attack(ctx, args)
                     opening_actors.add(attacker)
-                    ctx.closed.add(attacker)
+                    _mark_actor_opening(ctx, attacker)
                     await self._status(cid, "rolling")
                     opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
                     done_calls += 1
@@ -658,7 +673,7 @@ class TurnMixin:
                             return {"ok": False, "error": "начальное действие уже заявлено"}
                         combat.queue_opening_spell(ctx, args)
                         opening_actors.add(caster)
-                        ctx.closed.add(caster)
+                        _mark_actor_opening(ctx, caster)
                         done_calls += 1
                         return {"ok": True, "result": {"opening_spell": "queued by initiative"}}
                 elif caster in required:
@@ -668,7 +683,7 @@ class TurnMixin:
                         return opened
                     combat.queue_opening_spell(ctx, args)
                     opening_actors.add(caster)
-                    ctx.closed.add(caster)
+                    _mark_actor_opening(ctx, caster)
                     await self._status(cid, "rolling")
                     opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
                     done_calls += 1
@@ -764,7 +779,7 @@ class TurnMixin:
                         }
                     )
                     continue
-                open_ = required - ctx.closed
+                open_ = (required - ctx.closed) - opening_actors
                 searches = unresolved_searches(ctx)
                 if searches and not search_retry and done_calls < MAX_CALLS:
                     search_retry = True
