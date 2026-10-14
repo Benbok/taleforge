@@ -1,0 +1,36 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "sandy_shore": {
+      "tar_firepit": "preserved",
+      "net_drying_racks": "preserved",
+      "upturned_skiff": "preserved"
+    },
+    "wooden_jetty": {
+      "fish_corfs": "preserved",
+      "gutting_bench": "preserved"
+    },
+    "fisher_shack": {
+      "smokehouse_stove": "preserved",
+      "tackle_table": "preserved",
+      "salted_fish_barrels": "preserved"
+    },
+    "fishing_water": {
+      "fish_corfs_water": "preserved",
+      "mooring_float": "preserved"
+    }
+  }
+}

@@ -1,0 +1,345 @@
+{
+  "seed": 7,
+  "entry": "overgrown_park",
+  "areas": [
+    {
+      "area_ref": "overgrown_park",
+      "role": "park",
+      "name": "Одичавший усадебный парк",
+      "public_name": "Заросший парк",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "grass",
+      "description": "Бывший регулярный парк с одичавшими кустами роз, разбитыми скамьями и иссохшим мраморным фонтаном.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "ruined_fountain",
+          "name": "Расколотый мраморный фонтан",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              4,
+              6,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "overgrown_hedges",
+          "name": "Одичавшая живая изгородь",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "broken_benches",
+          "name": "Обломки резных парковых скамей",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              2,
+              9,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "garden_urn",
+          "name": "Мраморная урна с плющом",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              7,
+              3,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 4,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 4,
+          "length": 2,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 6,
+          "length": 4,
+          "meaning": "obstacle"
+        }
+      ]
+    },
+    {
+      "area_ref": "collapsed_ballroom",
+      "role": "hall",
+      "name": "Рухнувший бальный зал",
+      "public_name": "Бальный зал",
+      "environment": "indoor",
+      "shape": "l_shape",
+      "cols": 10,
+      "rows": 10,
+      "offset": [
+        12,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Огромный парадный зал с провалившейся крышей, растрескавшимся паркетом и рухнувшей люстрой.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "fallen_chandelier",
+          "name": "Рухнувшая бронзовая люстра",
+          "kind": "hazard",
+          "cells": [
+            [
+              3,
+              4,
+              4,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "marble_pillars",
+          "name": "Обломки мраморных колонн",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              3,
+              2,
+              3
+            ],
+            [
+              2,
+              7,
+              2,
+              7
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "grand_fireplace",
+          "name": "Разрушенный камин с гербом",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              7,
+              8,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    },
+    {
+      "area_ref": "intact_study",
+      "role": "study",
+      "name": "Уцелевший кабинет лорда",
+      "public_name": "Уцелевший кабинет",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 6,
+      "rows": 6,
+      "offset": [
+        14,
+        10
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Изолированная сводчатая комната, чудом уцелевшая в пожаре: книги, карты поместья и секретер.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "carved_desk",
+          "name": "Массивный письменный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              2,
+              3,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "parchment_shelves",
+          "name": "Шкафы с семейными хрониками",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              4,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "hidden_safe",
+          "name": "Вмурованный в стену сейф",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              2,
+              5,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_collapsed_ballroom",
+      "kind": "arch",
+      "name": "Парадная арка сада",
+      "public_name": "Парадная арка сада",
+      "ends": [
+        {
+          "area_ref": "overgrown_park",
+          "side": "e",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "collapsed_ballroom",
+          "side": "w",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_intact_study",
+      "kind": "door",
+      "name": "Окованная дубовая дверь",
+      "public_name": "Окованная дубовая дверь",
+      "ends": [
+        {
+          "area_ref": "collapsed_ballroom",
+          "side": "s",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "intact_study",
+          "side": "n",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "locked",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_overgrown_park_w",
+      "kind": "edge",
+      "name": "Въездная усадебная аллея",
+      "public_name": "Въездная усадебная аллея",
+      "ends": [
+        {
+          "area_ref": "overgrown_park",
+          "side": "w",
+          "start": 4,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_ruins_manor_estate"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

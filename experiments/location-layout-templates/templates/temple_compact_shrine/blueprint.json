@@ -1,0 +1,341 @@
+{
+  "seed": 7,
+  "entry": "narthex",
+  "areas": [
+    {
+      "area_ref": "narthex",
+      "role": "vestibule",
+      "name": "Храмовый притвор",
+      "public_name": "Притвор",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 5,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Прохладный притвор со сводчатым потолком, каменными скамьями и чашей для омовения.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "holy_water_font",
+          "name": "Чаша со святой водой",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "prayer_benches",
+          "name": "Скамьи для молящихся",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              3
+            ],
+            [
+              6,
+              1,
+              6,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "candle_stand",
+          "name": "Подсвечник с лампадами",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              0,
+              3,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    },
+    {
+      "area_ref": "sanctuary",
+      "role": "sanctuary",
+      "name": "Главное святилище",
+      "public_name": "Святилище",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 12,
+      "offset": [
+        -1,
+        -12
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Величественный неф с двумя рядами мраморных колонн, резным алтарём и золотым храмовым символом.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "grand_altar",
+          "name": "Мраморный алтарь",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              1,
+              5,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "columns_west",
+          "name": "Западный ряд колонн",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              4,
+              2,
+              4
+            ],
+            [
+              2,
+              8,
+              2,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "columns_east",
+          "name": "Восточный ряд колонн",
+          "kind": "cover",
+          "cells": [
+            [
+              7,
+              4,
+              7,
+              4
+            ],
+            [
+              7,
+              8,
+              7,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "incense_braziers",
+          "name": "Курильницы с благовониями",
+          "kind": "light",
+          "cells": [
+            [
+              3,
+              1,
+              3,
+              1
+            ],
+            [
+              6,
+              1,
+              6,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "lectern",
+          "name": "Пюпитр священнослужителя",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    },
+    {
+      "area_ref": "sacristy",
+      "role": "sacristy",
+      "name": "Ризница священников",
+      "public_name": "Ризница",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 6,
+      "rows": 6,
+      "offset": [
+        9,
+        -9
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Боковое помещение для хранения священных реликвий, облачений и церковных хроник.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "relic_chest",
+          "name": "Сундук с реликвиями",
+          "kind": "object",
+          "cells": [
+            [
+              4,
+              1,
+              4,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "vestment_press",
+          "name": "Шкаф с ритуальными облачениями",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              0,
+              3,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "study_desk",
+          "name": "Стол летописца",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              4,
+              3,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_sanctuary",
+      "kind": "arch",
+      "name": "Входная храмовая арка",
+      "public_name": "Входная храмовая арка",
+      "ends": [
+        {
+          "area_ref": "narthex",
+          "side": "n",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "sanctuary",
+          "side": "s",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_sacristy",
+      "kind": "door",
+      "name": "Дверь в ризницу",
+      "public_name": "Дверь в ризницу",
+      "ends": [
+        {
+          "area_ref": "sanctuary",
+          "side": "e",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "sacristy",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_narthex_s",
+      "kind": "door",
+      "name": "Парадные врата храма",
+      "public_name": "Парадные врата храма",
+      "ends": [
+        {
+          "area_ref": "narthex",
+          "side": "s",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_temple_compact_shrine"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

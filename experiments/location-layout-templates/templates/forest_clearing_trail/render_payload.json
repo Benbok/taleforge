@@ -1,0 +1,699 @@
+{
+  "template_id": "forest_clearing_trail",
+  "root_id": "tpl_forest_clearing_trail",
+  "entry": "forest_verge",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "forest_verge",
+      "name": "Опушка леса",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            3,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Тропа из предгорий",
+            "side": "w",
+            "at": 4,
+            "width": 2,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_forest_clearing_trail",
+            "beyond": null,
+            "passage_ref": "in_forest_verge_w",
+            "cells": [
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ]
+            ]
+          },
+          {
+            "name": "Тропа через деревья",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "sunlit_clearing",
+            "beyond": null,
+            "passage_ref": "p_sunlit_clearing",
+            "cells": [
+              [
+                11,
+                0
+              ],
+              [
+                11,
+                1
+              ],
+              [
+                11,
+                2
+              ],
+              [
+                11,
+                3
+              ],
+              [
+                11,
+                4
+              ],
+              [
+                11,
+                5
+              ],
+              [
+                11,
+                6
+              ],
+              [
+                11,
+                7
+              ],
+              [
+                11,
+                8
+              ],
+              [
+                11,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_forest_verge_brambles",
+            "name": "Колючий кустарник",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                1,
+                3,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_forest_verge_fallen_trunk",
+            "name": "Поваленный ствол",
+            "kind": "cover",
+            "cells": [
+              [
+                7,
+                7,
+                9,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_forest_verge_moss_rock",
+            "name": "Мшистый валун",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                7,
+                4,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "path",
+            "cells": [
+              [
+                0,
+                4,
+                11,
+                4
+              ],
+              [
+                0,
+                5,
+                11,
+                5
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 4,
+            "length": 2,
+            "meaning": "boundary"
+          },
+          {
+            "side": "w",
+            "start": 6,
+            "length": 4,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_clearing_trail",
+          "area_ref": "forest_verge",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "sunlit_clearing",
+      "name": "Лесная поляна",
+      "offset": [
+        12,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 14,
+        "rows": 10,
+        "party": [
+          2,
+          0
+        ],
+        "walls": [
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Просека в чащу",
+            "side": "n",
+            "at": 2,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "dense_thicket",
+            "beyond": null,
+            "passage_ref": "p_dense_thicket",
+            "cells": [
+              [
+                2,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                4,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                6,
+                0
+              ],
+              [
+                7,
+                0
+              ],
+              [
+                8,
+                0
+              ],
+              [
+                9,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                11,
+                0
+              ]
+            ]
+          },
+          {
+            "name": "Тропа через деревья",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "forest_verge",
+            "beyond": null,
+            "passage_ref": "p_sunlit_clearing",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_sunlit_clearing_ancient_oak",
+            "name": "Вековой дуб",
+            "kind": "nature",
+            "cells": [
+              [
+                6,
+                1,
+                7,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_sunlit_clearing_campfire",
+            "name": "Охотничье кострище",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                7,
+                7,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_sunlit_clearing_log_seat",
+            "name": "Бревно у костра",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                8,
+                8,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_sunlit_clearing_mushrooms",
+            "name": "Ведьмино кольцо грибов",
+            "kind": "nature",
+            "cells": [
+              [
+                11,
+                2,
+                12,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "path",
+            "cells": [
+              [
+                0,
+                4,
+                13,
+                4
+              ],
+              [
+                0,
+                5,
+                13,
+                5
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 2,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "n",
+            "start": 2,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "n",
+            "start": 12,
+            "length": 2,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 14,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_clearing_trail",
+          "area_ref": "sunlit_clearing",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "dense_thicket",
+      "name": "Чаща",
+      "offset": [
+        14,
+        -8
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 8,
+        "party": [
+          0,
+          7
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Просека в чащу",
+            "side": "s",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "sunlit_clearing",
+            "beyond": null,
+            "passage_ref": "p_dense_thicket",
+            "cells": [
+              [
+                0,
+                7
+              ],
+              [
+                1,
+                7
+              ],
+              [
+                2,
+                7
+              ],
+              [
+                3,
+                7
+              ],
+              [
+                4,
+                7
+              ],
+              [
+                5,
+                7
+              ],
+              [
+                6,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                7
+              ],
+              [
+                9,
+                7
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_dense_thicket_twisted_roots",
+            "name": "Узловатые корни",
+            "kind": "hazard",
+            "cells": [
+              [
+                3,
+                3,
+                5,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_dense_thicket_granite_outcrop",
+            "name": "Гранитные выступы",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_dense_thicket_ancient_stump",
+            "name": "Трухлявый пень-великан",
+            "kind": "object",
+            "cells": [
+              [
+                7,
+                5,
+                8,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 8,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 8,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_clearing_trail",
+          "area_ref": "dense_thicket",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

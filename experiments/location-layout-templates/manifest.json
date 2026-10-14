@@ -1,0 +1,247 @@
+{
+  "version": "1.0.0",
+  "description": "Экспериментальная коллекция из 12 шаблонов локаций для TaleForge",
+  "templates": [
+    {
+      "id": "tavern_roadside",
+      "archetype": "tavern",
+      "variant": "A",
+      "variant_name": "Небольшая придорожная",
+      "purpose": "Придорожный привал для отдыха, сбора слухов и ночлега путевых отрядов",
+      "environment": "indoor",
+      "materials": [
+        "wood",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "tavern_urban_cellar",
+      "archetype": "tavern",
+      "variant": "B",
+      "variant_name": "Городская с погребом",
+      "purpose": "Шумная городская таверна с залом переговоров, винным погребом и тайником контрабандистов",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "wood"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "temple_compact_shrine",
+      "archetype": "temple",
+      "variant": "A",
+      "variant_name": "Компактное святилище",
+      "purpose": "Действующее городское или монастырское святилище для молитв, благословений и обрядов",
+      "environment": "indoor",
+      "materials": [
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "temple_ruined_courtyard",
+      "archetype": "temple",
+      "variant": "B",
+      "variant_name": "Разрушенный храм с двором",
+      "purpose": "Заброшенный полуразрушенный культовый комплекс с внешним двором, осквернённым нефом и древней криптой",
+      "environment": "mixed",
+      "materials": [
+        "grass",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "cave_passages_grotto",
+      "archetype": "cave",
+      "variant": "A",
+      "variant_name": "Узкие переходы и просторный грот",
+      "purpose": "Дикое подземное подземелье с естественными препятствиями, туннелями, озером и логовом хищника",
+      "environment": "indoor",
+      "materials": [
+        "earth",
+        "stone",
+        "water"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "cave_multilevel_grottos",
+      "archetype": "cave",
+      "variant": "B",
+      "variant_name": "Несколько гротов на разных уровнях",
+      "purpose": "Многоуровневая пещерная система с вертикальным провалом, подземным водопадом и затопленным нижним ярусом",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "forest_clearing_trail",
+      "archetype": "forest",
+      "variant": "A",
+      "variant_name": "Поляна и извилистая тропа",
+      "purpose": "Открытая лесная локация для путевых встреч, следопытства, засад и привала",
+      "environment": "outdoor",
+      "materials": [
+        "grass",
+        "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "forest_stream_crossing",
+      "archetype": "forest",
+      "variant": "B",
+      "variant_name": "Участок с ручьём и переправой",
+      "purpose": "Лесная переправа с естественной водной преградой, деревянным мостом и прибрежными зарослями",
+      "environment": "outdoor",
+      "materials": [
+        "grass",
+        "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "port_quay_warehouse",
+      "archetype": "port",
+      "variant": "A",
+      "variant_name": "Набережная, причал и склад",
+      "purpose": "Оживленная городская гавань с каменной набережной, деревянным пирсом над видимой водой и портовым складом",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "wood",
+        "water"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "port_fishing_pier",
+      "archetype": "port",
+      "variant": "B",
+      "variant_name": "Небольшая рыбацкая пристань",
+      "purpose": "Камерная деревенская рыбацкая стоянка с песчаным берегом, деревянными мостками и хижиной",
+      "environment": "mixed",
+      "materials": [
+        "earth",
+        "wood"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "ruins_manor_estate",
+      "archetype": "ruins",
+      "variant": "A",
+      "variant_name": "Остатки усадьбы",
+      "purpose": "Дворянская усадьба после пожара и запустения: одичавший парк, рухнувший зал и уцелевший сводчатый кабинет",
+      "environment": "mixed",
+      "materials": [
+        "grass",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "ruins_watchpost",
+      "archetype": "ruins",
+      "variant": "B",
+      "variant_name": "Разрушенный сторожевой пост",
+      "purpose": "Остатки пограничного форта на перевале с барбаканом, основанием дозорной башни и подземным казематом",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    }
+  ]
+}

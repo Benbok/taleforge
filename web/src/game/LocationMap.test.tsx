@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LocationMap } from "./LocationMap";
+import { SketchSurface } from "./SketchSurface";
 import { useMapWindow, type MapLocationPlan, type MapState } from "./map";
 
 const map: MapLocationPlan = {
@@ -10,6 +11,15 @@ const map: MapLocationPlan = {
     { id: "hidden-level", name: "Скрыто", offset: [0, 0], level: -1, status: "remembered", revision: 1, sketch: { shape: "open", cols: 2, rows: 2, party: [0, 0], walls: [], exits: [], features: [] } },
   ],
 };
+
+it("рисует твёрдую мебель без повторной заливки стены", () => {
+  const sketch = { ...map.areas[0].sketch, walls: [[0, 0], [1, 1]] as [number, number][],
+    features: [{ id: "table", name: "Стол", kind: "furniture" as const, solid: true, cells: [[0, 0, 0, 0]] }] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="solid-test" /></svg>);
+  expect(container.querySelector('[data-feature-solid="true"] title')?.textContent).toBe("Стол");
+  expect(container.querySelectorAll('rect[fill="var(--tf-map-wall, #111)"]')).toHaveLength(1);
+  expect(sketch.walls).toEqual([[0, 0], [1, 1]]);
+});
 
 describe("единая карта комплекса", () => {
   it("рисует текущий и запомненный участок в общих offsets", () => {

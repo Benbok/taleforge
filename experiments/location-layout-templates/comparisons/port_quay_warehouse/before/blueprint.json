@@ -1,0 +1,373 @@
+{
+  "seed": 7,
+  "entry": "granite_quay",
+  "areas": [
+    {
+      "area_ref": "granite_quay",
+      "role": "quay",
+      "name": "Гранитная набережная",
+      "public_name": "Портовая набережная",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 12,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Широкая мощеная набережная с причальными тумбами, бухтами смоленых канатов и фонарными столбами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "mooring_bollards",
+          "name": "Чугунные причальные тумбы",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              6,
+              4,
+              6
+            ],
+            [
+              8,
+              6,
+              9,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "cargo_pallets",
+          "name": "Штабель грузовых поддонов",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "quay_lantern",
+          "name": "Портовый масляный фонарь",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              1,
+              6,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 8,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 2,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 2,
+          "length": 8,
+          "meaning": "continuation"
+        },
+        {
+          "side": "s",
+          "start": 10,
+          "length": 2,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 3,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 3,
+          "length": 2,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 5,
+          "length": 3,
+          "meaning": "obstacle"
+        }
+      ]
+    },
+    {
+      "area_ref": "cargo_pier",
+      "role": "pier",
+      "name": "Грузовой деревянный причал",
+      "public_name": "Причал",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 8,
+      "rows": 6,
+      "offset": [
+        2,
+        8
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Деревянный пирс на просмоленных сваях, уходящий в акваторию гавани.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "cargo_crane",
+          "name": "Поворотный грузовой кран",
+          "kind": "object",
+          "cells": [
+            [
+              2,
+              3,
+              3,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "coiled_hawsers",
+          "name": "Бухты тяжелых канатов",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              2,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 8,
+          "meaning": "continuation"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 6,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 8,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 6,
+          "meaning": "obstacle"
+        }
+      ]
+    },
+    {
+      "area_ref": "harbor_warehouse",
+      "role": "warehouse",
+      "name": "Портовый пакгауз",
+      "public_name": "Портовый склад",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 8,
+      "offset": [
+        12,
+        0
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Высокое прохладное здание склада со стеллажами, опечатанными ящиками и конторкой смотрителя.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "crate_stacks",
+          "name": "Штабеля опечатанных ящиков",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              1,
+              3,
+              2
+            ],
+            [
+              2,
+              5,
+              3,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "storage_racks",
+          "name": "Многоярусные стеллажи",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              1,
+              6,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "overseer_desk",
+          "name": "Конторка портового смотрителя",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "hanging_cage",
+          "name": "Запертая решётчатая клеть",
+          "kind": "object",
+          "cells": [
+            [
+              6,
+              6,
+              6,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": []
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_cargo_pier",
+      "kind": "edge",
+      "name": "Сходни на пирс",
+      "public_name": "Сходни на пирс",
+      "ends": [
+        {
+          "area_ref": "granite_quay",
+          "side": "s",
+          "start": 2,
+          "width": 8,
+          "place_id": null
+        },
+        {
+          "area_ref": "cargo_pier",
+          "side": "n",
+          "start": 0,
+          "width": 8,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_harbor_warehouse",
+      "kind": "gate",
+      "name": "Складские ворота",
+      "public_name": "Складские ворота",
+      "ends": [
+        {
+          "area_ref": "granite_quay",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "harbor_warehouse",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_granite_quay_w",
+      "kind": "edge",
+      "name": "Вход с припортовой улицы",
+      "public_name": "Вход с припортовой улицы",
+      "ends": [
+        {
+          "area_ref": "granite_quay",
+          "side": "w",
+          "start": 3,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_port_quay_warehouse"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

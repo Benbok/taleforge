@@ -1,0 +1,33 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "west_bank": {
+      "mile_marker": "preserved",
+      "wayside_shrine": "preserved",
+      "willow_tree": "preserved"
+    },
+    "stream_crossing": {
+      "bridge_railings": "preserved",
+      "river_stones": "preserved",
+      "reeds_bed": "preserved"
+    },
+    "east_bluff": {
+      "hunter_blind": "preserved",
+      "lookout_pine": "preserved",
+      "camp_embers": "preserved"
+    }
+  }
+}

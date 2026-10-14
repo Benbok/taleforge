@@ -145,7 +145,7 @@ def check(sk: dict, place_ids: set[str], *, reach: bool = False) -> list[str]:
                 continue
             for c in range(c0, c1 + 1):
                 for r in range(r0, r1 + 1):
-                    if (c, r) in walls or (c, r) in void:
+                    if (c, r) in void or ((c, r) in walls and f.get("solid") is not True):
                         errors.append(f"«{f['name']}» стоит на стене ({c}, {r})")
                     elif (c, r) in taken and taken[(c, r)] != f["name"]:
                         errors.append(f"«{f['name']}» и «{taken[(c, r)]}» в одной клетке ({c}, {r})")

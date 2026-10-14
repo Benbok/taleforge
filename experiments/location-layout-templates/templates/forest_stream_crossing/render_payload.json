@@ -1,0 +1,779 @@
+{
+  "template_id": "forest_stream_crossing",
+  "root_id": "tpl_forest_stream_crossing",
+  "entry": "west_bank",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "west_bank",
+      "name": "Западный берег",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            3,
+            2
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Тракт с запада",
+            "side": "w",
+            "at": 4,
+            "width": 2,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_forest_stream_crossing",
+            "beyond": null,
+            "passage_ref": "in_west_bank_w",
+            "cells": [
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ]
+            ]
+          },
+          {
+            "name": "Выход на мост",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "stream_crossing",
+            "beyond": null,
+            "passage_ref": "p_stream_crossing",
+            "cells": [
+              [
+                9,
+                0
+              ],
+              [
+                9,
+                1
+              ],
+              [
+                9,
+                2
+              ],
+              [
+                9,
+                3
+              ],
+              [
+                9,
+                4
+              ],
+              [
+                9,
+                5
+              ],
+              [
+                9,
+                6
+              ],
+              [
+                9,
+                7
+              ],
+              [
+                9,
+                8
+              ],
+              [
+                9,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_west_bank_mile_marker",
+            "name": "Дорожный верстовой столб",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                3,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_west_bank_wayside_shrine",
+            "name": "Придорожная божница",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                7,
+                4,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_west_bank_willow_tree",
+            "name": "Плакучая ива у воды",
+            "kind": "nature",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "road",
+            "cells": [
+              [
+                0,
+                4,
+                9,
+                4
+              ],
+              [
+                0,
+                5,
+                9,
+                5
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 4,
+            "length": 2,
+            "meaning": "boundary"
+          },
+          {
+            "side": "w",
+            "start": 6,
+            "length": 4,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_stream_crossing",
+          "area_ref": "west_bank",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "stream_crossing",
+      "name": "Переправа через ручей",
+      "offset": [
+        10,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          11,
+          0
+        ],
+        "walls": [
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Подъем на откос",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "east_bluff",
+            "beyond": null,
+            "passage_ref": "p_east_bluff",
+            "cells": [
+              [
+                11,
+                0
+              ],
+              [
+                11,
+                1
+              ],
+              [
+                11,
+                2
+              ],
+              [
+                11,
+                3
+              ],
+              [
+                11,
+                4
+              ],
+              [
+                11,
+                5
+              ],
+              [
+                11,
+                6
+              ],
+              [
+                11,
+                7
+              ],
+              [
+                11,
+                8
+              ],
+              [
+                11,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Выход на мост",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "west_bank",
+            "beyond": null,
+            "passage_ref": "p_stream_crossing",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_stream_crossing_bridge_railin",
+            "name": "Перила моста",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                3,
+                7,
+                3
+              ],
+              [
+                5,
+                6,
+                7,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_stream_crossing_river_stones",
+            "name": "Скользкие валуны в русле",
+            "kind": "nature",
+            "cells": [
+              [
+                6,
+                1,
+                6,
+                1
+              ],
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_stream_crossing_reeds_bed",
+            "name": "Заросли речного камыша",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                7,
+                3,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "bridge",
+            "cells": [
+              [
+                6,
+                4,
+                7,
+                4
+              ],
+              [
+                6,
+                5,
+                7,
+                5
+              ]
+            ]
+          },
+          {
+            "kind": "road",
+            "cells": [
+              [
+                0,
+                4,
+                5,
+                4
+              ],
+              [
+                8,
+                4,
+                11,
+                4
+              ],
+              [
+                0,
+                5,
+                5,
+                5
+              ],
+              [
+                8,
+                5,
+                11,
+                5
+              ]
+            ]
+          },
+          {
+            "kind": "stream",
+            "cells": [
+              [
+                6,
+                0,
+                7,
+                0
+              ],
+              [
+                6,
+                1,
+                7,
+                1
+              ],
+              [
+                6,
+                2,
+                7,
+                2
+              ],
+              [
+                6,
+                3,
+                7,
+                3
+              ],
+              [
+                6,
+                6,
+                7,
+                6
+              ],
+              [
+                6,
+                7,
+                7,
+                7
+              ],
+              [
+                6,
+                8,
+                7,
+                8
+              ],
+              [
+                6,
+                9,
+                7,
+                9
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_stream_crossing",
+          "area_ref": "stream_crossing",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "east_bluff",
+      "name": "Восточный холм",
+      "offset": [
+        22,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          0
+        ],
+        "walls": [
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            7,
+            8
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Подъем на откос",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "stream_crossing",
+            "beyond": null,
+            "passage_ref": "p_east_bluff",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_east_bluff_hunter_blind",
+            "name": "Охотничья засидка за валунами",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_east_bluff_lookout_pine",
+            "name": "Высокая сосна",
+            "kind": "nature",
+            "cells": [
+              [
+                7,
+                7,
+                8,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_east_bluff_camp_embers",
+            "name": "Следы старого привала",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                7,
+                5,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [
+          {
+            "kind": "road",
+            "cells": [
+              [
+                0,
+                4,
+                9,
+                4
+              ],
+              [
+                0,
+                5,
+                9,
+                5
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_stream_crossing",
+          "area_ref": "east_bluff",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

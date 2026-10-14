@@ -1,0 +1,34 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "forest_verge": {
+      "brambles": "preserved",
+      "fallen_trunk": "preserved",
+      "moss_rock": "preserved"
+    },
+    "sunlit_clearing": {
+      "ancient_oak": "preserved",
+      "campfire": "preserved",
+      "log_seat": "preserved",
+      "mushrooms": "preserved"
+    },
+    "dense_thicket": {
+      "twisted_roots": "preserved",
+      "granite_outcrop": "preserved",
+      "ancient_stump": "preserved"
+    }
+  }
+}

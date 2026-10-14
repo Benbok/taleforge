@@ -1,0 +1,528 @@
+{
+  "template_id": "cave_multilevel_grottos",
+  "root_id": "tpl_cave_multilevel_grottos",
+  "entry": "upper_gallery",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "upper_gallery",
+      "name": "Верхняя галерея",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          3,
+          7
+        ],
+        "walls": [
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Входная расщелина с поверхности",
+            "side": "s",
+            "at": 3,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_cave_multilevel_grottos",
+            "beyond": null,
+            "passage_ref": "in_upper_gallery_s",
+            "cells": [
+              [
+                3,
+                7
+              ]
+            ]
+          },
+          {
+            "name": "Широкий скальный пролом",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "chasm_overlook",
+            "beyond": null,
+            "passage_ref": "p_chasm_overlook",
+            "cells": [
+              [
+                7,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_upper_gallery_torch_bracket",
+            "name": "Факельное кострище",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_upper_gallery_rocky_ledge",
+            "name": "Каменный карниз",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_upper_gallery_crystal_cluster",
+            "name": "Друза горных кристаллов",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                4,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_multilevel_grottos",
+          "area_ref": "upper_gallery",
+          "rev": 1
+        },
+        "mask": [
+          "##....##",
+          "#......#",
+          ".......#",
+          ".......#",
+          "........",
+          "........",
+          "#......#",
+          "##..####"
+        ]
+      }
+    },
+    {
+      "id": "chasm_overlook",
+      "name": "Край провала",
+      "offset": [
+        8,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            4,
+            2
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Широкий скальный пролом",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "upper_gallery",
+            "beyond": null,
+            "passage_ref": "p_chasm_overlook",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Скальный спуск по расщелине",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "lower_wet_cavern",
+            "beyond": null,
+            "passage_ref": "p_lower_wet_cavern",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_chasm_overlook_climbing_rig",
+            "name": "Вбитые альпинистские крючья",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_chasm_overlook_stalagmites_br",
+            "name": "Сталагмиты у края обрыва",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                2,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_multilevel_grottos",
+          "area_ref": "chasm_overlook",
+          "rev": 1
+        },
+        "mask": [
+          "##....##",
+          "#......#",
+          ".......#",
+          ".......#",
+          ".......#",
+          "........",
+          "##.....#",
+          "###..###"
+        ]
+      }
+    },
+    {
+      "id": "lower_wet_cavern",
+      "name": "Нижний грот",
+      "offset": [
+        8,
+        0
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            7
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Скальный спуск по расщелине",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "chasm_overlook",
+            "beyond": null,
+            "passage_ref": "p_lower_wet_cavern",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Затопленный проход",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "submerged_lair",
+            "beyond": null,
+            "passage_ref": "p_submerged_lair",
+            "cells": [
+              [
+                5,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_lower_wet_cavern_dripping_bas",
+            "name": "Мокрая каменная чаша",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                4,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_lower_wet_cavern_luminescent_",
+            "name": "Светящиеся споровики",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_lower_wet_cavern_mossy_pillar",
+            "name": "Замшелая каменная колонна",
+            "kind": "cover",
+            "cells": [
+              [
+                6,
+                7,
+                7,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_multilevel_grottos",
+          "area_ref": "lower_wet_cavern",
+          "rev": 1
+        },
+        "mask": [
+          "###....###",
+          "#.......##",
+          "#........#",
+          "#.........",
+          "..........",
+          "#.........",
+          "..........",
+          "#........#",
+          "#........#",
+          "###...####"
+        ]
+      }
+    },
+    {
+      "id": "submerged_lair",
+      "name": "Затопленный карман",
+      "offset": [
+        10,
+        10
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 6,
+        "rows": 6,
+        "party": [
+          3,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Затопленный проход",
+            "side": "n",
+            "at": 3,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "lower_wet_cavern",
+            "beyond": null,
+            "passage_ref": "p_submerged_lair",
+            "cells": [
+              [
+                3,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_submerged_lair_floating_debri",
+            "name": "Плавающий топляк и кости",
+            "kind": "hazard",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_submerged_lair_dry_nest",
+            "name": "Сухой уступ гнездовища",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                2,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "water",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_multilevel_grottos",
+          "area_ref": "submerged_lair",
+          "rev": 1
+        },
+        "mask": [
+          "#.#..#",
+          ".....#",
+          "......",
+          "......",
+          "......",
+          "####.#"
+        ]
+      }
+    }
+  ]
+}

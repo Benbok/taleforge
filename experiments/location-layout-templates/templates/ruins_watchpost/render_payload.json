@@ -1,0 +1,430 @@
+{
+  "template_id": "ruins_watchpost",
+  "root_id": "tpl_ruins_watchpost",
+  "entry": "outer_barbican",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "outer_barbican",
+      "name": "Барбакан",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Пролом во внешней стене",
+            "side": "w",
+            "at": 3,
+            "width": 2,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_ruins_watchpost",
+            "beyond": null,
+            "passage_ref": "in_outer_barbican_w",
+            "cells": [
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Укрепленная дверь башни",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "watchtower_ruin",
+            "beyond": null,
+            "passage_ref": "p_watchtower_ruin",
+            "cells": [
+              [
+                9,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_outer_barbican_broken_gate_ti",
+            "name": "Обломки дубовых ворот",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_outer_barbican_weapon_rack_ru",
+            "name": "Искореженные стойки для копий",
+            "kind": "object",
+            "cells": [
+              [
+                6,
+                1,
+                7,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_outer_barbican_watch_brazier",
+            "name": "Походная жаровня караула",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 8,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 8,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_ruins_watchpost",
+          "area_ref": "outer_barbican",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "watchtower_ruin",
+      "name": "Сторожевая башня",
+      "offset": [
+        10,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Лестница в каземат",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "dungeon_casemate",
+            "beyond": null,
+            "passage_ref": "p_dungeon_casemate",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Укрепленная дверь башни",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "outer_barbican",
+            "beyond": null,
+            "passage_ref": "p_watchtower_ruin",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_watchtower_ruin_spiral_stairs",
+            "name": "Каменная винтовая лестница",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_watchtower_ruin_archer_embras",
+            "name": "Узкие бойницы в кладке",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                2,
+                5,
+                2
+              ],
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_watchtower_ruin_oil_lantern",
+            "name": "Гарнизонный фонарь",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                4,
+                2,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_watchpost",
+          "area_ref": "watchtower_ruin",
+          "rev": 1
+        },
+        "mask": [
+          "##....##",
+          "#......#",
+          "........",
+          "........",
+          "........",
+          "........",
+          "#......#",
+          "##....##"
+        ]
+      }
+    },
+    {
+      "id": "dungeon_casemate",
+      "name": "Подземный каземат",
+      "offset": [
+        10,
+        0
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 8,
+        "rows": 6,
+        "party": [
+          0,
+          2
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Лестница в каземат",
+            "side": "w",
+            "at": 2,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "watchtower_ruin",
+            "beyond": null,
+            "passage_ref": "p_dungeon_casemate",
+            "cells": [
+              [
+                0,
+                2
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_dungeon_casemate_armory_crate",
+            "name": "Сундуки с арбалетными болтами",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_dungeon_casemate_iron_grate_c",
+            "name": "Решётчатый карцер",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_dungeon_casemate_interrogatio",
+            "name": "Каменный стол караульного",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_watchpost",
+          "area_ref": "dungeon_casemate",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

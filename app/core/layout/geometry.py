@@ -56,11 +56,11 @@ def build_area(bp: Blueprint, area: Area, *, root_id: str | None = None, ids: di
             errors.append(f"{area.area_ref}: «{d.name}» вне пола")
         if d.solid:
             solid |= cells
-        else:
-            features.append({
-                "id": f"sf_{area.area_ref}_{d.detail_ref}"[:32], "name": d.name, "kind": d.kind,
-                "cells": [list(r) for r in d.cells], "cover": "none", "hidden": d.hidden,
-            })  # fmt: skip
+        features.append({
+            "id": f"sf_{area.area_ref}_{d.detail_ref}"[:32], "name": d.name, "kind": d.kind,
+            "cells": [list(r) for r in d.cells], "cover": "none", "hidden": d.hidden,
+            "solid": d.solid,
+        })  # fmt: skip
     exits: list[dict] = []
     for p, x in sorted(bp.ends_of(area.area_ref), key=lambda t: (t[0].hidden, t[0].passage_ref)):
         cells = end_cells(floor, area, x)

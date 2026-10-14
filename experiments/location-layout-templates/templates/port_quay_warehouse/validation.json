@@ -1,0 +1,39 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 5,
+  "passage_count": 5,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "granite_quay": {
+      "mooring_bollards": "shifted: [[3, 5, 4, 5], [7, 5, 8, 5]] -> [[3, 4, 4, 4], [7, 4, 8, 4]]",
+      "cargo_pallets": "preserved",
+      "quay_lantern": "preserved"
+    },
+    "cargo_pier": {
+      "cargo_crane": "preserved",
+      "coiled_hawsers": "preserved",
+      "cleats": "preserved"
+    },
+    "harbor_warehouse": {
+      "crate_stacks": "preserved",
+      "storage_racks": "preserved",
+      "overseer_desk": "preserved"
+    },
+    "harbor_water_west": {
+      "floating_buoy": "preserved"
+    },
+    "harbor_water_east": {
+      "wooden_piles": "preserved"
+    }
+  }
+}

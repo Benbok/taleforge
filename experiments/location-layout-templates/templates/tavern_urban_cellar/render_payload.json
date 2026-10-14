@@ -1,0 +1,528 @@
+{
+  "template_id": "tavern_urban_cellar",
+  "root_id": "tpl_tavern_urban_cellar",
+  "entry": "taproom",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "taproom",
+      "name": "Питейный зал",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 8,
+        "party": [
+          0,
+          2
+        ],
+        "walls": [
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            8,
+            1
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход с городской площади",
+            "side": "w",
+            "at": 2,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_tavern_urban_cellar",
+            "beyond": null,
+            "passage_ref": "in_taproom_w",
+            "cells": [
+              [
+                0,
+                2
+              ]
+            ]
+          },
+          {
+            "name": "Каменная лестница в подвал",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "cold_cellar",
+            "beyond": null,
+            "passage_ref": "p_cold_cellar",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Дверь с замком",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "locked",
+            "hidden": false,
+            "to": "private_parlor",
+            "beyond": null,
+            "passage_ref": "p_private_parlor",
+            "cells": [
+              [
+                9,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_taproom_long_bar",
+            "name": "Массивная барная стойка",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                2,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_taproom_round_tables",
+            "name": "Круглые столы горожан",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                2,
+                7,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_taproom_iron_stove",
+            "name": "Чугунная печь",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_taproom_ale_casks",
+            "name": "Ряд пивных бочек",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                2,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_urban_cellar",
+          "area_ref": "taproom",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "private_parlor",
+      "name": "Отдельный кабинет",
+      "offset": [
+        10,
+        1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 6,
+        "rows": 6,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Дверь с замком",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "locked",
+            "hidden": false,
+            "to": "taproom",
+            "beyond": null,
+            "passage_ref": "p_private_parlor",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_private_parlor_leather_chairs",
+            "name": "Кожаные кресла и круглый столик",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                2,
+                3,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_private_parlor_bookcase",
+            "name": "Шкаф с бухгалтерскими книгами",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                0,
+                4,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_private_parlor_wall_sconce",
+            "name": "Бронзовый настенный светильник",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                2,
+                5,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_urban_cellar",
+          "area_ref": "private_parlor",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "cold_cellar",
+      "name": "Винный погреб",
+      "offset": [
+        0,
+        0
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Каменная лестница в подвал",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": "taproom",
+            "beyond": null,
+            "passage_ref": "p_cold_cellar",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Откидная панель стеллажа",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "secret_vault",
+            "beyond": null,
+            "passage_ref": "p_secret_vault",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_cold_cellar_wine_tuns",
+            "name": "Большие дубовые чаны",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_cold_cellar_bottle_racks",
+            "name": "Стеллажи с винами",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_cold_cellar_ice_pit",
+            "name": "Ледник для скоропортящихся продуктов",
+            "kind": "cover",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_cold_cellar_cellar_lantern",
+            "name": "Подвесной масляный фонарь",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                4,
+                3,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_urban_cellar",
+          "area_ref": "cold_cellar",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "secret_vault",
+      "name": "Потайная каморка",
+      "offset": [
+        -4,
+        2
+      ],
+      "level": -1,
+      "secret": true,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 4,
+        "rows": 4,
+        "party": [
+          3,
+          2
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Откидная панель стеллажа",
+            "side": "e",
+            "at": 2,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "cold_cellar",
+            "beyond": null,
+            "passage_ref": "p_secret_vault",
+            "cells": [
+              [
+                3,
+                2
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_secret_vault_iron_strongbox",
+            "name": "Кованый сундук гильдии",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true
+          },
+          {
+            "id": "sf_secret_vault_smuggled_crates",
+            "name": "Ящики с контрабандой",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                2,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_urban_cellar",
+          "area_ref": "secret_vault",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}
