@@ -364,23 +364,32 @@ async def execute(
         q = select(Event).where(Event.campaign_id == ctx.campaign.id, Event.idempotency_key == key)
         prev = (await ctx.session.scalars(q)).first()
         if prev is not None:
-            out = {"ok": True, "result": prev.payload.get("result", {}), "event_id": prev.id, "repeated": True}
+            out = {
+                "ok": True,
+                "result": prev.payload.get("result", {}),
+                "event_id": prev.id,
+                "repeated": True,
+                "tool": name,
+            }
             ref = out["result"].get("operation_ref") if isinstance(out["result"], dict) else None
             if isinstance(ref, str):
                 from app.core import preparation
 
                 # квитанция неизменна, а статус — живой и идёт отдельным полем; Event.payload не меняется
                 out["status"] = await preparation.brief_status(ctx.session, ctx.campaign.id, ref)
-            if ctx.current_binding and ctx.current_binding.role == "finish":
-                from app.tools.resolution.requests import mark_resolved
+            from app.agents.master.action_progress import apply_tool_progress
 
-                mark_resolved(ctx, ctx.current_binding.ref)
+            await apply_tool_progress(ctx, ctx.current_binding, out)
             return out
     try:
         args = t.args.model_validate(raw_args or {})
     except ValidationError as e:
         errs = "; ".join(f"{'.'.join(map(str, x['loc'])) or 'аргументы'}: {x['msg']}" for x in e.errors())
-        return _failure(f"неверные аргументы: {errs}", "invalid_arguments", "invalid_arguments", key)
+        out = _failure(f"неверные аргументы: {errs}", "invalid_arguments", "invalid_arguments", key)
+        from app.agents.master.action_progress import apply_tool_progress
+
+        await apply_tool_progress(ctx, ctx.current_binding, out)
+        return out
     for fname, kind in t.id_fields.items():
         values = _enum_values(ctx.world, kind)
         val = getattr(args, fname, None)
@@ -396,9 +405,13 @@ async def execute(
         ]
         if bad:
             hint = f"; допустимо: {', '.join(values[:30])}" if values else ""
-            return _failure(
+            out = _failure(
                 f"{fname}: нет {', '.join(map(str, bad))} в сцене{hint}", "invalid_target", "rule_denial", key
             )
+            from app.agents.master.action_progress import apply_tool_progress
+
+            await apply_tool_progress(ctx, ctx.current_binding, out)
+            return out
     from app.tools.resolution.context import restore_context, snapshot_context
 
     snapshot = snapshot_context(ctx)
@@ -419,41 +432,60 @@ async def execute(
         if isinstance(e, CatalogError) and e.kind == "item_template" and e.rid:
             ctx.content_misses.add((e.kind, e.rid))
             log.warning("CONTENT_GAP campaign=%s turn=%s tool=%s missing=%s", ctx.campaign.id, ctx.turn_id, name, e.rid)
-            return _failure(
+            out = _failure(
                 f"{e}. Вне боя можно создать этот предмет через invent_item (missing_id={e.rid}) и повторить вызов",
                 "missing_content",
                 "rule_denial",
                 key,
                 rolled_back=True,
             )
-        return _failure(
-            str(e),
-            e.code if isinstance(e, ToolError) else "unclassified",
-            e.category if isinstance(e, ToolError) else "unknown",
-            key,
-            rolled_back=True,
-        )
+        else:
+            out = _failure(
+                str(e),
+                e.code if isinstance(e, ToolError) else "unclassified",
+                e.category if isinstance(e, ToolError) else "unknown",
+                key,
+                rolled_back=True,
+            )
+        from app.agents.master.action_progress import apply_tool_progress
+
+        await apply_tool_progress(ctx, ctx.current_binding, out)
+        return out
     await nested.commit()
     ev = ctx._first_event
     if ev is not None:
         ev.payload = {**ev.payload, "result": result}
     if isinstance(result, dict) and isinstance(result.get("operation_ref"), str):
         ctx.operation_refs.add(result["operation_ref"])
+    actors_to_close = []
     cid = getattr(args, "character_id", None)
     if t.closes_actions and cid:
-        ctx.closed.add(cid)
+        actors_to_close.append(cid)
     if t.closes_actions:
-        for cid in getattr(args, "character_ids", None) or []:
-            ctx.closed.add(cid)
+        for c in getattr(args, "character_ids", None) or []:
+            actors_to_close.append(c)
     for f in ("attacker_id", "caster_id"):
         if t.closes_actions and getattr(args, f, None):
-            ctx.closed.add(getattr(args, f))
-    out = {"ok": True, "result": result, "event_id": ev.id if ev else None}
+            actors_to_close.append(getattr(args, f))
+
+    for a_id in actors_to_close:
+        if any(r.actor_id == a_id for r in ctx.required_actions):
+            from app.tools.resolution.requests import refresh_actor_closed
+
+            refresh_actor_closed(ctx, a_id)
+        else:
+            ctx.closed.add(a_id)
+
+    out = {"ok": True, "result": result, "event_id": ev.id if ev else None, "tool": name}
     if isinstance(result, dict) and isinstance(result.get("operation_ref"), str):
         from app.core import preparation
 
         # живой статус рядом с квитанцией, как у повтора по ключу: квитанция в Event.payload не меняется
         out["status"] = await preparation.brief_status(ctx.session, ctx.campaign.id, result["operation_ref"])
+
+    from app.agents.master.action_progress import apply_tool_progress
+
+    await apply_tool_progress(ctx, ctx.current_binding, out)
     return out
 
 

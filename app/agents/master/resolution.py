@@ -89,11 +89,12 @@ async def permit_repair(ctx: ToolContext, ref: ActionRef | str | None) -> bool:
     if not previous or (previous["result"].get("failure") or {}).get("category") != "invalid_arguments":
         return True
     turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
-    if turn is None:
-        return True
-    repaired = list((turn.trace or {}).get("resolution_repairs", []))
+    trace = dict(turn.trace or {}) if turn is not None else ctx.turn_diagnostics
+    repaired = list(trace.get("resolution_repairs", []))
     key = action_key(ref)
     if key in repaired:
         return False
-    turn.trace = {**(turn.trace or {}), "resolution_repairs": [*repaired, key]}
+    trace["resolution_repairs"] = [*repaired, key]
+    if turn is not None:
+        turn.trace = trace
     return True

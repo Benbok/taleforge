@@ -306,7 +306,7 @@ async def set_action_progress(ctx: ToolContext, ref: ActionRef, progress: Action
 
     key = action_key(ref)
     ctx.action_progress[key] = progress
-    if progress.status in {"completed", "denied", "blocked", "unhandled"}:
+    if progress.status in {"completed", "denied", "blocked"}:
         ctx.resolved_actions.add(key)
     else:
         ctx.resolved_actions.discard(key)
@@ -317,12 +317,12 @@ def refresh_actor_closed(ctx: ToolContext, actor_id: str) -> None:
     required = [r for r in ctx.required_actions if r.actor_id == actor_id]
     if not required:
         return
-    terminal_statuses = {"completed", "denied", "blocked", "unhandled"}
+    closing_statuses = {"completed", "denied", "blocked"}
     for r in required:
         k = action_key(r)
         prog = ctx.action_progress.get(k)
         if prog is not None:
-            if prog.status not in terminal_statuses:
+            if prog.status not in closing_statuses:
                 ctx.closed.discard(actor_id)
                 return
         elif k not in ctx.resolved_actions:
@@ -393,15 +393,13 @@ async def record_operations(ctx: ToolContext, operations: list[dict]) -> None:
 
 async def latest_attempt(ctx: ToolContext, ref: ActionRef) -> dict | None:
     turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
-    return (
-        next(
-            (
-                a
-                for a in reversed((turn.trace or {}).get("resolution_attempts", []))
-                if action_key(ActionRef.model_validate(a["ref"])) == action_key(ref)
-            ),
-            None,
-        )
-        if turn
-        else None
+    trace = (turn.trace or {}) if turn is not None else ctx.turn_diagnostics
+    return next(
+        (
+            a
+            for a in reversed(trace.get("resolution_attempts", []))
+            if action_key(ActionRef.model_validate(a["ref"])) == action_key(ref)
+        ),
+        None,
     )
+

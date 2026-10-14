@@ -554,8 +554,8 @@ def sketch_data(a: SketchArgs, places: set[str], *, reach: bool = False) -> tupl
 
 def link_exits(place: Entity, data: dict, entities: dict) -> None:
     """Выход в известное место — путь и на карте мест."""
-    for x in data["exits"]:
-        other = entities.get(x["to"] or "")
+    for x in data.get("exits") or []:
+        other = entities.get(x.get("to") or "")
         if other is not None and other.id != place.id and not _linked(None, place, other):
             _link(place, other.id, x["name"])
 

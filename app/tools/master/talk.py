@@ -63,6 +63,24 @@ async def cancel_action(ctx: ToolContext, a: ReasonArgs) -> dict:
 )
 async def auto_success(ctx: ToolContext, a: ReasonArgs) -> dict:
     ch = _character(ctx, a.character_id)
+    if ctx.current_binding is not None:
+        from app.tools.resolution.requests import action_key
+
+        ref = ctx.current_binding.ref
+        prog = ctx.action_progress.get(action_key(ref))
+        if prog and prog.status == "completed" and prog.result and prog.result.game_outcome == "failure":
+            raise ToolError(
+                "действие уже завершено провалом броска и не может быть отменено auto_success",
+                code="cannot_overwrite_failure",
+                category="rule_denial",
+            )
+    for ev in ctx.events:
+        if ev.actor_id == ch.id and ev.tool == "roll_check" and ev.payload.get("success") is False:
+            raise ToolError(
+                "действие уже завершено провалом броска и не может быть отменено auto_success",
+                code="cannot_overwrite_failure",
+                category="rule_denial",
+            )
     await ctx.record("auto_success", target_id=ch.id, payload={"reason": a.reason})
     return {"character": ch.name, "success": a.reason}
 

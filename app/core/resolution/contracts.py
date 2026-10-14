@@ -45,6 +45,7 @@ class Contract(BaseModel):
 
 
 class ActionRef(Contract):
+    model_config = ConfigDict(extra="forbid", frozen=True)
     campaign_id: str
     source_kind: Literal["message", "standing_response", "event"]
     source_id: str
@@ -76,6 +77,7 @@ class ActionProgress(Contract):
     status: Literal["pending", "completed", "denied", "blocked", "unhandled"] = "pending"
     reason_code: str | None = None
     result: ResolutionResult | None = None
+    failure: FailureInfo | None = None
     blocked_by: list[int] = Field(default_factory=list)
 
 

@@ -11,6 +11,7 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMQuotaError, LLMReply, decide_model_for, model_for, reply_audit_error
 from app.agents.master import checkpoint
+from app.agents.master.action_progress import finalize_action_parts
 from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
 from app.agents.master.common import (
     MAX_CALLS,
@@ -767,12 +768,13 @@ class TurnMixin:
                 searches = unresolved_searches(ctx)
                 if searches and not search_retry and done_calls < MAX_CALLS:
                     search_retry = True
+                    search_names = [s.actor_id if isinstance(s, ActionRef) else str(s) for s in searches]
                     msgs.append(
                         {
                             "role": "user",
                             "content": (
                                 "Результат исследования не закреплён после успешной проверки: "
-                                + ", ".join(searches)
+                                + ", ".join(search_names)
                                 + ". До повествования запиши конкретный результат через learn_fact, "
                                 "reveal_knowledge или place_item в месте героя с discovery_check_event_id "
                                 "(event_id успешной проверки из её ответа). Если ничего ценного нет, "
@@ -875,27 +877,52 @@ class TurnMixin:
             ):
                 break
 
+        if getattr(ctx, "required_actions", None):
+            await finalize_action_parts(ctx)
+
         searches = unresolved_searches(ctx)
         if searches:
-            diagnostics["unresolved_searches"] = searches
-            for actor in searches:
+            diagnostics["unresolved_searches"] = [
+                s.model_dump() if isinstance(s, ActionRef) else s for s in searches
+            ]
+            for s in searches:
+                actor = s.actor_id if isinstance(s, ActionRef) else s
+                cancel_args = {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."}
+                if isinstance(s, ActionRef):
+                    cancel_args["action_ref"] = s.model_dump()
                 result = await execute(
                     ctx,
                     "cancel_action",
-                    {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."},
-                    key=f"{turn_id}:unresolved_search:{actor}",
+                    cancel_args,
+                    key=f"{turn_id}:unresolved_search:{actor}:{getattr(s, 'part', 0)}",
                 )
                 trace_calls.append({"tool": "cancel_action", "auto": True, "result": result})
 
         # Контракт намерения: молчание запрещено — код сам фиксирует отказ (раздел 7.1)
-        for cid_ in sorted(required - ctx.closed):
-            r = await execute(
-                ctx,
-                "cancel_action",
-                {"character_id": cid_, "reason": "мастер не обработал действие"},
-                key=f"{turn_id}:auto_cancel:{cid_}",
-            )
-            trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
+        if getattr(ctx, "required_actions", None):
+            for ref in ctx.required_actions:
+                prog = ctx.action_progress.get(action_key(ref))
+                if not prog or prog.status not in {"completed", "denied", "blocked"}:
+                    r = await execute(
+                        ctx,
+                        "cancel_action",
+                        {
+                            "character_id": ref.actor_id,
+                            "reason": "мастер не обработал действие",
+                            "action_ref": ref.model_dump(),
+                        },
+                        key=f"{turn_id}:auto_cancel:{ref.actor_id}:{ref.source_id}:{ref.part}",
+                    )
+                    trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
+        else:
+            for cid_ in sorted(required - ctx.closed):
+                r = await execute(
+                    ctx,
+                    "cancel_action",
+                    {"character_id": cid_, "reason": "мастер не обработал действие"},
+                    key=f"{turn_id}:auto_cancel:{cid_}",
+                )
+                trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
 
         combat_notes: list[str] = list(opening_notes)
         # An AI-initiated set_scene_mode can occur AFTER the initial fighting snapshot.
@@ -956,7 +983,11 @@ class TurnMixin:
             "plot_clock": plot_notes,
             "world": world_note,
             "stalled": bool(stall),
-            **({"unresolved_searches": searches} if searches else {}),
+            **(
+                {"unresolved_searches": [s.model_dump() if isinstance(s, ActionRef) else s for s in searches]}
+                if searches
+                else {}
+            ),
         }
         adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
         listeners = None if heard is None else tuple(h.id for h in ctx.world.characters.values() if h.seat_id in heard)
