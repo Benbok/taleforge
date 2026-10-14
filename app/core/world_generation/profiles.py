@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.content.catalog import CatalogView, Entry
@@ -70,6 +70,20 @@ class SceneProfile:
 
 
 MINIMAL = SceneProfile(MINIMAL_REF, "minimal-v1", 0, 0, Limits(0, 0, 0, 0))
+
+
+def freeze_profile(profile: SceneProfile) -> dict[str, Any]:
+    return asdict(profile)
+
+
+def restore_profile(raw: dict[str, Any]) -> SceneProfile:
+    return SceneProfile(
+        ref=raw["ref"], source=raw["source"], budget=raw["budget"], visible_share=raw["visible_share"],
+        limits=Limits(**raw["limits"]), items=tuple(ItemRule(**x) for x in raw.get("items", [])),
+        containers=tuple(Furnishing(**x) for x in raw.get("containers", [])),
+        inner=tuple(Furnishing(**x) for x in raw.get("inner", [])),
+        decor=tuple(Furnishing(**x) for x in raw.get("decor", [])), themes=tuple(raw.get("themes", [])),
+    )
 
 
 def _has_custom_op(value: Any) -> bool:
@@ -171,6 +185,11 @@ def profile_ref_for(location: Any, catalog: CatalogView) -> str:
     st = location.state if isinstance(location.state, dict) else {}
     if isinstance(st.get("scene_profile"), str):
         return st["scene_profile"]
+    roles = {"warehouse": "warehouse", "market": "workshop", "pier": "warehouse",
+             "quay": "warehouse", "cache": "cave"}
+    role_ref = roles.get(st.get("role"))
+    if role_ref and catalog.find(f"scene_profile.{role_ref}", "scene_profile") is not None:
+        return f"scene_profile.{role_ref}"
     template = catalog.find(location.template_id, "location_template") if location.template_id else None
     ref = template.data.get("scene_profile") if template is not None else None
     return ref if isinstance(ref, str) else MINIMAL_REF

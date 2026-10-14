@@ -18,7 +18,7 @@ from app.content.catalog import campaign_catalog
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked, Plan, Proposal
 from app.core.world_generation.policy import build_plan, check_reservation
-from app.core.world_generation.profiles import ProfileError, load_profile
+from app.core.world_generation.profiles import ProfileError, load_profile, restore_profile
 from app.core.world_generation.provider import DeterministicProvider
 from app.core.world_generation.validation import validate
 from app.core.world_tx import WorldConflict
@@ -90,7 +90,8 @@ class Orchestrator:
             reservation = dict(row.reservation or {})
             check_reservation(reservation, campaign)
             try:
-                profile = load_profile(catalog, reservation.get("profile_ref"))
+                profile = (restore_profile(reservation["profile_snapshot"]) if reservation.get("profile_snapshot")
+                           else load_profile(catalog, reservation.get("profile_ref")))
             except ProfileError as e:
                 raise Blocked("unsupported_source", str(e)) from e
             plan = build_plan(reservation, profile, row.target_entity_id)
@@ -200,6 +201,8 @@ async def _place(s, campaign_id: str, target_id: str, profile) -> dict[str, Any]
     return {
         "name": place.name,
         "description": place.description or "",
+        "role": (place.state or {}).get("role"),
+        "object_slots": (place.state or {}).get("object_slots", []),
         "container": target.name if target.kind != "location" else None,
         "themes": list(profile.themes),
         "present": sorted(set(present))[:20],

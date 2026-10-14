@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
+from dataclasses import asdict, replace
 from typing import Any
 
 from pydantic import ValidationError
@@ -196,7 +196,12 @@ async def _publish_layout(
         raise Blocked("already_built", "у места уже есть blueprint")
     ids: dict[str, str] = {}
     for area in bp.areas:
-        state: dict[str, Any] = {"complex": {"root_id": root.id, "area_ref": area.area_ref}}
+        state: dict[str, Any] = {"complex": {"root_id": root.id, "area_ref": area.area_ref}, "role": area.role}
+        if area.scene_profile is not None:
+            state["scene_profile"] = area.scene_profile
+        if area.object_slots:
+            state["object_slots"] = [dict(asdict(slot), feature_id=f"sf_{area.area_ref}_{slot.detail_ref}"[:32]
+                                         if slot.detail_ref else None) for slot in area.object_slots]
         if area.secret:
             state["secret"] = True
         en = Entity(campaign_id=ctx.campaign.id, kind="location", name=area.public_name,
@@ -215,6 +220,9 @@ async def _publish_layout(
                 residents.append(en.id)
     passages = {p.passage_ref: {"state": p.state, "hidden": p.hidden} for p in bp.passages}
     root.state = {**(root.state or {}), "blueprint": bp.to_json(), "areas": ids, "passages": passages}
+    from app.core.world_generation.storage import reserve_complex
+
+    await reserve_complex(ctx, root, bp)
     rows_ = {}
     for area in bp.areas:
         g = await store.reserve_geometry(ctx.session, ctx.campaign.id, root, ctx.world.entities[ids[area.area_ref]], bp)
