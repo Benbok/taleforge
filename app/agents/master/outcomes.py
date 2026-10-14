@@ -21,12 +21,20 @@ def cancelled_actions(ctx) -> list[dict]:
             continue
         hero = ctx.world.characters.get(event.target_id)
         result = event.payload.get("result") or {}
+        ref_dict = event.payload.get("action_ref")
+        ref = None
+        if isinstance(ref_dict, dict):
+            try:
+                ref = ActionRef.model_validate(ref_dict)
+            except Exception:
+                pass
         out.append(
             {
                 "actor_id": event.target_id,
                 "character": hero.name if hero else "Герой",
                 "execution": "not_applied",
                 "reason": event.payload.get("reason") or result.get("cancelled") or "Действие не выполнено.",
+                "action_ref": ref,
             }
         )
     return out
@@ -142,7 +150,18 @@ def public_factual_fallback(ctx, attempts=None, *, notice="", excluded_names=())
             line = "Подтверждённое изменение мира сохранено."
         lines.append(line)
     for cancelled in cancelled_actions(ctx):
-        lines.append(f"{words(cancelled['character'])}: действие не выполнено.")
+        ref = cancelled.get("action_ref")
+        notice = None
+        if ref is not None and hasattr(ctx, "action_progress"):
+            prog = ctx.action_progress.get(action_key(ref))
+            if prog is not None:
+                from app.agents.master.action_progress import public_action_notice
+
+                notice = public_action_notice(ctx, ref, prog)
+        if notice:
+            lines.append(f"{words(cancelled['character'])}: {notice}.")
+        else:
+            lines.append(f"{words(cancelled['character'])}: действие не выполнено.")
     if transition_outcome(attempts) == "failed":
         lines.append("Переход не состоялся.")
     if failed_attack(attempts):
@@ -200,9 +219,16 @@ def failed_attack(attempts: list[dict] | None) -> bool:
     return latest is False
 
 
-def failed_item_action(attempts: list[dict] | None) -> bool:
+def failed_item_action(
+    ctx=None,
+    attempts: list[dict] | None = None,
+) -> bool:
     """An unresolved inventory failure cannot be narrated as a successful transfer or use."""
-    latest = {}
+    if isinstance(ctx, list):
+        attempts = ctx
+        ctx = None
+
+    latest: dict[tuple, tuple[bool, dict]] = {}
     for entry in attempts or []:
         tool = entry.get("tool")
         if tool not in {"give_item", "pass_item", "pick_up_item", "drop_item", "use_item"}:
@@ -214,8 +240,52 @@ def failed_item_action(attempts: list[dict] | None) -> bool:
             args.get("inventory_id") or args.get("item_template_id") or args.get("entity_id"),
             args.get("to_entity_id") or args.get("to_character_id") or args.get("target_id"),
         )
-        latest[key] = bool((entry.get("result") or {}).get("ok"))
-    return any(not success for success in latest.values())
+        res = entry.get("result") or {}
+        ok = bool(res.get("ok"))
+        latest[key] = (ok, entry)
+
+    for ok, entry in latest.values():
+        if ok:
+            continue
+        tool = entry.get("tool")
+        res = entry.get("result") or {}
+        failure = res.get("failure") or {}
+        if tool == "use_item" and failure.get("code") == "item_use_unsupported" and ctx is not None:
+            args = entry.get("args") or {}
+            ref_data = args.get("action_ref") or entry.get("ref")
+            ref = None
+            if isinstance(ref_data, dict):
+                try:
+                    ref = ActionRef.model_validate(ref_data)
+                except Exception:
+                    pass
+            elif isinstance(ref_data, ActionRef):
+                ref = ref_data
+
+            part_completed = False
+            if ref is not None and hasattr(ctx, "action_progress"):
+                prog = ctx.action_progress.get(action_key(ref))
+                if prog and prog.status == "completed":
+                    part_completed = True
+            elif hasattr(ctx, "action_progress"):
+                req_key = entry.get("request_key")
+                if req_key and req_key in ctx.action_progress:
+                    prog = ctx.action_progress[req_key]
+                    if prog and prog.status == "completed":
+                        part_completed = True
+                elif getattr(ctx, "required_actions", None):
+                    for r in ctx.required_actions:
+                        prog = ctx.action_progress.get(action_key(r))
+                        if prog and prog.status == "completed":
+                            part_completed = True
+                            break
+
+            if part_completed:
+                continue
+
+        return True
+
+    return False
 
 
 def resolved_action_outcomes(ctx) -> dict[str, ResolutionResult]:

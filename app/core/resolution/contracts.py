@@ -45,11 +45,17 @@ class Contract(BaseModel):
 
 
 class ActionRef(Contract):
+    model_config = ConfigDict(extra="forbid", frozen=True)
     campaign_id: str
     source_kind: Literal["message", "standing_response", "event"]
     source_id: str
     actor_id: str
     part: int = Field(ge=0)
+
+
+class ActionDependency(Contract):
+    part: int = Field(ge=0)
+    requires: Literal["applied", "success"]
 
 
 class FailureInfo(Contract):
@@ -65,6 +71,19 @@ class ResolutionResult(Contract):
     event_ids: list[str] = Field(default_factory=list)
     completed_parts: list[int] = Field(default_factory=list)
     failure: FailureInfo | None = None
+
+
+class ActionProgress(Contract):
+    status: Literal["pending", "completed", "denied", "blocked", "unhandled"] = "pending"
+    reason_code: str | None = None
+    result: ResolutionResult | None = None
+    failure: FailureInfo | None = None
+    blocked_by: list[int] = Field(default_factory=list)
+
+
+class ToolActionBinding(Contract):
+    ref: ActionRef
+    role: Literal["prepare", "check", "consequence", "finish"]
 
 
 def normalize_result(raw: dict[str, Any], *, attempt_id: str) -> ResolutionResult:

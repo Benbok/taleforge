@@ -1,5 +1,7 @@
 """Require a persisted discovery for a successful search before narration."""
 
+from typing import Any
+
 from app.core.object_policy import concealed
 from app.core.world import is_scene_item
 from app.tools.registry import ToolContext
@@ -7,7 +9,7 @@ from app.tools.registry import ToolContext
 SEARCH_STATS = frozenset({"perception", "investigation", "search"})
 
 
-def unresolved_searches(ctx: ToolContext) -> list[str]:
+def legacy_unresolved_searches(ctx: ToolContext) -> list[str]:
     pending = set()
     for index, check in enumerate(ctx.events):
         if (
@@ -49,3 +51,12 @@ def unresolved_searches(ctx: ToolContext) -> list[str]:
         if not confirmed:
             pending.add(actor)
     return sorted(pending)
+
+
+def unresolved_searches(ctx: ToolContext) -> list[Any]:
+    if getattr(ctx, "required_actions", None):
+        from app.agents.master.action_progress import unresolved_searches as multipart_searches
+
+        return multipart_searches(ctx)
+    return legacy_unresolved_searches(ctx)
+

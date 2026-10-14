@@ -78,3 +78,140 @@ def test_source_actor_and_campaign_checked_in_database(game):
                 await load_action_context(ctx, ref.model_copy(update=replacement))
 
     play(settings, campaign_id, [], check)
+
+
+def test_multipart_context_is_local(game):
+    from app.core.resolution.policy import admit
+    from app.tools.resolution.capabilities import CAPABILITIES
+    from app.tools.resolution.requests import load_action_context
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ch = ctx.world.characters[hero]
+        message = Message(
+            campaign_id=campaign_id,
+            seat_id=ch.seat_id,
+            kind="action",
+            seq=101,
+            content="ищу и колдую",
+            intent={
+                "confidence": 0.9,
+                "actions": [
+                    {"verb": "search", "target_id": hero},
+                    {"verb": "cast", "target_id": hero},
+                ],
+            },
+        )
+        ctx.session.add(message)
+        await ctx.session.flush()
+        refs = bind_message_actions(message, hero)
+        assert len(refs) == 2
+
+        search_ctx = await load_action_context(ctx, refs[0])
+        assert search_ctx.verbs == ("search",)
+        assert search_ctx.target_ids == (hero,)
+        assert not search_ctx.combat_related
+        admission = admit(search_ctx, CAPABILITIES["noncombat.interaction"], None)
+        assert admission.route == "ordinary"
+
+        cast_ctx = await load_action_context(ctx, refs[1])
+        assert cast_ctx.verbs == ("cast",)
+        assert cast_ctx.target_ids == (hero,)
+        assert cast_ctx.combat_related
+
+    play(settings, campaign_id, [], check)
+
+
+def test_progress_preserves_other_parts_and_legacy_data(game):
+    from app.core.resolution.contracts import ActionProgress, ResolutionResult
+    from app.tools.resolution.requests import set_action_progress
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ch = ctx.world.characters[hero]
+        message = Message(
+            campaign_id=campaign_id,
+            seat_id=ch.seat_id,
+            kind="action",
+            seq=102,
+            content="действие 1 и действие 2",
+            intent={
+                "confidence": 0.9,
+                "actions": [
+                    {"verb": "search", "target_id": "chest_1"},
+                    {"verb": "talk", "target_id": "npc_1"},
+                ],
+            },
+        )
+        ctx.session.add(message)
+        await ctx.session.flush()
+        refs = bind_message_actions(message, hero)
+
+        prog0 = ActionProgress(
+            status="completed",
+            result=ResolutionResult(execution="applied", game_outcome="success", event_ids=["ev_1"]),
+        )
+        prog1 = ActionProgress(status="denied", reason_code="npc_hostile")
+
+        await set_action_progress(ctx, refs[0], prog0)
+        await set_action_progress(ctx, refs[1], prog1)
+
+        data = message.data or {}
+        assert "resolution_progress" in data
+        assert data["resolution_progress"]["0"]["status"] == "completed"
+        assert data["resolution_progress"]["1"]["status"] == "denied"
+        assert data["resolution_progress"]["1"]["reason_code"] == "npc_hostile"
+
+        completed = data.get("resolution_completed") or {}
+        assert "0" in completed
+        assert "1" not in completed
+
+        foreign_ref = refs[0].model_copy(update={"campaign_id": "foreign_campaign"})
+        with pytest.raises(ToolError):
+            await set_action_progress(ctx, foreign_ref, prog0)
+
+        message.intent = {"actions": [{"verb": "fly"}]}
+        rebound = bind_message_actions(message, hero)
+        assert rebound == refs
+        assert len(message.data["resolution_actions"]) == 2
+
+    play(settings, campaign_id, [], check)
+
+
+def test_terminal_denial_is_not_success_evidence(game):
+    from app.core.resolution.contracts import ActionProgress
+    from app.tools.resolution.requests import load_action_context, set_action_progress
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ch = ctx.world.characters[hero]
+        message = Message(
+            campaign_id=campaign_id,
+            seat_id=ch.seat_id,
+            kind="action",
+            seq=103,
+            content="прыгаю в лаву",
+            intent={"confidence": 0.9, "actions": [{"verb": "jump"}]},
+        )
+        ctx.session.add(message)
+        await ctx.session.flush()
+        refs = bind_message_actions(message, hero)
+        ctx.required_actions = list(refs)
+        assert hero not in ctx.closed
+
+        prog = ActionProgress(status="denied", reason_code="too_dangerous")
+        await set_action_progress(ctx, refs[0], prog)
+
+        assert hero in ctx.closed
+
+        data = message.data or {}
+        completed = data.get("resolution_completed") or {}
+        assert "0" not in completed
+
+        context = await load_action_context(ctx, refs[0])
+        assert context.completed_parts == ()
+
+    play(settings, campaign_id, [], check)

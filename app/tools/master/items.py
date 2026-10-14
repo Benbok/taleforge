@@ -53,7 +53,11 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     if it.expires_at is not None and ctx.world.scene.game_time >= it.expires_at:
         raise ToolError(f"«{ctx.world.item_name(it)}» потеряла силу: срок действия истёк")
     if it.item_template_id == FOUND_ITEM:
-        raise ToolError(f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой")
+        raise ToolError(
+            f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой",
+            code="item_use_unsupported",
+            category="unsupported",
+        )
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     if rec.data.get("spell_scroll"):
         from app.tools.spells import read_scroll
@@ -61,7 +65,11 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         return await read_scroll(ctx, ch, it, rec, [a.target_id] if a.target_id else [])
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
-        raise ToolError(f"у предмета {rec.name} нет механики применения")
+        raise ToolError(
+            f"у предмета {rec.name} нет механики применения",
+            code="item_use_unsupported",
+            category="unsupported",
+        )
     tgt = ctx.world.actor(a.target_id or ch.id)
     _alive(tgt, "Цель")
     if it.item_template_id == "item.goodberry" and tgt.id != ch.id:

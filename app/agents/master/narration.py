@@ -8,6 +8,7 @@ from typing import Any
 
 from app.agents import textcalls, voicing
 from app.agents.llm import LLMError, model_for, parser_model_for
+from app.agents.master.action_progress import public_action_notice
 from app.agents.master.common import MARKUP, render
 from app.agents.master.continuity import invented_player_dialogue, unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
@@ -27,6 +28,7 @@ from app.emotion import game as mood
 from app.emotion.analyzers import LLMAnalyzer
 from app.emotion.schemas import PlayerActionContext
 from app.tools.registry import ToolContext
+from app.tools.resolution.requests import action_key
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +58,7 @@ class NarrationMixin:
     ):
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
-        item_rejected = failed_item_action(tool_attempts)
+        item_rejected = failed_item_action(ctx, tool_attempts)
         attempts = public_attempts(tool_attempts)
         cancellations = cancelled_actions(ctx)
         results = _render_results(ctx)
@@ -303,8 +305,26 @@ class NarrationMixin:
             # Часть заявки обработана (многочастная заявка, мастер закрыл одну часть): проза о применённом
             # остаётся, необработанная часть называется явно — без замены всего ответа сухой сводкой.
             audit["partial_cancel"] = True
-            names = ", ".join(dict.fromkeys(x["character"] for x in cancellations))
-            text = f"{text}\n\n{names}: часть заявки мастер не обработал — уточните её следующим действием."
+            ref_notices = []
+            for x in cancellations:
+                ref = x.get("action_ref")
+                if ref is not None:
+                    prog = (
+                        ctx.action_progress.get(action_key(ref))
+                        if hasattr(ctx, "action_progress")
+                        else None
+                    )
+                    if prog is not None:
+                        notice = public_action_notice(ctx, ref, prog)
+                        if notice:
+                            ref_notices.append(f"{x['character']}: {notice}")
+                    elif x.get("reason"):
+                        ref_notices.append(f"{x['character']}: {x['reason']}")
+            if ref_notices:
+                text = f"{text}\n\n" + "\n".join(dict.fromkeys(ref_notices))
+            else:
+                names = ", ".join(dict.fromkeys(x["character"] for x in cancellations))
+                text = f"{text}\n\n{names}: часть заявки мастер не обработал — уточните её следующим действием."
         elif cancellations:
             # Unconstrained prose cannot establish the success of a cancelled
             # action. Other committed effects still appear in the same answer.

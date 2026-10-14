@@ -14,6 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+from app.core.resolution.contracts import ActionDependency
 from app.core.world import PLAYABLE, ZONE_NAMES, World, is_scene_item
 from app.db.models import Character
 
@@ -98,6 +99,10 @@ class IntentAction(BaseModel):
     maneuver: Literal["prone", "push"] | None = Field(
         None, description="только shove: сбить с ног (prone) или оттолкнуть на 5 футов (push)"
     )
+    summary: str = Field("", max_length=160, description="краткое название действия игрока")
+    depends_on: list[ActionDependency] = Field(
+        default_factory=list, description="зависимости от предыдущих частей заявки"
+    )
 
 
 class Intent(BaseModel):
@@ -130,6 +135,16 @@ def _schema(values: dict[str, list[str]]) -> dict[str, Any]:
                 "anyOf": [{"type": "string", "enum": allowed}, {"type": "null"}],
                 "description": act["properties"][fname].get("description", ""),
             }
+    dep_schema = ActionDependency.model_json_schema()
+    dep_schema.pop("title", None)
+    for p in dep_schema.get("properties", {}).values():
+        p.pop("title", None)
+    act["properties"]["depends_on"] = {
+        "type": "array",
+        "items": dep_schema,
+        "description": "зависимости от предыдущих частей заявки",
+    }
+    act.pop("$defs", None)
     root = Intent.model_json_schema()
     root.pop("title", None)
     root.pop("$defs", None)
@@ -188,8 +203,75 @@ def _castable(world: World, ch: Character) -> list[tuple[str, str, int]]:
     return [(x["id"], x["name"], x["level"]) for x in (b or {}).get("spells", []) if x["prepared"]]
 
 
-def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
+def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResult:
     """Проверка ответа парсера сервером: схема, id, лимит действий, причины отказа (раздел 6)."""
+    raw_actions = raw.get("actions") if isinstance(raw, dict) else None
+    if isinstance(raw_actions, list) and len(raw_actions) > 8:
+        return ParseResult(
+            intent={
+                "kind": "action",
+                "actions": [],
+                "confidence": 0.0,
+                "problem": "unclear",
+                "question": "Слишком много действий в одной заявке (максимум 8). Разделите заявку на несколько ходов.",
+            },
+            reject="Слишком много действий в одной заявке (максимум 8). Разделите заявку на несколько ходов.",
+        )
+    if isinstance(raw_actions, list):
+        n = len(raw_actions)
+        for i, a_raw in enumerate(raw_actions):
+            if not isinstance(a_raw, dict):
+                continue
+            deps = a_raw.get("depends_on") or []
+            for d in deps:
+                part = d.get("part") if isinstance(d, dict) else getattr(d, "part", None)
+                if part is None or not isinstance(part, int) or part < 0 or part >= n or part == i:
+                    return ParseResult(
+                        intent={
+                            "kind": "action",
+                            "actions": [],
+                            "confidence": 0.0,
+                            "problem": "unclear",
+                            "question": "Неверная зависимость между действиями. Уточните последовательность.",
+                        },
+                        reject="Неверная зависимость между действиями. Уточните последовательность.",
+                    )
+        # Cycle detection
+        adj: dict[int, list[int]] = {
+            i: [
+                (d.get("part") if isinstance(d, dict) else getattr(d, "part", None))
+                for d in (a_raw.get("depends_on") or [])
+                if isinstance(d, dict) or hasattr(d, "part")
+            ]
+            for i, a_raw in enumerate(raw_actions)
+            if isinstance(a_raw, dict)
+        }
+        visited: dict[int, int] = {}
+
+        def has_cycle(u: int) -> bool:
+            visited[u] = 0
+            for v in adj.get(u, []):
+                if visited.get(v) == 0:
+                    return True
+                if v not in visited and has_cycle(v):
+                    return True
+            visited[u] = 1
+            return False
+
+        for node in adj:
+            if node not in visited:
+                if has_cycle(node):
+                    return ParseResult(
+                        intent={
+                            "kind": "action",
+                            "actions": [],
+                            "confidence": 0.0,
+                            "problem": "unclear",
+                            "question": "Циклическая зависимость между действиями. Уточните последовательность.",
+                        },
+                        reject="Циклическая зависимость между действиями. Уточните последовательность.",
+                    )
+
     try:
         intent = Intent.model_validate(raw)
     except ValidationError:
@@ -201,9 +283,9 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
     if intent.problem == "unclear" or intent.confidence < LOW_CONFIDENCE:
         return ParseResult(reject=intent.question or f"Не понял, что делает {ch.name}. Опишите действие точнее.")
 
-    valid_targets = set(world.characters) | {e.id for e in world.in_scene_entities()}
-    own = {it.id for it in world.inventory.get(ch.id, [])}
-    known = {s[0] for s in _castable(world, ch)}
+    valid_targets = (set(world.characters) | {e.id for e in world.in_scene_entities()}) if world else set()
+    own = {it.id for it in world.inventory.get(ch.id, [])} if world else set()
+    known = {s[0] for s in _castable(world, ch)} if world else set()
     notes: list[str] = []
     acts: list[dict[str, Any]] = []
     for a in intent.actions:
@@ -228,7 +310,7 @@ def check(raw: dict[str, Any], world: World, ch: Character) -> ParseResult:
         acts.append(d)
 
     notice = None
-    if world.in_fight(ch.id):
+    if world and world.in_fight(ch.id):
         main = [a for a in acts if a["verb"] not in MOVE_VERBS]
         moves = [a for a in acts if a["verb"] in MOVE_VERBS]
         keep = main[:1] + moves[:1] if main else moves[:1]

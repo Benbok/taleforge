@@ -2,7 +2,7 @@
 
 import json
 
-from app.core.resolution.contracts import normalize_result
+from app.core.resolution.contracts import ActionRef, ToolActionBinding, normalize_result
 from app.tools.registry import ToolContext
 from app.tools.resolution.requests import action_key, eligible_adjudications, mark_resolved, record_attempt
 
@@ -47,41 +47,54 @@ async def resolution_prompt(ctx: ToolContext) -> str:
     )
 
 
-async def capture_attempt(ctx: ToolContext, actor_id: str | None, raw: dict) -> str | None:
-    refs = [ref for ref in ctx.required_actions if ref.actor_id == actor_id]
-    # An ambiguous multi-part request must not borrow another part's failure.
-    if len(refs) != 1:
-        if refs:
-            ctx.closed.discard(actor_id)
-            from app.db.models import MasterTurn
+async def capture_attempt(ctx: ToolContext, binding: ToolActionBinding | str | None, raw: dict) -> str | None:
+    if not isinstance(binding, ToolActionBinding):
+        actor_id = binding
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == actor_id]
+        if len(refs) != 1:
+            if refs:
+                ctx.closed.discard(actor_id)
+                from app.db.models import MasterTurn
 
-            turn = await ctx.session.get(MasterTurn, ctx.turn_id)
-            entry = {"actor_id": actor_id, "result": normalize_result(raw, attempt_id="").model_dump()}
-            attempts = [*(turn.trace or {}).get("resolution_unbound_attempts", []), entry]
-            turn.trace = {**(turn.trace or {}), "resolution_unbound_attempts": attempts}
-            ctx.turn_diagnostics["resolution_unbound_attempts"] = attempts
-        return
+                turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+                if turn:
+                    entry = {"actor_id": actor_id, "result": normalize_result(raw, attempt_id="").model_dump()}
+                    attempts = [*(turn.trace or {}).get("resolution_unbound_attempts", []), entry]
+                    turn.trace = {**(turn.trace or {}), "resolution_unbound_attempts": attempts}
+                    ctx.turn_diagnostics["resolution_unbound_attempts"] = attempts
+            return None
+        binding = ToolActionBinding(ref=refs[0], role="finish")
+
+    ref = binding.ref
     result = normalize_result(raw, attempt_id="")
-    await record_attempt(ctx, refs[0], "noncombat.interaction", result)
-    if result.execution in {"applied", "repeated"}:
-        mark_resolved(ctx, refs[0])
-    return action_key(refs[0])
+    await record_attempt(ctx, ref, "noncombat.interaction", result)
+    if binding.role == "finish" and result.execution in {"applied", "repeated"}:
+        mark_resolved(ctx, ref)
+    return action_key(ref)
 
 
-async def permit_repair(ctx: ToolContext, actor_id: str | None) -> bool:
+async def permit_repair(ctx: ToolContext, ref: ActionRef | str | None) -> bool:
     from app.db.models import MasterTurn
     from app.tools.resolution.requests import latest_attempt
 
-    refs = [ref for ref in ctx.required_actions if ref.actor_id == actor_id]
-    if len(refs) != 1:
+    if isinstance(ref, str):
+        refs = [r for r in ctx.required_actions if r.actor_id == ref]
+        if len(refs) != 1:
+            return True
+        ref = refs[0]
+    if ref is None:
         return True
-    previous = await latest_attempt(ctx, refs[0])
+
+    previous = await latest_attempt(ctx, ref)
     if not previous or (previous["result"].get("failure") or {}).get("category") != "invalid_arguments":
         return True
-    turn = await ctx.session.get(MasterTurn, ctx.turn_id)
-    repaired = list((turn.trace or {}).get("resolution_repairs", []))
-    key = action_key(refs[0])
+    turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
+    trace = dict(turn.trace or {}) if turn is not None else ctx.turn_diagnostics
+    repaired = list(trace.get("resolution_repairs", []))
+    key = action_key(ref)
     if key in repaired:
         return False
-    turn.trace = {**(turn.trace or {}), "resolution_repairs": [*repaired, key]}
+    trace["resolution_repairs"] = [*repaired, key]
+    if turn is not None:
+        turn.trace = trace
     return True

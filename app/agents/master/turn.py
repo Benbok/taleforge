@@ -11,6 +11,8 @@ from app.agents import intent as intents
 from app.agents import rhythm, textcalls
 from app.agents.llm import LLMError, LLMQuotaError, LLMReply, decide_model_for, model_for, reply_audit_error
 from app.agents.master import checkpoint
+from app.agents.master.action_order import ready_action_refs
+from app.agents.master.action_progress import finalize_action_parts
 from app.agents.master.adaptation import adaptation_prompt, public_adaptation_effects
 from app.agents.master.common import (
     MAX_CALLS,
@@ -40,6 +42,7 @@ from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.core.narrative.view import master_canon_block
+from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
 from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
@@ -59,7 +62,7 @@ from app.tools.action_plan import (
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.narrative.commitments import reserve_turn_claims
 from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
-from app.tools.resolution.requests import bound_tool_key
+from app.tools.resolution.requests import action_key, bound_tool_key, mark_resolved
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
 log = logging.getLogger(__name__)
@@ -111,6 +114,17 @@ def _hostile_opening_spell(ctx: ToolContext, intent: dict | None) -> dict | None
         return None
     args = _routable_cast(ctx, intent)
     return args if args and _targets_hostile_with_spell(ctx, args) else None
+
+
+def _mark_actor_opening(ctx: ToolContext, actor_id: str) -> None:
+    for r in ctx.required_actions:
+        if r.actor_id == actor_id:
+            mark_resolved(ctx, r)
+            ctx.action_progress[action_key(r)] = ActionProgress(
+                status="completed",
+                result=ResolutionResult(execution="applied", game_outcome="success"),
+            )
+    ctx.closed.add(actor_id)
 
 
 class TurnMixin:
@@ -412,7 +426,7 @@ class TurnMixin:
                 if opened.get("ok"):
                     combat.queue_opening_plan(ctx, plan)
                     opening_actors.add(actor)
-                    ctx.closed.add(actor)
+                    _mark_actor_opening(ctx, actor)
                     description = (
                         "Манёвр" if plan.get("kind") in ("shove", "grapple") else "Движение и последующее действие"
                     )
@@ -456,7 +470,7 @@ class TurnMixin:
                     else:
                         combat.queue_opening_spell(ctx, spell)
                     opening_actors.add(actor_id)
-                    ctx.closed.add(actor_id)
+                    _mark_actor_opening(ctx, actor_id)
                     action_name = "атака" if attack is not None else "заклинание"
                     routed.append(
                         f"{actor_id}: запуск инициативы уже выполнен сервером; {action_name} заявлено "
@@ -493,7 +507,7 @@ class TurnMixin:
                         f"{actor}: составная заявка проверена сервером: {'; '.join(result['notes'])}. "
                         "Не дублируй перемещение или атаку"
                     )
-                    ctx.closed.add(actor)
+                    _mark_actor_opening(ctx, actor)
                     if not result["completed"]:
                         blocked_actors.add(actor)
                         combat._set(ctx, submitted=False)
@@ -522,14 +536,30 @@ class TurnMixin:
                 continue
             if combat.in_combat(ctx) and (hero_turn is None or actor != hero_turn.id):
                 continue
+            m_actions = (m.data or {}).get("resolution_actions") or []
+            call_args = dict(args)
+            if m_actions:
+                target_ref = ActionRef.model_validate(m_actions[0]["ref"])
+                if target_ref not in ready_action_refs(ctx):
+                    continue
+                call_args["action_ref"] = m_actions[0]["ref"]
             await self._status(cid, "rolling")
-            r = await execute(ctx, name, args, key=f"{turn_id}:route:{m.id}")
-            request_key = await capture_attempt(ctx, actor, r)
+            call_key = await bound_tool_key(ctx, name, call_args, f"{turn_id}:route:{m.id}")
+            r = await execute(ctx, name, call_args, key=call_key)
+            if m_actions:
+                binding = ctx.current_binding or ToolActionBinding(
+                    ref=ActionRef.model_validate(m_actions[0]["ref"]), role="finish"
+                )
+            else:
+                binding = ctx.current_binding or actor
+            request_key = await capture_attempt(ctx, binding, r)
             trace_calls.append({"tool": name, "args": args, "result": r, "routed": True, "request_key": request_key})
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
                 if name == "cast_spell":
-                    routed_casts[(actor, args["spell_id"])] = f"{turn_id}:route:{m.id}"
+                    if isinstance(binding, ToolActionBinding):
+                        routed_casts[action_key(binding.ref)] = call_key
+                    routed_casts[(actor, args["spell_id"])] = call_key
             else:
                 routed.append(f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании")
         route_note = ""
@@ -602,7 +632,7 @@ class TurnMixin:
                         else:
                             combat.queue_opening_attack(ctx, args)
                         opening_actors.add(attacker)
-                        ctx.closed.add(attacker)
+                        _mark_actor_opening(ctx, attacker)
                         done_calls += 1
                         return {"ok": True, "result": {"opening_attack": "queued by initiative"}}
                 # The model may initiate an attack that was not recognized by the
@@ -626,7 +656,7 @@ class TurnMixin:
                     else:
                         combat.queue_opening_attack(ctx, args)
                     opening_actors.add(attacker)
-                    ctx.closed.add(attacker)
+                    _mark_actor_opening(ctx, attacker)
                     await self._status(cid, "rolling")
                     opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
                     done_calls += 1
@@ -643,7 +673,7 @@ class TurnMixin:
                             return {"ok": False, "error": "начальное действие уже заявлено"}
                         combat.queue_opening_spell(ctx, args)
                         opening_actors.add(caster)
-                        ctx.closed.add(caster)
+                        _mark_actor_opening(ctx, caster)
                         done_calls += 1
                         return {"ok": True, "result": {"opening_spell": "queued by initiative"}}
                 elif caster in required:
@@ -653,7 +683,7 @@ class TurnMixin:
                         return opened
                     combat.queue_opening_spell(ctx, args)
                     opening_actors.add(caster)
-                    ctx.closed.add(caster)
+                    _mark_actor_opening(ctx, caster)
                     await self._status(cid, "rolling")
                     opening_notes.extend(await combat.run_until_hero(ctx, f"{key}:opening", self._ask_reaction))
                     done_calls += 1
@@ -662,13 +692,16 @@ class TurnMixin:
                 await self._status(cid, "rolling")
             ctx.remaining_resolution_calls = MAX_CALLS - done_calls
             ctx.resolution_calls_used = 0
+            repair_target = (
+                ActionRef.model_validate(args["action_ref"])
+                if isinstance(args.get("action_ref"), dict)
+                else (args.get("character_id") or args.get("attacker_id") or args.get("caster_id"))
+            )
             if (
                 name != "adjudicate_action"
                 and REGISTRY[name].mutating
                 and REGISTRY[name].closes_actions
-                and not await permit_repair(
-                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
-                )
+                and not await permit_repair(ctx, repair_target)
             ):
                 done_calls += 1
                 return {
@@ -678,17 +711,23 @@ class TurnMixin:
             key = await bound_tool_key(ctx, name, args, key)
             if name == "cast_spell":
                 # повтор заклинания, уже сотворённого по заявке, — прежний результат без второй ячейки
-                key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
+                raw_ref = args.get("action_ref")
+                action_ref = (
+                    ActionRef.model_validate(raw_ref)
+                    if isinstance(raw_ref, dict)
+                    else (raw_ref if isinstance(raw_ref, ActionRef) else None)
+                )
+                if action_ref:
+                    key = routed_casts.get(action_key(action_ref), key)
+                else:
+                    key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
             result = await execute(ctx, name, args, key=key)
             if name == "adjudicate_action" and result.get("ok"):
-                from app.core.resolution.contracts import ActionRef
-                from app.tools.resolution.requests import action_key
-
                 result = {**result, "request_key": action_key(ActionRef.model_validate(args["proposal"]["ref"]))}
             if name != "adjudicate_action" and REGISTRY[name].mutating and REGISTRY[name].closes_actions:
-                request_key = await capture_attempt(
-                    ctx, args.get("character_id") or args.get("attacker_id") or args.get("caster_id"), result
-                )
+                actor = args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
+                binding = ctx.current_binding or actor
+                request_key = await capture_attempt(ctx, binding, result)
                 if request_key:
                     result = {**result, "request_key": request_key}
             if name not in AUDIO_TOOLS and name != "adapt_story":  # адаптация имеет собственный бюджет
@@ -740,16 +779,17 @@ class TurnMixin:
                         }
                     )
                     continue
-                open_ = required - ctx.closed
+                open_ = (required - ctx.closed) - opening_actors
                 searches = unresolved_searches(ctx)
                 if searches and not search_retry and done_calls < MAX_CALLS:
                     search_retry = True
+                    search_names = [s.actor_id if isinstance(s, ActionRef) else str(s) for s in searches]
                     msgs.append(
                         {
                             "role": "user",
                             "content": (
                                 "Результат исследования не закреплён после успешной проверки: "
-                                + ", ".join(searches)
+                                + ", ".join(search_names)
                                 + ". До повествования запиши конкретный результат через learn_fact, "
                                 "reveal_knowledge или place_item в месте героя с discovery_check_event_id "
                                 "(event_id успешной проверки из её ответа). Если ничего ценного нет, "
@@ -852,27 +892,52 @@ class TurnMixin:
             ):
                 break
 
+        if getattr(ctx, "required_actions", None):
+            await finalize_action_parts(ctx)
+
         searches = unresolved_searches(ctx)
         if searches:
-            diagnostics["unresolved_searches"] = searches
-            for actor in searches:
+            diagnostics["unresolved_searches"] = [
+                sr.model_dump() if isinstance(sr, ActionRef) else sr for sr in searches
+            ]
+            for search_ref in searches:
+                actor = search_ref.actor_id if isinstance(search_ref, ActionRef) else search_ref
+                cancel_args = {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."}
+                if isinstance(search_ref, ActionRef):
+                    cancel_args["action_ref"] = search_ref.model_dump()
                 result = await execute(
                     ctx,
                     "cancel_action",
-                    {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."},
-                    key=f"{turn_id}:unresolved_search:{actor}",
+                    cancel_args,
+                    key=f"{turn_id}:unresolved_search:{actor}:{getattr(search_ref, 'part', 0)}",
                 )
                 trace_calls.append({"tool": "cancel_action", "auto": True, "result": result})
 
         # Контракт намерения: молчание запрещено — код сам фиксирует отказ (раздел 7.1)
-        for cid_ in sorted(required - ctx.closed):
-            r = await execute(
-                ctx,
-                "cancel_action",
-                {"character_id": cid_, "reason": "мастер не обработал действие"},
-                key=f"{turn_id}:auto_cancel:{cid_}",
-            )
-            trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
+        if getattr(ctx, "required_actions", None):
+            for ref in ctx.required_actions:
+                prog = ctx.action_progress.get(action_key(ref))
+                if not prog or prog.status not in {"completed", "denied", "blocked"}:
+                    r = await execute(
+                        ctx,
+                        "cancel_action",
+                        {
+                            "character_id": ref.actor_id,
+                            "reason": "мастер не обработал действие",
+                            "action_ref": ref.model_dump(),
+                        },
+                        key=f"{turn_id}:auto_cancel:{ref.actor_id}:{ref.source_id}:{ref.part}",
+                    )
+                    trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
+        else:
+            for cid_ in sorted(required - ctx.closed):
+                r = await execute(
+                    ctx,
+                    "cancel_action",
+                    {"character_id": cid_, "reason": "мастер не обработал действие"},
+                    key=f"{turn_id}:auto_cancel:{cid_}",
+                )
+                trace_calls.append({"tool": "cancel_action", "auto": True, "result": r})
 
         combat_notes: list[str] = list(opening_notes)
         # An AI-initiated set_scene_mode can occur AFTER the initial fighting snapshot.
@@ -933,7 +998,11 @@ class TurnMixin:
             "plot_clock": plot_notes,
             "world": world_note,
             "stalled": bool(stall),
-            **({"unresolved_searches": searches} if searches else {}),
+            **(
+                {"unresolved_searches": [s.model_dump() if isinstance(s, ActionRef) else s for s in searches]}
+                if searches
+                else {}
+            ),
         }
         adapt_effects = public_adaptation_effects(ctx, tuple(heard or ()))
         listeners = None if heard is None else tuple(h.id for h in ctx.world.characters.values() if h.seat_id in heard)

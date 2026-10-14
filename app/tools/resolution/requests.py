@@ -7,7 +7,7 @@ import json
 from sqlalchemy import select, update
 
 from app.core import adventure
-from app.core.resolution.contracts import ActionContext, ActionRef, ResolutionResult
+from app.core.resolution.contracts import ActionContext, ActionProgress, ActionRef, ResolutionResult
 from app.db.models import Event, MasterTurn, Message, Scene, new_id
 from app.tools.registry import ToolContext, ToolError
 
@@ -21,27 +21,69 @@ def deed_key(ref: ActionRef, subject_id: str) -> str:
     return hashlib.sha256(f"deed:{action_key(ref)}:{subject_id}".encode()).hexdigest()
 
 
+def action_tool_key(ref: ActionRef, name: str, role: str) -> str:
+    return hashlib.sha256(f"{role}:{action_key(ref)}:{name}".encode()).hexdigest()
+
+
 async def bound_tool_key(ctx: ToolContext, name: str, args: dict, default: str) -> str:
+    if name in {"roll_check", "cast_spell", "record_deed"}:
+        from app.agents.master.action_binding import bind_tool_action
+
+        explicit = None
+        raw_ref = (args or {}).get("action_ref")
+        if isinstance(raw_ref, ActionRef):
+            explicit = raw_ref
+        elif isinstance(raw_ref, dict):
+            try:
+                explicit = ActionRef.model_validate(raw_ref)
+            except Exception:
+                explicit = None
+        try:
+            binding = await bind_tool_action(ctx, name, args, explicit=explicit)
+        except Exception:
+            binding = None
+
+        if binding is not None:
+            if name == "roll_check":
+                from app.core.resolution.policy import admit
+                from app.tools.resolution.capabilities import CAPABILITIES
+
+                try:
+                    context = await load_action_context(ctx, binding.ref)
+                    if (
+                        explicit is not None
+                        or admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary"
+                    ):
+                        return action_tool_key(binding.ref, "roll_check", "primary_check")
+                except Exception:
+                    pass
+                return default
+            if name == "cast_spell":
+                return action_tool_key(binding.ref, "cast_spell", "cast")
+            if name == "record_deed" and (args or {}).get("subject_id"):
+                return deed_key(binding.ref, args["subject_id"])
+
+    # Legacy fallback for single matching ref
     if name == "roll_check":
         from app.core.resolution.policy import admit
         from app.tools.resolution.capabilities import CAPABILITIES
 
-        refs = [ref for ref in ctx.required_actions if ref.actor_id == args.get("character_id")]
-        verified = []
-        for ref in refs:
-            context = await load_action_context(ctx, ref)
-            if admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary":
-                verified.append(ref)
-        if verified:
-            source = ":".join(sorted(action_key(ref) for ref in verified))
-            return hashlib.sha256(f"primary_check:{source}".encode()).hexdigest()
-    if name != "record_deed":
-        return default
-    actors = set(args.get("character_ids") or [])
-    refs = [ref for ref in ctx.required_actions if ref.actor_id in actors]
-    if len(refs) != 1 or not args.get("subject_id"):
-        return default
-    return deed_key(refs[0], args["subject_id"])
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == (args or {}).get("character_id")]
+        if len(refs) == 1:
+            try:
+                context = await load_action_context(ctx, refs[0])
+                if admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary":
+                    return action_tool_key(refs[0], "roll_check", "primary_check")
+            except Exception:
+                pass
+
+    if name == "record_deed":
+        actors = set((args or {}).get("character_ids") or [])
+        refs = [ref for ref in ctx.required_actions if ref.actor_id in actors]
+        if len(refs) == 1 and (args or {}).get("subject_id"):
+            return deed_key(refs[0], args["subject_id"])
+
+    return default
 
 
 def bind_message_actions(message: Message, actor_id: str) -> list[ActionRef]:
@@ -130,8 +172,18 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         bound = (message.data or {}).get("resolution_actions") or []
         if ref.part >= len(bound) or ActionRef.model_validate(bound[ref.part]["ref"]) != ref:
             raise denied()
-        actions = [item["action"] for item in bound]
-        completed_parts = tuple(int(part) for part in (message.data or {}).get("resolution_completed", {}))
+        actions = [bound[ref.part]["action"]]
+        progress_map = (message.data or {}).get("resolution_progress")
+        if progress_map is not None:
+            completed_parts = tuple(
+                sorted(
+                    int(p)
+                    for p, item in progress_map.items()
+                    if item.get("status") == "completed"
+                )
+            )
+        else:
+            completed_parts = tuple(sorted(int(part) for part in (message.data or {}).get("resolution_completed", {})))
         parsed = bool(actions) and (message.intent or {}).get("confidence", 1) >= 0.7
     elif ref.source_kind == "standing_response":
         responses = ((ctx.world.scene.state or {}).get("standing") or {}).get("responses", [])
@@ -200,11 +252,88 @@ async def record_attempt(ctx: ToolContext, ref: ActionRef, capability_id: str, r
     )
     turn.trace = {**(turn.trace or {}), "resolution_attempts": attempts}
     ctx.turn_diagnostics["resolution_attempts"] = copy.deepcopy(attempts)
-    if message is not None and result.execution in {"applied", "repeated"}:
-        completed = dict((message.data or {}).get("resolution_completed") or {})
-        completed.setdefault(str(ref.part), result.model_dump())
-        message.data = {**(message.data or {}), "resolution_completed": completed}
     return attempt_id
+
+
+def get_action_progress(message_data: dict, part: int) -> ActionProgress:
+    progress_map = message_data.get("resolution_progress")
+    if progress_map and str(part) in progress_map:
+        return ActionProgress.model_validate(progress_map[str(part)])
+    completed = message_data.get("resolution_completed")
+    if completed and str(part) in completed:
+        res = ResolutionResult.model_validate(completed[str(part)])
+        return ActionProgress(status="completed", result=res)
+    return ActionProgress(status="pending")
+
+
+async def set_action_progress(ctx: ToolContext, ref: ActionRef, progress: ActionProgress) -> None:
+    def denied():
+        return ToolError("заявка недоступна", code="invalid_source", category="rule_denial")
+
+    if ref.campaign_id != ctx.campaign.id or ref.actor_id not in ctx.world.characters:
+        raise denied()
+    if ref.source_kind == "message":
+        message = await ctx.session.get(Message, ref.source_id)
+        hero = ctx.world.characters[ref.actor_id]
+        if (
+            message is None
+            or message.campaign_id != ref.campaign_id
+            or message.kind != "action"
+            or not hero.seat_id
+            or message.seat_id != hero.seat_id
+        ):
+            raise denied()
+        bound = (message.data or {}).get("resolution_actions") or []
+        if ref.part >= len(bound) or ActionRef.model_validate(bound[ref.part]["ref"]) != ref:
+            raise denied()
+        data = dict(message.data or {})
+        progress_map = dict(data.get("resolution_progress") or {})
+        progress_map[str(ref.part)] = progress.model_dump()
+        data["resolution_progress"] = progress_map
+        if progress.status == "completed" and progress.result and progress.result.execution in {"applied", "repeated"}:
+            completed_map = dict(data.get("resolution_completed") or {})
+            completed_map[str(ref.part)] = progress.result.model_dump()
+            data["resolution_completed"] = completed_map
+        elif "resolution_completed" in data and str(ref.part) in data["resolution_completed"]:
+            completed_map = dict(data.get("resolution_completed") or {})
+            completed_map.pop(str(ref.part), None)
+            data["resolution_completed"] = completed_map
+        message.data = data
+    elif ref.source_kind == "standing_response":
+        pass
+    else:
+        raise denied()
+
+    key = action_key(ref)
+    ctx.action_progress[key] = progress
+    if progress.status in {"completed", "denied", "blocked"}:
+        ctx.resolved_actions.add(key)
+    else:
+        ctx.resolved_actions.discard(key)
+    refresh_actor_closed(ctx, ref.actor_id)
+
+
+def refresh_actor_closed(ctx: ToolContext, actor_id: str) -> None:
+    required = [r for r in ctx.required_actions if r.actor_id == actor_id]
+    if not required:
+        return
+    closing_statuses = {"completed", "denied", "blocked"}
+    for r in required:
+        k = action_key(r)
+        prog = ctx.action_progress.get(k)
+        if prog is not None:
+            if prog.status not in closing_statuses:
+                ctx.closed.discard(actor_id)
+                return
+        elif k not in ctx.resolved_actions:
+            ctx.closed.discard(actor_id)
+            return
+    ctx.closed.add(actor_id)
+
+
+def mark_resolved(ctx: ToolContext, ref: ActionRef) -> None:
+    ctx.resolved_actions.add(action_key(ref))
+    refresh_actor_closed(ctx, ref.actor_id)
 
 
 async def eligible_adjudications(ctx: ToolContext) -> list[dict]:
@@ -214,12 +343,15 @@ async def eligible_adjudications(ctx: ToolContext) -> list[dict]:
     turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
     if turn is None or turn.campaign_id != ctx.campaign.id or turn.status != "running":
         return []
-    latest = {}
+    attempts_by_ref: dict[str, list[dict]] = {}
     for attempt in (turn.trace or {}).get("resolution_attempts") or []:
         ref = ActionRef.model_validate(attempt["ref"])
-        latest[action_key(ref)] = attempt
+        attempts_by_ref.setdefault(action_key(ref), []).append(attempt)
     eligible = []
-    for attempt in latest.values():
+    for attempts in attempts_by_ref.values():
+        if any(a.get("result", {}).get("execution") in {"applied", "repeated"} for a in attempts):
+            continue
+        attempt = attempts[-1]
         ref = ActionRef.model_validate(attempt["ref"])
         if await resolution_receipt(ctx, ref) is not None:
             continue
@@ -248,15 +380,6 @@ async def eligible_adjudications(ctx: ToolContext) -> list[dict]:
     return eligible
 
 
-def mark_resolved(ctx: ToolContext, ref: ActionRef) -> None:
-    ctx.resolved_actions.add(action_key(ref))
-    required = [r for r in ctx.required_actions if r.actor_id == ref.actor_id]
-    if required and all(action_key(r) in ctx.resolved_actions for r in required):
-        ctx.closed.add(ref.actor_id)
-    elif required:
-        ctx.closed.discard(ref.actor_id)
-
-
 async def record_operations(ctx: ToolContext, operations: list[dict]) -> None:
     """Keep child diagnostics even when the consequence savepoint was rolled back."""
     turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
@@ -270,15 +393,13 @@ async def record_operations(ctx: ToolContext, operations: list[dict]) -> None:
 
 async def latest_attempt(ctx: ToolContext, ref: ActionRef) -> dict | None:
     turn = await ctx.session.get(MasterTurn, ctx.turn_id) if ctx.turn_id else None
-    return (
-        next(
-            (
-                a
-                for a in reversed((turn.trace or {}).get("resolution_attempts", []))
-                if action_key(ActionRef.model_validate(a["ref"])) == action_key(ref)
-            ),
-            None,
-        )
-        if turn
-        else None
+    trace = (turn.trace or {}) if turn is not None else ctx.turn_diagnostics
+    return next(
+        (
+            a
+            for a in reversed(trace.get("resolution_attempts", []))
+            if action_key(ActionRef.model_validate(a["ref"])) == action_key(ref)
+        ),
+        None,
     )
+

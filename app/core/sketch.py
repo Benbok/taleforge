@@ -179,7 +179,7 @@ def describe(sk: dict) -> str:
     parts = [f"эскиз: {SHAPES.get(sk.get('shape'), sk.get('shape'))} {sk['cols']}×{sk['rows']} клеток"]
     parts.append(f"отряд в ({sk['party'][0]}, {sk['party'][1]})")
     exits = [
-        f"{x['name']} ({EXIT_KINDS.get(x['kind'], x['kind'])}, {SIDES[x['side']]} {x['at']}, "
+        f"{x['name']} ({EXIT_KINDS.get(x.get('kind', 'door'), x.get('kind', 'door'))}, {SIDES[x['side']]} {x['at']}, "
         f"{EXIT_STATES.get(x.get('state') or 'open')}"
         + (f", за ним {x['beyond']}" if x.get("beyond") else "")
         + (f", ведёт в {x['to']}" if x.get("to") else "")

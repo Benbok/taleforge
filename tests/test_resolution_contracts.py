@@ -49,3 +49,38 @@ def test_contract_rejects_extra_fields():
         ActionRef(campaign_id="c", source_kind="message", source_id="m", actor_id="h", part=0, grant=True)
     with pytest.raises(ValidationError):
         ActionRef(campaign_id="c", source_kind="message", source_id="m", actor_id="h", part=-1)
+
+
+def test_action_dependency_and_progress_contracts():
+    from app.core.resolution.contracts import ActionDependency, ActionProgress, ResolutionResult
+
+    dep = ActionDependency(part=1, requires="applied")
+    assert dep.part == 1
+    assert dep.requires == "applied"
+    assert dep.schema_version == 1
+
+    with pytest.raises(ValidationError):
+        ActionDependency(part=-1, requires="applied")
+    with pytest.raises(ValidationError):
+        ActionDependency(part=0, requires="invalid")
+
+    prog = ActionProgress()
+    assert prog.status == "pending"
+    assert prog.reason_code is None
+    assert prog.result is None
+    assert prog.blocked_by == []
+    assert prog.schema_version == 1
+
+    custom_prog = ActionProgress(
+        status="completed",
+        result=ResolutionResult(execution="applied"),
+        blocked_by=[0],
+        reason_code="custom",
+    )
+    assert custom_prog.status == "completed"
+    assert custom_prog.result.execution == "applied"
+
+    with pytest.raises(ValidationError):
+        ActionProgress(status="not_a_valid_status")
+    with pytest.raises(ValidationError):
+        ActionProgress(unknown_field="extra")
