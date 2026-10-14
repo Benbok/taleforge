@@ -44,6 +44,10 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
   const [character, setCharacter] = useState<string | null>(null); // место ИИ-игрока, чей характер открыт
 
   const players = room.seats.filter((s) => s.role === "player").sort((a, b) => a.position - b.position);
+  const totalSeats = players.length;
+  const freeSeats = players.filter((s) => s.occupant_type === "empty").length;
+  const heroesInGame = (chars.data ?? []).filter((c) => ["approved", "active"].includes(c.status)).length;
+
   const heroOf = (seatId: string) =>
     (chars.data ?? []).find((c) => c.seat_id === seatId && !["dead", "retired", "premade"].includes(c.status));
   const waiting = (chars.data ?? []).filter((c) => c.status === "submitted" && c.seat_id !== room.my_seat_id);
@@ -62,15 +66,43 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
             <h2 className="font-heading text-xl font-bold text-ink">Состав отряда за столом</h2>
             <p className="text-xs text-muted">Участники, закреплённые места и привязанные герои</p>
           </div>
-          {room.is_owner && !room.my_seat_id && (
-            <ActionButton
-              className="font-mono text-xs"
-              run={async () => onRoom(await api<Room>(`/api/campaigns/${id}/seats/take`, { method: "POST" }))}
-              done="Вы заняли место игрока"
-            >
-              ЗАНЯТЬ МЕСТО ИГРОКА
-            </ActionButton>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {room.is_owner && room.status !== "ended" && (
+              <ActionButton
+                className="font-mono text-xs"
+                disabled={totalSeats >= 6}
+                title={totalSeats >= 6 ? "Достигнут максимум мест (6)" : undefined}
+                run={async () => {
+                  const updated = await api<Room>(`/api/campaigns/${id}/seats`, { method: "POST" });
+                  onRoom(updated);
+                }}
+                done="Место игрока добавлено"
+              >
+                + ДОБАВИТЬ МЕСТО ИГРОКА
+              </ActionButton>
+            )}
+            {room.is_owner && !room.my_seat_id && (
+              <ActionButton
+                className="font-mono text-xs"
+                run={async () => onRoom(await api<Room>(`/api/campaigns/${id}/seats/take`, { method: "POST" }))}
+                done="Вы заняли место игрока"
+              >
+                ЗАНЯТЬ МЕСТО ИГРОКА
+              </ActionButton>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded border border-line bg-surface-alt/40 px-3 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
+          <div className="font-mono text-ink">
+            Мест: {totalSeats} из 6 · Свободно: {freeSeats} · Героев в игре: {heroesInGame}
+          </div>
+          <div className="text-[11px] text-muted">
+            {room.status === "lobby" && "Вступление героев открыто (до старта сессии)"}
+            {room.status === "paused" && "Вступление героев доступно на паузе (вне боя и ходов мастера)"}
+            {room.status === "active" && "Идёт сессия: новые герои могут вступить на паузе"}
+            {room.status === "ended" && "Кампания завершена"}
+          </div>
         </div>
         {room.is_owner && players.some((s) => s.occupant_type !== "human") && <RolesHint campaignId={id} />}
 
@@ -313,10 +345,10 @@ function RolesHint({ campaignId }: { campaignId: string }) {
   return (
     <div className="mb-2 rounded-md border border-line p-3 text-sm">
       <p className="text-muted">
-        Героев в отряде: {r.heroes} из {r.recommended} рекомендованных.
-        {r.have.length > 0 && ` Уже есть: ${r.have.map((h) => h.label).join(", ")}.`}
+        Героев в отряде: {r.heroes ?? 0} из {r.recommended ?? 4} рекомендованных.
+        {(r.have ?? []).length > 0 && ` Уже есть: ${(r.have ?? []).map((h) => h.label).join(", ")}.`}
       </p>
-      {r.missing.length > 0 ? (
+      {(r.missing ?? []).length > 0 ? (
         <ul className="mt-1 flex flex-col gap-0.5">
           {r.missing.map((m) => (
             <li key={m.role}>

@@ -12,6 +12,7 @@ export default function ActionButton({
   confirm,
   className = "",
   title,
+  disabled,
 }: {
   run: () => Promise<unknown>;
   done?: string;
@@ -21,12 +22,13 @@ export default function ActionButton({
   confirm?: string;
   className?: string;
   title?: string;
+  disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function click() {
-    if (busy) return;
+    if (busy || disabled) return;
     if (confirm && !window.confirm(confirm)) return;
     setBusy(true);
     setError(null);
@@ -46,7 +48,7 @@ export default function ActionButton({
       <button
         className={`btn ${primary ? "btn-primary" : ""} ${danger ? "border-bad text-bad" : ""} ${className}`}
         onClick={click}
-        disabled={busy}
+        disabled={busy || disabled}
         aria-busy={busy}
         title={title}
       >
