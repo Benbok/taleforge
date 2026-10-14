@@ -9,6 +9,7 @@ from app.core.layout.template_selection import TemplateContext, select_template
 def test_role_inference_is_conservative_for_location_parts():
     assert infer_role('part_warehouse', 'Склад контрабандистов', '') == 'warehouse'
     assert infer_role('part_flooded_pier', 'Затопленный край пирса', 'Глубокая вода') == 'harbor'
+    assert infer_role('part_pier', 'Pier', 'Water beside the pier') == 'pier'
     assert infer_role('part_unknown', 'Таинственное место', '') is None
 
 
@@ -42,6 +43,7 @@ def test_generated_port_plan_uses_template_details_and_keeps_extra_parts():
         _greihall_port(), TemplateContext(template_id='location.port'), 22325528, load_catalog()
     )
     assert result['outcome'] == 'selected'
+    assert result['id'] == 'port_quay_warehouse'
     assert {p['part_ref'] for p in result['intent']['parts']} == {
         'part_pier', 'part_market', 'part_warehouse', 'part_flooded_pier', 'part_alley', 'part_cache'
     }
@@ -50,6 +52,8 @@ def test_generated_port_plan_uses_template_details_and_keeps_extra_parts():
     assert pier['details']
     market = next(p for p in result['intent']['parts'] if p['part_ref'] == 'part_market')
     assert any(d['detail_ref'] == 'market_stalls' for d in market['details'])
+    warehouse = next(p for p in result['intent']['parts'] if p['part_ref'] == 'part_warehouse')
+    assert any(d['detail_ref'] == 'crate_stacks' for d in warehouse['details'])
 
 
 def test_runtime_catalog_contains_twelve_valid_templates():

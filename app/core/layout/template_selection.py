@@ -103,7 +103,8 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
         candidate = next((item for item in candidates if item.part_ref not in used), None)
         if candidate is None:
             continue
-        if candidate.environment != part['environment'] or candidate.secret != part['secret']:
+        if (candidate.environment != part['environment'] or candidate.secret != part['secret']
+                or candidate.level != part['level']):
             continue
         if requested.shape is not None and candidate.shape != requested.shape:
             continue
@@ -112,7 +113,8 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
         part.update(
             shape=candidate.shape, material=candidate.material,
             size=candidate.size, cols=candidate.cols, rows=candidate.rows,
-            details=[d.model_dump(mode='json') for d in candidate.details],
+            details=part['details'] + [d.model_dump(mode='json') for d in candidate.details
+                                       if d.detail_ref not in {x['detail_ref'] for x in part['details']}],
         )
         bindings[candidate.part_ref] = requested.ref
         used.add(candidate.part_ref)
@@ -145,8 +147,8 @@ def select_template(mandate: Mandate, context: TemplateContext, seed: int,
                 reason = str(error)[:200]
                 continue
             compatible.append((template, intent, bindings))
-    compatible.sort(key=lambda entry: hashlib.sha256(
-        f'{seed}:{entry[0].id}:{entry[0].version}'.encode()).hexdigest())
+    compatible.sort(key=lambda entry: (-len(entry[2]), hashlib.sha256(
+        f'{seed}:{entry[0].id}:{entry[0].version}'.encode()).hexdigest()))
     for template, intent, bindings in compatible[:3]:
         try:
             DeterministicLayoutProvider().propose(intent, seed=seed, root_id='root')
