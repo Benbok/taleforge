@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.agents import memory, voicing
 from app.agents.architect import now_iso
@@ -698,6 +700,32 @@ async def get_master_log(
 
 
 # --- Места и участники ---
+
+
+@router.post("/campaigns/{campaign_id}/seats", status_code=201)
+async def add_seat(
+    campaign_id: str, user: UserDep, session: SessionDep, request: Request
+) -> CampaignOut:
+    """Владелец добавляет пустое место игрока в созданную кампанию (максимум 6 мест игроков)."""
+    user_id = user.id
+    current_user = user
+    seat = None
+    for attempt in range(3):
+        try:
+            v = await _viewer(session, current_user, campaign_id)
+            seat = await svc.add_player_seat(session, v)
+            await session.commit()
+            break
+        except IntegrityError:
+            await session.rollback()
+            if attempt == 2:
+                raise Conflict("конфликт при добавлении места: повторите запрос")
+            current_user = await session.get(User, user_id)
+            await asyncio.sleep(0.02 * (attempt + 1))
+    c = await session.get(Campaign, campaign_id)
+    await session.refresh(c, ["seats"])
+    await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat.id}), None)
+    return await campaign_out(session, c, current_user)
 
 
 @router.delete("/campaigns/{campaign_id}/seats/{seat_id}/occupant")

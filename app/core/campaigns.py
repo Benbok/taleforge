@@ -386,6 +386,40 @@ async def accept_invite(session: AsyncSession, user: User, token: str) -> Seat:
     return free
 
 
+async def add_player_seat(session: AsyncSession, viewer: Viewer) -> Seat:
+    """Владелец добавляет пустое место игрока в кампанию. Максимум MAX_PLAYERS (6) мест игроков."""
+    if not viewer.is_owner:
+        raise AccessDenied("добавлять места может только владелец кампании")
+    campaign = await session.get(Campaign, viewer.campaign.id, with_for_update=True)
+    if campaign is None:
+        raise NotFound("кампания не найдена")
+    if campaign.status == "ended":
+        raise Conflict("кампания завершена")
+
+    # Читаем места из базы данных под блокировкой, не полагаясь на relationship campaign.seats
+    q = select(Seat).where(Seat.campaign_id == campaign.id).order_by(Seat.position)
+    seats = list((await session.scalars(q)).all())
+    player_seats = [s for s in seats if s.role == "player"]
+    if len(player_seats) >= MAX_PLAYERS:
+        raise Conflict(f"достигнут предел мест: {MAX_PLAYERS}")
+
+    max_pos = max((s.position for s in player_seats), default=0)
+    new_position = max_pos + 1
+
+    seat = Seat(
+        campaign_id=campaign.id,
+        role="player",
+        position=new_position,
+        occupant_type="empty",
+        user_id=None,
+        agent_config_id=None,
+        joined_at=None,
+    )
+    session.add(seat)
+    await session.flush()
+    return seat
+
+
 async def take_seat(session: AsyncSession, viewer: Viewer) -> Seat:
     """Владелец садится на свободное место игрока в своей кампании (без приглашения)."""
     if not viewer.is_owner:
