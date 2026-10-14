@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app.core.layout.contracts import (
     OPPOSITE,
@@ -166,6 +166,7 @@ class DeterministicLayoutProvider:
         bp = Blueprint(seed=seed, entry=intent.entry, areas=tuple(areas), passages=tuple(passages), anchors=anchors,
                        required=required, plot_id=plot_id)  # fmt: skip
         if not errors:
+            bp = _place_details(bp)
             errors = validate(bp)
         if errors:
             raise LayoutError(errors)
@@ -276,26 +277,6 @@ class DeterministicLayoutProvider:
                        (End(ap.part_ref, ap.side, start, width), End(place_id=ap.outside_id or root_id)))  # fmt: skip
 
 
-def _keepout(ref: str, cols: int, rows: int, passages: list[Passage]) -> set[Cell]:
-    """Клетки от края внутрь до середины у каждого прохода: крупная деталь здесь могла бы загородить вход."""
-    out: set[Cell] = set()
-    for p in passages:
-        for x in p.ends:
-            if x.area_ref != ref:
-                continue
-            for i in range(x.width):
-                at = x.start + i
-                if x.side == "n":
-                    out |= {(at, r) for r in range(rows // 2 + 1)}
-                elif x.side == "s":
-                    out |= {(at, r) for r in range(rows - 1, rows // 2 - 1, -1)}
-                elif x.side == "w":
-                    out |= {(c, at) for c in range(cols // 2 + 1)}
-                else:
-                    out |= {(c, at) for c in range(cols - 1, cols // 2 - 1, -1)}
-    return out
-
-
 def _edges(ref: str, box: _Box, passages: list[Passage]) -> tuple[Edge, ...]:
     out: list[Edge] = []
     for side in ("n", "e", "s", "w"):
@@ -343,11 +324,9 @@ def _terrain(bands: list[BandIntent], boxes: dict[str, _Box], by: dict[str, Part
 
 
 def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[str, set[Cell]]) -> Area:
-    keep = _keepout(part.part_ref, box.cols, box.rows, passages)
     details = tuple(
         Detail(d.detail_ref, d.name, d.kind, tuple(tuple(r) for r in d.cells), d.solid, d.hidden)  # type: ignore[misc]
         for d in part.details
-        if not rect_cells(d.cells) & keep
     )
     outdoor = part.environment == "outdoor"
     return Area(
@@ -368,3 +347,84 @@ def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[st
         terrain=tuple(Terrain(k, tuple(runs(cells))) for k, cells in sorted(terrain.items()) if cells),
         edges=_edges(part.part_ref, box, passages) if outdoor else (),
     )
+
+
+def _place_details(bp: Blueprint) -> Blueprint:
+    """Keep landmarks on the actual floor, relocating conflicts instead of dropping them.
+
+    All map features occupy cells, including non-solid scenery. Placement checks
+    actual reachability, including full-width outdoor edges, before accepting them.
+    If a supplied detail cannot fit, reject the proposal so the caller can retry.
+    """
+    from app.core.layout import geometry
+
+    areas = []
+    for area in bp.areas:
+        floor = geometry.area_floor(bp, area)
+        entrances = {
+            c for _, end in bp.ends_of(area.area_ref)
+            for c in geometry.end_cells(floor, area, end) if c is not None
+        }
+        occupied: set[Cell] = set()
+        details = list(area.details)
+        generated: set[str] = set()
+        if min(area.cols, area.rows) >= 4 and len(details) < 2:
+            names = ("Каменные выступы", "Щебень") if area.shape == "cave" else (
+                ("Кустарник", "Камни") if area.environment == "outdoor" else ("Ниша в стене", "Отделка стен")
+            )
+            refs = {d.detail_ref for d in details}
+            for i, name in enumerate(names):
+                if len(details) >= 2:
+                    break
+                ref = f"decor_{i}"
+                while ref in refs:
+                    ref += "_"
+                refs.add(ref)
+                generated.add(ref)
+                details.append(Detail(ref, name, "nature" if area.environment == "outdoor" else "furniture",
+                                      ((1 + i, 1, 1 + i, 1),)))
+        placed = []
+        def fits(detail: Detail, *, floor=floor, entrances=entrances,
+                 occupied=occupied, area=area, placed=placed) -> bool:
+            cells = rect_cells(detail.cells)
+            if not cells <= floor:
+                return False
+            if cells & (entrances | occupied):
+                return False
+            try:
+                geometry.build_area(bp, replace(area, details=tuple([*placed, detail])))
+            except geometry.GeometryError:
+                return False
+            return True
+
+        # Fixed solid geometry takes precedence over cosmetic marks.
+        for d in sorted(details, key=lambda d: not d.solid):
+            cells = rect_cells(d.cells)
+            if fits(d):
+                placed.append(d)
+                occupied |= cells
+                continue
+            candidates = sorted(
+                ((dc, dr) for dc in range(-area.cols + 1, area.cols)
+                 for dr in range(-area.rows + 1, area.rows)),
+                key=lambda shift: (abs(shift[0]) + abs(shift[1]), shift[1], shift[0]),
+            )
+            for dc, dr in candidates:
+                shifted = {(c + dc, r + dr) for c, r in cells}
+                moved = replace(d, cells=tuple(
+                    (c0 + dc, r0 + dr, c1 + dc, r1 + dr) for c0, r0, c1, r1 in d.cells
+                ))
+                if fits(moved):
+                    placed.append(moved)
+                    occupied |= shifted
+                    break
+            else:
+                if d.detail_ref in generated:
+                    continue  # optional scenery cannot invalidate an authored room
+                raise LayoutError([f"{area.area_ref}: деталь «{d.name}» не помещается без перекрытия проходов"])
+        by_ref = {d.detail_ref: d for d in placed}
+        areas.append(replace(area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref)))
+    result = replace(bp, areas=tuple(areas))
+    for area in result.areas:
+        geometry.build_area(result, area)
+    return result

@@ -96,6 +96,7 @@ def test_limit_survives_restart_retry_and_reentry(client, admin, settings):
 
 def test_flag_off_spend_limit_and_model_down(client, admin, settings):
     cid, _heads, _hid = _setup(client, admin, settings)
+    _flags(settings, cid, location_layouts_llm=False)
     _root, ref = _plan_root(settings, cid)
     llm = ScriptedLLM([_good])
     assert _prepare(settings, cid, ref, _orch(llm)) == "ready" and llm.requests == []

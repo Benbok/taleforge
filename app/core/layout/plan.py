@@ -50,7 +50,8 @@ def with_spatial(world, sketch: dict[str, Any], root: Entity) -> dict[str, Any]:
         return sketch
     rec = world.catalog.find(str(sketch.get("template_id") or root.template_id or ""), "location_template")
     tags = (rec.data.get("tags") if rec is not None else None) or []
-    return {**sketch, "spatial": default_spatial(root.name, tags).model_dump(mode="json")}
+    template_id = str(sketch.get("template_id") or root.template_id or "")
+    return {**sketch, "spatial": default_spatial(root.name, tags, template_id=template_id).model_dump(mode="json")}
 
 
 async def reserve_from_plan(ctx, root: Entity, sketch: dict[str, Any], inverse: list) -> WorldGenerationState | None:
