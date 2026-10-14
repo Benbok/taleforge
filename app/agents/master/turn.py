@@ -528,7 +528,8 @@ class TurnMixin:
             if m_actions:
                 call_args["action_ref"] = m_actions[0]["ref"]
             await self._status(cid, "rolling")
-            r = await execute(ctx, name, call_args, key=f"{turn_id}:route:{m.id}")
+            call_key = await bound_tool_key(ctx, name, call_args, f"{turn_id}:route:{m.id}")
+            r = await execute(ctx, name, call_args, key=call_key)
             if m_actions:
                 binding = ctx.current_binding or ToolActionBinding(
                     ref=ActionRef.model_validate(m_actions[0]["ref"]), role="finish"
@@ -540,7 +541,9 @@ class TurnMixin:
             if r.get("ok"):
                 routed.append(f"{actor}: {name} уже выполнен сервером по намерению")
                 if name == "cast_spell":
-                    routed_casts[(actor, args["spell_id"])] = f"{turn_id}:route:{m.id}"
+                    if isinstance(binding, ToolActionBinding):
+                        routed_casts[action_key(binding.ref)] = call_key
+                    routed_casts[(actor, args["spell_id"])] = call_key
             else:
                 routed.append(f"{actor}: {name} отклонён сервером: {r.get('error')} — объясни игроку в повествовании")
         route_note = ""
@@ -692,7 +695,16 @@ class TurnMixin:
             key = await bound_tool_key(ctx, name, args, key)
             if name == "cast_spell":
                 # повтор заклинания, уже сотворённого по заявке, — прежний результат без второй ячейки
-                key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
+                raw_ref = args.get("action_ref")
+                action_ref = (
+                    ActionRef.model_validate(raw_ref)
+                    if isinstance(raw_ref, dict)
+                    else (raw_ref if isinstance(raw_ref, ActionRef) else None)
+                )
+                if action_ref:
+                    key = routed_casts.get(action_key(action_ref), key)
+                else:
+                    key = routed_casts.get((args.get("caster_id"), args.get("spell_id")), key)
             result = await execute(ctx, name, args, key=key)
             if name == "adjudicate_action" and result.get("ok"):
                 result = {**result, "request_key": action_key(ActionRef.model_validate(args["proposal"]["ref"]))}

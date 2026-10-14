@@ -89,11 +89,11 @@
 
 **Interfaces:** `action_tool_key(ref: ActionRef, name: str, role: str) -> str`. Для основной проверки роль `primary_check`; ключ не включает изменяемые моделью DC/stat/call_id. Для cast ключ включает ActionRef и имя инструмента, а не только героя/spell_id.
 
-- [ ] Написать `test_same_part_new_call_id_rolls_once`, `test_two_search_parts_have_distinct_rolls`, `test_two_cast_parts_spend_separately_but_replay_spends_once`, `test_concurrent_same_part_has_one_effect`. Проверять счётчик dice, slots и количество событий.
-- [ ] Запустить `tests/test_multipart_replay.py`; FAIL.
-- [ ] Перевести bound_tool_key и routed_casts на проверенную привязку задачи 2. Блокировать источник до чтения cache; обновлять мир существующим refresh_world. Не объединять refs кандидатов. Последствия одного действия с разными предметами сохраняют собственные operation/call keys; нельзя склеивать все place_item одной части.
-- [ ] Проверить replay не только эффекта, но и восстановления прогресса по возвращённой квитанции. Вспомогательные вызовы без заявки сохраняют прежние keys.
-- [ ] Запустить оба файла replay и `tests/test_resolution_busy.py tests/test_resolution_executor.py`; PASS. Коммит: `fix: scope action replay and resource spending to parts`.
+- [x] Написать `test_same_part_new_call_id_rolls_once`, `test_two_search_parts_have_distinct_rolls`, `test_two_cast_parts_spend_separately_but_replay_spends_once`, `test_concurrent_same_part_has_one_effect`. Проверять счётчик dice, slots и количество событий.
+- [x] Запустить `tests/test_multipart_replay.py`; FAIL.
+- [x] Перевести bound_tool_key и routed_casts на проверенную привязку задачи 2. Блокировать источник до чтения cache; обновлять мир существующим refresh_world. Не объединять refs кандидатов. Последствия одного действия с разными предметами сохраняют собственные operation/call keys; нельзя склеивать все place_item одной части.
+- [x] Проверить replay не только эффекта, но и восстановления прогресса по возвращённой квитанции. Вспомогательные вызовы без заявки сохраняют прежние keys.
+- [x] Запустить оба файла replay и `tests/test_resolution_busy.py tests/test_resolution_executor.py`; PASS. Коммит: `fix: scope action replay and resource spending to parts`.
 
 ### Task 4: Завершение многошагового действия и поиск
 

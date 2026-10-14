@@ -21,27 +21,69 @@ def deed_key(ref: ActionRef, subject_id: str) -> str:
     return hashlib.sha256(f"deed:{action_key(ref)}:{subject_id}".encode()).hexdigest()
 
 
+def action_tool_key(ref: ActionRef, name: str, role: str) -> str:
+    return hashlib.sha256(f"{role}:{action_key(ref)}:{name}".encode()).hexdigest()
+
+
 async def bound_tool_key(ctx: ToolContext, name: str, args: dict, default: str) -> str:
+    if name in {"roll_check", "cast_spell", "record_deed"}:
+        from app.agents.master.action_binding import bind_tool_action
+
+        explicit = None
+        raw_ref = (args or {}).get("action_ref")
+        if isinstance(raw_ref, ActionRef):
+            explicit = raw_ref
+        elif isinstance(raw_ref, dict):
+            try:
+                explicit = ActionRef.model_validate(raw_ref)
+            except Exception:
+                explicit = None
+        try:
+            binding = await bind_tool_action(ctx, name, args, explicit=explicit)
+        except Exception:
+            binding = None
+
+        if binding is not None:
+            if name == "roll_check":
+                from app.core.resolution.policy import admit
+                from app.tools.resolution.capabilities import CAPABILITIES
+
+                try:
+                    context = await load_action_context(ctx, binding.ref)
+                    if (
+                        explicit is not None
+                        or admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary"
+                    ):
+                        return action_tool_key(binding.ref, "roll_check", "primary_check")
+                except Exception:
+                    pass
+                return default
+            if name == "cast_spell":
+                return action_tool_key(binding.ref, "cast_spell", "cast")
+            if name == "record_deed" and (args or {}).get("subject_id"):
+                return deed_key(binding.ref, args["subject_id"])
+
+    # Legacy fallback for single matching ref
     if name == "roll_check":
         from app.core.resolution.policy import admit
         from app.tools.resolution.capabilities import CAPABILITIES
 
-        refs = [ref for ref in ctx.required_actions if ref.actor_id == args.get("character_id")]
-        verified = []
-        for ref in refs:
-            context = await load_action_context(ctx, ref)
-            if admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary":
-                verified.append(ref)
-        if verified:
-            source = ":".join(sorted(action_key(ref) for ref in verified))
-            return hashlib.sha256(f"primary_check:{source}".encode()).hexdigest()
-    if name != "record_deed":
-        return default
-    actors = set(args.get("character_ids") or [])
-    refs = [ref for ref in ctx.required_actions if ref.actor_id in actors]
-    if len(refs) != 1 or not args.get("subject_id"):
-        return default
-    return deed_key(refs[0], args["subject_id"])
+        refs = [ref for ref in ctx.required_actions if ref.actor_id == (args or {}).get("character_id")]
+        if len(refs) == 1:
+            try:
+                context = await load_action_context(ctx, refs[0])
+                if admit(context, CAPABILITIES["noncombat.interaction"], None).route == "ordinary":
+                    return action_tool_key(refs[0], "roll_check", "primary_check")
+            except Exception:
+                pass
+
+    if name == "record_deed":
+        actors = set((args or {}).get("character_ids") or [])
+        refs = [ref for ref in ctx.required_actions if ref.actor_id in actors]
+        if len(refs) == 1 and (args or {}).get("subject_id"):
+            return deed_key(refs[0], args["subject_id"])
+
+    return default
 
 
 def bind_message_actions(message: Message, actor_id: str) -> list[ActionRef]:

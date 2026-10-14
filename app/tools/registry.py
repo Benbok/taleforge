@@ -343,7 +343,13 @@ async def execute(
                 "rule_denial",
                 key,
             )
-    if name == "roll_check" and key:
+    if ctx.current_binding is not None and key and t.mutating:
+        from app.tools.resolution.context import refresh_world
+        from app.tools.resolution.requests import lock_resolution_source
+
+        await lock_resolution_source(ctx, ctx.current_binding.ref)
+        await refresh_world(ctx)
+    elif name == "roll_check" and key:
         from app.tools.resolution.context import refresh_world
         from app.tools.resolution.requests import bound_tool_key, lock_resolution_source
 
@@ -365,6 +371,10 @@ async def execute(
 
                 # квитанция неизменна, а статус — живой и идёт отдельным полем; Event.payload не меняется
                 out["status"] = await preparation.brief_status(ctx.session, ctx.campaign.id, ref)
+            if ctx.current_binding and ctx.current_binding.role == "finish":
+                from app.tools.resolution.requests import mark_resolved
+
+                mark_resolved(ctx, ctx.current_binding.ref)
             return out
     try:
         args = t.args.model_validate(raw_args or {})
