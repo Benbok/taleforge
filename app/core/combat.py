@@ -15,6 +15,7 @@ from typing import Any
 
 from app.core import positions as grid
 from app.core import steps
+from app.core.companions import companion_is_active, companion_record, public_companion
 from app.core.world import PLAYABLE, Actor, WorldError
 from app.db.models import Character
 from app.rules.dnd5e import modifiers as mod
@@ -277,7 +278,7 @@ def _hostiles_left(ctx: ToolContext, place: Any = ...) -> bool:
 
 
 def _heroes_standing(ctx: ToolContext, place: Any = ...) -> list[Actor]:
-    """Стоящие на ногах герои в очереди; ``place`` — только в этом месте."""
+    """Стоящие на ногах герои и активные спутники; ``place`` — только в этом месте."""
     out = []
     for entry in ctx.world.scene.turn_order:
         ch = ctx.world.characters.get(entry["id"])
@@ -287,6 +288,14 @@ def _heroes_standing(ctx: ToolContext, place: Any = ...) -> list[Actor]:
             a = ctx.world.actor(ch.id)
             if a.alive and a.hp.current > 0:
                 out.append(a)
+    for entity in ctx.world.entities.values():
+        if not companion_is_active(entity):
+            continue
+        if place is not ... and _at(ctx, entity.id) != place:
+            continue
+        actor = ctx.world.actor(entity.id)
+        if actor.alive and actor.hp.current > 0:
+            out.append(actor)
     return out
 
 
@@ -334,6 +343,15 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
                     r = await execute(ctx, "death_save", {"character_id": cid}, key=f"{key}:ds:{cid}:{step}")
                     if r.get("ok"):
                         notes.append(_death_note(act.name, r["result"]))
+                companions = [x for x in _heroes_standing(ctx, _at(ctx, cid)) if x.kind == "creature"]
+                if companions:
+                    _begin_hero_turn(ctx, ch)
+                    notes.append(
+                        f"Вместе с {ch.name} действует спутник {companions[0].name} ({companions[0].id}): "
+                        "если игрок или ситуация этого требует, проведи его действие инструментами "
+                        "resolve_attack с attacker_id или reposition."
+                    )
+                    return notes
                 await _next(ctx, notes)
                 continue
             blocked = mod.can_act(act.modifiers)
@@ -342,6 +360,13 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
                 await _next(ctx, notes)
                 continue
             _begin_hero_turn(ctx, ch)
+            companions = [x for x in _heroes_standing(ctx, _at(ctx, cid)) if x.kind == "creature"]
+            if companions:
+                notes.append(
+                    f"Вместе с {ch.name} действует спутник {companions[0].name} ({companions[0].id}): "
+                    "если игрок или ситуация этого требует, проведи его действие инструментами "
+                    "resolve_attack с attacker_id или reposition."
+                )
             pending_plans = dict(state(ctx).get("opening_plans") or {})
             plan = pending_plans.pop(cid, None)
             if plan is not None:
@@ -708,6 +733,15 @@ def public_order(turn_order: list[dict], characters: dict[str, Character], entit
             res = ch.resources or {}
             item |= {"name": ch.name, "side": "hero", "seat_id": ch.seat_id}
             item["out"] = "пал" if res.get("dead") else "без сознания" if res.get("hp") == 0 else None
+            companions = [
+                public_companion(entity)
+                for entity in entities.values()
+                if companion_record(entity)
+                and companion_record(entity).get("of") == ch.id
+                and companion_is_active(entity)
+            ]
+            if companions:
+                item["companions"] = companions
         elif en is not None:
             st = en.state or {}
             item |= {"name": en.name, "side": "enemy" if st.get("attitude", "hostile") == "hostile" else "ally"}

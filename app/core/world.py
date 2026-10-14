@@ -619,6 +619,27 @@ class World:
             )
         ]
 
+    def _companion_lines(self, heroes: list[Character], place: str | None = None) -> list[str]:
+        from app.core.companions import companion_is_active, companion_record
+
+        hero_ids = {hero.id for hero in heroes}
+        lines = []
+        for entity in self.entities.values():
+            if entity.kind != "creature" or not companion_is_active(entity):
+                continue
+            record = companion_record(entity)
+            if not record or record["of"] not in hero_ids:
+                continue
+            if place is not None and self.place_of(entity) != place:
+                continue
+            owner = self.characters.get(record["of"])
+            if owner is None:
+                continue
+            lines.append(
+                f"Спутники: {entity.name} — идёт с {owner.name} (с хода {record['since_event']}, {record['reason']})"
+            )
+        return lines
+
     def scene_table(self) -> str:
         """Таблица сцены для мастера: единственный источник чисел в его контексте (раздел 7.1). Разделившийся отряд
         показан по местам: у каждого места свои герои, существа, предметы и области."""
@@ -650,12 +671,14 @@ class World:
             shown = [ch for ch in shown if self.place_of(ch) in groups]
         if len(groups) <= 1:
             lines += self._hero_lines(shown)
+            lines += self._companion_lines(shown)
             lines += self._place_lines(None)
         else:
             for place, heroes in groups.items():
                 lines.append("")
                 lines.append(f"МЕСТО {place} {self._place_name(place)}: здесь {', '.join(h.name for h in heroes)}")
                 lines += self._hero_lines([ch for ch in shown if self.place_of(ch) == place])
+                lines += self._companion_lines([ch for ch in shown if self.place_of(ch) == place], place)
                 lines += self._place_lines(place)
             fallen = [ch for ch in shown if ch.status == "dead" and self.place_of(ch) not in groups]
             if fallen:

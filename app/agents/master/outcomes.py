@@ -117,6 +117,12 @@ def public_factual_fallback(ctx, attempts=None, *, notice="", excluded_names=())
             line = f"{verb} эффект «{words(result.get('effect'), 'эффект')}»."
         elif event.tool == "auto_success":
             line = f"{who}: действие выполнено."
+        elif event.tool == "join_party":
+            line = f"{words(result.get('entity'), 'NPC')} теперь идёт с {words(result.get('hero'), 'героем')}."
+        elif event.tool == "leave_party":
+            line = f"{words(result.get('entity'), 'NPC')} отстал от отряда."
+        elif event.tool == "companion_break":
+            line = f"{words(result.get('entity'), 'NPC')} больше не идёт с отрядом."
         elif event.tool == "set_scene_mode":
             line = "Начался бой." if result.get("mode") == "combat" else "Сцена перешла в свободный режим."
         elif event.tool in {"learn_fact", "discover_fact"}:

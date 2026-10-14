@@ -256,6 +256,9 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             }
             if e.kind == "creature":
                 item["condition"] = _condition(st)
+                companion = st.get("companion")
+                if isinstance(companion, dict) and isinstance(companion.get("of"), str):
+                    item["companion_of"] = companion["of"]
             box = container_view(e, boxes) if e.kind == "object" else None
             if box is not None:
                 item["container"] = box
@@ -369,6 +372,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             "zone": t["zone"],
             "bearing": t["bearing"],
             "cell": t["cell"],
+            "companion_of": t.get("companion_of"),
         }
         for t in around
     ]

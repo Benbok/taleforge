@@ -182,6 +182,7 @@ export interface SceneTokenView {
   zone: Zone | null;
   bearing: Bearing | null;
   cell?: [number, number] | null;
+  companion_of?: string | null;
 }
 
 /** Представление карты для UI. Основные поля наследуют серверный контракт;

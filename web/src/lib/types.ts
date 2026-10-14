@@ -191,6 +191,7 @@ export interface SceneEntity {
   zone: string;
   condition?: string;
   attitude?: string;
+  companion_of?: string;
   /** Предмет, лежащий в сцене: его можно подобрать. */
   item?: boolean;
   qty?: number;
@@ -204,6 +205,16 @@ export interface OrderEntry {
   side: "hero" | "enemy" | "ally";
   seat_id?: string | null;
   out: string | null;
+  companions?: CompanionPublic[];
+}
+
+export interface CompanionPublic {
+  id: string;
+  name: string;
+  hp: number | null;
+  hp_max: number | null;
+  down: boolean;
+  dead: boolean;
 }
 
 /** Часть разделившегося отряда: где стоят и кто (here — место зрителя). */
@@ -258,6 +269,7 @@ export interface HeroPublic {
   class_name?: string | null;
   origin_name?: string | null;
   bonds?: { question: string; answer: string }[];
+  companions?: CompanionPublic[];
 }
 
 export type EntityType =

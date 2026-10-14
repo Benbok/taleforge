@@ -12,6 +12,7 @@ from app.tools.master import items  # noqa: F401
 from app.tools.master import invented  # noqa: F401
 from app.tools.master import generation  # noqa: F401
 from app.tools.master import entities  # noqa: F401
+from app.tools.master import companions  # noqa: F401
 from app.tools.master import places  # noqa: F401
 from app.tools.master import knowledge  # noqa: F401
 from app.tools.master import scene  # noqa: F401

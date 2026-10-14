@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import Avatar from "../components/Avatar";
-import type { EntityType, HeroPublic, SceneEntity, SeatState } from "../lib/types";
+import type { CompanionPublic, EntityType, HeroPublic, SceneEntity, SeatState } from "../lib/types";
 import { useGame } from "../stores/game";
 import DeathSaves from "./DeathSaves";
 import { TYPE_COLOR, TYPE_ICON } from "./entities";
@@ -30,6 +30,34 @@ function Hp({ h }: { h: HeroPublic }) {
           {h.hp} / {h.hp_max}
         </span>
       </div>
+    </div>
+  );
+}
+
+function CompanionRow({ companion, onOpen }: { companion: CompanionPublic; onOpen: (id: string, name: string, el: HTMLElement) => void }) {
+  const hp = companion.hp != null && companion.hp_max ? `${companion.hp} / ${companion.hp_max}` : null;
+  const pct = companion.hp != null && companion.hp_max ? Math.max(0, Math.min(100, (companion.hp / companion.hp_max) * 100)) : 0;
+  return (
+    <div className="mt-2 ml-2 border-l border-line pl-3" data-testid="companion-row">
+      <button
+        type="button"
+        className="block max-w-full truncate text-left text-sm font-semibold text-ink hover:text-accent transition"
+        onClick={(e) => onOpen(companion.id, companion.name, e.currentTarget)}
+      >
+        ◇ {companion.name} <span className="font-mono text-[10px] text-muted">· спутник</span>
+      </button>
+      {hp && (
+        <div className="mt-1.5" title={`Хиты ${hp}`}>
+          <div className="h-1 overflow-hidden rounded-full bg-raised">
+            <div className="h-full bg-patina transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="mt-0.5 flex justify-between font-mono text-[10px] text-muted tabular-nums">
+            <span>HP</span><span>{hp}</span>
+          </div>
+        </div>
+      )}
+      {companion.down && <span className="font-mono text-[10px] text-warn">без сознания</span>}
+      {companion.dead && <span className="font-mono text-[10px] text-bad">пал</span>}
     </div>
   );
 }
@@ -112,6 +140,9 @@ export function PartyPanel() {
                 {h && !h.dead && h.hp === 0 && h.death_saves && (
                   <DeathSaves saves={h.death_saves} label="Без сознания:" />
                 )}
+                {h?.companions?.map((companion) => (
+                  <CompanionRow key={companion.id} companion={companion} onOpen={open} />
+                ))}
               </span>
             </li>
           );
@@ -209,7 +240,7 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
                   style={{ color: TYPE_COLOR[t] }}
                   onClick={(ev) => open(e.id, e.name, ev.currentTarget)}
                 >
-                  {TYPE_ICON[t]} {e.name}
+                  {e.companion_of ? "◇" : TYPE_ICON[t]} {e.name}{e.companion_of ? " · спутник" : ""}
                 </button>
                 <span className="shrink-0 font-mono text-[10px] text-muted">
                   {[e.condition, e.zone, acting ? "ходит" : null].filter(Boolean).join(" · ")}

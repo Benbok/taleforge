@@ -31,6 +31,15 @@ class Bond(Open):
     answer: str
 
 
+class CompanionPublic(Strict):
+    id: str
+    name: str
+    hp: int | None
+    hp_max: int | None
+    down: bool
+    dead: bool
+
+
 class HeroPublic(Strict):
     """Публичная часть героя: её видят все участники кампании."""
 
@@ -47,6 +56,7 @@ class HeroPublic(Strict):
     dead: bool
     death_saves: tuple[int, int] | None
     bonds: list[Bond]
+    companions: list[CompanionPublic]
 
 
 class HeroAttack(Open):

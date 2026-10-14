@@ -48,7 +48,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
         return <g key={item.id} data-token-id={item.id} transform={`translate(${x + .15} ${y + .15})`} onClick={onEntity ? () => onEntity(item.id, item.name) : undefined}>
           {item.mine && <circle cx=".35" cy=".35" r=".46" fill="var(--tf-surface)" stroke="var(--tf-accent)" strokeWidth=".09" />}
           <MapGlyph name={visual.glyph} width={.7} height={.7} color={visual.color} />
-          <title>{item.name}{item.mine ? " — ваш герой" : ""}</title>
+          <title>{item.name}{item.mine ? " — ваш герой" : item.companion_of ? " — спутник" : ""}</title>
         </g>;
       })}
     </svg>

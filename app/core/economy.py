@@ -19,6 +19,20 @@ from typing import Any
 
 from app.tools.registry import ToolContext, ToolError
 
+
+def _companion_owner(world, actor_id: str) -> str | None:
+    from app.core.companions import companion_is_active, companion_record
+
+    entity = world.entities.get(actor_id)
+    if entity is None or not companion_is_active(entity):
+        return None
+    return (companion_record(entity) or {}).get("of")
+
+
+def _actor_name(world, actor_id: str) -> str:
+    actor = world.characters.get(actor_id) or world.entities.get(actor_id)
+    return actor.name if actor is not None else actor_id
+
 ACTIONS_RU = {
     "attack": "атака",
     "cast": "заклинание",
@@ -45,10 +59,17 @@ def active(world, hero_id: str) -> bool:
     from app.core import combat
 
     sc = world.scene
-    if sc.mode != "combat" or not sc.turn_order or hero_id not in world.characters:
+    if sc.mode != "combat" or not sc.turn_order:
         return False
     i = int((sc.state or {}).get("turn", 0)) % len(sc.turn_order)
-    return sc.turn_order[i]["id"] == hero_id and combat.fights(sc, world.characters, world.entities, hero_id)
+    owner_id = hero_id if hero_id in world.characters else _companion_owner(world, hero_id)
+    if owner_id is None or sc.turn_order[i]["id"] != owner_id:
+        return False
+    if hero_id != owner_id and (sc.state or {}).get("actor") not in (None, owner_id):
+        return False
+    if hero_id != owner_id and world.actor_place(hero_id) != world.actor_place(owner_id):
+        return False
+    return combat.fights(sc, world.characters, world.entities, owner_id)
 
 
 def ledger(world, hero_id: str) -> dict[str, Any]:
@@ -68,6 +89,8 @@ def _save(world, hero_id: str, led: dict) -> None:
 
 def attacks_per_action(world, hero_id: str) -> int:
     """Удары за действие «Атака»: 1 плюс Дополнительные атаки класса до уровня героя."""
+    if hero_id not in world.characters:
+        return 1
     sheet = world.characters[hero_id].sheet or {}
     cls = world.catalog.find(sheet.get("class_id") or "", "class")
     if cls is None:
@@ -123,7 +146,7 @@ def _snap(ctx: ToolContext) -> dict:
 
 def _need_action(world, hero_id: str, led: dict, what: str) -> None:
     if led["actions"] >= 1 + led["extra"]:
-        name = world.characters[hero_id].name
+        name = _actor_name(world, hero_id)
         rest = "бонусное действие и шаги" if not led["bonus"] else "только шаги"
         raise ToolError(f"{name}: действие этого хода уже потрачено, на {what} его нет. Осталось: {rest}")
     led["actions"] += 1
@@ -131,7 +154,7 @@ def _need_action(world, hero_id: str, led: dict, what: str) -> None:
 
 def _need_bonus(world, hero_id: str, led: dict, what: str) -> None:
     if led["bonus"]:
-        raise ToolError(f"{world.characters[hero_id].name}: бонусное действие этого хода уже потрачено ({what})")
+        raise ToolError(f"{_actor_name(world, hero_id)}: бонусное действие этого хода уже потрачено ({what})")
     led["bonus"] = True
 
 
@@ -144,15 +167,16 @@ def charge_movement(ctx: ToolContext, hero_id: str, feet: int) -> bool:
     if feet <= 0:
         return False
     w = ctx.world
-    if not w.in_fight(hero_id):
+    owner_id = _companion_owner(w, hero_id) or hero_id
+    if not w.in_fight(owner_id):
         return False  # a different party's combat does not stop free movement
-    if not active(w, hero_id) or (w.scene.state or {}).get("actor") != hero_id:
-        raise ToolError(f"{w.characters[hero_id].name}: перемещаться можно только в свой ход боя")
+    if not active(w, hero_id):
+        raise ToolError(f"{_actor_name(w, hero_id)}: перемещаться можно только в свой ход боя")
     speed = max(0, int(w.actor(hero_id).speed or 0))
     led = ledger(w, hero_id)
     distance = moved_ft(w, hero_id) + feet
     if speed == 0:
-        raise ToolError(f"{w.characters[hero_id].name}: скорость 0, передвигаться нельзя")
+        raise ToolError(f"{_actor_name(w, hero_id)}: скорость 0, передвигаться нельзя")
     dashed = False
     while distance > speed * (1 + int(led.get("dash") or 0)):
         _need_action(w, hero_id, led, "рывок для перемещения")
@@ -194,7 +218,7 @@ def charge_spell(ctx: ToolContext, hero_id: str, casting_time: str, level: int) 
         return []
     inv = [_snap(ctx)]
     led = ledger(w, hero_id)
-    name = w.characters[hero_id].name
+    name = _actor_name(w, hero_id)
     spells = list(led.get("spells") or [])
     if casting_time == "1 bonus action":
         if any(s["time"] == "1 action" and s["level"] > 0 for s in spells):

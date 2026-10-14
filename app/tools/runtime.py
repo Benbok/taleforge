@@ -145,12 +145,17 @@ def public_entity(e: Entity) -> dict[str, Any]:
     item: dict[str, Any] = {"id": e.id, "name": e.name, "kind": e.kind, "zone": ZONE_NAMES.get(e.zone, e.zone)}
     st = e.state or {}
     if e.kind == "creature":
+        from app.core.companions import companion_is_active, companion_record
+
         hp, mx = st.get("hp"), st.get("hp_max")
         if st.get("dead"):
             item["condition"] = "мёртв"
         elif hp is not None and mx:
             item["condition"] = "невредим" if hp >= mx else "ранен" if hp > mx / 2 else "тяжело ранен"
         item["attitude"] = st.get("attitude", "hostile")
+        record = companion_record(e)
+        if record and companion_is_active(e):
+            item["companion_of"] = record["of"]
     elif is_scene_item(e):
         item["item"] = True
         item["qty"] = int(st.get("qty") or 1)
@@ -278,13 +283,28 @@ def scene_views(world: World) -> list[tuple[list[str] | None, dict[str, Any]]]:
 async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names: dict[str, str] | None = None):
     cid = ctx.campaign.id
     w = ctx.world
+    from app.core.companions import companion_record
+
+    changed_heroes = set()
     for i in sorted(ctx.changed):
+        if i in w.characters:
+            changed_heroes.add(i)
+            continue
+        entity = w.entities.get(i)
+        record = companion_record(entity)
+        if record and record.get("of") in w.characters:
+            changed_heroes.add(record["of"])
+    for i in sorted(changed_heroes):
         ch = w.characters.get(i)
         if ch is None:
             continue
-        await bus.publish(cid, envelope("character.updated", cid, {"character": public_view(ch)}), None)
+        await bus.publish(
+            cid,
+            envelope("character.updated", cid, {"character": public_view(ch, w.entities.values())}),
+            None,
+        )
         if ch.seat_id:
-            full = full_view(ch, w.catalog, w.inventory.get(ch.id, []), w.effects)
+            full = full_view(ch, w.catalog, w.inventory.get(ch.id, []), w.effects, w.entities.values())
             ev = next((e.id for e in reversed(ctx.events) if i in (e.actor_id, e.target_id)), None)
             await bus.publish(cid, envelope("character.sheet", cid, {"character": full, "event_id": ev}), [ch.seat_id])
     for ev in ctx.events:
