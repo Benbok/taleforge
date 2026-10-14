@@ -18,7 +18,7 @@ from app.core import characters as svc
 from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
 from app.core.views import CharacterView
-from app.db.models import ActiveEffect, Character, InventoryItem
+from app.db.models import ActiveEffect, Character, Entity, InventoryItem
 from app.gateway.events import envelope
 
 router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
@@ -71,12 +71,13 @@ async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:
     stand_in = ch.seat_id is not None and ch.seat_id in stand_in_seats(viewer.campaign, viewer.user.id)
     # заготовку без игрока показываем целиком: игрок выбирает, кем играть
     full = mine or viewer.can_review or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)
+    entities = (await session.scalars(select(Entity).where(Entity.campaign_id == viewer.campaign.id))).all()
     if not (full or stand_in):
-        return svc.public_view(ch)
+        return svc.public_view(ch, entities)
     cat = await campaign_catalog(session, viewer.campaign)
     inv = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
     eff = (await session.scalars(select(ActiveEffect).where(ActiveEffect.target_id == ch.id))).all()
-    out = svc.full_view(ch, cat, list(inv), list(eff))
+    out = svc.full_view(ch, cat, list(inv), list(eff), entities)
     if not full:
         out.pop("private_backstory", None)
         out["stand_in"] = True

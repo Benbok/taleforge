@@ -2837,6 +2837,8 @@ export interface components {
             class_id: string | null;
             /** Class Name */
             class_name?: string | null;
+            /** Companions */
+            companions: components["schemas"]["CompanionPublic"][];
             /** Dead */
             dead: boolean;
             /** Death Saves */
@@ -3051,6 +3053,21 @@ export interface components {
             thresholds?: {
                 [key: string]: unknown;
             }[];
+        };
+        /** CompanionPublic */
+        CompanionPublic: {
+            /** Dead */
+            dead: boolean;
+            /** Down */
+            down: boolean;
+            /** Hp */
+            hp: number | null;
+            /** Hp Max */
+            hp_max: number | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
         };
         /**
          * CreationRulesIn
@@ -3915,6 +3932,8 @@ export interface components {
             bonds: components["schemas"]["Bond"][];
             /** Class Id */
             class_id: string | null;
+            /** Companions */
+            companions: components["schemas"]["CompanionPublic"][];
             /** Dead */
             dead: boolean;
             /** Death Saves */
@@ -3960,6 +3979,8 @@ export interface components {
              * @default null
              */
             class_name?: string | null;
+            /** Companions */
+            companions: components["schemas"]["CompanionPublic"][];
             /** Dead */
             dead: boolean;
             /** Death Saves */
@@ -5360,6 +5381,11 @@ export interface components {
         };
         /** OrderEntry */
         OrderEntry: {
+            /**
+             * Companions
+             * @default null
+             */
+            companions?: components["schemas"]["CompanionPublic"][];
             /** Id */
             id: string;
             /** Initiative */
@@ -6411,6 +6437,7 @@ export type ClassFeature = components['schemas']['ClassFeature'];
 export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
 export type ClassItem = components['schemas']['ClassItem'];
 export type ClockItem = components['schemas']['ClockItem'];
+export type CompanionPublic = components['schemas']['CompanionPublic'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type CreatureItem = components['schemas']['CreatureItem'];
 export type Derived = components['schemas']['Derived'];

@@ -134,7 +134,13 @@ async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
     q = select(Character).where(
         Character.campaign_id == campaign_id, Character.status.in_(("approved", "active", "dead"))
     )
-    return [public_view(ch) for ch in (await session.scalars(q)).all()]
+    entities = {
+        e.id: e
+        for e in (
+            await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))
+        ).all()
+    }
+    return [public_view(ch, entities.values()) for ch in (await session.scalars(q)).all()]
 
 
 async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:

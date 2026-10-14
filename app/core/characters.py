@@ -513,7 +513,9 @@ async def review_failure(session: AsyncSession, ch: Character) -> str | None:
     return (ev.payload or {}).get("error") or "неизвестная ошибка"
 
 
-def public_view(ch: Character) -> dict:
+def public_view(ch: Character, entities=()) -> dict:
+    from app.core.companions import companion_is_active, companion_record, public_companion
+
     res = ch.resources or {}
     return {
         "id": ch.id,
@@ -530,12 +532,19 @@ def public_view(ch: Character) -> dict:
         # спасброски от смерти бросаются открыто, как за столом: трекер видят все
         "death_saves": (res.get("death_saves") or [0, 0]) if res.get("hp") == 0 and not res.get("dead") else None,
         "bonds": bonds.public_bonds(ch),
+        "companions": [
+            public_companion(entity)
+            for entity in entities
+            if companion_record(entity)
+            and companion_record(entity).get("of") == ch.id
+            and companion_is_active(entity)
+        ],
     }
 
 
-def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list) -> dict:
+def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list, entities=()) -> dict:
     out = {
-        **public_view(ch),
+        **public_view(ch, entities),
         "sheet": ch.sheet,
         "resources": ch.resources,
         "private_backstory": ch.private_backstory,

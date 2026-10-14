@@ -1019,8 +1019,12 @@ def _deploy(ctx: ToolContext, ids: list[str], inverse: list[dict]) -> tuple[list
 
 def roll_initiative(ctx: ToolContext, ids: list[str]) -> tuple[list[dict], list[dict]]:
     """Броски инициативы: участники по убыванию и карточки бросков."""
+    from app.core.companions import companion_record
+
     entries, dice = [], []
     for i in ids:
+        if companion_record(ctx.world.entities.get(i)) is not None:
+            continue  # спутник занимает слот своего героя, пока не предаст
         act = ctx.world.actor(i)
         if not act.alive:
             continue

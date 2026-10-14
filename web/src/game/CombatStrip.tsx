@@ -68,6 +68,16 @@ function Token({ e, acting, mine }: { e: OrderEntry; acting: boolean; mine: bool
           {e.out ?? (secs != null ? `${secs} с` : e.initiative != null ? `иниц. ${e.initiative}` : "")}
         </span>
       </button>
+      {e.companions?.map((companion) => (
+        <button
+          key={companion.id}
+          className="mt-0.5 flex w-[5.5rem] items-center justify-center gap-1 truncate rounded px-1 text-[10px] text-muted hover:text-accent"
+          onClick={(ev) => open(companion.id, companion.name, ev.currentTarget)}
+          title={`${companion.name}, спутник`}
+        >
+          ◇ {companion.name}
+        </button>
+      ))}
     </li>
   );
 }

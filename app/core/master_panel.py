@@ -31,6 +31,8 @@ GROUPS: dict[str, list[str]] = {
         "advance_time",
         "spawn_entity",
         "update_entity",
+        "join_party",
+        "leave_party",
         "create_location",
         "link_locations",
         "add_landmark",

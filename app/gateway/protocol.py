@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.core.scene_presentation import LocationPresentation
-from app.core.views import HeroPublic, HeroSheet, absent
+from app.core.views import CompanionPublic, HeroPublic, HeroSheet, absent
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False
@@ -165,6 +165,7 @@ class OrderEntry(_Strict):
     side: Literal["hero", "enemy", "ally"]
     seat_id: str | None = absent()
     out: str | None
+    companions: list[CompanionPublic] = absent()
 
 
 class PartyPart(_Strict):

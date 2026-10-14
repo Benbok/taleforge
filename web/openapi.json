@@ -1811,6 +1811,13 @@
       ],
       "title": "Class Name"
      },
+     "companions": {
+      "items": {
+       "$ref": "#/components/schemas/CompanionPublic"
+      },
+      "title": "Companions",
+      "type": "array"
+     },
      "dead": {
       "title": "Dead",
       "type": "boolean"
@@ -2020,7 +2027,8 @@
      "hp_max",
      "dead",
      "death_saves",
-     "bonds"
+     "bonds",
+     "companions"
     ],
     "title": "CharacterView",
     "type": "object"
@@ -2421,6 +2429,59 @@
      "description"
     ],
     "title": "ClockItem",
+    "type": "object"
+   },
+   "CompanionPublic": {
+    "additionalProperties": false,
+    "properties": {
+     "dead": {
+      "title": "Dead",
+      "type": "boolean"
+     },
+     "down": {
+      "title": "Down",
+      "type": "boolean"
+     },
+     "hp": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp"
+     },
+     "hp_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hp Max"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "hp",
+     "hp_max",
+     "down",
+     "dead"
+    ],
+    "title": "CompanionPublic",
     "type": "object"
    },
    "CreationRulesIn": {
@@ -5047,6 +5108,13 @@
       ],
       "title": "Class Id"
      },
+     "companions": {
+      "items": {
+       "$ref": "#/components/schemas/CompanionPublic"
+      },
+      "title": "Companions",
+      "type": "array"
+     },
      "dead": {
       "title": "Dead",
       "type": "boolean"
@@ -5150,7 +5218,8 @@
      "hp_max",
      "dead",
      "death_saves",
-     "bonds"
+     "bonds",
+     "companions"
     ],
     "title": "HeroPublic",
     "type": "object"
@@ -5196,6 +5265,13 @@
       ],
       "default": null,
       "title": "Class Name"
+     },
+     "companions": {
+      "items": {
+       "$ref": "#/components/schemas/CompanionPublic"
+      },
+      "title": "Companions",
+      "type": "array"
      },
      "dead": {
       "title": "Dead",
@@ -5423,7 +5499,8 @@
      "hp_max",
      "dead",
      "death_saves",
-     "bonds"
+     "bonds",
+     "companions"
     ],
     "title": "HeroSheet",
     "type": "object"
@@ -9663,6 +9740,14 @@
    "OrderEntry": {
     "additionalProperties": false,
     "properties": {
+     "companions": {
+      "default": null,
+      "items": {
+       "$ref": "#/components/schemas/CompanionPublic"
+      },
+      "title": "Companions",
+      "type": "array"
+     },
      "id": {
       "title": "Id",
       "type": "string"

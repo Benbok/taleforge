@@ -193,7 +193,8 @@ class PlayerAgents:
             inv = (await s.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
             from app.core.characters import full_view
 
-            sheet = full_view(ch, cat, list(inv), [])
+            ents = (await s.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
+            sheet = full_view(ch, cat, list(inv), [], ents)
             last = await memory.latest(s, cid)
             q = select(Message).where(Message.campaign_id == cid).order_by(Message.seq.desc()).limit(HISTORY * 3)
             rows = [m for m in (await s.scalars(q)).all() if chat.visible(m, seat_id) and m.kind != "ooc"]

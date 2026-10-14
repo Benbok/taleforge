@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core import adventure, audio, combat, economy, sketch
+from app.core import adventure, audio, combat, companions, economy, sketch
 from app.core import positions as grid
 from app.core.map_memory import observe_area
 from app.core.object_policy import observe
@@ -316,6 +316,7 @@ async def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[C
         await observe_area(ctx, old.id, [c.id for c in going], inverse, explicit=True)
         _visit(ctx, old, going, inverse)
         _connect(ctx, old, loc, inverse)
+    companions.bring_companions(ctx.world, going, loc, inverse)
     for c in going:
         if c.location_id is not None and c.location_id != loc.id:
             inverse.append({"table": "characters", "id": c.id, "field": "location_id", "before": c.location_id})
@@ -1160,6 +1161,7 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
                 inverse,
                 explicit=True,
             )
+    moved_companions = companions.bring_companions(ctx.world, heroes, loc, inverse)
     for ch in heroes:
         was = ctx.world.entities.get(ch.location_id or scene_loc or "")
         if was is not None and was.id != loc.id:
@@ -1183,6 +1185,8 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
             _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
     ctx.signals.add("map.changed")
+    if moved_companions:
+        joined["companions_moved"] = [entity.name for entity in moved_companions]
     return joined
 
 
