@@ -1,8 +1,9 @@
+from app.core.resolution.contracts import ActionRef
 from app.db.models import Message
 from app.tools.resolution.requests import bind_message_actions
 
 
-async def prepare_action(ctx, hero_id, actions):
+async def prepare_actions(ctx, hero_id: str, actions: list[dict]) -> tuple[Message, list[ActionRef]]:
     message = Message(
         campaign_id=ctx.campaign.id,
         seat_id=ctx.world.characters[hero_id].seat_id,
@@ -14,4 +15,11 @@ async def prepare_action(ctx, hero_id, actions):
     )
     ctx.session.add(message)
     await ctx.session.flush()
-    return bind_message_actions(message, hero_id)[0]
+    refs = bind_message_actions(message, hero_id)
+    return message, refs
+
+
+async def prepare_action(ctx, hero_id: str, actions: list[dict]) -> ActionRef:
+    _msg, refs = await prepare_actions(ctx, hero_id, actions)
+    return refs[0]
+

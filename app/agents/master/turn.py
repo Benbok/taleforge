@@ -898,18 +898,18 @@ class TurnMixin:
         searches = unresolved_searches(ctx)
         if searches:
             diagnostics["unresolved_searches"] = [
-                s.model_dump() if isinstance(s, ActionRef) else s for s in searches
+                sr.model_dump() if isinstance(sr, ActionRef) else sr for sr in searches
             ]
-            for s in searches:
-                actor = s.actor_id if isinstance(s, ActionRef) else s
+            for search_ref in searches:
+                actor = search_ref.actor_id if isinstance(search_ref, ActionRef) else search_ref
                 cancel_args = {"character_id": actor, "reason": "Результат исследования ещё не подтверждён миром."}
-                if isinstance(s, ActionRef):
-                    cancel_args["action_ref"] = s.model_dump()
+                if isinstance(search_ref, ActionRef):
+                    cancel_args["action_ref"] = search_ref.model_dump()
                 result = await execute(
                     ctx,
                     "cancel_action",
                     cancel_args,
-                    key=f"{turn_id}:unresolved_search:{actor}:{getattr(s, 'part', 0)}",
+                    key=f"{turn_id}:unresolved_search:{actor}:{getattr(search_ref, 'part', 0)}",
                 )
                 trace_calls.append({"tool": "cancel_action", "auto": True, "result": result})
 

@@ -83,7 +83,9 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
             "hide",
             "help",
         }
-        if verb not in check_verbs and act.get("skill") not in (args.get("skill"), args.get("stat")):
+        act_skill = act.get("skill")
+        call_skills = {s for s in (args.get("skill"), args.get("stat")) if s}
+        if verb not in check_verbs and (not act_skill or act_skill not in call_skills):
             return False
         if action_targets and call_targets and not (action_targets & call_targets):
             return False
@@ -131,7 +133,7 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
         return verb in {"use_item", "interact", "pick_up"}
 
     if name in {"edit_sketch", "place_item", "learn_fact", "reveal_knowledge"}:
-        return True
+        return verb in {"search", "inspect", "interact", "use_item", "custom"}
 
     return False
 
@@ -191,6 +193,10 @@ async def bind_tool_action(
         return None
 
     call_actor = extract_actor(args)
+    if not call_actor and name in {"place_item", "edit_sketch"} and ctx.required_actions:
+        distinct_actors = {r.actor_id for r in ctx.required_actions}
+        if len(distinct_actors) == 1:
+            call_actor = next(iter(distinct_actors))
     if not call_actor:
         return None
 

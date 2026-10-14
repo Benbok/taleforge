@@ -132,7 +132,9 @@ async def apply_tool_progress(
                 for ev in reversed(ctx.events):
                     if ev.id == event_id:
                         discovery_check_id = ev.payload.get("discovery_check_event_id")
-                        break
+            if not discovery_check_id:
+                k = action_key(ref)
+                discovery_check_id = ctx.turn_diagnostics.get("search_checks", {}).get(k)
             if discovery_check_id:
                 # Match against search checks of current actions
                 for r in ctx.required_actions:
