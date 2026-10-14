@@ -3,19 +3,16 @@
 import copy
 import json
 
-import pytest
-
 from app.core.layout import store, transit
 from app.core.map_memory import discover_passage, observe_area
 from app.core.map_projection import location_plan
 from app.db.models import Character, MapMemory
-from app.tools.registry import ToolError
 from tests.test_layout_passages import _built
 from tests.test_map import _ok, _play
 from tests.test_world_generation import _fast_retry  # noqa: F401 — фикстура
 
 
-def test_secret_reveal_grants_only_present_hero(client, admin, settings):
+def test_secret_reveal_is_shared_by_party(client, admin, settings):
     cid, _heads, hid, village, _root, ids = _built(client, admin, settings, "sacristy", "vault")
 
     async def setup(ctx):
@@ -38,21 +35,20 @@ def test_secret_reveal_grants_only_present_hero(client, admin, settings):
 
     async def verify(ctx):
         await _ok(ctx, "move", {"character_ids": ["second-map-hero"], "location_id": ids["sacristy"]})
-        from app.core.map_memory import known_passages
+        from app.core.map_memory import known_passages, known_passages_campaign
 
         grants = await known_passages(ctx.session, hid, ids["sacristy"])
         root = store.root_of(ctx.world.entities, ctx.world.entities[ids["sacristy"]])
         assert (root.id, "p_vault") in grants
         transit.check(ctx.world, [hid], "p_vault", known_passages=grants)
-        second_grants = await known_passages(ctx.session, "second-map-hero", ids["sacristy"])
-        with pytest.raises(ToolError, match="нет такого прохода"):
-            transit.check(ctx.world, ["second-map-hero"], "p_vault", known_passages=second_grants)
+        second_grants = await known_passages_campaign(ctx.session, cid)
+        transit.check(ctx.world, ["second-map-hero"], "p_vault", known_passages=second_grants)
         first_map = await location_plan(ctx.session, ctx.world.characters[hid], ctx.world.entities, ids["sacristy"])
         second_map = await location_plan(
             ctx.session, ctx.world.characters["second-map-hero"], ctx.world.entities, ids["sacristy"]
         )
         assert "p_vault" in str(first_map)
-        assert "p_vault" not in str(second_map) and "Тайная дверь" not in str(second_map)
+        assert "p_vault" in str(second_map) and "Тайная дверь" in str(second_map)
 
     _play(settings, cid, verify)
 
@@ -71,6 +67,20 @@ def test_remembered_area_serializes_to_json(client, admin, settings):
     assert remembered, "дорога должна остаться в памяти героя"
     assert all(isinstance(a["observed_at"], str) for a in remembered)
     json.dumps(plan)
+
+
+def test_root_projection_keeps_all_public_areas_before_visit(client, admin, settings):
+    cid, _heads, hid, _village, root_id, ids = _built(client, admin, settings, "road")
+
+    async def go(ctx):
+        plan = await location_plan(ctx.session, ctx.world.characters[hid], ctx.world.entities, root_id)
+        return plan, ids
+
+    plan, ids = _play(settings, cid, go)
+    assert plan["here_id"] is None
+    assert {area["id"] for area in plan["areas"]} >= set(ids.values()) - {ids["vault"]}
+    assert all(area["status"] == "prepared" for area in plan["areas"])
+    assert all(not area["sketch"]["features"] for area in plan["areas"])
 
 
 def test_map_memory_inverse_follows_journal_format(client, admin, settings):
@@ -144,7 +154,7 @@ def test_passage_grant_covers_both_ends_and_survives_hide(client, admin, setting
     from_vault, after_hide, stranger = _play(settings, cid, go)
     assert "p_vault" in _exit_refs(from_vault, ids["vault"])
     assert "p_vault" in _exit_refs(after_hide, ids["sacristy"])
-    assert "p_vault" not in str(stranger) and "Тайная дверь" not in str(stranger)
+    assert "p_vault" in str(stranger) and "Тайная дверь" in str(stranger)
 
 
 def test_left_area_memory_ignores_later_changes(client, admin, settings):

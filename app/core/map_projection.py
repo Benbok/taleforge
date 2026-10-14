@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import map_memory
-from app.core.layout import store
-from app.db.models import Entity, MapMemory
+from app.core.layout import geometry, store
+from app.db.models import Character, Entity, MapMemory
 
 
 def _area_meta(bp, place: Entity) -> tuple[dict[str, Any], Any] | None:
@@ -47,6 +47,19 @@ def _area_packet(
     }
 
 
+def _outline_snapshot(root, bp, area, *, root_id: str) -> dict[str, Any]:
+    """Build a public, detail-free sketch for an undiscovered area."""
+    raw = geometry.build_area(bp, area, root_id=root_id, ids={})
+    # The outline is useful for orientation, but must not disclose furniture,
+    # hidden details, or the exact internal passage network.
+    raw["walls"] = []
+    raw["features"] = []
+    raw["exits"] = []
+    raw.pop("blueprint", None)
+    raw["party"] = [max(0, area.cols // 2), max(0, area.rows // 2)]
+    return {"name": area.public_name, "geometry": raw}
+
+
 async def location_plan(
     session: AsyncSession,
     viewer: Any,
@@ -59,7 +72,9 @@ async def location_plan(
     if here is None:
         return None
     complex_state = (here.state or {}).get("complex") or {}
-    root_id = complex_state.get("root_id")
+    root_id = complex_state.get("root_id") or (
+        here.id if isinstance((here.state or {}).get("blueprint"), dict) else None
+    )
     root = entities.get(root_id or "")
     if root is None:
         return None
@@ -73,56 +88,69 @@ async def location_plan(
     if hero_id is None and isinstance(viewer, str):
         hero_id = viewer
     rows = []
-    if hero_id:
-        rows = list(
-            (
-                await session.scalars(
-                    select(MapMemory).where(MapMemory.character_id == hero_id, MapMemory.snapshot.is_not(None))
-                )
-            ).all()
+    if root_id:
+        # Exploration is shared by the party. Keep the newest snapshot for a
+        # location when more than one hero has observed it.
+        q = (
+            select(MapMemory)
+            .join(Character, Character.id == MapMemory.character_id)
+            .where(Character.campaign_id == root.campaign_id)
+            .order_by(MapMemory.updated_at.desc(), MapMemory.character_id.asc())
         )
+        all_rows = list((await session.scalars(q)).all())
+        seen: set[str] = set()
+        for row in all_rows:
+            if row.snapshot is None:
+                continue
+            place = entities.get(row.entity_id)
+            if place is None or ((place.state or {}).get("complex") or {}).get("root_id") != root.id:
+                continue
+            if row.entity_id not in seen:
+                rows.append(row)
+                seen.add(row.entity_id)
     by_id = {row.entity_id: row for row in rows}
     grants = await map_memory.known_passages(session, hero_id, here.id) if hero_id else frozenset()
+    if root_id:
+        grants |= frozenset(
+            (str(item.get("root_id")), str(item.get("passage_ref")))
+            for row in all_rows
+            for item in (row.discovered_passages or [])
+            if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
+        )
     permitted = frozenset(
         (root.id, p.passage_ref) for p in bp.passages if not p.hidden or (root.id, p.passage_ref) in grants
     )
-    current = map_memory.static_snapshot(
-        here,
-        root,
-        (root.state or {}).get("blueprint"),
-        entities,
-        discovered_passages=permitted if hero_id else frozenset((root.id, p.passage_ref) for p in bp.passages),
-        revealed=frozenset(),
-    )
-    if current is None:
-        return None
-    current["geometry"]["exits"] = [
-        x
-        for x in current["geometry"].get("exits", [])
-        if not x.get("passage_ref") or (root.id, x["passage_ref"]) in permitted or not hero_id
-    ]
     areas: list[dict[str, Any]] = []
-    meta = _area_meta(bp, here)
-    areas.append(
-        _area_packet(
-            here,
-            current,
-            status="here",
-            revision=int((by_id.get(here.id).revision if by_id.get(here.id) else 0) or 0),
-            meta=meta[0] if meta else None,
+    current = None
+    if here.id != root.id:
+        current = map_memory.static_snapshot(
+            here, root, (root.state or {}).get("blueprint"), entities,
+            discovered_passages=permitted if hero_id else frozenset((root.id, p.passage_ref) for p in bp.passages),
+            revealed=frozenset(),
         )
-    )
-    for row in rows:
-        if row.entity_id == here.id or not row.snapshot:
-            continue
-        place = entities.get(row.entity_id)
-        if place is None:
-            continue
-        if ((place.state or {}).get("complex") or {}).get("root_id") != root.id:
+        if current is None:
+            return None
+        current["geometry"]["exits"] = [
+            x for x in current["geometry"].get("exits", [])
+            if not x.get("passage_ref") or (root.id, x["passage_ref"]) in permitted or not hero_id
+        ]
+    ids = store.area_ids(root)
+    for area in bp.areas:
+        place = entities.get(ids.get(area.area_ref, ""))
+        if place is None or (area.secret and place.id not in by_id and place.id != here.id):
             continue
         area_meta = _area_meta(bp, place)
-        areas.append(
-            _area_packet(
+        if place.id == here.id and current is not None:
+            packet = _area_packet(
+                place,
+                current,
+                status="here",
+                revision=int((by_id.get(place.id).revision if by_id.get(place.id) else 0) or 0),
+                meta=area_meta[0] if area_meta else None,
+            )
+        elif place.id in by_id:
+            row = by_id[place.id]
+            packet = _area_packet(
                 place,
                 row.snapshot,
                 status="remembered",
@@ -130,5 +158,13 @@ async def location_plan(
                 observed_at=row.updated_at,
                 meta=area_meta[0] if area_meta else None,
             )
-        )
-    return {"root_id": root.id, "here_id": here.id, "areas": areas}
+        else:
+            packet = _area_packet(
+                place,
+                _outline_snapshot(root, bp, area, root_id=root.id),
+                status="prepared",
+                revision=0,
+                meta=area_meta[0] if area_meta else None,
+            )
+        areas.append(packet)
+    return {"root_id": root.id, "here_id": None if here.id == root.id else here.id, "areas": areas}

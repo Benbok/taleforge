@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core import sketch
-from app.db.models import MapMemory
+from app.db.models import Character, MapMemory
 
 _SKETCH_FIELDS = (
     "shape",
@@ -184,6 +184,21 @@ async def observe_present(ctx: Any, inverse: list[dict[str, Any]] | None = None,
 
 async def known_passages(session: Any, hero_id: str, place_id: str) -> frozenset[tuple[str, str]]:
     rows = await session.scalars(select(MapMemory).where(MapMemory.character_id == hero_id))
+    return frozenset(
+        (str(item["root_id"]), str(item["passage_ref"]))
+        for row in rows
+        for item in (row.discovered_passages or [])
+        if isinstance(item, dict) and item.get("root_id") and item.get("passage_ref")
+    )
+
+
+async def known_passages_campaign(session: Any, campaign_id: str) -> frozenset[tuple[str, str]]:
+    """Return passage discoveries shared by every hero in a campaign."""
+    rows = await session.scalars(
+        select(MapMemory)
+        .join(Character, Character.id == MapMemory.character_id)
+        .where(Character.campaign_id == campaign_id)
+    )
     return frozenset(
         (str(item["root_id"]), str(item["passage_ref"]))
         for row in rows
