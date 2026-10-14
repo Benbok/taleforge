@@ -7,7 +7,8 @@ from app.db.models import ActiveEffect, Campaign, Character, Event, Message
 from app.tools.master.entities import encounter_budget
 from app.tools.registry import execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context
-from tests.game import QueueDice, import_base, party, run
+from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
+from tests.test_api import register
 
 
 @pytest.fixture
@@ -271,3 +272,68 @@ def test_effect_without_source_rule_needs_no_source(game):
     r = play(settings, cid, [], fn)
     assert r["ok"], r
     assert "source" not in r["result"]
+
+
+def test_encounter_budget_party_expansion_and_multipliers(client, admin, settings):
+    """Два героя дают normal-cap 150; пустое место, черновик и submitted не меняют cap;
+    допуск третьего героя дает cap 225. Проверяются переходы множителей 2 -> 3 и 5 -> 6."""
+    from app.tools.master.entities import _multiplier
+
+    import_base(settings)
+    c, (p1, p2), h1 = party(client, admin, players=2, master={"type": "owner"}, start=False)
+    cid = c["id"]
+    h2 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Гимли"}, headers=p2), 201)
+    ok(client.post(f"/api/campaigns/{cid}/characters/{h2['id']}/submit", headers=p2))
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
+
+    async def check_budget(ctx, xp_list):
+        ctx.campaign.difficulty = "normal"
+        return encounter_budget(ctx, xp_list)
+
+    # 1. Два героя 1-го уровня: normal cap 150, для 1 существа (xp 50) party < 3 дает множитель 1.5 (adjusted_xp 75)
+    b = play(settings, cid, [], lambda ctx: check_budget(ctx, [{"xp": 50}]))
+    assert b["party"] == 2
+    assert b["cap"] == 150
+    assert b["adjusted_xp"] == 75
+
+    # 2. Владелец добавляет 3-е место: пустое место не меняет cap
+    ok(client.post(f"/api/campaigns/{cid}/seats", headers=admin), 201)
+    b_empty = play(settings, cid, [], lambda ctx: check_budget(ctx, [{"xp": 50}]))
+    assert b_empty["party"] == 2
+    assert b_empty["cap"] == 150
+
+    # 3. Приглашаем 3-го игрока, создаем черновик: черновик не меняет cap
+    inv = ok(client.post(f"/api/campaigns/{cid}/invites", json={"role": "player", "limit": 1}, headers=admin), 201)
+    p3 = register(client, inv["token"], "Леголас")
+    h3 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Леголас"}, headers=p3), 201)
+    b_draft = play(settings, cid, [], lambda ctx: check_budget(ctx, [{"xp": 50}]))
+    assert b_draft["party"] == 2
+    assert b_draft["cap"] == 150
+
+    # Переключаем правила кампании на ручную проверку (review: master)
+    async def set_master_review(s):
+        camp = await s.get(Campaign, cid)
+        creation_rules = {**(camp.settings.get("creation_rules") or {}), "review": "master"}
+        camp.settings = {**(camp.settings or {}), "creation_rules": creation_rules}
+        await s.commit()
+
+    run(settings, set_master_review)
+
+    # 4. Пауза и отправка на проверку (submitted): submitted не меняет cap
+    ok(client.post(f"/api/campaigns/{cid}/session/pause", headers=admin))
+    res_sub = ok(client.post(f"/api/campaigns/{cid}/characters/{h3['id']}/submit", headers=p3))
+    assert res_sub["status"] == "submitted"
+    b_submitted = play(settings, cid, [], lambda ctx: check_budget(ctx, [{"xp": 50}]))
+    assert b_submitted["party"] == 2
+    assert b_submitted["cap"] == 150
+
+    # 5. Одобряем 3-го героя: party = 3, cap = 225, переход множителя 2 -> 3 (множитель 1.0 -> adjusted_xp = 50)
+    ok(client.post(f"/api/campaigns/{cid}/characters/{h3['id']}/review", json={"approve": True}, headers=admin))
+    b_three = play(settings, cid, [], lambda ctx: check_budget(ctx, [{"xp": 50}]))
+    assert b_three["party"] == 3
+    assert b_three["cap"] == 225
+    assert b_three["adjusted_xp"] == 50
+
+    # 6. Проверяем переход множителя для размера отряда 5 -> 6
+    assert _multiplier(count=2, party=5) == 1.5
+    assert _multiplier(count=2, party=6) == 1.0

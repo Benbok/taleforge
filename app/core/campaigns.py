@@ -26,6 +26,7 @@ from app.db.models import (
 )
 
 MAX_PLAYERS = 6
+INITIAL_PLAYER_SEATS = "initial_player_seats"
 DIFFICULTIES = ("easy", "normal", "hard", "deadly")
 PROVIDERS = ("claude", "gemini", "local")
 DEFAULT_PARTY = {"min": 3, "recommended": 4, "max": 6}  # бюджет встреч SRD рассчитан на отряд из 4
@@ -299,6 +300,7 @@ async def create_campaign(
         raise Conflict("мастер: {type: owner} или {type: agent, provider, model}")
 
     merged_settings = {**DEFAULT_SETTINGS, **(settings or {})}
+    merged_settings[INITIAL_PLAYER_SEATS] = count
     n_mode = (
         (settings or {}).get("narrative", {}).get("mode")
         if (settings or {}).get("narrative")
@@ -402,6 +404,11 @@ async def add_player_seat(session: AsyncSession, viewer: Viewer) -> Seat:
     player_seats = [s for s in seats if s.role == "player"]
     if len(player_seats) >= MAX_PLAYERS:
         raise Conflict(f"достигнут предел мест: {MAX_PLAYERS}")
+
+    campaign_settings = dict(campaign.settings or {})
+    if INITIAL_PLAYER_SEATS not in campaign_settings:
+        campaign_settings[INITIAL_PLAYER_SEATS] = len(player_seats)
+        campaign.settings = campaign_settings
 
     max_pos = max((s.position for s in player_seats), default=0)
     new_position = max_pos + 1

@@ -23,10 +23,12 @@ from tests.test_ws import connect, next_of
 def _split_party(client, admin, settings, **kw):
     """Два героя на площади, второй уходит в доки; в доках гоблин, на площади фонтан."""
     import_base(settings)
-    c, (p1, p2), h1 = party(client, admin, players=2, **kw)
+    c, (p1, p2), h1 = party(client, admin, players=2, start=False, **kw)
     cid = c["id"]
     h2 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Гимли"}, headers=p2), 201)
     ok(client.post(f"/api/campaigns/{cid}/characters/{h2['id']}/submit", headers=p2))
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
+    quiet(client)
 
     async def build(ctx):
         square = (await _ok(ctx, "create_location", {"name": "Площадь", "make_current": True}))["location_id"]

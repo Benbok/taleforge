@@ -76,7 +76,7 @@ class ReviewMixin:
                 if ch is None or ch.status != "submitted":
                     return False, None
                 try:
-                    await ensure_character_admission_allowed(s, c)
+                    await ensure_character_admission_allowed(s, c, ch.seat_id)
                 except Conflict:
                     return False, ch.status
                 sheet = full_view(ch, ctx.world.catalog, ctx.world.inventory.get(ch.id, []), [])
@@ -117,7 +117,7 @@ class ReviewMixin:
                     if ch is None or ch.status != "submitted":
                         return False, None  # пока модель думала, героя проверил человек или игрок его отозвал
                     try:
-                        await ensure_character_admission_allowed(s, c)
+                        await ensure_character_admission_allowed(s, c, ch.seat_id)
                     except Conflict:
                         return False, ch.status  # сессия возобновилась или начался бой: оставляем submitted
                     status = None

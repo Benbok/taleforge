@@ -71,7 +71,7 @@ def ok(r, code=200):
     return r.json()
 
 
-def party(client, admin, *, players=1, master=None, rules=None, names=None, **kw):
+def party(client, admin, *, players=1, master=None, rules=None, names=None, start=True, **kw):
     """Кампания с базовым пакетом, игроки и одобренный воин у первого игрока, сессия начата."""
     body = {"creation_rules": {"review": "auto", **(rules or {})}, "collect_window_sec": 0, **kw}
     if master:
@@ -83,7 +83,8 @@ def party(client, admin, *, players=1, master=None, rules=None, names=None, **kw
     ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=heads[0]), 201)
     res = ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=heads[0]))
     assert res["status"] == "approved", res
-    ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
+    if start:
+        ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     return c, heads, ch
 
 

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import httpx
-import pytest
-from sqlalchemy import select
 
-from app.db.models import Character, Seat
-from tests.conftest import login
+import httpx
+
 from tests.test_api import invite, make_campaign, register
 
 
@@ -100,8 +97,8 @@ def test_existing_invite_uses_added_seat(client, admin):
     inv = invite(client, admin, c["id"], max_uses=3)
 
     # 2 players join, filling both player seats
-    p1 = register(client, inv["token"], "Арагорн")
-    p2 = register(client, inv["token"], "Гимли")
+    register(client, inv["token"], "Арагорн")
+    register(client, inv["token"], "Гимли")
 
     prev = client.get(f"/api/invites/{inv['token']}").json()
     assert prev["free_seats"] == 0
