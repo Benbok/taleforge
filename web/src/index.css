@@ -145,7 +145,12 @@ body {
 }
 .tf-hero-sheet-dialog::backdrop { background: rgb(0 0 0 / .55); }
 .tf-map-passage:focus { outline: none; }
-.tf-map-passage:focus [data-opening] { stroke: var(--tf-accent); stroke-width: .32; }
+.tf-map-passage:hover [data-opening],
+.tf-map-passage:focus [data-opening],
+.tf-map-passage.is-picked [data-opening] {
+  stroke: var(--tf-accent);
+  stroke-width: .35;
+}
 h1,
 h2,
 h3 {

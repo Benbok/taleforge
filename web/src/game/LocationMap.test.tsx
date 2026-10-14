@@ -28,8 +28,28 @@ describe("подход к проходу", () => {
     const plan: MapLocationPlan = { ...map, areas: [{ ...map.areas[0], sketch: { ...map.areas[0].sketch, party: [0, 0], exits: [exit] } }] };
     const live = { ...plan.areas[0].sketch, party: [1, 0] as [number, number] };
     const { container } = render(<LocationMap map={plan} m={{ sketch: live, scene_view: [] } as unknown as MapState} />);
-    fireEvent.click(container.querySelector('[data-passage-ref="p_arch"]')!);
+    const passage = container.querySelector('[data-passage-ref="p_arch"]')!;
+    expect(passage.classList.contains("is-picked")).toBe(false);
+    fireEvent.click(passage);
+    expect(passage.classList.contains("is-picked")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Подойти" }));
     expect(stepTo).toHaveBeenCalledWith({ near: [[0, 1]] });
+  });
+
+  it("проходы рендерятся поверх кликабельных клеток пола и текущая комната идет последней", () => {
+    const exit = { name: "Дверь", kind: "door" as const, state: "open" as const, side: "e" as const, at: 0, cells: [[0, 0]] as [number, number][], passage_ref: "p_door" };
+    const plan: MapLocationPlan = { ...map, areas: [{ ...map.areas[0], sketch: { ...map.areas[0].sketch, exits: [exit] } }, map.areas[1]] };
+    const { container } = render(<LocationMap map={plan} m={{ sketch: plan.areas[0].sketch, scene_view: [] } as unknown as MapState} />);
+    const currentGroup = container.querySelector('[data-area-status="here"]')!;
+    const passage = currentGroup.querySelector('[data-passage-ref="p_door"]')!;
+    const cellRects = currentGroup.querySelectorAll('rect[fill="transparent"]');
+    expect(cellRects.length).toBeGreaterThan(0);
+    // Проход должен следовать в DOM после клеток пола (z-order выше)
+    const allChildren = Array.from(currentGroup.querySelectorAll('*'));
+    expect(allChildren.indexOf(passage)).toBeGreaterThan(allChildren.indexOf(cellRects[0]));
+
+    // Текущая комната должна рендериться после запомненной
+    const areaGroups = Array.from(container.querySelectorAll('g[data-area-id]'));
+    expect(areaGroups[areaGroups.length - 1].getAttribute('data-area-status')).toBe('here');
   });
 });

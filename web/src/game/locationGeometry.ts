@@ -41,6 +41,22 @@ export function knownBounds(plan: MapLocationPlan, level: number): Bounds | null
   return bounds;
 }
 
+export function overviewBounds(bounds: Bounds | null, minSpanX = 18, minSpanY = 12, pad = 2): Bounds | null {
+  if (!bounds) return null;
+  const kw = bounds.maxX - bounds.minX;
+  const kh = bounds.maxY - bounds.minY;
+  const cx = (bounds.minX + bounds.maxX) / 2;
+  const cy = (bounds.minY + bounds.maxY) / 2;
+  const spanX = Math.max(kw + pad * 2, minSpanX);
+  const spanY = Math.max(kh + pad * 2, minSpanY);
+  return {
+    minX: Math.round((cx - spanX / 2) * 10) / 10,
+    minY: Math.round((cy - spanY / 2) * 10) / 10,
+    maxX: Math.round((cx + spanX / 2) * 10) / 10,
+    maxY: Math.round((cy + spanY / 2) * 10) / 10,
+  };
+}
+
 function segmentKey(a: Point, b: Point): string {
   return `${a[0]},${a[1]}:${b[0]},${b[1]}`;
 }

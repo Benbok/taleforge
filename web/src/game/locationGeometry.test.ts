@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exitSegments, knownBounds, localToPlan, mechanicalToPlan, planToMechanical, surfaceGeometry } from "./locationGeometry";
+import { exitSegments, knownBounds, localToPlan, mechanicalToPlan, overviewBounds, planToMechanical, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, MapLocationPlan } from "./map";
 
 const area = (id: string, offset: [number, number], level = 0, mask?: string[]): MapKnownArea => ({
@@ -20,6 +20,15 @@ describe("координаты композиции", () => {
     const plan: MapLocationPlan = { root_id: "r", here_id: "a", areas: [area("a", [0, 0]), area("b", [6, 0], -1)] };
     expect(knownBounds(plan, 0)).toEqual({ minX: 0, minY: 0, maxX: 6, maxY: 6 });
     expect(knownBounds(plan, 1)).toBeNull();
+  });
+
+  it("центрирует обзорную область с минимальным масштабом и отступами", () => {
+    const bounds = { minX: 0, minY: 0, maxX: 6, maxY: 6 };
+    const ov = overviewBounds(bounds, 18, 12, 2);
+    expect(ov).toEqual({ minX: -6, minY: -3, maxX: 12, maxY: 9 });
+    expect(ov!.maxX - ov!.minX).toBe(18);
+    expect(ov!.maxY - ov!.minY).toBe(12);
+    expect(overviewBounds(null)).toBeNull();
   });
 
   it("строит контур отверстия по клетке L-маски", () => {
