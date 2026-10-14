@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.core.layout.contracts import LayoutError
 from app.core.layout.intent import LayoutIntent
 from app.core.layout.provider import DeterministicLayoutProvider
+from app.core.layout.scenery import enrich_intent
 from app.core.layout.spatial import Mandate, intent_candidates, obligations
 from app.core.layout.template_catalog import LayoutTemplate
 from app.core.layout.template_roles import infer_role
@@ -78,7 +79,7 @@ def adapt_template(template: LayoutTemplate, mandate: Mandate) -> tuple[LayoutIn
             band = next(b for b in data['bands'] if b['band_ref'] == approach['band'])
             if band['kind'] != sp.kind:
                 raise ValueError('approach_band')
-    intent = LayoutIntent.model_validate(data)
+    intent = enrich_intent(LayoutIntent.model_validate(data), mandate)
     if obligations(intent, mandate):
         raise ValueError('mandate_obligations')
     return intent, bindings
@@ -89,15 +90,18 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
     if template.environment != mandate.spatial.environment or template.scale != mandate.spatial.scale:
         raise ValueError('environment_or_scale')
     base = intent_candidates(mandate)[0]
-    source = {p.role: p for p in template.intent.parts}
+    source: dict[str, list] = {}
+    for source_part in template.intent.parts:
+        source.setdefault(source_part.role, []).append(source_part)
     used: set[str] = set()
     bindings: dict[str, str] = {}
     data = base.model_dump(mode='json')
     for part in data['parts']:
         requested = next(p for p in mandate.spatial.parts if p.ref == part['part_ref'])
         role = infer_role(requested.ref, requested.name, requested.purpose)
-        candidate = source.get(role) if role else None
-        if candidate is None or candidate.part_ref in used:
+        candidates = source.get(role, []) if role else []
+        candidate = next((item for item in candidates if item.part_ref not in used), None)
+        if candidate is None:
             continue
         if candidate.environment != part['environment'] or candidate.secret != part['secret']:
             continue
@@ -114,7 +118,7 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
         used.add(candidate.part_ref)
     if not bindings:
         raise ValueError('no_role_match')
-    intent = LayoutIntent.model_validate(data)
+    intent = enrich_intent(LayoutIntent.model_validate(data), mandate)
     if obligations(intent, mandate):
         raise ValueError('mandate_obligations')
     return intent, bindings

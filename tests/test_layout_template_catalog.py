@@ -48,6 +48,8 @@ def test_generated_port_plan_uses_template_details_and_keeps_extra_parts():
     pier = next(p for p in result['intent']['parts'] if p['part_ref'] == 'part_pier')
     assert pier['material'] == 'wood'
     assert pier['details']
+    market = next(p for p in result['intent']['parts'] if p['part_ref'] == 'part_market')
+    assert any(d['detail_ref'] == 'market_stalls' for d in market['details'])
 
 
 def test_runtime_catalog_contains_twelve_valid_templates():
