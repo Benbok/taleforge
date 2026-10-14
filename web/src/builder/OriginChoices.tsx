@@ -12,35 +12,35 @@ interface OriginArtMeta {
 const ORIGIN_ART_MAP: Record<string, OriginArtMeta> = {
   "lineage.kept_self": {
     img: "/assets/races/kept_self.png",
-    badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "lineage.kept_heart": {
     img: "/assets/races/helmsman.png",
-    badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.tushevik": {
     img: "/assets/races/carcass_born.png",
-    badgeClass: "bg-amber-600/15 text-amber-300 border-amber-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.slomlenny": {
     img: "/assets/races/the_broken.png",
-    badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.krovnik": {
     img: "/assets/races/blood_bound.png",
-    badgeClass: "bg-rose-600/15 text-rose-300 border-rose-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.okrainets": {
     img: "/assets/races/outlander.png",
-    badgeClass: "bg-emerald-600/15 text-emerald-300 border-emerald-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.morekhod": {
     img: "/assets/races/seafarer.png",
-    badgeClass: "bg-sky-600/15 text-sky-300 border-sky-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "origin.syndicate": {
     img: "/assets/races/syndicate_heir.png",
-    badgeClass: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
 };
 
@@ -113,20 +113,20 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
                 </div>
 
                 {o.epithet && (
-                  <span className="font-serif italic text-xs text-muted/90 mt-0.5 tracking-wide">
+                  <span className="font-ui text-xs text-muted mt-0.5 tracking-wide">
                     {o.epithet}
                   </span>
                 )}
 
                 {(o.summary || o.description) && (
-                  <p className="mt-1.5 text-xs text-ink/80 line-clamp-3 leading-relaxed">
+                  <p className="mt-1.5 text-xs text-ink-2 line-clamp-3 leading-relaxed">
                     {o.summary || o.description}
                   </p>
                 )}
               </div>
 
               {/* Нижняя строчка: бейдж и бонусы */}
-              <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-line/40">
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-2 rounded-md border border-line bg-surface/95 px-2 py-2">
                 {o.badge ? (
                   <span
                     className={`shrink-0 whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${art?.badgeClass ?? "bg-accent/10 text-accent border-accent/30"}`}
@@ -140,7 +140,7 @@ export default function OriginChoices({ items, value, onPick }: OriginChoicesPro
                 )}
 
                 {stats && (
-                  <span className="font-mono text-[10.5px] text-muted-hi font-medium tracking-tight truncate">
+                  <span className="font-mono text-[10.5px] text-muted font-medium tracking-tight truncate">
                     {stats}
                   </span>
                 )}

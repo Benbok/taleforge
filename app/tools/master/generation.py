@@ -252,8 +252,8 @@ async def prepare_location(ctx: ToolContext, a: PrepareLocationArgs) -> dict:
         if _visited(ctx, root):
             raise ToolError("отряд здесь уже был: устройство посещённого места не перестраивается")
         kind, sketch = plot_mod._index(ctx.world.plot or {}).get((root.state or {}).get("plot_id") or "", (None, None))
-        if kind != "location" or not (sketch or {}).get("spatial"):
-            raise ToolError("у места нет пространственного замысла в каркасе: используйте prepare_complex")
+        if kind != "location":
+            raise ToolError("места нет в каркасе: используйте prepare_complex")
         row = await layout_plan.reserve_from_plan(ctx, root, sketch, inverse)
         if row is None:
             raise ToolError("это место не становится комплексом (готовое приключение или уже есть план)")

@@ -68,11 +68,11 @@ DEFAULT: dict[str, Any] = {
         "entity_lore": "#5f646d",
     },
     "fonts": {
-        "narration": "'Literata', Georgia, serif",
+        "narration": "'Lora', Georgia, serif",
         "ui": "'Inter', system-ui, sans-serif",
-        "heading": "'Literata', Georgia, serif",
+        "heading": "'Inter', system-ui, sans-serif",
     },
-    "font_css": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Literata:ital,wght@0,400;0,600;1,400&display=swap",
+    "font_css": None,
     "labels": {
         "master_status.listening": "Мастер слушает…",
         "master_status.remembering": "Мастер вспоминает…",

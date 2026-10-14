@@ -1,6 +1,6 @@
 id: dnd5e-srd
 name: "D&D 5e SRD 5.1"
-version: 0.5.10
+version: 0.5.11
 ruleset: dnd5e
 provides: srd-5.1
 category: "КЛАССИЧЕСКИЙ НАБОР ПРАВИЛ"

@@ -138,10 +138,10 @@ it("creates a library hero outside a campaign, updates it after navigation and r
   const page = open("/heroes/new");
   const input = await screen.findByPlaceholderText("Введите имя или прозвище персонажа");
   fireEvent.change(input, { target: { value: "Бран" } });
-  fireEvent.click(screen.getByRole("button", { name: "СОХРАНИТЬ В БИБЛИОТЕКУ" }));
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить в библиотеку" }));
   await screen.findByRole("heading", { name: "Бран", level: 1 });
   fireEvent.change(screen.getByPlaceholderText("Введите имя или прозвище персонажа"), { target: { value: "Бран Седой" } });
-  fireEvent.click(screen.getByRole("button", { name: "СОХРАНИТЬ В БИБЛИОТЕКУ" }));
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить в библиотеку" }));
   await screen.findByRole("heading", { name: "Бран Седой", level: 1 });
   expect(methods).toEqual(["POST", "PUT"]);
   page.unmount();

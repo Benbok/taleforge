@@ -15,6 +15,7 @@ from app.agents.master.outcomes import (
     acted,
     cancelled_actions,
     failed_attack,
+    failed_item_action,
     public_attempts,
     public_factual_fallback,
     transition_outcome,
@@ -55,6 +56,7 @@ class NarrationMixin:
     ):
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
+        item_rejected = failed_item_action(tool_attempts)
         attempts = public_attempts(tool_attempts)
         cancellations = cancelled_actions(ctx)
         results = _render_results(ctx)
@@ -105,6 +107,7 @@ class NarrationMixin:
             and not attack_rejected
             and not has_resolution
             and not cancellations
+            and not item_rejected
         )
         # Scene and player ownership checks require the whole response. Publish
         # the checked draft only; a rejected first attempt must never reach chat.
@@ -285,6 +288,17 @@ class NarrationMixin:
         elif attack_rejected:
             audit["attack_fallback"] = True
             text = public_factual_fallback(ctx, tool_attempts, excluded_names=excluded_fallback_names)
+        if item_rejected:
+            audit["item_fallback"] = True
+            text = public_factual_fallback(
+                ctx,
+                tool_attempts,
+                notice=(
+                    "Часть действий с предметами не выполнена; передача и употребление "
+                    "не подтверждены, если они не указаны ниже."
+                ),
+                excluded_names=excluded_fallback_names,
+            )
         if cancellations and text and all(acted(ctx, x.get("actor_id")) for x in cancellations):
             # Часть заявки обработана (многочастная заявка, мастер закрыл одну часть): проза о применённом
             # остаётся, необработанная часть называется явно — без замены всего ответа сухой сводкой.

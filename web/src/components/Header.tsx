@@ -41,8 +41,8 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "U";
 
   return (
-    <header className="sticky top-0 z-40 flex h-[72px] items-center gap-6 border-b border-line bg-raised px-4 md:px-8">
-      <Link to="/" className="flex items-center gap-3 text-ink no-underline group">
+    <header className="sticky top-0 z-40 flex h-[72px] items-center gap-2 sm:gap-4 md:gap-6 border-b border-line bg-raised px-3 md:px-8">
+      <Link to="/" aria-label="TaleForge — на главную" className="flex shrink-0 items-center gap-3 text-ink no-underline group">
         <svg
           width="32"
           height="32"
@@ -58,7 +58,7 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           <path d="M6 21 C 11 14, 22 13, 28 17 C 24 20, 14 23, 6 21 Z" />
           <circle cx="24" cy="17.2" r="1.2" fill="var(--tf-accent)" />
         </svg>
-        <span className="font-heading text-2xl font-bold tracking-[0.14em] text-ink">
+        <span className="hidden sm:inline font-heading text-2xl font-bold tracking-[0.14em] text-ink">
           TALEFORGE
         </span>
       </Link>

@@ -924,11 +924,11 @@ export default function MapWindow() {
               {loading ? "Обновляю карту…" : error ?? "Мастер дополняет карту по ходу игры"}
             </p>
           </div>
-          <button className="text-2xl leading-none text-muted hover:text-ink" onClick={hide} aria-label="Закрыть">
+          <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-2xl leading-none text-muted hover:text-ink" onClick={hide} aria-label="Закрыть">
             ×
           </button>
         </header>
-        <nav className="flex gap-1 border-b border-line px-2" aria-label="Разделы карты">
+        <nav className="flex flex-wrap gap-1 border-b border-line px-2" aria-label="Разделы карты">
           {(
             [
               ["around", "Вокруг"],
@@ -938,7 +938,8 @@ export default function MapWindow() {
           ).map(([t, name]) => (
             <button
               key={t}
-              className={`shrink-0 border-b-2 px-3 py-2 text-sm transition-colors duration-150 ease-out ${
+              aria-current={tab === t ? "page" : undefined}
+              className={`min-h-11 shrink-0 border-b-2 px-3 py-2 text-sm transition-colors duration-150 ease-out ${
                 tab === t ? "border-accent text-ink font-semibold" : "border-transparent text-muted hover:text-ink"
               }`}
               onClick={() => setTab(t)}

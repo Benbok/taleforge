@@ -67,3 +67,16 @@ def test_sketch_drawn_by_master_after_description_is_kept(game_client, admin_g, 
 
     kept = _play(settings, cid, look)
     assert kept["rows"] == 5 and not kept.get("auto")
+
+
+def test_tidy_fixes_unambiguous_cell_slips():
+    tidy = surveyor._tidy(
+        {
+            "party": [[2.0, 3]],
+            "walls": [[1.0, 1]],
+            "features": [{"name": "Нарост", "cells": [[4, 0], [1, 1, 2, 2]]}],
+        }
+    )
+    assert tidy["party"] == [2, 3] and tidy["walls"] == [[1, 1]]
+    assert tidy["features"][0]["cells"] == [[4, 0, 4, 0], [1, 1, 2, 2]]
+    assert surveyor._tidy({"party": "у входа"})["party"] == "у входа"  # иное остаётся проверке схемы

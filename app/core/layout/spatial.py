@@ -71,6 +71,23 @@ class SpatialPlan(BaseModel):
         return self
 
 
+OUTDOOR_TAGS = {"wild", "rural"}  # теги шаблонов локаций (content/*/data/locations.yaml): место под открытым небом
+
+
+def default_spatial(name: str, tags=()) -> SpatialPlan:
+    """Замысел места, у которого его нет в каркасе: одна часть с подходом по типу шаблона. Карту за столом рисуют
+    и для поляны; модель структуры или лестница замыслов сами разобьют её на участки, если место того стоит."""
+    tags = set(tags)
+    outdoor = bool(tags & OUTDOOR_TAGS) and "underground" not in tags
+    kind, way = ("gap", "Расщелина") if "underground" in tags else ("path", "Тропа") if outdoor else ("door", "Вход")
+    return SpatialPlan(
+        environment="outdoor" if outdoor else "indoor",
+        scale="small",
+        parts=[SpatialPart(ref="main", name=name.strip()[:80] or "Место", outdoor=outdoor)],
+        approaches=[SpatialApproach(name=way, kind=kind)],
+    )
+
+
 class Holder(BaseModel):
     """То, что каркас обязал держать в одной части места: носитель зацепки или житель-NPC (``npc:<id>``)."""
 

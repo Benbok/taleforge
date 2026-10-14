@@ -173,6 +173,8 @@ def _spell_card(ev: Event, p: dict, dice: list[dict], hero_ids: set[str]) -> dic
     title = f"Заклинание: {p.get('spell')}"
     title += {"repeat_save": ": повторный спасбросок", "zone": ": ход в области"}.get(p.get("phase"), "")
     notes: list[str] = []
+    if p.get("created_qty") is not None:
+        notes.append(f"создано ягод: {p['created_qty']} — в инвентаре; действуют 24 часа")
     if p.get("zone"):
         who = ", ".join(p["zone"]["members"])
         notes.append(f"длящаяся область: спасбросок и урон в начале хода каждого, кто в ней: {who}")

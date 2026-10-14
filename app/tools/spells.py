@@ -101,6 +101,13 @@ class CastArgs(BaseModel):
     slot_level: int | None = Field(None, ge=1, le=9, description="круг ячейки, если игрок творит выше круга заклинания")
     ritual: bool = Field(False, description="ритуалом: без ячейки, на 10 минут дольше, только вне боя")
     weapon_id: str | None = Field(None, description="инвентарный id удерживаемой дубинки или посоха для Shillelagh")
+    berry_count: int = Field(
+        10,
+        ge=1,
+        le=10,
+        description="для Доброй ягоды: сколько создать, по умолчанию 10; "
+        "ягоды появляются в инвентаре заклинателя, употребление — use_item",
+    )
 
 
 @tool(
@@ -189,6 +196,7 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
         extra={"slot": {"kind": slot_kind, "level": slot}} if slot_kind else {},
         class_tags=_class_tags(w, ch),
         weapon_id=chosen_weapon,
+        berry_count=a.berry_count,
     )
 
 
@@ -216,12 +224,13 @@ async def resolve(
     pre_dice: list | None = None,
     before_record: Any = None,
     weapon_id: str | None = None,
+    berry_count: int = 10,
 ) -> dict:
     """Общее ядро: цели, дальность, бросок, урон, лечение, эффекты, концентрация и время сотворения."""
     w = ctx.world
     level = int(spell.get("level", 0))
     kind = rules.target_kind(spell)
-    ids = list(dict.fromkeys(targets or []))
+    ids = [act.id] if spell["id"] == "spell.goodberry" else list(dict.fromkeys(targets or []))
     if not ids and kind in ("self", "ally", "any"):
         ids = [act.id]
     if kind == "enemy" and not ids:
@@ -281,6 +290,22 @@ async def resolve(
         result["ritual"] = True
     dice: list = []
     inverse = list(inverse or [])
+    if spell["id"] == "spell.goodberry" and isinstance(act.obj, Character):
+        from app.tools.master.items import _add_to_inventory
+
+        expires_at = w.scene.game_time + 86400
+        inventory_id, item_inverse = await _add_to_inventory(
+            ctx, act.obj, "item.goodberry", None, berry_count, expires_at=expires_at
+        )
+        inverse.extend(item_inverse)
+        ctx.changed.add(act.id)
+        result.update(
+            created_qty=berry_count,
+            inventory_id=inventory_id,
+            expires_at=expires_at,
+            note="Ягоды в инвентаре заклинателя. Передача — pass_item; "
+            "съесть одну или накормить доступную цель — use_item. Само сотворение не лечит.",
+        )
     for t in tgts:
         if t.id != act.id or not isinstance(act.obj, Character):
             inverse.append(_snapshot(t))

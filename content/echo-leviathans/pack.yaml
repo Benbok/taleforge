@@ -76,9 +76,9 @@ theme:
     entity_lore: "#5a5f66"
   fonts:
     narration: "'Lora', Georgia, serif"
-    ui: "'IBM Plex Sans', system-ui, sans-serif"
-    heading: "'Lora', Georgia, serif"
-  font_css: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+    ui: "'Inter', system-ui, sans-serif"
+    heading: "'Inter', system-ui, sans-serif"
+  font_css: null
   labels:
     master_status.remembering: "Мастер поднимает хроники…"
     origin: "Происхождение"

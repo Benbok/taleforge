@@ -3,6 +3,10 @@
 # им пользуются через проверки. Импровизированное оружие — для декораций, которые герой берёт в руки (ТЗ, раздел 8.1).
 kind: item_template
 items:
+  - {id: item.goodberry, name: Добрая ягода, status: canon, doc: "SRD 5.1: Goodberry", tags: [food, spell, srd],
+     category: consumable, price: {cp: 0}, weight: 0, not_loot: true,
+     description: "Создана заклинанием. Одна ягода восстанавливает 1 хит и насыщает на сутки; теряет силу через 24 часа после сотворения.",
+     modifiers: [{op: resource, stat: hp, delta: 1}]}
   - {id: item.potion_of_healing, name: Зелье лечения, status: canon, doc: "SRD 5.1: Potion of Healing", tags: [potion, healing, srd],
      srd_ref: {type: item, name: Potion of Healing}, category: consumable, visual_key: item:potion, rarity: common, price: {gp: 50}, weight: 0.5,
      description: "Восстанавливает 2к4 + 2 хитов.", modifiers: [{op: resource, stat: hp, delta: "2d4+2"}]}

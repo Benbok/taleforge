@@ -8,11 +8,9 @@ const SKILL_RU = Object.fromEntries(SKILLS.map(([id, ru]) => [id, ru]));
 const ARMOR_RU: Record<string, string> = { light: "лёгкие", medium: "средние", heavy: "тяжёлые", shield: "щиты" };
 const WEAPON_RU: Record<string, string> = { simple: "простое", martial: "воинское" };
 const SIZE_RU: Record<string, string> = { small: "маленький", medium: "средний", large: "большой" };
-const HOVER_OPEN_MS = 350;
-const HOVER_CLOSE_MS = 180;
 const POP_WIDTH = 360;
 
-type Mode = "closed" | "hover" | "pinned";
+type Mode = "closed" | "pinned";
 
 interface ChoiceCardProps {
   name: string;
@@ -27,7 +25,7 @@ interface ChoiceCardProps {
 }
 
 /**
- * Карточка выбора с подробностями: мышью — при наведении, на телефоне и с клавиатуры — кнопкой «i».
+ * Карточка выбора с подробностями по нажатию существующей кнопки «i».
  * Подробности на телефоне открываются снизу листом, как разбор чисел в игре.
  */
 export function ChoiceCard({ name, selected, onPick, className, children, details, role = "radio" }: ChoiceCardProps) {
@@ -35,20 +33,11 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
   const [, setTick] = useState(0);
   const wrap = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
-  const timer = useRef<number | undefined>(undefined);
   const popId = useId();
 
-  const clear = () => window.clearTimeout(timer.current);
-  const later = (fn: () => void, ms: number) => {
-    clear();
-    timer.current = window.setTimeout(fn, ms);
-  };
   const close = useCallback(() => {
-    clear();
     setMode("closed");
   }, []);
-
-  useEffect(() => clear, []);
 
   useEffect(() => {
     if (mode === "closed") return;
@@ -70,18 +59,6 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
     };
   }, [mode, close]);
 
-  // Наведение — только там, где есть настоящая мышь; на сенсорном экране подробности открывает «i».
-  const canHover = () => window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? true;
-  const hoverIn = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse" || mode === "pinned" || !canHover()) return;
-    if (mode === "hover") return clear();
-    later(() => setMode("hover"), HOVER_OPEN_MS);
-  };
-  const hoverOut = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse" || mode === "pinned") return;
-    later(() => setMode("closed"), HOVER_CLOSE_MS);
-  };
-
   const open = mode !== "closed";
   const phone = typeof window !== "undefined" && window.innerWidth < 768;
   let style: React.CSSProperties | undefined;
@@ -93,7 +70,7 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
   }
 
   return (
-    <div ref={wrap} className="relative min-w-0" onPointerEnter={hoverIn} onPointerLeave={hoverOut}>
+    <div ref={wrap} className="relative min-w-0">
       <button type="button" role={role} aria-checked={selected} onClick={onPick} className={className}>
         {children}
       </button>
@@ -103,8 +80,8 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
         aria-expanded={open}
         aria-controls={open ? popId : undefined}
         title="Подробнее"
-        onClick={() => (mode === "pinned" ? close() : (clear(), setMode("pinned")))}
-        className={`absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border font-serif text-sm font-bold italic shadow-md backdrop-blur transition cursor-pointer ${
+        onClick={() => (mode === "pinned" ? close() : setMode("pinned"))}
+        className={`absolute right-2 top-2 z-20 flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full border font-serif text-base font-bold italic shadow-md transition cursor-pointer ${
           open
             ? "border-accent bg-accent text-on-accent"
             : "border-line bg-surface/85 text-muted hover:border-accent hover:text-accent"
@@ -119,8 +96,6 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
             id={popId}
             role="dialog"
             aria-label={`${name}: подробности`}
-            onPointerEnter={hoverIn}
-            onPointerLeave={hoverOut}
             className={`tf-pop fixed z-50 flex flex-col border border-line bg-surface shadow-2xl ${
               phone ? "inset-x-0 bottom-0 max-h-[80dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]" : "rounded-xl"
             }`}
@@ -131,7 +106,7 @@ export function ChoiceCard({ name, selected, onPick, className, children, detail
               {mode === "pinned" && (
                 <button
                   type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer -mr-1"
+                  className="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer -mr-1"
                   onClick={close}
                   aria-label="Закрыть"
                 >

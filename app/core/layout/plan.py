@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from app.core.layout import store
-from app.core.layout.spatial import MAX_HOLDERS, Holder, Mandate, SpatialPlan
+from app.core.layout.spatial import MAX_HOLDERS, Holder, Mandate, SpatialPlan, default_spatial
 from app.db.models import Entity, WorldGenerationState
 
 
@@ -44,12 +44,22 @@ async def mandate_for(session, campaign_id: str, plan: dict, sketch: dict, root:
     )
 
 
+def with_spatial(world, sketch: dict[str, Any], root: Entity) -> dict[str, Any]:
+    """Набросок с замыслом пространства: свой из каркаса или простой по шаблону — комплексом становится каждое место."""
+    if isinstance(sketch.get("spatial"), dict):
+        return sketch
+    rec = world.catalog.find(str(sketch.get("template_id") or root.template_id or ""), "location_template")
+    tags = (rec.data.get("tags") if rec is not None else None) or []
+    return {**sketch, "spatial": default_spatial(root.name, tags).model_dump(mode="json")}
+
+
 async def reserve_from_plan(ctx, root: Entity, sketch: dict[str, Any], inverse: list) -> WorldGenerationState | None:
-    """Резерв структуры из наброска; None — у наброска нет пространства или место не подходит."""
+    """Резерв структуры из наброска; None — место не подходит (готовое приключение, уже устроено)."""
     from app.core.world_generation import storage
 
-    if not isinstance(sketch.get("spatial"), dict) or not eligible(ctx.world, root):
+    if not eligible(ctx.world, root):
         return None
+    sketch = with_spatial(ctx.world, sketch, root)
     row = await storage.find(ctx.session, ctx.campaign.id, root.id, "location_layout")
     if row is not None:
         return row

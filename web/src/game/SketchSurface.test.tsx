@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { SketchSurface } from "./SketchSurface";
 import type { Sketch } from "./map";
 
@@ -11,6 +11,15 @@ const sketch: Sketch = {
 };
 
 describe("SVG-поверхность эскиза", () => {
+  it("opens passage actions with Enter and Space", () => {
+    const onPassage = vi.fn();
+    const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="keyboard" onPassage={onPassage} /></svg>);
+    const passage = container.querySelector('[role="button"]')!;
+    fireEvent.keyDown(passage, { key: "Enter" });
+    fireEvent.keyDown(passage, { key: " " });
+    expect(onPassage).toHaveBeenCalledTimes(2);
+    expect(onPassage).toHaveBeenLastCalledWith(sketch.exits[0]);
+  });
   it("clips floor, draws terrain and keeps continuation open", () => {
     const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="one" /></svg>);
     const svg = container.querySelector("svg")!;

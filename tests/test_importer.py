@@ -34,7 +34,7 @@ def test_import_base_pack_once(settings):
         return n, pack, rec
 
     n, pack, rec = run(settings, check)
-    assert n == 6 and isinstance(pack, ContentPack) and pack.import_report["counts"]["item_template"] == 79
+    assert n == 6 and isinstance(pack, ContentPack) and pack.import_report["counts"]["item_template"] == 80
     assert rec.data["levels"]["6"][0]["target"] == "alive"
 
 

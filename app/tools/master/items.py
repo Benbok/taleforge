@@ -50,6 +50,8 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}: рука нащупывает пустоту")
+    if it.expires_at is not None and ctx.world.scene.game_time >= it.expires_at:
+        raise ToolError(f"«{ctx.world.item_name(it)}» потеряла силу: срок действия истёк")
     if it.item_template_id == FOUND_ITEM:
         raise ToolError(f"«{ctx.world.item_name(it)}» — обычная вещь без механики: её применение реши проверкой")
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
@@ -62,7 +64,30 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         raise ToolError(f"у предмета {rec.name} нет механики применения")
     tgt = ctx.world.actor(a.target_id or ch.id)
     _alive(tgt, "Цель")
-    inv = [snapshot(tgt), {"table": "inventory", "id": it.id, "field": "qty", "before": it.qty}]
+    if it.item_template_id == "item.goodberry" and tgt.id != ch.id:
+        if (
+            ctx.world.place_of(ch) != ctx.world.actor_place(tgt.id)
+            or ctx.world.distance_ft(ctx.world.actor(ch.id), tgt) > 5
+            or grid.wall_between(ctx.world, ch.id, tgt.id)
+        ):
+            raise ToolError("чтобы дать ягоду, сначала подойдите к получателю вплотную")
+    inv = [
+        snapshot(tgt),
+        {
+            "table": "inventory",
+            "id": it.id,
+            "field": "qty",
+            "before": it.qty,
+            "row": {
+                "character_id": ch.id,
+                "item_template_id": it.item_template_id,
+                "display_name": it.display_name,
+                "equipped": it.equipped,
+                "world_entity_id": it.world_entity_id,
+                "expires_at": it.expires_at,
+            },
+        },
+    ]
     inv += economy.charge(ctx, ch.id, "use_object")
     out = await fx.run_ops(ctx, rec.id, ops, tgt, {})
     consumed = rec.data.get("category") == "consumable" or bool(rec.data.get("consumable"))
@@ -84,6 +109,7 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         "target": tgt.name,
         **out,
         "consumed": consumed,
+        "remaining_qty": max(0, it.qty),
         "target_status": ctx.world.actor(tgt.id).status(),
     }
     await ctx.record("use_item", actor_id=ch.id, target_id=tgt.id, payload=result, dice=dice, inverse=inv)
@@ -106,6 +132,10 @@ class GiveItemArgs(BaseModel):
     ids={"character_id": "characters"},
 )
 async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
+    if a.item_template_id == "item.goodberry":
+        raise ToolError(
+            "ягоды создаёт cast_spell и уже кладёт в инвентарь; повторная выдача через give_item недопустима"
+        )
     ch = _character(ctx, a.character_id)
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
     if rec.pack_id.startswith("campaign.") and a.qty > 10:
@@ -297,6 +327,7 @@ async def _add_to_inventory(
     qty: int,
     *,
     world_entity_id: str | None = None,
+    expires_at: int | None = None,
 ) -> tuple[str, list[dict]]:
     """Кладёт предметы в инвентарь: такой же неснаряжённый предмет складывается в стопку. Строка инвентаря живёт в
     БД, поэтому подобранное остаётся у героя между ходами и сессиями. Возвращает id строки и обратную дельту."""
@@ -311,6 +342,7 @@ async def _add_to_inventory(
             and i.world_entity_id is None
             and i.item_template_id == template_id
             and i.display_name == display_name
+            and i.expires_at == expires_at
             and not i.equipped
         ),
         None,
@@ -326,6 +358,7 @@ async def _add_to_inventory(
         display_name=display_name,
         qty=qty,
         world_entity_id=world_entity_id,
+        expires_at=expires_at,
     )
     ctx.session.add(row)
     await ctx.session.flush()
@@ -351,6 +384,7 @@ async def _remove_from_inventory(ctx: ToolContext, ch: Character, it: InventoryI
                 "display_name": it.display_name,
                 "equipped": it.equipped,
                 "world_entity_id": it.world_entity_id,
+                "expires_at": it.expires_at,
             },
         }
     ]
@@ -524,6 +558,7 @@ async def _put_in_scene(
     *,
     container_id: str | None = None,
     force_new: bool = False,
+    expires_at: int | None = None,
     force_unique: bool = False,
     generation_ref: str | None = None,
 ) -> tuple[Entity, list[dict]]:
@@ -542,7 +577,12 @@ async def _put_in_scene(
     for en in [] if force_new or container_id is not None else ctx.world.in_scene_entities(place):
         st = en.state or {}
         here = grid.pos_of(ctx.world, en.id).cell == cell if cell is not None else en.zone == zone and "cell" not in st
-        same = en.template_id == template_id and st.get("display_name") == display_name and here
+        same = (
+            en.template_id == template_id
+            and st.get("display_name") == display_name
+            and st.get("expires_at") == expires_at
+            and here
+        )
         if (
             not unique
             and is_scene_item(en)
@@ -565,6 +605,7 @@ async def _put_in_scene(
             "item": True,
             "qty": qty,
             "display_name": display_name,
+            **({"expires_at": expires_at} if expires_at is not None else {}),
             **({"visual_key": visual_key} if visual_key is not None else {}),
             **(
                 {
@@ -698,7 +739,9 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     else:
         if owner is None:
             inverse += _approach(ctx, ch, en, walk=True)
-        inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), qty)
+        inv_id, inv = await _add_to_inventory(
+            ctx, ch, en.template_id, st.get("display_name"), qty, expires_at=st.get("expires_at")
+        )
     inverse += inv
     if unique or qty == have:
         inverse += detach_feature(ctx, en.id, room_id)
@@ -764,7 +807,9 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
             grid.set_cell(ctx.world, en.id, where)
     else:
         inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-        en, inv = await _put_in_scene(ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where)
+        en, inv = await _put_in_scene(
+            ctx, template, display, a.qty, "melee", place=ctx.world.place_of(ch), cell=where, expires_at=it.expires_at
+        )
         inverse += inv
     await observe(ctx, en.location_id, inverse, only=[en.id])
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
@@ -822,7 +867,7 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
         inv = []
     else:
         inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
-        inv_id, inv = await _add_to_inventory(ctx, to, template, display, a.qty)
+        inv_id, inv = await _add_to_inventory(ctx, to, template, display, a.qty, expires_at=it.expires_at)
     result = {"from": ch.name, "to": to.name, "item": name, "qty": a.qty, "inventory_id": inv_id}
     await ctx.record("pass_item", actor_id=ch.id, target_id=to.id, payload=result, inverse=inverse + inv)
     ctx.outbox.append(
@@ -879,6 +924,7 @@ async def _pass_to_npc(ctx: ToolContext, ch: Character, a: PassItemArgs) -> dict
             npc.zone,
             place=npc.location_id,
             container_id=npc.id,
+            expires_at=it.expires_at,
         )
         inverse += inv
     # Giving an object proves this hero knows it, without revealing other NPC possessions.

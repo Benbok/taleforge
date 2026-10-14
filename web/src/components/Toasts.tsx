@@ -23,7 +23,7 @@ export default function Toasts() {
         >
           <span
             className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-              t.tone === "error" ? "bg-bad text-white" : t.tone === "ok" ? "bg-ok text-white" : "bg-accent text-on-accent"
+              t.tone === "error" ? "bg-bad/15 text-bad" : t.tone === "ok" ? "bg-ok/15 text-ok" : "bg-accent text-on-accent"
             }`}
             aria-hidden
           >

@@ -8,6 +8,103 @@ from app.tools import rest as rest_tools
 from tests.game import import_base, ok, party
 from tests.test_tools import call, play
 
+
+def test_goodberry_creates_counted_batch_and_consumes_one(wizard_game):
+    settings, cid, druid, _, _ = wizard_game
+
+    async def scenario(ctx):
+        ch = ctx.world.characters[druid]
+        ch.sheet = {**ch.sheet, "class_id": "class.druid", "spells": [], "prepared": ["spell.goodberry"]}
+        ctx.world.invalidate(druid)
+        cast = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry"}, key="berries")
+        assert cast["ok"], cast
+        assert cast["result"]["created_qty"] == 10
+        inventory_id = cast["result"]["inventory_id"]
+        item = next(i for i in ctx.world.inventory[druid] if i.id == inventory_id)
+        assert item.qty == 10
+        from app.core.rolls import card
+
+        event = next(event for event in ctx.events if event.tool == "cast_spell")
+        assert any("создано ягод: 10" in note for note in card(event, {druid})["notes"])
+        repeated = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry"}, key="berries")
+        assert repeated["ok"] and item.qty == 10
+        ch.resources = {**ch.resources, "hp": 1}
+        ctx.world.invalidate(druid)
+        used = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id})
+        assert used["ok"], used
+        assert item.qty == 9 and ctx.world.actor(druid).hp.current == 2
+        ctx.world.scene.game_time += 86400
+        expired = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id})
+        assert not expired["ok"] and "силу" in expired["error"]
+        assert next(i for i in ctx.world.inventory[druid] if i.id == inventory_id).qty == 9
+
+    play(settings, cid, [], scenario)
+
+
+def test_goodberry_batches_keep_expiry_when_passed_and_dropped(wizard_game):
+    settings, cid, druid, _, _ = wizard_game
+
+    async def scenario(ctx):
+        ch = ctx.world.characters[druid]
+        ch.sheet = {**ch.sheet, "class_id": "class.druid", "spells": [], "prepared": ["spell.goodberry"]}
+        ctx.world.invalidate(druid)
+        first = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry"})
+        assert first["ok"], first
+        ctx.world.scene.game_time += 60
+        second = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry", "berry_count": 3})
+        assert second["ok"] and second["result"]["inventory_id"] != first["result"]["inventory_id"]
+        other = next(character for character in ctx.world.characters.values() if character.id != druid)
+        passed = await call(
+            ctx,
+            "pass_item",
+            {
+                "character_id": druid,
+                "inventory_id": first["result"]["inventory_id"],
+                "qty": 1,
+                "to_character_id": other.id,
+            },
+        )
+        assert passed["ok"], passed
+        row = next(item for item in ctx.world.inventory[other.id] if item.id == passed["result"]["inventory_id"])
+        assert row.expires_at == first["result"]["expires_at"]
+        dropped = await call(ctx, "drop_item", {"character_id": other.id, "inventory_id": row.id})
+        assert dropped["ok"], dropped
+        picked = await call(
+            ctx, "pick_up_item", {"character_id": other.id, "entity_id": dropped["result"]["entity_id"]}
+        )
+        assert picked["ok"], picked
+        row = next(item for item in ctx.world.inventory[other.id] if item.id == picked["result"]["inventory_id"])
+        assert row.expires_at == first["result"]["expires_at"]
+
+    play(settings, cid, [], scenario)
+
+
+def test_goodberry_cast_does_not_heal_npc_and_feeding_requires_reach(wizard_game):
+    settings, cid, druid, _, _ = wizard_game
+
+    async def scenario(ctx):
+        ch = ctx.world.characters[druid]
+        ch.sheet = {**ch.sheet, "class_id": "class.druid", "spells": [], "prepared": ["spell.goodberry"]}
+        ctx.world.invalidate(druid)
+        spawned = await call(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Корвин"})
+        npc = spawned["result"]["spawned"][0]["id"]
+        entity = ctx.world.entities[npc]
+        entity.state = {**entity.state, "hp": 1}
+        ctx.world.invalidate(npc)
+        cast = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry", "target_ids": [npc]})
+        assert cast["ok"] and ctx.world.actor(npc).hp.current == 1
+        inventory_id = cast["result"]["inventory_id"]
+        too_far = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id, "target_id": npc})
+        assert not too_far["ok"] and "вплотную" in too_far["error"]
+        moved = await call(ctx, "update_entity", {"entity_id": npc, "zone": "melee"})
+        assert moved["ok"], moved
+        used = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id, "target_id": npc})
+        assert used["ok"] and used["result"]["remaining_qty"] == 9
+        assert ctx.world.actor(npc).hp.current == 2
+
+    play(settings, cid, [], scenario)
+
+
 WIZARD = {
     "name": "Ильва",
     "class_id": "class.wizard",

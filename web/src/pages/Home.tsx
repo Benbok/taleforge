@@ -11,7 +11,7 @@ import Avatar, { hue, initials } from "../components/Avatar";
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
 import type { WorldSummary } from "../lib/worlds";
-import { actionOf, when } from "../lib/cards";
+import { actionOf, when, STATUS_TEXT, statusOf } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import { useSession } from "../stores/session";
 
@@ -75,7 +75,7 @@ export default function Home() {
         )}
       </Header>
 
-      <div key={activeTab} className="tf-tab-content flex flex-1 flex-col">
+      <div key={activeTab} className="tf-tab-content flex flex-1 flex-col pb-20 md:pb-0">
         {activeTab === "tables" && (
           <>
             {/* СЕКЦИЯ HERO: «ВАХТА ПРОДОЛЖАЕТСЯ» */}
@@ -96,6 +96,7 @@ export default function Home() {
                   <div className="flex items-center gap-2 text-sm font-ui">
                     <button
                       type="button"
+                      aria-pressed={filter === "all"}
                       onClick={() => setFilter("all")}
                       className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
                         filter === "all"
@@ -108,6 +109,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setFilter("master")}
+                      aria-pressed={filter === "master"}
                       className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
                         filter === "master"
                           ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
@@ -119,6 +121,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => setFilter("player")}
+                      aria-pressed={filter === "player"}
                       className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
                         filter === "player"
                           ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
@@ -143,6 +146,16 @@ export default function Home() {
               )}
 
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
+                {cardsQuery.isSuccess && filteredList.length === 0 && (
+                  <div className="card border-dashed border-line bg-surface p-6 sm:col-span-2">
+                    <h3 className="font-heading text-2xl font-semibold text-ink">{list.length ? "В этом разделе пока нет столов" : "Ваше первое приключение впереди"}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                      {list.length ? "Попробуйте показать все кампании или выберите другую роль." : isAdmin ? "Создайте кампанию и пригласите отряд. Героя можно собрать заранее в библиотеке." : "Чтобы присоединиться к кампании, попросите ссылку-приглашение у ведущего. Пока можно собрать своего героя."}
+                    </p>
+                    {list.length ? <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={() => setFilter("all")}>Показать все кампании</button>
+                      : <Link className="btn btn-primary mt-4 min-h-11" to={isAdmin ? "/new" : "/heroes/new"}>{isAdmin ? "Создать кампанию" : "Создать героя"}</Link>}
+                  </div>
+                )}
                 {filteredList.map((c) => (
                   <CampaignCardView key={c.id} c={c} />
                 ))}
@@ -194,6 +207,7 @@ export default function Home() {
                 </div>
 
                 <div className="card divide-y divide-line-soft overflow-hidden bg-surface">
+                  {heroesQuery.isSuccess && heroes.length === 0 && <div className="px-4 py-4 text-sm leading-relaxed text-muted">В библиотеке пока нет героев. Создайте персонажа, чтобы позже взять его в кампанию.</div>}
                   {heroes.slice(0, 4).map((h) => (
                     <Link
                       key={h.id}
@@ -368,7 +382,7 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
   const isEcho =
     (campaign.world ?? "").toLowerCase().includes("эхо") ||
     (campaign.world ?? "").toLowerCase().includes("левиафан");
-  const worldName = (campaign.world ?? "Эхо Левиафанов").toUpperCase();
+  const worldName = campaign.world ?? "Базовые правила 5e";
 
   const heroDesc = campaign.hero
     ? `вы играете за ${campaign.hero.name}${
@@ -380,7 +394,7 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
 
   return (
     <section
-      className={`relative overflow-hidden border-b border-line px-4 py-12 md:px-12 lg:px-20 min-h-[460px] flex items-center transition-colors duration-200 ${
+      className={`relative overflow-hidden border-b border-line px-4 py-8 md:py-12 md:px-12 lg:px-20 md:min-h-[460px] flex items-center transition-colors duration-200 ${
         isLight ? "bg-[#f5f0e6]" : "bg-[#0d0f12]"
       }`}
     >
@@ -401,8 +415,11 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
       />
 
       <div className="relative z-10 flex max-w-2xl flex-col gap-4">
-        <div className="font-mono text-xs tracking-[0.18em] text-patina-hi">
-          {isLive ? "ВАХТА ПРОДОЛЖАЕТСЯ" : "СТОЛ ГОТОВ К ИГРЕ"} · {worldName}
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+          <span className={`rounded-full border px-3 py-1 font-medium ${isLive ? "border-patina/40 bg-patina/10 text-patina-hi" : "border-line bg-surface/80 text-ink-2"}`}>
+            {STATUS_TEXT[statusOf(campaign)]}
+          </span>
+          <span>{worldName}</span>
         </div>
 
         <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.05] tracking-tight text-ink">
@@ -413,15 +430,15 @@ function HeroSection({ campaign }: { campaign: CampaignCard }) {
           <Recap
             text={campaign.recap}
             clamp="line-clamp-4"
-            className="font-narration text-xl sm:text-2xl italic leading-relaxed text-ink-2 max-w-xl"
+            className="font-narration text-xl sm:text-2xl leading-relaxed text-ink-2 max-w-xl"
           />
         ) : (
-          <p className="font-narration text-lg italic text-muted">
+          <p className="font-narration text-lg text-muted">
             Герои готовятся к выходу в туман.
           </p>
         )}
 
-        <div className="text-xs sm:text-sm text-muted font-ui">
+        <div className="text-sm text-muted font-ui">
           {lastDate ? `Прошлая сессия ${lastDate} · ` : ""}
           {heroDesc}
         </div>
@@ -502,7 +519,7 @@ function EmptyHeroSection({ isAdmin }: { isAdmin: boolean }) {
         <h1 className="font-heading text-4xl font-semibold sm:text-5xl text-ink">
           Добро пожаловать в Taleforge
         </h1>
-        <p className="font-narration text-lg italic text-muted max-w-md">
+        <p className="font-narration text-lg text-muted max-w-md">
           «Каждая туша хранит память, а каждый кокон ждёт своего пробуждения».
         </p>
         {isAdmin ? (
@@ -545,7 +562,7 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
           <p className="mt-1 text-sm">
             Соберите первого персонажа, настроив его происхождение, класс и снаряжение.
           </p>
-          <Link to="/heroes/new" className="btn btn-outline-copper mt-4 inline-flex">
+          <Link to="/heroes/new" className="btn btn-primary mt-4 min-h-11 inline-flex">
             Создать первого героя
           </Link>
         </div>
@@ -698,7 +715,7 @@ function WorldsSection({ isAdmin }: { isAdmin: boolean }) {
                     {w.name}
                   </h3>
                   <p
-                    className={`font-narration text-base italic leading-relaxed ${
+                    className={`font-narration text-base leading-relaxed ${
                       isPrimary ? "text-ink-2" : "text-muted"
                     }`}
                   >

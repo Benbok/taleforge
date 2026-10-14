@@ -10,55 +10,55 @@ interface ClassArtMeta {
 const CLASS_ART_MAP: Record<string, ClassArtMeta> = {
   "class.diagnost": {
     img: "/assets/classes/diagnost.png",
-    badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.barbarian": {
     img: "/assets/classes/barbarian.png",
-    badgeClass: "bg-amber-600/15 text-amber-300 border-amber-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.bard": {
     img: "/assets/classes/bard.png",
-    badgeClass: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.cleric": {
     img: "/assets/classes/cleric.png",
-    badgeClass: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.druid": {
     img: "/assets/classes/druid.png",
-    badgeClass: "bg-emerald-600/15 text-emerald-300 border-emerald-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.fighter": {
     img: "/assets/classes/fighter.png",
-    badgeClass: "bg-orange-600/15 text-orange-300 border-orange-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.monk": {
     img: "/assets/classes/monk.png",
-    badgeClass: "bg-cyan-600/15 text-cyan-300 border-cyan-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.paladin": {
     img: "/assets/classes/paladin.png",
-    badgeClass: "bg-blue-600/15 text-blue-300 border-blue-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.ranger": {
     img: "/assets/classes/ranger.png",
-    badgeClass: "bg-lime-600/15 text-lime-300 border-lime-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.rogue": {
     img: "/assets/classes/rogue.png",
-    badgeClass: "bg-stone-500/20 text-stone-300 border-stone-500/40",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.sorcerer": {
     img: "/assets/classes/sorcerer.png",
-    badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.warlock": {
     img: "/assets/classes/warlock.png",
-    badgeClass: "bg-purple-600/15 text-purple-300 border-purple-600/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
   "class.wizard": {
     img: "/assets/classes/wizard.png",
-    badgeClass: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+    badgeClass: "bg-accent/10 text-accent border-accent/30",
   },
 };
 
@@ -131,20 +131,20 @@ export default function ClassChoices({ items, value, onPick, weapons }: ClassCho
                 </div>
 
                 {c.epithet && (
-                  <span className="font-serif italic text-xs text-muted/90 mt-0.5 tracking-wide">
+                  <span className="font-ui text-xs text-muted mt-0.5 tracking-wide">
                     {c.epithet}
                   </span>
                 )}
 
                 {(c.summary || c.description) && (
-                  <p className="mt-1.5 text-xs text-ink/80 line-clamp-3 leading-relaxed">
+                  <p className="mt-1.5 text-xs text-ink-2 line-clamp-3 leading-relaxed">
                     {c.summary || c.description}
                   </p>
                 )}
               </div>
 
               {/* Нижняя строчка: бейдж роли и механика (кость хитов + спасброски) */}
-              <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-line/40">
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-2 rounded-md border border-line bg-surface/95 px-2 py-2">
                 {c.badge ? (
                   <span
                     className={`shrink-0 whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${art?.badgeClass ?? "bg-accent/10 text-accent border-accent/30"}`}
@@ -157,7 +157,7 @@ export default function ClassChoices({ items, value, onPick, weapons }: ClassCho
                   </span>
                 )}
 
-                <div className="flex items-center gap-2 font-mono text-[10.5px] text-muted-hi font-medium tracking-tight truncate">
+                <div className="flex items-center gap-2 font-mono text-[10.5px] text-muted font-medium tracking-tight truncate">
                   {c.hit_die && (
                     <span className="px-1.5 py-0.5 rounded bg-raised/80 border border-line/60 text-ink/90 font-semibold">
                       d{c.hit_die}

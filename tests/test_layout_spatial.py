@@ -27,7 +27,7 @@ def _check(p):
     return plot.check(p, length="short", catalog=FakeCatalog(), excluded=[])
 
 
-def test_plan_without_spatial_still_checks():
+def test_plan_without_spatial_still_checks():  # старый каркас: простой план места построит сервер
     p, errors = _check(good_plan())
     assert errors == [] and all("spatial" not in x for x in p["locations"])
 
@@ -62,9 +62,9 @@ def test_spatial_errors_return_to_architect(mutate, text):
     assert any(e.startswith("локация loc_light: пространство") and text in e for e in errors), errors
 
 
-def test_tool_spec_spatial_is_optional_and_revision_keeps_it():
+def test_tool_spec_asks_spatial_for_every_place_and_revision_keeps_it():
     loc = plot.tool_spec()["function"]["parameters"]["properties"]["locations"]["items"]
-    assert "spatial" in loc["properties"] and "spatial" not in loc["required"]
+    assert "spatial" in loc["properties"] and "spatial" in loc["required"]
     rev_loc = plot.revision_spec()["function"]["parameters"]["properties"]["locations"]["items"]
     assert "spatial" in rev_loc["properties"]
     p, _ = _check(good_plan())
