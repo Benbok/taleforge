@@ -707,6 +707,8 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
     if source_id is not None and (not isinstance(source_id, str) or not 0 < len(source_id) <= 64):
         await answer({"ok": False, "error": "source_id — строка"})
         return
+    turn_message = None
+    turn_names = None
     try:
         async with app.state.sessionmaker() as session:
             viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
@@ -724,6 +726,33 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
                 ref,
                 expected_source_id=source_id,
             )
+            if out.get("moved"):
+                try:
+                    async with app.state.sessionmaker() as session:
+                        viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+                        hero = await viewer_hero(session, viewer)
+                        game = await chat.active_session(session, conn.campaign_id)
+                        if hero is not None and game is not None:
+                            turn_message = await chat.post_message(
+                                session,
+                                viewer,
+                                "action",
+                                f"Я уже прошёл через «{out['passage']}» и оказался в «{out['area']}». Осматриваюсь.",
+                                app.state.settings.message_max_len,
+                            )
+                            turn_message.intent = {"actions": []}
+                            turn_message.data = {
+                                **(turn_message.data or {}),
+                                "map_traverse": {
+                                    "event_id": out.get("event_id"),
+                                    "area_id": out["area_id"],
+                                    "passage": out["passage"],
+                                },
+                            }
+                            turn_names = await _names(session, viewer.campaign)
+                            await session.commit()
+                except Exception:  # переход уже зафиксирован; сбой запуска мастера не должен отменять его задним числом
+                    log.exception("ход мастера после перехода по карте не запущен в кампании %s", conn.campaign_id)
     except NotFound as e:
         out, published = {"ok": False, "error": str(e)}, []
     except Exception:  # noqa: BLE001 — игрок получает ответ и при сбое чтения или первой транзакции
@@ -738,6 +767,9 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
             app.state.master.signal_recovery()  # подготовка вперёд не ждёт 15 с
             await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
             await _publish_turn(app, published[-1][0])
+        if turn_message is not None:
+            await publish_message(app.state.bus, turn_message, turn_names)
+            app.state.master.notify(conn.campaign_id)
 
 
 async def _publish_turn(app, ctx) -> None:

@@ -7,13 +7,18 @@ from app.core import positions as grid
 from app.core import steps
 from app.core.layout import transit
 from app.core.world_generation import storage
-from app.db.models import Character, Entity, Event
+from app.db.models import Character, Entity, Event, Message
 from tests.game import run
 from tests.test_layout_passages import _built
 from tests.test_map import _ok, _play
 from tests.test_master import rows
 from tests.test_world_generation import _fast_retry, _prepare  # noqa: F401 — фикстура
 from tests.test_ws import connect, next_of
+
+
+@pytest.fixture(autouse=True)
+def _do_not_run_master_for_unrelated_transit_tests(client, monkeypatch):
+    monkeypatch.setattr(client.app.state.master, "notify", lambda _campaign_id: None)
 
 
 def _go(client, head, cid, ref):
@@ -36,6 +41,26 @@ def test_traverse_from_outside_prepares_then_moves(client, admin, settings):
     assert len(rows(settings, Event, Event.tool == "traverse_passage")) == 1
     links = run(settings, lambda s: s.get(Entity, village)).state.get("links") or []
     assert ids["road"] not in {x["to"] for x in links}
+
+
+def test_successful_map_traverse_creates_master_turn_input(client, admin, settings, monkeypatch):
+    cid, heads, _hid, _village, _root, ids = _built(client, admin, settings)
+    notified = []
+    monkeypatch.setattr(client.app.state.master, "notify", notified.append)
+
+    out = _go(client, heads[0], cid, "in_road_w")
+
+    pending = rows(
+        settings,
+        Message,
+        Message.campaign_id == cid,
+        Message.kind == "action",
+        Message.turn_id.is_(None),
+    )
+    assert out["moved"] and out["area_id"] == ids["road"]
+    assert len(pending) == 1
+    assert pending[0].data["map_traverse"]["area_id"] == ids["road"]
+    assert notified == [cid]
 
 
 def test_open_field_keeps_the_lane_both_ways(client, admin, settings):
