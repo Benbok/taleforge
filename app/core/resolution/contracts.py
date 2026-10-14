@@ -52,6 +52,11 @@ class ActionRef(Contract):
     part: int = Field(ge=0)
 
 
+class ActionDependency(Contract):
+    part: int = Field(ge=0)
+    requires: Literal["applied", "success"]
+
+
 class FailureInfo(Contract):
     code: str
     category: FailureCategory
@@ -65,6 +70,13 @@ class ResolutionResult(Contract):
     event_ids: list[str] = Field(default_factory=list)
     completed_parts: list[int] = Field(default_factory=list)
     failure: FailureInfo | None = None
+
+
+class ActionProgress(Contract):
+    status: Literal["pending", "completed", "denied", "blocked", "unhandled"] = "pending"
+    reason_code: str | None = None
+    result: ResolutionResult | None = None
+    blocked_by: list[int] = Field(default_factory=list)
 
 
 def normalize_result(raw: dict[str, Any], *, attempt_id: str) -> ResolutionResult:
