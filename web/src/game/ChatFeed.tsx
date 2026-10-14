@@ -9,13 +9,9 @@ import { useSession } from "../stores/session";
 import MessageView, { type Who } from "./MessageView";
 import ChronicleDivider from "./ChronicleDivider";
 import { chronicleEntries } from "./chronicle";
+import { STAGES } from "./masterStatus";
 
-export const STAGES: Record<string, string> = {
-  listening: "Мастер слушает…",
-  remembering: "Мастер вспоминает…",
-  rolling: "Мастер бросает кубики…",
-  describing: "Мастер описывает…",
-};
+export { STAGES } from "./masterStatus";
 
 /** Лента: новые сообщения не сдвигают экран, если игрок читает старое, — вместо этого кнопка «Новые ↓». */
 export default function ChatFeed({ campaignId }: { campaignId: string }) {
@@ -79,13 +75,13 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line/60 bg-surface/50 px-4 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line/60 bg-surface/50 px-3 py-2 sm:px-4 text-xs">
         <button
           type="button"
           role="checkbox"
           aria-checked={onlyStory}
           onClick={() => setOnlyStory(!onlyStory)}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
+          className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
             onlyStory
               ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
               : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
@@ -104,7 +100,7 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
             role="checkbox"
             aria-checked={hideOoc}
             onClick={() => setHideOoc(!hideOoc)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer select-none ${
               hideOoc
                 ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
                 : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
@@ -119,7 +115,7 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
           </button>
         )}
       </div>
-      <div ref={box} onScroll={onScroll} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4" aria-live="polite">
+      <div ref={box} onScroll={onScroll} className="tf-story-feed flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-5 sm:px-6" aria-live="polite">
         {shown.length === 0 && <p className="m-auto text-muted">Здесь появится история. Мастер начнёт, когда стартует сессия.</p>}
         {shown.map(({ message, divider }) => (
           <div key={message.id} className="flex flex-col gap-2">
@@ -133,7 +129,7 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
           </div>
         ))}
         {pending.map((p) => (
-          <div key={p.clientId} className="ml-auto max-w-[70ch] rounded-lg bg-raised px-3 py-2 opacity-70">
+          <div key={p.clientId} className="ml-auto max-w-[65ch] rounded-lg bg-raised px-3 py-2">
             <p className="flex items-center gap-2 text-xs text-muted">
               <Spinner />{" "}
               {p.voice ? "голосовое · расшифровываю…" : now - p.at > 4000 ? "мастер разбирает реплику…" : "отправляется"}

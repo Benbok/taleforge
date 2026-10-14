@@ -41,7 +41,24 @@ class Entry:
 
 class Catalog:
     def __init__(self, entries: dict[str, Entry], base_entries: list[Entry] = ()):
-        self._all = entries
+        self._all = dict(entries)
+        # Campaigns pin older content versions. The engine-created consumable
+        # must still resolve without rewriting their content chains.
+        if "spell.goodberry" in entries and "item.goodberry" not in entries:
+            self._all["item.goodberry"] = Entry(
+                "item.goodberry",
+                "item_template",
+                "canon",
+                entries["spell.goodberry"].pack_id,
+                {
+                    "name": "Добрая ягода",
+                    "category": "consumable",
+                    "not_loot": True,
+                    "description": "Создана заклинанием: восстанавливает 1 хит, насыщает на сутки; "
+                    "теряет силу через 24 часа.",
+                    "modifiers": [{"op": "resource", "stat": "hp", "delta": 1}],
+                },
+            )
         # srd_ref (тип, имя) → запись базового пакета: запись мира наследует от неё числа. Индекс строится
         # до переопределений: класс мира с тем же id, что у SRD, берёт таблицу уровней из записи SRD.
         self._srd: dict[tuple[str, str], Entry] = {}

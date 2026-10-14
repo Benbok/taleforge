@@ -19,7 +19,7 @@ export default function LiveSheet({
 
   return (
     <section
-      className="card sticky top-24 flex flex-col gap-5 p-5 border border-line bg-surface shadow-xl"
+      className="card flex flex-col gap-5 p-5 border border-line bg-surface shadow-xl"
       aria-label="Лист героя"
       aria-busy={loading}
     >
@@ -198,10 +198,10 @@ export default function LiveSheet({
       {/* Remaining Steps / Status */}
       {preview && preview.errors.length > 0 && (
         <div className="rounded-[10px] border border-warn/40 bg-warn/10 p-3">
-          <h3 className="font-mono text-[11px] font-bold text-warn uppercase tracking-wider mb-1.5">
+          <h3 className="font-mono text-xs font-bold text-warn uppercase tracking-wider mb-1.5">
             Осталось заполнить:
           </h3>
-          <ul className="list-disc pl-4 text-xs text-warn space-y-1">
+          <ul className="list-disc pl-4 text-sm leading-relaxed text-ink-2 space-y-1">
             {preview.errors.map((e) => (
               <li key={e}>{e}</li>
             ))}

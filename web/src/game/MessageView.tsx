@@ -39,7 +39,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "roll" && m.data) return <RollCardView card={m.data} />;
   if (m.kind === "narration" && !m.whisper) {
     return (
-      <div className={`tf-pop max-w-[70ch] whitespace-pre-line font-narration text-[18px] leading-relaxed ${m.scope === "party" ? "tf-narration-party" : ""}`}>
+      <div className={`tf-pop max-w-[65ch] whitespace-pre-line font-narration text-[20px] leading-[1.65] sm:text-[22px] ${m.scope === "party" ? "tf-narration-party" : ""}`}>
         {(m.data?.voice || m.data?.voice_parts) && (
           <VoiceClip clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])} expected={m.data.voice_parts} autoPlay={m.fresh} />
         )}
@@ -89,7 +89,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {ai && <span title="Реплику написал ИИ"> · ИИ</span>}
         </p>
         {m.data?.voice && <VoiceClip clips={[m.data.voice]} />}
-        {m.kind === "speech" ? <p>«{m.content.replace(/^["«]|["»]$/g, "")}»</p> : <p className="italic">{m.content}</p>}
+        {m.kind === "speech" ? <p className="leading-relaxed">«{m.content.replace(/^["«]|["»]$/g, "")}»</p> : <p className="leading-relaxed">{m.content}</p>}
         <ReplyStatus m={m} mine={mine} />
       </div>
     </div>

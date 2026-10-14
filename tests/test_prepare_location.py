@@ -45,12 +45,13 @@ def test_furnish_reserves_every_area_and_estimates_calls(client, admin, settings
     assert out["estimate"]["furnish_calls_max"] == 2 * len(activated)
 
 
-def test_refuses_visited_books_and_places_without_space(client, admin, settings):
+def test_refuses_visited_and_prepares_places_without_space(client, admin, settings):
     cid = _campaign(client, admin, settings)
     visited = _develop(settings, cid, here=True)
     assert "посещ" in _prep(settings, cid, visited["entity_id"])["error"]
-    tavern = _develop(settings, cid, sketch_id="loc_tavern")
-    assert "пространств" in _prep(settings, cid, tavern["entity_id"])["error"]
+    tavern = _develop(settings, cid, sketch_id="loc_tavern")  # в каркасе нет spatial: простой план по шаблону
+    out = _prep(settings, cid, tavern["entity_id"])
+    assert out["ok"] and out["result"]["structure"]["operation_ref"]
 
 
 def test_ai_master_does_not_see_it():

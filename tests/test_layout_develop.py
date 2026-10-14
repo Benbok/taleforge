@@ -52,14 +52,9 @@ def test_develop_reserves_layout_with_mandate(client, admin, settings):
     assert len(rows(settings, Entity, Entity.location_id == out["entity_id"])) == 6
 
 
-def test_no_layout_without_flag_spatial_or_for_modules(client, admin, settings):
+def test_no_layout_without_flag_or_for_modules(client, admin, settings):
     cid = _campaign(client, admin, settings)
     assert "layout" not in _develop(settings, cid)
-    plan = temple_plan()
-    for loc in plan["locations"]:
-        loc.pop("spatial", None)
-    cid2 = _campaign(client, admin, settings, plan=plan, names=["Боромир"], location_layouts=True)
-    assert "layout" not in _develop(settings, cid2)
     assert not rows(settings, WGS, WGS.phase == "location_layout")
 
     mid = publish_sample(settings)
@@ -85,6 +80,32 @@ def test_no_layout_without_flag_spatial_or_for_modules(client, admin, settings):
     out = _develop(settings, c["id"], sketch_id=sketch_id)
     assert "layout" not in out
     assert not rows(settings, WGS, WGS.campaign_id == c["id"], WGS.phase == "location_layout")
+
+
+def test_place_without_spatial_gets_single_part_plan(client, admin, settings):
+    plan = temple_plan()
+    for loc in plan["locations"]:
+        loc.pop("spatial", None)
+    cid = _campaign(client, admin, settings, plan=plan, location_layouts=True)
+    out = _develop(settings, cid, sketch_id="loc_tavern")
+    row = _row(settings, out["layout"]["operation_ref"])
+    sp = row.reservation["mandate"]["spatial"]
+    assert sp["environment"] == "indoor" and [p["name"] for p in sp["parts"]] == [out["name"]]
+    assert sp["approaches"][0]["kind"] == "door"
+    assert _prepare(settings, cid, row.id) == "ready"
+    assert rows(settings, Entity, Entity.location_id == out["entity_id"])  # таверна стала комплексом из участка
+
+
+def test_wild_place_without_spatial_is_outdoor(client, admin, settings):
+    plan = temple_plan()
+    for loc in plan["locations"]:
+        loc.pop("spatial", None)
+    cid = _campaign(client, admin, settings, plan=plan, location_layouts=True)
+    out = _develop(settings, cid, sketch_id="loc_port")  # Старый храм на шаблоне руин: wild
+    row = _row(settings, out["layout"]["operation_ref"])
+    sp = row.reservation["mandate"]["spatial"]
+    assert sp["environment"] == "outdoor" and sp["parts"][0]["outdoor"] and sp["approaches"][0]["kind"] == "path"
+    assert _prepare(settings, cid, row.id) == "ready"
 
 
 def test_root_preparation_waits_for_structure(client, admin, settings):
@@ -133,3 +154,29 @@ def test_enabling_mid_campaign_keeps_developed_places(client, admin, settings):
     assert not _play(settings, cid, again)["ok"]  # уже развёрнут: ничего не пересобирается
     assert not rows(settings, WGS, WGS.target_entity_id == out["entity_id"], WGS.phase == "location_layout")
     assert store.blueprint_of(run(settings, lambda s: s.get(Entity, out["entity_id"]))) is None
+
+
+def test_create_location_refuses_plot_sketch_and_points_to_develop(client, admin, settings):
+    cid = _campaign(client, admin, settings, location_layouts=True)
+
+    async def go(ctx):
+        r = await execute(ctx, "create_location", {"name": "«Старый  ХРАМ»", "make_current": True})
+        return r, [e.name for e in ctx.world.entities.values() if e.kind == "location"]
+
+    r, places = _play(settings, cid, go)
+    assert not r["ok"] and "develop" in r["error"] and "loc_port" in r["error"]
+    assert "Старый храм" not in " ".join(places)  # двойник наброска не появился
+    out = _develop(settings, cid)  # развёрнутый набросок больше не мешает create_location
+    assert out["name"] == "Старый храм"
+
+
+def test_entering_developed_place_closes_hero_move(client, admin, settings):
+    cid = _campaign(client, admin, settings, location_layouts=True)
+
+    async def go(ctx):
+        await _ok(ctx, "develop", {"sketch_id": "loc_port", "details": "-", "here": True})
+        heroes = {c.id for c in ctx.world.characters.values()}
+        return heroes, set(ctx.closed)
+
+    heroes, closed = _play(settings, cid, go)
+    assert heroes and heroes <= closed  # вход со сценой — обработанный переход, не автоотмена

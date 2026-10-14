@@ -72,8 +72,13 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
       })}
       {sketch.exits.map((exit, i) => {
         const segs = exitSegments(area, exit);
-        return <g key={`exit-${i}`} data-passage-ref={exit.passage_ref ?? undefined} onClick={() => onPassage?.(exit)}>
+        return <g key={`exit-${i}`} data-passage-ref={exit.passage_ref ?? undefined} onClick={() => onPassage?.(exit)}
+          role={onPassage ? "button" : undefined} tabIndex={onPassage ? 0 : undefined} aria-label={onPassage ? `Проход: ${exit.name}` : undefined}
+          className={onPassage ? "tf-map-passage cursor-pointer" : undefined}
+          onKeyDown={(event) => { if (onPassage && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onPassage(exit); } }}>
+          {onPassage && segs.map((segment, j) => <rect key={`hit-${j}`} x={Math.min(segment.from[0], segment.to[0]) - .35} y={Math.min(segment.from[1], segment.to[1]) - .35} width={Math.abs(segment.to[0] - segment.from[0]) + .7} height={Math.abs(segment.to[1] - segment.from[1]) + .7} fill="transparent" />)}
           {segs.map((segment, j) => <line key={j} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-opening="true" stroke="var(--tf-map-opening, #e9d8a6)" strokeWidth=".2" />)}
+          <title>{exit.name}</title>
         </g>;
       })}
     </g>

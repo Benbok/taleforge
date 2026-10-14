@@ -26,6 +26,7 @@ web/.map-examples-build/
 
 # Временные и тестовые артефакты локального запуска
 .tmp-pytest*/
+.tmp-merge*/
 .pytest_tmp/
 .hypothesis/
 .tox/

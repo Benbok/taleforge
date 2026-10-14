@@ -43,3 +43,14 @@
   .tf-location-header__toggle { top: .45rem; right: .45rem; }
 }
 @media (prefers-reduced-motion: reduce) { .tf-location-header { transition: none; } }
+
+@media (min-width: 768px) {
+  .tf-reading-mode .tf-game-layout { grid-template-columns: minmax(0, 1fr); max-width: 64rem; }
+  .tf-reading-mode .tf-party-sidebar { display: none; }
+  .tf-reading-mode .tf-game-tabs { display: grid; }
+  .tf-reading-chat .tf-scene-sidebar { display: none; }
+  .tf-reading-party .tf-story-panel, .tf-reading-scene .tf-story-panel { display: none; }
+  .tf-reading-party .tf-scene-sidebar, .tf-reading-scene .tf-scene-sidebar { display: flex; }
+  .tf-reading-party .tf-sidebar-party, .tf-reading-scene .tf-sidebar-scene { display: flex; }
+  .tf-reading-party .tf-sidebar-scene, .tf-reading-scene .tf-sidebar-party { display: none; }
+}

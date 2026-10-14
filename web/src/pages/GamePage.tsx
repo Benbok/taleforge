@@ -6,6 +6,7 @@ import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
 import LocationHeader from "../game/LocationHeader";
 import { sceneLighting } from "../game/scenePresentation";
+import { loadReadingMode, saveReadingMode } from "../game/scenePreferences";
 import { useTurnAlerts } from "../game/combat";
 import CombatStrip from "../game/CombatStrip";
 import Composer from "../game/Composer";
@@ -67,6 +68,7 @@ export default function GamePage() {
   const scene = useGame((s) => s.scene);
   const setTheme = useSession((s) => s.setTheme);
   const [tab, setTab] = useState<Tab>("chat");
+  const [reading, setReading] = useState(loadReadingMode);
   const heroes = useGame((s) => s.heroes);
   const heroId = myHero(heroes, snapshot?.me.seat_id)?.id ?? null;
 
@@ -107,13 +109,13 @@ export default function GamePage() {
   const side = (
     <>
       {master && <MasterPanel campaignId={id} />}
-      <ScenePanel />
+      <ScenePanel onReturnToStory={() => setTab("chat")} />
       {!master && <About card={card} />}
     </>
   );
 
   return (
-    <div className="tf-game-atmosphere flex h-dvh flex-col bg-bg" style={lighting}>
+    <div className={`tf-game-atmosphere flex h-dvh flex-col bg-bg ${reading ? `tf-reading-mode tf-reading-${tab}` : ""}`} style={lighting}>
       <Header>
         <Link
           className="btn btn-outline-copper h-8 px-2.5 text-xs font-mono tracking-wider flex items-center gap-1 shrink-0"
@@ -152,6 +154,20 @@ export default function GamePage() {
           <SoundControl />
         </div>
         <div className="ml-auto hidden items-center gap-2 md:flex shrink-0">
+          <button
+            type="button"
+            className={`btn h-8 px-3 text-xs ${reading ? "btn-primary" : "btn-outline-copper"}`}
+            aria-pressed={reading}
+            title={reading ? "Вернуть боковые панели" : "Скрыть боковые панели для чтения"}
+            onClick={() => {
+              const next = !reading;
+              setReading(next);
+              saveReadingMode(next);
+              setTab("chat");
+            }}
+          >
+            {reading ? "Вернуть панели" : "Режим чтения"}
+          </button>
           <MapButton />
           <SoundControl />
           <SessionControls campaignId={id} compact />
@@ -175,18 +191,18 @@ export default function GamePage() {
       )}
 
       <div
-        className={`mx-auto grid min-h-0 w-full max-w-[96rem] flex-1 md:gap-4 md:px-4 md:py-4 ${
+        className={`tf-game-layout mx-auto grid min-h-0 w-full max-w-[96rem] flex-1 md:gap-4 md:px-4 md:py-4 ${
           master
             ? "md:grid-cols-[1fr_24rem] lg:grid-cols-[16rem_1fr_28rem]"
             : "md:grid-cols-[1fr_18rem] lg:grid-cols-[16rem_1fr_18rem]"
         }`}
       >
-        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
+        <aside className="tf-party-sidebar hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           <PartyPanel />
         </aside>
 
         <main
-          className={`relative min-h-0 flex-col overflow-hidden md:flex md:rounded-[12px] md:border md:border-line md:bg-surface shadow-md ${
+          className={`tf-story-panel relative min-h-0 flex-col overflow-hidden md:flex md:rounded-[12px] md:border md:border-line md:bg-surface shadow-md ${
             tab === "chat" ? "flex" : "hidden"
           }`}
         >
@@ -202,11 +218,11 @@ export default function GamePage() {
         </main>
 
         <aside
-          className={`min-h-0 flex-col gap-4 overflow-y-auto p-4 md:flex md:p-0 ${
+          className={`tf-scene-sidebar min-h-0 flex-col gap-4 overflow-y-auto p-4 md:flex md:p-0 ${
             tab === "chat" ? "hidden" : "flex"
           }`}
         >
-          <div className={`flex flex-col gap-4 lg:hidden ${tab === "scene" ? "hidden md:flex" : ""}`}>
+          <div className={`tf-sidebar-party flex flex-col gap-4 lg:hidden ${tab === "scene" ? "hidden md:flex" : ""}`}>
             <div className="flex flex-wrap items-center gap-2 md:hidden">
               <SessionControls campaignId={id} className="flex-wrap" />
               {manage && (
@@ -217,13 +233,13 @@ export default function GamePage() {
             </div>
             <PartyPanel />
           </div>
-          <div className={`flex flex-col gap-4 ${tab === "party" ? "hidden md:flex" : ""}`}>{side}</div>
+          <div className={`tf-sidebar-scene flex flex-col gap-4 ${tab === "party" ? "hidden md:flex" : ""}`}>{side}</div>
         </aside>
       </div>
 
       {/* Mobile Navigation Tabs */}
       <nav
-        className="grid grid-cols-3 border-t border-line bg-surface md:hidden font-mono text-xs"
+        className="tf-game-tabs grid grid-cols-3 border-t border-line bg-surface md:hidden font-mono text-xs"
         aria-label="Разделы игрового экрана"
       >
         {TABS.map(([t, name]) => (

@@ -326,7 +326,25 @@ async def relocate_scene(ctx: ToolContext, loc: Entity, inverse: list) -> list[C
     _visit(ctx, loc, going, inverse)
     await observe_area(ctx, loc.id, [c.id for c in going], inverse, explicit=True)
     ctx.signals.add("map.changed")
+    ctx.closed.update(c.id for c in going)  # вход вместе со сценой закрывает заявку на переход, как move
     return going
+
+
+def _plot_sketch_named(plan: dict | None, name: str) -> dict | None:
+    """Неразвёрнутый набросок места каркаса с тем же именем."""
+
+    def norm(s: str) -> str:
+        return " ".join(s.casefold().replace("ё", "е").strip(" «»\"'").split())
+
+    want = norm(name)
+    return next(
+        (
+            x
+            for x in (plan or {}).get("locations") or []
+            if x.get("status") == "sketch" and isinstance(x.get("name"), str) and norm(x["name"]) == want
+        ),
+        None,
+    )
 
 
 async def enter_current(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
@@ -345,6 +363,12 @@ async def enter_current(ctx: ToolContext, loc: Entity, inverse: list) -> dict:
     closes=False,
 )
 async def create_location(ctx: ToolContext, a: CreateLocationArgs) -> dict:
+    planned = _plot_sketch_named(ctx.world.plot, a.name)
+    if planned is not None:  # место каркаса без develop теряет план устройства и плодит двойника наброска
+        raise ToolError(
+            f"«{planned['name']}» — набросок каркаса {planned['id']}: разверни его develop "
+            f"(sketch_id={planned['id']}, here=true, если отряд входит туда), а не create_location"
+        )
     state: dict = {}
     if a.template_id:
         rec = ctx.world.catalog.get(a.template_id, "location_template")

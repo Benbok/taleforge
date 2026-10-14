@@ -138,10 +138,14 @@ function Away({ seat }: { seat: SeatState }) {
 }
 
 /** Сцена: где отряд и кто рядом. */
-export function ScenePanel() {
+export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void } = {}) {
   const scene = useGame((s) => s.scene);
   const open = useInspector((s) => s.open);
-  if (!scene) return null;
+  if (!scene) return <section className="card border border-line bg-surface p-5" aria-label="Сцена">
+    <h2 className="font-heading text-xl font-bold text-ink">История ещё не началась</h2>
+    <p className="mt-2 text-sm leading-relaxed text-muted">Когда мастер опишет сцену, здесь появятся место, персонажи и предметы рядом с отрядом.</p>
+    {onReturnToStory && <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={onReturnToStory}>К истории</button>}
+  </section>;
 
   return (
     <section className="card p-4 sm:p-5 border border-line bg-surface flex flex-col gap-3" aria-label="Сцена">

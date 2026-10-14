@@ -10,11 +10,9 @@ import {
   type SkillDetail,
 } from "../game/statDetails";
 
-const HOVER_OPEN_MS = 250;
-const HOVER_CLOSE_MS = 150;
 const CARD_WIDTH = 330;
 
-type Mode = "closed" | "hover" | "pinned";
+type Mode = "closed" | "pinned";
 
 export type StatType = "ability" | "skill" | "mastery";
 
@@ -63,13 +61,13 @@ function AbilityContent({
           <span className="font-mono text-xs text-muted uppercase">({detail.abbr} · {detail.enName})</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-[4px] border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-accent uppercase tracking-wider">
+          <span className="rounded-[4px] border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-xs font-semibold text-accent uppercase tracking-wider">
             Характеристика
           </span>
           {isPinned && onClose && (
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
               onClick={onClose}
               aria-label="Закрыть"
             >
@@ -79,12 +77,12 @@ function AbilityContent({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-xs">
-        <p className="font-serif italic text-muted leading-relaxed">{detail.summary}</p>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-sm leading-relaxed">
+        <p className="font-ui text-muted leading-relaxed">{detail.summary}</p>
         <p className="text-ink leading-relaxed">{detail.description}</p>
 
         <div className="border-t border-line/50 pt-2.5 flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-wider font-semibold text-accent">
+          <span className="font-ui text-sm font-semibold text-accent">
             Влияет на:
           </span>
           <ul className="flex flex-col gap-1 text-ink-2 leading-relaxed">
@@ -117,13 +115,13 @@ function SkillContent({
           <span className="font-heading text-base font-bold text-ink">{detail.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-[4px] border border-patina/40 bg-patina/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-patina-hi uppercase tracking-wider">
+          <span className="rounded-[4px] border border-patina/40 bg-patina/10 px-1.5 py-0.5 font-mono text-xs font-semibold text-patina-hi uppercase tracking-wider">
             {detail.abilityName} ({detail.abilityAbbr})
           </span>
           {isPinned && onClose && (
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
               onClick={onClose}
               aria-label="Закрыть"
             >
@@ -133,12 +131,12 @@ function SkillContent({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-xs">
-        <p className="font-serif italic text-muted leading-relaxed">{detail.summary}</p>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-sm leading-relaxed">
+        <p className="font-ui text-muted leading-relaxed">{detail.summary}</p>
         <p className="text-ink leading-relaxed">{detail.description}</p>
 
         <div className="border-t border-line/50 pt-2.5 flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-wider font-semibold text-accent">
+          <span className="font-ui text-sm font-semibold text-accent">
             Примеры проверок:
           </span>
           <ul className="flex flex-col gap-1 text-ink-2 leading-relaxed">
@@ -151,7 +149,7 @@ function SkillContent({
           </ul>
         </div>
 
-        <div className="rounded-[6px] border border-accent/30 bg-accent/5 p-2 font-mono text-[11px] text-accent leading-relaxed">
+        <div className="rounded-[6px] border border-accent/30 bg-accent/5 p-2 font-mono text-sm text-accent leading-relaxed">
           ✦ Владение навыком прибавляет бонус мастерства к проверкам этой характеристики.
         </div>
       </div>
@@ -175,13 +173,13 @@ function MasteryContent({
           <span className="font-heading text-base font-bold text-ink">{detail.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-[4px] border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-accent uppercase tracking-wider">
+          <span className="rounded-[4px] border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-xs font-semibold text-accent uppercase tracking-wider">
             Правило
           </span>
           {isPinned && onClose && (
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-surface hover:text-ink cursor-pointer"
               onClick={onClose}
               aria-label="Закрыть"
             >
@@ -191,12 +189,12 @@ function MasteryContent({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-xs">
-        <p className="font-serif italic text-muted leading-relaxed">{detail.summary}</p>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0 text-sm leading-relaxed">
+        <p className="font-ui text-muted leading-relaxed">{detail.summary}</p>
         <p className="text-ink leading-relaxed">{detail.description}</p>
 
         <div className="border-t border-line/50 pt-2.5 flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-wider font-semibold text-accent">
+          <span className="font-ui text-sm font-semibold text-accent">
             Где применяется:
           </span>
           <ul className="flex flex-col gap-1.5 text-ink-2 leading-relaxed">
@@ -224,8 +222,7 @@ interface StatDetailTriggerProps {
 }
 
 /**
- * Обертка для любого элемента: при наведении мыши показывает детальную карточку характеристики, навыка или мастерства.
- * На сенсорных устройствах и по клику на кнопку «i» фиксирует окно.
+ * Детальная карточка характеристики, навыка или мастерства открывается нажатием.
  */
 export function StatDetailTrigger({
   type,
@@ -240,21 +237,11 @@ export function StatDetailTrigger({
   const [, setTick] = useState(0);
   const wrap = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
-  const timer = useRef<number | undefined>(undefined);
   const popId = useId();
 
-  const clear = () => window.clearTimeout(timer.current);
-  const later = (fn: () => void, ms: number) => {
-    clear();
-    timer.current = window.setTimeout(fn, ms);
-  };
-
   const close = useCallback(() => {
-    clear();
     setMode("closed");
   }, []);
-
-  useEffect(() => clear, []);
 
   useEffect(() => {
     if (mode === "closed") return;
@@ -278,27 +265,11 @@ export function StatDetailTrigger({
     };
   }, [mode, close]);
 
-  const canHover = () =>
-    typeof window !== "undefined" &&
-    (window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? true);
-
-  const hoverIn = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse" || mode === "pinned" || !canHover()) return;
-    if (mode === "hover") return clear();
-    later(() => setMode("hover"), HOVER_OPEN_MS);
-  };
-
-  const hoverOut = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse" || mode === "pinned") return;
-    later(() => setMode("closed"), HOVER_CLOSE_MS);
-  };
-
-  // на телефоне наведения нет: касание открывает карточку там, где нет своей кнопки «i»
+  // Там, где нет отдельной кнопки, карточку открывает нажатие на значение.
   const tapToggle = () => {
-    if (showIcon || canHover()) return;
+    if (showIcon) return;
     if (mode === "pinned") close();
     else {
-      clear();
       setMode("pinned");
     }
   };
@@ -329,8 +300,6 @@ export function StatDetailTrigger({
     <Tag
       ref={wrap as unknown as React.Ref<HTMLDivElement & HTMLLIElement & HTMLSpanElement & HTMLLabelElement>}
       className={`relative ${inline ? "inline-flex items-center" : "min-w-0"} ${className}`}
-      onPointerEnter={hoverIn}
-      onPointerLeave={hoverOut}
       onClick={tapToggle}
     >
       {children}
@@ -339,17 +308,18 @@ export function StatDetailTrigger({
         <button
           type="button"
           aria-label="Подробнее"
+          aria-expanded={open}
+          aria-controls={open ? popId : undefined}
           title="Подробнее"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             if (mode === "pinned") close();
             else {
-              clear();
               setMode("pinned");
             }
           }}
-          className={`ml-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-serif font-bold italic transition cursor-pointer ${
+          className={`ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-serif font-bold italic transition cursor-pointer ${
             open
               ? "border-accent bg-accent text-on-accent"
               : "border-line text-muted hover:border-accent hover:text-accent"
@@ -366,8 +336,6 @@ export function StatDetailTrigger({
             id={popId}
             role="dialog"
             aria-label="Детализация"
-            onPointerEnter={hoverIn}
-            onPointerLeave={hoverOut}
             className={`tf-pop fixed z-50 flex flex-col border border-line bg-surface shadow-2xl ${
               phone
                 ? "inset-x-0 bottom-0 max-h-[80dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
@@ -382,13 +350,13 @@ export function StatDetailTrigger({
               isPinned={mode === "pinned"}
             />
           </div>,
-          document.body
+          wrap.current?.closest("dialog") ?? document.body
         )}
     </Tag>
   );
 }
 
-/** Отдельная аккуратная кнопка «i» со всплывающей подсказкой при наведении или клике. */
+/** Отдельная кнопка «i», открывающая детализацию по нажатию. */
 export function StatInfoButton({
   type,
   id,
@@ -400,14 +368,18 @@ export function StatInfoButton({
 }) {
   return (
     <StatDetailTrigger type={type} id={id} inline>
-      <span
+      <button
+        type="button"
         tabIndex={0}
         role="button"
         aria-label="Подробнее"
-        className={`inline-flex h-4 w-4 items-center justify-center rounded-full border border-line text-[10px] font-serif font-bold italic text-muted transition hover:border-accent hover:text-accent cursor-pointer ${className}`}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+        }}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-sm font-serif font-bold italic text-muted transition hover:border-accent hover:text-accent cursor-pointer ${className}`}
       >
         i
-      </span>
+      </button>
     </StatDetailTrigger>
   );
 }

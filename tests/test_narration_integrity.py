@@ -7,6 +7,33 @@ from tests.game import FIGHTER, ok, party
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401
 
 
+def test_failed_item_grant_cannot_be_narrated_as_inventory_success(game_client, admin_g, llm, settings):
+    c, (player,), hero = party(game_client, admin_g)
+    llm.replies += [
+        {
+            "tool_calls": [
+                (
+                    "give_item",
+                    {
+                        "character_id": hero["id"],
+                        "item_template_id": "item.nonexistent_berry",
+                        "qty": 9,
+                        "reason": "остаток ягод",
+                    },
+                )
+            ]
+        },
+        DONE,
+        DONE,
+        {"text": "Девять ягод благополучно оказались в рюкзаке. Корвин съел десятую и восстановил силы."},
+    ]
+    result = act(game_client, player, c["id"], "Кладу оставшиеся ягоды в рюкзак")
+    assert "благополучно оказались" not in result["content"]
+    assert "восстановил силы" not in result["content"]
+    (turn,) = rows(settings, MasterTurn)
+    assert turn.trace["audit"]["item_fallback"] is True
+
+
 def test_narrator_retries_invented_player_reply_before_streaming(
     game_client,
     admin_g,

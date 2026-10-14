@@ -40,7 +40,8 @@ export default function MenuMusicControl() {
       aria-label={label}
       title={sound.menuError ?? sound.menuTheme.title}
     >
-      {loading ? "…" : `♪ ${label}`}
+      <span aria-hidden="true">{loading ? "…" : "♪"}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

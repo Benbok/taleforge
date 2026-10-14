@@ -5,6 +5,9 @@ import type { ChatMessage, PartyPart } from "../lib/types";
 import { standInFor, useGame } from "../stores/game";
 import { useDraft } from "./draft";
 import { clock, MAX_RECORD_SEC, uploadVoice, useRecorder } from "./voice";
+import { STAGES } from "./masterStatus";
+import { label } from "../lib/theme";
+import { useSession } from "../stores/session";
 
 let counter = 0;
 const clientId = () => `c${Date.now().toString(36)}${(counter++).toString(36)}`;
@@ -56,6 +59,12 @@ export default function Composer() {
   const { socket, connection, turn, rejected, notice, snapshot, restored, clearRestored, addPending, clearRejected } = game;
   const { text, whisper, setText, setWhisper } = useDraft();
   const [sendError, setSendError] = useState<string | null>(null);
+  const theme = useSession((state) => state.theme);
+  const responding = !!game.masterStage && !!STAGES[game.masterStage];
+  const [responseStarted, setResponseStarted] = useState<number | null>(null);
+  useEffect(() => { setResponseStarted(responding ? Date.now() : null); }, [responding]);
+  const responseNow = useNow(responding);
+  const slowResponse = responding && responseStarted !== null && responseNow - responseStarted >= 30000;
   // за чьего героя пишем: свой или героя ушедшего игрока, которого передали голосованием
   const standing = standInFor(game);
   const playAs = game.playAs && standing.includes(game.playAs) ? game.playAs : null;
@@ -123,6 +132,15 @@ export default function Composer() {
 
   const trimmed = text.trim();
   const ooc = trimmed.startsWith("//");
+  const hasContent = !!(ooc && !whisper ? trimmed.slice(2).trim() : trimmed);
+  const messageMode = whisper ? "whisper" : ooc ? "ooc" : "game";
+  function selectMode(mode: "game" | "ooc" | "whisper") {
+    const content = text.replace(/^\s*\/\/\s?/, "");
+    setWhisper(mode === "whisper");
+    setText(mode === "ooc" ? `// ${content}` : content);
+    setSendError(null);
+    document.getElementById("tf-composer")?.focus();
+  }
   // что уйдёт при нажатии: так игрок заранее видит, дойдёт ли реплика
   const allowed = whisper ? canWhisper : ooc ? canOoc : mainOpen;
   const hint = whisper
@@ -135,7 +153,7 @@ export default function Composer() {
 
   function send(e?: FormEvent) {
     e?.preventDefault();
-    if (!trimmed) return;
+    if (!hasContent) return;
     if (!allowed) {
       setSendError(hint ?? "Сейчас это отправить нельзя.");
       return;
@@ -184,11 +202,13 @@ export default function Composer() {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) send(e as unknown as FormEvent);
   }
 
-  const voiceAllowed = whisper ? canWhisper : mainOpen;
-  const voiceReason = voiceAllowed ? null : (reason ?? "Сейчас голосовое отправить нельзя.");
+  const voiceAllowed = whisper ? canWhisper : !ooc && mainOpen;
+  const voiceReason = voiceAllowed ? null : ooc ? "Вне игры можно отправить текст. Для голосового выберите «В игре» или «Шёпот»." : (reason ?? "Сейчас голосовое отправить нельзя.");
   const recording = rec.state === "recording";
 
-  const placeholder = whisper
+  const placeholder = ooc && !whisper
+    ? "Сообщение вне игры…"
+    : whisper
     ? "Шёпот мастеру…"
     : mainOpen
       ? isMaster
@@ -199,8 +219,27 @@ export default function Composer() {
       : "Только вне игры: начните с //";
 
   return (
-    <form onSubmit={send} className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-3">
+    <form onSubmit={send} className="tf-composer flex flex-col gap-2 border-t border-line bg-surface px-3 py-3 sm:px-4">
       {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
+      <div className="flex flex-wrap gap-1 rounded-lg border border-line bg-raised p-1" role="group" aria-label="Режим сообщения">
+        {([
+          ["game", "В игре", mainOpen],
+          ["ooc", "Вне игры", canOoc],
+          ["whisper", "Шёпот", canWhisper],
+        ] as const).map(([value, label, available]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={messageMode === value}
+            disabled={!available || recording || uploading || rec.state === "starting"}
+            title={!available ? blocked[value === "game" ? mainAction : `chat.${value}`] ?? "Сейчас недоступно" : value === "whisper" ? "Сообщение видите только вы и мастер" : undefined}
+            className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 disabled:opacity-40 disabled:cursor-not-allowed ${messageMode === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-ink"}`}
+            onClick={() => selectMode(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {parts.length > 1 && (
         <label className="flex items-center gap-2 text-xs text-muted">
           Отряд разделён, ответ слышат:
@@ -214,16 +253,18 @@ export default function Composer() {
           </select>
         </label>
       )}
-      {myTurn && (
-        <p className="tf-pop flex items-center gap-2 font-semibold text-accent" role="status">
-          Ваш ход{turn?.round ? `, раунд ${turn.round}` : ""}
-          {left !== null && <span className={left <= 15 ? "text-warn" : "text-muted"}>· осталось {left} с</span>}
-        </p>
-      )}
-      {!myTurn && turn && !isMaster && (
-        <p className="text-xs text-muted">
-          Идёт бой, раунд {turn.round}. Сейчас ход: {turn.name}.
-        </p>
+      {(myTurn || responding || myPending || (turn && !isMaster)) && (
+        <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm ${myTurn ? "border-accent/40 bg-accent/10 text-accent" : responding ? "border-patina/40 bg-patina/10 text-ink-2" : "border-line bg-raised text-ink-2"}`} role="status">
+          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-patina" : "bg-muted"}`} />
+          <span className="font-semibold">
+            {myTurn ? "Ваш ход" : responding ? "Мастер отвечает" : myPending ? "Ожидаем остальных игроков" : `Сейчас ход: ${turn?.name}`}
+          </span>
+          {turn && <span className="text-muted">· раунд {turn.round}</span>}
+          {myTurn && left !== null && <span className={left <= 15 ? "text-warn" : "text-muted"}>· осталось {left} с</span>}
+          {responding && !myTurn && <span className="text-muted">· {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}</span>}
+          {myPending && !myTurn && !responding && <span className="text-muted">· мастер ответит, когда напишут все{wait ? ` или примерно через ${wait} с` : ""}</span>}
+          {slowResponse && !myTurn && <span className="w-full text-sm text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>}
+        </div>
       )}
       {rejected && (
         <p role="alert" className="tf-pop flex items-start justify-between gap-2 rounded-md border border-bad px-3 py-2 text-bad">
@@ -234,11 +275,6 @@ export default function Composer() {
         </p>
       )}
       {notice && !rejected && <p className="tf-pop text-xs text-muted">{notice}</p>}
-      {myPending && (
-        <p className="text-xs text-muted" role="status">
-          Ответ мастера — когда напишут все{wait ? ` или примерно через ${wait} с` : ""}.
-        </p>
-      )}
       {(sendError || hint) && (
         <p role={sendError ? "alert" : undefined} className={`text-xs ${sendError || !allowed ? "text-warn" : "text-muted"}`}>
           {sendError ?? hint}
@@ -247,7 +283,7 @@ export default function Composer() {
       <div className="flex items-end gap-2">
         <textarea
           id="tf-composer"
-          className={`field min-h-[2.75rem] flex-1 resize-none transition-colors ${
+          className={`field min-h-[2.75rem] min-w-0 flex-1 resize-none text-base sm:text-sm transition-colors ${
             whisper ? "border-accent/70 bg-accent/[0.04] italic text-accent placeholder:text-accent/50" : ""
           }`}
           rows={Math.min(6, Math.max(1, text.split("\n").length))}
@@ -289,8 +325,9 @@ export default function Composer() {
           </button>
         )}
         {!recording && (
-          <button type="submit" className="btn btn-primary h-[2.75rem]" disabled={!trimmed} title="Отправить (Enter)">
-            Отправить
+          <button type="submit" className="btn btn-primary h-[2.75rem] min-w-11 shrink-0" disabled={!hasContent} title="Отправить (Enter)" aria-label="Отправить сообщение">
+            <span className="sm:hidden" aria-hidden="true">↑</span>
+            <span className="hidden sm:inline">Отправить</span>
           </button>
         )}
       </div>
@@ -309,27 +346,6 @@ export default function Composer() {
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-        {canWhisper && (
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={whisper}
-            onClick={() => setWhisper(!whisper)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer select-none ${
-              whisper
-                ? "border border-accent/70 bg-accent/15 text-accent shadow-xs"
-                : "border border-line/80 bg-raised/70 text-muted hover:border-accent/40 hover:text-ink"
-            }`}
-            title="Шёпот видит только мастер"
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full transition-all ${
-                whisper ? "bg-accent shadow-[0_0_6px_var(--tf-accent)]" : "bg-muted/40"
-              }`}
-            />
-            Шёпот мастеру
-          </button>
-        )}
         {can("turn.pass") && (
           <button
             type="button"
@@ -342,7 +358,7 @@ export default function Composer() {
             Пропустить ход
           </button>
         )}
-        <span className="ml-auto">
+        <span className="ml-auto hidden sm:inline">
           Речь — в кавычках, «//» — вне игры<span className="hidden sm:inline">. Enter — отправить, Shift+Enter — новая строка</span>
         </span>
       </div>

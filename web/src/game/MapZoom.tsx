@@ -89,9 +89,9 @@ export function useMapZoom() {
 
 /** Кнопки масштаба над схемой. */
 export function ZoomBar({ z }: { z: ReturnType<typeof useMapZoom> }) {
-  const btn = "h-6 min-w-6 rounded border border-line px-1.5 text-ink hover:border-accent disabled:opacity-40";
+  const btn = "min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 rounded-lg border border-line bg-surface px-2 text-ink hover:border-accent disabled:opacity-50";
   return (
-    <div className="flex items-center gap-1.5 font-mono text-xs text-muted" role="group" aria-label="Масштаб карты">
+    <div className="flex flex-wrap items-center gap-2 text-sm text-muted" role="group" aria-label="Масштаб карты">
       <button type="button" className={btn} onClick={z.zoomOut} disabled={z.zoom <= MIN} aria-label="Уменьшить">
         −
       </button>

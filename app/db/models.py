@@ -454,6 +454,7 @@ class InventoryItem(Base):
     item_template_id: Mapped[str] = mapped_column(String(128))
     display_name: Mapped[str | None] = mapped_column(String(128))  # имя от мастера, статы — из шаблона
     qty: Mapped[int] = mapped_column(Integer, default=1)
+    expires_at: Mapped[int | None] = mapped_column(Integer, nullable=True)  # время мира; NULL — бессрочно
     equipped: Mapped[bool] = mapped_column(Boolean, default=False)
     # Только уникальные экземпляры сохраняют Entity.id при переносе в инвентарь.
     # У старых и обычных стаковых предметов ссылка остаётся NULL.

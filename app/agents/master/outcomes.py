@@ -87,6 +87,13 @@ def public_factual_fallback(ctx, attempts=None, *, notice="", excluded_names=())
             line = f"{who}: предмет «{words(result.get('item'), 'предмет')}» изъят из инвентаря."
         elif event.tool in {"pass_item", "give_item_to_npc", "transfer_item"}:
             line = f"Передан предмет «{words(result.get('item'), 'предмет')}»."
+        elif event.tool == "use_item":
+            line = (
+                f"{words(result.get('user'))} использует «{words(result.get('item'), 'предмет')}» "
+                f"для {words(result.get('target'), 'цели')}."
+            )
+            if result.get("remaining_qty") is not None:
+                line += f" В инвентаре осталось: {int(result['remaining_qty'])}."
         elif event.tool in {"drop_item", "place_item"}:
             line = f"Размещён предмет «{words(result.get('item') or result.get('name'), 'предмет')}»."
         elif event.tool in TRANSITIONS:
@@ -101,6 +108,10 @@ def public_factual_fallback(ctx, attempts=None, *, notice="", excluded_names=())
             line = f"{who}: {hit}."
             if isinstance(damage, (int, float)) and not isinstance(damage, bool):
                 line += f" Нанесено урона: {damage}."
+        elif event.tool == "cast_spell":
+            line = f"{words(result.get('caster'))} творит «{words(result.get('spell'), 'заклинание')}»."
+            if result.get("created_qty"):
+                line += f" Создано ягод: {int(result['created_qty'])}; они находятся в инвентаре и действуют 24 часа."
         elif event.tool in {"apply_effect", "remove_effect"}:
             verb = "Наложен" if event.tool == "apply_effect" else "Снят"
             line = f"{verb} эффект «{words(result.get('effect'), 'эффект')}»."
@@ -181,6 +192,24 @@ def failed_attack(attempts: list[dict] | None) -> bool:
         if entry.get("tool") == "resolve_attack":
             latest = bool((entry.get("result") or {}).get("ok"))
     return latest is False
+
+
+def failed_item_action(attempts: list[dict] | None) -> bool:
+    """An unresolved inventory failure cannot be narrated as a successful transfer or use."""
+    latest = {}
+    for entry in attempts or []:
+        tool = entry.get("tool")
+        if tool not in {"give_item", "pass_item", "pick_up_item", "drop_item", "use_item"}:
+            continue
+        args = entry.get("args") or {}
+        key = (
+            tool,
+            args.get("character_id"),
+            args.get("inventory_id") or args.get("item_template_id") or args.get("entity_id"),
+            args.get("to_entity_id") or args.get("to_character_id") or args.get("target_id"),
+        )
+        latest[key] = bool((entry.get("result") or {}).get("ok"))
+    return any(not success for success in latest.values())
 
 
 def resolved_action_outcomes(ctx) -> dict[str, ResolutionResult]:

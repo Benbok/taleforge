@@ -1,6 +1,28 @@
 @import "tailwindcss";
 @import "./game/scene-immersion.css";
 
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/lora.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/lora-italic.ttf') format('truetype');
+}
+
 /* Токены темы. Значения приходят с сервера (тема пакета поверх базовой) и ставятся в :root — см. lib/theme.ts.
    Здесь — запасные значения базовой тёмной темы, чтобы первый кадр не мигал. */
 :root {
@@ -22,15 +44,22 @@
   --tf-ember: #c4553f;
   --tf-ember-hi: #e0876f;
   --tf-ember-bg: #16120f;
+  --tf-warn: #d99a2b;
+  --tf-ok: #72c491;
+  --tf-bad: #ed8b85;
+  --tf-map-floor: #272c30;
+  --tf-map-mark: #ffffff18;
+  --tf-map-wall: #74777e;
+  --tf-map-opening: #db9d5f;
   --tf-entity-creature: #e06c5f;
   --tf-entity-npc: #6ea8e0;
   --tf-entity-item: #d9b44a;
   --tf-entity-location: #6fbf86;
   --tf-entity-lore: #9a9fa8;
-  --tf-font-narration: 'Cormorant Garamond', Georgia, serif;
-  --tf-font-ui: 'IBM Plex Sans', system-ui, sans-serif;
-  --tf-font-heading: 'Cormorant Garamond', Georgia, serif;
-  --tf-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --tf-font-narration: 'Lora', Georgia, serif;
+  --tf-font-ui: 'Inter', system-ui, sans-serif;
+  --tf-font-heading: 'Inter', system-ui, sans-serif;
+  --tf-font-mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
@@ -52,6 +81,13 @@
   --tf-ember: #b8432a;
   --tf-ember-hi: #98321d;
   --tf-ember-bg: #fbf0eb;
+  --tf-warn: #805000;
+  --tf-ok: #23643f;
+  --tf-bad: #a92e29;
+  --tf-map-floor: #e6ddd0;
+  --tf-map-mark: #282f3b18;
+  --tf-map-wall: #76695c;
+  --tf-map-opening: #8a5a1c;
   --tf-entity-creature: #b3372b;
   --tf-entity-npc: #2b64a3;
   --tf-entity-item: #8a6a10;
@@ -87,9 +123,9 @@
   --color-item: var(--tf-entity-item);
   --color-place: var(--tf-entity-location);
   --color-lore: var(--tf-entity-lore);
-  --color-ok: #3fa267;
-  --color-bad: #d2504a;
-  --color-warn: #d99a2b;
+  --color-ok: var(--tf-ok);
+  --color-bad: var(--tf-bad);
+  --color-warn: var(--tf-warn);
   --font-narration: var(--tf-font-narration);
   --font-ui: var(--tf-font-ui);
   --font-heading: var(--tf-font-heading);
@@ -107,10 +143,14 @@ body {
   margin: 0;
   min-height: 100dvh;
 }
+.tf-hero-sheet-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.tf-map-passage:focus { outline: none; }
+.tf-map-passage:focus [data-opening] { stroke: var(--tf-accent); stroke-width: .32; }
 h1,
 h2,
 h3 {
   font-family: var(--tf-font-heading);
+  letter-spacing: -0.02em;
 }
 :focus-visible {
   outline: 2px solid var(--tf-accent);
@@ -206,7 +246,7 @@ input[type="checkbox"]:disabled {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-line bg-raised px-4 py-2 text-ink font-medium transition hover:border-accent active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+    @apply inline-flex items-center justify-center gap-2 whitespace-normal rounded-[10px] border border-line bg-raised px-4 py-2 text-center text-ink font-medium transition hover:border-accent active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100;
   }
   .btn-primary {
     @apply border-accent bg-accent text-on-accent hover:brightness-110 font-semibold;

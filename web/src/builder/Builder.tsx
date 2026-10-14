@@ -31,6 +31,7 @@ import { SKILL_DETAILS } from "../game/statDetails";
 import CustomSelect from "../components/CustomSelect";
 import ClassChoices from "./ClassChoices";
 import LiveSheet from "./LiveSheet";
+import MobileHeroSheet from "./MobileHeroSheet";
 import OriginChoices from "./OriginChoices";
 import SpellChoices from "./SpellChoices";
 import { StatDetailTrigger } from "./StatDetailPopover";
@@ -50,11 +51,11 @@ const STEP_GUIDE: Record<string, { subtitle: string; hint: string }> = {
   },
   class: {
     subtitle: "Боевое призвание",
-    hint: "Класс определяет вашу боевую роль, кость хитов, владение оружием и спасброски. Наведите на карточку или нажмите «i», чтобы увидеть особенности.",
+    hint: "Класс определяет вашу боевую роль, кость хитов, владение оружием и спасброски. Нажмите кнопку «i», чтобы увидеть особенности.",
   },
   origin: {
     subtitle: "Наследие и корни",
-    hint: "Происхождение даёт прибавки к характеристикам и врождённые черты. Наведите на карточку или нажмите «i», чтобы увидеть подробности.",
+    hint: "Происхождение даёт прибавки к характеристикам и врождённые черты. Нажмите кнопку «i», чтобы увидеть подробности.",
   },
   abilities: {
     subtitle: "Сила, ловкость и разум",
@@ -62,7 +63,7 @@ const STEP_GUIDE: Record<string, { subtitle: string; hint: string }> = {
   },
   spells: {
     subtitle: "Формулы, молитвы и договоры",
-    hint: "Выберите заговоры и заклинания героя. Наведите на заклинание или нажмите «i», чтобы прочитать, что оно делает.",
+    hint: "Выберите заговоры и заклинания героя. Нажмите кнопку «i», чтобы прочитать, что оно делает.",
   },
   skills: {
     subtitle: "Мастерство и тренировка",
@@ -167,6 +168,8 @@ export default function Builder({
   const [wizardMode, setWizardMode] = useState<boolean>(true);
 
   const currentIdx = Math.max(0, st.findIndex((s) => s.id === activeStep));
+  const completedSteps = st.filter((s) => s.done).length;
+  const firstIncomplete = st.find((s) => !s.done);
   const prevStep = currentIdx > 0 ? st[currentIdx - 1] : null;
   const nextStep = currentIdx < st.length - 1 ? st[currentIdx + 1] : null;
 
@@ -208,14 +211,14 @@ export default function Builder({
             <span />
           )}
 
-          <ActionButton
+          {(!isLast || mode === "campaign") && <ActionButton
             run={save}
             done={TITLES[mode].saved}
             primary={false}
-            className="font-mono text-xs tracking-wider"
+            className="min-h-11 text-sm"
           >
-            {TITLES[mode].save.toUpperCase()}
-          </ActionButton>
+            {TITLES[mode].save}
+          </ActionButton>}
         </div>
 
         <div className="flex items-center gap-2">
@@ -223,7 +226,7 @@ export default function Builder({
             <button
               type="button"
               onClick={goNext}
-              className="btn btn-primary px-4 py-1.5 font-mono text-xs tracking-wider cursor-pointer"
+              className="btn btn-primary min-h-11 px-4 py-2 text-sm cursor-pointer"
             >
               Далее: {next.label} →
             </button>
@@ -232,7 +235,7 @@ export default function Builder({
               run={submit}
               primary
               done="Герой отправлен мастеру на проверку"
-              className="font-mono text-xs tracking-wider"
+              className="font-ui text-sm"
             >
               ОТПРАВИТЬ МАСТЕРУ НА ПРОВЕРКУ →
             </ActionButton>
@@ -241,9 +244,9 @@ export default function Builder({
               run={save}
               done={TITLES[mode].saved}
               primary
-              className="font-mono text-xs tracking-wider"
+              className="font-ui text-sm"
             >
-              {TITLES[mode].save.toUpperCase()}
+              {TITLES[mode].save}
             </ActionButton>
           )}
         </div>
@@ -256,9 +259,9 @@ export default function Builder({
       <div className="flex min-w-0 flex-col gap-6">
         {/* Step Navigation Bar */}
         <div className="flex flex-col gap-3 rounded-[12px] border border-line bg-surface p-3.5 shadow-sm">
-          <div className="flex items-center justify-between gap-2 border-b border-line/50 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/50 pb-2">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">
+              <span className="font-ui text-sm font-semibold text-accent">
                 {wizardMode ? `Шаг ${currentIdx + 1} из ${st.length}` : "Все разделы"}
               </span>
               <span className="text-muted text-xs">·</span>
@@ -270,16 +273,28 @@ export default function Builder({
             <button
               type="button"
               onClick={() => setWizardMode((v) => !v)}
-              className="btn px-2.5 py-1 text-[11px] font-mono text-muted hover:text-ink border-line cursor-pointer"
+              className="btn min-h-11 sm:min-h-9 px-2.5 py-1 text-sm text-muted hover:text-ink border-line cursor-pointer"
               title={wizardMode ? "Переключиться на просмотр всех шагов сразу" : "Переключиться на пошаговый мастер"}
             >
               {wizardMode ? "Показать всё разом" : "Пошаговый режим"}
             </button>
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted">Заполнено разделов: <strong className="text-ink">{completedSteps} из {st.length}</strong></span>
+            {firstIncomplete && (
+              <button type="button" className="min-h-11 sm:min-h-9 rounded-md px-2 text-accent hover:bg-accent/10" onClick={() => goToStep(firstIncomplete.id)}>
+                Осталось заполнить: {firstIncomplete.label} →
+              </button>
+            )}
+          </div>
+          <div role="progressbar" aria-label="Заполнение разделов героя" aria-valuemin={0} aria-valuemax={st.length} aria-valuenow={completedSteps} className="h-1.5 overflow-hidden rounded-full bg-raised">
+            <div className="h-full rounded-full bg-patina transition-[width] motion-reduce:transition-none" style={{ width: `${st.length ? completedSteps / st.length * 100 : 0}%` }} />
+          </div>
+
           <nav
             aria-label="Шаги создания героя"
-            className={`grid grid-cols-4 gap-1.5 ${st.length > 7 ? "sm:grid-cols-8" : "sm:grid-cols-7"}`}
+            className="flex flex-wrap gap-1.5"
           >
             {st.map((s, idx) => {
               const isActive = s.id === activeStep && wizardMode;
@@ -288,7 +303,9 @@ export default function Builder({
                   key={s.id}
                   type="button"
                   onClick={() => goToStep(s.id)}
-                  className={`flex items-center justify-center gap-1.5 rounded-[8px] py-1.5 px-2 text-xs font-mono transition cursor-pointer border ${
+                  aria-current={isActive ? "step" : undefined}
+                  title={`${s.label}${s.done ? " — заполнено" : " — требуется заполнить"}`}
+                  className={`flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-[8px] py-2 px-3 text-sm transition cursor-pointer border ${
                     isActive
                       ? "border-accent bg-accent/15 text-accent font-bold shadow-sm"
                       : s.done
@@ -296,8 +313,8 @@ export default function Builder({
                       : "border-line bg-raised/40 text-muted hover:border-line hover:text-ink"
                   }`}
                 >
-                  <span className="text-[10px] opacity-80">{s.done ? "✓" : idx + 1}.</span>
-                  <span className="truncate">{s.label}</span>
+                  <span className="shrink-0 text-xs opacity-80">{s.done ? "✓" : idx + 1}.</span>
+                  <span className="min-w-0 break-words">{s.label}</span>
                 </button>
               );
             })}
@@ -798,16 +815,16 @@ export default function Builder({
             <div
               className={`mt-4 rounded-[10px] border p-3.5 font-mono text-xs ${
                 preview.data.errors.length
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                  ? "border-warn/40 bg-warn/10 text-ink-2"
                   : "border-patina/50 bg-patina/10 text-patina-hi font-semibold"
               }`}
             >
               {preview.data.errors.length ? (
                 <div>
-                  <div className="font-bold uppercase tracking-wider mb-1.5 text-amber-300">
+                  <div className="font-bold uppercase tracking-wider mb-1.5 text-warn">
                     Осталось заполнить для готовности:
                   </div>
-                  <ul className="list-disc list-inside space-y-1 text-[11px] text-muted-hi">
+                  <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed text-ink-2">
                     {preview.data.errors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -830,7 +847,7 @@ export default function Builder({
               run={save}
               done={TITLES[mode].saved}
               primary={mode !== "campaign"}
-              className="font-mono text-xs tracking-wider"
+              className="font-ui text-sm"
             >
               {TITLES[mode].save.toUpperCase()}
             </ActionButton>
@@ -840,7 +857,7 @@ export default function Builder({
                 run={submit}
                 primary
                 done="Герой отправлен мастеру на проверку"
-                className="font-mono text-xs tracking-wider"
+                className="font-ui text-sm"
               >
                 ОТПРАВИТЬ МАСТЕРУ НА ПРОВЕРКУ →
               </ActionButton>
@@ -850,15 +867,12 @@ export default function Builder({
       </div>
 
       {/* Right sticky live sheet */}
-      <aside id="live-sheet" className="scroll-mt-4 lg:sticky lg:top-24 lg:self-start">
+      <aside id="live-sheet" className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
         <LiveSheet preview={preview.data} loading={preview.loading} failed={preview.error} name={draft.name} />
       </aside>
 
       {/* Mobile Sticky Bottom Bar */}
-      <a
-        href="#live-sheet"
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-line bg-surface/95 backdrop-blur-md px-4 py-2.5 font-mono text-xs text-ink no-underline lg:hidden shadow-2xl"
-      >
+      <MobileHeroSheet summary={<>
         <span>
           {preview.data?.derived ? (
             <span className="font-semibold text-accent">
@@ -871,12 +885,13 @@ export default function Builder({
         <span className={preview.data && !preview.data.errors.length ? "text-patina-hi font-bold" : "text-muted"}>
           {preview.data
             ? preview.data.errors.length
-              ? `Осталось: ${preview.data.errors.length}`
+              ? `Требует внимания: ${preview.data.errors.length}`
               : "✓ ГОТОВ"
             : "расчёт…"}
-          {" ↓"}
         </span>
-      </a>
+      </>}>
+        <LiveSheet preview={preview.data} loading={preview.loading} failed={preview.error} name={draft.name} />
+      </MobileHeroSheet>
     </div>
   );
 }
@@ -908,12 +923,12 @@ function Step({
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-heading text-xl font-bold text-ink">{title}</h2>
           {subtitle && (
-            <span className="font-serif italic text-xs text-muted/90 tracking-wide">
+            <span className="font-ui text-sm text-muted tracking-wide">
               {subtitle}
             </span>
           )}
         </div>
-        {hint && <p className="mt-1 text-xs text-muted/80 leading-relaxed">{hint}</p>}
+        {hint && <p className="mt-2 text-sm text-muted leading-relaxed">{hint}</p>}
       </div>
       {children}
       {wizardMode && footer}

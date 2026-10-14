@@ -2,8 +2,9 @@
 
 Мастер, когда отряд приходит в новое место, пишет закрытое описание инструментом ``describe_place``: планировку,
 выходы, крупные предметы, тайное. После хода дешёвая техническая модель переводит его в эскиз на клетках по 5 футов
-(тот же формат, что у ``sketch_place``, app/core/sketch.py). Сервер проверяет эскиз; с ошибками модель получает
-вторую попытку. Готовый эскиз помечен ``auto``: мастер видит его в таблице сцены и правит ``sketch_place``.
+(тот же формат, что у ``sketch_place``, app/core/sketch.py). Однозначные огрехи формата (клетка предмета из двух
+чисел, дробная клетка) сервер правит сам; с остальными ошибками модель получает ещё попытки.
+Готовый эскиз помечен ``auto``: мастер видит его в таблице сцены и правит ``sketch_place``.
 
 Эскиз не ставится, если описание успели переписать (его построит следующий запуск) или мастер после описания
 нарисовал эскиз сам. Сбой модели игру не останавливает: таблица сцены напомнит нарисовать эскиз вручную.
@@ -28,7 +29,7 @@ from app.tools.master.places import SketchArgs, link_exits, sketch_data
 log = logging.getLogger(__name__)
 
 TOOL = "submit_sketch"
-ATTEMPTS = 2
+ATTEMPTS = 3
 
 SYSTEM = (
     "Ты чертёжник текстовой ролевой игры. По закрытому описанию места мастера нарисуй его эскиз для схемы игроков: "
@@ -55,6 +56,34 @@ def _spec() -> dict:
         "type": "function",
         "function": {"name": TOOL, "description": "Сдать эскиз места.", "parameters": schema},
     }
+
+
+def _cell(value):
+    """Дробная или вложенная клетка [[c, r]] — та же клетка в целых числах; иное оставляем проверке схемы."""
+    if isinstance(value, list) and len(value) == 1 and isinstance(value[0], list):
+        value = value[0]
+    if isinstance(value, list) and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in value):
+        return [int(round(x)) for x in value]
+    return value
+
+
+def _tidy(args: dict) -> dict:
+    """Чинит однозначные огрехи дешёвой модели до проверки: точечный предмет [c, r] — прямоугольник в одну клетку."""
+    out = dict(args)
+    if "party" in out:
+        out["party"] = _cell(out["party"])
+    if isinstance(out.get("walls"), list):
+        out["walls"] = [_cell(w) for w in out["walls"]]
+    if isinstance(out.get("features"), list):
+        feats = []
+        for f in out["features"]:
+            if isinstance(f, dict) and isinstance(f.get("cells"), list):
+                cells = [_cell(c) for c in f["cells"]]
+                cells = [[*c, *c] if isinstance(c, list) and len(c) == 2 else c for c in cells]
+                f = {**f, "cells": cells}
+            feats.append(f)
+        out["features"] = feats
+    return out
 
 
 def _neighbours(place: Entity, places: dict[str, Entity]) -> list[str]:
@@ -119,7 +148,7 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
             errors = ["эскиз не сдан: нужен вызов submit_sketch"]
         else:
             try:
-                data, errors = sketch_data(SketchArgs(**tc.arguments), set(places))
+                data, errors = sketch_data(SketchArgs(**_tidy(tc.arguments)), set(places))
             except ValidationError as e:
                 data, errors = None, [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()[:8]]
         if not errors:
@@ -151,7 +180,9 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
         await s.commit()
     if not stored:
         if data is None:
-            log.info("эскиз %s по описанию не построен", place_id)
+            log.warning(
+                "эскиз %s по описанию не построен: %s", place_id, "; ".join(c.error or "" for c in calls)[:500]
+            )
         return None
     await svc.bus.publish(cid, envelope("map.changed", cid, {"place_id": place_id}), None)
     log.info("эскиз %s: %s", place_id, sketch.describe(data))

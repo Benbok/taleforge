@@ -7,8 +7,12 @@
 
 - **Пространственный замысел в каркасе** (`app/core/layout/spatial.py`, `app/core/plot.py`): схема `SpatialPlan`
   (окружение `environment`, масштаб `scale`, обязательные части `parts` с `outdoor/below/secret/required/purpose`,
-  подходы `approaches` с `kind/side`). Архитектор (`app/agents/architect.py`) генерирует `spatial` только для ключевых
-  мест (1–2 на акт, без рутинных развилок), соблюдая лимиты (1–6 частей, 1–3 подхода, стороны `w/s/e`).
+  подходы `approaches` с `kind/side`). Архитектор (`app/agents/architect.py`) генерирует `spatial` для каждого места
+  каркаса: простое место (поляна, комната) — `small` и 1–2 части, место для исследования по частям — до 6 частей
+  (лимиты: 1–6 частей, 1–3 подхода, стороны `w/s/e`). Если `spatial` в наброске нет (модель пропустила, старый
+  каркас), `plan.with_spatial` строит простой замысел `spatial.default_spatial`: одна часть с именем места,
+  окружение и подход по тегам шаблона (`wild`/`rural` — открытая местность и тропа, `underground` — расщелина,
+  иначе — помещение и дверь). Карту за столом рисуют и для поляны, поэтому комплексом становится каждое место.
 - **Мандат и обязательства** (`app/core/layout/spatial.py`): `Mandate` связывает пространственный план места с
   носителями сюжетных зацепок (`Holder(key, name)`) и NPC-жителями (`npc:<id>`). Функция `obligations` строго
   проверяет выполнение мандата любым замыслом: сохранение обязательных частей, тайности, уровней, привязок носителей,
@@ -67,8 +71,9 @@
    гарантируя синхронность нарратива и карты.
 6. **Безопасная упреждающая подготовка.** Подготовка вперёд ограничена только геометрией соседних участков
    и не оставляет следов в личной памяти игроков (`MapMemory`).
-7. **Обратная совместимость.** Старые кампании, книги приключений и кампании с выключенными флагами сохраняют
-   прежнее поведение без создания комплексов и без изменения формата данных.
+7. **Обратная совместимость.** Книги приключений и кампании с выключенными флагами сохраняют прежнее поведение
+   без создания комплексов и без изменения формата данных. В кампаниях с включённым `location_layouts` места
+   каркаса без `spatial` при развороте получают простой замысел; уже развёрнутые места не перестраиваются.
 8. **Обязательный вызов инструмента.** Общий клиент сохраняет `tool_choice="required"` для всех провайдеров.
    Установленный адаптер LiteLLM преобразует его в Gemini `functionCallingConfig.mode="ANY"`;
    замена на `auto`, разрешающая ответ обычным текстом, удалена. Проверка адаптера не делает сетевого запроса.
@@ -100,8 +105,9 @@
    - `tests/test_prepare_location.py::test_two_calls_prepare_structure_then_all_geometry`
    - `tests/test_location_maps_delivery3.py::test_pilot_secret_vault_is_not_disclosed_by_preparation`
 6. **Старые кампании и готовые модули не затрагиваются:**
-   - `tests/test_layout_develop.py::test_no_layout_without_flag_spatial_or_for_modules`
-   - `tests/test_prepare_location.py::test_refuses_visited_books_and_places_without_space`
+   - `tests/test_layout_develop.py::test_no_layout_without_flag_or_for_modules`
+   - `tests/test_layout_develop.py::test_place_without_spatial_gets_single_part_plan`
+   - `tests/test_prepare_location.py::test_refuses_visited_and_prepares_places_without_space`
 7. **Лимит коррекции и контракт Gemini:**
    - `tests/test_layout_model_phase.py::test_correction_over_budget_uses_fallback_without_spending_second_call`
    - `tests/test_llm_tool_choice.py::test_required_tool_choice_is_not_downgraded`
