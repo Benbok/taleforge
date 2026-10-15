@@ -55,13 +55,18 @@ class NarrationMixin:
         stalled: bool = False,
         meet: str = "",
         tool_attempts: list[dict] | None = None,
+        mood_note: str = "",
     ):
+        from app.agents.master.optimization import optimization_flags
+        from app.agents.master.prompt_context import build_prompt_bundle, narration_scene
+
+        compact = optimization_flags(c.settings or {})["role_context"]
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
         item_rejected = failed_item_action(ctx, tool_attempts)
         attempts = public_attempts(tool_attempts)
         cancellations = cancelled_actions(ctx)
-        results = _render_results(ctx)
+        results = _render_results(ctx, public_only=compact)
         turn = combat.public_turn(ctx.world)
         prompt = render(
             "narrate.j2",
@@ -69,11 +74,11 @@ class NarrationMixin:
             tool_attempts=attempts,
             cancelled_actions=cancellations,
             failed_transition=outcome == "failed",
-            scene=ctx.world.scene_table(),
+            scene=narration_scene(ctx) if compact else ctx.world.scene_table(),
             length=_narration_length(ctx, notes),
             check_only=_check_only(ctx, notes),
             combat_notes=list(notes),
-            plot_notes=list(plot_notes),
+            plot_notes=[] if compact else list(plot_notes),
             adaptation_notes=list(adaptation_notes),
             next_turn=turn["name"] if turn else None,
             stalled=stalled,
@@ -86,6 +91,20 @@ class NarrationMixin:
                 f"Реплики игроков этого хода:\n{news}\n\n{prompt}" + (f"\n\n{meet}" if meet else ""),
             },
         ]
+        prompt_metadata = None
+        if compact:
+            bundle = await build_prompt_bundle(
+                ctx,
+                cfg,
+                role="narrate",
+                inputs={
+                    "request": base[1]["content"],
+                    "mood": mood_note,
+                    "legacy_messages": base,
+                },
+            )
+            base = bundle.messages
+            prompt_metadata = bundle.metadata("narrate")
         known = set(ctx.world.characters) | set(ctx.world.entities)
         inventory_names = {
             item.id: ctx.world.item_name(item)
@@ -113,7 +132,9 @@ class NarrationMixin:
         )
         # Scene and player ownership checks require the whole response. Publish
         # the checked draft only; a rejected first attempt must never reach chat.
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None)
+        reply = await self._ask(
+            calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, prompt_metadata=prompt_metadata
+        )
         text = reply.text.strip()
         if not text:
             audit["regenerated"] = True
@@ -125,7 +146,9 @@ class NarrationMixin:
                     "content": "Ответ пуст. Опиши подтверждённые результаты этого хода словами. Не выводи многоточие.",
                 },
             ]
-            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+            reply = await self._ask(
+                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+            )
             text = reply.text.strip()
         rejected_names: set[str] = set()
         excluded_fallback_names: set[str] = set()
@@ -195,7 +218,9 @@ class NarrationMixin:
                 },
             ]
             # Rejected drafts stay private while the narrator rewrites them.
-            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+            reply = await self._ask(
+                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+            )
             text = reply.text.strip()
 
         blocked_refs = unknown_refs(text)
@@ -230,7 +255,9 @@ class NarrationMixin:
                         ),
                     },
                 ]
-                reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None)
+                reply = await self._ask(
+                    calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+                )
                 blocked_refs = unknown_refs(reply.text)
                 text = MARKUP.sub(strip, reply.text.strip())
                 if textcalls.contains(text, tools):
@@ -309,11 +336,7 @@ class NarrationMixin:
             for x in cancellations:
                 ref = x.get("action_ref")
                 if ref is not None:
-                    prog = (
-                        ctx.action_progress.get(action_key(ref))
-                        if hasattr(ctx, "action_progress")
-                        else None
-                    )
+                    prog = ctx.action_progress.get(action_key(ref)) if hasattr(ctx, "action_progress") else None
                     if prog is not None:
                         notice = public_action_notice(ctx, ref, prog)
                         if notice:

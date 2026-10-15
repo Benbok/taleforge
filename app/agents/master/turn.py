@@ -45,20 +45,17 @@ from app.agents.master.tool_profiles import (
     profile_tool_names,
     select_tool_profile,
 )
-from app.core import adventure, audio, bonds, chat, combat, persona, plot
-from app.core.brief import brief_text
+from app.core import audio, chat, combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
 from app.core.llm_diagnostics import message_sizes, reply_metrics
-from app.core.narrative.view import master_canon_block
 from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
-from app.db.models import AgentConfig, Campaign, CampaignSecret, LlmCall, MasterTurn, Message, Scene, now
+from app.db.models import AgentConfig, Campaign, LlmCall, MasterTurn, Message, Scene, now
 from app.gateway.events import envelope, publish_message
 from app.tools import fortune as fortune_tools
 from app.tools import plot as plot_tools
-from app.tools import progress as progress_tools
 from app.tools import standing as standing_tools
 from app.tools.action_plan import (
     approach_attack,
@@ -322,9 +319,12 @@ class TurnMixin:
         tools: list | None,
         override_model: str | None = None,
         stream_callback=None,
+        *,
+        prompt_metadata: dict | None = None,
     ) -> LLMReply:
         model = override_model or (decide_model_for() if purpose == "decide" else model_for())
         sizes = message_sizes(messages, tools or [])
+        sizes.update(prompt_metadata or {})
         try:
             reply = await self.llm.complete(
                 messages,
@@ -611,6 +611,22 @@ class TurnMixin:
                 ),
             },
         ]
+        prompt_metadata = None
+        if flags["role_context"]:
+            from app.agents.master.prompt_context import build_prompt_bundle
+
+            bundle = await build_prompt_bundle(
+                ctx,
+                cfg,
+                role="decide",
+                inputs={
+                    "request": msgs[1]["content"],
+                    "legacy_messages": msgs,
+                    "uncertain": any(not isinstance(m.intent, dict) or not m.intent.get("actions") for m in new),
+                },
+            )
+            msgs = bundle.messages
+            prompt_metadata = bundle.metadata("decide")
         done_calls = retries = written_rounds = 0
         nudged = False
         spawn_retry = False
@@ -810,7 +826,9 @@ class TurnMixin:
 
         for _ in range(MAX_STEPS):
             specs = tool_specs(ctx.world, allowed, dynamic_ids=not flags["tool_profiles"])
-            reply = await self._ask(calls, cfg, cid, seat.id, turn_id, "decide", msgs, specs)
+            reply = await self._ask(
+                calls, cfg, cid, seat.id, turn_id, "decide", msgs, specs, prompt_metadata=prompt_metadata
+            )
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             # Текстовые имитации вызовов нельзя исполнять: только native tool_calls проходят
             # через серверный диспетчер. Даём модели шанс исправить формат ответа.
@@ -1173,60 +1191,6 @@ class TurnMixin:
         return {"ctx": ctx, "messages": whispers, "names": names, "ids": [m.id for m in new], "skipped": False}
 
     async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
-        secret = await s.get(CampaignSecret, c.id)
-        secrets = ""
-        has_plot = bool(secret and plot.has_plan(secret.plot))
-        if has_plot:
-            # «Сюжет сейчас» — текущий акт и что рядом; весь каркас мастер читает через get_plot
-            extra = json.dumps(secret.setting, ensure_ascii=False)[:4000] if secret.setting else ""
-            home = ctx.world.entities.get(ctx.world.home() or "")
-            if adventure.room_of(home) is not None:  # комната готового приключения: место каркаса — место модуля
-                home = ctx.world.entities.get(home.location_id or "")
-            now_ = plot.now_block(secret.plot, location_entity_id=home.id if home else None)
-            secrets = (now_ + ("\n" + extra if extra else ""))[:16000]
-            book = adventure.master_block(ctx.world)
-            if book:
-                secrets += "\n\nПо книге:\n" + book[:12000]
-        elif secret and (secret.setting or secret.plot):
-            secrets = json.dumps({"setting": secret.setting, "plot": secret.plot}, ensure_ascii=False)[:12000]
-        if canon := master_canon_block(ctx.world):
-            secrets = (secrets + "\n\n" if secrets else "") + canon
-        ties = [
-            f"{ch.name} ({ch.id}):\n{text}"
-            for ch in ctx.world.characters.values()
-            if ch.status in ("approved", "active") and (text := bonds.render(ch, private=True))
-        ]
-        if ties:
-            secrets = (secrets + "\n" if secrets else "") + "Связи героев (ответы игроков):\n" + "\n".join(ties)
-        # характеры героев (анкета и летопись) мастер видит, как видит лист: чтобы NPC и сцены цепляли героев
-        chars = []
-        for ch in ctx.world.characters.values():
-            if ch.status not in ("approved", "active"):
-                continue
-            if text := persona.render(ch.persona, await persona.notes_of(s, c.id, ch.id)):
-                chars.append(f"{ch.name} ({ch.id}):\n{text}")
-        if chars:
-            secrets = (secrets + "\n" if secrets else "") + "Характеры героев:\n" + "\n".join(chars)
-        style = cfg.persona or ""
-        own = persona.render((cfg.settings or {}).get("character"), await persona.notes_of(s, c.id, None), master=True)
-        if own:
-            style = (style + "\n\n" if style else "") + "Твой характер как мастера:\n" + own
-        dc = ", ".join(f"{e.id} = {e.data['value']} ({e.name})" for e in ctx.world.catalog.dc_scale())
-        return render(
-            "master_system.j2",
-            campaign_name=c.name,
-            style=style or None,
-            brief=brief_text(c.brief),
-            excluded_themes=", ".join((c.settings or {}).get("excluded_themes") or []),
-            public_intro=c.public_intro,
-            secrets=secrets,
-            has_plot=has_plot,
-            pacing=rhythm.pacing_note((c.brief or {}).get("length"), await rhythm.turns_played(s, c.id)),
-            dc_scale=dc,
-            max_calls=MAX_CALLS,
-            difficulty=c.difficulty,
-            leveling=progress_tools.leveling(c),
-            random_events=fortune_tools.random_events(c),
-            critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
-            audio=audio.prompt_block(c, ctx.world.scene, audio.where(ctx), ctx.saved_sfx),
-        )
+        from app.agents.master.prompt_context import master_prompt_values
+
+        return render("master_system.j2", **await master_prompt_values(ctx, cfg))

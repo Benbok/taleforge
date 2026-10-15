@@ -195,6 +195,7 @@ class FinishMixin:
                 meet=meet,
                 tool_attempts=tool_attempts,
                 adaptation_notes=inputs.get("adaptation_notes") or [],
+                mood_note=inputs.get("mood") or "",
             )
         except BaseException:
             if voice_task is not None:
