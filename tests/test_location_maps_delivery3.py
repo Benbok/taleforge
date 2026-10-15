@@ -189,8 +189,11 @@ def test_pilot_secret_vault_is_not_disclosed_by_preparation(game_client, admin_g
     secret_memories = rows(settings, MapMemory, MapMemory.entity_id.in_([vault_id, nave_id]))
     assert len(secret_memories) == 0
 
-    packet = json.dumps(_map(game_client, heads[0], cid), ensure_ascii=False)
-    assert vault_id not in packet and "Тайник" not in packet and nave_id not in packet
+    view = _map(game_client, heads[0], cid)
+    packet = json.dumps(view, ensure_ascii=False)
+    assert vault_id not in packet and "Тайник" not in packet
+    nave = next(a for a in view["location_map"]["areas"] if a["id"] == nave_id)
+    assert nave["status"] == "prepared" and not nave["sketch"]["features"] and not nave["sketch"]["exits"]
 
 
 def test_pilot_brief_has_no_plot_secrets(game_client, admin_g, settings):

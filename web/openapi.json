@@ -7820,6 +7820,11 @@
       "title": "Name",
       "type": "string"
      },
+     "solid": {
+      "default": false,
+      "title": "Solid",
+      "type": "boolean"
+     },
      "visual_key": {
       "anyOf": [
        {

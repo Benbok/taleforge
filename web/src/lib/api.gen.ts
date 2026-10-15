@@ -4802,6 +4802,11 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Solid
+             * @default false
+             */
+            solid?: boolean;
+            /**
              * Visual Key
              * @default null
              */

@@ -756,14 +756,14 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     result = {"character": ch.name, "item": en.name, "qty": qty, "inventory_id": inv_id, "left": have - qty}
     if owner is not None:
         result.update({"from_id": owner.id, "from": owner.name, "how": a.how})
-    await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
-    many = f" ×{qty}" if qty > 1 else ""
-    ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
     if not unique and qty == have:
         await ctx.session.delete(en)
         ctx.world.entities.pop(en.id, None)
     elif not unique:
         en.state = {**st, "qty": have - qty}
+    await ctx.record("pick_up_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
+    many = f" ×{qty}" if qty > 1 else ""
+    ctx.outbox.append({"kind": "system", "content": f"{ch.name} подбирает «{en.name}»{many}: предмет в инвентаре."})
     return result
 
 

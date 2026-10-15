@@ -16,13 +16,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import CatalogError
 from app.core.resolution.contracts import ActionProgress, ActionRef, FailureCategory, FailureInfo, ToolActionBinding
 from app.core.world import World, WorldError, load_world
-from app.db.models import Campaign, Event
+from app.db.models import Campaign, Entity, Event
 from app.rules.dice import Dice, DiceError, DiceRoll
 from app.rules.dnd5e.engine import RulesError
 
@@ -108,7 +108,22 @@ class ToolContext:
         from app.core.map_memory import observe_present
 
         inverse = inverse if inverse is not None else []
-        sync_objects(self, inverse)
+        changed = {key for key in (target_id, actor_id) if key in self.world.entities}
+        rooms = set()
+        for entity in self.session.dirty | self.session.new | self.session.deleted:
+            if isinstance(entity, Entity) and entity.id:
+                changed.add(entity.id)
+                rooms.add(entity.location_id)
+                rooms.update(inspect(entity).attrs.location_id.history.deleted)
+        for entry in inverse:
+            if entry.get("table") == "entities":
+                key = entry.get("id") or (entry.get("row") or {}).get("id")
+                if key:
+                    changed.add(key)
+                rooms.add((entry.get("row") or {}).get("location_id"))
+                if entry.get("field") == "location_id":
+                    rooms.add(entry.get("before"))
+        sync_objects(self, inverse, changed=changed, rooms=rooms)
         await observe_present(self, inverse)
         ev = Event(
             campaign_id=self.campaign.id,

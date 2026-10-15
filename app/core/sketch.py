@@ -308,6 +308,7 @@ def project_for_viewer(
     features = []
     for feature in out["features"]:
         f = dict(feature)
+        f.pop("slot_ref", None)  # private placement identity; clients interact through entity_id
         eid = f.get("entity_id")
         if eid:
             entity = entities.get(eid)

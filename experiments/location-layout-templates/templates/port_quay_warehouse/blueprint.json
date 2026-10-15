@@ -122,7 +122,9 @@
           "length": 2,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "cargo_pier",
@@ -220,6 +222,25 @@
           "length": 8,
           "meaning": "continuation"
         }
+      ],
+      "scene_profile": null,
+      "object_slots": [
+        {
+          "slot_ref": "pier_container",
+          "role": "container",
+          "cells": [
+            [
+              5,
+              4,
+              5,
+              4
+            ]
+          ],
+          "detail_ref": null,
+          "hidden": false,
+          "max_cols": 1,
+          "max_rows": 1
+        }
       ]
     },
     {
@@ -287,7 +308,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "harbor_water_west",
@@ -364,7 +387,9 @@
           "length": 8,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "harbor_water_east",
@@ -441,7 +466,9 @@
           "length": 8,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

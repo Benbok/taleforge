@@ -101,8 +101,14 @@ def test_map_memory_inverse_follows_journal_format(client, admin, settings):
 
     before_snapshot, before_revision, granted, observed, fresh = _play(settings, cid, go)
     key = [hid, ids["sacristy"]]
-    assert granted == [{"table": "map_memories", "id": key, "field": "discovered_passages", "before": []}]
+    shared_key = [cid, root, ids["sacristy"]]
+    assert granted == [
+        {"table": "party_map_memories", "id": shared_key, "field": "discovered_passages", "before": []},
+        {"table": "map_memories", "id": key, "field": "discovered_passages", "before": []},
+    ]
     assert observed == [
+        {"table": "party_map_memories", "id": shared_key, "field": "snapshot", "before": before_snapshot},
+        {"table": "party_map_memories", "id": shared_key, "field": "revision", "before": before_revision},
         {"table": "map_memories", "id": key, "field": "snapshot", "before": before_snapshot},
         {"table": "map_memories", "id": key, "field": "revision", "before": before_revision},
     ]
@@ -189,11 +195,12 @@ def test_left_area_memory_ignores_later_changes(client, admin, settings):
 
 def test_party_map_memory_survives_personal_memory_removal(client, admin, settings):
     """Общий снимок карты не исчезает вместе с личной памятью героя."""
-    cid, _heads, hid, _village, _root, ids = _built(client, admin, settings, "road", "sacristy")
+    cid, _heads, hid, _village, root, ids = _built(client, admin, settings, "road", "sacristy")
 
     async def go(ctx):
         await _ok(ctx, "move", {"character_ids": [hid], "location_id": ids["road"]})
-        shared = await ctx.session.get(PartyMapMemory, (cid, ids["sacristy"], ids["road"]))
+        await _ok(ctx, "move", {"character_ids": [hid], "location_id": ids["sacristy"]})
+        shared = await ctx.session.get(PartyMapMemory, (cid, root, ids["road"]))
         assert shared is not None and shared.snapshot is not None
         await ctx.session.delete(await ctx.session.get(MapMemory, (hid, ids["road"])))
         await ctx.session.flush()
