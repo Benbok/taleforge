@@ -23,8 +23,15 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.world_generation.contracts import POLICY_VERSION, Plan, Proposal, digest
-from app.core.world_generation.policy import root_reservation
-from app.core.world_generation.profiles import MINIMAL_REF, ProfileError, load_profile, profile_ref_for
+from app.core.world_generation.policy import allocate_complex, root_reservation
+from app.core.world_generation.profiles import (
+    MINIMAL,
+    MINIMAL_REF,
+    ProfileError,
+    load_profile,
+    profile_ref_for,
+    restore_profile,
+)
 from app.core.world_objects import read_world_object
 from app.core.world_tx import world_write
 from app.db.models import Campaign, Entity, PlotAnchorBinding, WorldGenerationState, as_utc, now
@@ -87,8 +94,13 @@ async def reserve_root(
     if row is not None:
         return row
     ref = MINIMAL_REF if minimal else profile_ref_for(location, world.catalog)
+    # Участок нового комплекса берёт долю, закреплённую при публикации (reserve_complex).
+    cx = (location.state or {}).get("complex") or {}
+    root = world.entities.get(cx.get("root_id"))
+    fixed = None if minimal or root is None else (
+        ((root.state or {}).get("content_reservation") or {}).get("areas", {}).get(cx.get("area_ref")))
     try:
-        profile = load_profile(world.catalog, ref)
+        profile = restore_profile(fixed["profile_snapshot"]) if fixed else load_profile(world.catalog, ref)
     except ProfileError as e:
         row = WGS(
             campaign_id=campaign.id,
@@ -105,6 +117,12 @@ async def reserve_root(
         reservation = root_reservation(
             campaign, location.id, profile, authored_templates(world.entities, location.id), anchors
         )
+        if fixed:
+            reservation = {**fixed, "seed": reservation["seed"], "anchors": reservation["anchors"]}
+        elif (location.state or {}).get("content_reservation"):
+            # Корень комплекса: случайная добыча уже распределена по участкам, остаются только носители зацепок.
+            reservation = {**reservation, "budget": 0,
+                           "limits": {"entities": 0, "item_units": 0, "containers": 0}}
         row = WGS(
             campaign_id=campaign.id,
             target_entity_id=location.id,
@@ -119,6 +137,73 @@ async def reserve_root(
     session.add(row)
     await session.flush()
     return row
+
+
+async def reserve_complex(ctx, root: Entity, bp) -> None:
+    """Only new publications opt in. The caller holds the campaign world-write guard."""
+    if (root.state or {}).get("content_reservation"):
+        return
+    from app.core.plot_anchors import anchor_reserve, reserved_for
+
+    reservations = {}
+    weights = {"warehouse": 3, "market": 2, "cache": 2, "pier": 1, "quay": 1}
+    for area in sorted(bp.areas, key=lambda a: a.area_ref):
+        location = ctx.world.entities[root.state["areas"][area.area_ref]]
+        try:
+            profile = load_profile(ctx.world.catalog, profile_ref_for(location, ctx.world.catalog))
+        except ProfileError:
+            profile = MINIMAL
+        anchors = [anchor_reserve(b) for b in await reserved_for(ctx.session, ctx.campaign.id, location.id)]
+        reservations[area.area_ref] = root_reservation(
+            ctx.campaign, location.id, profile, authored_templates(ctx.world.entities, location.id), anchors)
+    budget = max((r["profile_snapshot"]["budget"] for r in reservations.values()), default=0)
+    if all(r["profile_ref"] == MINIMAL_REF for r in reservations.values()):
+        return  # generic/legacy complexes retain explicit per-location preparation
+    authored = sum(r["authored_cost"] for r in reservations.values())
+    root_row = await find(ctx.session, ctx.campaign.id, root.id, "location_initial")
+    try:
+        if root_row is not None and (root_row.reservation or {}).get("profile_snapshot"):
+            root_profile = restore_profile(root_row.reservation["profile_snapshot"])
+        else:
+            root_profile = load_profile(ctx.world.catalog, profile_ref_for(root, ctx.world.catalog))
+    except ProfileError:
+        root_profile = MINIMAL
+    root_authored = root_reservation(ctx.campaign, root.id, root_profile,
+                                     authored_templates(ctx.world.entities, root.id))
+    authored += root_authored["authored_cost"]
+    if root_row is not None and root_row.status == "ready":
+        # Existing root content/closed containers already consume their reserved shares.
+        authored += int((root_row.reservation or {}).get("budget", 0))
+    remaining = max(0, budget - authored)
+    if any("unknown_authored_cost" in r["diagnostics"] or "unknown_anchor_cost" in r["diagnostics"]
+           for r in [*reservations.values(), root_authored]):
+        remaining = 0
+    role_weights = {a.area_ref: weights.get(a.role, 1) if reservations[a.area_ref]["budget"] > 0 else 0
+                    for a in bp.areas}
+    shares = allocate_complex(remaining, role_weights)
+    limits = {key: max((r["limits"][key] for r in reservations.values()), default=0)
+              for key in ("entities", "item_units", "containers")}
+    if root_row is not None and root_row.status == "ready":
+        limits = {key: max(0, value - int((root_row.reservation or {}).get("limits", {}).get(key, 0)))
+                  for key, value in limits.items()}
+    allocated_limits = {key: allocate_complex(value, role_weights) for key, value in limits.items()}
+    for ref, reservation in reservations.items():
+        reservation["budget"] = shares[ref]
+        reservation["limits"] = {key: allocated_limits[key][ref] for key in limits}
+        reservation["complex_root_id"] = root.id
+    root.state = {**root.state, "content_reservation": {
+        "schema_version": 1, "budget": budget, "authored_cost": authored, "random_budget": remaining,
+        "limits": limits, "areas": reservations,
+    }}
+    if root_row is not None and root_row.status != "ready":
+        root_row.reservation = {**(root_row.reservation or {}), "budget": 0,
+                                "limits": {"entities": 0, "item_units": 0, "containers": 0}}
+        root_row.revision += 1
+        if root_row.status == "preparing":
+            root_row.status = "unprepared"
+            root_row.lease_token = None
+            root_row.lease_until = None
+            root_row.next_attempt_at = now()
 
 
 def activate(row: WorldGenerationState) -> bool:
@@ -353,15 +438,16 @@ async def commit_with(maker, dice_factory, claim: Claim, apply, *, quality: str 
         return manifest
 
 
-def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int) -> list[str]:
+def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int,
+             roles: dict[str, str] | None = None) -> list[str]:
     """Обстановка участка комплекса встаёт на его геометрию связанными деталями (спецификация 2026-10-12, §3.4)."""
     from app.core.layout import furnish
 
     sk = (place.state or {}).get("sketch")
     if not placed or not isinstance(sk, dict) or not sk.get("blueprint"):
         return []
-    new, unplaced = furnish.place(sk, placed, seed)
-    if len(new.get("features") or []) != len(sk.get("features") or []):
+    new, unplaced = furnish.place(sk, placed, seed, slots=(place.state or {}).get("object_slots"), roles=roles)
+    if new != sk:
         place.state = {**(place.state or {}), "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1}}
     return [f"unplaced:{x}" for x in unplaced]
 
@@ -395,6 +481,7 @@ async def commit_result(
 
         made: dict[str, str] = {}
         placed: list[tuple[str, str]] = []
+        roles: dict[str, str] = {}
         children: dict[str, str] = {}
         notes = list(plan.notes)
         lost = await plot_anchors.mark_lost(s, campaign.id)
@@ -454,8 +541,9 @@ async def commit_result(
                 await s.flush()
                 ctx.world.entities[en.id] = en
             made[slot.slot_ref] = en.id
-            if slot.role != "item" and slot.anchor_id is None:
+            if root:
                 placed.append((en.id, en.name))
+                roles[en.id] = slot.role
             if slot.role == "container":
                 reservation = plan.children[slot.slot_ref]
                 child = WGS(
@@ -489,12 +577,12 @@ async def commit_result(
             wo["revision"] = int(wo.get("revision") or 0) + 1
             target.state = {**st, "world_object": wo}
         if root:
-            notes += _furnish(target, placed, int(row.seed or 0))
+            notes += _furnish(target, placed, int(row.seed or 0), roles)
         manifest = {
             "schema_version": 1,
             "phase": plan.phase,
             "path": plan.reservation.get("path"),
-            "objects": [{"slot_ref": k, "id": v} for k, v in made.items()],
+            "objects": [{"slot_ref": k, "id": v, **_map_binding(target, v)} for k, v in made.items()],
             "children": children,
             "spent": plan.spent,
             "notes": notes,
@@ -533,5 +621,16 @@ async def commit_result(
             hidden=True,
         )
         await observe(ctx, place, [], only=list(made.values()))
+        from app.core.map_memory import observe_area
+
+        heroes = [h.id for h in ctx.world.characters.values() if ctx.world.place_of(h) == place]
+        await observe_area(ctx, place, heroes)
         await s.commit()
         return manifest
+
+
+def _map_binding(target: Entity, entity_id: str) -> dict[str, Any]:
+    for feature in ((target.state or {}).get("sketch") or {}).get("features", []):
+        if feature.get("entity_id") == entity_id:
+            return {"feature_id": feature["id"], "placement_slot_ref": feature.get("slot_ref")}
+    return {}

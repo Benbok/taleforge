@@ -61,6 +61,21 @@ def build_area(bp: Blueprint, area: Area, *, root_id: str | None = None, ids: di
             "cells": [list(r) for r in d.cells], "cover": "none", "hidden": d.hidden,
             "solid": d.solid,
         })  # fmt: skip
+    for slot in area.object_slots:
+        cells = rect_cells(slot.cells)
+        if (not cells or not cells <= floor or slot.role not in {"prop", "container", "item"}
+                or slot.max_cols < 1 or slot.max_rows < 1
+                or any(len(r) != 4 or r[0] > r[2] or r[1] > r[3] for r in slot.cells)):
+            errors.append(f"{area.area_ref}: slot {slot.slot_ref} invalid footprint or role")
+        if slot.detail_ref:
+            detail = next((d for d in area.details if d.detail_ref == slot.detail_ref), None)
+            if detail is None or detail.solid or detail.cells != slot.cells or detail.hidden != slot.hidden:
+                errors.append(f"{area.area_ref}: slot {slot.slot_ref} incompatible detail")
+    if len({s.slot_ref for s in area.object_slots}) != len(area.object_slots):
+        errors.append(f"{area.area_ref}: slot_ref повторяется")
+    refs = [s.detail_ref for s in area.object_slots if s.detail_ref]
+    if len(refs) != len(set(refs)):
+        errors.append(f"{area.area_ref}: detail_ref used by multiple object slots")
     exits: list[dict] = []
     for p, x in sorted(bp.ends_of(area.area_ref), key=lambda t: (t[0].hidden, t[0].passage_ref)):
         cells = end_cells(floor, area, x)

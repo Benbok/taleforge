@@ -821,6 +821,9 @@ async def drop_item(ctx: ToolContext, a: DropArgs) -> dict:
         inverse += inv
     await observe(ctx, en.location_id, inverse, only=[en.id])
     result = {"character": ch.name, "item": name, "qty": a.qty, "entity_id": en.id}
+    from app.core.layout.furnish import sync_objects
+
+    sync_objects(ctx, inverse, include={en.id})
     await ctx.record("drop_item", actor_id=ch.id, target_id=en.id, payload=result, inverse=inverse)
     return result
 
@@ -1179,6 +1182,9 @@ async def retrieve_object(ctx: ToolContext, a: ContainerMoveArgs) -> dict:
     inverse = _approach(ctx, hero, container, walk=True)
     inverse.append({"table": "entities", "id": obj.id, "field": "state", "before": copy.deepcopy(obj.state)})
     obj.state = _object_state(obj, container_id=None)
+    from app.core.layout.furnish import sync_objects
+
+    sync_objects(ctx, inverse, include={obj.id})
     await observe(ctx, obj.location_id, inverse, only=[obj.id])
     result = {"object_id": obj.id, "container_id": container.id}
     await ctx.record("retrieve_object", actor_id=hero.id, target_id=obj.id, payload=result, inverse=inverse)

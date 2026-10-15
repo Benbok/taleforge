@@ -201,9 +201,15 @@ async def observe_area(
 
 async def observe_present(ctx: Any, inverse: list[dict[str, Any]] | None = None, *, explicit: bool = False) -> bool:
     _, world, _ = _context_parts(ctx)
-    location = world.scene.location_id
-    heroes = [hero.id for hero in world.characters.values() if world.place_of(hero) == location]
-    return await observe_area(ctx, location, heroes, inverse, explicit=explicit) if location else False
+    groups: dict[str, list[str]] = {}
+    for hero in world.characters.values():
+        location = world.place_of(hero)
+        if location:
+            groups.setdefault(location, []).append(hero.id)
+    observed = False
+    for location, heroes in sorted(groups.items()):
+        observed = await observe_area(ctx, location, heroes, inverse, explicit=explicit) or observed
+    return observed
 
 
 async def known_passages(session: Any, hero_id: str, place_id: str) -> frozenset[tuple[str, str]]:

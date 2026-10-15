@@ -14,9 +14,22 @@ import random
 from typing import Any
 
 from app.core.world_generation.contracts import POLICY_VERSION, PRNG, Blocked, Plan, Slot
-from app.core.world_generation.profiles import SceneProfile
+from app.core.world_generation.profiles import SceneProfile, freeze_profile
 
 DECOR_MAX = 2  # обстановки на виду не больше: остальное место — находкам и контейнерам
+
+
+def allocate_complex(total: int, weights: dict[str, int]) -> dict[str, int]:
+    """Stable integer shares; no dependence on area creation or exploration order."""
+    if total < 0 or any(w < 0 for w in weights.values()):
+        raise ValueError("negative complex allocation")
+    refs = sorted(weights)
+    denominator = sum(weights.values())
+    shares = {ref: total * weights[ref] // denominator if denominator else 0 for ref in refs}
+    eligible = [ref for ref in refs if weights[ref] > 0]
+    for ref in eligible[:total - sum(shares.values())]:
+        shares[ref] += 1
+    return shares
 
 
 def _seed(*parts: str) -> int:
@@ -75,6 +88,7 @@ def root_reservation(
         "seed": root_seed(campaign.id, target_id, "location_initial"),
         "path": "root",
         "profile_ref": profile.ref,
+        "profile_snapshot": freeze_profile(profile),
         "content_chain": list(campaign.content_chain or []),
         "budget": budget,
         "limits": {"entities": lim.entities, "item_units": lim.item_units, "containers": lim.containers},
@@ -157,6 +171,7 @@ def build_plan(reservation: dict[str, Any], profile: SceneProfile, target_id: st
                 "limits": {"entities": child_entities, "item_units": child_units, "containers": child_containers},
                 "depth": depth - 1,
                 "diagnostics": [],
+                **({"profile_snapshot": reservation["profile_snapshot"]} if "profile_snapshot" in reservation else {}),
             }
     _place_anchors(plan, reservation, chosen_refs=list(plan.children) if root else None)
     assert plan.spent + sum(int(c["budget"]) for c in plan.children.values()) <= budget  # инвариант §4.5

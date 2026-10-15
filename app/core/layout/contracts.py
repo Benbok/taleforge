@@ -67,6 +67,17 @@ class Edge:
 
 
 @dataclass(frozen=True)
+class ObjectSlot:
+    slot_ref: str
+    role: str
+    cells: tuple[Rect, ...]
+    detail_ref: str | None = None
+    hidden: bool = False
+    max_cols: int = 1
+    max_rows: int = 1
+
+
+@dataclass(frozen=True)
 class Area:
     area_ref: str
     role: str
@@ -84,6 +95,8 @@ class Area:
     details: tuple[Detail, ...] = ()
     terrain: tuple[Terrain, ...] = ()
     edges: tuple[Edge, ...] = ()
+    scene_profile: str | None = None
+    object_slots: tuple[ObjectSlot, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -182,6 +195,11 @@ class Blueprint:
                 material=a.get("material") or "stone",
                 description=a.get("description") or "",
                 secret=bool(a.get("secret")),
+                scene_profile=a.get("scene_profile"),
+                object_slots=tuple(ObjectSlot(
+                    x["slot_ref"], x["role"], rects(x["cells"]), x.get("detail_ref"),
+                    bool(x.get("hidden")), int(x.get("max_cols", 1)), int(x.get("max_rows", 1)),
+                ) for x in a.get("object_slots") or ()),
                 details=tuple(
                     Detail(
                         x["detail_ref"],

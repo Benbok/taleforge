@@ -104,8 +104,11 @@ class ToolContext:
     ) -> Event:
         # Снимок карты фиксируется в тех же границах транзакции, что и событие.
         # Helper ничего не пишет в журнал и не вызывает record повторно.
+        from app.core.layout.furnish import sync_objects
         from app.core.map_memory import observe_present
 
+        inverse = inverse if inverse is not None else []
+        sync_objects(self, inverse)
         await observe_present(self, inverse)
         ev = Event(
             campaign_id=self.campaign.id,

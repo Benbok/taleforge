@@ -47,7 +47,7 @@ def test_generated_furnishing_is_bound_to_area_cells(client, admin, settings):
 
     ref = _play(settings, cid, resolve)
     assert _prepare(settings, cid, ref) == "ready"
-    made = [e for e in _generated(settings, ref) if (e.state or {}).get("world_object", {}).get("role") != "item"]
+    made = _generated(settings, ref)
     chapel = run(settings, lambda s: s.get(Entity, ids["chapel"]))
     linked = {f["entity_id"] for f in chapel.state["sketch"]["features"] if f.get("entity_id")}
     notes = _row(settings, ref).result_manifest["notes"]

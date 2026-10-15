@@ -99,6 +99,8 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
     for part in data['parts']:
         requested = next(p for p in mandate.spatial.parts if p.ref == part['part_ref'])
         role = infer_role(requested.ref, requested.name, requested.purpose)
+        if role is not None:
+            part['role'] = role
         candidates = source.get(role, []) if role else []
         candidate = next((item for item in candidates if item.part_ref not in used), None)
         if candidate is None:
@@ -113,6 +115,8 @@ def adapt_template_hybrid(template: LayoutTemplate, mandate: Mandate) -> tuple[L
         part.update(
             shape=candidate.shape, material=candidate.material,
             size=candidate.size, cols=candidate.cols, rows=candidate.rows,
+            role=candidate.role, scene_profile=candidate.scene_profile,
+            object_slots=[s.model_dump(mode='json') for s in candidate.object_slots],
             details=part['details'] + [d.model_dump(mode='json') for d in candidate.details
                                        if d.detail_ref not in {x['detail_ref'] for x in part['details']}],
         )
