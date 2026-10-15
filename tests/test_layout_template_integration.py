@@ -80,7 +80,7 @@ def test_architect_plan_develop_uses_catalog_without_owner_selection(client, adm
     plan['locations'][0]['template_id'] = 'location.forest'
     plan['locations'][0]['spatial'] = default_spatial('Лес', template_id='location.forest').model_dump(mode='json')
     cid = _campaign(client, admin, settings, plan=plan,
-                    location_layout_templates=True, location_layouts_llm=True)
+                    location_layouts=True, location_layout_templates=True, location_layouts_llm=True)
     _develop(settings, cid)
     async def find(session):
         return (await session.scalars(select(WorldGenerationState).where(
