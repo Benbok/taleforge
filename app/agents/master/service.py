@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -62,6 +63,15 @@ class MasterService(
         narrative_preparer: Any = None,
     ):
         self.maker = sessionmaker
+        self.review_process_id = uuid.uuid4().hex
+        self._reviews: dict[tuple[str, str], str] = {}
+        self.maker.configure(
+            info={
+                **(self.maker.kw.get("info") or {}),
+                "review_process_id": self.review_process_id,
+                "review_running": self._reviews,
+            }
+        )
         self.bus = bus
         self.llm = llm
         self.dice_factory = dice_factory

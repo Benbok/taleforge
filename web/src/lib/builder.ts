@@ -336,6 +336,8 @@ export interface CampaignHero extends SavedHero {
   status: string;
   reviewer?: "ai" | "master" | null;
   review_error?: string | null;
+  review_status?: "queued" | "running" | "failed" | "interrupted";
+  review_attempt_id?: string | null;
   review_comment?: string | null;
   class_name?: string | null;
   origin_name?: string | null;

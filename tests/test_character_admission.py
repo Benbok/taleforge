@@ -225,6 +225,8 @@ def test_start_races_with_admission(client, admin, base):
 
 
 def test_ai_review_finishes_after_resume(client, admin, base, monkeypatch):
+    # This test drives review directly; keep submission from starting a competing task.
+    monkeypatch.setattr(client.app.state.master, "schedule_review", lambda *_: None)
     c = make_campaign(
         client,
         admin,

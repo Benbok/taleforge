@@ -535,19 +535,48 @@ async def record_secret_link(
 
 async def review_failure(session: AsyncSession, ch: Character) -> str | None:
     """Почему ИИ-мастер не проверил героя, если последняя попытка после отправки сорвалась."""
+    return (await review_state(session, ch)).get("review_error")
+
+
+async def review_state(session: AsyncSession, ch: Character) -> dict:
+    """Recover the latest submission's attempt without restarting a paid task."""
     if ch.status != "submitted":
-        return None
+        return {}
     ev = (
         await session.scalars(
             select(Event)
-            .where(Event.campaign_id == ch.campaign_id, Event.target_id == ch.id, Event.tool == "review_failed")
+            .where(
+                Event.campaign_id == ch.campaign_id,
+                Event.target_id == ch.id,
+                Event.tool.in_(["review_failed", "review_started", "review_finished"]),
+            )
             .order_by(Event.created_at.desc())
             .limit(1)
         )
     ).first()
     if ev is None or (ch.updated_at and as_utc(ev.created_at) < as_utc(ch.updated_at)):
-        return None
-    return (ev.payload or {}).get("error") or "неизвестная ошибка"
+        return {"review_status": "queued", "review_error": None, "review_attempt_id": None}
+    data = ev.payload or {}
+    attempt = data.get("attempt_id")
+    if ev.tool == "review_failed":
+        return {
+            "review_status": "failed",
+            "review_error": data.get("error") or "неизвестная ошибка",
+            "review_attempt_id": attempt,
+        }
+    running = session.info.get("review_running", {}).get((ch.campaign_id, ch.id))
+    if (
+        ev.tool == "review_started"
+        and data.get("process_id") == session.info.get("review_process_id")
+        and attempt is not None
+        and running == attempt
+    ):
+        return {"review_status": "running", "review_error": None, "review_attempt_id": attempt}
+    return {
+        "review_status": "interrupted",
+        "review_error": "Проверка прервана. Повторите её или обратитесь к мастеру.",
+        "review_attempt_id": attempt,
+    }
 
 
 def public_view(ch: Character, entities=()) -> dict:
@@ -572,9 +601,7 @@ def public_view(ch: Character, entities=()) -> dict:
         "companions": [
             public_companion(entity)
             for entity in entities
-            if companion_record(entity)
-            and companion_record(entity).get("of") == ch.id
-            and companion_is_active(entity)
+            if companion_record(entity) and companion_record(entity).get("of") == ch.id and companion_is_active(entity)
         ],
     }
 

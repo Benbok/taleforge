@@ -179,6 +179,8 @@ class SheetParts(BaseModel):
     origin_name: str | None = absent()
     reviewer: Literal["ai", "master"] = absent()
     review_error: str | None = absent()
+    review_status: Literal["queued", "running", "failed", "interrupted"] = absent()
+    review_attempt_id: str | None = absent()
 
 
 class HeroSheet(HeroPublic, SheetParts):
@@ -208,3 +210,5 @@ class CharacterView(HeroPublic):
     origin_name: str | None = absent()
     reviewer: Literal["ai", "master"] = absent()
     review_error: str | None = absent()
+    review_status: Literal["queued", "running", "failed", "interrupted"] = absent()
+    review_attempt_id: str | None = absent()

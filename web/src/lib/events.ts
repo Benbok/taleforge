@@ -11,6 +11,7 @@ export const EVENT_HANDLERS = {
   "campaign.plan": "lib/useGameSocket.ts (сбой подготовки сюжета)",
   "character.bonds": "не нужно: game/BondsForm.tsx опрашивает связи сам",
   "character.review_failed": "не нужно: pages/CampaignHeroPage.tsx опрашивает героя, пока он на проверке",
+  "character.review_started": "не нужно: страницы проверки опрашивают состояние героя",
   "character.reviewed": "не нужно: pages/CampaignHeroPage.tsx опрашивает героя, пока он на проверке",
   "character.sheet": "stores/game.ts",
   "character.updated": "stores/game.ts",

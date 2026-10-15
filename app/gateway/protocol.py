@@ -326,12 +326,20 @@ class CharacterBonds(_Strict):
 class CharacterReviewFailed(_Strict):
     character_id: str
     error: str
+    attempt_id: str = absent()
+
+
+class CharacterReviewStarted(_Strict):
+    character_id: str
+    attempt_id: str
+    started_at: str
 
 
 class CharacterReviewed(_Strict):
     status: str
     comment: str | None
     character: HeroSheet = absent()
+    attempt_id: str = absent()
 
 
 class CharacterSheet(_Strict):
@@ -699,6 +707,7 @@ SERVER_EVENTS: dict[str, type[BaseModel]] = {
     "campaign.plan": CampaignPlan,
     "character.bonds": CharacterBonds,
     "character.review_failed": CharacterReviewFailed,
+    "character.review_started": CharacterReviewStarted,
     "character.reviewed": CharacterReviewed,
     "character.sheet": CharacterSheet,
     "character.updated": CharacterUpdated,

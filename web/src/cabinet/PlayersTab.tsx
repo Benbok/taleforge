@@ -420,7 +420,7 @@ async function copy(url: string) {
 }
 
 /** Герой на проверке: лист, история и тайная предыстория (её видит только проверяющий). */
-function ReviewCard({
+export function ReviewCard({
   campaignId,
   hero,
   onDone,
@@ -430,11 +430,14 @@ function ReviewCard({
   onDone: () => Promise<unknown>;
 }) {
   const [comment, setComment] = useState("");
+  const [retrying, setRetrying] = useState(false);
   const full = useQuery({
     queryKey: ["character", campaignId, hero.id],
     queryFn: () => api<Reviewable>(`/api/campaigns/${campaignId}/characters/${hero.id}`),
+    refetchInterval: (q) => q.state.data?.status === "submitted" ? 3000 : false,
   });
   const h = full.data ?? hero;
+  const running = retrying || h.review_status === "running";
   const review = (approve: boolean) => async () => {
     if (!approve && !comment.trim()) throw new Error("Укажите игроку, что именно нужно доработать");
     await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review`, {
@@ -491,13 +494,14 @@ function ReviewCard({
         </div>
       )}
 
-      {h.reviewer === "ai" && !h.review_error && (
+      {running && <p role="status" className="font-mono text-xs text-muted">Проверка выполняется…</p>}
+      {h.reviewer === "ai" && !h.review_error && !running && (
         <p className="font-mono text-xs text-muted">
           Герой находится в очереди на проверку ИИ-мастером. Вы также можете одобрить его вручную.
         </p>
       )}
 
-      {h.review_error && (
+      {h.review_error && !running && (
         <div className="rounded-[8px] border border-bad/40 bg-bad/10 p-2.5 font-mono text-xs text-bad">
           ИИ-мастер не смог провести проверку: {h.review_error.replace(/ \(.*$/s, "")}
         </div>
@@ -532,9 +536,16 @@ function ReviewCard({
         {h.reviewer === "ai" && (
           <ActionButton
             className="font-mono text-xs ml-auto"
+            disabled={running}
             run={async () => {
-              await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review/retry-ai`, { method: "POST" });
-              await onDone();
+              setRetrying(true);
+              try {
+                await api(`/api/campaigns/${campaignId}/characters/${hero.id}/review/retry-ai`, { method: "POST" });
+                await full.refetch();
+                await onDone();
+              } finally {
+                setRetrying(false);
+              }
             }}
             done="Проверка ИИ перезапущена"
           >

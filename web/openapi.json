@@ -517,6 +517,13 @@
       "title": "Leveling",
       "type": "string"
      },
+     "llm_optimization": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "title": "Llm Optimization",
+      "type": "object"
+     },
      "master": {
       "$ref": "#/components/schemas/MasterIn",
       "default": {
@@ -1008,6 +1015,13 @@
        }
       ],
       "title": "Leveling"
+     },
+     "llm_optimization": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "title": "Llm Optimization",
+      "type": "object"
      },
      "location_layout_templates": {
       "anyOf": [
@@ -1698,6 +1712,11 @@
    "CharacterReviewFailed": {
     "additionalProperties": false,
     "properties": {
+     "attempt_id": {
+      "default": null,
+      "title": "Attempt Id",
+      "type": "string"
+     },
      "character_id": {
       "title": "Character Id",
       "type": "string"
@@ -1714,9 +1733,38 @@
     "title": "CharacterReviewFailed",
     "type": "object"
    },
+   "CharacterReviewStarted": {
+    "additionalProperties": false,
+    "properties": {
+     "attempt_id": {
+      "title": "Attempt Id",
+      "type": "string"
+     },
+     "character_id": {
+      "title": "Character Id",
+      "type": "string"
+     },
+     "started_at": {
+      "title": "Started At",
+      "type": "string"
+     }
+    },
+    "required": [
+     "character_id",
+     "attempt_id",
+     "started_at"
+    ],
+    "title": "CharacterReviewStarted",
+    "type": "object"
+   },
    "CharacterReviewed": {
     "additionalProperties": false,
     "properties": {
+     "attempt_id": {
+      "default": null,
+      "title": "Attempt Id",
+      "type": "string"
+     },
      "character": {
       "$ref": "#/components/schemas/HeroSheet",
       "default": null
@@ -1958,6 +2006,17 @@
       "title": "Resources",
       "type": "object"
      },
+     "review_attempt_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Review Attempt Id"
+     },
      "review_comment": {
       "anyOf": [
        {
@@ -1979,6 +2038,16 @@
        }
       ],
       "title": "Review Error"
+     },
+     "review_status": {
+      "enum": [
+       "queued",
+       "running",
+       "failed",
+       "interrupted"
+      ],
+      "title": "Review Status",
+      "type": "string"
      },
      "reviewer": {
       "enum": [
@@ -3082,6 +3151,49 @@
      "payload"
     ],
     "title": "Event_character_review_failed",
+    "type": "object"
+   },
+   "Event_character_review_started": {
+    "additionalProperties": false,
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "payload": {
+      "$ref": "#/components/schemas/CharacterReviewStarted"
+     },
+     "seq": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seq"
+     },
+     "type": {
+      "const": "character.review_started",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "type",
+     "campaign_id",
+     "seq",
+     "payload"
+    ],
+    "title": "Event_character_review_started",
     "type": "object"
    },
    "Event_character_reviewed": {
@@ -5419,6 +5531,18 @@
       "title": "Resources",
       "type": "object"
      },
+     "review_attempt_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Review Attempt Id"
+     },
      "review_comment": {
       "anyOf": [
        {
@@ -5441,6 +5565,17 @@
       ],
       "default": null,
       "title": "Review Error"
+     },
+     "review_status": {
+      "default": null,
+      "enum": [
+       "queued",
+       "running",
+       "failed",
+       "interrupted"
+      ],
+      "title": "Review Status",
+      "type": "string"
      },
      "reviewer": {
       "default": null,
@@ -11608,6 +11743,7 @@
       "campaign.plan": "#/components/schemas/Event_campaign_plan",
       "character.bonds": "#/components/schemas/Event_character_bonds",
       "character.review_failed": "#/components/schemas/Event_character_review_failed",
+      "character.review_started": "#/components/schemas/Event_character_review_started",
       "character.reviewed": "#/components/schemas/Event_character_reviewed",
       "character.sheet": "#/components/schemas/Event_character_sheet",
       "character.updated": "#/components/schemas/Event_character_updated",
@@ -11673,6 +11809,9 @@
      },
      {
       "$ref": "#/components/schemas/Event_character_review_failed"
+     },
+     {
+      "$ref": "#/components/schemas/Event_character_review_started"
      },
      {
       "$ref": "#/components/schemas/Event_character_reviewed"

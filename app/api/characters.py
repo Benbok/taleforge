@@ -61,7 +61,10 @@ async def _view(session, viewer: Viewer, ch: Character) -> dict:
     if ch.status == "submitted":
         ai = master_seat(viewer.campaign).occupant_type == "agent"
         out["reviewer"] = "ai" if ai else "master"
-        out["review_error"] = await svc.review_failure(session, ch) if ai else None
+        if ai:
+            out.update(await svc.review_state(session, ch))
+        else:
+            out["review_error"] = None
     return out
 
 
@@ -297,8 +300,9 @@ async def retry_ai_review(
         raise Conflict("персонаж не на проверке")
     if master_seat(v.campaign).occupant_type != "agent":
         raise Conflict("героя проверяет живой мастер")
-    request.app.state.master.schedule_review(campaign_id, ch.id)
-    return {"status": ch.status}
+    await session.rollback()
+    attempt_id = await request.app.state.master.start_character_review(campaign_id, character_id)
+    return {"status": "submitted", "review_status": "running", "attempt_id": attempt_id}
 
 
 # --- готовые герои и герои из профиля ---

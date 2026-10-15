@@ -2515,6 +2515,10 @@ export interface components {
              * @enum {string}
              */
             leveling?: "xp" | "milestone";
+            /** Llm Optimization */
+            llm_optimization?: {
+                [key: string]: boolean;
+            };
             /**
              * @default {
              *       "type": "agent"
@@ -2667,6 +2671,10 @@ export interface components {
             excluded_themes?: string[] | null;
             /** Leveling */
             leveling?: ("xp" | "milestone") | null;
+            /** Llm Optimization */
+            llm_optimization?: {
+                [key: string]: boolean;
+            };
             /** Location Layout Templates */
             location_layout_templates?: boolean | null;
             /** Location Layouts */
@@ -2818,13 +2826,32 @@ export interface components {
         };
         /** CharacterReviewFailed */
         CharacterReviewFailed: {
+            /**
+             * Attempt Id
+             * @default null
+             */
+            attempt_id?: string;
             /** Character Id */
             character_id: string;
             /** Error */
             error: string;
         };
+        /** CharacterReviewStarted */
+        CharacterReviewStarted: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Character Id */
+            character_id: string;
+            /** Started At */
+            started_at: string;
+        };
         /** CharacterReviewed */
         CharacterReviewed: {
+            /**
+             * Attempt Id
+             * @default null
+             */
+            attempt_id?: string;
             /** @default null */
             character?: components["schemas"]["HeroSheet"];
             /** Comment */
@@ -2903,10 +2930,17 @@ export interface components {
             resources?: {
                 [key: string]: unknown;
             };
+            /** Review Attempt Id */
+            review_attempt_id?: string | null;
             /** Review Comment */
             review_comment?: string | null;
             /** Review Error */
             review_error?: string | null;
+            /**
+             * Review Status
+             * @enum {string}
+             */
+            review_status?: "queued" | "running" | "failed" | "interrupted";
             /**
              * Reviewer
              * @enum {string}
@@ -3299,6 +3333,19 @@ export interface components {
              * @enum {string}
              */
             type: "character.review_failed";
+        };
+        /** Event_character_review_started */
+        Event_character_review_started: {
+            /** Campaign Id */
+            campaign_id: string | null;
+            payload: components["schemas"]["CharacterReviewStarted"];
+            /** Seq */
+            seq: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "character.review_started";
         };
         /** Event_character_reviewed */
         Event_character_reviewed: {
@@ -4059,6 +4106,11 @@ export interface components {
             resources: {
                 [key: string]: unknown;
             };
+            /**
+             * Review Attempt Id
+             * @default null
+             */
+            review_attempt_id?: string | null;
             /** Review Comment */
             review_comment: string | null;
             /**
@@ -4066,6 +4118,12 @@ export interface components {
              * @default null
              */
             review_error?: string | null;
+            /**
+             * Review Status
+             * @default null
+             * @enum {string}
+             */
+            review_status?: "queued" | "running" | "failed" | "interrupted";
             /**
              * Reviewer
              * @default null
@@ -6012,7 +6070,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
+        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_review_started"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
         /** SessionSummary */
         SessionSummary: {
             /** Events */
@@ -6465,6 +6523,7 @@ export type CardHero = components['schemas']['CardHero'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
 export type CharacterIn = components['schemas']['CharacterIn'];
 export type CharacterReviewFailed = components['schemas']['CharacterReviewFailed'];
+export type CharacterReviewStarted = components['schemas']['CharacterReviewStarted'];
 export type CharacterReviewed = components['schemas']['CharacterReviewed'];
 export type CharacterSheet = components['schemas']['CharacterSheet'];
 export type CharacterUpdated = components['schemas']['CharacterUpdated'];
@@ -6490,6 +6549,7 @@ export type Event_campaign_epilogue = components['schemas']['Event_campaign_epil
 export type Event_campaign_plan = components['schemas']['Event_campaign_plan'];
 export type Event_character_bonds = components['schemas']['Event_character_bonds'];
 export type Event_character_review_failed = components['schemas']['Event_character_review_failed'];
+export type Event_character_review_started = components['schemas']['Event_character_review_started'];
 export type Event_character_reviewed = components['schemas']['Event_character_reviewed'];
 export type Event_character_sheet = components['schemas']['Event_character_sheet'];
 export type Event_character_updated = components['schemas']['Event_character_updated'];

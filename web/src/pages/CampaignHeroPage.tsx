@@ -40,6 +40,7 @@ export default function CampaignHeroPage() {
     queryKey: ["character", id, mine?.id],
     queryFn: () => api<CampaignHero>(`/api/campaigns/${id}/characters/${mine!.id}`),
     enabled: !!mine,
+    refetchInterval: (q) => q.state.data?.status === "submitted" ? 3000 : false,
   });
   const opts = useQuery({
     queryKey: ["options", id],
@@ -351,8 +352,11 @@ function Choose({
   );
 }
 
-function Waiting({ id, hero, onRetry }: { id: string; hero: CampaignHero; onRetry: () => Promise<unknown> }) {
+export function Waiting({ id, hero, onRetry }: { id: string; hero: CampaignHero; onRetry: () => Promise<unknown> }) {
   const ai = hero.reviewer === "ai";
+  const [retrying, setRetrying] = useState(false);
+  const running = retrying || hero.review_status === "running";
+  const reviewError = running ? null : hero.review_error;
   return (
     <section className="card flex flex-col items-start gap-4 p-6 border-accent/40 bg-surface">
       <div className="flex items-center gap-3">
@@ -367,16 +371,23 @@ function Waiting({ id, hero, onRetry }: { id: string; hero: CampaignHero; onRetr
         </div>
       </div>
 
-      {hero.review_error ? (
+      {running && <p role="status" className="font-mono text-xs text-accent">Проверка выполняется…</p>}
+      {reviewError ? (
         <div className="rounded-[10px] border border-bad/40 bg-bad/10 p-4 text-sm text-bad w-full">
           <p className="font-semibold">ИИ-мастер не смог завершить проверку:</p>
-          <p className="mt-1 font-mono text-xs">{hero.review_error.replace(/ \(.*$/s, "")}</p>
+          <p className="mt-1 font-mono text-xs">{reviewError.replace(/ \(.*$/s, "")}</p>
           <div className="mt-3">
             <ActionButton
               className="font-mono text-xs"
+              disabled={running}
               run={async () => {
-                await api(`/api/campaigns/${id}/characters/${hero.id}/review/retry-ai`, { method: "POST" });
-                await onRetry();
+                setRetrying(true);
+                try {
+                  await api(`/api/campaigns/${id}/characters/${hero.id}/review/retry-ai`, { method: "POST" });
+                  await onRetry();
+                } finally {
+                  setRetrying(false);
+                }
               }}
               done="Повторная проверка запущена"
             >
