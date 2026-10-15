@@ -19,6 +19,99 @@ from tests.test_scene_model import _campaign, _named
 from tests.test_world_generation import _fast_retry, _prepare, _room  # noqa: F401 — фикстура
 
 
+def test_paid_usage_survives_world_transaction_rollback(settings):
+    from app.agents.master.turn import TurnMixin
+    from app.db.models import AgentConfig, Campaign, User
+    from app.db.session import make_engine, make_sessionmaker
+
+    maker = make_sessionmaker(make_engine(settings.database_url))
+    reply = LLMReply(
+        text="invalid output",
+        model="m",
+        tokens_in=100,
+        tokens_out=40,
+        reasoning_tokens=25,
+        tokens_cached=80,
+        cost=0.01,
+        cost_known=True,
+        finish_reason="length",
+    )
+
+    class Harness(TurnMixin):
+        pass
+
+    master = Harness()
+    master.maker = maker
+    master.llm = ScriptedLLM([reply])
+
+    async def check():
+        async with maker() as s:
+            # Minimal campaign is sufficient to exercise the real independent call writer.
+            s.add(User(id="u_accounting", name="accounting", password_hash="unused"))
+            await s.flush()
+            s.add(Campaign(id="c_accounting", name="accounting", owner_id="u_accounting", ruleset_version="1"))
+            await s.commit()
+        calls = []
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c_accounting")
+            campaign.name = "must roll back"
+            await master._ask(
+                calls,
+                AgentConfig(temperature=0.2),
+                "c_accounting",
+                "seat",
+                "turn",
+                "decide",
+                [{"role": "user", "content": "private prompt"}],
+                None,
+            )
+            await s.flush()
+            await s.rollback()
+        await master._save_calls(calls)
+        async with maker() as s:
+            from sqlalchemy import select
+
+            call = (await s.scalars(select(LlmCall).where(LlmCall.campaign_id == "c_accounting"))).one()
+            assert (await s.get(Campaign, "c_accounting")).name == "accounting"
+            assert (call.tokens_in, call.tokens_out, call.tokens_reasoning, call.tokens_cached) == (100, 40, 25, 80)
+            assert call.cost == 0.01 and call.cost_known is True
+            assert "incomplete_response" in call.error
+            assert "private prompt" not in str(call.diagnostics)
+
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize("cost,known", [(0.0, True), (0.0, False), (0.01, True)])
+def test_director_keeps_reported_cost_without_repricing(monkeypatch, cost, known):
+    import litellm
+
+    from app.agents.director import LlmNarrativeAuthor
+    from tests.test_narrative_director import FakeDirectorLLM, approx_tokens, snapshot
+
+    reports = []
+    reply = LLMReply(
+        text="",
+        model="m",
+        tokens_in=100,
+        tokens_out=40,
+        cost=cost,
+        cost_known=known,
+        tool_calls=[
+            llm_mod.ToolCall("tc", "propose_adaptation", {"summary": "No changes", "grounds": [], "operations": []})
+        ],
+    )
+    monkeypatch.setattr(litellm, "cost_per_token", lambda **_: (0.01, 0.02))
+
+    async def observer(report):
+        reports.append(report)
+
+    author = LlmNarrativeAuthor(
+        FakeDirectorLLM(reply), "m", token_counter=approx_tokens, timeout_seconds=90, call_observer=observer
+    )
+    asyncio.run(author.propose(snapshot()))
+    assert reports[0].cost == cost
+
+
 def test_llm_call_migration_upgrade_and_downgrade(monkeypatch, tmp_path):
     root = Path(__file__).resolve().parents[1]
     config = Config(str(root / "alembic.ini"))

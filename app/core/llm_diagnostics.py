@@ -29,3 +29,25 @@ def reply_metrics(reply: Any) -> dict[str, Any]:
         "tokens_cached": reply.tokens_cached,
         "cost_known": reply.cost_known,
     }
+
+
+def message_sizes(messages: list[dict], tools: list) -> dict:
+    """Measure visible content and function payloads without inspecting provider reasoning."""
+    blocks = {}
+    for i, message in enumerate(messages):
+        key = f"message_{i}_{message.get('role', 'unknown')}"
+        content = message.get("content")
+        blocks[key] = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
+        calls = message.get("tool_calls")
+        if calls:
+            # Select protocol fields explicitly: never serialize provider-specific metadata.
+            public_calls = [
+                {
+                    "id": call.get("id"),
+                    "type": call.get("type"),
+                    "function": {name: (call.get("function") or {}).get(name) for name in ("name", "arguments")},
+                }
+                for call in calls
+            ]
+            blocks[f"{key}_tool_calls"] = json.dumps(public_calls, ensure_ascii=False)
+    return prompt_sizes(blocks, tools)

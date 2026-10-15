@@ -43,11 +43,20 @@ def _add(bucket: dict[str, dict[str, Any]], key: str, c: LlmCall) -> None:
 def session_report(calls: list[LlmCall], turns: list) -> dict[str, Any]:
     """All paid attempts survive aggregation, including invalid output and rolled back turns."""
     total, by_purpose, by_phase = {}, {}, {}
-    creation = {"plan", "sketch", "scene", "layout", "campaign_intro", "greeting", "intro"}
+    creation = {"plan", "sketch", "scene_generation", "location_layout", "campaign_intro", "greeting", "intro"}
+    background = {"director", "summary", "catchup", "replan"}
     for call in calls:
         _add(total, "all", call)
         _add(by_purpose, call.purpose, call)
-        phase = "turn" if call.turn_id else "creation" if call.purpose in creation else "unattributed"
+        phase = (
+            "turn"
+            if call.turn_id
+            else "creation"
+            if call.purpose in creation
+            else "background"
+            if call.purpose in background
+            else "unattributed"
+        )
         _add(by_phase, phase, call)
     done = [t for t in turns if t.status == "done"]
     failed = [t for t in turns if t.status == "failed"]

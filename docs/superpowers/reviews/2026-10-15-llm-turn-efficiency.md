@@ -20,3 +20,5 @@ in app/core/world_tx.py. No changes made to those unrelated files.
 ## Human verification
 
 Not performed. Live model cost savings and prose quality remain unmeasured.
+
+Independent Task 1 review found three issues (zero-price repricing, omitted function-call sizes, phase classification); all fixed with regression tests. Real world-transaction rollback also preserves tokens/cache/price and invalid-output audit in the independent call writer.

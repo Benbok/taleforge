@@ -406,19 +406,9 @@ class LlmNarrativeAuthor:
             if reply is not None and error_msg is None:
                 error_msg = reply_audit_error(reply)
 
-            # стоимость — от провайдера; иначе по тарифу модели. Неизвестный тариф (локальная модель) остаётся 0,
-            # а ошибка сохраняется в error: она не выдаётся за бесплатный успешный вызов
-            cost = float(reply.cost) if reply is not None and getattr(reply, "cost", None) else 0.0
-            if not cost and (tokens_in or tokens_out):
-                try:
-                    import litellm
-
-                    cin, cout = litellm.cost_per_token(
-                        model=model_name, prompt_tokens=tokens_in or 0, completion_tokens=tokens_out or 0
-                    )
-                    cost = float(cin + cout)
-                except Exception:  # noqa: BLE001 — у локальной и неизвестной модели тарифа нет
-                    cost = 0.0
+            # Preserve the client's cached/reasoning-aware price, including known zero.
+            # Repricing totals cannot distinguish cache rates and would invent coverage.
+            cost = float(reply.cost) if reply is not None else 0.0
 
             report = AuthorCallReport(
                 source=snapshot.source,

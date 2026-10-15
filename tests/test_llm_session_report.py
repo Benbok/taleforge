@@ -89,3 +89,38 @@ def test_prompt_sizes_contains_only_sizes_and_estimate_method():
     assert sizes["blocks"]["system"]["chars"] == 6
     assert sizes["estimate_method"] == "chars/4-ceil"
     assert "секрет" not in str(sizes) and "get_scene" not in str(sizes)
+
+
+def test_report_distinguishes_real_creation_and_background_purposes():
+    calls = [
+        LlmCall(purpose=p, cost=0) for p in ("scene_generation", "location_layout", "director", "summary", "parse")
+    ]
+    report = session_report(calls, [])
+    assert report["by_phase"]["creation"]["calls"] == 2
+    assert report["by_phase"]["background"]["calls"] == 2
+    assert report["by_phase"]["unattributed"]["calls"] == 1
+
+
+def test_message_sizes_include_tool_calls_without_thought_signatures():
+    from app.core.llm_diagnostics import message_sizes
+
+    sizes = message_sizes(
+        [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "tc",
+                        "type": "function",
+                        "function": {"name": "do_work", "arguments": "x" * 40000},
+                        "provider_specific_fields": {"thought_signature": "secret_signature"},
+                    }
+                ],
+                "thinking_blocks": [{"thinking": "private reasoning"}],
+            }
+        ],
+        [],
+    )
+    assert sizes["blocks"]["message_0_assistant_tool_calls"]["chars"] >= 40000
+    assert "secret_signature" not in str(sizes) and "private reasoning" not in str(sizes)
