@@ -119,7 +119,9 @@
           "length": 4,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "collapsed_ballroom",
@@ -192,7 +194,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "intact_study",
@@ -259,7 +263,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

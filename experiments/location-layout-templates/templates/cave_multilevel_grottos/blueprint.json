@@ -67,7 +67,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "chasm_overlook",
@@ -119,7 +121,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "lower_wet_cavern",
@@ -186,7 +190,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "submerged_lair",
@@ -238,7 +244,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

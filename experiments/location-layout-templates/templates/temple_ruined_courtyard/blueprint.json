@@ -137,7 +137,9 @@
           "length": 4,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "ruined_nave",
@@ -225,7 +227,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "crypt_undercroft",
@@ -307,7 +311,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

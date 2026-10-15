@@ -49,6 +49,11 @@ def _checked(**over) -> dict:
 def _party(client, admin):
     campaign, heads, hero = party(client, admin)
     quiet(client)
+    # These regressions exercise legacy standalone places. New complex routing is
+    # covered by test_layout_develop and the map content lifecycle suite.
+    response = client.patch(f"/api/campaigns/{campaign['id']}",
+                            json={"location_layouts": False, "location_layouts_llm": False}, headers=admin)
+    assert response.status_code == 200
     return campaign, heads, hero
 
 

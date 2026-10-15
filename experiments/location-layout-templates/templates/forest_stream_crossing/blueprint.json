@@ -122,7 +122,9 @@
           "length": 4,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "stream_crossing",
@@ -326,7 +328,9 @@
           "length": 10,
           "meaning": "continuation"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "east_bluff",
@@ -436,7 +440,9 @@
           "length": 10,
           "meaning": "continuation"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

@@ -422,6 +422,7 @@ class MapThing(_Strict):
     cover: str
     cell: tuple[int, int] | None
     condition: str | None = None
+    companion_of: str | None = None
     container: MapContainer | None = absent()  # контейнер: доступ и состояние содержимого (поставка 6)
 
 
@@ -499,6 +500,7 @@ class MapSketchFeature(_Strict):
     cells: list[list[int]]
     cover: str | None = None
     hidden: bool = False
+    solid: bool = False
     access_sides: list[Literal["n", "e", "s", "w"]] | None = None
 
 
@@ -562,6 +564,7 @@ class MapSceneToken(_Strict):
     name: str
     type: Literal["hero", "creature", "npc", "item", "landmark"]
     visual_key: str | None = None
+    companion_of: str | None = None
     mine: bool
     down: bool
     zone: str | None

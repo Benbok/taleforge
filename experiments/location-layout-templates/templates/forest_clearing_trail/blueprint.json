@@ -122,7 +122,9 @@
           "length": 4,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "sunlit_clearing",
@@ -259,7 +261,9 @@
           "length": 10,
           "meaning": "continuation"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "dense_thicket",
@@ -351,7 +355,9 @@
           "length": 8,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

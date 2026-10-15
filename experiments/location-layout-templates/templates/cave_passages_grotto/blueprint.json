@@ -52,7 +52,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "winding_tunnel",
@@ -89,7 +91,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "great_grotto",
@@ -156,7 +160,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "subterranean_lake",
@@ -208,7 +214,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "side_den",
@@ -260,7 +268,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

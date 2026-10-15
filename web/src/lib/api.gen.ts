@@ -4581,6 +4581,11 @@ export interface components {
                 number,
                 number
             ] | null;
+            /**
+             * Companion Of
+             * @default null
+             */
+            companion_of?: string | null;
             /** Down */
             down: boolean;
             /** Id */
@@ -4777,6 +4782,11 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Solid
+             * @default false
+             */
+            solid?: boolean;
+            /**
              * Visual Key
              * @default null
              */
@@ -4851,6 +4861,11 @@ export interface components {
                 number,
                 number
             ] | null;
+            /**
+             * Companion Of
+             * @default null
+             */
+            companion_of?: string | null;
             /**
              * Condition
              * @default null

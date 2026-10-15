@@ -154,7 +154,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "kitchen_pantry",
@@ -221,7 +223,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "guest_rooms",
@@ -288,7 +292,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [

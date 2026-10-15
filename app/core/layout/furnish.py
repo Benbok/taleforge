@@ -93,32 +93,45 @@ def _cells(rects: list) -> set[tuple[int, int]]:
     return {(c, r) for c0, r0, c1, r1 in rects for c in range(c0, c1 + 1) for r in range(r0, r1 + 1)}
 
 
-def sync_objects(ctx, inverse: list, *, include: set[str] | None = None) -> None:
+def sync_objects(ctx, inverse: list, *, include: set[str] | None = None,
+                 changed: set[str] | None = None, rooms: set[str] | None = None) -> None:
     """Refresh live bindings at the event boundary; observation alone updates remembered maps."""
     entities = ctx.world.entities
-    linked = {f["entity_id"] for e in entities.values() if e.kind == "location"
+    if changed is None and include is not None:
+        changed = set(include)
+    if changed is None:
+        candidates = list(entities.values())
+    else:
+        room_ids = set(rooms or ())
+        for key in changed | (include or set()):
+            entity = entities.get(key)
+            if entity is not None:
+                room_ids.add(entity.id if entity.kind == "location" else entity.location_id)
+        candidates = [entities[key] for key in sorted(k for k in room_ids if k) if key in entities]
+    linked = {f["entity_id"] for e in candidates if e.kind == "location"
               for f in ((e.state or {}).get("sketch") or {}).get("features", []) if f.get("entity_id")}
-    wanted = linked | (include or set())
+    wanted = linked | (include or set()) | (changed or set())
     sizes = {}
-    for room in entities.values():
+    for room in candidates:
         for feature in ((room.state or {}).get("sketch") or {}).get("features", []):
             if feature.get("entity_id") and feature.get("cells"):
                 cells = _cells(feature["cells"])
                 sizes[feature["entity_id"]] = (max(c for c, _ in cells) - min(c for c, _ in cells) + 1,
                                                 max(r for _, r in cells) - min(r for _, r in cells) + 1)
-    for entity in entities.values():
-        if entity.kind == "object" and ((entity.state or {}).get("world_object") or {}).get("generation_ref"):
-            wanted.add(entity.id)
+    if changed is None:
+        for entity in entities.values():
+            if entity.kind == "object" and ((entity.state or {}).get("world_object") or {}).get("generation_ref"):
+                wanted.add(entity.id)
 
     def on_floor(entity, room_id):
-        if entity is None or entity.location_id != room_id:
+        if entity is None or entity.kind != "object" or entity.location_id != room_id:
             return False
         st = entity.state or {}
         obj = st.get("world_object") or {}
         return not (obj.get("container_id") or obj.get("physical") == "destroyed" or st.get("hidden")
                     or st.get("secret"))
 
-    for room in list(entities.values()):
+    for room in candidates:
         sk = (room.state or {}).get("sketch")
         if room.kind != "location" or not isinstance(sk, dict) or not sk.get("blueprint"):
             continue
@@ -127,6 +140,8 @@ def sync_objects(ctx, inverse: list, *, include: set[str] | None = None) -> None
         present = {f["entity_id"] for f in features if f.get("entity_id")}
         objects = [entities[key] for key in sorted(wanted) if key not in present
                    and on_floor(entities.get(key), room.id)]
+        if not objects and features == sk.get("features", []):
+            continue
         roles = {e.id: ((e.state or {}).get("world_object") or {}).get("role", "prop") for e in objects}
         new, _ = place({**sk, "features": features}, [(e.id, e.name) for e in objects],
                        0, slots=(room.state or {}).get("object_slots"), roles=roles, sizes=sizes)

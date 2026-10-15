@@ -7307,6 +7307,18 @@
       ],
       "title": "Cell"
      },
+     "companion_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Companion Of"
+     },
      "down": {
       "title": "Down",
       "type": "boolean"
@@ -7808,6 +7820,11 @@
       "title": "Name",
       "type": "string"
      },
+     "solid": {
+      "default": false,
+      "title": "Solid",
+      "type": "boolean"
+     },
      "visual_key": {
       "anyOf": [
        {
@@ -8070,6 +8087,18 @@
        }
       ],
       "title": "Cell"
+     },
+     "companion_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Companion Of"
      },
      "condition": {
       "anyOf": [

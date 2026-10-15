@@ -92,7 +92,9 @@
           "length": 8,
           "meaning": "obstacle"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "watchtower_ruin",
@@ -165,7 +167,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "area_ref": "dungeon_casemate",
@@ -232,7 +236,9 @@
         }
       ],
       "terrain": [],
-      "edges": []
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "passages": [
