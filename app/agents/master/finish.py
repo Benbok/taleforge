@@ -155,6 +155,14 @@ class FinishMixin:
                 if audience is None or character.seat_id in audience
             }
             system = await self._system_prompt(s, c, cfg, ctx) + (inputs.get("mood") or "")
+            from app.agents.master.optimization import optimization_flags
+            from app.agents.master.prompt_context import master_prompt_values
+
+            flags = optimization_flags(c.settings or {})
+            if flags["role_context"] or flags["compact_voice"]:
+                # Snapshot before closing the owning session: both parallel prompt
+                # builders must remain read-only without reopening/shared DB access.
+                ctx._narration_prompt_values = await master_prompt_values(ctx, cfg)
             head = await s.get(Message, cp["narration_message_id"])
             tool_attempts = (turn.trace or {}).get("calls") or []
         meet = inputs.get("meet") or ""

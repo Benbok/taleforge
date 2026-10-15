@@ -96,7 +96,11 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         if legacy is None:
             raise ValueError("Missing request and legacy context")
         return PromptBundle(legacy, {}, fallback_reason="missing_request")
-    values = await master_prompt_values(ctx, cfg)
+    # The detached narration context is shared by parallel narrator/voice tasks.
+    # Its snapshot belongs only to this composition; decide/review always read live state.
+    values = getattr(ctx, "_narration_prompt_values", None) if role in {"narrate", "voice_line"} else None
+    if values is None:
+        values = await master_prompt_values(ctx, cfg)
     # Only stable campaign policy switches influence the instruction prefix.
     stable = {
         k: values[k] for k in ("difficulty", "leveling", "random_events", "critical_checks", "has_plot", "max_calls")

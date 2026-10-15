@@ -61,10 +61,19 @@ def test_narrator_view_preserves_split_and_common_knowledge(game):
     play(settings, cid, [], check)
 
 
-def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, llm, settings):
+def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, llm, settings, monkeypatch):
+    from app.agents.master import prompt_context
     from app.db.models import Campaign, LlmCall
     from tests.game import party, run
     from tests.test_master import DONE, act, rows
+
+    original_values = prompt_context.master_prompt_values
+
+    async def owned_values(ctx, cfg):
+        assert ctx.session.in_transaction(), "Prompt DB reads must stay inside the owned narration scope"
+        return await original_values(ctx, cfg)
+
+    monkeypatch.setattr(prompt_context, "master_prompt_values", owned_values)
 
     c, (player,), hero = party(game_client, admin_g)
 
@@ -89,6 +98,37 @@ def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, ll
     assert {call.diagnostics["prompt_role"] for call in calls} == {"decide", "narrate"}
     assert all(call.diagnostics["prompt_version"] == "role-context-v1" for call in calls)
     assert all("role_blocks" in call.diagnostics for call in calls)
+
+
+def test_parallel_narrator_and_voice_use_snapshot_after_session_closes(game, monkeypatch):
+    import asyncio
+
+    from app.agents.master import prompt_context
+
+    settings, cid, hero = game
+
+    async def check(ctx):
+        cfg = AgentConfig(settings={})
+        ctx._narration_prompt_values = await prompt_context.master_prompt_values(ctx, cfg)
+        await ctx.session.close()
+
+        async def forbidden_reads(*args, **kwargs):
+            raise AssertionError("Narrator/voice reopened the closed session")
+
+        monkeypatch.setattr(prompt_context, "master_prompt_values", forbidden_reads)
+        narrator, voice = await asyncio.gather(*(
+            prompt_context.build_prompt_bundle(ctx, cfg, role=role, inputs={"request": "confirmed result"})
+            for role in ("narrate", "voice_line")
+        ))
+        assert "confirmed result" in str(narrator.messages)
+        assert "confirmed result" in str(voice.messages)
+        assert not ctx.session.in_transaction()
+        import pytest
+
+        with pytest.raises(AssertionError, match="reopened the closed session"):
+            await prompt_context.build_prompt_bundle(ctx, cfg, role="decide", inputs={"request": "new action"})
+
+    play(settings, cid, [], check)
 
 
 def test_role_prefix_is_stable_and_private_data_stays_in_decide(game):
