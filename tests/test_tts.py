@@ -472,8 +472,9 @@ def test_master_turn_uses_custom_tts_voice_from_campaign(settings, tmp_path):
         assert requested_voices == ["Aoede"]  # озвучка текста по умолчанию выключена: звучит только реплика
 
 
-def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
+def test_master_turn_voices_line_then_full_narration(settings, tmp_path, monkeypatch):
     """Сначала звучит короткая реплика, за ней в фоне — весь окончательный текст мастера тем же сообщением."""
+    from app.agents import voiceover
     from app.db.models import Message
     from tests.conftest import login
     from tests.game import import_base, party
@@ -527,6 +528,22 @@ def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
         admin = login(client, "Arty", "secret1")
 
         c, (p1,), ch = party(client, admin)
+        published_recordings = []
+        publish = voiceover.publish_message
+
+        async def check_recordings_at_publish(bus, message):
+            # A browser can request every clip immediately after receiving the update.
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=client.app), base_url="http://testserver"
+            ) as browser:
+                for clip in message.data.get("voices", []):
+                    response = await browser.get(
+                        f"/api/campaigns/{c['id']}/voice/{clip['id']}", headers=p1
+                    )
+                    published_recordings.append((response.status_code, response.content.startswith(b"RIFF")))
+            await publish(bus, message)
+
+        monkeypatch.setattr(voiceover, "publish_message", check_recordings_at_publish)
         client.patch(
             f"/api/campaigns/{c['id']}",
             json={"tts_line_provider": "gemini", "tts_text_enabled": True},
@@ -571,6 +588,7 @@ def test_master_turn_voices_line_then_full_narration(settings, tmp_path):
         assert msg["data"]["voice"]["text"] == "Отличный прыжок, храбрец!"
         assert msg["data"]["voice_parts"] == 2  # реплика и текст; текст показан, не дожидаясь своей озвучки
         client.portal.call(client.app.state.master.wait_idle, c["id"])
+        assert published_recordings == [(200, True), (200, True)]
         assert synthesized_texts[0] == "Отличный прыжок, храбрец!"
         assert len(synthesized_texts) == 2 and "Длинный текст повествования" in synthesized_texts[1]
         saved = next(m for m in rows(settings, Message, Message.id == msg["id"]))

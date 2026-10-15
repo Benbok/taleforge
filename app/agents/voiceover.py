@@ -105,7 +105,7 @@ def data_of(voices: list[dict], parts: int) -> dict:
 
 
 async def _save(svc, msg: Message, data: dict) -> None:
-    """Итог пишется одной записью без чтения и под замками хода и вступления той же кампании: в SQLite две
+    """Данные пишутся одной записью без чтения и под замками хода и вступления той же кампании: в SQLite две
     сессии «чтение, потом запись» блокируют друг друга, и проигравшей оказалась бы чужая запись."""
     cid = msg.campaign_id
     turn = svc.turn_lock(cid)
@@ -124,8 +124,9 @@ async def _save(svc, msg: Message, data: dict) -> None:
 
 
 async def attach(svc, msg: Message, tasks: list[asyncio.Task]) -> None:
-    """Прикрепляет записи к уже опубликованному сообщению по порядку готовности: каждая часть сразу уходит
-    игрокам, в базу — итог. Сообщение уже несёт voice_parts — сколько частей ждать; неудавшаяся часть
+    """Прикрепляет записи к уже опубликованному сообщению по порядку: каждая часть
+    сначала сохраняется в базе, затем уходит игрокам, чтобы запись уже была доступна через API.
+    Сообщение уже несёт voice_parts — сколько частей ждать; неудавшаяся часть
     убавляет ожидание, чтобы клиент не ждал вечно."""
     data = dict(msg.data or {})
     voices = list(data.get("voices") or [])
@@ -138,9 +139,9 @@ async def attach(svc, msg: Message, tasks: list[asyncio.Task]) -> None:
             else:
                 parts -= 1
             data = {**data, **data_of(voices, parts)}
+            await _save(svc, msg, data)
             msg.data = data
             await publish_message(svc.bus, msg)
     finally:
         for t in tasks:
             t.cancel()
-    await _save(svc, msg, data)
