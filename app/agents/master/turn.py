@@ -825,6 +825,54 @@ class TurnMixin:
             return result
 
         for _ in range(MAX_STEPS):
+            if flags["early_finish"]:
+                from app.agents.master.decision_completion import check_decision_completion
+
+                pending = {
+                    "transition": failed_transition
+                    or any(
+                        t["tool"] in {"traverse_passage", "cross_threshold", "make_current"}
+                        and not t["result"].get("ok")
+                        and not t["result"].get("skipped")
+                        for t in trace_calls
+                    ),
+                    "spawn": any(
+                        t["tool"] == "spawn_entity" and not t["result"].get("ok") and not t["result"].get("skipped")
+                        for t in trace_calls
+                    ),
+                    "reaction": any(
+                        self.pending_reaction(cid, ch.seat_id)
+                        for ch in ctx.world.characters.values()
+                        if ch.seat_id and ch.id in required
+                    ),
+                    "world_response": any(
+                        r.get("status") == "ready"
+                        for r in ((ctx.world.scene.state or {}).get("standing") or {}).get("responses", [])
+                    ),
+                    "plot": bool(ctx.turn_diagnostics.get("pending_narrative_operations")),
+                }
+                extra = ctx.turn_diagnostics.get("pending_obligations", {})
+                if isinstance(extra, dict):
+                    for key, value in extra.items():
+                        pending[key] = pending.get(key, False) or value
+                else:
+                    pending["unknown"] = True
+                completion = check_decision_completion(
+                    ctx,
+                    trace_calls=trace_calls,
+                    required_actors=required,
+                    opening_actors=opening_actors,
+                    pending=pending,
+                )
+                ctx.turn_diagnostics.setdefault("decision_completion", []).append(
+                    {
+                        "can_finish": completion.can_finish,
+                        "reasons": list(completion.reasons),
+                    }
+                )
+                if completion.can_finish:
+                    ctx.turn_diagnostics["decision_stop_reason"] = "resolved_actions"
+                    break
             specs = tool_specs(ctx.world, allowed, dynamic_ids=not flags["tool_profiles"])
             reply = await self._ask(
                 calls, cfg, cid, seat.id, turn_id, "decide", msgs, specs, prompt_metadata=prompt_metadata
@@ -1114,7 +1162,7 @@ class TurnMixin:
             **(turn.trace or {}),
             **{
                 key: ctx.turn_diagnostics[key]
-                for key in ("invalid_source_repairs", "decision_stop_reason")
+                for key in ("invalid_source_repairs", "decision_stop_reason", "decision_completion")
                 if key in ctx.turn_diagnostics
             },
             "calls": trace_calls,

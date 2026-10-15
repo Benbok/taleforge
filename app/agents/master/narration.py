@@ -60,7 +60,7 @@ class NarrationMixin:
         from app.agents.master.optimization import optimization_flags
         from app.agents.master.prompt_context import build_prompt_bundle, narration_scene
 
-        compact = optimization_flags(c.settings or {})["role_context"]
+        compact = optimization_flags(getattr(c, "settings", None) or {})["role_context"]
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
         item_rejected = failed_item_action(ctx, tool_attempts)
@@ -105,6 +105,7 @@ class NarrationMixin:
             )
             base = bundle.messages
             prompt_metadata = bundle.metadata("narrate")
+        ask_options = {"prompt_metadata": prompt_metadata} if prompt_metadata else {}
         known = set(ctx.world.characters) | set(ctx.world.entities)
         inventory_names = {
             item.id: ctx.world.item_name(item)
@@ -133,7 +134,7 @@ class NarrationMixin:
         # Scene and player ownership checks require the whole response. Publish
         # the checked draft only; a rejected first attempt must never reach chat.
         reply = await self._ask(
-            calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, prompt_metadata=prompt_metadata
+            calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, **ask_options
         )
         text = reply.text.strip()
         if not text:
@@ -147,7 +148,7 @@ class NarrationMixin:
                 },
             ]
             reply = await self._ask(
-                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
             )
             text = reply.text.strip()
         rejected_names: set[str] = set()
@@ -219,7 +220,7 @@ class NarrationMixin:
             ]
             # Rejected drafts stay private while the narrator rewrites them.
             reply = await self._ask(
-                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
             )
             text = reply.text.strip()
 
@@ -256,7 +257,7 @@ class NarrationMixin:
                     },
                 ]
                 reply = await self._ask(
-                    calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, prompt_metadata=prompt_metadata
+                    calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
                 )
                 blocked_refs = unknown_refs(reply.text)
                 text = MARKUP.sub(strip, reply.text.strip())
