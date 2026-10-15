@@ -7,7 +7,7 @@ from app.core.layout.contracts import rect_cells, terrain_cells
 from app.db.models import Character, Entity, WorldGenerationState
 from tests.game import run
 from tests.test_layout_passages import _built
-from tests.test_layout_transit import _go
+from tests.test_layout_transit import _do_not_run_master_for_unrelated_transit_tests, _go  # noqa: F401
 from tests.test_map import _ok, _play
 from tests.test_master import rows
 from tests.test_world_generation import _fast_retry  # noqa: F401 — фикстура

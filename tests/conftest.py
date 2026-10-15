@@ -15,6 +15,17 @@ protocol.STRICT = True
 
 
 @pytest.fixture(autouse=True)
+def _no_live_llm(monkeypatch):
+    """Tests must explicitly mock provider calls, even with local API keys present."""
+    import litellm
+
+    async def reject_completion(*args, **kwargs):
+        raise AssertionError("Live LiteLLM requests are disabled in tests; install a deterministic provider mock")
+
+    monkeypatch.setattr(litellm, "acompletion", reject_completion)
+
+
+@pytest.fixture(autouse=True)
 def _contract():
     protocol.VIOLATIONS.clear()
     yield
