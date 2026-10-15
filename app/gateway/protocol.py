@@ -422,6 +422,7 @@ class MapThing(_Strict):
     cover: str
     cell: tuple[int, int] | None
     condition: str | None = None
+    companion_of: str | None = absent()
     container: MapContainer | None = absent()  # контейнер: доступ и состояние содержимого (поставка 6)
 
 
@@ -567,6 +568,7 @@ class MapSceneToken(_Strict):
     zone: str | None
     bearing: str | None
     cell: tuple[int, int] | None
+    companion_of: str | None = None
 
 
 class MapState(_Strict):

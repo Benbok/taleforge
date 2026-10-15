@@ -7307,6 +7307,18 @@
       ],
       "title": "Cell"
      },
+     "companion_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Companion Of"
+     },
      "down": {
       "title": "Down",
       "type": "boolean"
@@ -8070,6 +8082,18 @@
        }
       ],
       "title": "Cell"
+     },
+     "companion_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Companion Of"
      },
      "condition": {
       "anyOf": [
@@ -18477,6 +18501,54 @@
      }
     ],
     "summary": "Save Campaign Master Preset",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/seats": {
+   "post": {
+    "description": "Владелец добавляет пустое место игрока в созданную кампанию (максимум 6 мест игроков).",
+    "operationId": "add_seat_api_campaigns__campaign_id__seats_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CampaignOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Add Seat",
     "tags": [
      "campaigns"
     ]

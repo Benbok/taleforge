@@ -1453,6 +1453,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/seats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Seat
+         * @description Владелец добавляет пустое место игрока в созданную кампанию (максимум 6 мест игроков).
+         */
+        post: operations["add_seat_api_campaigns__campaign_id__seats_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/seats/take": {
         parameters: {
             query?: never;
@@ -4581,6 +4601,11 @@ export interface components {
                 number,
                 number
             ] | null;
+            /**
+             * Companion Of
+             * @default null
+             */
+            companion_of?: string | null;
             /** Down */
             down: boolean;
             /** Id */
@@ -4851,6 +4876,11 @@ export interface components {
                 number,
                 number
             ] | null;
+            /**
+             * Companion Of
+             * @default null
+             */
+            companion_of?: string | null;
             /**
              * Condition
              * @default null
@@ -9831,6 +9861,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MasterPresetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_seat_api_campaigns__campaign_id__seats_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignOut"];
                 };
             };
             /** @description Validation Error */
