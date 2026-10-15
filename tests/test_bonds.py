@@ -61,7 +61,7 @@ def test_without_plan_only_default_questions(game_client, admin_g, llm):
     assert llm.requests == []
 
 
-def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings):
+def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings, monkeypatch):
     c, (p1, p2), hero = party(game_client, admin_g, players=2, brief={"length": "short"})
     cid = c["id"]
     game_client.portal.call(game_client.app.state.master.wait_idle, cid)  # старт сессии прошёл без каркаса
@@ -125,11 +125,16 @@ def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings
     assert scene.location_id == bay.id
     assert scene.state["introduced"] == [hero["id"]]
 
-    # новичок посреди сессии: короткое появление перед ходом мастера
+    # Новый герой допускается на паузе, а представляется перед следующим ходом мастера.
     ch2 = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=p2), 201)
-    assert (
-        ok(game_client.post(f"/api/campaigns/{cid}/characters/{ch2['id']}/submit", headers=p2))["status"] == "approved"
-    )
+    with monkeypatch.context() as admission:
+        # This scenario checks the introduction on the next action, independently of session recap/greeting.
+        admission.setattr(game_client.app.state.master, "schedule_session_close", lambda *args, **kwargs: None)
+        admission.setattr(game_client.app.state.master, "schedule_session_open", lambda *args, **kwargs: None)
+        ok(game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g))
+        submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{ch2['id']}/submit", headers=p2))
+        assert submitted["status"] == "approved"
+        ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     llm.replies += [{"text": "Гимли выходит из тумана."}, DONE, DONE, {"text": "Причал пуст."}]
     first = act(game_client, p1, cid, "Жду")
     assert first["content"] == f"[[{ch2['id']}|Гимли]] выходит из тумана."

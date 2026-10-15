@@ -268,10 +268,11 @@ def test_positions_distance_cover_and_areas(client, admin, settings):
 
 def test_partial_move_clears_hero_positions_and_emits_map_changed(client, admin, settings):
     import_base(settings)
-    c, (p1, p2), h1 = party(client, admin, players=2, master={"type": "owner"})
+    c, (p1, p2), h1 = party(client, admin, players=2, master={"type": "owner"}, start=False)
     cid, hid1 = c["id"], h1["id"]
     h2 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Гимли"}, headers=p2), 201)
     ok(client.post(f"/api/campaigns/{cid}/characters/{h2['id']}/submit", headers=p2))
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     hid2 = h2["id"]
 
     async def setup(ctx):

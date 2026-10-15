@@ -140,7 +140,10 @@ def test_repeat_join_does_not_consume_another_seat(client, admin):
     assert len(empty) == 2
 
 
-def test_concurrent_expansion_at_limit(client, admin):
+def test_concurrent_expansion_at_limit(client, admin, database_url, monkeypatch):
+    if database_url:
+        # Independent workers cannot share an asyncio lock: exercise the database row lock itself.
+        monkeypatch.setattr(client.app.state.master, "turn_lock", lambda _cid: asyncio.Lock())
     c = make_campaign(client, admin, players=5)
 
     async def concurrent_expand():
@@ -161,7 +164,9 @@ def test_concurrent_expansion_at_limit(client, admin):
     assert len(player_seats) == 6
 
 
-def test_concurrent_expansion_preserves_unique_positions(client, admin):
+def test_concurrent_expansion_preserves_unique_positions(client, admin, database_url, monkeypatch):
+    if database_url:
+        monkeypatch.setattr(client.app.state.master, "turn_lock", lambda _cid: asyncio.Lock())
     c = make_campaign(client, admin, players=4)
 
     async def concurrent_expand():

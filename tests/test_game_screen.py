@@ -278,10 +278,11 @@ def test_narrator_accepts_status_rule_references(game_client, admin_g, llm):
 
 
 def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, settings):
-    c, (p1, p2), hero = party(game_client, admin_g, players=2)
+    c, (p1, p2), hero = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
     gimli = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=p2), 201)
     ok(game_client.post(f"/api/campaigns/{cid}/characters/{gimli['id']}/submit", headers=p2))
+    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     goblin = _spawn(settings, cid, kind="creature", name="Гоблин-разведчик", template_id="creature.goblin",
                     description="Мелкий, в грязной коже", state={"attitude": "hostile"})  # fmt: skip
     learn = {"character_ids": [hero["id"]], "subject_id": goblin, "fact": "Гоблин  боится огня."}

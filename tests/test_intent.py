@@ -284,11 +284,12 @@ def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g
     from app.tools.registry import execute
     from tests.test_spells import WIZARD
 
-    c, heads, _ = party(game_client, admin_g, players=2)
+    c, heads, _ = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
     wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
     submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
     assert submitted["status"] == "approved"
+    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
 
     async def spawn(s):
         campaign = await s.get(Campaign, cid)
@@ -322,12 +323,13 @@ def test_master_repeat_of_routed_cast_spends_no_second_slot(game_client, admin_g
     прерывает концентрацию — возвращается прежний результат."""
     from tests.test_spells import WIZARD
 
-    c, heads, _ = party(game_client, admin_g, players=2)
+    c, heads, _ = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
     prepared = ["spell.magic_missile", "spell.shield", "spell.detect_magic", "spell.mage_armor"]
     body = {**WIZARD, "prepared": prepared}
     wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=body, headers=heads[1]), 201)
     ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
+    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     again = {"caster_id": wiz["id"], "spell_id": "spell.detect_magic", "slot_level": 1, "target_ids": []}
     llm.replies += [
         intent({"verb": "cast", "spell_id": "spell.detect_magic"}),
@@ -409,11 +411,12 @@ def test_natural_language_move_then_spell_starts_initiative_and_moves_first(game
     from app.tools.registry import execute
     from tests.test_spells import WIZARD
 
-    c, heads, _ = party(game_client, admin_g, players=2)
+    c, heads, _ = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
     wizard = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
     submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wizard['id']}/submit", headers=heads[1]))
     assert submitted["status"] == "approved"
+    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
 
     async def spawn(s):
         campaign = await s.get(Campaign, cid)

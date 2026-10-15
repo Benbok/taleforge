@@ -41,11 +41,12 @@ def test_narrator_retries_invented_player_reply_before_streaming(
     settings,
     monkeypatch,  # noqa: F811
 ):
-    c, (p1, p2), _ = party(game_client, admin_g, players=2)
+    c, (p1, p2), _ = party(game_client, admin_g, players=2, start=False)
     other = ok(
         game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER | {"name": "Emris"}, headers=p2), 201
     )
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{other['id']}/submit", headers=p2))
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
     chunks = []
     original = Stream.push
