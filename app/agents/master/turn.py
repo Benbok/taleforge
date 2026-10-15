@@ -38,6 +38,13 @@ from app.agents.master.helpers import (
 from app.agents.master.optimization import optimization_flags
 from app.agents.master.resolution import action_context_prompt, capture_attempt, permit_repair, resolution_prompt
 from app.agents.master.searches import unresolved_searches
+from app.agents.master.tool_profiles import (
+    EXPAND_TOOL,
+    ExpandDecisionToolsArgs,
+    profile_id_context,
+    profile_tool_names,
+    select_tool_profile,
+)
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
@@ -610,10 +617,37 @@ class TurnMixin:
         search_retry = False
         failed_transition = False
         invalid_source_stop = False
-        allowed = decision_tools(ctx)
+        profile = select_tool_profile(ctx, new) if flags["tool_profiles"] else None
+        allowed = profile_tool_names(ctx, profile) if profile else decision_tools(ctx)
+
+        def id_context_note() -> dict:
+            return {
+                "role": "user",
+                "content": "Допустимые id для инструментов (не придумывай):\n"
+                + json.dumps(profile_id_context(ctx, allowed), ensure_ascii=False),
+            }
+
+        if profile:
+            msgs.append(id_context_note())
 
         async def run_call(name: str, args: dict, key: str) -> dict:
-            nonlocal done_calls
+            nonlocal done_calls, allowed, profile
+            # A stable profile never grants tools removed by live campaign permissions.
+            if profile and name not in set(decision_tools(ctx)) | {EXPAND_TOOL}:
+                return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
+            if profile and name == EXPAND_TOOL and name in allowed:
+                from pydantic import ValidationError
+
+                try:
+                    ExpandDecisionToolsArgs.model_validate(args)
+                except ValidationError as error:
+                    return {"ok": False, "error": str(error)}
+                profile = "general"
+                allowed = profile_tool_names(ctx, profile)
+                return {
+                    "ok": True,
+                    "result": {"profile": profile, "tools": allowed, "valid_ids": profile_id_context(ctx, allowed)},
+                }
             if done_calls >= MAX_CALLS and name != "adapt_story":
                 return {"ok": False, "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию"}
             if name not in allowed:
@@ -775,7 +809,8 @@ class TurnMixin:
             return result
 
         for _ in range(MAX_STEPS):
-            reply = await self._ask(calls, cfg, cid, seat.id, turn_id, "decide", msgs, tool_specs(ctx.world, allowed))
+            specs = tool_specs(ctx.world, allowed, dynamic_ids=not flags["tool_profiles"])
+            reply = await self._ask(calls, cfg, cid, seat.id, turn_id, "decide", msgs, specs)
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             # Текстовые имитации вызовов нельзя исполнять: только native tool_calls проходят
             # через серверный диспетчер. Даём модели шанс исправить формат ответа.

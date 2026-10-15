@@ -59,6 +59,7 @@ def decision_tools(ctx: ToolContext) -> list[str]:
         off.add("request_sfx")
     if not audio.music_tracks(ctx.campaign):
         off.add("set_music")
+    off.add("expand_decision_tools")  # exposed only by opt-in decision profiles
     off |= HOST_TOOLS  # подготовку места назначает ведущий, не модель
     return [n for n in REGISTRY if n != "review_character" and not REGISTRY[n].internal and n not in off]
 

@@ -56,12 +56,20 @@ def test_action_context_exposes_all_parts_without_admission(game):
 
     async def check(ctx):
         message, refs = await source(
-            ctx, hero, [{"verb": "move", "summary": "Walk"}, {"verb": "attack", "summary": "Hit"}]
+            ctx,
+            hero,
+            [
+                {"verb": "move", "summary": "Walk"},
+                {"verb": "attack", "summary": "Hit", "depends_on": [{"part": 0, "requires": "success"}]},
+            ],
         )
         note = await action_context_prompt(ctx)
         assert message.id in note and "Walk" in note and "Hit" in note
         for ref in refs:
             assert json.dumps(ref.model_dump(), ensure_ascii=False) in note
+        parts = json.loads(note.rsplit("\n", 1)[1])
+        assert [part["status"] for part in parts] == ["pending", "pending"]
+        assert parts[1]["depends_on"] == [{"part": 0, "requires": "success"}]
         ctx.required_actions = []
         assert "source_id" not in await action_context_prompt(ctx)
 
@@ -69,13 +77,14 @@ def test_action_context_exposes_all_parts_without_admission(game):
 
 
 @pytest.mark.parametrize(
-    "stored",
+    "stored,expected",
     [
-        {"resolution_progress": {"0": {"status": "completed"}}},
-        {"resolution_completed": {"0": {"execution": "applied", "game_outcome": "success"}}},
+        ({"resolution_progress": {"0": {"status": "completed"}}}, "completed"),
+        ({"resolution_progress": {"0": {"status": "denied"}}}, "denied"),
+        ({"resolution_completed": {"0": {"execution": "applied", "game_outcome": "success"}}}, "completed"),
     ],
 )
-def test_action_context_recovers_persisted_status(game, stored):
+def test_action_context_recovers_persisted_status(game, stored, expected):
     from app.agents.master.resolution import action_context_prompt
 
     settings, cid, hero = game
@@ -85,7 +94,7 @@ def test_action_context_recovers_persisted_status(game, stored):
         message.data = {**message.data, **stored}
         assert not ctx.action_progress
         parts = json.loads((await action_context_prompt(ctx)).rsplit("\n", 1)[1])
-        assert parts[0]["status"] == "completed"
+        assert parts[0]["status"] == expected
 
     play(settings, cid, [], check)
 

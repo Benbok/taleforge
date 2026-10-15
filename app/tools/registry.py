@@ -242,13 +242,13 @@ def _enum_values(world: World, key: str) -> list[str]:
     return world.valid_ids().get(key, [])
 
 
-def schema_for(t: Tool, world: World) -> dict[str, Any]:
+def schema_for(t: Tool, world: World, *, dynamic_ids: bool = True) -> dict[str, Any]:
     """JSON-схема аргументов с перечнями допустимых id на этот ход. Длинные перечни шаблонов не подставляются:
     для них есть lookup_template, а сервер всё равно отклонит несуществующий id."""
     schema = copy.deepcopy(t.args.model_json_schema())
     schema.pop("title", None)
     props = schema.get("properties", {})
-    for fname, key in t.id_fields.items():
+    for fname, key in t.id_fields.items() if dynamic_ids else []:
         values = _enum_values(world, key)
         p = props.get(fname)
         if p is None or not values or len(values) > 60:
@@ -262,9 +262,7 @@ def schema_for(t: Tool, world: World) -> dict[str, Any]:
     for p in props.values():
         p.pop("title", None)
     if not t.internal and (
-        t.mutating
-        or t.closes_actions
-        or t.name in {"cast_spell", "resolve_attack", "use_item", "roll_check"}
+        t.mutating or t.closes_actions or t.name in {"cast_spell", "resolve_attack", "use_item", "roll_check"}
     ):
         props["action_ref"] = {
             "type": "object",
@@ -281,10 +279,10 @@ def schema_for(t: Tool, world: World) -> dict[str, Any]:
     return schema
 
 
-def tool_specs(world: World, names: list[str] | None = None) -> list[dict[str, Any]]:
+def tool_specs(world: World, names: list[str] | None = None, *, dynamic_ids: bool = True) -> list[dict[str, Any]]:
     """Описания инструментов в формате function calling (OpenAI/LiteLLM)."""
     out = []
-    for t in REGISTRY.values():
+    for t in REGISTRY.values() if dynamic_ids else sorted(REGISTRY.values(), key=lambda t: t.name):
         if t.internal:
             continue
         if names is not None and t.name not in names:
@@ -292,7 +290,11 @@ def tool_specs(world: World, names: list[str] | None = None) -> list[dict[str, A
         out.append(
             {
                 "type": "function",
-                "function": {"name": t.name, "description": t.description, "parameters": schema_for(t, world)},
+                "function": {
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": schema_for(t, world, dynamic_ids=dynamic_ids),
+                },
             }
         )
     return out
