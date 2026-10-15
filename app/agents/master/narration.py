@@ -133,9 +133,7 @@ class NarrationMixin:
         )
         # Scene and player ownership checks require the whole response. Publish
         # the checked draft only; a rejected first attempt must never reach chat.
-        reply = await self._ask(
-            calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, **ask_options
-        )
+        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, **ask_options)
         text = reply.text.strip()
         if not text:
             audit["regenerated"] = True
@@ -147,9 +145,7 @@ class NarrationMixin:
                     "content": "Ответ пуст. Опиши подтверждённые результаты этого хода словами. Не выводи многоточие.",
                 },
             ]
-            reply = await self._ask(
-                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
-            )
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options)
             text = reply.text.strip()
         rejected_names: set[str] = set()
         excluded_fallback_names: set[str] = set()
@@ -219,9 +215,7 @@ class NarrationMixin:
                 },
             ]
             # Rejected drafts stay private while the narrator rewrites them.
-            reply = await self._ask(
-                calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
-            )
+            reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options)
             text = reply.text.strip()
 
         blocked_refs = unknown_refs(text)
@@ -256,9 +250,7 @@ class NarrationMixin:
                         ),
                     },
                 ]
-                reply = await self._ask(
-                    calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options
-                )
+                reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", retry, None, **ask_options)
                 blocked_refs = unknown_refs(reply.text)
                 text = MARKUP.sub(strip, reply.text.strip())
                 if textcalls.contains(text, tools):
@@ -434,13 +426,18 @@ class NarrationMixin:
         *,
         news: str = "",
     ) -> str:
+        from app.agents.llm import can_disable_thinking
+        from app.agents.master.optimization import optimization_flags
+        from app.agents.master.prompt_context import build_prompt_bundle
+
+        compact = optimization_flags(getattr(c, "settings", None) or {})["compact_voice"]
         results = _render_results(ctx, public_only=True)
         prompt = render(
             "voice_line.j2",
             temper=mood.persona_of((cfg.settings or {}).get("emotion_persona")),
             results=results,
             news=news,
-            combat_notes=list(combat_notes),
+            combat_notes=[] if compact else list(combat_notes),
         )
         custom = (cfg.settings or {}).get("voice_line_model")
         lite_model = model_for(None, custom) if custom else parser_model_for()  # короткая реплика — техническая модель
@@ -449,7 +446,26 @@ class NarrationMixin:
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
         ]
-        reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model)
+        options = {}
+        if compact:
+            bundle = await build_prompt_bundle(
+                ctx,
+                cfg,
+                role="voice_line",
+                inputs={
+                    "request": prompt,
+                    "mood": mood.instruction(mood.load(ctx.world.scene.state)),
+                },
+            )
+            msgs = bundle.messages
+            options = {
+                "max_tokens": 512,
+                "thinking": not can_disable_thinking(lite_model),
+                "prompt_metadata": bundle.metadata("voice_line"),
+            }
+        reply = await self._ask(
+            calls, cfg, c.id, seat_id, turn_id, "voice_line", msgs, None, override_model=lite_model, **options
+        )
         text = reply.text.strip().strip("\"'«»—–- ").strip()
         text = textcalls.clean(MARKUP.sub(r"\2", text))
         return text or "Вперёд!"

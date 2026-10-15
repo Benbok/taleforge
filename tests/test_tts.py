@@ -689,6 +689,7 @@ def test_text_channel_without_line_skips_voice_line_request(settings, tmp_path):
             f"/api/campaigns/{c['id']}",
             json={
                 "tts_line_enabled": False,
+                "llm_optimization": {"compact_voice": True},
                 "tts_text_enabled": True,
                 "tts_text_provider": "gemini",
                 "tts_text_voice": "Kore",

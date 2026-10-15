@@ -321,6 +321,9 @@ class TurnMixin:
         stream_callback=None,
         *,
         prompt_metadata: dict | None = None,
+        tool_choice=None,
+        max_tokens: int = 8192,
+        thinking: bool = True,
     ) -> LLMReply:
         model = override_model or (decide_model_for() if purpose == "decide" else model_for())
         sizes = message_sizes(messages, tools or [])
@@ -331,7 +334,9 @@ class TurnMixin:
                 model=model,
                 tools=tools,
                 stream_callback=stream_callback,
-                max_tokens=8192,
+                max_tokens=max_tokens,
+                tool_choice=tool_choice,
+                thinking=thinking,
                 temperature=0.2 if purpose == "decide" else cfg.temperature,
                 api_base=(cfg.settings or {}).get("api_base"),
             )

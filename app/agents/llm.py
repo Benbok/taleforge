@@ -73,6 +73,14 @@ class LLMReply:
     cost_known: bool = False
 
 
+def can_disable_thinking(model: str) -> bool:
+    """Exact verified capabilities; unknown/new models retain provider defaults.
+
+    https://ai.google.dev/gemini-api/docs/generate-content/thinking#thinking-budget
+    """
+    return model in {"gemini/gemini-2.5-flash", "gemini/gemini-2.5-flash-lite"}
+
+
 def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: str | None = None) -> str | None:
     """Record invalid output and termination metadata without copying provider text."""
     if reason is None:
@@ -313,8 +321,8 @@ class LiteLLMClient:
         # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
         if temperature is not None and not model.startswith("anthropic/"):
             kwargs["temperature"] = temperature
-        if not thinking and model.startswith("gemini/") and "flash" in model:
-            kwargs["reasoning_effort"] = "disable"  # у Pro рассуждения не отключаются
+        if not thinking and can_disable_thinking(model):
+            kwargs["reasoning_effort"] = "disable"
         if stream_callback:
             kwargs["stream"] = True
             kwargs["stream_options"] = {"include_usage": True}  # без этого поток не несёт токены и цену
