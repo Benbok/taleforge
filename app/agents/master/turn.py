@@ -35,13 +35,14 @@ from app.agents.master.helpers import (
     _turn_messages,
     _unsettled_fails,
 )
-from app.agents.master.resolution import capture_attempt, permit_repair, resolution_prompt
+from app.agents.master.optimization import optimization_flags
+from app.agents.master.resolution import action_context_prompt, capture_attempt, permit_repair, resolution_prompt
 from app.agents.master.searches import unresolved_searches
 from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
-from app.core.llm_diagnostics import prompt_sizes, reply_metrics
+from app.core.llm_diagnostics import message_sizes, reply_metrics
 from app.core.narrative.view import master_canon_block
 from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
@@ -62,7 +63,7 @@ from app.tools.action_plan import (
 )
 from app.tools.audio import AUDIO_TOOLS
 from app.tools.narrative.commitments import reserve_turn_claims
-from app.tools.registry import REGISTRY, ToolContext, execute, tool_specs
+from app.tools.registry import REGISTRY, ToolContext, ToolError, execute, tool_specs
 from app.tools.resolution.requests import action_key, bound_tool_key, mark_resolved
 from app.tools.runtime import flush_outbox, open_context, publish_changes
 
@@ -316,13 +317,7 @@ class TurnMixin:
         stream_callback=None,
     ) -> LLMReply:
         model = override_model or (decide_model_for() if purpose == "decide" else model_for())
-        sizes = prompt_sizes(
-            {
-                f"message_{i}_{m.get('role', 'unknown')}": json.dumps(m.get("content", ""), ensure_ascii=False)
-                for i, m in enumerate(messages)
-            },
-            tools or [],
-        )
+        sizes = message_sizes(messages, tools or [])
         try:
             reply = await self.llm.complete(
                 messages,
@@ -374,6 +369,7 @@ class TurnMixin:
         cfg = await s.get(AgentConfig, seat.agent_config_id)
         place = (turn.trace or {}).get("place")
         ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=place)
+        flags = optimization_flags(c.settings or {})
         if diagnostics is not None:
             ctx.turn_diagnostics = diagnostics
         new = await _turn_messages(s, c, turn_id)
@@ -598,6 +594,7 @@ class TurnMixin:
                 "content": (
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                     f"{await resolution_prompt(ctx)}"
+                    f"{await action_context_prompt(ctx) if flags['action_refs'] else ''}"
                     f"\n{creative_note(creative_context(ctx))}\n"
                     f"{await adaptation_prompt(ctx)}\n"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
@@ -612,6 +609,7 @@ class TurnMixin:
         spawn_retry = False
         search_retry = False
         failed_transition = False
+        invalid_source_stop = False
         allowed = decision_tools(ctx)
 
         async def run_call(name: str, args: dict, key: str) -> dict:
@@ -622,6 +620,26 @@ class TurnMixin:
                 return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if not isinstance(args, dict) or "__invalid_json__" in args:
                 return {"ok": False, "error": "аргументы — не JSON-объект"}
+            # Validate before special combat routes can queue or mutate anything.
+            if REGISTRY[name].mutating and (flags["action_refs"] or args.get("action_ref") is not None):
+                from pydantic import ValidationError
+
+                from app.agents.master.action_binding import bind_tool_action
+
+                try:
+                    raw_ref = args.get("action_ref")
+                    explicit = ActionRef.model_validate(raw_ref) if raw_ref is not None else None
+                    await bind_tool_action(ctx, name, args, explicit=explicit)
+                except (ToolError, ValidationError) as error:
+                    done_calls += 1
+                    return {
+                        "ok": False,
+                        "error": str(error),
+                        "failure": {
+                            "code": getattr(error, "code", "invalid_source"),
+                            "category": getattr(error, "category", "invalid_arguments"),
+                        },
+                    }
             if name == "cast_spell" and not combat.in_combat(ctx) and args.get("caster_id") in ctx.world.characters:
                 spell = ctx.world.catalog.find(str(args.get("spell_id") or ""), "spell_template")
                 if not declared_cast(new, char_by_seat, args["caster_id"], spell.name if spell else ""):
@@ -711,7 +729,7 @@ class TurnMixin:
             ctx.resolution_calls_used = 0
             repair_target = (
                 ActionRef.model_validate(args["action_ref"])
-                if isinstance(args.get("action_ref"), dict)
+                if REGISTRY[name].mutating and isinstance(args.get("action_ref"), dict)
                 else (args.get("character_id") or args.get("attacker_id") or args.get("caster_id"))
             )
             if (
@@ -741,7 +759,12 @@ class TurnMixin:
             result = await execute(ctx, name, args, key=key)
             if name == "adjudicate_action" and result.get("ok"):
                 result = {**result, "request_key": action_key(ActionRef.model_validate(args["proposal"]["ref"]))}
-            if name != "adjudicate_action" and REGISTRY[name].mutating and REGISTRY[name].closes_actions:
+            if (
+                name != "adjudicate_action"
+                and REGISTRY[name].mutating
+                and REGISTRY[name].closes_actions
+                and (result.get("failure") or {}).get("code") != "invalid_source"
+            ):
                 actor = args.get("character_id") or args.get("attacker_id") or args.get("caster_id")
                 binding = ctx.current_binding or actor
                 request_key = await capture_attempt(ctx, binding, result)
@@ -845,9 +868,12 @@ class TurnMixin:
                     continue
                 break
             failed_in_batch = False
+            invalid_source_in_batch = False
             for call in reply.tool_calls:
                 args = call.arguments
-                if failed_in_batch:
+                if invalid_source_in_batch:
+                    result = {"ok": False, "skipped": True, "error": "не выполнено после неверной ссылки на заявку"}
+                elif failed_in_batch:
                     result = {
                         "ok": False,
                         "skipped": True,
@@ -881,13 +907,35 @@ class TurnMixin:
                         "content": json.dumps(result, ensure_ascii=False, default=str),
                     }
                 )
+                if flags["action_refs"] and (result.get("failure") or {}).get("code") == "invalid_source":
+                    invalid_source_in_batch = True
+                    if ctx.turn_diagnostics.get("invalid_source_repairs", 0) >= 1:
+                        invalid_source_stop = True
+                    else:
+                        ctx.turn_diagnostics["invalid_source_repairs"] = 1
                 if call.name in ("move", "enter_room"):
                     if result.get("ok"):
                         failed_transition = False
                     else:
                         failed_transition = True
                         failed_in_batch = True
+            if invalid_source_stop:
+                ctx.turn_diagnostics["decision_stop_reason"] = "invalid_source"
+                break
+            if invalid_source_in_batch:
+                msgs.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Ссылка на заявку неверна. Ничего по ней не выполнено. Исправь её один раз, "
+                            "используя точный action_ref ниже; не придумывай source_id."
+                            + await action_context_prompt(ctx)
+                        ),
+                    }
+                )
             admission_note = (await resolution_prompt(ctx)) + (await adaptation_prompt(ctx))
+            if flags["action_refs"]:
+                admission_note += await action_context_prompt(ctx)
             if admission_note:
                 msgs.append({"role": "user", "content": admission_note})
             if failed_in_batch:
@@ -940,7 +988,11 @@ class TurnMixin:
                         "cancel_action",
                         {
                             "character_id": ref.actor_id,
-                            "reason": "мастер не обработал действие",
+                            "reason": (
+                                "Действие не выполнено: не удалось сопоставить ответ мастера с заявкой."
+                                if invalid_source_stop
+                                else "мастер не обработал действие"
+                            ),
                             "action_ref": ref.model_dump(),
                         },
                         key=f"{turn_id}:auto_cancel:{ref.actor_id}:{ref.source_id}:{ref.part}",
@@ -1007,6 +1059,11 @@ class TurnMixin:
         await s.flush()
         turn.trace = {
             **(turn.trace or {}),
+            **{
+                key: ctx.turn_diagnostics[key]
+                for key in ("invalid_source_repairs", "decision_stop_reason")
+                if key in ctx.turn_diagnostics
+            },
             "calls": trace_calls,
             "text_call_rejections": written_rounds,
             "required": sorted(required),

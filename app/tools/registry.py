@@ -325,7 +325,7 @@ async def execute(
     raw_args = dict(raw_args or {})
     raw_action_ref = raw_args.pop("action_ref", None)
     explicit_ref = None
-    if raw_action_ref is not None:
+    if raw_action_ref is not None and t.mutating:
         try:
             explicit_ref = ActionRef.model_validate(raw_action_ref)
         except ValidationError as e:

@@ -147,7 +147,10 @@ async def bind_tool_action(
     args: dict,
     explicit: ActionRef | None = None,
 ) -> ToolActionBinding | None:
-    if name in AUXILIARY_TOOLS or name.startswith("audio_"):
+    tool = REGISTRY.get(name)
+    if tool is not None and not tool.mutating:
+        return None
+    if explicit is None and (name in AUXILIARY_TOOLS or name.startswith("audio_")):
         return None
 
     role = TOOL_ROLES.get(
@@ -170,6 +173,10 @@ async def bind_tool_action(
             raise ToolError("неизвестный персонаж", code="invalid_source", category="rule_denial")
         if ctx.required_actions and explicit not in ctx.required_actions:
             raise ToolError("заявка не найдена в текущем ходе", code="invalid_source", category="rule_denial")
+
+        from app.tools.resolution.requests import load_action_context
+
+        await load_action_context(ctx, explicit)
 
         call_actor = extract_actor(args)
         if call_actor and call_actor != explicit.actor_id:

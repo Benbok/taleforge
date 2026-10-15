@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, field_validator
 
 Name = Field(min_length=2, max_length=64, pattern=r"^[\w .\-]+$")
 Password = Field(min_length=6, max_length=128)
@@ -314,7 +314,19 @@ class NarrativePreparationStatusOut(Out):
     error: str | None = None
 
 
-class CampaignCreateIn(BaseModel):
+class OptimizationSettingsIn(BaseModel):
+    llm_optimization: dict[str, StrictBool] = Field(default_factory=dict)
+
+    @field_validator("llm_optimization", mode="before")
+    @classmethod
+    def validate_optimization(cls, value):
+        from app.agents.master.optimization import optimization_flags
+
+        optimization_flags({"llm_optimization": value})
+        return value
+
+
+class CampaignCreateIn(OptimizationSettingsIn):
     name: str = Field(min_length=1, max_length=128)
     pack_id: str | None = None
     pack_version: str | None = None
@@ -351,7 +363,7 @@ class CampaignCreateIn(BaseModel):
     tts_intro_voice: str | None = Field(default=None, max_length=32)
 
 
-class CampaignPatchIn(BaseModel):
+class CampaignPatchIn(OptimizationSettingsIn):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     public_intro: str | None = Field(default=None, max_length=10000)
     narrative_mode: Literal["strict", "adaptive"] | None = Field(default=None, description="Режим адаптации сюжета")

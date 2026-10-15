@@ -7,6 +7,32 @@ from app.tools.registry import ToolContext
 from app.tools.resolution.requests import action_key, eligible_adjudications, mark_resolved, record_attempt
 
 
+async def action_context_prompt(ctx: ToolContext) -> str:
+    """Expose every real current part independently of adjudication admission."""
+    from app.db.models import Message
+    from app.tools.resolution.requests import get_action_progress, load_action_context
+
+    parts = []
+    for ref in ctx.required_actions:
+        await load_action_context(ctx, ref)
+        action = {}
+        progress = ctx.action_progress.get(action_key(ref))
+        if ref.source_kind == "message":
+            message = await ctx.session.get(Message, ref.source_id)
+            action = message.data["resolution_actions"][ref.part]["action"]
+            if progress is None:
+                progress = get_action_progress(message.data or {}, ref.part)
+        parts.append(
+            {
+                "ref": ref.model_dump(),
+                "intent": action,
+                "status": progress.status if progress else "pending",
+                "depends_on": action.get("depends_on") or [],
+            }
+        )
+    return "\nТекущие части заявок (используй точный action_ref):\n" + json.dumps(parts, ensure_ascii=False)
+
+
 async def resolution_prompt(ctx: ToolContext) -> str:
     from app.core.resolution.policy import admit
     from app.tools.resolution.capabilities import CAPABILITIES
