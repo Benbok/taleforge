@@ -21,6 +21,7 @@ from app.core import adventure, bonds, plot
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
 from app.core.linker import link_text
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import AgentConfig, Campaign, CampaignSecret, Character, LlmCall, Message, Scene
 from app.gateway.events import Stream, envelope, publish_message
 
@@ -169,6 +170,8 @@ async def _call_tool(svc, c: Campaign, cfg: AgentConfig, purpose: str, msgs: lis
                 call.error = str(e)[:2000]
                 break
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            for metric, value in reply_metrics(reply).items():
+                setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
             tc = next((t for t in reply.tool_calls if t.name == name), None)
             if tc is None:
@@ -615,6 +618,8 @@ async def write_intro(
             thinking=False,
         )
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+        for metric, value in reply_metrics(reply).items():
+            setattr(call, metric, value)
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
         text = clean_story(reply.text)  # во вступлении ещё нет сущностей: разметку снимаем
     except LLMError as e:
@@ -1048,6 +1053,8 @@ async def introduce(svc, cid: str) -> str | None:
             thinking=False,
         )
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+        for metric, value in reply_metrics(reply).items():
+            setattr(call, metric, value)
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
         text = clean(reply.text)
     except LLMError as e:

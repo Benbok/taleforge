@@ -1,9 +1,11 @@
 """Учёт вызовов модели по фазам подготовки (спецификация 2026-10-12, §8): строка фазы и токены рассуждений."""
 
+import asyncio
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from alembic import command
 from alembic.config import Config
 
@@ -49,12 +51,15 @@ def test_scene_generation_call_is_tied_to_its_phase(client, admin, settings):
             tokens_in=100,
             tokens_out=40,
             reasoning_tokens=25,
+            tokens_cached=80,
+            cost_known=True,
             cost=0.01,
         )
 
     assert _prepare(settings, cid, ref, Orchestrator(InMemoryCoordination(), llm=ScriptedLLM([reasoned]))) == "ready"
     (call,) = rows(settings, LlmCall, LlmCall.generation_id == ref)
     assert call.tokens_reasoning == 25 and call.tokens_out == 40
+    assert call.tokens_cached == 80 and call.cost_known is True
 
 
 def test_litellm_reply_reads_reasoning_tokens():
@@ -66,3 +71,83 @@ def test_litellm_reply_reads_reasoning_tokens():
     assert llm_mod.reasoning_of(usage) == 3
     assert llm_mod.reasoning_of(SimpleNamespace(prompt_tokens=1, completion_tokens=1)) == 0
     assert llm_mod.reasoning_of(None) == 0
+
+
+@pytest.mark.parametrize(
+    "usage,expected",
+    [
+        ({"prompt_tokens_details": {"cached_tokens": 80}}, 80),
+        (SimpleNamespace(prompt_tokens_details=SimpleNamespace(cached_tokens=0)), 0),
+        ({"cache_read_input_tokens": 80}, 80),
+        ({"prompt_tokens_details": {}}, None),
+        (None, None),
+    ],
+)
+def test_cached_tokens_preserve_unknown(usage, expected):
+    assert llm_mod.cached_tokens_of(usage) == expected
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("price", [0.01, 0.0, None, "error"])
+def test_provider_usage_and_price_coverage(monkeypatch, stream, price):
+    import litellm
+
+    msg = SimpleNamespace(content="ok", tool_calls=[], model_dump=lambda **_: {"content": "ok"})
+    full = SimpleNamespace(
+        choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+        model="test/model",
+        usage=SimpleNamespace(
+            prompt_tokens=100,
+            completion_tokens=40,
+            prompt_tokens_details=SimpleNamespace(cached_tokens=80),
+            completion_tokens_details=SimpleNamespace(reasoning_tokens=25),
+        ),
+    )
+
+    async def chunks():
+        yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="ok"))])
+
+    async def provider(**kwargs):
+        return chunks() if kwargs.get("stream") else full
+
+    def cost(**kwargs):
+        if price == "error":
+            raise ValueError("unknown price")
+        return price
+
+    async def callback(text):
+        pass
+
+    monkeypatch.setattr(litellm, "acompletion", provider)
+    monkeypatch.setattr(litellm, "stream_chunk_builder", lambda *a, **k: full)
+    monkeypatch.setattr(litellm, "completion_cost", cost)
+    reply = asyncio.run(
+        llm_mod.LiteLLMClient().complete(
+            [{"role": "user", "content": "hello"}],
+            model="test/model",
+            stream_callback=callback if stream else None,
+        )
+    )
+    assert (reply.tokens_in, reply.tokens_cached, reply.tokens_out, reply.reasoning_tokens) == (100, 80, 40, 25)
+    assert reply.cost_known is (price in (0.0, 0.01))
+
+
+def test_usage_coverage_migration_preserves_historical_unknown(monkeypatch, tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "alembic"))
+    db_path = tmp_path / "coverage.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
+    command.upgrade(config, "0030")
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "INSERT INTO llm_calls "
+            "(id,purpose,model,tokens_in,tokens_out,tokens_reasoning,cost,latency_ms,created_at) "
+            "VALUES ('old','decide','m',100,40,25,0,1,CURRENT_TIMESTAMP)"
+        )
+    command.upgrade(config, "0031")
+    with sqlite3.connect(db_path) as db:
+        assert db.execute("SELECT tokens_cached,cost_known,diagnostics FROM llm_calls").fetchone() == (None, None, None)
+    command.downgrade(config, "0030")
+    with sqlite3.connect(db_path) as db:
+        assert "cost_known" not in {r[1] for r in db.execute("PRAGMA table_info(llm_calls)")}

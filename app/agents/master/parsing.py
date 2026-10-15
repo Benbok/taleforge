@@ -10,6 +10,7 @@ from app.agents.master.common import PARSE_TIMEOUT
 from app.config import settings as app_settings
 from app.core.campaigns import master_seat
 from app.core.chat import active_session
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import AgentConfig, Campaign, LlmCall
 from app.tools.runtime import open_context
 
@@ -59,6 +60,8 @@ class ParsingMixin:
             reply = None
         if reply is not None:
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            for metric, value in reply_metrics(reply).items():
+                setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
         raw = next((t.arguments for t in (reply.tool_calls if reply else []) if t.name == "submit_intent"), None)
         async with self.maker() as s:

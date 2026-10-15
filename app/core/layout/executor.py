@@ -160,6 +160,8 @@ async def _ask_model(maker, claim, llm, model, mandate, provider, kw) -> tuple[L
                     tokens_in=attempt.tokens_in,
                     tokens_out=attempt.tokens_out,
                     tokens_reasoning=attempt.tokens_reasoning,
+                    tokens_cached=attempt.tokens_cached,
+                    cost_known=attempt.cost_known,
                     cost=attempt.cost,
                     latency_ms=attempt.latency_ms,
                     error=attempt.error,

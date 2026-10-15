@@ -69,6 +69,8 @@ class LLMReply:
     finish_reason: str | None = None
     blocked: bool = False
     blocked_metadata: dict[str, Any] = field(default_factory=dict)
+    tokens_cached: int | None = None
+    cost_known: bool = False
 
 
 def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: str | None = None) -> str | None:
@@ -95,8 +97,31 @@ def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: st
 
 def reasoning_of(usage: Any) -> int:
     """Токены рассуждений из usage LiteLLM; у провайдеров без них — 0. Обычно уже входят в completion_tokens."""
-    details = getattr(usage, "completion_tokens_details", None)
-    return int(getattr(details, "reasoning_tokens", 0) or 0)
+    details = _usage_field(usage, "completion_tokens_details")
+    return int(_usage_field(details, "reasoning_tokens") or 0)
+
+
+def _usage_field(obj: Any, name: str) -> Any:
+    return obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
+
+
+def cached_tokens_of(usage: Any) -> int | None:
+    """Provider prompt total already includes cached reads; absent metadata stays unknown."""
+    details = _usage_field(usage, "prompt_tokens_details")
+    value = _usage_field(details, "cached_tokens")
+    if value is None:
+        value = _usage_field(usage, "cache_read_input_tokens")
+    return int(value) if value is not None else None
+
+
+def _response_cost(litellm: Any, response: Any) -> tuple[float, bool]:
+    if response is None:
+        return 0.0, False
+    try:
+        value = litellm.completion_cost(completion_response=response)
+        return (float(value), True) if value is not None else (0.0, False)
+    except Exception:  # noqa: BLE001 — unknown tariffs are not evidence of a free call
+        return 0.0, False
 
 
 def _termination_metadata(response: Any, choice: Any, message: Any) -> dict[str, Any]:
@@ -315,10 +340,7 @@ class LiteLLMClient:
             ToolCall(tc.id, tc.function.name, _parse_args(tc.function.arguments), tc.function.arguments or "")
             for tc in (getattr(msg, "tool_calls", None) or [])
         ]
-        try:
-            cost = float(litellm.completion_cost(completion_response=resp) or 0.0)
-        except Exception:  # noqa: BLE001 — у локальных моделей цены нет
-            cost = 0.0
+        cost, cost_known = _response_cost(litellm, resp)
         usage = getattr(resp, "usage", None)
         history = msg.model_dump(exclude_none=True) if hasattr(msg, "model_dump") else dict(msg) if msg else {}
         history["role"] = "assistant"
@@ -330,6 +352,8 @@ class LiteLLMClient:
             tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
             tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
             reasoning_tokens=reasoning_of(usage),
+            tokens_cached=cached_tokens_of(usage),
+            cost_known=cost_known,
             cost=cost,
             latency_ms=latency,
             **_termination_metadata(resp, choice, msg),
@@ -352,10 +376,7 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
     text = "".join(parts)
     full = litellm.stream_chunk_builder(raw, messages=messages) if raw else None
     usage = getattr(full, "usage", None)
-    try:
-        cost = float(litellm.completion_cost(completion_response=full) or 0.0) if full is not None else 0.0
-    except Exception:  # noqa: BLE001 — у локальных моделей цены нет
-        cost = 0.0
+    cost, cost_known = _response_cost(litellm, full)
     # stream_chunk_builder reconstructs the assistant message, including tool calls.
     # Previously streaming silently discarded them, so game actions could be lost.
     choices = getattr(full, "choices", None)
@@ -391,6 +412,8 @@ async def _collect_stream(litellm, resp, model: str, messages, stream_callback, 
         tokens_in=int(getattr(usage, "prompt_tokens", 0) or 0),
         tokens_out=int(getattr(usage, "completion_tokens", 0) or 0),
         reasoning_tokens=reasoning_of(usage),
+        tokens_cached=cached_tokens_of(usage),
+        cost_known=cost_known,
         cost=cost,
         latency_ms=latency,
         **termination,

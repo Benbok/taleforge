@@ -745,6 +745,9 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
     generation_id: Mapped[str | None] = mapped_column(String(32), index=True)  # строка WorldGenerationState
+    tokens_cached: Mapped[int | None] = mapped_column(Integer)
+    cost_known: Mapped[bool | None] = mapped_column(Boolean)
+    diagnostics: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

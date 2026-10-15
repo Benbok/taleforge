@@ -41,6 +41,7 @@ from app.core import adventure, audio, bonds, chat, combat, persona, plot
 from app.core.brief import brief_text
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
+from app.core.llm_diagnostics import prompt_sizes, reply_metrics
 from app.core.narrative.view import master_canon_block
 from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
@@ -315,6 +316,13 @@ class TurnMixin:
         stream_callback=None,
     ) -> LLMReply:
         model = override_model or (decide_model_for() if purpose == "decide" else model_for())
+        sizes = prompt_sizes(
+            {
+                f"message_{i}_{m.get('role', 'unknown')}": json.dumps(m.get("content", ""), ensure_ascii=False)
+                for i, m in enumerate(messages)
+            },
+            tools or [],
+        )
         try:
             reply = await self.llm.complete(
                 messages,
@@ -328,7 +336,14 @@ class TurnMixin:
         except LLMError as e:
             calls.append(
                 LlmCall(
-                    campaign_id=cid, seat_id=seat_id, turn_id=turn_id, purpose=purpose, model=model, error=str(e)[:2000]
+                    campaign_id=cid,
+                    seat_id=seat_id,
+                    turn_id=turn_id,
+                    purpose=purpose,
+                    model=model,
+                    error=str(e)[:2000],
+                    cost_known=False,
+                    diagnostics=sizes,
                 )
             )
             raise
@@ -341,6 +356,8 @@ class TurnMixin:
                 model=reply.model,
                 tokens_in=reply.tokens_in,
                 tokens_out=reply.tokens_out,
+                **reply_metrics(reply),
+                diagnostics=sizes,
                 cost=reply.cost,
                 latency_ms=reply.latency_ms,
                 error=reply_audit_error(reply, require_text=purpose == "narrate"),

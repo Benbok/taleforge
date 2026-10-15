@@ -25,6 +25,7 @@ from app.agents import memory
 from app.agents.llm import LLMError, model_for
 from app.core import chat, combat, persona
 from app.core.campaigns import Viewer
+from app.core.llm_diagnostics import reply_metrics
 from app.core.world import get_scene
 from app.db.models import AgentConfig, Campaign, Character, Entity, InventoryItem, LlmCall, Message, Seat, User
 from app.gateway.events import publish_message
@@ -231,6 +232,8 @@ class PlayerAgents:
                 api_base=api_base,
             )
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            for metric, value in reply_metrics(reply).items():
+                setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
             text = MARKUP.sub(r"\2", reply.text or "").strip().strip("«»").strip()
             if text in ("", SILENT, "-", "–"):

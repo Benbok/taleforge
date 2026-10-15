@@ -401,7 +401,7 @@ class LlmNarrativeAuthor:
             raise
         finally:
             latency_ms = int((time.perf_counter() - t0) * 1000)
-            tokens_in = reply.tokens_in if reply else packed.estimated_input_tokens
+            tokens_in = reply.tokens_in if reply else 0
             tokens_out = reply.tokens_out if reply else 0
             if reply is not None and error_msg is None:
                 error_msg = reply_audit_error(reply)
@@ -442,6 +442,13 @@ class LlmNarrativeAuthor:
                         c_row.tokens_in = tokens_in
                         c_row.tokens_out = tokens_out
                         c_row.cost = cost
+                        c_row.tokens_reasoning = reply.reasoning_tokens if reply else 0
+                        c_row.tokens_cached = reply.tokens_cached if reply else None
+                        c_row.cost_known = reply.cost_known if reply else False
+                        c_row.diagnostics = {
+                            "estimated_input_tokens": packed.estimated_input_tokens,
+                            "usage_source": "provider" if reply else "unknown",
+                        }
                         c_row.latency_ms = latency_ms
                         c_row.error = error_msg
                         await s_upd.commit()

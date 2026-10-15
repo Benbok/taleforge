@@ -20,6 +20,7 @@ from app.agents.llm import LLMError, model_for, parser_model_for
 from app.content.catalog import campaign_catalog
 from app.core import persona
 from app.core.campaigns import Conflict, default_model_profile, master_seat
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import AgentConfig, Campaign, Character, LlmCall, ModelProfile, PersonaNote
 
 log = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ async def _complete(
             model=reply.model,
             tokens_in=reply.tokens_in,
             tokens_out=reply.tokens_out,
+            **reply_metrics(reply),
             cost=reply.cost,
             latency_ms=reply.latency_ms,
         )

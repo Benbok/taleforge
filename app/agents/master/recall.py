@@ -13,6 +13,7 @@ from app.agents.master.common import CATCH_UP_SYSTEM, MARKUP
 from app.agents.master.helpers import _names, _who
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, visible
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import AgentConfig, Campaign, Character, LlmCall, Message, Summary
 from app.gateway.events import envelope, publish_message
 from app.tools.registry import ToolContext
@@ -91,6 +92,8 @@ class RecallMixin:
                     api_base=api_base,
                 )
                 call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+                for metric, value in reply_metrics(reply).items():
+                    setattr(call, metric, value)
                 call.cost, call.latency_ms = reply.cost, reply.latency_ms
                 raw = next((t.arguments for t in reply.tool_calls if t.name == "submit_summary"), None)
                 content = memory.check(raw) if raw is not None else None
@@ -160,6 +163,8 @@ class RecallMixin:
                     api_base=api_base,
                 )
                 call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+                for metric, value in reply_metrics(reply).items():
+                    setattr(call, metric, value)
                 call.cost, call.latency_ms = reply.cost, reply.latency_ms
                 text = MARKUP.sub(r"\2", reply.text or "").strip()[:1200] or None
                 if text is None:

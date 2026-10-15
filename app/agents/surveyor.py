@@ -22,6 +22,7 @@ from app.agents.character import _model
 from app.agents.llm import LLMError, parser_model_for
 from app.core import sketch
 from app.core.campaigns import Conflict
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import Campaign, Entity, LlmCall
 from app.gateway.events import envelope
 from app.tools.master.places import SketchArgs, link_exits, sketch_data
@@ -142,6 +143,8 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
             call.error = str(e)[:2000]
             break
         call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+        for metric, value in reply_metrics(reply).items():
+            setattr(call, metric, value)
         call.cost, call.latency_ms = reply.cost, reply.latency_ms
         tc = next((t for t in reply.tool_calls if t.name == TOOL), None)
         if tc is None:

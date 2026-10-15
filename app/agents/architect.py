@@ -17,6 +17,7 @@ from app.content.catalog import campaign_catalog
 from app.core import knowledge, plot, plot_anchors
 from app.core.brief import brief_text
 from app.core.campaigns import default_model_profile, master_seat
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import (
     AgentConfig,
     Campaign,
@@ -184,6 +185,8 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 errors = [f"модель недоступна: {e}"]
                 break
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            for metric, value in reply_metrics(reply).items():
+                setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
             tc = next((t for t in reply.tool_calls if t.name == plot.TOOL), None)
             if tc is None:
@@ -380,6 +383,8 @@ async def revise(svc, cid: str) -> str | None:
                 errors = [f"модель недоступна: {e}"]
                 break
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+            for metric, value in reply_metrics(reply).items():
+                setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
             tc = next((t for t in reply.tool_calls if t.name == plot.REVISE_TOOL), None)
             if tc is None:

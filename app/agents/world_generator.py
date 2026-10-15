@@ -108,6 +108,8 @@ class Attempt:
     tokens_in: int = 0
     tokens_out: int = 0
     tokens_reasoning: int = 0
+    tokens_cached: int | None = None
+    cost_known: bool = False
     cost: float = 0.0
     latency_ms: int = 0
     error: str | None = None
@@ -129,6 +131,8 @@ async def ask(llm, plan: Plan, place: dict[str, Any], catalog, *, model: str, ap
     attempt.model = reply.model or model
     attempt.tokens_in, attempt.tokens_out = reply.tokens_in, reply.tokens_out
     attempt.tokens_reasoning = reply.reasoning_tokens
+    attempt.tokens_cached = reply.tokens_cached
+    attempt.cost_known = reply.cost_known
     attempt.cost, attempt.latency_ms = reply.cost or 0.0, reply.latency_ms or 0
     tc = next((t for t in reply.tool_calls if t.name == TOOL), None)
     try:

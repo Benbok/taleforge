@@ -6,7 +6,7 @@ Admin видит свои кампании, Super Admin — все и ещё с�
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import timedelta
 from typing import Any
 
@@ -27,6 +27,64 @@ def _add(bucket: dict[str, dict[str, Any]], key: str, c: LlmCall) -> None:
     b["tokens_out"] += c.tokens_out or 0
     b["tokens_reasoning"] += c.tokens_reasoning or 0
     b["errors"] += 1 if c.error else 0
+    known_cost = getattr(c, "cost_known", None) is True
+    cached = getattr(c, "tokens_cached", None)
+    for field, value in {
+        "cost_known_calls": int(known_cost),
+        "cost_unknown_calls": int(not known_cost),
+        "cache_known_calls": int(cached is not None),
+        "cache_unknown_calls": int(cached is None),
+        "tokens_cached_known": cached or 0,
+        "tokens_uncached_known": max(0, (c.tokens_in or 0) - cached) if cached is not None else 0,
+    }.items():
+        b[field] = b.get(field, 0) + value
+
+
+def session_report(calls: list[LlmCall], turns: list) -> dict[str, Any]:
+    """All paid attempts survive aggregation, including invalid output and rolled back turns."""
+    total, by_purpose, by_phase = {}, {}, {}
+    creation = {"plan", "sketch", "scene", "layout", "campaign_intro", "greeting", "intro"}
+    for call in calls:
+        _add(total, "all", call)
+        _add(by_purpose, call.purpose, call)
+        phase = "turn" if call.turn_id else "creation" if call.purpose in creation else "unattributed"
+        _add(by_phase, phase, call)
+    done = [t for t in turns if t.status == "done"]
+    failed = [t for t in turns if t.status == "failed"]
+    decisions = Counter(c.turn_id for c in calls if c.purpose == "decide" and c.turn_id)
+
+    def durations(rows):
+        values = sorted(
+            (as_utc(t.finished_at) - as_utc(t.started_at)).total_seconds() * 1000
+            for t in rows
+            if t.finished_at and t.started_at
+        )
+
+        def percentile(p):
+            if not values:
+                return None
+            pos = (len(values) - 1) * p
+            lo = int(pos)
+            return round(values[lo] + (values[min(lo + 1, len(values) - 1)] - values[lo]) * (pos - lo), 2)
+
+        return {"count": len(values), "p50": percentile(0.5), "p95": percentile(0.95)}
+
+    summary = total.get("all", {"cost": 0, "calls": 0})
+    summary = {**summary, "cost": round(summary["cost"], 6)}
+    for prefix in ("cache", "cost"):
+        summary[f"{prefix}_coverage"] = summary.get(f"{prefix}_known_calls", 0) / len(calls) if calls else None
+    return {
+        "total": summary,
+        "by_purpose": {r["purpose"]: r for r in _rows(by_purpose, "purpose")},
+        "by_phase": {r["phase"]: r for r in _rows(by_phase, "phase")},
+        "done_turns": len(done),
+        "failed_turns": len(failed),
+        "other_turns": len(turns) - len(done) - len(failed),
+        "unattributed_calls": sum(not c.turn_id for c in calls),
+        "mean_decide_done": sum(decisions[t.id] for t in done) / len(done) if done else None,
+        "mean_decide_all": sum(decisions[t.id] for t in turns) / len(turns) if turns else None,
+        "duration_ms": {"done": durations(done), "failed": durations(failed), "all": durations(turns)},
+    }
 
 
 def _rows(bucket: dict[str, dict[str, Any]], name: str) -> list[dict[str, Any]]:

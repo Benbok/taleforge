@@ -17,6 +17,7 @@ from app.agents.architect import _assistant
 from app.agents.llm import LLMError, model_for
 from app.core import modules
 from app.core.campaigns import default_model_profile
+from app.core.llm_diagnostics import reply_metrics
 from app.db.models import AdventureModule, LlmCall
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,8 @@ async def _set(svc, module_id: str, **fields) -> AdventureModule | None:
 
 def _log(call: LlmCall, reply) -> None:
     call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
+    for metric, value in reply_metrics(reply).items():
+        setattr(call, metric, value)
     call.cost, call.latency_ms = reply.cost, reply.latency_ms
 
 
