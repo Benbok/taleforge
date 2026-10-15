@@ -18,8 +18,12 @@ def empty_seat(client, admin, cid):
     return next(s["id"] for s in c["seats"] if s["role"] == "player" and s["occupant_type"] == "empty")
 
 
-def ai_party(client, admin, **kw):
+def ai_party(client, admin, *, expanded=False, **kw):
     """Живой игрок с воином и ИИ-игрок с героем, которого собрал владелец."""
+    if expanded:
+        c, (p1,), hero = party(client, admin, players=1, **kw)
+        ok(client.post(f"/api/campaigns/{c['id']}/seats", headers=admin), 201)
+        return c, p1, hero
     c, (p1, p2), hero = party(client, admin, players=2, **kw)
     snap = ok(client.get(f"/api/campaigns/{c['id']}", headers=admin))
     gimli = next(s["id"] for s in snap["seats"] if s["user_name"] == "Гимли")
@@ -73,7 +77,7 @@ def whisper(settings, cid, seat_id):
 
 
 def test_owner_seats_ai_and_builds_its_hero(game_client, admin_g, settings):
-    c, p1, _ = ai_party(game_client, admin_g)
+    c, p1, _ = ai_party(game_client, admin_g, expanded=True)
     cid = c["id"]
     seat = empty_seat(game_client, admin_g, cid)
     # сажает только владелец и только на пустое место
@@ -105,7 +109,7 @@ def test_owner_seats_ai_and_builds_its_hero(game_client, admin_g, settings):
 
 
 def test_ai_player_answers_once_after_master(game_client, admin_g, settings, llm):
-    c, p1, hero = ai_party(game_client, admin_g)
+    c, p1, hero = ai_party(game_client, admin_g, expanded=True)
     cid = c["id"]
     seat = seat_ai(game_client, admin_g, cid)
     ai_hero = build_hero(game_client, admin_g, cid, seat)

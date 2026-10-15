@@ -12,11 +12,12 @@ from tests.game import FIGHTER, QueueDice, import_base, ok, party, run
 
 def two_heroes(client, admin, settings, **kw):
     import_base(settings)
-    c, heads, ch = party(client, admin, players=2, difficulty="deadly", **kw)
+    c, heads, ch = party(client, admin, players=2, difficulty="deadly", start=False, **kw)
     body = {**FIGHTER, "name": "Ира"}
     ch2 = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=body, headers=heads[1]), 201)
     res = ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch2['id']}/submit", headers=heads[1]))
     assert res["status"] == "approved", res
+    ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     return c["id"], ch["id"], ch2["id"], heads
 
 

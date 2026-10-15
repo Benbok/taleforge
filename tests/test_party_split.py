@@ -9,12 +9,14 @@ from sqlalchemy import select
 from app.agents import memory
 from app.agents.llm import ScriptedLLM
 from app.core import audio, combat
-from app.db.models import Campaign, Message
+from app.db.models import Campaign, Character, Message
 from app.main import create_app
+from app.tools.master.entities import encounter_budget
 from app.tools.registry import execute
 from app.tools.runtime import open_context, scene_views
 from tests.conftest import login
 from tests.game import FIGHTER, QueueDice, import_base, ok, party, quiet, run
+from tests.test_api import invite, register
 from tests.test_map import _ok, _play
 from tests.test_master import DONE
 from tests.test_ws import connect, next_of
@@ -46,6 +48,33 @@ def _split_party(client, admin, settings, **kw):
     ids = _play(settings, cid, build)
     quiet(client)
     return cid, (p1, p2), (h1, h2), ids
+
+
+def test_late_hero_changes_only_the_budget_of_their_location(client, admin, settings):
+    cid, _, _, ids = _split_party(client, admin, settings, master={"type": "owner"})
+
+    async def budgets(ctx):
+        return {name: encounter_budget(ctx, [], ids[name])["cap"] for name in ("square", "docks")}
+
+    before = _play(settings, cid, budgets)
+    assert before == {"square": 75, "docks": 75}
+    ok(client.post(f"/api/campaigns/{cid}/seats", headers=admin), 201)
+    head = register(client, invite(client, admin, cid)["token"], "Боромир")
+    hero = ok(client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=head), 201)
+    ok(client.post(f"/api/campaigns/{cid}/session/pause", headers=admin))
+    ok(client.post(f"/api/campaigns/{cid}/characters/{hero['id']}/submit", headers=head))
+
+    async def set_level(s):
+        newcomer = await s.get(Character, hero["id"])
+        assert newcomer.location_id == ids["square"]
+        newcomer.sheet = {**newcomer.sheet, "level": 3}
+        await s.commit()
+
+    run(settings, set_level)
+    assert _play(settings, cid, budgets) == {"square": 300, "docks": 75}
+    campaign = ok(client.get(f"/api/campaigns/{cid}", headers=admin))
+    assert campaign["difficulty"] == "normal"
+    assert campaign["party_size_recommended"] == 4
 
 
 def test_master_sees_every_place_of_split_party(client, admin, settings):

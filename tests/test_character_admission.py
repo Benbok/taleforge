@@ -76,13 +76,13 @@ def test_admission_forbidden_during_active_session(client, admin, base):
     assert ADMISSION_MSG in r_review.json()["detail"]
 
 
-def test_original_reserved_seat_can_submit_during_active_session(client, admin, base):
+def test_original_reserved_seat_cannot_submit_during_active_session(client, admin, base):
     c, (p1, p2), _ = party(client, admin, players=2, master={"type": "owner"})
     ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=p2), 201)
 
-    submitted = ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p2))
-
-    assert submitted["status"] == "approved"
+    response = client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p2)
+    assert response.status_code == 409
+    assert ADMISSION_MSG in response.json()["detail"]
 
 
 def test_claim_atomicity_on_rejection(client, admin, base):

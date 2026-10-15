@@ -63,11 +63,12 @@ def battle_wizard(client, admin, settings):
     from tests.game import import_base, party
 
     import_base(settings)
-    c, heads, fighter = party(client, admin, players=2)
+    c, heads, fighter = party(client, admin, players=2, start=False)
     cid = c["id"]
     hero = {**WIZARD, "prepared": ["spell.magic_missile", "spell.shield", "spell.burning_hands", "spell.mage_armor"]}
     ch = ok(client.post(f"/api/campaigns/{cid}/characters", json=hero, headers=heads[1]), 201)
     ok(client.post(f"/api/campaigns/{cid}/characters/{ch['id']}/submit", headers=heads[1]))
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     return settings, cid, ch["id"], fighter["id"], heads[1], client
 
 

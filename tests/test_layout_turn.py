@@ -202,10 +202,11 @@ def test_panel_transit_finishes_in_background(game_client, admin_g, settings):
 def test_split_party_narration_follows_transiting_crew(game_client, admin_g, llm, settings, monkeypatch):
     from tests.game import FIGHTER, ok
 
-    c, (p1, p2), hero = party(game_client, admin_g, players=2)
+    c, (p1, p2), hero = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
     second = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=p2), 201)
     ok(game_client.post(f"/api/campaigns/{cid}/characters/{second['id']}/submit", headers=p2))
+    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     ids = _temple(settings, cid)
 
     async def separate(ctx):
@@ -245,10 +246,11 @@ def test_default_transit_uses_focused_group(client, admin, settings):
     from tests.game import FIGHTER, import_base, ok, quiet
 
     import_base(settings)
-    c, (_p1, p2), hero = party(client, admin, players=2)
+    c, (_p1, p2), hero = party(client, admin, players=2, start=False)
     cid = c["id"]
     second = ok(client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=p2), 201)
     ok(client.post(f"/api/campaigns/{cid}/characters/{second['id']}/submit", headers=p2))
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     quiet(client)
     ids = _temple(settings, cid)
     _prepare(settings, cid, _activate(settings, cid, ids["road"]))

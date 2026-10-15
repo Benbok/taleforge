@@ -158,9 +158,10 @@ def _second_hero(client, cid, head):
 
 def test_hidden_linked_entity_absent_for_another_viewer(client, admin, settings):
     import_base(settings)
-    campaign, (p1, p2), hero = party(client, admin, players=2)
+    campaign, (p1, p2), hero = party(client, admin, players=2, start=False)
     cid = campaign["id"]
     gimli = _second_hero(client, cid, p2)
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
 
     async def build(ctx):
         await _ok(ctx, "create_location", {"name": "Склеп", "make_current": True})

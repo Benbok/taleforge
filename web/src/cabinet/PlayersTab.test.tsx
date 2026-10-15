@@ -101,6 +101,7 @@ describe("PlayersTab — расширение мест и правила доп�
     );
 
     const { rerender } = renderTab(makeRoom({ status: "paused" }));
+    expect(screen.getByText(/Новый герой вступает в текущую локацию сцены/)).toBeDefined();
     expect(await screen.findByText("Вступление героев доступно на паузе (вне боя и ходов мастера)")).toBeDefined();
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

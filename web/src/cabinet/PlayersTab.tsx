@@ -104,6 +104,9 @@ export default function PlayersTab({ room, onRoom }: { room: Room; onRoom: (r: R
             {room.status === "ended" && "Кампания завершена"}
           </div>
         </div>
+        <p className="text-xs text-muted">
+          Новый герой вступает в текущую локацию сцены. Если отряд разделён, герой присоединится к группе в этой локации.
+        </p>
         {room.is_owner && players.some((s) => s.occupant_type !== "human") && <RolesHint campaignId={id} />}
 
         <div className="divide-y divide-line/60">

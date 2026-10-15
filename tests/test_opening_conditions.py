@@ -4,8 +4,8 @@
 from app.agents import prelude
 from app.core import plot
 from app.core.world_objects import read_world_object
-from app.db.models import CampaignSecret, Entity, InventoryItem
-from tests.game import party, run
+from app.db.models import CampaignSecret, Entity, InventoryItem, LlmCall
+from tests.game import party, quiet, run
 from tests.test_lead import FakeCatalog, checked, good_plan, set_plan
 from tests.test_master import admin_g, dice, game_client, llm, rows  # noqa: F401
 
@@ -59,7 +59,7 @@ def test_plot_opening_schema_keyword_hint_in_public_intro():
 
 
 def test_prelude_confiscates_gear(game_client, admin_g, llm, settings):
-    c, _, ch = party(game_client, admin_g)
+    c, _, ch = party(game_client, admin_g, location_layouts=False)
     hid = ch["id"]
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
 
@@ -89,7 +89,7 @@ def test_prelude_confiscates_gear(game_client, admin_g, llm, settings):
 
     llm.replies += [{"text": "Герои очнулись в запертой камере."}]
     res = game_client.portal.call(prelude.introduce, game_client.app.state.master, c["id"])
-    assert res is not None
+    assert res is not None, [(call.purpose, call.error) for call in rows(settings, LlmCall)]
 
     # Проверяем инвентарь героя после изъятия
     inv = rows(settings, InventoryItem, InventoryItem.character_id == hid)
@@ -147,7 +147,7 @@ def test_prelude_confiscates_gear(game_client, admin_g, llm, settings):
 def test_late_joiner_after_stash_opened(game_client, admin_g, llm, settings):
     from tests.game import FIGHTER, ok
 
-    c, heads, ch1 = party(game_client, admin_g, players=2)
+    c, heads, ch1 = party(game_client, admin_g, players=2, location_layouts=False)
     assert ch1["id"]
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
 
@@ -179,9 +179,13 @@ def test_late_joiner_after_stash_opened(game_client, admin_g, llm, settings):
 
     run(settings, open_stash)
 
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/pause", headers=admin_g))
+
     # Второй игрок создаёт и сдаёт персонажа
     ch2 = ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=heads[1]), 201)
     ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{ch2['id']}/submit", headers=heads[1]))
+    ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
+    quiet(game_client)
     hid2 = ch2["id"]
 
     # Второе вступление (для опоздавшего героя)

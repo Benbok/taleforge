@@ -45,11 +45,12 @@ def narration(ws):
 
 def two_players(client, admin, settings, **kw):
     """Две героя у двух игроков, мастер — ИИ, сессия идёт."""
-    c, (p1, p2), hero = party(client, admin, players=2, **kw)
+    c, (p1, p2), hero = party(client, admin, players=2, start=False, **kw)
     from tests.game import FIGHTER
 
     ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json={**FIGHTER, "name": "Торин"}, headers=p2), 201)
     ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p2))
+    ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     tune(settings, c["id"])
     return c, p1, p2, hero
 

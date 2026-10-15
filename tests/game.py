@@ -71,12 +71,32 @@ def ok(r, code=200):
     return r.json()
 
 
-def party(client, admin, *, players=1, master=None, rules=None, names=None, start=True, **kw):
+def party(
+    client,
+    admin,
+    *,
+    players=1,
+    master=None,
+    rules=None,
+    names=None,
+    start=True,
+    location_layouts=False,
+    location_layouts_llm=False,
+    **kw,
+):
     """Кампания с базовым пакетом, игроки и одобренный воин у первого игрока, сессия начата."""
     body = {"creation_rules": {"review": "auto", **(rules or {})}, "collect_window_sec": 0, **kw}
     if master:
         body["master"] = master
     c = make_campaign(client, admin, players=players, **body)
+    # Legacy gameplay scenarios script narration only; layout scenarios explicitly enable generation.
+    c = ok(
+        client.patch(
+            f"/api/campaigns/{c['id']}",
+            json={"location_layouts": location_layouts, "location_layouts_llm": location_layouts_llm},
+            headers=admin,
+        )
+    )
     inv = invite(client, admin, c["id"])
     names = names or ["Арагорн", "Гимли", "Леголас"]
     heads = [register(client, inv["token"], names[i]) for i in range(players)]

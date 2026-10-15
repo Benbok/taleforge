@@ -21,7 +21,12 @@ export default function ManagePage() {
   const { id = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const qc = useQueryClient();
-  const room = useQuery({ queryKey: ["room", id], queryFn: () => api<Room>(`/api/campaigns/${id}`) });
+  const room = useQuery({
+    queryKey: ["room", id],
+    queryFn: () => api<Room>(`/api/campaigns/${id}`),
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+  });
   const r = room.data;
   const setRoom = (next: Room) => {
     qc.setQueryData(["room", id], next);

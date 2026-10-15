@@ -174,7 +174,7 @@ def test_caster_numbers_and_choice_rules():
 @pytest.fixture
 def wizard_game(client, admin, settings):
     import_base(settings)
-    c, heads, _ = party(client, admin, players=2)
+    c, heads, _ = party(client, admin, players=2, start=False)
     cid = c["id"]
     opts = ok(client.get(f"/api/campaigns/{cid}/character-options", headers=heads[1]))
     wiz = next(x for x in opts["classes"] if x["id"] == "class.wizard")
@@ -190,6 +190,7 @@ def wizard_game(client, admin, settings):
     ch = ok(client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
     res = ok(client.post(f"/api/campaigns/{cid}/characters/{ch['id']}/submit", headers=heads[1]))
     assert res["status"] == "approved", res
+    ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     return settings, cid, ch["id"], heads[1], client
 
 
