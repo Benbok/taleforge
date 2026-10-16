@@ -96,7 +96,7 @@ def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, ll
     assert act(game_client, player, c["id"], "Машу рукой")["kind"] == "narration"
     calls = rows(settings, LlmCall, LlmCall.campaign_id == c["id"], LlmCall.purpose.in_(["decide", "narrate"]))
     assert {call.diagnostics["prompt_role"] for call in calls} == {"decide", "narrate"}
-    assert {call.diagnostics["prompt_version"] for call in calls} == {"context-v2", "role-context-v1"}
+    assert {call.diagnostics["prompt_version"] for call in calls} == {"context-v2"}
     assert all("role_blocks" in call.diagnostics for call in calls)
 
 

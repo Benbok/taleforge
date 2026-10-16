@@ -56,6 +56,9 @@ class NarrationMixin:
         meet: str = "",
         tool_attempts: list[dict] | None = None,
         mood_note: str = "",
+        context_facts=(),
+        context_subjects=frozenset(),
+        context_audience=frozenset({"party"}),
     ):
         from app.agents.master.optimization import optimization_flags
         from app.agents.master.prompt_context import build_prompt_bundle, narration_scene, public_narration_notes
@@ -95,16 +98,20 @@ class NarrationMixin:
         ]
         prompt_metadata = None
         if compact:
-            bundle = await build_prompt_bundle(
-                ctx,
-                cfg,
-                role="narrate",
-                inputs={
-                    "request": base[1]["content"],
+            inputs = {"request": base[1]["content"], "mood": mood_note, "legacy_messages": base}
+            if context_facts:
+                packet = prompt + (f"\n\n{meet}" if meet else "")
+                inputs = {
+                    "request": news,
                     "mood": mood_note,
                     "legacy_messages": base,
-                },
-            )
+                    "context_facts": context_facts,
+                    "subjects": context_subjects,
+                    "audience": context_audience,
+                    "history": convo,
+                    "packet": packet,
+                }
+            bundle = await build_prompt_bundle(ctx, cfg, role="narrate", inputs=inputs)
             base = bundle.messages
             prompt_metadata = bundle.metadata("narrate")
         ask_options = {}
@@ -376,11 +383,38 @@ class NarrationMixin:
         return ch if engine.enabled else None
 
     async def _voice(
-        self, calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, *, ch: voicing.Channel, news: str = ""
+        self,
+        calls,
+        cfg,
+        c,
+        seat_id,
+        turn_id,
+        system,
+        ctx,
+        combat_notes,
+        *,
+        ch: voicing.Channel,
+        news: str = "",
+        context_facts=(),
+        context_subjects=frozenset(),
+        context_audience=frozenset({"party"}),
     ) -> tuple[str | None, dict | None]:
         """Короткая реплика мастера и её озвучка каналом реплик. Сбой не мешает ходу: остаётся текст без голоса."""
         try:
-            line = await self._voice_line(calls, cfg, c, seat_id, turn_id, system, ctx, combat_notes, news=news)
+            line = await self._voice_line(
+                calls,
+                cfg,
+                c,
+                seat_id,
+                turn_id,
+                system,
+                ctx,
+                combat_notes,
+                news=news,
+                context_facts=context_facts,
+                context_subjects=context_subjects,
+                context_audience=context_audience,
+            )
             if not line:
                 return None, None
             data = await self.tts.voice_for_narration(
@@ -436,6 +470,9 @@ class NarrationMixin:
         combat_notes: list,
         *,
         news: str = "",
+        context_facts=(),
+        context_subjects=frozenset(),
+        context_audience=frozenset({"party"}),
     ) -> str:
         from app.agents.llm import can_disable_thinking
         from app.agents.master.optimization import optimization_flags
@@ -462,15 +499,17 @@ class NarrationMixin:
         options = {}
         if compact:
             scene_state = getattr(getattr(getattr(ctx, "world", None), "scene", None), "state", {})
-            bundle = await build_prompt_bundle(
-                ctx,
-                cfg,
-                role="voice_line",
-                inputs={
-                    "request": prompt,
+            inputs = {"request": prompt, "mood": mood.instruction(mood.load(scene_state))}
+            if context_facts:
+                inputs = {
+                    "request": news,
                     "mood": mood.instruction(mood.load(scene_state)),
-                },
-            )
+                    "context_facts": context_facts,
+                    "subjects": context_subjects,
+                    "audience": context_audience,
+                    "packet": prompt,
+                }
+            bundle = await build_prompt_bundle(ctx, cfg, role="voice_line", inputs=inputs)
             msgs = bundle.messages
             options = {
                 "max_tokens": 512,

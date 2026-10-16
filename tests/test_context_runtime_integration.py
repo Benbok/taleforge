@@ -226,3 +226,76 @@ def test_production_decide_request_selects_snapshot_facts(game_client, admin_g, 
     assert "RULE_MARKER" in decide_request
     assert "ACTION_REF_MARKER" in decide_request
     assert "DISTANT_NPC_MARKER" not in decide_request
+
+
+def test_production_narrate_request_uses_audience_safe_snapshot(game_client, admin_g, llm, monkeypatch):
+    from app.agents.master import context_snapshot
+    from app.agents.master.context_selection import ContextFact
+    from tests.game import party
+    from tests.test_master import DONE, act
+
+    campaign, (player,), hero = party(game_client, admin_g)
+    hero_id = hero["id"]
+    facts = (
+        ContextFact(
+            "outcome",
+            "outcomes",
+            "NARRATION_PUBLIC_OUTCOME_MARKER",
+            frozenset({hero_id}),
+            frozenset(),
+            frozenset({"party"}),
+        ),
+        ContextFact(
+            "relationship",
+            "relationships",
+            "NARRATION_PUBLIC_RELATIONSHIP_MARKER",
+            frozenset({hero_id}),
+            frozenset(),
+            frozenset({"party"}),
+        ),
+        ContextFact(
+            "promise",
+            "promises",
+            "NARRATION_PUBLIC_PROMISE_MARKER",
+            frozenset({hero_id}),
+            frozenset(),
+            frozenset({"party"}),
+        ),
+        ContextFact(
+            "motive",
+            "motives",
+            "NARRATION_PRIVATE_MOTIVE_MARKER",
+            frozenset({hero_id}),
+            frozenset(),
+            frozenset({"master"}),
+        ),
+    )
+
+    def snapshot(ctx, *args, **kwargs):
+        return facts if ctx.narration_viewer_ids is not None else ()
+
+    monkeypatch.setattr(context_snapshot, "collect_context_snapshot", snapshot)
+    llm.replies += [
+        {"tool_calls": [("submit_intent", {"actions": [{"index": 0, "verb": "interact", "summary": "Wave"}]})]},
+        {"tool_calls": [("auto_success", {"character_id": hero_id, "reason": "wave"})]},
+        DONE,
+        {"text": "Ты машешь рукой."},
+        {"text": "Ты машешь рукой."},
+    ]
+
+    assert act(game_client, player, campaign["id"], "Машу рукой")["kind"] == "narration"
+    narration_requests = [
+        request["messages"][1]["content"]
+        for request in llm.requests
+        if "NARRATION_PUBLIC_OUTCOME_MARKER" in request["messages"][1]["content"]
+    ]
+    assert narration_requests
+    assert all("NARRATION_PRIVATE_MOTIVE_MARKER" not in request for request in narration_requests)
+    assert all(
+        marker in narration_requests[0]
+        for marker in (
+            "NARRATION_PUBLIC_OUTCOME_MARKER",
+            "NARRATION_PUBLIC_RELATIONSHIP_MARKER",
+            "NARRATION_PUBLIC_PROMISE_MARKER",
+        )
+    )

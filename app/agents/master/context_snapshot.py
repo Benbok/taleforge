@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 from app.agents.master.context_selection import ContextFact
+from app.core.object_policy import concealed
 
 
 def _fact(
@@ -19,6 +20,7 @@ def _fact(
     *,
     subjects: set[str] | frozenset[str] = frozenset(),
     dependencies: set[str] | frozenset[str] = frozenset(),
+    audience: set[str] | frozenset[str] = frozenset({"master"}),
     mandatory: bool = False,
 ) -> ContextFact:
     return ContextFact(
@@ -27,7 +29,7 @@ def _fact(
         text=text,
         subjects=frozenset(subjects),
         dependencies=frozenset(dependencies),
-        audience=frozenset({"master"}),
+        audience=frozenset(audience),
         mandatory=mandatory,
     )
 
@@ -48,6 +50,26 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
     world = ctx.world
     scene = world.scene
     current_place = getattr(world, "focus", None) or getattr(scene, "location_id", None)
+    viewers = getattr(ctx, "narration_viewer_ids", None)
+    public_subjects: set[str] = set(viewers or ())
+    public_places = {
+        world.place_of(world.characters[hero_id])
+        for hero_id in viewers or ()
+        if hero_id in world.characters and world.place_of(world.characters[hero_id])
+    }
+    public_subjects.update(public_places)
+    public_subjects.update(
+        entity.id
+        for entity in world.entities.values()
+        if entity.location_id in public_places
+        and all(not concealed(entity, world.entities, world.revealed.get(hero_id, set())) for hero_id in viewers or ())
+    )
+
+    def public(subjects: set[str]) -> frozenset[str]:
+        if viewers is not None and subjects & public_subjects:
+            return frozenset({"master", "party"})
+        return frozenset({"master"})
+
     facts: list[ContextFact] = []
 
     for hero in sorted(world.characters.values(), key=lambda item: item.id):
@@ -61,6 +83,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 "heroes",
                 f"{hero.name} ({hero.id}); status={hero.status}; place={place or 'unknown'}",
                 subjects=subjects,
+                audience=public({hero.id}),
                 mandatory=hero.id in getattr(world, "crew", set()),
             )
         )
@@ -88,6 +111,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 f"{entity.name} ({entity.id}); kind={entity.kind}; place={place or 'unknown'}; "
                 f"state={_json(entity.state or {})}",
                 subjects=subjects,
+                audience=public({entity.id}),
             )
         )
 
@@ -100,6 +124,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                     "places",
                     f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
                     subjects={current_place},
+                    audience=public({current_place}),
                     mandatory=True,
                 )
             )
@@ -109,6 +134,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 "place:unknown",
                 "places",
                 "Current place is not assigned yet",
+                audience=frozenset({"master", "party"}) if viewers is not None else frozenset({"master"}),
                 mandatory=True,
             )
         )
@@ -124,6 +150,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                     "routes",
                     f"Reachable place {entity.name} ({entity.id}) from {current_place}",
                     subjects={current_place, entity.id},
+                    audience=public({current_place}),
                 )
             )
 
@@ -138,6 +165,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 f"Effect on {target}: {getattr(record, 'name', effect.effect_template_id)}; "
                 f"stacks={effect.stacks}; expires_at={effect.expires_at}",
                 subjects={target},
+                audience=public({target}),
             )
         )
 
@@ -149,6 +177,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 "requests",
                 f"action_ref={key}; actor={ref.actor_id}; source={ref.source_kind}",
                 subjects={ref.actor_id},
+                audience=frozenset({"master", "party"}) if viewers is not None else frozenset({"master"}),
                 mandatory=True,
             )
         )
@@ -174,6 +203,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                     "reactions",
                     str(value),
                     subjects={subject},
+                    audience=frozenset(getattr(item, "audience", ()) or {"master"}),
                 )
             )
 

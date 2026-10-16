@@ -154,6 +154,34 @@ class FinishMixin:
                 for character in ctx.world.characters.values()
                 if audience is None or character.seat_id in audience
             }
+            from app.agents.master.context_snapshot import collect_context_snapshot
+
+            context_facts = collect_context_snapshot(
+                ctx,
+                cfg,
+                messages=(),
+                memory="",
+                history=inputs.get("convo") or "",
+            )
+            context_subjects = set(ctx.narration_viewer_ids)
+            if ctx.world.scene.location_id:
+                context_subjects.add(ctx.world.scene.location_id)
+            context_subjects.update(
+                entity.id
+                for entity in ctx.world.entities.values()
+                if entity.location_id
+                and any(
+                    character.id in ctx.narration_viewer_ids
+                    and ctx.world.place_of(character) == entity.location_id
+                    for character in ctx.world.characters.values()
+                )
+            )
+            context_subjects.update(
+                value
+                for event in ctx.events
+                for value in (event.actor_id, event.target_id)
+                if value
+            )
             system = await self._system_prompt(s, c, cfg, ctx) + (inputs.get("mood") or "")
             from app.agents.master.optimization import optimization_flags
             from app.agents.master.prompt_context import master_prompt_values
@@ -183,6 +211,8 @@ class FinishMixin:
                     inputs.get("combat_notes") or [],
                     ch=line,
                     news=inputs.get("news") or "",
+                    context_facts=context_facts,
+                    context_subjects=context_subjects,
                 )
             )
         try:
@@ -204,6 +234,8 @@ class FinishMixin:
                 tool_attempts=tool_attempts,
                 adaptation_notes=inputs.get("adaptation_notes") or [],
                 mood_note=inputs.get("mood") or "",
+                context_facts=context_facts,
+                context_subjects=context_subjects,
             )
         except BaseException:
             if voice_task is not None:
