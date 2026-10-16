@@ -117,6 +117,7 @@ def test_snapshot_keeps_instance_and_template_facts_and_closes_dependencies():
         audience=frozenset({"master"}),
     )
     assert fact_key(remote) in {item.key for item in selected.facts}
+    assert fact_key(template_role) in {item.key for item in selected.facts}
 
 
 def test_unknown_dependency_expands_its_section_with_reason():
@@ -179,6 +180,7 @@ def test_structural_values_are_not_truncated_in_snapshot():
 
 def test_public_snapshot_projects_entity_state_without_private_markers():
     place = SimpleNamespace(id="place-1", kind="location", name="Площадь", state={}, location_id=None)
+    place.state = {"private_note": "PRIVATE_LOCATION_MARKER"}
     hero = SimpleNamespace(id="hero-1", name="Герой", status="approved", location_id=place.id, seat_id="seat-1")
     npc = SimpleNamespace(
         id="npc-1",
@@ -209,6 +211,36 @@ def test_public_snapshot_projects_entity_state_without_private_markers():
 
     assert "PRIVATE_STATE_MARKER" not in target.text
     assert "невредим" in target.text
+    selected = select_context(
+        facts, role="narrate", subjects=frozenset({hero.id, place.id}), audience=frozenset({"party"})
+    )
+    assert all("PRIVATE_LOCATION_MARKER" not in item.text for item in selected.facts)
+
+
+def test_snapshot_routes_follow_topology_links_and_hide_secret_destinations():
+    ctx = _world_with_facts(())
+    world = ctx.world
+    place = world.entities["place-1"]
+    place.state = {"links": [{"to": "linked"}, {"to": "secret"}]}
+    world.entities["linked"] = SimpleNamespace(
+        id="linked", kind="location", name="Открытый выход", state={}, location_id=None
+    )
+    world.entities["secret"] = SimpleNamespace(
+        id="secret", kind="location", name="SECRET_DESTINATION", state={"secret": True}, location_id=None
+    )
+    hero = SimpleNamespace(id="hero", name="Герой", status="approved", location_id=place.id)
+    world.characters = {hero.id: hero}
+    world.place_of = lambda character: character.location_id
+    world.crew = {hero.id}
+    world.entities["npc-1"].zone = "near"
+    ctx.narration_viewer_ids = {hero.id}
+    facts = collect_context_snapshot(ctx, None, messages=(), memory="", history="")
+    routes = [item for item in facts if item.section == "routes"]
+    assert any("Открытый выход" in item.text for item in routes)
+    selected = select_context(
+        tuple(routes), role="narrate", subjects=frozenset({place.id}), audience=frozenset({"party"})
+    )
+    assert all("SECRET_DESTINATION" not in item.text for item in selected.facts)
 
 
 def test_snapshot_uses_current_viewer_places_instead_of_stale_focus():

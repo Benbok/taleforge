@@ -314,11 +314,14 @@ def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResul
         main = [a for a in acts if a["verb"] not in MOVE_VERBS]
         moves = [a for a in acts if a["verb"] in MOVE_VERBS]
         keep = main[:1] + moves[:1] if main else moves[:1]
-        dropped = [a for a in acts if a not in keep]
     else:
-        keep, dropped = acts[:MAX_ACTIONS_FREE], acts[MAX_ACTIONS_FREE:]
+        keep = acts[:MAX_ACTIONS_FREE]
+    # Choosing the legal subset must never reorder the player's dependencies.
+    # Dictionary equality would restore discarded, identical duplicate actions.
+    chosen = {id(a) for a in keep}
+    keep = [a for a in acts if id(a) in chosen]
+    dropped = [a for a in acts if id(a) not in chosen]
     if dropped:
-        keep = [a for a in acts if a in keep]  # порядок как у игрока
         notice = "За ход учтено: " + ", ".join(_verb_ru(a) for a in keep) + ". Остальное заявите следующим ходом."
 
     out = intent.model_dump()

@@ -2,6 +2,13 @@
 
 Date: 2026-10-16 (Moscow)
 
+Follow-up review repairs are verified in
+`docs/superpowers/reviews/2026-10-16-context-review-repair-verification.md`.
+Current working-tree acceptance: **1918 passed, 19 skipped, 35 warnings**;
+context evaluator: **12/12 persisted-outcome scenarios in each of three
+variants**, exit 0, no mechanical mismatches or instrumentation errors.
+The older counts below describe earlier revisions.
+
 ## Current status
 
 Tasks 1–6 are implemented and verified in the current `main`. The full suite
@@ -89,13 +96,14 @@ so the full-suite gate is not green.
 
 ## Measurement limits
 
-The scenario harness verifies required/forbidden facts and compares a revised
-packet with an explicit legacy packet. It does not yet execute all 12 scenarios
-as full real-turn baseline/revised runs, and no provider token, USD, latency,
-or prose-quality claim is made. The −40%/−25% targets remain unmeasured.
+The follow-up harness executes all twelve families as full gateway-backed turns
+for legacy/v1/revised assembly, with independent persisted-outcome and role
+oracles. Historical role violations are explicitly reported; revised has none
+in this set. Scripted runs do not measure provider token usage, USD, live latency,
+or prose quality. The −40%/−25% targets remain unmeasured.
 
 ## Manual-test boundary
 
-Do not restart the app or run the requested manual game scenarios yet. First
-resolve or explicitly quarantine the split-party websocket timeout, rerun the
-full suite, and then hand off the manual checklist from the plan.
+Automatic acceptance is now green. The next step is a user-controlled restart
+with the updated code and the manual checklist from the follow-up report.
+The current campaign has not been reset or used as a mutable A/B fixture.

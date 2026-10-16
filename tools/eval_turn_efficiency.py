@@ -28,10 +28,11 @@ import time
 from collections import Counter
 from contextvars import ContextVar
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from tools.context_eval_variants import ExperimentConfig, effective_config, package_for_variant
+from tools.context_eval_variants import ExperimentConfig, assemble_variant, effective_config, package_for_variant
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -76,6 +77,8 @@ def validate_context_cases(document: object) -> list[dict]:
         seen.add(scenario["id"])
         result.append(scenario)
     return result
+
+
 _RESULTS: dict[str, dict] = {}
 _LIVE_PROVIDER = None
 _PURPOSE = ContextVar("efficiency_purpose", default="unknown")
@@ -258,8 +261,27 @@ def load_cases(path: Path) -> list[dict]:
 
 def summarize(rows: list[dict]) -> dict:
     calls = Counter()
+    sizes_by_role = {}
     for row in rows:
         calls.update(row.get("model_calls", {}))
+        for packet in row.get("measured_inputs", []) + row.get("parse_inputs", []):
+            sizes = packet["message_sizes"]
+            totals = sizes_by_role.setdefault(
+                packet["purpose"],
+                {
+                    "calls": 0,
+                    "message_chars": 0,
+                    "message_utf8_bytes": 0,
+                    "message_estimated_tokens": 0,
+                    "tool_chars": 0,
+                    "tool_utf8_bytes": 0,
+                    "tool_estimated_tokens": 0,
+                },
+            )
+            totals["calls"] += 1
+            for metric in ("chars", "utf8_bytes", "estimated_tokens"):
+                totals["message_" + metric] += sum(block[metric] for block in sizes["blocks"].values())
+                totals["tool_" + metric] += sizes["tools"][metric]
     return {
         "cases": len(rows),
         "passed": sum(row["status"] == "passed" for row in rows),
@@ -271,6 +293,7 @@ def summarize(rows: list[dict]) -> dict:
         "cost_usd": None,
         "cache_hit_rate": None,
         "literary_quality": "not_measured",
+        "input_sizes_by_role": sizes_by_role,
     }
 
 
@@ -322,7 +345,7 @@ async def _snapshot(url: str) -> dict:
             # resource links. The fixtures assert exact identities when relevant.
             resources = [ch.resources or {} for ch in sorted(characters, key=lambda ch: ch.name)]
             encoded = json.dumps(resources, sort_keys=True)
-            encoded = re.sub(r"\b[a-z]+_[a-f0-9]{12,}\b", "<instance>", encoded)
+            encoded = normalize_identities(encoded)
             return {
                 "events": dict(sorted(Counter(e.tool for e in events).items())),
                 "resources": json.loads(encoded),
@@ -340,29 +363,40 @@ async def _snapshot(url: str) -> dict:
         await engine.dispose()
 
 
+def normalize_identities(encoded: str) -> str:
+    """Remove fresh row IDs and UUIDs from an outcome serialization, never model inputs."""
+    encoded = re.sub(r"\b[a-z]+_[a-f0-9]{12,}\b", "<instance>", encoded)
+    return re.sub(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "<uuid>", encoded)
+
+
 @pytest.fixture(autouse=True)
 def _efficiency_instrumentation(request, monkeypatch):
     """Loaded only in child pytest via -p; ordinary project pytest is unaffected."""
     variant = os.environ.get("TALEFORGE_EVAL_VARIANT")
-    context_variant = os.environ.get("TALEFORGE_EVAL_CONTEXT_VARIANT")
-    if (
-        variant not in {"legacy", "optimized"}
-        and context_variant not in {"legacy", "v1", "revised"}
-    ) or not os.environ.get("TALEFORGE_EVAL_RESULT"):
+    kind = os.environ.get("TALEFORGE_EVAL_EXPERIMENT", "product")
+    selected = os.environ.get("TALEFORGE_EVAL_CONTEXT_VARIANT") if kind != "product" else variant
+    if not os.environ.get("TALEFORGE_EVAL_RESULT"):
         yield
         return
-    from app.agents.master import turn
+    config = ExperimentConfig(kind, (selected,))
+    context_variant = selected if kind == "context" else None
+    from app.agents.master import optimization, review, turn
+    from app.core.world_generation import policy
 
-    if context_variant is None:
-        from app.agents.master import optimization, review
-        from app.core.world_generation import policy
-
+    if kind == "product":
         flags = dict.fromkeys(optimization.FLAGS, variant == "optimized")
         for module in (optimization, review, turn):
             monkeypatch.setattr(module, "optimization_flags", lambda settings: flags.copy())
-        # Product mode retains its historical paired flags; context mode does not touch them.
-        monkeypatch.setattr(policy, "root_seed", lambda campaign_id, target_id, phase: 0)
-        random.seed(0)
+    elif kind == "tools":
+        original_flags = optimization.optimization_flags
+
+        def tools_flags(settings):
+            return {**original_flags(settings), "tool_profiles": selected == "profile"}
+
+        for module in (optimization, review, turn):
+            monkeypatch.setattr(module, "optimization_flags", tools_flags)
+    monkeypatch.setattr(policy, "root_seed", lambda campaign_id, target_id, phase: 0)
+    random.seed(0)
     row = {
         "nodeid": request.node.nodeid,
         "status": "failed",
@@ -370,28 +404,73 @@ def _efficiency_instrumentation(request, monkeypatch):
         "fallback": 0,
         "unknown_usage": 0,
         "snapshot": None,
+        "effective_config": effective_config(config, selected),
+        "measured_inputs": [],
+        "parse_inputs": [],
+        "assembler_calls": 0,
     }
     _RESULTS[request.node.nodeid] = row
     if context_variant is not None:
         row["effective_context_variant"] = context_variant
-        row["context_package_digests"] = []
-        row["effective_config"] = effective_config(ExperimentConfig("context", (context_variant,)), context_variant)
-        from app.agents.llm import ScriptedLLM
+        from app.agents.master import prompt_context
 
-        original_scripted_complete = ScriptedLLM.complete
+        original_assembler = prompt_context.build_prompt_bundle
+        if context_variant in {"legacy", "v1"}:
+            from app.agents.master import narration
+            from tools.context_eval_variants import historical_assembler
 
-        async def context_complete(self, messages, **kwargs):
-            tools = kwargs.get("tools") or []
-            if not any((tool.get("function") or {}).get("name") == "submit_intent" for tool in tools):
-                package = package_for_variant(context_variant, {"messages": messages, "tools": tools})
-                row["context_package_digests"].append(package["digest"])
-                messages = package["messages"]
-            return await original_scripted_complete(self, messages, **kwargs)
+            history = historical_assembler()
+            monkeypatch.setattr(narration, "render", history.render)
 
-        monkeypatch.setattr(ScriptedLLM, "complete", context_complete)
+        async def dispatched(ctx, cfg, *, role, inputs):
+            bundle = await assemble_variant(
+                context_variant, ctx, cfg, role=role, inputs=inputs, revised=original_assembler
+            )
+            row["assembler_calls"] += 1
+            return bundle
+
+        monkeypatch.setattr(prompt_context, "build_prompt_bundle", dispatched)
     ask = turn.TurnMixin._ask
+    from app.agents.master import parsing
+    from app.core.llm_diagnostics import message_sizes
+
+    original_parse = parsing.ParsingMixin._parse_call
+
+    async def measured_parse(self, *args, **kwargs):
+        # The original parser builds and dispatches the request. A local receiver
+        # records it without mutating the shared client or rebuilding its inputs.
+        client = self.llm
+
+        class ParserReceiver:
+            async def complete(self, messages, **options):
+                package = package_for_variant(selected, {"messages": messages, "tools": options.get("tools")})
+                row["parse_inputs"].append(
+                    {
+                        "purpose": "parse",
+                        "digest": package["digest"],
+                        "message_sizes": message_sizes(messages, options.get("tools") or []),
+                    }
+                )
+                return await client.complete(messages, **options)
+
+        return await original_parse(SimpleNamespace(llm=ParserReceiver()), *args, **kwargs)
+
+    monkeypatch.setattr(parsing.ParsingMixin, "_parse_call", measured_parse)
 
     async def measured(self, calls, cfg, cid, seat_id, turn_id, purpose, messages, tools, *args, **kwargs):
+        package = package_for_variant(selected, {"messages": messages, "tools": tools})
+        row["measured_inputs"].append(
+            {
+                "purpose": purpose,
+                "digest": package["digest"],
+                "message_count": len(package["messages"]),
+                "tool_count": len(package["tools"]),
+                "tool_names": [(tool.get("function") or {}).get("name") for tool in package["tools"]],
+                "message_roles": [message["role"] for message in package["messages"]],
+                "prompt_metadata": kwargs.get("prompt_metadata"),
+                "message_sizes": message_sizes(messages, tools or []),
+            }
+        )
         row["model_calls"][purpose] = row["model_calls"].get(purpose, 0) + 1
         row["unknown_usage"] += 1  # scripted counts are not provider usage
         row["fallback"] += int(bool((kwargs.get("prompt_metadata") or {}).get("fallback_reason")))
@@ -411,10 +490,8 @@ def _efficiency_instrumentation(request, monkeypatch):
         row["unknown_usage"] = snapshot.pop("_unknown_usage")
         row["snapshot"] = snapshot
     if context_variant is not None:
-        digests = row.pop("context_package_digests", [])
-        row["context_package_digest"] = hashlib.sha256(
-            json.dumps(digests, sort_keys=True).encode("utf-8")
-        ).hexdigest()
+        digests = [item["digest"] for item in row["measured_inputs"]]
+        row["context_package_digest"] = hashlib.sha256(json.dumps(digests, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -444,6 +521,7 @@ def run_scripted(
     execute=subprocess.run,
     live_options: dict | None = None,
     experiment: ExperimentConfig | None = None,
+    context_cases: Path | None = None,
 ) -> dict:
     variants = {}
     all_usage = []
@@ -466,6 +544,8 @@ def run_scripted(
             else:
                 environment["TALEFORGE_EVAL_EXPERIMENT"] = experiment.kind
                 environment["TALEFORGE_EVAL_CONTEXT_VARIANT"] = variant
+            if context_cases is not None:
+                environment["TALEFORGE_EVAL_CONTEXT_CASES"] = str(context_cases.resolve())
             # Always isolate from any configured test/live PostgreSQL database.
             environment.pop("TEST_DATABASE_URL", None)
             if live_options:
@@ -538,17 +618,31 @@ def run_scripted(
                 print(completed.stdout[-12000:], file=sys.stderr)
                 print(completed.stderr[-2000:], file=sys.stderr)
     mismatches = []
-    if experiment is None or experiment.kind == "product":
-        left = {row["nodeid"]: row for row in variants["legacy"]["cases"] if "nodeid" in row}
-        for row in variants["optimized"]["cases"]:
+    baseline = variants[selected_variants[0]]["cases"]
+    left = {row["nodeid"]: row for row in baseline if "nodeid" in row}
+    for name in selected_variants[1:]:
+        for row in variants[name]["cases"]:
             previous = left.get(row.get("nodeid"))
-            if previous and row["snapshot"] != previous["snapshot"]:
+            if previous and (
+                row.get("snapshot") != previous.get("snapshot") or row.get("status") != previous.get("status")
+            ):
                 mismatches.append(row["id"])
     variant_errors = []
-    if experiment is not None and experiment.kind == "context":
+    if experiment is not None and experiment.kind in {"context", "tools"}:
         for variant, payload in variants.items():
             for row in payload["cases"]:
-                if row.get("effective_context_variant") != variant:
+                if (
+                    row.get("effective_config", {}).get("selected_variant") != variant
+                    or (row.get("scope") == "full_turn" and not (row.get("measured_inputs") or row.get("parse_inputs")))
+                    or (
+                        experiment.kind == "context"
+                        and any(
+                            item["purpose"] in {"decide", "narrate", "voice_line", "review"}
+                            for item in row.get("measured_inputs", [])
+                        )
+                        and not row.get("assembler_calls")
+                    )
+                ):
                     variant_errors.append(row.get("id", variant))
     return {
         "mode": "live" if live_options else "scripted",
@@ -560,10 +654,23 @@ def run_scripted(
         "variants": variants,
         "mechanical_mismatches": sorted(set(mismatches)),
         "variant_errors": sorted(set(variant_errors)),
+        "context_quality_violations": [
+            {
+                "variant": variant,
+                "id": row["id"],
+                "status": row["context_quality_status"],
+                "roles": row["context_quality"],
+            }
+            for variant, payload in variants.items()
+            for row in payload["cases"]
+            if row.get("context_quality_status") in {"baseline_violations", "violations"}
+        ],
         "limits": [
             "Mechanics cases exercise real tools directly; only full_turn cases measure the master loop.",
             "Fixtures assert individual world, resource, progress and visibility invariants.",
             "Snapshots exclude random identities; fixture assertions retain identity checks.",
+            "Historical recall/privacy rubric violations are reported as baseline_violations; "
+            "they do not invalidate a mechanically passing baseline. Revised role assertions remain strict.",
             (
                 "Live attack only: fixed parser, fixed dice, identical provider model and disabled voice; "
                 "one turn per variant; request latency has too few samples for savings conclusions; "
@@ -604,8 +711,9 @@ def main(argv=None) -> int:
     parser.add_argument("--model", help="Same provider/model for both live variants")
     parser.add_argument("--isolated-test-campaign", action="store_true")
     parser.add_argument("--experiment", choices=("context", "tools", "product"), default="product")
-    parser.add_argument("--context-variant", choices=("legacy", "v1", "revised", "all"), default="revised")
+    parser.add_argument("--context-variant", choices=("legacy", "v1", "revised", "all"))
     args = parser.parse_args(argv)
+    args.context_variant = args.context_variant or ("legacy" if args.experiment == "product" else "revised")
     context_options = validate_context_options(args.experiment, args.context_variant)
     try:
         if args.mode == "live":
@@ -642,10 +750,8 @@ def main(argv=None) -> int:
                     {
                         "id": scenario["id"],
                         "nodeid": (
-                            "tests/test_context_quality.py::"
-                            "test_context_quality_scenario_executes_complete_game_turn["
-                            + scenario["id"]
-                            + "]"
+                            "tests/test_context_eval_scenarios.py::"
+                            "test_context_evaluator_scenario[" + scenario["id"] + "]"
                         ),
                         "tags": scenario["rubric"],
                         "scope": "full_turn",
@@ -654,11 +760,9 @@ def main(argv=None) -> int:
                 ]
                 config = ExperimentConfig(
                     kind="context",
-                    variants=("legacy", "v1", "revised")
-                    if args.context_variant == "all"
-                    else (args.context_variant,),
+                    variants=("legacy", "v1", "revised") if args.context_variant == "all" else (args.context_variant,),
                 )
-                report = run_scripted(selected, experiment=config)
+                report = run_scripted(selected, experiment=config, context_cases=args.cases)
             elif args.experiment == "tools":
                 report = run_scripted(
                     load_cases(args.cases), experiment=ExperimentConfig(kind="tools", variants=("full", "profile"))

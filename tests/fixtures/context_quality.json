@@ -1,17 +1,420 @@
 {
   "version": 2,
   "scenarios": [
-    {"id": "speech_npc", "fixture": "narrative", "requests": [{"actor": "hero", "text": "Поговорить с барменом"}], "parser_script": "speech_npc", "model_script": "speech_npc", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": ["private_state"], "narrate": ["private_state"]}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["continuity", "character"]},
-    {"id": "old_promise", "fixture": "resume", "requests": [{"actor": "hero", "text": "Напомнить о договорённости"}], "parser_script": "old_promise", "model_script": "old_promise", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["memory"]},
-    {"id": "hidden_search", "fixture": "narrative", "requests": [{"actor": "hero", "text": "Осмотреть тайник"}], "parser_script": "hidden_search", "model_script": "hidden_search", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": ["unrevealed_secret"], "narrate": ["unrevealed_secret"]}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["visibility"]},
-    {"id": "combat_effect", "fixture": "mechanics", "requests": [{"actor": "hero", "text": "Атаковать гоблина"}], "parser_script": "combat_effect", "model_script": "combat_effect", "dice": [18, 5], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "event_tools": ["resolve_attack"], "min_turns": 1}, "rubric": ["mechanics"]},
-    {"id": "multipart", "fixture": "mechanics", "requests": [{"actor": "hero", "text": "Подхожу и атакую"}], "parser_script": "multipart", "model_script": "multipart", "dice": [18, 5], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["continuity"]},
-    {"id": "two_heroes", "fixture": "mechanics", "requests": [{"actor": "hero_a", "text": "Действую первым"}, {"actor": "hero_b", "text": "Действую вторым"}], "parser_script": "two_heroes", "model_script": "two_heroes", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 4, "min_turns": 2}, "rubric": ["continuity"]},
-    {"id": "split_party", "fixture": "narrative", "requests": [{"actor": "hero_a", "text": "Осматриваю площадь"}, {"actor": "hero_b", "text": "Осматриваю доки"}], "parser_script": "split_party", "model_script": "split_party", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": ["other_place_secret"], "narrate": ["other_place_secret"]}, "expected_world": {"min_messages": 4, "min_turns": 2}, "rubric": ["visibility"]},
-    {"id": "transition", "fixture": "resume", "requests": [{"actor": "hero", "text": "Перейти в соседнюю комнату"}], "parser_script": "transition", "model_script": "transition", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["continuity"]},
-    {"id": "resume", "fixture": "resume", "requests": [{"actor": "hero", "text": "Продолжить после паузы"}], "parser_script": "resume", "model_script": "resume", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["memory"]},
-    {"id": "unknown_parser", "fixture": "recovery", "requests": [{"actor": "hero", "text": "Непонятная реплика"}], "parser_script": "unknown_parser", "model_script": "unknown_parser", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"rejections": 1, "min_turns": 0}, "rubric": ["continuity"]},
-    {"id": "world_reaction", "fixture": "narrative", "requests": [{"actor": "hero", "text": "Ждать реакции мира"}], "parser_script": "world_reaction", "model_script": "world_reaction", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": [], "narrate": []}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["initiative"]},
-    {"id": "npc_motive", "fixture": "narrative", "requests": [{"actor": "hero", "text": "Убедить NPC"}], "parser_script": "npc_motive", "model_script": "npc_motive", "dice": [], "required_facts_by_role": {"decide": ["request"], "narrate": []}, "forbidden_facts_by_role": {"decide": ["npc_secret"], "narrate": ["npc_secret"]}, "expected_world": {"min_messages": 2, "min_turns": 1}, "rubric": ["character"]}
+    {
+      "id": "speech_npc",
+      "fixture": "speech_npc",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Поговорить с барменом"
+        }
+      ],
+      "parser_script": "speech_npc",
+      "model_script": "speech_npc",
+      "dice": [],
+      "required_facts_by_role": {
+        "parse": [
+          "request"
+        ],
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "old_promise",
+      "fixture": "old_promise",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Напомнить о договорённости"
+        }
+      ],
+      "parser_script": "old_promise",
+      "model_script": "old_promise",
+      "dice": [
+        19
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request",
+          "SCENARIO_OLD_PROMISE",
+          "SCENARIO_FRESH_MOOD"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "hidden_search",
+      "fixture": "hidden_search",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Осмотреть тайник"
+        }
+      ],
+      "parser_script": "hidden_search",
+      "model_script": "hidden_search",
+      "dice": [
+        19
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "combat_effect",
+      "fixture": "combat_effect",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Атаковать гоблина"
+        }
+      ],
+      "parser_script": "combat_effect",
+      "model_script": "combat_effect",
+      "dice": [
+        18,
+        12,
+        5
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "multipart",
+      "fixture": "multipart",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Осматриваю первый сундук, затем второй"
+        }
+      ],
+      "parser_script": "multipart",
+      "model_script": "multipart",
+      "dice": [
+        19,
+        18
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "two_heroes",
+      "fixture": "two_heroes",
+      "requests": [
+        {
+          "actor": "hero_a",
+          "text": "Действую первым"
+        },
+        {
+          "actor": "hero_b",
+          "text": "Действую вторым"
+        }
+      ],
+      "parser_script": "two_heroes",
+      "model_script": "two_heroes",
+      "dice": [
+        19,
+        18
+      ],
+      "required_facts_by_role": {
+        "parse": [
+          "request"
+        ],
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 2
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "split_party",
+      "fixture": "split_party",
+      "requests": [
+        {
+          "actor": "hero_a",
+          "text": "Осматриваю площадь"
+        },
+        {
+          "actor": "hero_b",
+          "text": "Осматриваю доки"
+        }
+      ],
+      "parser_script": "split_party",
+      "model_script": "split_party",
+      "dice": [
+        19,
+        18
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 2
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "transition",
+      "fixture": "transition",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Перейти в соседнюю комнату"
+        }
+      ],
+      "parser_script": "transition",
+      "model_script": "transition",
+      "dice": [],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": [
+          "SCENARIO_DOCKS"
+        ]
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "resume",
+      "fixture": "resume",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Продолжить после паузы"
+        }
+      ],
+      "parser_script": "resume",
+      "model_script": "resume",
+      "dice": [
+        19
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "unknown_parser",
+      "fixture": "unknown_parser",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Непонятная реплика"
+        }
+      ],
+      "parser_script": "unknown_parser",
+      "model_script": "unknown_parser",
+      "dice": [],
+      "required_facts_by_role": {
+        "parse": [
+          "request"
+        ]
+      },
+      "forbidden_facts_by_role": {
+        "parse": []
+      },
+      "expected_world": {
+        "rejections": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "world_reaction",
+      "fixture": "world_reaction",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Ждать реакции мира"
+        }
+      ],
+      "parser_script": "world_reaction",
+      "model_script": "world_reaction",
+      "dice": [
+        19
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request"
+        ],
+        "narrate": []
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": []
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    },
+    {
+      "id": "npc_motive",
+      "fixture": "npc_motive",
+      "requests": [
+        {
+          "actor": "hero",
+          "text": "Убедить NPC"
+        }
+      ],
+      "parser_script": "npc_motive",
+      "model_script": "npc_motive",
+      "dice": [
+        19
+      ],
+      "required_facts_by_role": {
+        "decide": [
+          "request",
+          "SCENARIO_PRIVATE_MOTIVE"
+        ],
+        "narrate": [
+          "SCENARIO_PUBLIC_RELATION"
+        ]
+      },
+      "forbidden_facts_by_role": {
+        "decide": [],
+        "narrate": [
+          "SCENARIO_PRIVATE_MOTIVE"
+        ]
+      },
+      "expected_world": {
+        "min_messages": 2,
+        "min_turns": 1
+      },
+      "rubric": [
+        "persisted_outcome",
+        "role_visibility"
+      ]
+    }
   ]
 }

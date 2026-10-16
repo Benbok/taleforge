@@ -23,6 +23,43 @@ def _service(llm: ScriptedLLM) -> MasterService:
     return service
 
 
+def test_real_narration_keeps_location_private_state_out_of_model_packet(
+    game_client, admin_g, llm, settings, monkeypatch
+):
+    from tests.game import party
+    from tests.test_map import _ok, _play
+    from tests.test_master import DONE, act
+
+    campaign, (player,), hero = party(game_client, admin_g)
+
+    async def setup(ctx):
+        created = await _ok(ctx, "create_location", {"name": "Проверочный зал", "make_current": True})
+        place = ctx.world.entities[created["location_id"]]
+        place.state = {**(place.state or {}), "private_note": "LOCATION_PRIVATE_PAYLOAD"}
+
+    _play(settings, campaign["id"], setup)
+    master = game_client.app.state.master
+    ask = master._ask
+    recorded = []
+
+    async def capture(calls, cfg, cid, seat_id, turn_id, purpose, messages, tools, *args, **kwargs):
+        if purpose == "narrate":
+            recorded.append(str(messages))
+        return await ask(calls, cfg, cid, seat_id, turn_id, purpose, messages, tools, *args, **kwargs)
+
+    monkeypatch.setattr(master, "_ask", capture)
+    llm.replies += [
+        {"tool_calls": [("submit_intent", {"actions": [{"verb": "interact", "summary": "Машу рукой"}]})]},
+        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "wave"})]},
+        DONE,
+        {"text": "Ты машешь рукой."},
+        {"text": "Ты машешь рукой."},
+    ]
+    assert act(game_client, player, campaign["id"], "Машу рукой")["kind"] == "narration"
+    assert recorded and "Проверочный зал" in recorded[0]
+    assert all("LOCATION_PRIVATE_PAYLOAD" not in packet for packet in recorded)
+
+
 async def _ask_legacy(
     *,
     prompt_version: str,

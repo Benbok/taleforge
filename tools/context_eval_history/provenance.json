@@ -1,0 +1,15 @@
+{
+  "commit": "dbfdc65add2dacb590996878df3bf874aa1fc579",
+  "extraction": "git show <commit>:<source>, read-only; source and templates copied verbatim",
+  "source_blobs": {
+    "prompt_context.py": ["app/agents/master/prompt_context.py", "70cabb7c50123a1ffb72ada12f7d2189ac4cc132"],
+    "prompts/master_system.j2": ["app/agents/prompts/master_system.j2", "21cc8dd2abbcaf3a494cae55a75e108146d90075"],
+    "prompts/decide_system.j2": ["app/agents/prompts/decide_system.j2", "9a4f2b8f9961694919644faf649d59323c925a13"],
+    "prompts/narrator_system.j2": ["app/agents/prompts/narrator_system.j2", "7d43c6254a7eb6b011020aaf88d2f5b3072dc971"],
+    "prompts/review_system.j2": ["app/agents/prompts/review_system.j2", "4140aedfd4d21d0a68eaf642ed72c842a4eadab5"],
+    "prompts/voice_system.j2": ["app/agents/prompts/voice_system.j2", "e805ee640c391c462e0ef2656bdd8ee5ba159732"],
+    "prompts/narrate.j2": ["app/agents/prompts/narrate.j2", "2e85117a67407e9f1d7999f5567a2c49ec9f8508"],
+    "prompts/voice_line.j2": ["app/agents/prompts/voice_line.j2", "fc496e25588daf7eb3d96aa5d922f312340c5cc8"]
+  },
+  "boundary": "Historical legacy and role-context-v1 assembly over current identical turn inputs, mechanics and tool policy; not a replay of the entire historical runtime. v1 reconstructs its historical request from legacy_messages, removing action/resolution blocks only for certain decision intent."
+}

@@ -159,6 +159,44 @@ def test_combat_limit_and_missing_item(game_client, admin_g, llm, settings):
     assert msg.intent["actions"][0]["missing_item"]
 
 
+def test_combat_parser_keeps_move_before_attack_without_dropped_parts(game_client, admin_g, settings):
+    campaign, (_player,), hero = party(game_client, admin_g)
+    goblin, sword = goblin_in_melee(settings, campaign["id"], hero["id"], fight=True)
+
+    async def check(session):
+        ctx = await open_context(
+            session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id=None, seat_id=None
+        )
+        parsed = intents.check(
+            {"kind": "action", "confidence": 1.0, "actions": [
+                {"verb": "move", "target_id": goblin, "zone": "melee"},
+                {"verb": "attack", "target_id": goblin, "instrument_id": sword},
+            ]}, ctx.world, ctx.world.characters[hero["id"]],
+        )
+        assert [action["verb"] for action in parsed.intent["actions"]] == ["move", "attack"]
+
+    run(settings, check)
+
+
+def test_combat_parser_does_not_restore_identical_discarded_parts(game_client, admin_g, settings):
+    campaign, (_player,), hero = party(game_client, admin_g)
+    goblin, sword = goblin_in_melee(settings, campaign["id"], hero["id"], fight=True)
+
+    async def check(session):
+        ctx = await open_context(
+            session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id=None, seat_id=None
+        )
+        attack = {"verb": "attack", "target_id": goblin, "instrument_id": sword}
+        parsed = intents.check(
+            {"kind": "action", "confidence": 1.0, "actions": [dict(attack), dict(attack)]},
+            ctx.world, ctx.world.characters[hero["id"]],
+        )
+        assert len(parsed.intent["actions"]) == 1
+        assert parsed.notice
+
+    run(settings, check)
+
+
 def test_parser_garbage_requests_clarification_without_saving(game_client, admin_g, llm, settings):
     c, (p1,), _ = party(game_client, admin_g)
     llm.replies += [intent({"verb": "fly"}), intent({"verb": "fly"})]

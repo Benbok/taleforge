@@ -12,6 +12,7 @@ import json
 from app.agents.master.context_selection import ContextFact
 from app.core.narrative.contracts import FactRef, FactState
 from app.core.object_policy import concealed
+from app.core.topology import location_exits
 
 
 def fact_key(ref: FactRef) -> str:
@@ -83,11 +84,13 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             current_places.add(fallback)
     current_place = sorted(current_places)[0] if current_places else None
     public_subjects: set[str] = set(viewers or ())
-    public_places = {
+    viewer_places = {
         world.place_of(world.characters[hero_id])
         for hero_id in viewers or ()
         if hero_id in world.characters and world.place_of(world.characters[hero_id])
     }
+    # A shared narration may only expose a place known to every listener.
+    public_places = viewer_places if len(viewer_places) == 1 else set()
     public_subjects.update(public_places)
     public_subjects.update(
         entity.id
@@ -155,11 +158,17 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
     for current_place in sorted(current_places):
         place = world.entities.get(current_place)
         if place is not None:
+            if viewers is None:
+                place_state = place.state or {}
+            else:
+                from app.core.scene_presentation import scene_presentation
+
+                place_state = scene_presentation(place).model_dump()
             facts.append(
                 _fact(
                     f"place:{current_place}",
                     "places",
-                    f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
+                    f"Current place {place.name} ({place.id}); state={_json(place_state)}",
                     subjects={current_place},
                     audience=public({current_place}),
                     mandatory=True,
@@ -176,18 +185,29 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             )
         )
 
-    for entity in sorted(world.entities.values(), key=lambda item: item.id):
-        if entity.kind != "location" or entity.id in current_places:
+    for origin in sorted(current_places):
+        place = world.entities.get(origin)
+        if place is None:
             continue
-        parent = getattr(entity, "location_id", None)
-        if parent in current_places:
+        for exit_ in location_exits(place, getattr(world, "catalog", None), world.entities):
+            entity = world.entities.get(exit_.target_id)
+            if entity is None and not exit_.room_ref:
+                continue
+            visible = origin in public_places and entity is not None and all(
+                not (entity.state or {}).get("secret")
+                or entity.id in world.revealed.get(hero_id, set())
+                or hero_id in (entity.state or {}).get("visited_by", ())
+                or world.place_of(world.characters[hero_id]) == entity.id
+                for hero_id in viewers or ()
+            )
             facts.append(
                 _fact(
-                    f"route:{entity.id}",
+                    f"route:{origin}:{exit_.target_id or exit_.room_ref}",
                     "routes",
-                    f"Reachable place {entity.name} ({entity.id}) from {current_place}",
-                    subjects={current_place, entity.id},
-                    audience=public({current_place}),
+                    f"Reachable place {entity.name if entity is not None else exit_.label} "
+                    f"({exit_.target_id or exit_.room_ref}) from {origin}",
+                    subjects={origin, *(x for x in (exit_.target_id,) if x)},
+                    audience={"master", "party"} if viewers is not None and visible else {"master"},
                 )
             )
 
@@ -235,10 +255,13 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
         )
 
     narrative_items: list[FactState] = []
+    narrative_subjects: dict[str, set[str]] = {}
     for subject in sorted({*world.characters, *world.entities}):
         entity = world.entities.get(subject)
         subjects = (subject, getattr(entity, "template_id", None)) if entity is not None else (subject,)
-        narrative_items.extend(world.narrative_facts(subjects))
+        for item in world.narrative_facts(subjects):
+            narrative_items.append(item)
+            narrative_subjects.setdefault(fact_key(item.ref), {item.ref.subject_id}).add(subject)
 
     # A dependency may refer to a remote subject which is not present in the scene.
     # Resolve it through the same NarrativeView so instance/template override rules remain authoritative.
@@ -257,7 +280,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                     key,
                     "reactions",
                     str(value),
-                    subjects={item.ref.subject_id},
+                    subjects=narrative_subjects.get(key, {item.ref.subject_id}),
                     dependencies={fact_key(dep) for dep in item.depends_on},
                     audience=frozenset(getattr(item, "audience", ()) or {"master"}),
                 )
