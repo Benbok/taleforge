@@ -343,6 +343,7 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
     from tests.game import party, run
     from tests.test_combat import _setup
     from tests.test_master import act, rows
+    from tests.test_ws import connect, next_of
 
     optimized = os.environ.get("TALEFORGE_EVAL_VARIANT") == "optimized"
     live = os.environ.get("TALEFORGE_EVAL_LIVE") == "1"
@@ -402,6 +403,13 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
         return await original(messages, **kwargs)
 
     llm.complete = complete
+    if scenario == "unparsed":
+        with connect(game_client, player, cid) as (ws, _):
+            ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Непонятная заявка."}})
+            rejected = next_of(ws, "message.rejected")
+        assert "уточните" in rejected["payload"]["reason"].lower()
+        assert rows(settings, MasterTurn, MasterTurn.campaign_id == cid) == []
+        return
     text = act(game_client, player, cid, "Привет!" if scenario == "speech" else "Атакую гоблина длинным мечом.")
     assert text["kind"] == "narration"
     (turn,) = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)

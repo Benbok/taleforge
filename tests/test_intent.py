@@ -159,15 +159,42 @@ def test_combat_limit_and_missing_item(game_client, admin_g, llm, settings):
     assert msg.intent["actions"][0]["missing_item"]
 
 
-def test_parser_garbage_passes_through(game_client, admin_g, llm, settings):
+def test_parser_garbage_requests_clarification_without_saving(game_client, admin_g, llm, settings):
+    c, (p1,), _ = party(game_client, admin_g)
+    llm.replies += [intent({"verb": "fly"}), intent({"verb": "fly"})]
+    event = send(game_client, p1, c["id"], "Лечу к луне")
+    assert event["type"] == "message.rejected"
+    assert rows(settings, Message, Message.kind == "action") == []
+
+
+def test_empty_parser_actions_are_recovered_before_the_message_is_saved(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [intent({"verb": "fly"}), DONE, DONE, {"text": "Ничего не происходит."}]
-    n = act(game_client, p1, c["id"], "Лечу к луне")
-    assert "Бран" in n["content"] and "действие не выполнено" in n["content"]
-    (msg,) = rows(settings, Message, Message.kind == "action")
-    assert msg.intent is None
-    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
-    assert turn.trace["audit"]["cancel_fallback"]
+    llm.replies += [
+        intent(),
+        intent({"verb": "search"}),
+        DONE,
+        {"text": "Ты находишь следы пыли на крышке сундука."},
+    ]
+
+    response = act(game_client, p1, c["id"], "Обыскиваю сундук")
+
+    assert response["kind"] == "narration"
+    (message,) = rows(settings, Message, Message.kind == "action")
+    assert message.intent["character_id"] == hero["id"]
+    assert [action["verb"] for action in message.intent["actions"]] == ["search"]
+    assert len((message.data or {}).get("resolution_actions") or []) == 1
+    assert all(item["ref"]["source_id"] == message.id for item in message.data["resolution_actions"])
+
+
+def test_second_empty_parse_requests_clarification_without_saving_or_auto_cancel(game_client, admin_g, llm, settings):
+    c, (p1,), _ = party(game_client, admin_g)
+    llm.replies += [intent(), intent()]
+
+    event = send(game_client, p1, c["id"], "Что-то непонятное")
+
+    assert event["type"] == "message.rejected"
+    assert rows(settings, Message, Message.kind == "action") == []
+    assert [call.purpose for call in rows(settings, LlmCall)] == ["parse", "parse"]
 
 
 def test_describe_and_route_helpers():

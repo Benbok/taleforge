@@ -27,9 +27,9 @@ class ParsingMixin:
             c = await s.get(Campaign, cid)
             seat = master_seat(c) if c else None
             if c is None or seat is None or seat.occupant_type != "agent" or seat_id is None:
-                return intents.ParseResult()
+                return intents.ParseResult(notes=["parser_unavailable"])
             if await active_session(s, cid) is None:
-                return intents.ParseResult()  # вне сессии действие всё равно не примут
+                return intents.ParseResult(notes=["session_inactive"])  # вне сессии действие всё равно не примут
             cfg = await s.get(AgentConfig, seat.agent_config_id)
             ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
             ch = next(

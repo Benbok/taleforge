@@ -464,6 +464,33 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
             if parsed.reject:
                 await reject(parsed.reject)
                 return
+            speech_request = (
+                isinstance(parsed.intent, dict)
+                and isinstance(parsed.intent.get("speech"), str)
+                and bool(parsed.intent["speech"].strip())
+            )
+            needs_recovery = (
+                "session_inactive" not in parsed.notes
+                and "parser_unavailable" not in parsed.notes
+                and parsed.kind not in {"speech", "ooc"}
+                and not speech_request
+                and (
+                    not isinstance(parsed.intent, dict) or not (parsed.intent.get("actions") or [])
+                )
+            )
+            if needs_recovery:
+                from types import SimpleNamespace
+
+                from app.agents.master.intent_recovery import recover_message_intent
+
+                recovery = await recover_message_intent(
+                    app.state.master,
+                    SimpleNamespace(campaign_id=conn.campaign_id, seat_id=seat_id, content=text),
+                )
+                if recovery.status != "recovered" or recovery.parse_result is None:
+                    await reject(recovery.message)
+                    return
+                parsed = recovery.parse_result
             kind = parsed.kind or kind
     if kind == "auto":
         kind = "action"  # пустой текст: отказ даст проверка сообщения
