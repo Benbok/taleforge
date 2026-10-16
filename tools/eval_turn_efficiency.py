@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -30,25 +31,41 @@ from pathlib import Path
 
 import pytest
 
+from tools.context_eval_variants import ExperimentConfig, effective_config, package_for_variant
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def validate_context_options(experiment: str, context_variant: str) -> dict[str, str]:
     """Validate comparison labels accepted only by the offline evaluator."""
-    if experiment not in {"context", "product"}:
-        raise ValueError("experiment must be context or product")
-    if context_variant not in {"legacy", "v1", "revised"}:
+    if experiment not in {"context", "tools", "product"}:
+        raise ValueError("experiment must be context, tools or product")
+    allowed = {"legacy", "v1", "revised", "all"} if experiment == "context" else {"revised"}
+    if experiment == "product":
+        allowed = {"legacy", "optimized"}
+    if context_variant not in allowed:
         raise ValueError("unknown context variant")
     return {"experiment": experiment, "context_variant": context_variant}
 
 
 def validate_context_cases(document: object) -> list[dict]:
-    if not isinstance(document, dict) or document.get("version") != 1:
-        raise ValueError("context fixture version must be 1")
+    if not isinstance(document, dict) or document.get("version") != 2:
+        raise ValueError("context fixture version must be 2")
     scenarios = document.get("scenarios")
     if not isinstance(scenarios, list) or not scenarios:
         raise ValueError("context fixture requires scenarios")
-    required = {"id", "requests", "required_facts", "forbidden_facts", "expected_outcomes", "rubric"}
+    required = {
+        "id",
+        "fixture",
+        "requests",
+        "parser_script",
+        "model_script",
+        "dice",
+        "required_facts_by_role",
+        "forbidden_facts_by_role",
+        "expected_world",
+        "rubric",
+    }
     result = []
     seen = set()
     for scenario in scenarios:
@@ -327,19 +344,25 @@ async def _snapshot(url: str) -> dict:
 def _efficiency_instrumentation(request, monkeypatch):
     """Loaded only in child pytest via -p; ordinary project pytest is unaffected."""
     variant = os.environ.get("TALEFORGE_EVAL_VARIANT")
-    if variant not in {"legacy", "optimized"} or not os.environ.get("TALEFORGE_EVAL_RESULT"):
+    context_variant = os.environ.get("TALEFORGE_EVAL_CONTEXT_VARIANT")
+    if (
+        variant not in {"legacy", "optimized"}
+        and context_variant not in {"legacy", "v1", "revised"}
+    ) or not os.environ.get("TALEFORGE_EVAL_RESULT"):
         yield
         return
-    from app.agents.master import optimization, review, turn
-    from app.core.world_generation import policy
+    from app.agents.master import turn
 
-    flags = dict.fromkeys(optimization.FLAGS, variant == "optimized")
-    for module in (optimization, review, turn):
-        monkeypatch.setattr(module, "optimization_flags", lambda settings: flags.copy())
-    # Production derives this seed from random database identities. Keep the
-    # actual generation policy/loot execution, but compare the same seeded world.
-    monkeypatch.setattr(policy, "root_seed", lambda campaign_id, target_id, phase: 0)
-    random.seed(0)
+    if context_variant is None:
+        from app.agents.master import optimization, review
+        from app.core.world_generation import policy
+
+        flags = dict.fromkeys(optimization.FLAGS, variant == "optimized")
+        for module in (optimization, review, turn):
+            monkeypatch.setattr(module, "optimization_flags", lambda settings: flags.copy())
+        # Product mode retains its historical paired flags; context mode does not touch them.
+        monkeypatch.setattr(policy, "root_seed", lambda campaign_id, target_id, phase: 0)
+        random.seed(0)
     row = {
         "nodeid": request.node.nodeid,
         "status": "failed",
@@ -349,6 +372,23 @@ def _efficiency_instrumentation(request, monkeypatch):
         "snapshot": None,
     }
     _RESULTS[request.node.nodeid] = row
+    if context_variant is not None:
+        row["effective_context_variant"] = context_variant
+        row["context_package_digests"] = []
+        row["effective_config"] = effective_config(ExperimentConfig("context", (context_variant,)), context_variant)
+        from app.agents.llm import ScriptedLLM
+
+        original_scripted_complete = ScriptedLLM.complete
+
+        async def context_complete(self, messages, **kwargs):
+            tools = kwargs.get("tools") or []
+            if not any((tool.get("function") or {}).get("name") == "submit_intent" for tool in tools):
+                package = package_for_variant(context_variant, {"messages": messages, "tools": tools})
+                row["context_package_digests"].append(package["digest"])
+                messages = package["messages"]
+            return await original_scripted_complete(self, messages, **kwargs)
+
+        monkeypatch.setattr(ScriptedLLM, "complete", context_complete)
     ask = turn.TurnMixin._ask
 
     async def measured(self, calls, cfg, cid, seat_id, turn_id, purpose, messages, tools, *args, **kwargs):
@@ -370,6 +410,11 @@ def _efficiency_instrumentation(request, monkeypatch):
         row["fallback"] = snapshot.pop("_fallback")
         row["unknown_usage"] = snapshot.pop("_unknown_usage")
         row["snapshot"] = snapshot
+    if context_variant is not None:
+        digests = row.pop("context_package_digests", [])
+        row["context_package_digest"] = hashlib.sha256(
+            json.dumps(digests, sort_keys=True).encode("utf-8")
+        ).hexdigest()
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -393,21 +438,34 @@ def pytest_sessionfinish(session, exitstatus):
         Path(destination).write_text(json.dumps(list(_RESULTS.values()), ensure_ascii=False), encoding="utf-8")
 
 
-def run_scripted(cases: list[dict], *, execute=subprocess.run, live_options: dict | None = None) -> dict:
+def run_scripted(
+    cases: list[dict],
+    *,
+    execute=subprocess.run,
+    live_options: dict | None = None,
+    experiment: ExperimentConfig | None = None,
+) -> dict:
     variants = {}
     all_usage = []
     if live_options:
+        if experiment is not None and experiment.kind != "product":
+            raise ValueError("live evaluator supports only the product experiment")
         if any(case["nodeid"] != "tests/test_turn_efficiency.py::test_paired_scripted_turn[attack]" for case in cases):
             raise ValueError("live currently supports only the isolated attack case")
+    selected_variants = experiment.variants if experiment is not None else ("legacy", "optimized")
     with tempfile.TemporaryDirectory(prefix="taleforge-efficiency-") as folder:
-        for variant in ("legacy", "optimized"):
+        for variant in selected_variants:
             destination = Path(folder) / f"{variant}.json"
             environment = {
                 **{key: value for key, value in os.environ.items() if not key.startswith("TALEFORGE_EVAL_")},
-                "TALEFORGE_EVAL_VARIANT": variant,
                 "TALEFORGE_EVAL_RESULT": str(destination),
                 "PYTHONHASHSEED": "0",
             }
+            if experiment is None or experiment.kind == "product":
+                environment["TALEFORGE_EVAL_VARIANT"] = variant
+            else:
+                environment["TALEFORGE_EVAL_EXPERIMENT"] = experiment.kind
+                environment["TALEFORGE_EVAL_CONTEXT_VARIANT"] = variant
             # Always isolate from any configured test/live PostgreSQL database.
             environment.pop("TEST_DATABASE_URL", None)
             if live_options:
@@ -479,20 +537,29 @@ def run_scripted(cases: list[dict], *, execute=subprocess.run, live_options: dic
                 # No provider text or raw database data, only scoped pytest diagnostics.
                 print(completed.stdout[-12000:], file=sys.stderr)
                 print(completed.stderr[-2000:], file=sys.stderr)
-    left = {row["nodeid"]: row for row in variants["legacy"]["cases"] if "nodeid" in row}
     mismatches = []
-    for row in variants["optimized"]["cases"]:
-        previous = left.get(row.get("nodeid"))
-        if previous and row["snapshot"] != previous["snapshot"]:
-            mismatches.append(row["id"])
+    if experiment is None or experiment.kind == "product":
+        left = {row["nodeid"]: row for row in variants["legacy"]["cases"] if "nodeid" in row}
+        for row in variants["optimized"]["cases"]:
+            previous = left.get(row.get("nodeid"))
+            if previous and row["snapshot"] != previous["snapshot"]:
+                mismatches.append(row["id"])
+    variant_errors = []
+    if experiment is not None and experiment.kind == "context":
+        for variant, payload in variants.items():
+            for row in payload["cases"]:
+                if row.get("effective_context_variant") != variant:
+                    variant_errors.append(row.get("id", variant))
     return {
         "mode": "live" if live_options else "scripted",
         "seed": 0,
         "models": live_options["model"] if live_options else "deterministic scripted replies",
         "voice": "disabled",
         "live_performed": bool(all_usage),
+        "experiment": experiment.kind if experiment is not None else "product",
         "variants": variants,
         "mechanical_mismatches": sorted(set(mismatches)),
+        "variant_errors": sorted(set(variant_errors)),
         "limits": [
             "Mechanics cases exercise real tools directly; only full_turn cases measure the master loop.",
             "Fixtures assert individual world, resource, progress and visibility invariants.",
@@ -536,8 +603,8 @@ def main(argv=None) -> int:
     parser.add_argument("--max-request-cost-usd", type=float, help="Conservative reservation per paid request")
     parser.add_argument("--model", help="Same provider/model for both live variants")
     parser.add_argument("--isolated-test-campaign", action="store_true")
-    parser.add_argument("--experiment", choices=("context", "product"), default="product")
-    parser.add_argument("--context-variant", choices=("legacy", "v1", "revised"), default="revised")
+    parser.add_argument("--experiment", choices=("context", "tools", "product"), default="product")
+    parser.add_argument("--context-variant", choices=("legacy", "v1", "revised", "all"), default="revised")
     args = parser.parse_args(argv)
     context_options = validate_context_options(args.experiment, args.context_variant)
     try:
@@ -568,13 +635,43 @@ def main(argv=None) -> int:
                 },
             )
         else:
-            report = run_scripted(load_cases(args.cases))
+            if args.experiment == "context":
+                document = json.loads(args.cases.read_text(encoding="utf-8"))
+                scenarios = validate_context_cases(document)
+                selected = [
+                    {
+                        "id": scenario["id"],
+                        "nodeid": (
+                            "tests/test_context_quality.py::"
+                            "test_context_quality_scenario_executes_complete_game_turn["
+                            + scenario["id"]
+                            + "]"
+                        ),
+                        "tags": scenario["rubric"],
+                        "scope": "full_turn",
+                    }
+                    for scenario in scenarios
+                ]
+                config = ExperimentConfig(
+                    kind="context",
+                    variants=("legacy", "v1", "revised")
+                    if args.context_variant == "all"
+                    else (args.context_variant,),
+                )
+                report = run_scripted(selected, experiment=config)
+            elif args.experiment == "tools":
+                report = run_scripted(
+                    load_cases(args.cases), experiment=ExperimentConfig(kind="tools", variants=("full", "profile"))
+                )
+            else:
+                report = run_scripted(load_cases(args.cases))
         report["experiment"] = context_options["experiment"]
         report["context_variant"] = context_options["context_variant"]
         code = int(
             bool(report["mechanical_mismatches"])
             or report.get("budget_overrun", False)
             or report.get("reservation_overrun", False)
+            or bool(report.get("variant_errors"))
             or any(variant["exit_code"] or variant["summary"]["failed"] for variant in report["variants"].values())
         )
     except (ValueError, OSError, json.JSONDecodeError) as error:
