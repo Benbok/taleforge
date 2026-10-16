@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useGame } from "../stores/game";
+import { useDraft } from "./draft";
+import { useInspector } from "./inspector";
 
 const sent: unknown[] = [];
 vi.mock("./quick", () => ({
@@ -11,11 +13,22 @@ vi.mock("./quick", () => ({
   },
 }));
 
-const { Container } = await import("./EntityPopover");
+const { default: EntityPopover, Container } = await import("./EntityPopover");
 
 afterEach(() => {
   cleanup();
   sent.length = 0;
+  useInspector.getState().close();
+});
+
+it("осмотр по ссылке сохраняет ID выбранного пепелища в черновике", () => {
+  useDraft.setState({ text: "", quick: null, campaignId: null });
+  useGame.setState({ cards: { pyre: { id: "pyre", type: "landmark", name: "Старое пепелище" } } });
+  useInspector.setState({ id: "pyre", label: "Старое пепелище", anchor: null });
+  render(<EntityPopover />);
+  fireEvent.click(screen.getByRole("button", { name: "Осмотреть" }));
+  expect(useDraft.getState().text).toBe("Осматриваю: Старое пепелище");
+  expect(useDraft.getState().quick).toEqual([{ verb: "inspect", target_id: "pyre" }]);
 });
 
 describe("контейнер в карточке", () => {

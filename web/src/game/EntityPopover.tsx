@@ -136,12 +136,12 @@ export default function EntityPopover() {
           {card.container && !card.memory && <Container id={id} name={name} state={card.container} onDone={close} />}
           {type === "creature" && !card.memory && <QuickAttack id={id} name={name} onDone={close} />}
           <div className="mt-1 flex flex-wrap gap-2">
-            {(card.memory ? [] : cardActions(type, name)).map((a) => (
+            {(card.memory ? [] : cardActions(type, name, id)).map((a) => (
               <button
                 key={a.label}
                 className="btn px-2 py-1 text-xs"
                 onClick={() => {
-                  insert(a.text);
+                  insert(a.text, a.action);
                   close();
                 }}
               >

@@ -57,7 +57,7 @@ function useAddressee(parts: PartyPart[], messages: ChatMessage[]) {
 export default function Composer() {
   const game = useGame();
   const { socket, connection, turn, rejected, notice, snapshot, restored, clearRestored, addPending, clearRejected } = game;
-  const { text, whisper, setText, setWhisper } = useDraft();
+  const { text, whisper, quick, setText, setWhisper } = useDraft();
   const [sendError, setSendError] = useState<string | null>(null);
   const theme = useSession((state) => state.theme);
   const responding = !!game.masterStage && !!STAGES[game.masterStage];
@@ -164,7 +164,8 @@ export default function Composer() {
     }
     const id = clientId();
     const to = !whisper && !ooc && target.value ? { place: target.value } : {};
-    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id, ...asSeat, ...to });
+    const picked = !whisper && !ooc && !isMaster && quick ? { quick: { actions: quick } } : {};
+    const ok = socket.send("message.send", { kind: whisper ? "whisper" : "auto", text: trimmed, client_id: id, ...asSeat, ...to, ...picked });
     if (!ok) {
       setSendError("Нет связи с сервером: текст сохранён, отправьте после переподключения.");
       return;

@@ -122,7 +122,6 @@ async def _accepted_by(ctx: ToolContext, hero_id: str, container_id: str, ref: s
     "принимается к подготовке (квитанция operation_ref), в бою это стоит действия один раз. Повтор не платит.",
     SearchContainerArgs,
     ids={"character_id": "characters"},
-    closes=False,
 )
 async def search_container(ctx: ToolContext, a: SearchContainerArgs) -> dict:
     hero, container, found = await _accessible_container(ctx, a.character_id, a.container_id)

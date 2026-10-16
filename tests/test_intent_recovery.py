@@ -145,8 +145,8 @@ def _intent_reply(*actions):
     }
 
 
-def test_gateway_recovery_error_rejects_without_saving_or_starting_turn(game_client, admin_g, llm, settings):
-    campaign, (player,), _ = party(game_client, admin_g)
+def test_empty_parser_result_preserves_original_request_for_master(game_client, admin_g, llm, settings):
+    campaign, (player,), hero = party(game_client, admin_g)
     game_client.app.state.master.notify = lambda campaign_id: None
     llm.replies += [_intent_reply(), _intent_reply()]
 
@@ -159,18 +159,19 @@ def test_gateway_recovery_error_rejects_without_saving_or_starting_turn(game_cli
         )
         event = wait_message_result(ws, client_id="recover-error", timeout_s=2.0)
 
-    assert event["type"] == "message.rejected"
-    assert event["payload"]["client_id"] == "recover-error"
-    assert "уточните" in event["payload"]["reason"].lower()
-    assert len(llm.requests) == 2
-    assert rows(settings, Message, Message.kind == "action") == []
+    assert event["type"] == "message.new"
+    assert len(llm.requests) == 1
+    (message,) = rows(settings, Message, Message.kind == "action")
+    assert message.intent["character_id"] == hero["id"]
+    assert message.intent["parser_fallback"] is True
+    assert message.content == "Открываю дверь"
     assert rows(settings, MasterTurn) == []
 
 
 def test_gateway_recovery_saves_validated_message_for_its_owner(game_client, admin_g, llm, settings):
     campaign, (player,), hero = party(game_client, admin_g)
     game_client.app.state.master.notify = lambda campaign_id: None
-    llm.replies += [_intent_reply(), _intent_reply({"verb": "inspect"})]
+    llm.replies += [_intent_reply({"verb": "inspect"})]
 
     with connect(game_client, player, campaign["id"]) as (ws, _):
         ws.send_json(
@@ -187,4 +188,4 @@ def test_gateway_recovery_saves_validated_message_for_its_owner(game_client, adm
     assert saved[0].seat_id is not None
     assert saved[0].intent["character_id"] == hero["id"]
     assert saved[0].intent["actions"][0]["verb"] == "inspect"
-    assert len(llm.requests) == 2
+    assert len(llm.requests) == 1

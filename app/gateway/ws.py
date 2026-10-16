@@ -134,12 +134,7 @@ async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
     q = select(Character).where(
         Character.campaign_id == campaign_id, Character.status.in_(("approved", "active", "dead"))
     )
-    entities = {
-        e.id: e
-        for e in (
-            await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))
-        ).all()
-    }
+    entities = {e.id: e for e in (await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))).all()}
     return [public_view(ch, entities.values()) for ch in (await session.scalars(q)).all()]
 
 
@@ -474,9 +469,7 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
                 and "parser_unavailable" not in parsed.notes
                 and parsed.kind not in {"speech", "ooc"}
                 and not speech_request
-                and (
-                    not isinstance(parsed.intent, dict) or not (parsed.intent.get("actions") or [])
-                )
+                and (not isinstance(parsed.intent, dict) or not (parsed.intent.get("actions") or []))
             )
             if needs_recovery:
                 from types import SimpleNamespace
@@ -627,6 +620,13 @@ async def _quick_intent(app, campaign_id: str, seat_id: str, quick: dict):
             None,
         )
         parsed = intents.check(raw, ctx.world, ch) if ch is not None else None
+        if parsed is not None and parsed.intent is not None:
+            valid_targets = intents.action_target_ids(ctx.world, ch)
+            for supplied in acts[:8]:
+                targets = [supplied.get("target_id"), *(supplied.get("target_ids") or [])]
+                if any(target and target not in valid_targets for target in targets):
+                    parsed = intents.ParseResult(reject="Объект сейчас недоступен вашему герою. Обновите сцену.")
+                    break
         await s.rollback()
     if parsed is None:
         return intents.ParseResult(reject="у вас нет героя в игре")

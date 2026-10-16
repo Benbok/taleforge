@@ -678,7 +678,8 @@ class PickUpArgs(BaseModel):
     "pick_up_item",
     "Герой подбирает предмет, лежащий в сцене: предмет переходит в его инвентарь и остаётся там. Бросок не нужен, "
     "если предмет никто не охраняет. Вещь NPC берите по её entity_id с how=given/stolen/looted; "
-    "кража требует успешной проверки, добыча — павшего владельца.",
+    "кража требует успешной проверки, добыча — павшего владельца. Видимую вещь из открытого контейнера "
+    "можно забрать прямо в инвентарь тем же вызовом, без выкладывания на пол.",
     PickUpArgs,
     ids={"character_id": "characters", "entity_id": "scene_items"},
 )
@@ -688,18 +689,25 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
     en = ctx.world.entities.get(a.entity_id)
     parent = ctx.world.entities.get(container_parent(en) or "") if en is not None else None
     owner = parent if parent is not None and parent.kind == "creature" else None
+    container = parent if parent is not None and parent.kind == "object" else None
     if (
         en is None
         or en.campaign_id != ctx.campaign.id
-        or (owner is None and en not in ctx.world.in_scene_entities(ctx.world.place_of(ch)))
+        or (owner is None and container is None and en not in ctx.world.in_scene_entities(ctx.world.place_of(ch)))
     ):
         raise ToolError(f"предмета {a.entity_id} нет рядом с {ch.name}")
     if not is_scene_item(en):
         raise ToolError(f"{en.name} — не предмет: его нельзя положить в инвентарь")
     st = dict(en.state or {})
-    if is_nested(en) and owner is None:
+    if is_nested(en) and owner is None and container is None:
         raise ToolError("сначала извлеките предмет из контейнера")
     found = await revealed_to(ctx.session, ch.id)
+    if container is not None:
+        _, container, found = await _accessible_container(ctx, ch.id, container.id)
+        if en.location_id != container.location_id:
+            raise ToolError("предмет находится в другой комнате")
+        if not read_world_object(container).metadata.get("access", {}).get("open"):
+            raise ToolError("контейнер закрыт")
     if owner is not None:
         _npc_item_access(ctx, ch, owner, found)
         if en.id not in found:
@@ -744,8 +752,8 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         )
         en = (await ctx.session.scalars(query)).one_or_none()
         if en is None or (
-            container_parent(en) != owner.id
-            if owner is not None
+            container_parent(en) != parent.id
+            if parent is not None
             else en.location_id != ctx.world.place_of(ch) or is_nested(en)
         ):
             raise ToolError("уникальный предмет уже перемещён")
@@ -754,7 +762,7 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
             raise ToolError("уникальный предмет уже принадлежит персонажу")
         # Identity stays in Entity, while InventoryItem links the current owner.
         if owner is None:
-            inverse += _approach(ctx, ch, en, walk=True)
+            inverse += _approach(ctx, ch, container or en, walk=True)
         inv_id, inv = await _add_to_inventory(ctx, ch, en.template_id, st.get("display_name"), 1, world_entity_id=en.id)
         en.location_id = None
         carried = _object_state(en, container_id=None)
@@ -762,7 +770,7 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         en.state = carried
     else:
         if owner is None:
-            inverse += _approach(ctx, ch, en, walk=True)
+            inverse += _approach(ctx, ch, container or en, walk=True)
         inv_id, inv = await _add_to_inventory(
             ctx, ch, en.template_id, st.get("display_name"), qty, expires_at=st.get("expires_at")
         )

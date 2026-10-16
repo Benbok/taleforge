@@ -557,7 +557,7 @@ class TurnMixin:
                     # Never cast first and narrate an imaginary approach afterwards.
                     args = None
             if args is None and m.kind == "action":
-                routed_call = intents.routable_tool_call(m.intent)
+                routed_call = intents.routable_tool_call(m.intent, ctx.world)
                 if routed_call:
                     name, args = routed_call
             actor = (
@@ -637,10 +637,7 @@ class TurnMixin:
             subjects = set(ctx.world.crew)
             subjects.update(ctx.world.scene_places())
             subjects.update(ref.actor_id for ref in ctx.required_actions)
-            subjects.update(
-                entity.id
-                for entity in ctx.world.in_scene_entities()
-            )
+            subjects.update(entity.id for entity in ctx.world.in_scene_entities())
             context_facts = collect_context_snapshot(
                 ctx,
                 cfg,

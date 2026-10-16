@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGame } from "../stores/game";
 import Composer from "./Composer";
+import { useDraft } from "./draft";
 
 let client: QueryClient;
 beforeEach(() => {
   useGame.setState(useGame.getInitialState(), true);
+  useDraft.setState(useDraft.getInitialState(), true);
   useGame.setState({ actions: ["chat.play", "chat.ooc"], myPending: { id: "reply", created_at: new Date().toISOString() } });
   client = new QueryClient();
   client.setQueryData(["voice"], { enabled: false });
@@ -14,6 +16,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); client.clear(); vi.useRealTimers(); });
 
 const open = () => render(<QueryClientProvider client={client}><Composer /></QueryClientProvider>);
+
+it("кнопка отправки сохраняет ID объекта из карточки", () => {
+  const send = vi.fn(() => true);
+  useGame.setState({ connection: "open", socket: { send } as never, myPending: null });
+  useDraft.getState().insert("Осматриваю: Старое пепелище", { verb: "inspect", target_id: "pyre" });
+  open();
+  fireEvent.click(screen.getByRole("button", { name: /^Отправить/ }));
+  expect(send).toHaveBeenCalledWith("message.send", expect.objectContaining({
+    text: "Осматриваю: Старое пепелище", quick: { actions: [{ verb: "inspect", target_id: "pyre" }] },
+  }));
+  expect(useDraft.getState().quick).toBeNull();
+});
 
 describe("статус ответа мастера", () => {
   it("заменяет ожидание игроков при начале ответа", () => {

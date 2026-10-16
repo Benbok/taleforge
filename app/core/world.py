@@ -591,10 +591,63 @@ class World:
             "inventory": [it.id for items in self.inventory.values() for it in items],
             # предметы, лежащие в сцене: их можно подобрать
             "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)]
+            + [item.id for item, _ in self.visible_container_items()]
             + [item.id for item, _ in self.known_scene_possessions()],
             # все существа мира, включая ушедших со сцены: за побеждённых без убийства дают опыт
             "creatures": [e.id for e in self.entities.values() if e.kind == "creature"],
         }
+
+    def visible_container_items(self, hero_id: str | None = None) -> list[tuple[Entity, Entity]]:
+        """Items visible inside open containers, without projecting them onto the floor."""
+        from app.core.object_policy import concealed
+
+        heroes = [
+            hero
+            for hero in self.characters.values()
+            if hero.status in PLAYABLE
+            and (hero_id is None or hero.id == hero_id)
+            and self.place_of(hero) in self.scene_places()
+        ]
+        return [
+            (item, parent)
+            for item in self.entities.values()
+            if item.campaign_id == self.campaign.id
+            and is_scene_item(item)
+            and (parent := self.entities.get(container_parent(item) or "")) is not None
+            and parent.campaign_id == self.campaign.id
+            and (parent.state or {}).get("world_object", {}).get("role") == "container"
+            and any(
+                self.place_of(hero) == item.location_id == parent.location_id
+                and not concealed(item, self.entities, self.revealed.get(hero.id, set()))
+                for hero in heroes
+            )
+        ]
+
+    def player_action_entities(self, hero_id: str) -> list[Entity]:
+        """Targets use the same current visibility as the player's map, plus accessible contents."""
+        from app.core.scene_view import visible_scene
+
+        hero = self.characters[hero_id]
+        view = visible_scene(
+            self.scene,
+            self.entities,
+            self.characters,
+            hero_id=hero_id,
+            is_master=False,
+            revealed=frozenset(self.revealed.get(hero_id, set())),
+        )
+        locations = self.map_known.get(hero_id, set()) | {self.place_of(hero)}
+        targets = [
+            *view.entities,
+            *(item for item, _ in self.visible_container_items(hero_id)),
+            *(
+                item
+                for item, owner in self.known_scene_possessions()
+                if item.id in self.revealed.get(hero_id, set()) and owner.location_id == self.place_of(hero)
+            ),
+            *(entity for entity in self.entities.values() if entity.kind == "location" and entity.id in locations),
+        ]
+        return list({entity.id: entity for entity in targets}.values())
 
     def known_scene_possessions(self) -> list[tuple[Entity, Entity]]:
         """Known possessions of present NPCs, for master tool selection only."""
@@ -691,6 +744,10 @@ class World:
             )
         ids = {ch.id for ch in shown} | {e.id for e in self.in_scene_entities(None)}
         lines += self._condition_rules(ids)
+        contained = self.visible_container_items()
+        if contained:
+            lines.append("Видимые вещи в открытых контейнерах (подобрать через pick_up_item):")
+            lines += [f"  {item.id} {item.name} — внутри {parent.id} {parent.name}" for item, parent in contained]
         possessions = self.known_scene_possessions()
         if possessions:
             lines.append("Известные вещи у NPC (получить или украсть через pick_up_item):")

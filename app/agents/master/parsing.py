@@ -7,7 +7,6 @@ import asyncio
 from app.agents import intent as intents
 from app.agents.llm import LLMError, LLMReply, parser_model_for
 from app.agents.master.common import PARSE_TIMEOUT
-from app.config import settings as app_settings
 from app.core.campaigns import master_seat
 from app.core.chat import active_session
 from app.core.llm_diagnostics import reply_metrics
@@ -22,7 +21,7 @@ class ParsingMixin:
 
     async def parse_intent(self, cid: str, seat_id: str | None, text: str) -> intents.ParseResult:
         """Разбирает действие игрока до записи в чат. Только при ИИ-мастере: у живого мастера модели нет.
-        Любой сбой парсера — реплика проходит без намерения."""
+        Сбой структурированного разбора сохраняет исходную заявку для решения мастером."""
         async with self.maker() as s:
             c = await s.get(Campaign, cid)
             seat = master_seat(c) if c else None
@@ -42,6 +41,8 @@ class ParsingMixin:
             )
             if ch is None:
                 return intents.ParseResult()
+            if picked := intents.card_pickup(text, ctx.world, ch):
+                return picked
             info, values = intents.context_for(ctx.world, ch)
             ch_id, provider, master_seat_id = ch.id, cfg.provider, seat.id
             api_base = (cfg.settings or {}).get("api_base")
@@ -64,17 +65,37 @@ class ParsingMixin:
                 setattr(call, metric, value)
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
         raw = next((t.arguments for t in (reply.tool_calls if reply else []) if t.name == "submit_intent"), None)
+        if raw is None and call.error is None:
+            call.error = "parser_missing_structured_output"
         async with self.maker() as s:
             s.add(call)
             await s.commit()
-            if raw is None:
-                return intents.ParseResult(notes=["парсер не ответил"])
             c = await s.get(Campaign, cid)
             ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat_id)
             ch = ctx.world.characters.get(ch_id)
             if ch is None:
                 return intents.ParseResult()
-            return intents.check(raw, ctx.world, ch)
+            parsed = intents.check(raw, ctx.world, ch) if raw is not None else intents.ParseResult()
+            if (
+                not parsed.reject
+                and parsed.kind not in {"speech", "ooc"}
+                and not (parsed.intent or {}).get("speech")
+                and not (parsed.intent or {}).get("actions")
+            ):
+                # This identifies only the author and preserves their request. It grants no outcome.
+                fallback = intents.check(
+                    {
+                        "kind": (parsed.intent or {}).get("kind", "action"),
+                        "actions": [{"verb": "custom", "summary": text[:160]}],
+                        "confidence": 0.7,
+                    },
+                    ctx.world,
+                    ch,
+                )
+                fallback.intent["parser_fallback"] = True
+                fallback.notes = [*parsed.notes, "parser_fallback"]
+                return fallback
+            return parsed
 
     async def _parse_call(
         self,
@@ -85,9 +106,8 @@ class ParsingMixin:
         api_base: str | None = None,
         provider: str | None = None,
     ) -> LLMReply:
-        # провайдер кампании теперь «env»: смотрим на активного провайдера сервера
-        active = provider if provider not in (None, "env") else app_settings.llm_provider
-        tool_choice = {"type": "function", "function": {"name": "submit_intent"}} if active == "gemini" else None
+        # Every provider must return the same validated intent contract.
+        tool_choice = {"type": "function", "function": {"name": "submit_intent"}}
         return await self.llm.complete(
             [
                 {"role": "system", "content": intents.PARSER_SYSTEM},
@@ -96,7 +116,7 @@ class ParsingMixin:
             model=model,
             tools=[intents.tool_spec(values)],
             tool_choice=tool_choice,
-            max_tokens=500,
+            max_tokens=2048,
             temperature=0.0,
             api_base=api_base,
         )

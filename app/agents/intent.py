@@ -3,8 +3,8 @@
 Парсер — дешёвая быстрая модель со структурированным выводом (инструмент ``submit_intent``). Он не решает, получится
 ли действие: только относит слова игрока к глаголу из закрытого списка и сопоставляет «гоблин слева» с id сущности.
 Сервер проверяет ответ через Pydantic, подставляет id персонажа сам, обрезает лишние действия и решает, отклонить
-реплику (оффтоп, чужой персонаж, непонятно) или пропустить её мастеру с намерением. Сбой парсера реплику не
-блокирует: она уходит мастеру без намерения.
+реплику (оффтоп, чужой персонаж, непонятно) или пропустить её мастеру с намерением. При техническом сбое парсера
+мастер получает исходную заявку с нейтральным custom: без выдуманной цели, действия инструмента или исхода.
 """
 
 from __future__ import annotations
@@ -169,10 +169,10 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
     """Что видит парсер: лист героя без чисел, его снаряжение и видимые сущности сцены с id (раздел 6, шаг 1)."""
     targets, lines = [], []
     for other in world.characters.values():
-        if other.status in PLAYABLE:
+        if other.status in PLAYABLE and world.place_of(other) == world.place_of(ch):
             targets.append(other.id)
             lines.append(f"{other.id}  {other.name} (герой{', это он сам' if other.id == ch.id else ''})")
-    for en in world.in_scene_entities():
+    for en in _scene_targets(world, ch):
         st = en.state or {}
         if st.get("fled"):
             continue
@@ -193,6 +193,38 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
         + f"Глаголы: {', '.join(VERBS)}."
     )
     return text, {"target_id": targets, "instrument_id": [it.id for it in items], "spell_id": [s[0] for s in spells]}
+
+
+def _scene_targets(world: World, ch: Character):
+    return world.player_action_entities(ch.id)
+
+
+def action_target_ids(world: World, ch: Character) -> set[str]:
+    return {
+        hero.id
+        for hero in world.characters.values()
+        if hero.status in PLAYABLE and world.place_of(hero) == world.place_of(ch)
+    } | {entity.id for entity in _scene_targets(world, ch)}
+
+
+def card_pickup(text: str, world: World, ch: Character) -> ParseResult | None:
+    """An exact, unambiguous item-card command needs no probabilistic parser."""
+    from app.core.object_policy import concealed
+
+    prefix, sep, name = text.strip().partition(":")
+    if not sep or prefix.casefold() != "подбираю" or not name.strip():
+        return None
+    matches = [
+        item
+        for item in _scene_targets(world, ch)
+        if is_scene_item(item)
+        and world.place_of(ch) == item.location_id
+        and item.name.casefold() == name.strip().casefold()
+        and not concealed(item, world.entities, world.revealed.get(ch.id, set()))
+    ]
+    if len(matches) != 1:
+        return None
+    return check({"actions": [{"verb": "pick_up", "target_id": matches[0].id}]}, world, ch)
 
 
 def _castable(world: World, ch: Character) -> list[tuple[str, str, int]]:
@@ -283,7 +315,7 @@ def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResul
     if intent.problem == "unclear" or intent.confidence < LOW_CONFIDENCE:
         return ParseResult(reject=intent.question or f"Не понял, что делает {ch.name}. Опишите действие точнее.")
 
-    valid_targets = (set(world.characters) | {e.id for e in world.in_scene_entities()}) if world else set()
+    valid_targets = action_target_ids(world, ch) if world else set()
     own = {it.id for it in world.inventory.get(ch.id, [])} if world else set()
     known = {s[0] for s in _castable(world, ch)} if world else set()
     notes: list[str] = []
@@ -441,7 +473,7 @@ SKILL_VERB_MAP: dict[str, tuple[str, str]] = {
 }
 
 
-def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, Any]] | None:
+def routable_tool_call(intent: dict[str, Any] | None, world: World | None = None) -> tuple[str, dict[str, Any]] | None:
     """Маршрутизация типовых действий и проверок без обращения к модели решения (раздел 7).
     Возвращает (tool_name, args) или None.
     """
@@ -456,6 +488,19 @@ def routable_tool_call(intent: dict[str, Any] | None) -> tuple[str, dict[str, An
         return None
 
     verb = a.get("verb")
+    if world is not None and (target := world.entities.get(a.get("target_id"))):
+        from app.core.world_objects import container_parent
+
+        if verb == "pick_up" and is_scene_item(target) and len(intent["actions"]) == 1:
+            parent = world.entities.get(container_parent(target) or "")
+            if parent is None or parent.kind == "object":
+                return "pick_up_item", {"character_id": char_id, "entity_id": target.id}
+        if verb == "search" and (target.state or {}).get("world_object", {}).get("role") == "container":
+            # Container access and preparation are not a random Perception roll.
+            # A closed container still needs the decision phase to open it first.
+            if len(intent["actions"]) == 1 and (target.state or {})["world_object"].get("access", {}).get("open"):
+                return "search_container", {"character_id": char_id, "container_id": target.id}
+            return None
     if verb == "grapple" and a.get("target_id"):
         return "resolve_grapple", {"attacker_id": char_id, "target_id": a["target_id"]}
     if verb == "escape_grapple":

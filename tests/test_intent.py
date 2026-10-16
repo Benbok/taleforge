@@ -168,10 +168,16 @@ def test_combat_parser_keeps_move_before_attack_without_dropped_parts(game_clien
             session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id=None, seat_id=None
         )
         parsed = intents.check(
-            {"kind": "action", "confidence": 1.0, "actions": [
-                {"verb": "move", "target_id": goblin, "zone": "melee"},
-                {"verb": "attack", "target_id": goblin, "instrument_id": sword},
-            ]}, ctx.world, ctx.world.characters[hero["id"]],
+            {
+                "kind": "action",
+                "confidence": 1.0,
+                "actions": [
+                    {"verb": "move", "target_id": goblin, "zone": "melee"},
+                    {"verb": "attack", "target_id": goblin, "instrument_id": sword},
+                ],
+            },
+            ctx.world,
+            ctx.world.characters[hero["id"]],
         )
         assert [action["verb"] for action in parsed.intent["actions"]] == ["move", "attack"]
 
@@ -189,7 +195,8 @@ def test_combat_parser_does_not_restore_identical_discarded_parts(game_client, a
         attack = {"verb": "attack", "target_id": goblin, "instrument_id": sword}
         parsed = intents.check(
             {"kind": "action", "confidence": 1.0, "actions": [dict(attack), dict(attack)]},
-            ctx.world, ctx.world.characters[hero["id"]],
+            ctx.world,
+            ctx.world.characters[hero["id"]],
         )
         assert len(parsed.intent["actions"]) == 1
         assert parsed.notice
@@ -197,42 +204,44 @@ def test_combat_parser_does_not_restore_identical_discarded_parts(game_client, a
     run(settings, check)
 
 
-def test_parser_garbage_requests_clarification_without_saving(game_client, admin_g, llm, settings):
+def test_parser_garbage_preserves_request_for_master_without_executing_it(game_client, admin_g, llm, settings):
     c, (p1,), _ = party(game_client, admin_g)
+    game_client.app.state.master.notify = lambda cid: None
     llm.replies += [intent({"verb": "fly"}), intent({"verb": "fly"})]
     event = send(game_client, p1, c["id"], "Лечу к луне")
-    assert event["type"] == "message.rejected"
-    assert rows(settings, Message, Message.kind == "action") == []
+    assert event["type"] == "message.new"
+    (message,) = rows(settings, Message, Message.kind == "action")
+    assert message.content == "Лечу к луне"
+    assert message.intent["parser_fallback"] is True
+    assert rows(settings, Event) == []
 
 
-def test_empty_parser_actions_are_recovered_before_the_message_is_saved(game_client, admin_g, llm, settings):
+def test_empty_parser_actions_preserve_source_for_master_resolution(game_client, admin_g, llm, settings):
     c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [
-        intent(),
-        intent({"verb": "search"}),
-        DONE,
-        {"text": "Ты находишь следы пыли на крышке сундука."},
-    ]
+    game_client.app.state.master.notify = lambda cid: None
+    llm.replies += [intent()]
 
-    response = act(game_client, p1, c["id"], "Обыскиваю сундук")
+    response = send(game_client, p1, c["id"], "Обыскиваю сундук")
 
-    assert response["kind"] == "narration"
+    assert response["type"] == "message.new"
     (message,) = rows(settings, Message, Message.kind == "action")
     assert message.intent["character_id"] == hero["id"]
-    assert [action["verb"] for action in message.intent["actions"]] == ["search"]
-    assert len((message.data or {}).get("resolution_actions") or []) == 1
-    assert all(item["ref"]["source_id"] == message.id for item in message.data["resolution_actions"])
+    assert [action["verb"] for action in message.intent["actions"]] == ["custom"]
+    assert message.content == "Обыскиваю сундук"
+    assert rows(settings, Event) == []
 
 
-def test_second_empty_parse_requests_clarification_without_saving_or_auto_cancel(game_client, admin_g, llm, settings):
+def test_empty_parse_does_not_loop_or_auto_cancel_the_request(game_client, admin_g, llm, settings):
     c, (p1,), _ = party(game_client, admin_g)
+    game_client.app.state.master.notify = lambda cid: None
     llm.replies += [intent(), intent()]
 
     event = send(game_client, p1, c["id"], "Что-то непонятное")
 
-    assert event["type"] == "message.rejected"
-    assert rows(settings, Message, Message.kind == "action") == []
-    assert [call.purpose for call in rows(settings, LlmCall)] == ["parse", "parse"]
+    assert event["type"] == "message.new"
+    assert len(rows(settings, Message, Message.kind == "action")) == 1
+    assert [call.purpose for call in rows(settings, LlmCall)] == ["parse"]
+    assert rows(settings, Event) == []
 
 
 def test_describe_and_route_helpers():

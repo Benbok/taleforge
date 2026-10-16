@@ -31,6 +31,7 @@ TOOL_ROLES: dict[str, Literal["prepare", "check", "consequence", "finish"]] = {
     "pass_item": "finish",
     "give_item": "finish",
     "pick_up_item": "finish",
+    "search_container": "finish",
     "drop_item": "finish",
     "adjudicate_action": "finish",
     "edit_sketch": "consequence",
@@ -129,6 +130,9 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
     if name in {"open_container", "inspect_container"}:
         return verb in {"interact", "inspect", "search"}
 
+    if name == "search_container":
+        return verb == "search" and (not action_target or action_target == args.get("container_id"))
+
     if name in {"store_object", "retrieve_object", "equip_item"}:
         return verb in {"use_item", "interact", "pick_up"}
 
@@ -155,9 +159,7 @@ async def bind_tool_action(
 
     role = TOOL_ROLES.get(
         name,
-        "finish"
-        if REGISTRY.get(name, None) and REGISTRY[name].closes_actions
-        else "consequence",
+        "finish" if REGISTRY.get(name, None) and REGISTRY[name].closes_actions else "consequence",
     )
 
     if explicit is None and name == "adjudicate_action":
