@@ -82,9 +82,11 @@ def narration_scene(ctx: ToolContext) -> str:
     from app.tools.runtime import scene_payload
 
     world = ctx.world
-    audience = ctx.narration_viewer_ids
+    audience = getattr(ctx, "narration_viewer_ids", None)
     if audience is None:
-        audience = world.crew or {h.id for h in world.characters.values() if h.status in {"approved", "active"}}
+        audience = getattr(world, "crew", None) or {
+            h.id for h in world.characters.values() if getattr(h, "status", None) in {"approved", "active"}
+        }
     groups: dict[str | None, list[str]] = {}
     for hero_id in sorted(audience):
         hero = world.characters.get(hero_id)
@@ -147,15 +149,15 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         k: values[k] for k in ("difficulty", "leveling", "random_events", "critical_checks", "has_plot", "max_calls")
     }
     stable.update(
-        campaign_name="игровой мир",
-        style=None,
-        brief=None,
-        excluded_themes=None,
-        public_intro=None,
-        secrets=None,
-        pacing=None,
-        dc_scale="Смотри блок шкалы сложности.",
-        audio="Доступный звук перечислен в контексте." if values["audio"] else None,
+        campaign_name=values["campaign_name"],
+        style=values["style"],
+        brief=values["brief"],
+        excluded_themes=values["excluded_themes"],
+        public_intro=values["public_intro"],
+        secrets=values["secrets"] if role in {"decide", "review"} else None,
+        pacing=values["pacing"],
+        dc_scale=values["dc_scale"],
+        audio=values["audio"],
     )
     system = render(
         {
@@ -166,6 +168,13 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         }[role],
         **stable,
     )
+    if inputs.get("mood") and role in {"narrate", "voice_line"}:
+        # Mood is dynamic narrative state. Keep it in the role instruction so
+        # the narrator sees it even when the user packet is replaced by a
+        # checked retry or streaming adapter.
+        system += "\n\n" + inputs["mood"]
+    if values["style"] and role in {"narrate", "voice_line"}:
+        system += "\n\nСтиль и характер мастера:\n" + values["style"]
     policy = {k: values[k] for k in ("campaign_name", "style", "brief", "excluded_themes", "public_intro")}
     blocks = {"policy": json.dumps(policy, ensure_ascii=False, default=str)}
     if role in {"decide", "review"}:

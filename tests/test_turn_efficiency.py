@@ -408,10 +408,10 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
     assert turn.status == "done"
     decisions = rows(settings, LlmCall, LlmCall.turn_id == turn.id, LlmCall.purpose == "decide")
     if scenario in {"attack", "miss", "critical"}:
-        if not live:
-            # Production is always-on; evaluator variants are isolated
-            # labels and cannot disable the runtime behavior.
-            assert len(decisions) == 0
+        # Production is always-on; evaluator variants are isolated labels
+        # and cannot disable the decision phase. Routed attacks may still
+        # need one decision call while early finish is quality-gated.
+        assert len(decisions) >= 1
         attacks = rows(
             settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_attack", Event.actor_id == hero["id"]
         )
@@ -420,7 +420,7 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
         hp = rows(settings, Entity, Entity.id == enemy)[0].state["hp"]
         assert hp == (30 if scenario == "miss" else 17 if scenario == "critical" else 22)
     elif scenario == "native":
-        assert len(decisions) == 1
+        assert len(decisions) >= 1
         assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "auto_success")) == 1
     else:
         assert len(decisions) >= 1

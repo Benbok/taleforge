@@ -12,8 +12,18 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-16-master-context-revision-design.md`.
 
-Статус: план для ревью, задачи не выполнены. Предыдущий план остаётся историей;
-его режим включения флагами заменяется требованием единого поведения.
+Статус: реализация выполнена в `main` до границы ручной проверки. Структурированный
+отбор, устранение повторов, границы видимости, диагностика и evaluator-интерфейс
+интегрированы в production-путь. Раннее завершение хода оставлено за внутренним
+quality gate (`EARLY_FINISH_ENABLED = False`), пока отдельный парный тест прозы не
+докажет отсутствие потери ожидаемой реакции. Платный прогон и ручная игра не
+выполнялись; цели экономии остаются гипотезами до измерения на одинаковой компании.
+Предыдущий план остаётся историей; его режим включения флагами заменяется единым
+поведением.
+
+Финальная проверка: `python -m pytest -n 4 -q` — 1841 passed, 5 skipped, 35
+предупреждений. `ruff`, `py_compile`, `git diff --check` и `graphify update .`
+также прошли.
 
 ## Global Constraints
 
@@ -36,7 +46,7 @@
 4. Переход и возобновление checkpoint обновляют снимок — задачи 3, 4.
 5. Расширение tools/контекста и дополнительные попытки не прячут стоимость — задачи 2, 5.
 
-## Task 1: Воспроизводимая база и незавершённая интеграция
+## Task 1: Воспроизводимая база и незавершённая интеграция — выполнено
 
 **Files:** inspect `app/agents/master/optimization.py`, `app/api/campaigns.py`,
 `app/api/schemas.py`, `tests/test_decision_action_refs.py`,
@@ -55,7 +65,7 @@ Create `docs/superpowers/reviews/2026-10-16-context-revision-baseline.md`.
   механические исправления одинаковы, отличается только сборка контекста.
 - [ ] Коммитить только baseline-документ; код интеграции оставить для задачи 6.
 
-## Task 2: Измерение и устранение повторов без потери данных
+## Task 2: Измерение и устранение повторов без потери данных — выполнено
 
 **Files:** Modify `app/agents/master/prompt_context.py`, `turn.py`,
 `app/core/llm_diagnostics.py`, `tools/llm_session_report.py`;
@@ -76,7 +86,7 @@ Test `tests/test_master_prompt_context.py`, `tests/test_llm_session_report.py`.
   факты до/после и размер каждого раздела, не заявляя денежной экономии.
 - [ ] Коммит `refactor: assemble and measure master context blocks once`.
 
-## Task 3: Структурированный отбор контекста решения
+## Task 3: Структурированный отбор контекста решения — выполнено
 
 **Files:** Create `app/agents/master/context_selection.py`,
 `tests/test_master_context_selection.py`; Modify `prompt_context.py`, `turn.py`,
@@ -113,7 +123,7 @@ subjects: frozenset[str], audience: frozenset[str]) -> ContextSelection` — ч�
 - [ ] Запустить `python -m pytest tests/test_master_context_selection.py tests/test_master_prompt_context.py tests/test_decision_tool_profiles.py tests/test_decision_completion.py tests/test_memory.py -n 4 -q`; PASS.
 - [ ] Коммит `feat: select decision context with mandatory fact coverage`.
 
-## Task 4: Полноценный пакет повествования с границами видимости
+## Task 4: Полноценный пакет повествования с границами видимости — выполнено
 
 **Files:** Modify `prompt_context.py`, `narration.py`, `finish.py`,
 `app/agents/prompts/narrator_system.j2`, `app/agents/prompts/narrate.j2`;
@@ -139,7 +149,7 @@ inputs: dict) -> tuple[ContextFact, ...]` в prompt_context.py; immutable рез
 - [ ] Запустить `python -m pytest tests/test_narration_context_packet.py tests/test_narration_integrity.py tests/test_multipart_narration.py tests/test_resolution_visibility.py tests/test_voice_emotion_context.py -n 4 -q`; PASS.
 - [ ] Коммит `fix: preserve narrative context without exposing private facts`.
 
-## Task 5: Парное сравнение контекста и качества
+## Task 5: Парное сравнение контекста и качества — офлайн-часть выполнена
 
 **Files:** Modify `tools/eval_turn_efficiency.py`, `tests/test_turn_efficiency.py`;
 Create `tests/fixtures/context_quality.json`, `tests/test_context_quality.py`;
@@ -167,7 +177,7 @@ expected outcomes, rubric. Артефакт включает версии, на�
   жёсткий верхний предел счёта провайдера. Сейчас платный прогон не запускать.
 - [ ] Коммит `test: compare context cost and narrative quality independently`.
 
-## Task 6: Закончить единое поведение и передать ручной тест
+## Task 6: Закончить единое поведение и передать ручной тест — код выполнен
 
 **Files:** Modify текущие незавершённые `optimization.py`, API schemas/campaigns,
 тесты actions/completion/review/voice; regenerate `web/openapi.json`,

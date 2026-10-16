@@ -101,8 +101,8 @@ def test_search_success_waits_for_world_finding():
     assert check(ctx).can_finish
 
 
-@pytest.mark.parametrize("scenario,expected", [("routed_attack", 0), ("native", 1), ("speech", 1)])
-def test_early_finish_model_calls_keep_real_effects(game_client, admin_g, llm, dice, settings, scenario, expected):
+@pytest.mark.parametrize("scenario,expected", [("routed_attack", 1), ("native", 1), ("speech", 1)])
+def test_early_finish_stays_gated_until_quality_review(game_client, admin_g, llm, dice, settings, scenario, expected):
     from app.db.models import Campaign, Event, InventoryItem, LlmCall, MasterTurn
     from tests.game import party, run
     from tests.test_combat import _setup
@@ -226,6 +226,6 @@ def test_creative_talk_finishes_without_automatic_cancellation(
     assert not turn.trace.get("audit", {}).get("cancel_fallback")
     assert not rows(settings, Event, Event.turn_id == turn.id, Event.tool == "cancel_action")
     assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_action")) == 1
-    assert len(rows(settings, LlmCall, LlmCall.turn_id == turn.id, LlmCall.purpose == "decide")) == 1
+    assert len(rows(settings, LlmCall, LlmCall.turn_id == turn.id, LlmCall.purpose == "decide")) == 2
     action = next(m for m in rows(settings, Message, Message.campaign_id == cid) if m.kind == "action")
     assert action.data["resolution_progress"]["0"]["status"] == "completed"

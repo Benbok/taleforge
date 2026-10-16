@@ -884,7 +884,9 @@ class TurnMixin:
             return result
 
         for _ in range(MAX_STEPS):
-            if flags["early_finish"]:
+            from app.agents.master.optimization import EARLY_FINISH_ENABLED
+
+            if flags["early_finish"] and EARLY_FINISH_ENABLED:
                 from app.agents.master.decision_completion import check_decision_completion
 
                 pending = {
@@ -1026,6 +1028,8 @@ class TurnMixin:
                         }
                     )
                     continue
+                if not open_ and not fails:
+                    ctx.turn_diagnostics.setdefault("decision_stop_reason", "resolved_actions")
                 break
             failed_in_batch = False
             invalid_source_in_batch = False
@@ -1115,6 +1119,37 @@ class TurnMixin:
                 and trace_calls[-1]["tool"] != "adapt_story"
                 and all(not t["result"].get("ok") for t in trace_calls[-1:])
             ):
+                break
+            # Once a tool call has closed every submitted action, the next
+            # model turn cannot add mechanical value. The separate early-finish
+            # optimization remains gated and is not used to skip initial work.
+            open_after_tools = (required - ctx.closed) - opening_actors
+            fails_after_tools = _unsettled_fails(ctx, trace_calls)
+            unresolved_after_tools = unresolved_searches(ctx)
+            batch_results = trace_calls[-len(reply.tool_calls) :] if reply.tool_calls else []
+            batch_ok = bool(batch_results) and all(
+                item["result"].get("ok") or item["result"].get("skipped") for item in batch_results
+            )
+            closes_action = any(
+                item["tool"] not in {"roll_check", "adapt_story"}
+                and getattr(REGISTRY.get(item["tool"]), "closes_actions", False)
+                for item in batch_results
+            )
+            pending_reaction = any(
+                self.pending_reaction(cid, ch.seat_id)
+                for ch in ctx.world.characters.values()
+                if ch.seat_id and ch.id in required
+            )
+            if (
+                required
+                and not open_after_tools
+                and not fails_after_tools
+                and not unresolved_after_tools
+                and not pending_reaction
+                and batch_ok
+                and closes_action
+            ):
+                ctx.turn_diagnostics.setdefault("decision_stop_reason", "resolved_actions")
                 break
 
         if getattr(ctx, "required_actions", None):

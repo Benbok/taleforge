@@ -62,6 +62,7 @@ class NarrationMixin:
 
         cfg = cfg or AgentConfig(settings={})
         compact = optimization_flags(getattr(c, "settings", None) or {})["role_context"]
+        compact = compact and hasattr(ctx, "session") and hasattr(ctx, "campaign")
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
         item_rejected = failed_item_action(ctx, tool_attempts)
@@ -144,7 +145,8 @@ class NarrationMixin:
         # the checked draft only; a rejected first attempt must never reach chat.
         reply = await self._ask(calls, cfg, c.id, seat_id, turn_id, "narrate", base, None, **ask_options)
         text = reply.text.strip()
-        if not text:
+        service_only = text.casefold().strip(" .!?,;:«»\"'—–-") in {"готово", "готов"}
+        if not text or service_only:
             audit["regenerated"] = True
             audit["empty_retry"] = True
             retry = [

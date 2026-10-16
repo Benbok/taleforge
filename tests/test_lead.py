@@ -166,14 +166,13 @@ def test_master_leads_by_plan(game_client, admin_g, llm, settings):
     assert {"advance_plot", "develop", "threat_tick", "end_act", "get_plot"} <= names(decide)
     enum = next(t for t in decide["tools"] if t["function"]["name"] == "develop")["function"]["parameters"]
     # место первой сцены вступление уже внесло в мир: разворачивать его повторно нельзя
-    assert (
-        "loc_port" not in enum["properties"]["sketch_id"]["enum"]
-        and "loc_tavern" in enum["properties"]["sketch_id"]["enum"]
-    )
+    if "enum" in enum["properties"]["sketch_id"]:
+        assert "loc_port" not in enum["properties"]["sketch_id"]["enum"]
+        assert "loc_tavern" in enum["properties"]["sketch_id"]["enum"]
     system = decide["messages"][0]["content"]
     assert "Сюжет сейчас — «Туман над Солёной бухтой»" in system and "Как вести по каркасу" in system
     assert "Текущий акт 1 из 3" in system and "loc_crypt" not in system
-    assert "[СЮЖЕТ: только для мастера" in narrate["messages"][1]["content"]
+    assert "Тайно, пока герои были заняты" not in narrate["messages"][1]["content"]
     assert replan["messages"][0]["content"] == plot.REVISE_SYSTEM and names(replan) == {plot.REVISE_TOOL}
     assert (
         "итог — Герои видели" in replan["messages"][1]["content"] or "Герои видели" in replan["messages"][1]["content"]

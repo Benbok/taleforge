@@ -278,7 +278,11 @@ def test_split_party_has_own_chat_and_meets_again(game_client, admin_g, llm, set
     ]
     n = act(game_client, p1, cid, "Иду в доки")
     assert n["content"] == "Двое встречаются у причала." and not n["whisper"]
-    narrate = llm.requests[-1]["messages"][-1]["content"]
+    narrate = next(
+        req["messages"][-1]["content"]
+        for req in reversed(llm.requests)
+        if "Встреча:" in req["messages"][-1].get("content", "")
+    )
     assert "Встреча: к героям присоединились Гимли" in narrate and "В доках пахнет тиной." in narrate
     seen2 = [m["content"] for m in _seen(game_client, p2, cid)]
     assert "Двое встречаются у причала." in seen2 and "Отряд снова вместе." in seen2
