@@ -148,3 +148,66 @@ def test_early_finish_model_calls_keep_real_effects(game_client, admin_g, llm, d
         assert not rows(settings, Event, Event.turn_id == turn.id, Event.tool == "cancel_action")
     if scenario == "routed_attack":
         assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_attack")) == 1
+
+
+def test_creative_talk_finishes_without_automatic_cancellation(game_client, admin_g, llm, settings):
+    import json
+
+    from app.agents.master.optimization import FLAGS
+    from app.db.models import Campaign, Event, LlmCall, MasterTurn, Message
+    from app.tools.registry import execute
+    from tests.game import party, run
+    from tests.test_master import act, rows
+    from tests.test_tools import play
+
+    campaign, (player,), hero = party(game_client, admin_g)
+    cid = campaign["id"]
+
+    async def enable(s):
+        c = await s.get(Campaign, cid)
+        c.settings = {**c.settings, "llm_optimization": dict.fromkeys(FLAGS, True)}
+        await s.commit()
+
+    async def scene(ctx):
+        assert (await execute(ctx, "create_location", {"name": "Tavern", "make_current": True}))["ok"]
+
+    run(settings, enable)
+    play(settings, cid, [], scene)
+
+    def decide(messages, tools):
+        marker = "Текущие части заявок (используй точный action_ref):\n"
+        note = next(m["content"] for m in reversed(messages) if marker in m.get("content", ""))
+        parts = json.JSONDecoder().raw_decode(note.split(marker, 1)[1])[0]
+        return {
+            "tool_calls": [
+                (
+                    "adjudicate_action",
+                    {
+                        "proposal": {
+                            "ref": parts[0]["ref"],
+                            "origin": "creative",
+                            "outcome": "success",
+                            "reason": "The bartender hears the request",
+                            "operations": [],
+                        }
+                    },
+                )
+            ]
+        }
+
+    llm.replies += [
+        {"tool_calls": [("submit_intent", {"actions": [{"verb": "talk"}]})]},
+        decide,
+        {"text": "The bartender answers."},
+        {"text": "The bartender answers."},
+    ]
+    act(game_client, player, cid, "Ask the bartender for a drink")
+    (turn,) = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)
+    assert turn.status == "done"
+    assert turn.trace["decision_stop_reason"] == "resolved_actions"
+    assert not turn.trace.get("audit", {}).get("cancel_fallback")
+    assert not rows(settings, Event, Event.turn_id == turn.id, Event.tool == "cancel_action")
+    assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_action")) == 1
+    assert len(rows(settings, LlmCall, LlmCall.turn_id == turn.id, LlmCall.purpose == "decide")) == 1
+    action = next(m for m in rows(settings, Message, Message.campaign_id == cid) if m.kind == "action")
+    assert action.data["resolution_progress"]["0"]["status"] == "completed"

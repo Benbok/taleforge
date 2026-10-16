@@ -3,7 +3,7 @@ import pytest
 from app.core.resolution.contracts import FailureInfo, ResolutionResult
 from app.db.models import MasterTurn
 from app.tools.master.adjudication import AdjudicationArgs, adjudicate_action
-from app.tools.registry import ToolError
+from app.tools.registry import ToolError, execute
 from app.tools.resolution.operations import ResolutionProposal
 from app.tools.resolution.requests import record_attempt
 from tests.resolution_helpers import prepare_action
@@ -11,6 +11,61 @@ from tests.test_tools import game as game_fixture
 from tests.test_tools import play
 
 game = game_fixture
+
+
+@pytest.mark.parametrize("origin", ["creative", "fallback"])
+def test_accepted_adjudication_completes_pending_part_and_replay(game, origin):
+    from app.core.resolution.contracts import ActionProgress
+    from app.db.models import Message
+    from app.tools.resolution.requests import action_key, bind_message_actions, set_action_progress
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        await execute(ctx, "create_location", {"name": "Tavern", "make_current": True})
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        ref = await prepare_action(ctx, hero, [{"verb": "talk"}, {"verb": "interact"}])
+        ctx.remaining_resolution_calls = 8
+        message = await ctx.session.get(Message, ref.source_id)
+        ctx.required_actions = bind_message_actions(message, hero)
+        for part in ctx.required_actions:
+            await set_action_progress(ctx, part, ActionProgress(status="pending"))
+        attempt = None
+        if origin == "fallback":
+            attempt = await record_attempt(
+                ctx,
+                ref,
+                "noncombat.interaction",
+                ResolutionResult(
+                    execution="denied",
+                    failure=FailureInfo(
+                        code="unsupported",
+                        category="unsupported",
+                        rolled_back=True,
+                        attempt_id="",
+                    ),
+                ),
+            )
+        proposal = ResolutionProposal(
+            ref=ref,
+            origin=origin,
+            outcome="success",
+            reason="Ask bartender for a drink",
+            attempt_id=attempt,
+        )
+        raw = await execute(ctx, "adjudicate_action", {"proposal": proposal.model_dump()})
+        assert raw["ok"], raw
+        assert ctx.action_progress[action_key(ref)].status == "completed"
+        assert message.data["resolution_progress"]["0"]["status"] == "completed"
+        assert message.data["resolution_progress"]["1"]["status"] == "pending"
+        assert hero not in ctx.closed  # Another part must still be handled.
+        ctx.action_progress.clear()
+        replay = await execute(ctx, "adjudicate_action", {"proposal": proposal.model_dump()})
+        assert replay["ok"] and replay["result"]["execution"] == "repeated"
+        assert ctx.action_progress[action_key(ref)].status == "completed"
+
+    play(settings, campaign_id, [], check)
 
 
 def test_ambiguous_ordinary_failure_cannot_be_rewritten_as_creative_success(game):
