@@ -53,6 +53,8 @@ filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+# Экспериментальные описания геометрии — отдельный генератор, не часть проверяемого приложения.
+extend-exclude = ["experiments/location-layout-templates/scripts/build_templates.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]

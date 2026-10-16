@@ -13,13 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: ruff format --check .
+      # Проверяем формат новых изменений; старые файлы форматируются отдельной уборкой.
+      - name: Проверка форматирования изменённых Python-файлов
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          mapfile -d '' changed < <(git diff --name-only -z --diff-filter=ACMR "$BASE_SHA" HEAD -- '*.py')
+          if (( ${#changed[@]} )); then
+            ruff format --check "${changed[@]}"
+          fi
       - run: pytest -q
       - run: python tools/eval_narrative.py --cases tests/fixtures/narrative_quality.json --mode scripted
       - run: python -m app.content validate content/dnd5e-srd --strict
