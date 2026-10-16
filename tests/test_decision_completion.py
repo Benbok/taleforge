@@ -150,7 +150,8 @@ def test_early_finish_model_calls_keep_real_effects(game_client, admin_g, llm, d
         assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_attack")) == 1
 
 
-def test_creative_talk_finishes_without_automatic_cancellation(game_client, admin_g, llm, settings):
+@pytest.mark.parametrize("empty_parts", [False, True])
+def test_creative_talk_finishes_without_automatic_cancellation(game_client, admin_g, llm, settings, empty_parts):
     import json
 
     from app.agents.master.optimization import FLAGS
@@ -196,7 +197,19 @@ def test_creative_talk_finishes_without_automatic_cancellation(game_client, admi
         }
 
     llm.replies += [
-        {"tool_calls": [("submit_intent", {"actions": [{"verb": "talk"}]})]},
+        {
+            "tool_calls": [
+                (
+                    "submit_intent",
+                    {
+                        "kind": "action",
+                        "actions": [] if empty_parts else [{"verb": "talk"}],
+                        "speech": "May I have a drink?",
+                        "confidence": 1.0,
+                    },
+                )
+            ]
+        },
         decide,
         {"text": "The bartender answers."},
         {"text": "The bartender answers."},

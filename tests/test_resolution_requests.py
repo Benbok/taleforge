@@ -33,6 +33,43 @@ def test_missing_parser_does_not_bind_custom():
     assert bind_message_actions(message, "ch") == []
 
 
+@pytest.mark.parametrize("change", [None, {"confidence": 0.4}, {"problem": "unclear"}, {"speech": " "}])
+def test_missing_or_uncertain_intent_does_not_invent_speech_part(change):
+    intent = (
+        None
+        if change is None
+        else {
+            "kind": "action",
+            "actions": [],
+            "speech": "A request",
+            "confidence": 1.0,
+            **change,
+        }
+    )
+    message = Message(id="m", campaign_id="c", kind="action", intent=intent)
+    assert bind_message_actions(message, "ch", include_speech_request=True) == []
+
+
+def test_spoken_request_ref_is_opt_in_and_stable():
+    message = Message(
+        id="m",
+        campaign_id="c",
+        kind="action",
+        intent={
+            "kind": "action",
+            "actions": [],
+            "speech": "A request",
+            "confidence": 1.0,
+        },
+    )
+    assert bind_message_actions(message, "ch") == []
+    refs = bind_message_actions(message, "ch", include_speech_request=True)
+    assert len(refs) == 1 and refs[0].source_id == "m"
+    assert message.data["resolution_actions"][0]["action"] == {"verb": "talk", "summary": "A request"}
+    assert message.intent["actions"] == []
+    assert bind_message_actions(message, "ch", include_speech_request=True) == refs
+
+
 def test_standing_response_ref_is_stable():
     first = bind_world_action("c", "response_1", "ch")
     assert first == bind_world_action("c", "response_1", "ch")

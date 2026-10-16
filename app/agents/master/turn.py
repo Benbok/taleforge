@@ -405,7 +405,13 @@ class TurnMixin:
 
         for message in new:
             if message.kind == "action" and message.seat_id in char_by_seat:
-                ctx.required_actions.extend(bind_message_actions(message, char_by_seat[message.seat_id].id))
+                ctx.required_actions.extend(
+                    bind_message_actions(
+                        message,
+                        char_by_seat[message.seat_id].id,
+                        include_speech_request=flags["action_refs"],
+                    )
+                )
 
         system = await self._system_prompt(s, c, cfg, ctx)
         convo = _render_history(history, char_by_seat, names)

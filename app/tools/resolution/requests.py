@@ -86,7 +86,7 @@ async def bound_tool_key(ctx: ToolContext, name: str, args: dict, default: str) 
     return default
 
 
-def bind_message_actions(message: Message, actor_id: str) -> list[ActionRef]:
+def bind_message_actions(message: Message, actor_id: str, *, include_speech_request: bool = False) -> list[ActionRef]:
     data = message.data or {}
     existing = data.get("resolution_actions")
     if existing is not None:
@@ -96,7 +96,23 @@ def bind_message_actions(message: Message, actor_id: str) -> list[ActionRef]:
         ):
             raise ValueError("resolution source identity mismatch")
         return refs
-    actions = (message.intent or {}).get("actions") or []
+    intent = message.intent or {}
+    actions = intent.get("actions") or []
+    speech = intent.get("speech")
+    if (
+        not actions
+        and include_speech_request
+        and message.kind == "action"
+        and intent.get("kind") == "action"
+        and intent.get("problem", "none") == "none"
+        and intent.get("confidence", 0) >= 0.7
+        and isinstance(speech, str)
+        and speech.strip()
+    ):
+        # The parser recognized a spoken request but supplied no mechanical parts.
+        # Give only that speech a durable reference; never invent a custom action
+        # or infer inventory/combat effects from the utterance.
+        actions = [{"verb": "talk", "summary": speech.strip()}]
     if not actions:
         return []
     refs = [
@@ -176,11 +192,7 @@ async def load_action_context(ctx: ToolContext, ref: ActionRef) -> ActionContext
         progress_map = (message.data or {}).get("resolution_progress")
         if progress_map is not None:
             completed_parts = tuple(
-                sorted(
-                    int(p)
-                    for p, item in progress_map.items()
-                    if item.get("status") == "completed"
-                )
+                sorted(int(p) for p, item in progress_map.items() if item.get("status") == "completed")
             )
         else:
             completed_parts = tuple(sorted(int(part) for part in (message.data or {}).get("resolution_completed", {})))
@@ -402,4 +414,3 @@ async def latest_attempt(ctx: ToolContext, ref: ActionRef) -> dict | None:
         ),
         None,
     )
-
