@@ -161,8 +161,12 @@ async def observe_area(
         party_changed = False
         if party_row is None and party_key:
             party_row = PartyMapMemory(
-                campaign_id=party_key[0], root_id=party_key[1], entity_id=party_key[2],
-                snapshot=snapshot, discovered_passages=[], revision=1,
+                campaign_id=party_key[0],
+                root_id=party_key[1],
+                entity_id=party_key[2],
+                snapshot=snapshot,
+                discovered_passages=[],
+                revision=1,
             )
             session.add(party_row)
             party_changed = True
@@ -270,9 +274,13 @@ async def discover_passage(
     inverse: list[dict[str, Any]] | None = None,
 ) -> None:
     session, world, campaign = _context_parts(ctx)
-    shared_rows = await session.scalars(
-        select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign.id, PartyMapMemory.root_id == root_id)
-    ) if campaign is not None else []
+    shared_rows = (
+        await session.scalars(
+            select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign.id, PartyMapMemory.root_id == root_id)
+        )
+        if campaign is not None
+        else []
+    )
     shared_rows = list(shared_rows)
     if campaign is not None and not shared_rows:
         location_id = next(
