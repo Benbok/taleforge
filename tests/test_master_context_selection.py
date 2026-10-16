@@ -1,5 +1,7 @@
-from app.agents.master.context_selection import ContextFact, select_context
-from app.agents.master.prompt_context import without_action_context
+import asyncio
+
+from app.agents.master.context_selection import ContextFact, collect_decision_facts, select_context
+from app.agents.master.prompt_context import without_action_context, without_context_block
 
 
 def f(key, section="scene", text=None, subjects=(), deps=(), audience=("party",), mandatory=False):
@@ -61,3 +63,14 @@ def test_private_fact_is_not_visible_to_narrator():
 def test_decision_request_does_not_duplicate_action_refs():
     text = "scene\nТекущие части заявок (используй точный action_ref):\n[{\"ref\": \"a\"}]\ncreative"
     assert without_action_context(text) == "scene\ncreative"
+
+
+def test_decision_request_does_not_duplicate_resolution_block():
+    block = "\nRESOLUTION_BLOCK"
+    assert without_context_block("scene" + block + "\ncreative", block) == "scene\ncreative"
+
+
+def test_decision_fact_adapter_always_retains_player_request():
+    result = asyncio.run(collect_decision_facts(None, None, {"request": "PLAYER_REQUEST", "context_facts": ()}))
+    assert [item.key for item in result] == ["request"]
+    assert result[0].mandatory

@@ -517,13 +517,6 @@
       "title": "Leveling",
       "type": "string"
      },
-     "llm_optimization": {
-      "additionalProperties": {
-       "type": "boolean"
-      },
-      "title": "Llm Optimization",
-      "type": "object"
-     },
      "master": {
       "$ref": "#/components/schemas/MasterIn",
       "default": {
@@ -1015,13 +1008,6 @@
        }
       ],
       "title": "Leveling"
-     },
-     "llm_optimization": {
-      "additionalProperties": {
-       "type": "boolean"
-      },
-      "title": "Llm Optimization",
-      "type": "object"
      },
      "location_layout_templates": {
       "anyOf": [

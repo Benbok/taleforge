@@ -31,6 +31,34 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def validate_context_options(experiment: str, context_variant: str) -> dict[str, str]:
+    """Validate comparison labels accepted only by the offline evaluator."""
+    if experiment not in {"context", "product"}:
+        raise ValueError("experiment must be context or product")
+    if context_variant not in {"legacy", "v1", "revised"}:
+        raise ValueError("unknown context variant")
+    return {"experiment": experiment, "context_variant": context_variant}
+
+
+def validate_context_cases(document: object) -> list[dict]:
+    if not isinstance(document, dict) or document.get("version") != 1:
+        raise ValueError("context fixture version must be 1")
+    scenarios = document.get("scenarios")
+    if not isinstance(scenarios, list) or not scenarios:
+        raise ValueError("context fixture requires scenarios")
+    required = {"id", "requests", "required_facts", "forbidden_facts", "expected_outcomes", "rubric"}
+    result = []
+    seen = set()
+    for scenario in scenarios:
+        if not isinstance(scenario, dict) or not required <= scenario.keys() or not scenario["id"]:
+            raise ValueError("context scenario is incomplete")
+        if scenario["id"] in seen:
+            raise ValueError("duplicate context scenario id")
+        seen.add(scenario["id"])
+        result.append(scenario)
+    return result
 _RESULTS: dict[str, dict] = {}
 _LIVE_PROVIDER = None
 _PURPOSE = ContextVar("efficiency_purpose", default="unknown")
@@ -508,7 +536,10 @@ def main(argv=None) -> int:
     parser.add_argument("--max-request-cost-usd", type=float, help="Conservative reservation per paid request")
     parser.add_argument("--model", help="Same provider/model for both live variants")
     parser.add_argument("--isolated-test-campaign", action="store_true")
+    parser.add_argument("--experiment", choices=("context", "product"), default="product")
+    parser.add_argument("--context-variant", choices=("legacy", "v1", "revised"), default="revised")
     args = parser.parse_args(argv)
+    context_options = validate_context_options(args.experiment, args.context_variant)
     try:
         if args.mode == "live":
             validate_live(args.campaign, args.max_cost_usd, isolated=args.isolated_test_campaign)
@@ -538,6 +569,8 @@ def main(argv=None) -> int:
             )
         else:
             report = run_scripted(load_cases(args.cases))
+        report["experiment"] = context_options["experiment"]
+        report["context_variant"] = context_options["context_variant"]
         code = int(
             bool(report["mechanical_mismatches"])
             or report.get("budget_overrun", False)

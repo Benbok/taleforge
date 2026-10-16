@@ -60,6 +60,7 @@ class NarrationMixin:
         from app.agents.master.optimization import optimization_flags
         from app.agents.master.prompt_context import build_prompt_bundle, narration_scene, public_narration_notes
 
+        cfg = cfg or AgentConfig(settings={})
         compact = optimization_flags(getattr(c, "settings", None) or {})["role_context"]
         outcome = transition_outcome(tool_attempts)
         attack_rejected = failed_attack(tool_attempts)
@@ -105,7 +106,15 @@ class NarrationMixin:
             )
             base = bundle.messages
             prompt_metadata = bundle.metadata("narrate")
-        ask_options = {"prompt_metadata": prompt_metadata} if prompt_metadata else {}
+        ask_options = {}
+        if prompt_metadata:
+            import inspect
+
+            signature = inspect.signature(self._ask)
+            if "prompt_metadata" in signature.parameters or any(
+                parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()
+            ):
+                ask_options["prompt_metadata"] = prompt_metadata
         known = set(ctx.world.characters) | set(ctx.world.entities)
         inventory_names = {
             item.id: ctx.world.item_name(item)
@@ -430,7 +439,9 @@ class NarrationMixin:
         from app.agents.master.optimization import optimization_flags
         from app.agents.master.prompt_context import build_prompt_bundle
 
+        cfg = cfg or AgentConfig(settings={})
         compact = optimization_flags(getattr(c, "settings", None) or {})["compact_voice"]
+        compact = compact and hasattr(ctx, "session") and hasattr(ctx, "campaign")
         results = _render_results(ctx, public_only=True)
         prompt = render(
             "voice_line.j2",
@@ -448,13 +459,14 @@ class NarrationMixin:
         ]
         options = {}
         if compact:
+            scene_state = getattr(getattr(getattr(ctx, "world", None), "scene", None), "state", {})
             bundle = await build_prompt_bundle(
                 ctx,
                 cfg,
                 role="voice_line",
                 inputs={
                     "request": prompt,
-                    "mood": mood.instruction(mood.load(ctx.world.scene.state)),
+                    "mood": mood.instruction(mood.load(scene_state)),
                 },
             )
             msgs = bundle.messages

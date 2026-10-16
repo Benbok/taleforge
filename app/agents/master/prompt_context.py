@@ -42,6 +42,13 @@ def without_action_context(text: str) -> str:
     return prefix + "\n" + tail[end + 2 :]
 
 
+def without_context_block(text: str, block: str) -> str:
+    """Remove one exact rendered block before it is serialized separately."""
+    if not block:
+        return text
+    return text.replace(block, "")
+
+
 async def collect_narration_facts(ctx: ToolContext, cfg, inputs: dict) -> tuple[ContextFact, ...]:
     """Select explicit narration facts using the audience supplied by finish."""
     facts = tuple(item for item in inputs.get("context_facts", ()) if isinstance(item, ContextFact))
@@ -170,6 +177,8 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         blocks["difficulty_scale"] = values["dc_scale"]
         blocks["pacing"] = values["pacing"] or ""
         blocks["audio"] = values["audio"] or ""
+        if inputs.get("resolution"):
+            blocks["resolution"] = inputs["resolution"]
     if inputs.get("mood"):
         blocks["mood"] = inputs["mood"]
     blocks["request"] = request

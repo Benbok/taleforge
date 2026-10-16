@@ -1,5 +1,10 @@
 # LLM Turn Efficiency Implementation Plan
 
+> Пересмотр от 2026-10-16: [план исправления контекста](2026-10-16-master-context-revision.md)
+> и [анализ вариантов](../specs/2026-10-16-master-context-revision-design.md).
+> Этот документ сохраняет историю первого этапа. Пересмотр требует единого поведения
+> без пользовательских флагов и отдельной проверки качества/экономии контекста.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Снизить расходы и задержку игрового хода без потери корректности правил,

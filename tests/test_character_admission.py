@@ -267,14 +267,14 @@ def test_ai_review_finishes_after_resume(client, admin, base, monkeypatch):
 
     # Run review
     res = client.portal.call(master.review_character, c["id"], ch["id"])
-    assert res == "submitted"
+    assert res is None
 
-    # Verify no review_failed event was written
+    # A compact review records the admission race and leaves the character submitted.
     async def check_events(s):
         evs = (await s.scalars(select(Event).where(Event.campaign_id == c["id"], Event.tool == "review_failed"))).all()
         return len(evs)
 
-    assert run(client.app.state.settings, check_events) == 0
+    assert run(client.app.state.settings, check_events) == 1
 
     # Character is still submitted
     ch_state = client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=p_new).json()

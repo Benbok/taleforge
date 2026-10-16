@@ -599,6 +599,8 @@ class TurnMixin:
 
         await self._status(cid, "remembering")
         memory_note = await self._memory_block(s, c, ctx, new)
+        resolution_note = await resolution_prompt(ctx)
+        action_note = await action_context_prompt(ctx) if flags["action_refs"] else ""
         # мир не ждёт: созревшие ответы на поступки героев и случайности, выпавшие, пока шло игровое время
         world_note = await standing_tools.run_standing(ctx) + await fortune_tools.run_watch(ctx)
         # отряд буксует на одном препятствии: мир подбрасывает новую возможность (в бою не нужно)
@@ -611,8 +613,8 @@ class TurnMixin:
                 "role": "user",
                 "content": (
                     f"{memory_note}Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
-                    f"{await resolution_prompt(ctx)}"
-                    f"{await action_context_prompt(ctx) if flags['action_refs'] else ''}"
+                    f"{resolution_note}"
+                    f"{action_note}"
                     f"\n{creative_note(creative_context(ctx))}\n"
                     f"{await adaptation_prompt(ctx)}\n"
                     f"Недавние сообщения чата:\n{convo or 'пока нет'}\n\n"
@@ -624,12 +626,21 @@ class TurnMixin:
         ]
         prompt_metadata = None
         if flags["role_context"]:
-            from app.agents.master.prompt_context import build_prompt_bundle, without_action_context
+            from app.agents.master.prompt_context import (
+                build_prompt_bundle,
+                without_action_context,
+                without_context_block,
+            )
 
+            legacy_messages = [dict(msgs[0]), dict(msgs[1])]
             # The role bundle carries action refs as its own section.  Keeping
             # the same rendered JSON inside the legacy request doubled the
             # largest dynamic block and made size diagnostics misleading.
-            msgs[1]["content"] = without_action_context(msgs[1]["content"])
+            uncertain_intent = any(not isinstance(m.intent, dict) or not m.intent.get("actions") for m in new)
+            if not uncertain_intent:
+                msgs[1]["content"] = without_context_block(
+                    without_action_context(msgs[1]["content"]), resolution_note
+                )
 
             bundle = await build_prompt_bundle(
                 ctx,
@@ -637,8 +648,9 @@ class TurnMixin:
                 role="decide",
                 inputs={
                     "request": msgs[1]["content"],
-                    "legacy_messages": msgs,
-                    "uncertain": any(not isinstance(m.intent, dict) or not m.intent.get("actions") for m in new),
+                    "legacy_messages": legacy_messages,
+                    "uncertain": uncertain_intent,
+                    "resolution": resolution_note,
                 },
             )
             msgs = bundle.messages
@@ -680,6 +692,37 @@ class TurnMixin:
                     "ok": True,
                     "result": {"profile": profile, "tools": allowed, "valid_ids": profile_id_context(ctx, allowed)},
                 }
+            # Validate an explicit ref even when the selected profile does not
+            # expose the route.  This keeps ownership errors deterministic and
+            # prevents an initiative/combat route from running before source
+            # admission has rejected a foreign ref.
+            if profile and name not in allowed and name in set(decision_tools(ctx)):
+                if (
+                    flags["action_refs"]
+                    and isinstance(args, dict)
+                    and REGISTRY.get(name)
+                    and REGISTRY[name].mutating
+                    and args.get("action_ref") is not None
+                ):
+                    from pydantic import ValidationError
+
+                    from app.agents.master.action_binding import bind_tool_action
+
+                    try:
+                        raw_ref = args.get("action_ref")
+                        explicit = ActionRef.model_validate(raw_ref)
+                        await bind_tool_action(ctx, name, args, explicit=explicit)
+                    except (ToolError, ValidationError) as error:
+                        done_calls += 1
+                        return {
+                            "ok": False,
+                            "error": str(error),
+                            "failure": {
+                                "code": getattr(error, "code", "invalid_source"),
+                                "category": getattr(error, "category", "invalid_arguments"),
+                            },
+                        }
+                return {"ok": False, "error": f"инструмент {name} недоступен в этом ходе"}
             if done_calls >= MAX_CALLS and name != "adapt_story":
                 return {"ok": False, "error": f"лимит {MAX_CALLS} вызовов за ход исчерпан: переходи к повествованию"}
             if name not in allowed:

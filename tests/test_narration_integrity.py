@@ -97,7 +97,6 @@ def test_submitted_player_dialogue_is_allowed(game_client, admin_g, llm, setting
     c, (p1,), hero = party(game_client, admin_g)
     llm.replies += [
         {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "задаёт вопрос"})]},
-        DONE,
         {"text": f"[[{hero['id']}|Бран]] спрашивает: «Что за тени?»"},
     ]
     result = act(game_client, p1, c["id"], "Что за тени? — спрашиваю я")

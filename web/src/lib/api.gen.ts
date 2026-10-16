@@ -2515,10 +2515,6 @@ export interface components {
              * @enum {string}
              */
             leveling?: "xp" | "milestone";
-            /** Llm Optimization */
-            llm_optimization?: {
-                [key: string]: boolean;
-            };
             /**
              * @default {
              *       "type": "agent"
@@ -2671,10 +2667,6 @@ export interface components {
             excluded_themes?: string[] | null;
             /** Leveling */
             leveling?: ("xp" | "milestone") | null;
-            /** Llm Optimization */
-            llm_optimization?: {
-                [key: string]: boolean;
-            };
             /** Location Layout Templates */
             location_layout_templates?: boolean | null;
             /** Location Layouts */

@@ -77,7 +77,7 @@ async def campaign_out(session, campaign: Campaign, user: User) -> CampaignOut:
         difficulty=campaign.difficulty,
         party_size_recommended=campaign.party_size_recommended,
         public_intro=campaign.public_intro,
-        settings=campaign.settings,
+        settings={key: value for key, value in (campaign.settings or {}).items() if key != "llm_optimization"},
         brief=campaign.brief if campaign.owner_id == user.id or (mine and mine.role == "master") else None,
         seats=[
             SeatOut(
@@ -177,7 +177,6 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
             "collect_window_sec": body.collect_window_sec,
             "excluded_themes": body.excluded_themes,
             "creation_rules": body.creation_rules.model_dump(),
-            "llm_optimization": body.llm_optimization,
             "allow_proposals": body.test_mode,
             "narrative_mode": effective_mode,
             "narrative": {
@@ -275,11 +274,11 @@ async def patch_campaign(
     if body.difficulty is not None:
         c.difficulty = body.difficulty
     settings = dict(c.settings)
+    settings.pop("llm_optimization", None)
     for key in (
         "turn_timeout_sec",
         "spend_limit_usd",
         "collect_window_sec",
-        "llm_optimization",
         "excluded_themes",
         "audio_enabled",
         "sfx_enabled",

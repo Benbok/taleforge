@@ -4,7 +4,6 @@
 import json
 
 import pytest
-from pydantic import ValidationError
 
 from app.api.schemas import CampaignCreateIn, CampaignPatchIn
 from app.db.models import Campaign, Character, Event, MasterTurn, Message, Scene
@@ -15,22 +14,21 @@ from tests.test_master import act, admin_g, dice, game_client, llm, rows  # noqa
 from tests.test_tools import game, play  # noqa: F401
 
 
-def test_optimization_flags_are_strict_and_disabled_by_default():
+def test_optimizations_are_integrated_and_ignore_obsolete_campaign_flags():
     from app.agents.master.optimization import optimization_flags
 
     defaults = optimization_flags({})
-    assert len(defaults) == 6 and not any(defaults.values())
-    assert optimization_flags({"llm_optimization": {"action_refs": True}})["action_refs"]
-    for invalid in ({"unknown": True}, {"action_refs": 1}, {"action_refs": "false"}, []):
-        with pytest.raises(ValueError):
-            optimization_flags({"llm_optimization": invalid})
+    assert len(defaults) == 6 and all(defaults.values())
+    for obsolete in ({"action_refs": False}, dict.fromkeys(defaults, False), [], None):
+        assert optimization_flags({"llm_optimization": obsolete}) == defaults
 
 
 @pytest.mark.parametrize("schema", [CampaignCreateIn, CampaignPatchIn])
 @pytest.mark.parametrize("flags", [{"unknown": True}, {"action_refs": "true"}, {"action_refs": 1}, []])
-def test_campaign_settings_reject_invalid_optimization(schema, flags):
-    with pytest.raises(ValidationError):
-        schema.model_validate({"name": "Game", "llm_optimization": flags})
+def test_campaign_schema_has_no_optimization_switch(schema, flags):
+    parsed = schema.model_validate({"name": "Game", "llm_optimization": flags})
+    assert "llm_optimization" not in parsed.model_dump()
+    assert "llm_optimization" not in schema.model_json_schema()["properties"]
 
 
 async def source(ctx, hero, actions):
@@ -127,25 +125,26 @@ def test_explicit_source_checks_owner_even_without_required_actions(game):
     play(settings, cid, [], check)
 
 
-def test_campaign_optimization_settings_round_trip(game_client, admin_g):
+def test_campaign_api_does_not_store_obsolete_optimization_switch(game_client, admin_g):
     created = game_client.post(
         "/api/campaigns", headers=admin_g, json={"name": "Flags", "llm_optimization": {"action_refs": True}}
     )
     assert created.status_code == 201, created.text
     campaign = created.json()
-    assert campaign["settings"]["llm_optimization"] == {"action_refs": True}
+    assert "llm_optimization" not in campaign["settings"]
     changed = game_client.patch(
         f"/api/campaigns/{campaign['id']}",
         headers=admin_g,
         json={"llm_optimization": {"action_refs": False, "role_context": True}},
     )
     assert changed.status_code == 200, changed.text
-    assert changed.json()["settings"]["llm_optimization"] == {"action_refs": False, "role_context": True}
+    assert "llm_optimization" not in changed.json()["settings"]
     for invalid in ({"unknown": True}, {"action_refs": "false"}):
         rejected = game_client.patch(
             f"/api/campaigns/{campaign['id']}", headers=admin_g, json={"llm_optimization": invalid}
         )
-        assert rejected.status_code == 422
+        assert rejected.status_code == 200
+        assert "llm_optimization" not in rejected.json()["settings"]
 
 
 def test_decision_read_only_ignores_malformed_surplus_ref(game_client, admin_g, llm, settings):

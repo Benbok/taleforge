@@ -151,7 +151,10 @@ def test_early_finish_model_calls_keep_real_effects(game_client, admin_g, llm, d
 
 
 @pytest.mark.parametrize("empty_parts", [False, True])
-def test_creative_talk_finishes_without_automatic_cancellation(game_client, admin_g, llm, settings, empty_parts):
+@pytest.mark.parametrize("obsolete_flags", [False, True])
+def test_creative_talk_finishes_without_automatic_cancellation(
+    game_client, admin_g, llm, settings, empty_parts, obsolete_flags,
+):
     import json
 
     from app.agents.master.optimization import FLAGS
@@ -166,13 +169,15 @@ def test_creative_talk_finishes_without_automatic_cancellation(game_client, admi
 
     async def enable(s):
         c = await s.get(Campaign, cid)
-        c.settings = {**c.settings, "llm_optimization": dict.fromkeys(FLAGS, True)}
+        c.settings = {**c.settings, "llm_optimization": dict.fromkeys(FLAGS, False)}
         await s.commit()
 
     async def scene(ctx):
         assert (await execute(ctx, "create_location", {"name": "Tavern", "make_current": True}))["ok"]
 
-    run(settings, enable)
+    assert "llm_optimization" not in campaign["settings"]
+    if obsolete_flags:
+        run(settings, enable)
     play(settings, cid, [], scene)
 
     def decide(messages, tools):

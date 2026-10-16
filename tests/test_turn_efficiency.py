@@ -19,6 +19,15 @@ def runner():
         pytest.fail("The efficiency evaluation runner has not been implemented")
 
 
+def test_context_variant_is_evaluator_only():
+    with pytest.raises(ValueError, match="context variant"):
+        runner().validate_context_options("context", "unknown")
+    assert runner().validate_context_options("context", "revised") == {
+        "experiment": "context",
+        "context_variant": "revised",
+    }
+
+
 @pytest.mark.parametrize("bad", [{}, {"version": 1, "cases": []}, {"version": 1, "cases": [{"id": "x"}]}])
 def test_malformed_cases_rejected(bad):
     with pytest.raises(ValueError):
@@ -400,7 +409,9 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
     decisions = rows(settings, LlmCall, LlmCall.turn_id == turn.id, LlmCall.purpose == "decide")
     if scenario in {"attack", "miss", "critical"}:
         if not live:
-            assert len(decisions) == (0 if optimized else 1)
+            # Production is always-on; evaluator variants are isolated
+            # labels and cannot disable the runtime behavior.
+            assert len(decisions) == 0
         attacks = rows(
             settings, Event, Event.turn_id == turn.id, Event.tool == "resolve_attack", Event.actor_id == hero["id"]
         )
@@ -409,7 +420,7 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
         hp = rows(settings, Entity, Entity.id == enemy)[0].state["hp"]
         assert hp == (30 if scenario == "miss" else 17 if scenario == "critical" else 22)
     elif scenario == "native":
-        assert len(decisions) == (1 if optimized else 2)
+        assert len(decisions) == 1
         assert len(rows(settings, Event, Event.turn_id == turn.id, Event.tool == "auto_success")) == 1
     else:
         assert len(decisions) >= 1
