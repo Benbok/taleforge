@@ -635,13 +635,11 @@ class TurnMixin:
             legacy_messages = [dict(msgs[0]), dict(msgs[1])]
             uncertain_intent = any(not isinstance(m.intent, dict) or not m.intent.get("actions") for m in new)
             subjects = set(ctx.world.crew)
-            if ctx.world.scene.location_id:
-                subjects.add(ctx.world.scene.location_id)
+            subjects.update(ctx.world.scene_places())
             subjects.update(ref.actor_id for ref in ctx.required_actions)
             subjects.update(
                 entity.id
-                for entity in ctx.world.entities.values()
-                if entity.location_id == ctx.world.scene.location_id
+                for entity in ctx.world.in_scene_entities()
             )
             context_facts = collect_context_snapshot(
                 ctx,
@@ -650,7 +648,11 @@ class TurnMixin:
                 memory=memory_note,
                 history=convo,
             )
-            new_request = f"Новые реплики и действия игроков:\n{news}{combat_note}{route_note}"
+            new_request = (
+                f"Новые реплики игроков:\n{news}{combat_note}{route_note}\n\n"
+                "Фаза решения: вызови нужные инструменты. Когда все действия закрыты, "
+                "ответь одним словом «готово» без вызовов."
+            )
             world_context = (
                 f"Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
                 f"\n{creative_note(creative_context(ctx))}\n{await adaptation_prompt(ctx)}"

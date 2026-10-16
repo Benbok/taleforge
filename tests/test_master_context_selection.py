@@ -2,6 +2,7 @@
 # ruff: noqa: F811
 
 import asyncio
+from types import SimpleNamespace
 
 from app.agents.master.context_selection import ContextFact, collect_decision_facts, select_context
 from app.agents.master.prompt_context import without_action_context, without_context_block
@@ -94,3 +95,34 @@ def test_live_context_snapshot_uses_stable_structured_keys(game):
         assert all(item.key and item.text for item in facts)
 
     play(settings, cid, [], check)
+
+
+def test_live_context_snapshot_accepts_raw_world_effects():
+    from app.agents.master.context_snapshot import collect_context_snapshot
+
+    effect = SimpleNamespace(
+        id="effect-1",
+        target_id="hero-1",
+        effect_template_id="condition.prone",
+        stacks=1,
+        expires_at=None,
+    )
+    record = SimpleNamespace(name="Сбит с ног")
+    world = SimpleNamespace(
+        scene=SimpleNamespace(location_id=None),
+        focus=None,
+        characters={},
+        entities={},
+        inventory={},
+        effects=[effect],
+        plot={},
+        revealed={},
+        crew=set(),
+        catalog=SimpleNamespace(find=lambda *_args: record),
+        narrative_facts=lambda _subjects: (),
+    )
+    ctx = SimpleNamespace(world=world)
+
+    facts = collect_context_snapshot(ctx, None, messages=(), memory="", history="")
+
+    assert any(item.key == "effect:effect-1" and "Сбит с ног" in item.text for item in facts)

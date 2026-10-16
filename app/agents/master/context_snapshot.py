@@ -154,7 +154,12 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 )
             )
 
-    for effect, record in getattr(world, "effects", ()):
+    for raw_effect in getattr(world, "effects", ()):
+        if isinstance(raw_effect, tuple) and len(raw_effect) == 2:
+            effect, record = raw_effect
+        else:
+            effect = raw_effect
+            record = world.catalog.find(effect.effect_template_id, "effect_template")
         target = getattr(effect, "target_id", None)
         if not target:
             continue

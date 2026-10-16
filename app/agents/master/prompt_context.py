@@ -217,9 +217,13 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         blocks["audio"] = values["audio"] or ""
         if inputs.get("resolution"):
             blocks["resolution"] = inputs["resolution"]
-        for name in ("memory", "history", "world", "server_updates", "packet"):
+        # Keep the legacy semantic order inside the new named blocks: durable
+        # memory, live world, then chat history and server notes.
+        for name in ("memory", "world", "history", "server_updates", "packet"):
             content = inputs.get(name)
-            if isinstance(content, str) and content:
+            if name == "history":
+                blocks[name] = f"Недавние сообщения чата:\n{content or 'пока нет'}"
+            elif isinstance(content, str) and content:
                 blocks[name] = content
     else:
         for name in ("history", "packet"):
