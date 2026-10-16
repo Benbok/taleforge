@@ -5,7 +5,7 @@ import pytest
 
 from app.agents.master.common import decision_tools
 from app.agents.master.tool_profiles import profile_tool_names, select_tool_profile
-from app.db.models import Campaign, Event, MasterTurn
+from app.db.models import Campaign, Event, LlmCall, MasterTurn
 from app.tools.registry import REGISTRY
 from tests.game import party, run
 from tests.test_master import act, admin_g, dice, game_client, llm, rows  # noqa: F401
@@ -65,6 +65,15 @@ def test_all_profiles_intersect_existing_permissions():
         assert not any(REGISTRY[n].internal for n in names if n in REGISTRY)
     assert set(profile_tool_names(ctx, "general")) == general | {"expand_decision_tools"}
     assert profile_tool_names(ctx, "unknown") == profile_tool_names(ctx, "general")
+
+
+def test_narrow_profiles_use_explicit_read_sets():
+    social = set(profile_tool_names(context(), "social"))
+    exploration = set(profile_tool_names(context(), "exploration"))
+    assert "generation_status" not in social
+    assert "inspect_container" not in social
+    assert "inspect_container" in exploration
+    assert "expand_decision_tools" in social
 
 
 def test_stable_schemas_ignore_world_ids_but_legacy_remains_dynamic():
@@ -128,6 +137,10 @@ def test_native_batch_checks_live_profile_before_and_after_expansion(game_client
     assert not host["result"]["ok"]
     internal = next(c for c in turn.trace["calls"] if c["tool"] == "apply_narrative_fact")
     assert not internal["result"]["ok"]
+    decide_calls = rows(settings, LlmCall, LlmCall.campaign_id == cid, LlmCall.purpose == "decide")
+    assert all(call.diagnostics["tool_profile"] in {"social", "general"} for call in decide_calls)
+    assert all(call.diagnostics["tool_count"] > 0 for call in decide_calls)
+    assert all(call.diagnostics["tool_schema_total"]["utf8_bytes"] > 0 for call in decide_calls)
     decide = [
         r
         for r in llm.requests

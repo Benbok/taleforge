@@ -12,7 +12,7 @@ import pytest
 from app.agents.llm import ScriptedLLM
 from app.agents.master.prompt_context import PromptBundle
 from app.agents.master.service import MasterService
-from app.core.llm_diagnostics import message_sizes
+from app.core.llm_diagnostics import message_sizes, tool_metrics
 from app.db.models import AgentConfig
 from tests.test_master import admin_g, dice, game_client, llm  # noqa: F401
 
@@ -147,6 +147,19 @@ def test_runtime_sizes_match_the_serialized_llm_complete_call():
     expected = message_sizes(request["messages"], request["tools"])
     actual = {key: call.diagnostics[key] for key in expected}
     assert actual == expected
+
+
+def test_tool_metrics_are_content_free_and_include_each_schema_size():
+    tools = [
+        {"type": "function", "function": {"name": "inspect", "description": "read"}},
+        {"type": "function", "function": {"name": "move", "description": "act"}},
+    ]
+    metrics = tool_metrics(tools, "exploration")
+    assert metrics["tool_profile"] == "exploration"
+    assert metrics["tool_count"] == 2
+    assert set(metrics["tool_schema_sizes"]) == {"inspect", "move"}
+    assert metrics["tool_schema_total"]["utf8_bytes"] > 0
+    assert all("description" not in size for size in metrics["tool_schema_sizes"].values())
 
 
 def test_production_decide_request_selects_snapshot_facts(game_client, admin_g, llm, monkeypatch):

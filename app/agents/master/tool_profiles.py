@@ -51,6 +51,16 @@ _SOCIAL = frozenset(
 )
 _PROFILE_MUTATIONS = {"combat": _COMBAT, "exploration": _EXPLORATION, "social": _SOCIAL}
 
+# Read-only tools are deliberately enumerated per route.  The general profile
+# remains the complete campaign-allowed set after explicit expansion.
+_PROFILE_READS = {
+    "combat": frozenset({"get_scene", "get_character", "lookup_template", "get_standing"}),
+    "exploration": frozenset(
+        {"get_scene", "get_character", "lookup_template", "inspect_container", "preparation_cost", "generation_status"}
+    ),
+    "social": frozenset({"get_scene", "get_character", "lookup_template", "get_standing"}),
+}
+
 
 def select_tool_profile(ctx: ToolContext, messages: list) -> str:
     """Use validated parser output only; uncertain or mixed requests retain general."""
@@ -88,13 +98,11 @@ def select_tool_profile(ctx: ToolContext, messages: list) -> str:
 
 
 def profile_tool_names(ctx: ToolContext, profile: str) -> list[str]:
-    from app.tools.registry import REGISTRY
-
     permitted = set(decision_tools(ctx))
     permitted.add(EXPAND_TOOL)
     if profile not in _PROFILE_MUTATIONS:
         return sorted(permitted)
-    reads = {name for name in permitted if name in REGISTRY and not REGISTRY[name].mutating}
+    reads = _PROFILE_READS[profile]
     return sorted(permitted & (_COMMON | _PROFILE_MUTATIONS[profile] | reads | {EXPAND_TOOL}))
 
 

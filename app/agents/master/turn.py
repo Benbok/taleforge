@@ -48,7 +48,7 @@ from app.agents.master.tool_profiles import (
 from app.core import audio, chat, combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
-from app.core.llm_diagnostics import message_sizes, reply_metrics, retry_metrics
+from app.core.llm_diagnostics import message_sizes, reply_metrics, retry_metrics, tool_metrics
 from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
@@ -956,6 +956,10 @@ class TurnMixin:
                     ctx.turn_diagnostics["decision_stop_reason"] = "resolved_actions"
                     break
             specs = tool_specs(ctx.world, allowed, dynamic_ids=not flags["tool_profiles"])
+            call_prompt_metadata = dict(prompt_metadata or {})
+            call_prompt_metadata.update(
+                tool_metrics(specs, profile or ("general" if flags["tool_profiles"] else "legacy"))
+            )
             reply = await self._ask(
                 calls,
                 cfg,
@@ -965,7 +969,7 @@ class TurnMixin:
                 "decide",
                 msgs,
                 specs,
-                prompt_metadata=prompt_metadata,
+                prompt_metadata=call_prompt_metadata,
                 retry_count=len(retry_reasons),
                 retry_reasons=tuple(retry_reasons),
             )

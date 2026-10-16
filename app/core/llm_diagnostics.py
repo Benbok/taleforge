@@ -53,6 +53,21 @@ def message_sizes(messages: list[dict], tools: list) -> dict:
     return prompt_sizes(blocks, tools)
 
 
+def tool_metrics(tools: list | None, profile: str) -> dict[str, Any]:
+    """Record tool-profile and schema sizes without storing schema contents."""
+    tools = tools or []
+    sizes = {}
+    for tool in tools:
+        name = ((tool.get("function") or {}).get("name") if isinstance(tool, dict) else None) or "unknown"
+        sizes[name] = prompt_sizes({}, [tool])["tools"]
+    return {
+        "tool_profile": profile,
+        "tool_count": len(tools),
+        "tool_schema_sizes": sizes,
+        "tool_schema_total": prompt_sizes({}, tools)["tools"],
+    }
+
+
 def retry_metrics(retry_count: int = 0, retry_reasons: tuple[str, ...] = ()) -> dict[str, Any]:
     """Return bounded, content-free retry diagnostics for one provider call."""
     reasons = tuple(dict.fromkeys(reason for reason in retry_reasons if isinstance(reason, str) and reason))
