@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from app.agents import rhythm
 from app.agents.master.common import MAX_CALLS, render
+from app.agents.master.context_selection import ContextFact, select_context
 from app.core import adventure, audio, bonds, persona, plot
 from app.core.brief import brief_text
 from app.core.narrative.view import master_canon_block
@@ -14,6 +15,39 @@ from app.db.models import AgentConfig, CampaignSecret
 from app.tools import fortune as fortune_tools
 from app.tools import progress as progress_tools
 from app.tools.registry import ToolContext
+
+
+def public_narration_notes(notes, *, audience: set[str] | None = None) -> list[str]:
+    """Return only plot notes explicitly marked for the narration audience."""
+    target = audience or {"party"}
+    result: list[str] = []
+    for note in notes or ():
+        if not isinstance(note, dict) or not isinstance(note.get("text"), str):
+            continue
+        note_audience = set(note.get("audience") or ())
+        if "party" in note_audience or note_audience & target:
+            result.append(note["text"])
+    return result
+
+
+def without_action_context(text: str) -> str:
+    """Remove the rendered action-ref block before it is added as a named block."""
+    marker = "\nТекущие части заявок (используй точный action_ref):\n"
+    prefix, separator, tail = text.partition(marker)
+    if not separator:
+        return text
+    end = tail.find("]\n")
+    if end < 0:
+        return text
+    return prefix + "\n" + tail[end + 2 :]
+
+
+async def collect_narration_facts(ctx: ToolContext, cfg, inputs: dict) -> tuple[ContextFact, ...]:
+    """Select explicit narration facts using the audience supplied by finish."""
+    facts = tuple(item for item in inputs.get("context_facts", ()) if isinstance(item, ContextFact))
+    audience = frozenset(inputs.get("audience") or {"party"})
+    subjects = frozenset(inputs.get("subjects") or ())
+    return select_context(facts, role="narrate", subjects=subjects, audience=audience).facts
 
 
 @dataclass

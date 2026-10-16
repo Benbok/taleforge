@@ -58,7 +58,7 @@ class NarrationMixin:
         mood_note: str = "",
     ):
         from app.agents.master.optimization import optimization_flags
-        from app.agents.master.prompt_context import build_prompt_bundle, narration_scene
+        from app.agents.master.prompt_context import build_prompt_bundle, narration_scene, public_narration_notes
 
         compact = optimization_flags(getattr(c, "settings", None) or {})["role_context"]
         outcome = transition_outcome(tool_attempts)
@@ -78,7 +78,7 @@ class NarrationMixin:
             length=_narration_length(ctx, notes),
             check_only=_check_only(ctx, notes),
             combat_notes=list(notes),
-            plot_notes=[] if compact else list(plot_notes),
+            plot_notes=public_narration_notes(plot_notes) if compact else list(plot_notes),
             adaptation_notes=list(adaptation_notes),
             next_turn=turn["name"] if turn else None,
             stalled=stalled,

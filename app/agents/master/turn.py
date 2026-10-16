@@ -624,7 +624,12 @@ class TurnMixin:
         ]
         prompt_metadata = None
         if flags["role_context"]:
-            from app.agents.master.prompt_context import build_prompt_bundle
+            from app.agents.master.prompt_context import build_prompt_bundle, without_action_context
+
+            # The role bundle carries action refs as its own section.  Keeping
+            # the same rendered JSON inside the legacy request doubled the
+            # largest dynamic block and made size diagnostics misleading.
+            msgs[1]["content"] = without_action_context(msgs[1]["content"])
 
             bundle = await build_prompt_bundle(
                 ctx,
