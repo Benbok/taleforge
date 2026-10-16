@@ -10,7 +10,27 @@ from __future__ import annotations
 import json
 
 from app.agents.master.context_selection import ContextFact
+from app.core.narrative.contracts import FactRef, FactState
 from app.core.object_policy import concealed
+
+
+def fact_key(ref: FactRef) -> str:
+    """Return one deterministic address for a fact and every dependency link."""
+    snapshot = ref.snapshot_ref
+    address = {
+        "campaign_id": ref.campaign_id,
+        "namespace": ref.namespace,
+        "subject_id": ref.subject_id,
+        "key": ref.key,
+        "version": ref.version,
+        "snapshot": {
+            "kind": snapshot.kind,
+            "source_id": snapshot.source_id,
+            "version": snapshot.version,
+            "typed_address": snapshot.typed_address,
+        },
+    }
+    return "fact:" + json.dumps(address, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def _fact(
@@ -34,8 +54,9 @@ def _fact(
     )
 
 
-def _json(value, limit: int = 1200) -> str:
-    return json.dumps(value, ensure_ascii=False, default=str, sort_keys=True)[:limit]
+def _json(value, limit: int | None = None) -> str:
+    text = json.dumps(value, ensure_ascii=False, default=str, sort_keys=True)
+    return text if limit is None else text[:limit]
 
 
 def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[ContextFact, ...]:
@@ -122,7 +143,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 _fact(
                     f"place:{current_place}",
                     "places",
-                    f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
+                f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
                     subjects={current_place},
                     audience=public({current_place}),
                     mandatory=True,
@@ -192,24 +213,46 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             _fact(
                 "plot:live",
                 "plot",
-                f"Live plot state: {_json(world.plot, 6000)}",
+                f"Live plot state: {_json(world.plot)}",
                 subjects={current_place} if current_place else set(),
             )
         )
 
+    narrative_items: list[FactState] = []
     for subject in sorted({*world.characters, *world.entities}):
-        for item in world.narrative_facts((subject,)):
-            value = getattr(item, "value", None) or getattr(item, "text", None)
-            if not value:
-                continue
+        entity = world.entities.get(subject)
+        subjects = (subject, getattr(entity, "template_id", None)) if entity is not None else (subject,)
+        narrative_items.extend(world.narrative_facts(subjects))
+
+    # A dependency may refer to a remote subject which is not present in the scene.
+    # Resolve it through the same NarrativeView so instance/template override rules remain authoritative.
+    pending = list(narrative_items)
+    seen_narrative: set[str] = set()
+    while pending:
+        item = pending.pop(0)
+        key = fact_key(item.ref)
+        if key in seen_narrative:
+            continue
+        seen_narrative.add(key)
+        value = getattr(item, "value", None) or getattr(item, "text", None)
+        if value:
             facts.append(
                 _fact(
-                    f"reaction:{subject}:{getattr(item, 'key', 'fact')}",
+                    key,
                     "reactions",
                     str(value),
-                    subjects={subject},
+                    subjects={item.ref.subject_id},
+                    dependencies={fact_key(dep) for dep in item.depends_on},
                     audience=frozenset(getattr(item, "audience", ()) or {"master"}),
                 )
             )
+        view = getattr(world, "narrative_view", None)
+        if view is not None:
+            for dependency in item.depends_on:
+                try:
+                    pending.append(view.resolve(dependency))
+                except KeyError:
+                    # The selector will report an unknown dependency if no fact is available.
+                    continue
 
     return tuple(facts)

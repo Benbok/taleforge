@@ -68,7 +68,7 @@ def select_context(
         fact = by_key.get(key)
         if fact is None:
             continue
-        for dependency in fact.dependencies:
+        for dependency in sorted(fact.dependencies):
             dep = by_key.get(dependency)
             if dep is None:
                 marker = f"unknown_dependency:{dependency}"
