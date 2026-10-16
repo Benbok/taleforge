@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from tests.context_scenarios import execute_context_scenario
-from tests.test_tools import game, play  # noqa: F401
+from tests.context_scenario_assertions import assert_scenario
+from tests.context_scenario_worlds import build_scenario, run_scenario
+from tests.test_master import dice, game_client, llm  # noqa: F401
 
 
 def _manifest():
@@ -14,15 +15,19 @@ def _manifest():
 
 def test_context_quality_manifest_has_required_scenarios():
     data = _manifest()
-    assert data["version"] == 1
+    assert data["version"] == 2
     assert len(data["scenarios"]) == 12
     for scenario in data["scenarios"]:
         assert {
             "id",
+            "fixture",
             "requests",
-            "required_facts",
-            "forbidden_facts",
-            "expected_outcomes",
+            "parser_script",
+            "model_script",
+            "dice",
+            "required_facts_by_role",
+            "forbidden_facts_by_role",
+            "expected_world",
             "rubric",
         } <= scenario.keys()
 
@@ -34,13 +39,9 @@ def test_context_quality_manifest_has_no_duplicate_ids():
 
 
 @pytest.mark.parametrize("scenario", _manifest()["scenarios"], ids=lambda item: item["id"])
-def test_context_quality_scenario_exercises_production_assembly(game, scenario):
-    settings, cid, _hero = game
-
-    async def check(ctx):
-        report = await execute_context_scenario(ctx, scenario)
-        assert report["id"] == scenario["id"]
-        assert report["baseline_assembly_path"] == "legacy"
-        assert report["revised_estimated_tokens"] > 0 and report["baseline_estimated_tokens"] > 0
-
-    play(settings, cid, [], check)
+def test_context_quality_scenario_executes_complete_game_turn(game_client, settings, scenario):
+    world = build_scenario(scenario["id"], game_client, settings, case=scenario)
+    result = run_scenario(scenario, world, game_client, world.llm)
+    assert_scenario(scenario, result)
+    assert result.refs
+    assert result.turns or result.rejections
