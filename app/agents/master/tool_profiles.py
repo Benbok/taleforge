@@ -32,7 +32,7 @@ _EXPLORATION_VERBS = frozenset("move inspect search interact pick_up drop give h
 _SOCIAL_VERBS = frozenset("talk persuade deceive intimidate".split())
 
 # Explicit mutation allowlists: newly registered mutations appear only in general.
-_COMMON = frozenset("cancel_action roll_check auto_success adjudicate_action whisper".split())
+_COMMON = frozenset("cancel_action roll_check auto_success adjudicate_action whisper set_character_form".split())
 _COMBAT = frozenset(
     "resolve_attack resolve_grapple escape_grapple resolve_shove take_action death_save "
     "apply_hazard apply_effect remove_effect use_item equip_item move reposition "

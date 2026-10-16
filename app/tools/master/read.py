@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.character_form import current_form
 from app.core.features import class_rows, uses_view, wild_shape_forms
 from app.core.world import lineage_features
 from app.db.models import Character
@@ -49,6 +50,7 @@ async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
         "lineage_caste": (ch.sheet or {}).get("lineage_caste"),
         "level": (ch.sheet or {}).get("level", 1),
         "status": act.status(),
+        "current_form": current_form(ch, ctx.world.scene.game_time),
         "ac": act.ac,
         "abilities": act.abilities,
         "saves": act.saves,

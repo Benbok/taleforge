@@ -92,6 +92,7 @@ class PromptBundle:
 
 def narration_scene(ctx: ToolContext) -> str:
     """Use the same visibility boundaries as player scene updates, per audience/place."""
+    from app.core.character_form import current_form
     from app.core.narrative.view import fact_line
     from app.core.scene_view import visible_scene
     from app.tools.runtime import scene_payload
@@ -136,7 +137,16 @@ def narration_scene(ctx: ToolContext) -> str:
         payload["known_npc_facts"] = known
         scenes.append(payload)
     heroes = [
-        {"id": i, "name": world.characters[i].name, "place": world.place_of(world.characters[i])}
+        {
+            "id": i,
+            "name": world.characters[i].name,
+            "place": world.place_of(world.characters[i]),
+            "current_form": (
+                {"name": form["name"], "can_handle_items": form.get("can_handle_items", False)}
+                if (form := current_form(world.characters[i], world.scene.game_time))
+                else None
+            ),
+        }
         for ids in groups.values()
         for i in ids
     ]

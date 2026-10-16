@@ -8,6 +8,7 @@
 # isort: off
 from app.tools.master import read  # noqa: F401
 from app.tools.master import checks  # noqa: F401
+from app.tools.master import forms  # noqa: F401
 from app.tools.master import items  # noqa: F401
 from app.tools.master import invented  # noqa: F401
 from app.tools.master import generation  # noqa: F401

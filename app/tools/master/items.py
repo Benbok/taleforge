@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core import economy, reach
 from app.core import positions as grid
+from app.core.character_form import current_form
 from app.core.object_policy import concealed, hidden_feature, observe, revealed_to
 from app.core.weapon_enchantments import release_weapon
 from app.core.world import is_scene_item
@@ -47,6 +48,7 @@ class UseItemArgs(BaseModel):
 )
 async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
+    _can_handle_form(ctx, ch)
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}: рука нащупывает пустоту")
@@ -145,6 +147,7 @@ async def give_item(ctx: ToolContext, a: GiveItemArgs) -> dict:
             "ягоды создаёт cast_spell и уже кладёт в инвентарь; повторная выдача через give_item недопустима"
         )
     ch = _character(ctx, a.character_id)
+    _can_handle_form(ctx, ch)
     rec = ctx.world.catalog.get(a.item_template_id, "item_template")
     if rec.pack_id.startswith("campaign.") and a.qty > 10:
         raise ToolError("придуманный мастером предмет выдаётся не больше 10 штук за раз")
@@ -418,6 +421,17 @@ def _can_handle(ctx: ToolContext, ch: Character) -> None:
     act = ctx.world.actor(ch.id)
     if act.hp.current == 0:
         raise ToolError(f"{ch.name} без сознания: брать и отдавать вещи не может")
+    _can_handle_form(ctx, ch)
+
+
+def _can_handle_form(ctx: ToolContext, ch: Character) -> None:
+    form = current_form(ch, ctx.world.scene.game_time)
+    if form and not form.get("can_handle_items", False):
+        raise ToolError(
+            f"{ch.name}: облик «{form['name']}» не позволяет брать и передавать снаряжение. "
+            "Предмет остаётся на месте; сначала нужно вернуться в подходящий облик.",
+            code="form_cannot_handle_items", category="rule_denial",
+        )
 
 
 class TakeItemArgs(BaseModel):
@@ -460,6 +474,7 @@ class EquipArgs(BaseModel):
 )
 async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
     ch = _character(ctx, a.character_id)
+    _can_handle_form(ctx, ch)
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}")
@@ -858,6 +873,7 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     if ch.id == to.id:
         raise ToolError("отдать предмет самому себе нельзя")
     _can_handle(ctx, ch)
+    _can_handle_form(ctx, to)
     it = _own_item(ctx, ch, a.inventory_id)
     template, display = it.item_template_id, it.display_name
     name = ctx.world.item_name(it)

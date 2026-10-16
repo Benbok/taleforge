@@ -727,6 +727,16 @@ class World:
         for ch in chars:
             a = self.actor(ch.id)
             lines.append(f"{a.id}  {a.name} (герой)  {a.status()}  КД {a.ac}{_pos_note(self, a.id)}{_effects_note(a)}")
+            from app.core.character_form import current_form
+
+            form = current_form(ch, self.scene.game_time)
+            if form:
+                handling = (
+                    "может обращаться со снаряжением"
+                    if form.get("can_handle_items")
+                    else "не может брать и передавать снаряжение"
+                )
+                lines.append(f"    текущий физический облик: {form['name']}; {handling}")
             items = self.inventory.get(ch.id, [])
             if items:
                 inv = ", ".join(
