@@ -55,7 +55,7 @@ export function Tabs<T extends string>({
   compact?: boolean;
 }) {
   return (
-    <nav className={`flex gap-1 border-b border-line ${compact ? "flex-wrap" : "overflow-x-auto"}`} role="tablist">
+    <nav className={`flex gap-1 border-b border-line ${compact ? "flex-wrap" : "overflow-x-auto no-scrollbar"}`} role="tablist">
       {tabs.map(([t, text]) => (
         <button
           key={t}

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { create } from "zustand";
 import type { HeroAttack, HeroSheet } from "../lib/types";
 import { useGame } from "../stores/game";
@@ -430,6 +430,12 @@ function Log() {
 export default function HeroWindow() {
   const { open, tab, hide, setTab } = useHeroWindow();
   const sheet = useGame((s) => s.sheet);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    activeTabRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [open, tab]);
 
   useEffect(() => {
     if (!open) return;
@@ -487,24 +493,30 @@ export default function HeroWindow() {
           </button>
         </header>
         <nav
-          className="flex gap-1 overflow-x-auto border-b border-line px-2"
+          className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto no-scrollbar border-b border-line px-2 sm:px-4 shrink-0"
           aria-label="Разделы листа"
         >
           {TABS.filter(
             ([t]) =>
               (t !== "spells" || sheet.spellbook) &&
               (t !== "features" || sheet.class_features?.length),
-          ).map(([t, name]) => (
-            <button
-              key={t}
-              className={`shrink-0 border-b-2 px-3 py-2 text-sm transition-colors duration-150 ease-out ${
-                tab === t ? "border-accent text-ink font-semibold" : "border-transparent text-muted hover:text-ink"
-              }`}
-              onClick={() => setTab(t)}
-            >
-              {name}
-            </button>
-          ))}
+          ).map(([t, name]) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                ref={active ? activeTabRef : undefined}
+                className={`shrink-0 -mb-px border-b-2 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-150 ease-out ${
+                  active
+                    ? "border-accent text-ink font-semibold"
+                    : "border-transparent text-muted hover:text-ink"
+                }`}
+                onClick={() => setTab(t)}
+              >
+                {name}
+              </button>
+            );
+          })}
         </nav>
         <div key={tab} className="tf-tab-content overflow-y-auto p-4">
           {!ready && tab !== "persona" ? (

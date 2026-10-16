@@ -60,7 +60,7 @@ export default function SoundControl() {
     <div className="relative shrink-0" ref={box}>
       <button
         type="button"
-        className="btn h-8 max-w-[14rem] gap-1.5 px-2.5 text-xs"
+        className="btn btn-outline-copper h-8 max-w-[14rem] gap-1.5 px-2.5 text-xs shrink-0"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label="Звук сцены"

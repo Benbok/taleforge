@@ -32,10 +32,29 @@ export default function SessionControls({
     }
   }
 
+  const hasAnyAction =
+    Boolean(notReady) ||
+    has("session.start") ||
+    has("session.pause") ||
+    has("invite.create") ||
+    has("campaign.end");
+
+  if (!hasAnyAction) return null;
+
   const btnClass = compact ? "h-8 px-2.5 text-xs font-mono tracking-wider shrink-0" : "";
+  const containerClass = compact
+    ? `flex items-center gap-1.5 rounded-[10px] border border-line bg-raised/70 p-1 shrink-0 ${className}`
+    : `flex items-center gap-2 shrink-0 ${className}`;
+
+  const hasRoutineActions =
+    has("session.start") || has("session.pause") || has("invite.create");
 
   return (
-    <div className={`flex items-center gap-2 shrink-0 ${className}`}>
+    <div
+      className={containerClass}
+      role={compact ? "group" : undefined}
+      aria-label={compact ? "Управление сессией" : undefined}
+    >
       {notReady && (
         <p className="flex flex-wrap items-center gap-2 text-xs text-warn" role="status">
           {notReady}
@@ -60,15 +79,20 @@ export default function SessionControls({
         </ActionButton>
       )}
       {has("campaign.end") && (
-        <ActionButton
-          danger
-          className={btnClass}
-          run={() => session("end")}
-          done="Кампания завершена"
-          confirm="Завершить кампанию насовсем? Мастер напишет эпилог, играть дальше будет нельзя."
-        >
-          Завершить
-        </ActionButton>
+        <>
+          {compact && hasRoutineActions && (
+            <span className="h-4 w-px bg-line/80 mx-0.5 shrink-0" aria-hidden="true" />
+          )}
+          <ActionButton
+            danger
+            className={btnClass}
+            run={() => session("end")}
+            done="Кампания завершена"
+            confirm="Завершить кампанию насовсем? Мастер напишет эпилог, играть дальше будет нельзя."
+          >
+            Завершить
+          </ActionButton>
+        </>
       )}
     </div>
   );
