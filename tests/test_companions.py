@@ -274,9 +274,7 @@ def test_companion_is_nested_under_hero_in_public_order():
         hp=4,
         hp_max=7,
     )
-    order = combat.public_order(
-        [{"id": "ch_hero", "initiative": 12}], {hero.id: hero}, {npc.id: npc}
-    )
+    order = combat.public_order([{"id": "ch_hero", "initiative": 12}], {hero.id: hero}, {npc.id: npc})
 
     assert [entry["id"] for entry in order] == ["ch_hero"]
     assert order[0]["companions"][0]["id"] == "en_corvin"
@@ -402,9 +400,7 @@ def test_enemy_target_selection_includes_companion(game):
             {"creature_template_id": "creature.goblin", "name": "Враг", "attitude": "hostile"},
         )
         enemy_id = enemy["result"]["spawned"][0]["id"]
-        assert (
-            await call(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero_id, enemy_id]})
-        )["ok"]
+        assert (await call(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero_id, enemy_id]}))["ok"]
         ctx.world.entities[companion_id].state = {**ctx.world.entities[companion_id].state, "hp": 1}
         ctx.world.characters[hero_id].resources = {**ctx.world.characters[hero_id].resources, "hp": 10}
         ctx.world.invalidate(companion_id)
