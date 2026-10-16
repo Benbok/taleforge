@@ -161,8 +161,12 @@ async def observe_area(
         party_changed = False
         if party_row is None and party_key:
             party_row = PartyMapMemory(
-                campaign_id=party_key[0], root_id=party_key[1], entity_id=party_key[2],
-                snapshot=snapshot, discovered_passages=[], revision=1,
+                campaign_id=party_key[0],
+                root_id=party_key[1],
+                entity_id=party_key[2],
+                snapshot=snapshot,
+                discovered_passages=[],
+                revision=1,
             )
             session.add(party_row)
             party_changed = True
@@ -171,8 +175,18 @@ async def observe_area(
         elif party_row is not None and party_row.snapshot != snapshot:
             if inverse is not None:
                 inverse += [
-                    {"table": "party_map_memories", "id": list(party_key), "field": "snapshot", "before": copy.deepcopy(party_row.snapshot)},
-                    {"table": "party_map_memories", "id": list(party_key), "field": "revision", "before": party_row.revision},
+                    {
+                        "table": "party_map_memories",
+                        "id": list(party_key),
+                        "field": "snapshot",
+                        "before": copy.deepcopy(party_row.snapshot),
+                    },
+                    {
+                        "table": "party_map_memories",
+                        "id": list(party_key),
+                        "field": "revision",
+                        "before": party_row.revision,
+                    },
                 ]
             party_row.snapshot = snapshot
             party_row.revision = int(party_row.revision or 0) + 1
@@ -260,23 +274,43 @@ async def discover_passage(
     inverse: list[dict[str, Any]] | None = None,
 ) -> None:
     session, world, campaign = _context_parts(ctx)
-    shared_rows = await session.scalars(
-        select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign.id, PartyMapMemory.root_id == root_id)
-    ) if campaign is not None else []
+    shared_rows = (
+        await session.scalars(
+            select(PartyMapMemory).where(PartyMapMemory.campaign_id == campaign.id, PartyMapMemory.root_id == root_id)
+        )
+        if campaign is not None
+        else []
+    )
     shared_rows = list(shared_rows)
     if campaign is not None and not shared_rows:
-        location_id = next((world.characters[h].location_id for h in hero_ids if h in world.characters and world.characters[h].location_id), None)
+        location_id = next(
+            (
+                world.characters[h].location_id
+                for h in hero_ids
+                if h in world.characters and world.characters[h].location_id
+            ),
+            None,
+        )
         if location_id:
             shared_rows = [PartyMapMemory(campaign_id=campaign.id, root_id=root_id, entity_id=location_id)]
             session.add(shared_rows[0])
             if inverse is not None:
-                inverse.append({"table": "party_map_memories", "op": "delete", "id": [campaign.id, root_id, location_id]})
+                inverse.append(
+                    {"table": "party_map_memories", "op": "delete", "id": [campaign.id, root_id, location_id]}
+                )
     for shared in shared_rows:
         grants = list(shared.discovered_passages or [])
         grant = {"root_id": root_id, "passage_ref": passage_ref}
         if grant not in grants:
             if inverse is not None:
-                inverse.append({"table": "party_map_memories", "id": [shared.campaign_id, shared.root_id, shared.entity_id], "field": "discovered_passages", "before": copy.deepcopy(grants)})
+                inverse.append(
+                    {
+                        "table": "party_map_memories",
+                        "id": [shared.campaign_id, shared.root_id, shared.entity_id],
+                        "field": "discovered_passages",
+                        "before": copy.deepcopy(grants),
+                    }
+                )
             shared.discovered_passages = [*grants, grant]
     for hero_id in hero_ids:
         hero = world.characters.get(hero_id)
