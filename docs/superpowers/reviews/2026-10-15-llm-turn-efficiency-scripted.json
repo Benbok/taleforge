@@ -1,0 +1,4139 @@
+{
+  "mode": "scripted",
+  "seed": 0,
+  "models": "deterministic scripted replies",
+  "voice": "disabled",
+  "live_performed": false,
+  "variants": {
+    "legacy": {
+      "exit_code": 0,
+      "summary": {
+        "cases": 27,
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "model_calls": {
+          "decide": 8,
+          "emotion": 6,
+          "narrate": 6,
+          "parse": 6
+        },
+        "fallback": 0,
+        "unknown_usage": 26,
+        "cost_usd": null,
+        "cache_hit_rate": null,
+        "literary_quality": "not_measured"
+      },
+      "cases": [
+        {
+          "id": "attack",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[attack]",
+          "tags": [
+            "attack"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                22,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "miss",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[miss]",
+          "tags": [
+            "miss"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                30,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "critical",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[critical]",
+          "tags": [
+            "critical"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                17,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "native_action",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[native]",
+          "tags": [
+            "native"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 2,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 5,
+          "snapshot": {
+            "events": {
+              "auto_success": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "speech",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[speech]",
+          "tags": [
+            "speech"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "unparsed",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[unparsed]",
+          "tags": [
+            "unparsed"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 2,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 5,
+          "snapshot": {
+            "events": {
+              "cancel_action": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "move_attack",
+          "nodeid": "tests/test_combat.py::test_compound_opening_approach_and_attack_runs_in_order",
+          "tags": [
+            "move_attack"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1,
+              "step": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                3,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "spell_resources",
+          "nodeid": "tests/test_spells.py::test_cast_in_combat_and_out",
+          "tags": [
+            "spell",
+            "resource_denial",
+            "two_heroes"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "award_xp": 1,
+              "cast_spell": 3,
+              "rest": 1,
+              "rest_vote": 1,
+              "spawn_entity": 2
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "last_long_rest": 28800,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "last_long_rest": 28800,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                0,
+                "near"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                1,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "spell_range",
+          "nodeid": "tests/test_spells.py::test_move_cast_out_of_reach_does_not_consume_spell_slot",
+          "tags": [
+            "resource_denial"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "far"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "area_spell",
+          "nodeid": "tests/test_spells.py::test_area_must_fit_and_lingering_zone_ticks",
+          "tags": [
+            "aoe"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "cast_spell": 1,
+              "spawn_entity": 3,
+              "spell_effect": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "concentration": {
+                  "effects": [],
+                  "name": "Лунный луч",
+                  "spell_id": "spell.moonbeam",
+                  "until": 60
+                },
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                4,
+                "near"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "far"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "reaction",
+          "nodeid": "tests/test_combat.py::test_cowardly_flees_and_opportunity_attack",
+          "tags": [
+            "reaction"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "award_xp": 1,
+              "resolve_attack": 1,
+              "set_scene_mode": 2,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.wolf",
+                0,
+                "melee"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "social_check",
+          "nodeid": "tests/test_playtest_checks.py::test_npc_attitude_follows_targeted_social_check[2-False]",
+          "tags": [
+            "social"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "social_check",
+          "nodeid": "tests/test_playtest_checks.py::test_npc_attitude_follows_targeted_social_check[19-True]",
+          "tags": [
+            "social"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1,
+              "spawn_entity": 1,
+              "update_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "search_found",
+          "nodeid": "tests/test_multipart_progress.py::test_cast_and_search_discovery_complete_both",
+          "tags": [
+            "search_found",
+            "multipart"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "cast_spell": 1,
+              "place_item": 1,
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "slots_used": {
+                  "1": 1
+                }
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.goodberry",
+                10,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ],
+              [
+                "1",
+                "completed"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "search_empty",
+          "nodeid": "tests/test_multipart_progress.py::test_failed_search_completes_without_reroll",
+          "tags": [
+            "search_empty"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "container",
+          "nodeid": "tests/test_world_generation.py::test_search_container_charges_once_and_reads_ready_contents",
+          "tags": [
+            "container"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "move": 1,
+              "open_container": 1,
+              "place_item": 1,
+              "prepare_scene": 2,
+              "resolve_location": 1,
+              "retrieve_object": 1,
+              "search_container": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {}
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.backpack",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.crowbar",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "item.torch",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "preparation",
+          "nodeid": "tests/test_layout_transit.py::test_door_closed_during_preparation_keeps_area_but_not_hero",
+          "tags": [
+            "preparation",
+            "transition"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 2,
+              "edit_sketch": 2,
+              "prepare_complex": 1,
+              "prepare_geometry": 2,
+              "prepare_layout": 1,
+              "request_passage": 1,
+              "traverse_passage": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "pickup",
+          "nodeid": "tests/test_playtest_items.py::test_take_item_preserves_unique_identity_and_inventory",
+          "tags": [
+            "pickup"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "pick_up_item": 1,
+              "place_item": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.dagger",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "transfer",
+          "nodeid": "tests/test_playtest_items.py::test_pass_to_npc_keeps_identity_private_and_can_return",
+          "tags": [
+            "transfer"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "pass_item": 1,
+              "pick_up_item": 2,
+              "place_item": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.dagger",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "melee"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "melee"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "unknown_target",
+          "nodeid": "tests/test_tools.py::test_invalid_ids_and_idempotency",
+          "tags": [
+            "unknown_target"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "invalid_ref",
+          "nodeid": "tests/test_action_binding.py::test_wrong_target_or_foreign_ref_changes_nothing",
+          "tags": [
+            "invalid_ref"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "rollback",
+          "nodeid": "tests/test_resolution_executor.py::test_second_operation_failure_rolls_back_first",
+          "tags": [
+            "rollback"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "running"
+            ]
+          }
+        },
+        {
+          "id": "hidden_fact",
+          "nodeid": "tests/test_resolution_executor.py::test_consequence_cannot_reveal_fact_to_other_group",
+          "tags": [
+            "hidden_fact",
+            "split_party"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {}
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "split_party",
+          "nodeid": "tests/test_party_split.py::test_each_hero_sees_own_place",
+          "tags": [
+            "split_party",
+            "two_heroes"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "add_landmark": 1,
+              "create_location": 2,
+              "move": 2,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "multipart",
+          "nodeid": "tests/test_multipart_progress.py::test_successful_search_waits_for_world_confirmation",
+          "tags": [
+            "multipart",
+            "search_found"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "unhandled"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "public_narration",
+          "nodeid": "tests/test_multipart_narration.py::test_hidden_failure_notice_does_not_expose_dc_or_secrets",
+          "tags": [
+            "hidden_fact"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "narrator_visibility",
+          "nodeid": "tests/test_master_prompt_context.py::test_narrator_view_preserves_split_and_common_knowledge",
+          "tags": [
+            "hidden_fact",
+            "split_party"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        }
+      ]
+    },
+    "optimized": {
+      "exit_code": 0,
+      "summary": {
+        "cases": 27,
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "model_calls": {
+          "decide": 4,
+          "emotion": 6,
+          "narrate": 6,
+          "parse": 6
+        },
+        "fallback": 3,
+        "unknown_usage": 22,
+        "cost_usd": null,
+        "cache_hit_rate": null,
+        "literary_quality": "not_measured"
+      },
+      "cases": [
+        {
+          "id": "attack",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[attack]",
+          "tags": [
+            "attack"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 3,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                22,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "miss",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[miss]",
+          "tags": [
+            "miss"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 3,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                30,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "critical",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[critical]",
+          "tags": [
+            "critical"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 3,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                17,
+                "melee"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "native_action",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[native]",
+          "tags": [
+            "native"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 0,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {
+              "auto_success": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "speech",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[speech]",
+          "tags": [
+            "speech"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 1,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 1,
+          "unknown_usage": 4,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "unparsed",
+          "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[unparsed]",
+          "tags": [
+            "unparsed"
+          ],
+          "scope": "full_turn",
+          "status": "passed",
+          "model_calls": {
+            "decide": 2,
+            "emotion": 1,
+            "narrate": 1,
+            "parse": 1
+          },
+          "fallback": 2,
+          "unknown_usage": 5,
+          "snapshot": {
+            "events": {
+              "cancel_action": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "done"
+            ]
+          }
+        },
+        {
+          "id": "move_attack",
+          "nodeid": "tests/test_combat.py::test_compound_opening_approach_and_attack_runs_in_order",
+          "tags": [
+            "move_attack"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "resolve_attack": 2,
+              "set_scene_mode": 1,
+              "spawn_entity": 1,
+              "step": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                3,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "spell_resources",
+          "nodeid": "tests/test_spells.py::test_cast_in_combat_and_out",
+          "tags": [
+            "spell",
+            "resource_denial",
+            "two_heroes"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "award_xp": 1,
+              "cast_spell": 3,
+              "rest": 1,
+              "rest_vote": 1,
+              "spawn_entity": 2
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "last_long_rest": 28800,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "last_long_rest": 28800,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                0,
+                "near"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                1,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "spell_range",
+          "nodeid": "tests/test_spells.py::test_move_cast_out_of_reach_does_not_consume_spell_slot",
+          "tags": [
+            "resource_denial"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "set_scene_mode": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "far"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "area_spell",
+          "nodeid": "tests/test_spells.py::test_area_must_fit_and_lingering_zone_ticks",
+          "tags": [
+            "aoe"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "cast_spell": 1,
+              "spawn_entity": 3,
+              "spell_effect": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "concentration": {
+                  "effects": [],
+                  "name": "Лунный луч",
+                  "spell_id": "spell.moonbeam",
+                  "until": 60
+                },
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 8,
+                "hp_max": 8,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.component_pouch",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.quarterstaff",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                4,
+                "near"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "far"
+              ],
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "reaction",
+          "nodeid": "tests/test_combat.py::test_cowardly_flees_and_opportunity_attack",
+          "tags": [
+            "reaction"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "award_xp": 1,
+              "resolve_attack": 1,
+              "set_scene_mode": 2,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.wolf",
+                0,
+                "melee"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "social_check",
+          "nodeid": "tests/test_playtest_checks.py::test_npc_attitude_follows_targeted_social_check[2-False]",
+          "tags": [
+            "social"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "social_check",
+          "nodeid": "tests/test_playtest_checks.py::test_npc_attitude_follows_targeted_social_check[19-True]",
+          "tags": [
+            "social"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1,
+              "spawn_entity": 1,
+              "update_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "search_found",
+          "nodeid": "tests/test_multipart_progress.py::test_cast_and_search_discovery_complete_both",
+          "tags": [
+            "search_found",
+            "multipart"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "cast_spell": 1,
+              "place_item": 1,
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "slots_used": {
+                  "1": 1
+                }
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.goodberry",
+                10,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ],
+              [
+                "1",
+                "completed"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "search_empty",
+          "nodeid": "tests/test_multipart_progress.py::test_failed_search_completes_without_reroll",
+          "tags": [
+            "search_empty"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "completed"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "container",
+          "nodeid": "tests/test_world_generation.py::test_search_container_charges_once_and_reads_ready_contents",
+          "tags": [
+            "container"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "move": 1,
+              "open_container": 1,
+              "place_item": 1,
+              "prepare_scene": 2,
+              "resolve_location": 1,
+              "retrieve_object": 1,
+              "search_container": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {}
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.backpack",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.crowbar",
+                null,
+                "far"
+              ],
+              [
+                "object",
+                "item.torch",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "preparation",
+          "nodeid": "tests/test_layout_transit.py::test_door_closed_during_preparation_keeps_area_but_not_hero",
+          "tags": [
+            "preparation",
+            "transition"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 2,
+              "edit_sketch": 2,
+              "prepare_complex": 1,
+              "prepare_geometry": 2,
+              "prepare_layout": 1,
+              "request_passage": 1,
+              "traverse_passage": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "pickup",
+          "nodeid": "tests/test_playtest_items.py::test_take_item_preserves_unique_identity_and_inventory",
+          "tags": [
+            "pickup"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "pick_up_item": 1,
+              "place_item": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.dagger",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "transfer",
+          "nodeid": "tests/test_playtest_items.py::test_pass_to_npc_keeps_identity_private_and_can_return",
+          "tags": [
+            "transfer"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "create_location": 1,
+              "pass_item": 1,
+              "pick_up_item": 2,
+              "place_item": 1,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.dagger",
+                1,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.commoner",
+                4,
+                "melee"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "item.dagger",
+                null,
+                "melee"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "unknown_target",
+          "nodeid": "tests/test_tools.py::test_invalid_ids_and_idempotency",
+          "tags": [
+            "unknown_target"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "invalid_ref",
+          "nodeid": "tests/test_action_binding.py::test_wrong_target_or_foreign_ref_changes_nothing",
+          "tags": [
+            "invalid_ref"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "rollback",
+          "nodeid": "tests/test_resolution_executor.py::test_second_operation_failure_rolls_back_first",
+          "tags": [
+            "rollback"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": [
+              "running"
+            ]
+          }
+        },
+        {
+          "id": "hidden_fact",
+          "nodeid": "tests/test_resolution_executor.py::test_consequence_cannot_reveal_fact_to_other_group",
+          "tags": [
+            "hidden_fact",
+            "split_party"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {}
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "split_party",
+          "nodeid": "tests/test_party_split.py::test_each_hero_sees_own_place",
+          "tags": [
+            "split_party",
+            "two_heroes"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "add_landmark": 1,
+              "create_location": 2,
+              "move": 2,
+              "spawn_entity": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              },
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "creature",
+                "creature.goblin",
+                7,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "location",
+                "",
+                null,
+                "near"
+              ],
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "multipart",
+          "nodeid": "tests/test_multipart_progress.py::test_successful_search_waits_for_world_confirmation",
+          "tags": [
+            "multipart",
+            "search_found"
+          ],
+          "scope": "mechanics",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {
+              "roll_check": 1
+            },
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [
+              [
+                "object",
+                "",
+                null,
+                "near"
+              ]
+            ],
+            "action_parts": [
+              [
+                "0",
+                "unhandled"
+              ]
+            ],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "public_narration",
+          "nodeid": "tests/test_multipart_narration.py::test_hidden_failure_notice_does_not_expose_dc_or_secrets",
+          "tags": [
+            "hidden_fact"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        },
+        {
+          "id": "narrator_visibility",
+          "nodeid": "tests/test_master_prompt_context.py::test_narrator_view_preserves_split_and_common_knowledge",
+          "tags": [
+            "hidden_fact",
+            "split_party"
+          ],
+          "scope": "visibility",
+          "status": "passed",
+          "model_calls": {},
+          "fallback": 0,
+          "unknown_usage": 0,
+          "snapshot": {
+            "events": {},
+            "resources": [
+              {
+                "can_prepare": true,
+                "dead": false,
+                "death_saves": [
+                  0,
+                  0
+                ],
+                "hit_dice": 1,
+                "hp": 12,
+                "hp_max": 12,
+                "temp_hp": 0
+              }
+            ],
+            "inventory": [
+              [
+                "item.chain_mail",
+                1,
+                true
+              ],
+              [
+                "item.handaxe",
+                2,
+                false
+              ],
+              [
+                "item.longsword",
+                1,
+                false
+              ],
+              [
+                "item.shield",
+                1,
+                true
+              ]
+            ],
+            "entities": [],
+            "action_parts": [],
+            "turn_statuses": []
+          }
+        }
+      ]
+    }
+  },
+  "mechanical_mismatches": [],
+  "limits": [
+    "Mechanics cases exercise real tools directly; only full_turn cases measure the master loop.",
+    "Fixtures assert individual world, resource, progress and visibility invariants.",
+    "Snapshots exclude random identities; fixture assertions retain identity checks.",
+    "No actual cost, cache, provider tokens, live latency or literary quality is measured."
+  ]
+}

@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "attack",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[attack]",
+      "tags": [
+        "attack"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "miss",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[miss]",
+      "tags": [
+        "miss"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "critical",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[critical]",
+      "tags": [
+        "critical"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "native_action",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[native]",
+      "tags": [
+        "native"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "speech",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[speech]",
+      "tags": [
+        "speech"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "unparsed",
+      "nodeid": "tests/test_turn_efficiency.py::test_paired_scripted_turn[unparsed]",
+      "tags": [
+        "unparsed"
+      ],
+      "scope": "full_turn"
+    },
+    {
+      "id": "move_attack",
+      "nodeid": "tests/test_combat.py::test_compound_opening_approach_and_attack_runs_in_order",
+      "tags": [
+        "move_attack"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "spell_resources",
+      "nodeid": "tests/test_spells.py::test_cast_in_combat_and_out",
+      "tags": [
+        "spell",
+        "resource_denial",
+        "two_heroes"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "spell_range",
+      "nodeid": "tests/test_spells.py::test_move_cast_out_of_reach_does_not_consume_spell_slot",
+      "tags": [
+        "resource_denial"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "area_spell",
+      "nodeid": "tests/test_spells.py::test_area_must_fit_and_lingering_zone_ticks",
+      "tags": [
+        "aoe"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "reaction",
+      "nodeid": "tests/test_combat.py::test_cowardly_flees_and_opportunity_attack",
+      "tags": [
+        "reaction"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "social_check",
+      "nodeid": "tests/test_playtest_checks.py::test_npc_attitude_follows_targeted_social_check",
+      "tags": [
+        "social"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "search_found",
+      "nodeid": "tests/test_multipart_progress.py::test_cast_and_search_discovery_complete_both",
+      "tags": [
+        "search_found",
+        "multipart"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "search_empty",
+      "nodeid": "tests/test_multipart_progress.py::test_failed_search_completes_without_reroll",
+      "tags": [
+        "search_empty"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "container",
+      "nodeid": "tests/test_world_generation.py::test_search_container_charges_once_and_reads_ready_contents",
+      "tags": [
+        "container"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "preparation",
+      "nodeid": "tests/test_layout_transit.py::test_door_closed_during_preparation_keeps_area_but_not_hero",
+      "tags": [
+        "preparation",
+        "transition"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "pickup",
+      "nodeid": "tests/test_playtest_items.py::test_take_item_preserves_unique_identity_and_inventory",
+      "tags": [
+        "pickup"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "transfer",
+      "nodeid": "tests/test_playtest_items.py::test_pass_to_npc_keeps_identity_private_and_can_return",
+      "tags": [
+        "transfer"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "unknown_target",
+      "nodeid": "tests/test_tools.py::test_invalid_ids_and_idempotency",
+      "tags": [
+        "unknown_target"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "invalid_ref",
+      "nodeid": "tests/test_action_binding.py::test_wrong_target_or_foreign_ref_changes_nothing",
+      "tags": [
+        "invalid_ref"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "rollback",
+      "nodeid": "tests/test_resolution_executor.py::test_second_operation_failure_rolls_back_first",
+      "tags": [
+        "rollback"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "hidden_fact",
+      "nodeid": "tests/test_resolution_executor.py::test_consequence_cannot_reveal_fact_to_other_group",
+      "tags": [
+        "hidden_fact",
+        "split_party"
+      ],
+      "scope": "visibility"
+    },
+    {
+      "id": "split_party",
+      "nodeid": "tests/test_party_split.py::test_each_hero_sees_own_place",
+      "tags": [
+        "split_party",
+        "two_heroes"
+      ],
+      "scope": "visibility"
+    },
+    {
+      "id": "multipart",
+      "nodeid": "tests/test_multipart_progress.py::test_successful_search_waits_for_world_confirmation",
+      "tags": [
+        "multipart",
+        "search_found"
+      ],
+      "scope": "mechanics"
+    },
+    {
+      "id": "public_narration",
+      "nodeid": "tests/test_multipart_narration.py::test_hidden_failure_notice_does_not_expose_dc_or_secrets",
+      "tags": [
+        "hidden_fact"
+      ],
+      "scope": "visibility"
+    },
+    {
+      "id": "narrator_visibility",
+      "nodeid": "tests/test_master_prompt_context.py::test_narrator_view_preserves_split_and_common_knowledge",
+      "tags": [
+        "hidden_fact",
+        "split_party"
+      ],
+      "scope": "visibility"
+    }
+  ]
+}

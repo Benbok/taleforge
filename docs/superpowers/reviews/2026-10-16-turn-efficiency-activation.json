@@ -1,0 +1,23 @@
+{
+  "campaign_id": "c_45d44d2e512123f3",
+  "campaign_name": "Тест затрат",
+  "activated_at": "2026-10-16T05:03:31.001499+00:00",
+  "activated_at_moscow": "2026-10-16T08:03:31.001499+03:00",
+  "previous_flags": null,
+  "flags": {
+    "action_refs": true,
+    "tool_profiles": true,
+    "role_context": true,
+    "early_finish": true,
+    "compact_voice": true,
+    "compact_review": true
+  },
+  "before": {
+    "calls": 237,
+    "stored_cost_usd": 0.79253886,
+    "calls_with_error": 20,
+    "running_turns": 0,
+    "campaign_status": "paused"
+  },
+  "notes": "All six flags enabled at user request. Historical stored cost is not confirmed provider billing. Compare new calls after activated_at; no game action or paid evaluation submitted by assistant."
+}

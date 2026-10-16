@@ -23,7 +23,7 @@ def test_unlock_matches_requested_passage():
 
 
 def test_binding_enforces_dependency_before_execution():
-    message = Message(id="m", campaign_id="c", intent={"actions": [
+    message = Message(id="m", campaign_id="c", kind="action", seat_id="seat", intent={"actions": [
         {"verb": "interact"},
         {"verb": "search", "depends_on": [{"part": 0, "requires": "success"}]},
     ]})
@@ -36,7 +36,11 @@ def test_binding_enforces_dependency_before_execution():
             return message
 
     ctx = SimpleNamespace(
-        campaign=SimpleNamespace(id="c"), world=SimpleNamespace(characters={"hero": object()}),
+        campaign=SimpleNamespace(id="c", settings={}),
+        world=SimpleNamespace(
+            characters={"hero": SimpleNamespace(id="hero", seat_id="seat")},
+            entities={}, place_of=lambda hero: None, in_fight=lambda ident: False,
+        ),
         session=Session(), required_actions=refs, action_progress={},
     )
 
