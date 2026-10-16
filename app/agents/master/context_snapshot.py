@@ -70,8 +70,18 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
     del cfg, messages, memory, history
     world = ctx.world
     scene = world.scene
-    current_place = getattr(world, "focus", None) or getattr(scene, "location_id", None)
     viewers = getattr(ctx, "narration_viewer_ids", None)
+    current_ids = set(viewers or getattr(world, "crew", set()) or world.characters)
+    current_places = {
+        world.place_of(world.characters[hero_id])
+        for hero_id in current_ids
+        if hero_id in world.characters and world.place_of(world.characters[hero_id])
+    }
+    if not current_places:
+        fallback = getattr(world, "focus", None) or getattr(scene, "location_id", None)
+        if fallback:
+            current_places.add(fallback)
+    current_place = sorted(current_places)[0] if current_places else None
     public_subjects: set[str] = set(viewers or ())
     public_places = {
         world.place_of(world.characters[hero_id])
@@ -125,31 +135,37 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             continue
         place = getattr(entity, "location_id", None)
         subjects = {entity.id, *(x for x in (place,) if x)}
+        if viewers is None:
+            state_text = _json(entity.state or {})
+        else:
+            from app.tools.runtime import public_entity
+
+            state_text = _json(public_entity(entity))
         facts.append(
             _fact(
                 f"target:{entity.id}",
                 "targets",
                 f"{entity.name} ({entity.id}); kind={entity.kind}; place={place or 'unknown'}; "
-                f"state={_json(entity.state or {})}",
+                f"state={state_text}",
                 subjects=subjects,
                 audience=public({entity.id}),
             )
         )
 
-    if current_place:
+    for current_place in sorted(current_places):
         place = world.entities.get(current_place)
         if place is not None:
             facts.append(
                 _fact(
                     f"place:{current_place}",
                     "places",
-                f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
+                    f"Current place {place.name} ({place.id}); state={_json(place.state or {})}",
                     subjects={current_place},
                     audience=public({current_place}),
                     mandatory=True,
                 )
             )
-    else:
+    if not current_places:
         facts.append(
             _fact(
                 "place:unknown",
@@ -161,10 +177,10 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
         )
 
     for entity in sorted(world.entities.values(), key=lambda item: item.id):
-        if entity.kind != "location" or entity.id == current_place:
+        if entity.kind != "location" or entity.id in current_places:
             continue
         parent = getattr(entity, "location_id", None)
-        if parent == current_place:
+        if parent in current_places:
             facts.append(
                 _fact(
                     f"route:{entity.id}",
@@ -214,7 +230,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 "plot:live",
                 "plot",
                 f"Live plot state: {_json(world.plot)}",
-                subjects={current_place} if current_place else set(),
+                subjects=set(current_places),
             )
         )
 

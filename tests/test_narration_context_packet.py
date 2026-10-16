@@ -80,3 +80,34 @@ def test_real_narrate_bundle_keeps_public_facts_and_excludes_private_motive(game
         assert bundle.version == "context-v2"
 
     play(settings, cid, [], check)
+
+
+def test_real_db_snapshot_projects_visible_npc_state_for_narration(game):
+    from app.agents.master.context_snapshot import collect_context_snapshot
+    from app.tools.registry import execute
+
+    settings, cid, hero = game
+
+    async def check(ctx):
+        result = await execute(
+            ctx,
+            "spawn_entity",
+            {"creature_template_id": "creature.goblin", "name": "Смотритель", "zone": "near"},
+        )
+        npc_id = result["result"]["spawned"][0]["id"]
+        npc = ctx.world.entities[npc_id]
+        npc.state = {
+            **(npc.state or {}),
+            "hp": 10,
+            "hp_max": 10,
+            "attitude": "neutral",
+            "private_state": "PRIVATE_NPC_STATE",
+        }
+        ctx.narration_viewer_ids = {hero}
+        facts = collect_context_snapshot(ctx, None, messages=(), memory="", history="")
+        public = next(item.text for item in facts if item.key == f"target:{npc_id}")
+        assert "Смотритель" in public
+        assert "невредим" in public
+        assert "PRIVATE_NPC_STATE" not in public
+
+    play(settings, cid, [], check)

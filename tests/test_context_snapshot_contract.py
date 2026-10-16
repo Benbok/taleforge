@@ -175,3 +175,69 @@ def test_structural_values_are_not_truncated_in_snapshot():
 
     assert "x" * 7000 in place_text
     assert "y" * 7000 in plot_text
+
+
+def test_public_snapshot_projects_entity_state_without_private_markers():
+    place = SimpleNamespace(id="place-1", kind="location", name="Площадь", state={}, location_id=None)
+    hero = SimpleNamespace(id="hero-1", name="Герой", status="approved", location_id=place.id, seat_id="seat-1")
+    npc = SimpleNamespace(
+        id="npc-1",
+        kind="creature",
+        name="Смотритель",
+        location_id=place.id,
+        template_id="npc-template-1",
+        zone="near",
+        state={"hp": 10, "hp_max": 10, "attitude": "neutral", "private_state": "PRIVATE_STATE_MARKER"},
+    )
+    world = SimpleNamespace(
+        scene=SimpleNamespace(location_id=place.id),
+        focus=None,
+        characters={hero.id: hero},
+        entities={place.id: place, npc.id: npc},
+        inventory={},
+        effects=[],
+        plot={},
+        revealed={hero.id: set()},
+        crew={hero.id},
+        place_of=lambda character: character.location_id,
+        narrative_facts=lambda _subjects, **_kwargs: (),
+    )
+    ctx = SimpleNamespace(world=world, required_actions=(), narration_viewer_ids={hero.id})
+
+    facts = collect_context_snapshot(ctx, None, messages=(), memory="", history="")
+    target = next(item for item in facts if item.key == "target:npc-1")
+
+    assert "PRIVATE_STATE_MARKER" not in target.text
+    assert "невредим" in target.text
+
+
+def test_snapshot_uses_current_viewer_places_instead_of_stale_focus():
+    places = {
+        "place-a": SimpleNamespace(id="place-a", kind="location", name="Площадь", state={}, location_id=None),
+        "place-b": SimpleNamespace(id="place-b", kind="location", name="Доки", state={}, location_id=None),
+        "old-place": SimpleNamespace(id="old-place", kind="location", name="Старая сцена", state={}, location_id=None),
+    }
+    heroes = {
+        "hero-a": SimpleNamespace(id="hero-a", name="А", status="approved", location_id="place-a", seat_id="a"),
+        "hero-b": SimpleNamespace(id="hero-b", name="Б", status="approved", location_id="place-b", seat_id="b"),
+    }
+    world = SimpleNamespace(
+        scene=SimpleNamespace(location_id="old-place"),
+        focus="old-place",
+        characters=heroes,
+        entities=places,
+        inventory={},
+        effects=[],
+        plot={},
+        revealed={},
+        crew={"hero-a", "hero-b"},
+        place_of=lambda character: character.location_id,
+        narrative_facts=lambda _subjects, **_kwargs: (),
+    )
+    ctx = SimpleNamespace(world=world, required_actions=(), narration_viewer_ids=set(heroes))
+
+    facts = collect_context_snapshot(ctx, None, messages=(), memory="", history="")
+    keys = {item.key for item in facts}
+
+    assert {"place:place-a", "place:place-b"} <= keys
+    assert "place:old-place" not in keys

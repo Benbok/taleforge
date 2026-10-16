@@ -164,7 +164,13 @@ class FinishMixin:
                 history=inputs.get("convo") or "",
             )
             context_subjects = set(ctx.narration_viewer_ids)
-            if ctx.world.scene.location_id:
+            current_places = {
+                ctx.world.place_of(ctx.world.characters[hero_id])
+                for hero_id in ctx.narration_viewer_ids
+                if hero_id in ctx.world.characters and ctx.world.place_of(ctx.world.characters[hero_id])
+            }
+            context_subjects.update(current_places)
+            if not current_places and ctx.world.scene.location_id:
                 context_subjects.add(ctx.world.scene.location_id)
             context_subjects.update(
                 entity.id
