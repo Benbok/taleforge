@@ -3,7 +3,9 @@ from types import SimpleNamespace
 from app.core import combat
 from app.core.characters import public_view
 from app.core.companions import bring_companions, companion_record, companions_for_hero, public_companion
-from tests.test_tools import call, game, play  # noqa: F401
+from tests.test_tools import call, play
+
+pytest_plugins = ("tests.test_tools",)
 
 
 def _entity(**state):
