@@ -629,31 +629,48 @@ class TurnMixin:
         ]
         prompt_metadata = None
         if flags["role_context"]:
-            from app.agents.master.prompt_context import (
-                build_prompt_bundle,
-                without_action_context,
-                without_context_block,
-            )
+            from app.agents.master.context_snapshot import collect_context_snapshot
+            from app.agents.master.prompt_context import build_prompt_bundle
 
             legacy_messages = [dict(msgs[0]), dict(msgs[1])]
-            # The role bundle carries action refs as its own section.  Keeping
-            # the same rendered JSON inside the legacy request doubled the
-            # largest dynamic block and made size diagnostics misleading.
             uncertain_intent = any(not isinstance(m.intent, dict) or not m.intent.get("actions") for m in new)
-            if not uncertain_intent:
-                msgs[1]["content"] = without_context_block(
-                    without_action_context(msgs[1]["content"]), resolution_note
-                )
+            subjects = set(ctx.world.crew)
+            if ctx.world.scene.location_id:
+                subjects.add(ctx.world.scene.location_id)
+            subjects.update(ref.actor_id for ref in ctx.required_actions)
+            subjects.update(
+                entity.id
+                for entity in ctx.world.entities.values()
+                if entity.location_id == ctx.world.scene.location_id
+            )
+            context_facts = collect_context_snapshot(
+                ctx,
+                cfg,
+                messages=new,
+                memory=memory_note,
+                history=convo,
+            )
+            new_request = f"Новые реплики и действия игроков:\n{news}{combat_note}{route_note}"
+            world_context = (
+                f"Таблица сцены:\n{ctx.world.scene_table()}\n\n{world_note}{stall}"
+                f"\n{creative_note(creative_context(ctx))}\n{await adaptation_prompt(ctx)}"
+            )
 
             bundle = await build_prompt_bundle(
                 ctx,
                 cfg,
                 role="decide",
                 inputs={
-                    "request": msgs[1]["content"],
+                    "request": new_request,
                     "legacy_messages": legacy_messages,
                     "uncertain": uncertain_intent,
                     "resolution": resolution_note,
+                    "context_facts": context_facts,
+                    "subjects": subjects,
+                    "memory": memory_note,
+                    "history": convo,
+                    "world": world_context,
+                    "server_updates": route_note,
                 },
             )
             msgs = bundle.messages

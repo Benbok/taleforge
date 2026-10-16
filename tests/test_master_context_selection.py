@@ -1,7 +1,11 @@
+# The fixture imported from test_tools intentionally shares its name with test args.
+# ruff: noqa: F811
+
 import asyncio
 
 from app.agents.master.context_selection import ContextFact, collect_decision_facts, select_context
 from app.agents.master.prompt_context import without_action_context, without_context_block
+from tests.test_tools import game, play  # noqa: F401
 
 
 def f(key, section="scene", text=None, subjects=(), deps=(), audience=("party",), mandatory=False):
@@ -74,3 +78,19 @@ def test_decision_fact_adapter_always_retains_player_request():
     result = asyncio.run(collect_decision_facts(None, None, {"request": "PLAYER_REQUEST", "context_facts": ()}))
     assert [item.key for item in result] == ["request"]
     assert result[0].mandatory
+
+
+def test_live_context_snapshot_uses_stable_structured_keys(game):
+    from app.agents.master.context_snapshot import collect_context_snapshot
+
+    settings, cid, hero = game
+
+    async def check(ctx):
+        facts = collect_context_snapshot(ctx, None, messages=(), memory="MEMORY", history="HISTORY")
+        keys = {item.key for item in facts}
+        assert f"hero:{hero}" in keys
+        assert any(item.section == "places" for item in facts)
+        assert all(item.audience == frozenset({"master"}) for item in facts)
+        assert all(item.key and item.text for item in facts)
+
+    play(settings, cid, [], check)

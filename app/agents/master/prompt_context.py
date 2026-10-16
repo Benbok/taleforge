@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from app.agents import rhythm
 from app.agents.master.common import MAX_CALLS, render
-from app.agents.master.context_selection import ContextFact, select_context
+from app.agents.master.context_selection import ContextFact, collect_decision_facts, select_context
 from app.core import adventure, audio, bonds, persona, plot
 from app.core.brief import brief_text
 from app.core.narrative.view import master_canon_block
@@ -148,7 +148,8 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         raise ValueError(f"Unknown prompt role: {role}")
     request = inputs.get("request")
     legacy = inputs.get("legacy_messages")
-    if role == "decide" and inputs.get("uncertain") and legacy is not None:
+    structured_decide = role == "decide" and "context_facts" in inputs
+    if role == "decide" and inputs.get("uncertain") and legacy is not None and not structured_decide:
         return PromptBundle(
             legacy,
             {},
@@ -215,6 +216,26 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
         blocks["audio"] = values["audio"] or ""
         if inputs.get("resolution"):
             blocks["resolution"] = inputs["resolution"]
+        for name in ("memory", "history", "world", "server_updates"):
+            content = inputs.get(name)
+            if isinstance(content, str) and content:
+                blocks[name] = content
+        if structured_decide:
+            facts = await collect_decision_facts(ctx, cfg, inputs)
+            selection = select_context(
+                facts,
+                role="decide",
+                subjects=frozenset(inputs.get("subjects") or ()),
+                audience=frozenset({"master"}),
+                uncertain=bool(inputs.get("uncertain")),
+            )
+            grouped: dict[str, list[str]] = {}
+            for fact in selection.facts:
+                if fact.key == "request":
+                    continue
+                grouped.setdefault(fact.section, []).append(fact.text)
+            for section, texts in grouped.items():
+                blocks[f"context:{section}"] = "\n".join(texts)
     if inputs.get("mood"):
         blocks["mood"] = inputs["mood"]
     blocks["request"] = request
@@ -222,7 +243,7 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
     messages = [{"role": "system", "content": system}, {"role": "user", "content": dynamic}]
     budget = {"decide": 12000, "narrate": 12000, "voice_line": 2000, "review": 8000}[role]
     over_budget = (len(system) + len(dynamic) + 3) // 4 > budget
-    if over_budget and legacy is not None and role in {"decide", "narrate", "review"}:
+    if over_budget and legacy is not None and role in {"decide", "narrate", "review"} and not structured_decide:
         return PromptBundle(
             legacy,
             blocks,
@@ -233,9 +254,11 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
     return PromptBundle(
         messages,
         blocks,
+        version="context-v2" if structured_decide else "role-context-v1",
         fallback_reason="soft_budget" if over_budget else None,
-        assembly_path="expanded" if over_budget else "selected",
+        assembly_path="expanded" if over_budget or (structured_decide and selection.expansion_reasons) else "selected",
         selection_applied=True,
+        expansion_reasons=selection.expansion_reasons if structured_decide else (),
     )
 
 

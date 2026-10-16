@@ -96,7 +96,7 @@ def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, ll
     assert act(game_client, player, c["id"], "Машу рукой")["kind"] == "narration"
     calls = rows(settings, LlmCall, LlmCall.campaign_id == c["id"], LlmCall.purpose.in_(["decide", "narrate"]))
     assert {call.diagnostics["prompt_role"] for call in calls} == {"decide", "narrate"}
-    assert all(call.diagnostics["prompt_version"] == "role-context-v1" for call in calls)
+    assert {call.diagnostics["prompt_version"] for call in calls} == {"context-v2", "role-context-v1"}
     assert all("role_blocks" in call.diagnostics for call in calls)
 
 
@@ -207,5 +207,58 @@ def test_missing_role_input_preserves_legacy_context(game):
             inputs={"request": "speech", "uncertain": True, "legacy_messages": original},
         )
         assert uncertain.fallback_reason == "uncertain_intent" and uncertain.messages == original
+
+    play(settings, cid, [], check)
+
+
+def test_decide_bundle_selects_structured_facts_by_subject(game):
+    from app.agents.master.context_selection import ContextFact
+    from app.agents.master.prompt_context import build_prompt_bundle
+
+    settings, cid, hero = game
+
+    async def check(ctx):
+        facts = (
+            ContextFact(
+                key="npc:current",
+                section="npcs",
+                text="CURRENT_NPC_MARKER",
+                subjects=frozenset({"npc-current"}),
+                dependencies=frozenset(),
+                audience=frozenset({"master"}),
+            ),
+            ContextFact(
+                key="npc:distant",
+                section="npcs",
+                text="DISTANT_NPC_MARKER",
+                subjects=frozenset({"npc-distant"}),
+                dependencies=frozenset(),
+                audience=frozenset({"master"}),
+            ),
+            ContextFact(
+                key="action:current",
+                section="actions",
+                text="CURRENT_ACTION_MARKER",
+                subjects=frozenset({"npc-current"}),
+                dependencies=frozenset({"npc:current"}),
+                audience=frozenset({"master"}),
+                mandatory=True,
+            ),
+        )
+        bundle = await build_prompt_bundle(
+            ctx,
+            AgentConfig(settings={}),
+            role="decide",
+            inputs={
+                "request": "PLAYER_REQUEST",
+                "context_facts": facts,
+                "subjects": {"npc-current"},
+            },
+        )
+        request = bundle.messages[1]["content"]
+        assert "CURRENT_NPC_MARKER" in request
+        assert "CURRENT_ACTION_MARKER" in request
+        assert "DISTANT_NPC_MARKER" not in request
+        assert bundle.selection_applied is True
 
     play(settings, cid, [], check)

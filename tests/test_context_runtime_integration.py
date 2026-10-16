@@ -1,5 +1,8 @@
 """Runtime assertions for context metadata attached to real LLM calls."""
 
+# Fixtures imported from test_master intentionally share names with test args.
+# ruff: noqa: F811
+
 from __future__ import annotations
 
 import asyncio
@@ -11,6 +14,7 @@ from app.agents.master.prompt_context import PromptBundle
 from app.agents.master.service import MasterService
 from app.core.llm_diagnostics import message_sizes
 from app.db.models import AgentConfig
+from tests.test_master import admin_g, dice, game_client, llm  # noqa: F401
 
 
 def _service(llm: ScriptedLLM) -> MasterService:
@@ -143,3 +147,82 @@ def test_runtime_sizes_match_the_serialized_llm_complete_call():
     expected = message_sizes(request["messages"], request["tools"])
     actual = {key: call.diagnostics[key] for key in expected}
     assert actual == expected
+
+
+def test_production_decide_request_selects_snapshot_facts(game_client, admin_g, llm, monkeypatch):
+    from app.agents.master import context_snapshot
+    from app.agents.master.context_selection import ContextFact
+    from tests.game import party
+    from tests.test_master import DONE, act
+
+    campaign, (player,), hero = party(game_client, admin_g)
+    hero_id = hero["id"]
+    facts = (
+        ContextFact(
+            key="npc:current",
+            section="targets",
+            text="CURRENT_NPC_MARKER",
+            subjects=frozenset({hero_id}),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+        ),
+        ContextFact(
+            key="npc:distant",
+            section="targets",
+            text="DISTANT_NPC_MARKER",
+            subjects=frozenset({"far-away-npc"}),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+        ),
+        ContextFact(
+            key="reaction:current",
+            section="reactions",
+            text="ACTIVE_REACTION_MARKER",
+            subjects=frozenset({hero_id}),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+        ),
+        ContextFact(
+            key="promise:old",
+            section="requests",
+            text="OLD_PROMISE_MARKER",
+            subjects=frozenset({hero_id}),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+            mandatory=True,
+        ),
+        ContextFact(
+            key="rule:current",
+            section="rules",
+            text="RULE_MARKER",
+            subjects=frozenset(),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+        ),
+        ContextFact(
+            key="action_ref:current",
+            section="requests",
+            text="ACTION_REF_MARKER",
+            subjects=frozenset({hero_id}),
+            dependencies=frozenset(),
+            audience=frozenset({"master"}),
+            mandatory=True,
+        ),
+    )
+    monkeypatch.setattr(context_snapshot, "collect_context_snapshot", lambda *args, **kwargs: facts)
+    llm.replies += [
+        {"tool_calls": [("submit_intent", {"actions": [{"index": 0, "verb": "interact", "summary": "Wave"}]})]},
+        {"tool_calls": [("auto_success", {"character_id": hero_id, "reason": "wave"})]},
+        DONE,
+        {"text": "Ты машешь рукой."},
+        {"text": "Ты машешь рукой."},
+    ]
+
+    assert act(game_client, player, campaign["id"], "Машу рукой")["kind"] == "narration"
+    decide_request = llm.requests[1]["messages"][1]["content"]
+    assert "CURRENT_NPC_MARKER" in decide_request
+    assert "ACTIVE_REACTION_MARKER" in decide_request
+    assert "OLD_PROMISE_MARKER" in decide_request
+    assert "RULE_MARKER" in decide_request
+    assert "ACTION_REF_MARKER" in decide_request
+    assert "DISTANT_NPC_MARKER" not in decide_request
