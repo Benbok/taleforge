@@ -430,7 +430,8 @@ def _can_handle_form(ctx: ToolContext, ch: Character) -> None:
         raise ToolError(
             f"{ch.name}: облик «{form['name']}» не позволяет брать и передавать снаряжение. "
             "Предмет остаётся на месте; сначала нужно вернуться в подходящий облик.",
-            code="form_cannot_handle_items", category="rule_denial",
+            code="form_cannot_handle_items",
+            category="rule_denial",
         )
 
 

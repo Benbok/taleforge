@@ -23,10 +23,16 @@ def test_rat_cannot_pick_up_items_until_reverting(client, admin, settings, uniqu
         if unique:
             entity = ctx.world.entities[item["entity_id"]]
             entity.state = {**entity.state, "world_object": _world_item_state()}
-        await ok(ctx, "set_character_form", {
-            "character_id": hid, "name": "Крыса", "can_handle_items": False,
-            "reason": "Подтверждённое превращение перед входом в лаз",
-        })
+        await ok(
+            ctx,
+            "set_character_form",
+            {
+                "character_id": hid,
+                "name": "Крыса",
+                "can_handle_items": False,
+                "reason": "Подтверждённое превращение перед входом в лаз",
+            },
+        )
         return item["entity_id"]
 
     entity_id = play(settings, cid, setup)
@@ -66,9 +72,15 @@ def test_rat_cannot_handle_existing_equipment(client, admin, settings, tool):
     cid, hid = campaign["id"], hero["id"]
 
     async def scenario(ctx):
-        item = await ok(ctx, "give_item", {
-            "character_id": hid, "item_template_id": "item.potion_of_healing", "reason": "запас",
-        })
+        item = await ok(
+            ctx,
+            "give_item",
+            {
+                "character_id": hid,
+                "item_template_id": "item.potion_of_healing",
+                "reason": "запас",
+            },
+        )
         await ok(ctx, "set_character_form", {"character_id": hid, "name": "Крыса", "reason": "Превращение в зверя"})
         row = next(it for it in ctx.world.inventory[hid] if it.id == item["inventory_id"])
         before = (row.qty, row.equipped)
@@ -88,13 +100,27 @@ def test_form_expiration_and_body_that_can_handle_items(client, admin, settings)
     async def scenario(ctx):
         await ok(ctx, "create_location", {"name": "Зал", "make_current": True})
         args = {"character_id": hid, "item_template_id": "item.longsword", "reason": "награда"}
-        await ok(ctx, "set_character_form", {
-            "character_id": hid, "name": "Человек", "can_handle_items": True, "reason": "Физическое превращение",
-        })
+        await ok(
+            ctx,
+            "set_character_form",
+            {
+                "character_id": hid,
+                "name": "Человек",
+                "can_handle_items": True,
+                "reason": "Физическое превращение",
+            },
+        )
         await ok(ctx, "give_item", args)
-        await ok(ctx, "set_character_form", {
-            "character_id": hid, "name": "Крыса", "duration_seconds": 60, "reason": "Временное превращение",
-        })
+        await ok(
+            ctx,
+            "set_character_form",
+            {
+                "character_id": hid,
+                "name": "Крыса",
+                "duration_seconds": 60,
+                "reason": "Временное превращение",
+            },
+        )
         assert not (await execute(ctx, "give_item", args))["ok"]
         ctx.world.scene.game_time += 60
         assert (await ok(ctx, "get_character", {"character_id": hid}))["current_form"] is None

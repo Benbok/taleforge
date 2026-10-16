@@ -46,7 +46,9 @@ async def set_character_form(ctx: ToolContext, a: SetCharacterFormArgs) -> dict:
     ctx.world.invalidate(ch.id)
     result = {"character": ch.name, "current_form": current_form(ch, ctx.world.scene.game_time)}
     await ctx.record(
-        "set_character_form", actor_id=ch.id, payload=result,
+        "set_character_form",
+        actor_id=ch.id,
+        payload=result,
         inverse=[{"table": "characters", "id": ch.id, "field": "resources", "before": before}],
     )
     return result
