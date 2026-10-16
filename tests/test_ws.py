@@ -1,5 +1,8 @@
+import json
+import time
 from contextlib import contextmanager
 
+import anyio
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
@@ -27,6 +30,35 @@ def next_of(ws, type_):
         if e["type"] == type_:
             return e
     raise AssertionError(f"нет события {type_}")
+
+
+async def _receive_json_with_deadline(ws, timeout_s):
+    with anyio.fail_after(timeout_s):
+        message = await ws._send_rx.receive()
+    ws._raise_on_close(message)
+    raw = message.get("text") if "text" in message else message["bytes"].decode("utf-8")
+    return json.loads(raw)
+
+
+def wait_message_result(ws, *, client_id: str, timeout_s: float = 10.0) -> dict:
+    """Wait for this request's terminal message event with a real receive deadline."""
+    started = time.monotonic()
+    received: list[str] = []
+    while True:
+        remaining = timeout_s - (time.monotonic() - started)
+        if remaining <= 0:
+            types = ", ".join(received) or "none"
+            raise TimeoutError(f"timed out waiting for message result; received event types: {types}")
+        try:
+            event = ws.portal.call(_receive_json_with_deadline, ws, remaining)
+        except TimeoutError as exc:
+            types = ", ".join(received) or "none"
+            raise TimeoutError(f"timed out waiting for message result; received event types: {types}") from exc
+        received.append(str(event.get("type")))
+        if event.get("type") == "message.new":
+            return event
+        if event.get("type") == "message.rejected" and event.get("payload", {}).get("client_id") == client_id:
+            return event
 
 
 def presence_of(ws, seat_id):

@@ -19,7 +19,7 @@ from tests.game import FIGHTER, QueueDice, import_base, ok, party, quiet, run
 from tests.test_api import invite, register
 from tests.test_map import _ok, _play
 from tests.test_master import DONE
-from tests.test_ws import connect, next_of
+from tests.test_ws import connect, next_of, wait_message_result
 
 
 def _split_party(client, admin, settings, **kw):
@@ -332,23 +332,45 @@ def _fight(settings, cid, ids):
     return _play(settings, cid, go)
 
 
-def test_fight_is_only_where_the_foes_are(client, admin, settings):
-    cid, (p1, p2), (h1, h2), ids = _split_party(client, admin, settings)
+def test_fight_is_only_where_the_foes_are(game_client, admin_g, llm, settings):
+    cid, (p1, p2), (h1, h2), ids = _split_party(game_client, admin_g, settings)
     assert set(_fight(settings, cid, ids)) == {h2["id"], ids["gob"]}
 
     # Бран вне боя: у него свободный режим, хода нет, писать можно как обычно
-    with connect(client, p1, cid) as (ws, snap):
+    llm.replies += [
+        {
+            "tool_calls": [
+                (
+                    "submit_intent",
+                    {
+                        "kind": "action",
+                        "character_id": h1["id"],
+                        "actions": [{"verb": "interact", "target_id": ids["fountain"]}],
+                        "confidence": 1.0,
+                        "problem": "none",
+                    },
+                )
+            ]
+        },
+        DONE,
+        {"text": "Бран пьёт из фонтана."},
+    ]
+    with connect(game_client, p1, cid) as (ws, snap):
         scene = snap["payload"]["scene"]
         assert scene["mode"] == "free" and scene["turn"] is None and snap["payload"]["turn"] is None
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Пью из фонтана"}})
-        assert next_of(ws, "message.new")["payload"]["content"] == "Пью из фонтана"
-        for _ in range(40):
-            e = ws.receive_json()
-            if e["type"] == "message.new" and e["payload"]["kind"] in ("narration", "system"):
-                break
-    with connect(client, p2, cid) as (_, snap):
+        ws.send_json(
+            {
+                "type": "message.send",
+                "payload": {"kind": "action", "text": "Пью из фонтана", "client_id": "fight-action"},
+            }
+        )
+        action = wait_message_result(ws, client_id="fight-action", timeout_s=2.0)
+        assert action["payload"]["content"] == "Пью из фонтана"
+        narration = wait_message_result(ws, client_id="fight-narration", timeout_s=2.0)
+        assert narration["payload"]["kind"] in ("narration", "system")
+    with connect(game_client, p2, cid) as (_, snap):
         assert snap["payload"]["scene"]["mode"] == "combat" and snap["payload"]["turn"] is not None
-    client.portal.call(client.app.state.master.wait_idle, cid)
+    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
 
     async def target(ctx):
         gob = ctx.world.actor(ids["gob"])
