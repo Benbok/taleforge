@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.agents import intent as intents
-from app.agents.master.intent_recovery import recover_message_intent
 from app.agents.llm import LLMError, ScriptedLLM
+from app.agents.master.intent_recovery import recover_message_intent
 from app.db.models import MasterTurn, Message
 from app.main import create_app
 from tests.conftest import login

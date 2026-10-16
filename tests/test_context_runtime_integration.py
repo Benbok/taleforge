@@ -240,6 +240,21 @@ def test_production_decide_request_selects_snapshot_facts(game_client, admin_g, 
     assert "ACTION_REF_MARKER" in decide_request
     assert "DISTANT_NPC_MARKER" not in decide_request
 
+    # The production packet has two complementary sources: selected semantic
+    # facts and the retained scene table.  Shared words between them are not a
+    # duplicate; the same selected record appearing twice is.
+    for marker in (
+        "CURRENT_NPC_MARKER",
+        "ACTIVE_REACTION_MARKER",
+        "OLD_PROMISE_MARKER",
+        "RULE_MARKER",
+        "ACTION_REF_MARKER",
+    ):
+        assert decide_request.count(marker) == 1
+    assert decide_request.count("Таблица сцены:") == 1
+    assert decide_request.count("history:") == 1
+    assert decide_request.count("Недавние сообщения чата:") == 1
+
 
 def test_production_narrate_request_uses_audience_safe_snapshot(game_client, admin_g, llm, monkeypatch):
     from app.agents.master import context_snapshot

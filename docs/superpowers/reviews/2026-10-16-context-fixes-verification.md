@@ -4,10 +4,10 @@ Date: 2026-10-16 (Moscow)
 
 ## Current status
 
-Tasks 1–5 are implemented and committed. Task 6 has an executable offline
-scenario harness and paired context packets, but it is not yet a full
-orchestrator A/B measurement. Task 7 is not complete: the full suite exposed
-one remaining split-party websocket timeout.
+Tasks 1–6 are implemented and verified in the current `main`. The full suite
+is green. This report supersedes the earlier partial 90-pass result and the
+pre-fix full-suite failure summary below; those entries remain as historical
+evidence only.
 
 No paid model, live game, application restart, or manual user action was run.
 
@@ -26,6 +26,29 @@ The pre-existing untracked `.tmp_exec_probe` and the plan file remain
 untouched.
 
 ## Verification evidence
+
+The final runtime integration assertion observes a production decide packet:
+selected fact markers occur once each, the retained `scene_table` occurs once,
+and the required history block is present. The snapshot is not a complete
+replacement for the scene table, so no artificial size reduction is claimed.
+
+The final targeted matrix was:
+
+```text
+.venv\Scripts\python.exe -m pytest tests/test_master_context_selection.py tests/test_context_runtime_integration.py tests/test_context_quality.py tests/test_context_eval_variants.py tests/test_turn_efficiency.py -n 0 -q
+65 passed, 1 warning
+```
+
+The final full run was:
+
+```text
+.venv\Scripts\python.exe -m pytest -n 4 -q
+1893 passed, 5 skipped, 35 warnings
+exit code: 0
+```
+
+The earlier partial result below is retained only to explain why the plan was
+reopened; it is not the current acceptance result.
 
 Targeted integration set after the final fix:
 
