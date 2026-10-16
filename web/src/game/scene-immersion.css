@@ -45,7 +45,7 @@
 @media (prefers-reduced-motion: reduce) { .tf-location-header { transition: none; } }
 
 @media (min-width: 768px) {
-  .tf-reading-mode .tf-game-layout { grid-template-columns: minmax(0, 1fr); max-width: 64rem; }
+  .tf-reading-mode .tf-game-layout { grid-template-columns: minmax(0, 1fr); max-width: 76rem; }
   .tf-reading-mode .tf-party-sidebar { display: none; }
   .tf-reading-mode .tf-game-tabs { display: grid; }
   .tf-reading-chat .tf-scene-sidebar { display: none; }
