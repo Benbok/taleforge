@@ -48,7 +48,7 @@ from app.agents.master.tool_profiles import (
 from app.core import audio, chat, combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
-from app.core.llm_diagnostics import message_sizes, reply_metrics
+from app.core.llm_diagnostics import message_sizes, reply_metrics, retry_metrics
 from app.core.resolution.contracts import ActionProgress, ActionRef, ResolutionResult, ToolActionBinding
 from app.core.scene_context import message_scene_context
 from app.core.world_tx import WorldConflict
@@ -321,6 +321,8 @@ class TurnMixin:
         stream_callback=None,
         *,
         prompt_metadata: dict | None = None,
+        retry_count: int = 0,
+        retry_reasons: tuple[str, ...] = (),
         tool_choice=None,
         max_tokens: int = 8192,
         thinking: bool = True,
@@ -328,6 +330,7 @@ class TurnMixin:
         model = override_model or (decide_model_for() if purpose == "decide" else model_for())
         sizes = message_sizes(messages, tools or [])
         sizes.update(prompt_metadata or {})
+        sizes.update(retry_metrics(retry_count, retry_reasons))
         try:
             reply = await self.llm.complete(
                 messages,
@@ -656,6 +659,7 @@ class TurnMixin:
             msgs = bundle.messages
             prompt_metadata = bundle.metadata("decide")
         done_calls = retries = written_rounds = 0
+        retry_reasons: list[str] = []
         nudged = False
         spawn_retry = False
         search_retry = False
@@ -936,7 +940,17 @@ class TurnMixin:
                     break
             specs = tool_specs(ctx.world, allowed, dynamic_ids=not flags["tool_profiles"])
             reply = await self._ask(
-                calls, cfg, cid, seat.id, turn_id, "decide", msgs, specs, prompt_metadata=prompt_metadata
+                calls,
+                cfg,
+                cid,
+                seat.id,
+                turn_id,
+                "decide",
+                msgs,
+                specs,
+                prompt_metadata=prompt_metadata,
+                retry_count=len(retry_reasons),
+                retry_reasons=tuple(retry_reasons),
             )
             msgs.append(reply.message or {"role": "assistant", "content": reply.text})
             # Текстовые имитации вызовов нельзя исполнять: только native tool_calls проходят
@@ -944,6 +958,7 @@ class TurnMixin:
             if not reply.tool_calls and textcalls.contains(reply.text, allowed):
                 written_rounds += 1
                 if written_rounds <= 2:
+                    retry_reasons.append("text_tool_calls")
                     msgs.append(
                         {
                             "role": "user",
@@ -968,6 +983,7 @@ class TurnMixin:
                 ]
                 if failed_spawns and not spawn_retry:
                     spawn_retry = True
+                    retry_reasons.append("spawn_entity")
                     issues = "; ".join(str(t["result"].get("error") or "вызов отклонён") for t in failed_spawns)
                     msgs.append(
                         {
@@ -985,6 +1001,7 @@ class TurnMixin:
                 searches = unresolved_searches(ctx)
                 if searches and not search_retry and done_calls < MAX_CALLS:
                     search_retry = True
+                    retry_reasons.append("unresolved_search")
                     search_names = [s.actor_id if isinstance(s, ActionRef) else str(s) for s in searches]
                     msgs.append(
                         {
@@ -1003,6 +1020,7 @@ class TurnMixin:
                 fails = _unsettled_fails(ctx, trace_calls)
                 if fails and not nudged:
                     nudged = True  # критический провал словами не закрыть: последствие пишется в лист героя
+                    retry_reasons.append("missing_consequence")
                     msgs.append(
                         {
                             "role": "user",
@@ -1017,6 +1035,7 @@ class TurnMixin:
                     continue
                 if open_ and retries < 1:
                     retries += 1
+                    retry_reasons.append("unresolved_actions")
                     names_open = ", ".join(f"{i} ({ctx.world.characters[i].name})" for i in sorted(open_))
                     msgs.append(
                         {
@@ -1087,6 +1106,7 @@ class TurnMixin:
                 ctx.turn_diagnostics["decision_stop_reason"] = "invalid_source"
                 break
             if invalid_source_in_batch:
+                retry_reasons.append("invalid_source")
                 msgs.append(
                     {
                         "role": "user",
@@ -1103,6 +1123,7 @@ class TurnMixin:
             if admission_note:
                 msgs.append({"role": "user", "content": admission_note})
             if failed_in_batch:
+                retry_reasons.append("failed_transition")
                 msgs.append(
                     {
                         "role": "user",
@@ -1261,6 +1282,8 @@ class TurnMixin:
             },
             "calls": trace_calls,
             "text_call_rejections": written_rounds,
+            "decide_retry_count": len(retry_reasons),
+            "decide_retry_reasons": list(dict.fromkeys(retry_reasons)),
             "required": sorted(required),
             "closed": sorted(ctx.closed),
             "combat": combat_notes,

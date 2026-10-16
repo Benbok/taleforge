@@ -63,6 +63,18 @@ class PromptBundle:
     blocks: dict[str, str]
     version: str = "role-context-v1"
     fallback_reason: str | None = None
+    assembly_path: str | None = None
+    selection_applied: bool | None = None
+    expansion_reasons: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Keep older call sites that only supplied ``fallback_reason`` honest:
+        # a fallback sends the original legacy messages and did not apply a
+        # structured selection, regardless of the prompt version label.
+        if self.assembly_path is None:
+            self.assembly_path = "legacy" if self.fallback_reason is not None else "selected"
+        if self.selection_applied is None:
+            self.selection_applied = self.assembly_path != "legacy"
 
     def metadata(self, role: str) -> dict:
         from app.core.llm_diagnostics import prompt_sizes
@@ -71,6 +83,9 @@ class PromptBundle:
             "prompt_role": role,
             "prompt_version": self.version,
             "fallback_reason": self.fallback_reason,
+            "assembly_path": self.assembly_path,
+            "selection_applied": self.selection_applied,
+            "expansion_reasons": list(self.expansion_reasons),
             "role_blocks": prompt_sizes({"instructions": self.messages[0]["content"], **self.blocks}, []),
         }
 
@@ -134,11 +149,23 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
     request = inputs.get("request")
     legacy = inputs.get("legacy_messages")
     if role == "decide" and inputs.get("uncertain") and legacy is not None:
-        return PromptBundle(legacy, {}, fallback_reason="uncertain_intent")
+        return PromptBundle(
+            legacy,
+            {},
+            fallback_reason="uncertain_intent",
+            assembly_path="legacy",
+            selection_applied=False,
+        )
     if not isinstance(request, str) or not request:
         if legacy is None:
             raise ValueError("Missing request and legacy context")
-        return PromptBundle(legacy, {}, fallback_reason="missing_request")
+        return PromptBundle(
+            legacy,
+            {},
+            fallback_reason="missing_request",
+            assembly_path="legacy",
+            selection_applied=False,
+        )
     # The detached narration context is shared by parallel narrator/voice tasks.
     # Its snapshot belongs only to this composition; decide/review always read live state.
     values = getattr(ctx, "_narration_prompt_values", None) if role in {"narrate", "voice_line"} else None
@@ -196,8 +223,20 @@ async def build_prompt_bundle(ctx: ToolContext, cfg: AgentConfig, *, role: str, 
     budget = {"decide": 12000, "narrate": 12000, "voice_line": 2000, "review": 8000}[role]
     over_budget = (len(system) + len(dynamic) + 3) // 4 > budget
     if over_budget and legacy is not None and role in {"decide", "narrate", "review"}:
-        return PromptBundle(legacy, blocks, fallback_reason="soft_budget")
-    return PromptBundle(messages, blocks, fallback_reason="soft_budget" if over_budget else None)
+        return PromptBundle(
+            legacy,
+            blocks,
+            fallback_reason="soft_budget",
+            assembly_path="legacy",
+            selection_applied=False,
+        )
+    return PromptBundle(
+        messages,
+        blocks,
+        fallback_reason="soft_budget" if over_budget else None,
+        assembly_path="expanded" if over_budget else "selected",
+        selection_applied=True,
+    )
 
 
 async def master_prompt_values(ctx: ToolContext, cfg: AgentConfig) -> dict:

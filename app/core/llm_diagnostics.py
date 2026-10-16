@@ -51,3 +51,12 @@ def message_sizes(messages: list[dict], tools: list) -> dict:
             ]
             blocks[f"{key}_tool_calls"] = json.dumps(public_calls, ensure_ascii=False)
     return prompt_sizes(blocks, tools)
+
+
+def retry_metrics(retry_count: int = 0, retry_reasons: tuple[str, ...] = ()) -> dict[str, Any]:
+    """Return bounded, content-free retry diagnostics for one provider call."""
+    reasons = tuple(dict.fromkeys(reason for reason in retry_reasons if isinstance(reason, str) and reason))
+    return {
+        "retry_count": max(0, int(retry_count)),
+        "retry_reasons": list(reasons),
+    }
