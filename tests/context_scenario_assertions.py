@@ -60,8 +60,9 @@ def _assert_family(case, result, *, check_context_diagnostics=True):
     aliases, actors = world["aliases"], world["actors"]
     hero = actors["hero"]["id"]
     messages = [m for m in world["message_rows"] if m["content"] in result.requests]
-    if family == "unknown_parser" and case["expected_world"].get("rejections", 0):
-        assert not messages and not events and result.rejections
+    if family == "unknown_parser":
+        assert len(messages) == len(result.requests)
+        assert all(message["intent"].get("parser_fallback") for message in messages)
         assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 1
         return
     assert len(messages) == len(result.requests)
