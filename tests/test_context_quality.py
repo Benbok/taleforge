@@ -84,4 +84,5 @@ def test_unknown_parser_recovery_variants(game_client, settings, failure, recove
     world.observations.update(parser_failure=failure, recover_success=recover_success)
     result = run_scenario(case, world, game_client, world.llm)
     assert_scenario(case, result)
-    assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 2
+    # При сохранении исходной заявки в нейтральном fallback повторная попытка парсинга не нужна.
+    assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 1
