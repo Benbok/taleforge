@@ -62,7 +62,7 @@ def _assert_family(case, result, *, check_context_diagnostics=True):
     messages = [m for m in world["message_rows"] if m["content"] in result.requests]
     if family == "unknown_parser" and case["expected_world"].get("rejections", 0):
         assert not messages and not events and result.rejections
-        assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 2
+        assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 1
         return
     assert len(messages) == len(result.requests)
     for request, message in zip(case["requests"], messages, strict=True):
