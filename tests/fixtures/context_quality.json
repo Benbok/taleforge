@@ -332,7 +332,11 @@
       "required_facts_by_role": {
         "parse": [
           "request"
-        ]
+        ],
+        "decide": [
+          "request"
+        ],
+        "narrate": []
       },
       "forbidden_facts_by_role": {
         "parse": []
