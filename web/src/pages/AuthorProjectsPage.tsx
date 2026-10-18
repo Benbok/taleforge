@@ -15,12 +15,25 @@ export default function AuthorProjectsPage() {
   const [brief, setBrief] = useState<BriefIn>({});
   const [pack, setPack] = useState("");
   const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs") });
-  const base = (packs.data ?? []).find((p) => p.is_base);
+  // в списке все импортированные версии пакетов: показываем и берём по умолчанию только последнюю версию каждого
+  const newer = (a: string, b: string) => {
+    const pa = a.split(".").map(Number);
+    const pb = b.split(".").map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
+    return false;
+  };
+  const latest = Object.values(
+    (packs.data ?? []).reduce<Record<string, Pack>>((acc, p) => {
+      if (!acc[p.id] || newer(p.version, acc[p.id].version)) acc[p.id] = p;
+      return acc;
+    }, {}),
+  ).filter((p) => !p.id.startsWith("campaign."));
+  const base = latest.find((p) => p.is_base);
   const selected = pack || (base ? `${base.id}@${base.version}` : ""); // базовый мир по умолчанию
   const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects });
   const create = useMutation({
     mutationFn: () => {
-      const chosen = (packs.data ?? []).find((p) => `${p.id}@${p.version}` === selected);
+      const chosen = latest.find((p) => `${p.id}@${p.version}` === selected);
       return authoring.createProject({
         title: title.trim(),
         brief,
@@ -51,7 +64,7 @@ export default function AuthorProjectsPage() {
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">Мир (пакет контента)</span>
             <select className="min-h-11 rounded-lg border border-line bg-surface px-2" value={selected} onChange={(e) => setPack(e.target.value)}>
-              {(packs.data ?? []).map((p) => (
+              {latest.map((p) => (
                 <option key={`${p.id}@${p.version}`} value={`${p.id}@${p.version}`}>{p.name} · {p.version}</option>
               ))}
             </select>

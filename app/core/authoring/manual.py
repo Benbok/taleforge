@@ -95,6 +95,9 @@ async def task_for(session: AsyncSession, project: AuthorProject, stage: str) ->
         from app.agents import architect
 
         text, _sid = await architect.build_input(session, world)
+        text += "
+
+" + await allowed_templates(session, world)
         return {
             "stage": "plot",
             "system": plot.SYSTEM,
@@ -103,3 +106,24 @@ async def task_for(session: AsyncSession, project: AuthorProject, stage: str) ->
             "how": "Ответ — один JSON-объект каркаса по схеме. Вставьте его в «Импорт каркаса»: сервер проверит его.",
         }
     raise Conflict("задание доступно для этапов lore и plot")
+
+
+async def allowed_templates(session: AsyncSession, world: Campaign) -> str:
+    """The complete list the server checks template_id against: an outside model cannot guess these ids."""
+    catalog = await campaign_catalog(session, world)
+
+    def block(kind: str, title: str) -> str:
+        rows = sorted(catalog.by_kind(kind), key=lambda e: e.id)
+        return f"{title} ({len(rows)}):
+" + "
+".join(f"- {e.id} — {e.name}" for e in rows) if rows else ""
+
+    parts = [
+        "Допустимые template_id: используй только id из этих списков, буква в букву; другие сервер отклонит.",
+        block("location_template", "Шаблоны мест (locations[].template_id)"),
+        block("creature_template", "Шаблоны существ (npcs[].template_id и antagonists[].template_id)"),
+        block("plot_structure", "Шаблоны сюжета (structure_id)"),
+    ]
+    return "
+
+".join(p for p in parts if p)

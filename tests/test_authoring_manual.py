@@ -74,6 +74,9 @@ def test_tasks_for_outside_models_are_read_only(client, admin, settings):
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["system"] and body["user"] and key in body["schema"]["properties"]
+    plot_task = client.get(f"/api/author/projects/{pid}/tasks/plot", headers=admin).json()["user"]
+    assert "Допустимые template_id" in plot_task  # внешняя модель не угадает id шаблонов: список в задании
+    assert "location.ruins" in plot_task and "creature.guard" in plot_task
     assert client.get(f"/api/author/projects/{pid}/tasks/maps", headers=admin).status_code == 422
     assert view(client, admin, pid)["project"]["draft_revision"] == rev
     assert llm_calls(settings) == 0
