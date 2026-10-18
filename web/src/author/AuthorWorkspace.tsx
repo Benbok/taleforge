@@ -137,8 +137,14 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const fail = (e: unknown) => setMessage(e instanceof ApiError ? e.message : "не удалось выполнить действие");
 
   const prepare = useMutation({
-    mutationFn: (v: { stage: string; regenerate: boolean }) =>
-      authoring.prepare(projectId, { stage: v.stage, expected_revision: revision, request_key: newRequestKey(), regenerate: v.regenerate }),
+    mutationFn: (v: { stage: string; regenerate: boolean; target?: string }) =>
+      authoring.prepare(projectId, {
+        stage: v.stage,
+        target_ref: v.target ?? null,
+        expected_revision: revision,
+        request_key: newRequestKey(),
+        regenerate: v.regenerate,
+      }),
     onSuccess: (receipt) => {
       setMessage(receipt.status === "ready" ? "Этап уже готов с теми же входными данными — результат не изменился." : "Этап поставлен в очередь.");
       void refresh();
@@ -453,6 +459,29 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
                   {loc.name}
                 </button>
               ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="btn min-h-11 px-3 text-sm"
+                type="button"
+                disabled={busy || stageOf("maps")?.status === "queued" || stageOf("maps")?.status === "running"}
+                onClick={() => prepare.mutate({ stage: "maps", regenerate: true, target: location ?? plot.locations?.[0]?.id })}
+              >
+                Пересобрать карту этого места
+              </button>
+              <button
+                className="btn min-h-11 px-3 text-sm"
+                type="button"
+                disabled={busy || stageOf("maps")?.status === "queued" || stageOf("maps")?.status === "running"}
+                onClick={() => {
+                  if (window.confirm("Пересобрать карты всех мест? Жители и ключевые предметы переедут на новые карты; каждая планировка — вызов модели.")) {
+                    prepare.mutate({ stage: "maps", regenerate: true, target: "*" });
+                  }
+                }}
+              >
+                Пересобрать все карты
+              </button>
+              <span className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</span>
             </div>
             {map.isLoading && <p className="text-sm text-muted">Загрузка карты…</p>}
             {map.data && <MapPreview key={map.data.location_ref} map={map.data} />}

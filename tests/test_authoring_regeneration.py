@@ -83,3 +83,31 @@ def test_failed_candidate_keeps_previous_map(settings, _fast_retry):
             assert "layout:loc_tavern" in (await s.get(AuthorProject, pid)).dependencies["stale"]
 
     _prepared(settings, body)
+
+
+def test_maps_stage_with_star_rebuilds_every_location(settings, _fast_retry):
+    from types import SimpleNamespace
+
+    from app.core.authoring import jobs
+    from app.core.authoring.runner import AuthorRunner
+    from app.db.models import AuthorJob
+
+    async def body(maker, pid, cid):
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, cid)
+            before = {x["id"]: x["entity_id"] for x in secret.plot["locations"]}
+            project = await s.get(AuthorProject, pid)
+            project.dependencies = {**project.dependencies, "materialize": "done"}
+            await s.commit()
+            receipt = await jobs.request_stage(s, project, "maps", "*", project.draft_revision, "all", regenerate=True)
+            await s.commit()
+        svc = SimpleNamespace(maker=maker, llm=None, bus=None, coordination=InMemoryCoordination())
+        await AuthorRunner(svc).run_due()
+        async with maker() as s:
+            job = await s.get(AuthorJob, receipt.job_id)
+            assert job.status == "ready", job.error_code
+            assert sorted(job.result["regenerated"]) == sorted(before)
+            after = {x["id"]: x["entity_id"] for x in (await s.get(CampaignSecret, cid)).plot["locations"]}
+            assert all(after[k] != v for k, v in before.items())  # каждая карта заменена новой
+
+    _prepared(settings, body)

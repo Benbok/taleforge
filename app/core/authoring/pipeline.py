@@ -114,11 +114,14 @@ async def maps_stage(ctx: StageContext) -> dict:
         job = await s.get(AuthorJob, ctx.job_id)
         project = await s.get(AuthorProject, ctx.project_id)
         stale = list((project.dependencies or {}).get("stale") or [])
-        targets = (
-            [job.target_ref]
-            if job.target_ref
-            else sorted({r.split(":", 1)[1] for r in stale if r.startswith("layout:")})
-        )
+        if job.target_ref == "*":  # the author rebuilds every map, e.g. after the layout generator was fixed
+            secret = await s.get(CampaignSecret, ctx.world_id)
+            plan = (secret.plot if secret else None) or {}
+            targets = [x["id"] for x in plan.get("locations") or [] if x.get("entity_id")]
+        elif job.target_ref:
+            targets = [job.target_ref]
+        else:
+            targets = sorted({r.split(":", 1)[1] for r in stale if r.startswith("layout:")})
     preparer = Orchestrator(ctx.svc.coordination, getattr(ctx.svc, "bus", None), llm=getattr(ctx.svc, "llm", None))
     results = [await regenerate_location(ctx.svc.maker, ctx.project_id, ref, preparer) for ref in targets]
     if any(r["status"] != "ready" for r in results):
