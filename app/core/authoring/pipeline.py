@@ -66,6 +66,27 @@ async def materialize_stage(ctx: StageContext) -> dict:
     return {"report": report.model_dump(mode="json")}
 
 
+async def maps_stage(ctx: StageContext) -> dict:
+    """Regenerate maps: the target location, or every location whose layout the author made stale."""
+    from app.core.authoring.regeneration import regenerate_location
+    from app.core.world_generation.service import Orchestrator
+
+    async with ctx.svc.maker() as s:
+        job = await s.get(AuthorJob, ctx.job_id)
+        project = await s.get(AuthorProject, ctx.project_id)
+        stale = list((project.dependencies or {}).get("stale") or [])
+        targets = (
+            [job.target_ref]
+            if job.target_ref
+            else sorted({r.split(":", 1)[1] for r in stale if r.startswith("layout:")})
+        )
+    preparer = Orchestrator(ctx.svc.coordination, getattr(ctx.svc, "bus", None), llm=getattr(ctx.svc, "llm", None))
+    results = [await regenerate_location(ctx.svc.maker, ctx.project_id, ref, preparer) for ref in targets]
+    if any(r["status"] != "ready" for r in results):
+        raise StageError("maps_blocked")  # the previous maps stay in place
+    return {"regenerated": [r["location_ref"] for r in results]}
+
+
 async def geography_stage(ctx: StageContext) -> dict:
     """Compile regions, locations and routes from the plan into stored geography; no materialization."""
     from app.core.geography.compiler import compile_plan
@@ -113,6 +134,7 @@ HANDLERS: dict[str, Handler] = {
     "plot": plot_stage,
     "geography": geography_stage,
     "materialize": materialize_stage,
+    "maps": maps_stage,
     "validate": validate_stage,
 }
 

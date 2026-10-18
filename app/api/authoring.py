@@ -147,9 +147,13 @@ async def author_map(project_id: str, location_ref: str, session: SessionDep, us
         e.id: e
         for e in await session.scalars(select(Entity).where(Entity.campaign_id == project.workspace_campaign_id))
     }
-    root = next(
-        (e for e in entities.values() if e.kind == "location" and (e.state or {}).get("plot_id") == location_ref), None
+    from app.db.models import CampaignSecret
+
+    secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+    sketch = next(
+        (x for x in ((secret.plot if secret else None) or {}).get("locations") or [] if x["id"] == location_ref), {}
     )
+    root = entities.get(sketch.get("entity_id") or "")  # the plot's current map, never a regeneration candidate
     if root is None:
         from app.core.campaigns import NotFound
 

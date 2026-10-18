@@ -152,8 +152,39 @@ def tool_spec() -> dict:
                         "mood": _str("Атмосфера, одна-две фразы.", 300),
                         "secret": _str("Секрет места, одна фраза.", 300),
                         "spatial": spatial_schema(),
+                        "region": {"type": "string", "description": "id региона из regions, если регионы заданы."},
                     },
                     "required": ["id", "name", "role", "mood", "secret", "spatial"],
+                },
+            },
+            "regions": {
+                "type": "array",
+                "maxItems": 8,
+                "description": "Необязательно: крупные области мира, в которые входят локации. Иерархия без циклов.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": _id("id региона."),
+                        "name": _str("Название региона.", 80),
+                        "parent": {"type": "string", "description": "id родительского региона."},
+                    },
+                    "required": ["id", "name"],
+                },
+            },
+            "routes": {
+                "type": "array",
+                "maxItems": 24,
+                "description": "Необязательно: переходы между частями мест «loc_id/part_ref».",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ref": _id("id маршрута."),
+                        "from": {"type": "string", "description": "Выход: loc_id/part_ref."},
+                        "to": {"type": "string", "description": "Вход: loc_id/part_ref."},
+                        "bidirectional": {"type": "boolean", "description": "Можно ли обратно; по умолчанию да."},
+                        "hidden": {"type": "boolean", "description": "Тайный путь."},
+                    },
+                    "required": ["ref", "from", "to"],
                 },
             },
             "npcs": {
@@ -539,6 +570,14 @@ def check(
         for link in links:
             if link not in loc_ids:
                 errors.append(f"локация {loc.get('id')}: пространство — нет места {link}")
+    if plan.get("regions") or plan.get("routes"):
+        from app.core.geography.compiler import compile_plan
+        from app.core.geography.contracts import GeographyError
+
+        try:  # one geography validator for the architect, the author editor and publication
+            compile_plan(plan)
+        except GeographyError as e:
+            errors.append(f"география: {e.code} ({', '.join(e.refs)})")
     npc_ids = {k for k, v in seen.items() if v == "NPC"}
     for npc in plan["npcs"]:
         if isinstance(npc, dict) and npc.get("location_id") and npc["location_id"] not in loc_ids:
@@ -629,6 +668,8 @@ SYSTEM = """Ты — архитектор кампании для текстов
 Твоя задача — каркас кампании: завязка, антагонисты с планом угрозы, акты и ключевые точки, наброски локаций
 и NPC, тайны с зацепками и возможные финалы. Это наброски, а не детали: по одной-две фразы на пункт.
 Детали мастер придумает, когда отряд до них дойдёт.
+Для подробного мира можно задать regions (крупные области) и routes — переходы между конкретными частями мест
+в виде «loc_id/part_ref»; part_ref берётся из spatial.parts этого места. Без них достаточно spatial.links.
 
 Правила:
 - Строй каркас внутри мира пакета: места, фракции и факты бери из лора ниже, ссылайся на них через lore_ref и ref.
