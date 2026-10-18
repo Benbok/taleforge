@@ -1,6 +1,6 @@
 """Author API contracts. Public summaries never contain editor content."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -39,8 +39,88 @@ class ProjectDetail(ProjectSummary):
     brief: BriefIn = Field(default_factory=BriefIn)
 
 
+Ref = Field(min_length=1, max_length=64)
+Text = Field(max_length=2000)
+
+
+class SetLore(Contract):
+    op: Literal["set_lore"]
+    fields: dict[str, str | list[str]]
+
+
+class UpdatePlotObject(Contract):
+    op: Literal["update_plot_object"]
+    ref: str = Ref
+    fields: dict[str, str]
+
+
+class UpdateItem(Contract):
+    op: Literal["update_item"]
+    ref: str = Ref
+    fields: dict[str, str]
+
+
+class SetPlacement(Contract):
+    op: Literal["set_placement"]
+    ref: str = Ref
+    location_ref: str = Ref
+    area_ref: str | None = None
+    container_ref: str | None = None
+
+
+class UpsertRoute(Contract):
+    op: Literal["upsert_route"]
+    ref: str = Ref
+    source: str = Field(alias="from", min_length=1, max_length=130)
+    target: str = Field(alias="to", min_length=1, max_length=130)
+    bidirectional: bool = True
+    hidden: bool = False
+
+
+class RemoveObject(Contract):
+    op: Literal["remove_object"]
+    ref: str = Ref
+
+
+class EditMap(Contract):
+    op: Literal["edit_map"]
+    location_ref: str = Ref
+    spatial: dict
+
+
+PatchOp = Annotated[
+    SetLore | UpdatePlotObject | UpdateItem | SetPlacement | UpsertRoute | RemoveObject | EditMap,
+    Field(discriminator="op"),
+]
+
+
 class DraftPatch(Contract):
-    operations: list[dict] = Field(default_factory=list, max_length=100)
+    operations: list[PatchOp] = Field(default_factory=list, max_length=100)
+
+
+class ResultRef(Contract):
+    kind: str  # layout | geometry | placement | route_port | stage
+    ref: str
+
+
+class EditResult(Contract):
+    applied: bool
+    draft_revision: int
+    affected: tuple[ResultRef, ...] = ()
+    blocked_by: tuple[ResultRef, ...] = ()  # objects that still use a removed one
+    event_id: str | None = None
+
+
+class EditRequest(Contract):
+    instruction: str = Field(min_length=1, max_length=2000)
+    base_revision: int
+
+
+class EditProposal(Contract):
+    base_revision: int
+    patch: DraftPatch
+    affected: tuple[ResultRef, ...] = ()
+    summary: str = ""
 
 
 class ValidationIssue(Contract):

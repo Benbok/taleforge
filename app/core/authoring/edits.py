@@ -1,0 +1,222 @@
+"""The single mutation path for author content: manual forms and applied AI proposals both land here."""
+
+import copy
+import hashlib
+import json
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.authoring.contracts import (
+    DraftPatch,
+    EditMap,
+    EditProposal,
+    EditResult,
+    RemoveObject,
+    ResultRef,
+    SetLore,
+    SetPlacement,
+    UpdateItem,
+    UpdatePlotObject,
+    UpsertRoute,
+)
+from app.core.authoring.dependencies import KINDS, affected_results, users_of
+from app.core.authoring.projects import author_write
+from app.core.campaigns import Conflict
+from app.core.geography.compiler import compile_plan
+from app.core.geography.contracts import GeographyError
+from app.core.layout.spatial import SpatialPlan
+from app.db.models import AuthorProject, CampaignSecret, Entity, Event, GeographyNode
+
+LORE_KEYS = {"world", "factions", "history", "tone", "taboos"}
+# Editable text fields per plot kind. Structure (id, template_id, status, entity_id, spatial) is not editable here.
+TEXT_FIELDS = {
+    "locations": {"name", "mood", "role", "secret"},
+    "npcs": {"name", "role", "want", "fear", "secret", "attitude", "look"},
+    "antagonists": {"name", "goal", "methods", "weakness", "secret"},
+}
+ITEM_FIELDS = {"name", "description", "template_id"}
+
+
+class EditError(Conflict):
+    """The patch is invalid; nothing was changed."""
+
+    def __init__(self, code: str, ref: str = ""):
+        super().__init__(f"{code}: {ref}" if ref else code)
+        self.code = code
+
+
+def _find(plan: dict, ref: str) -> tuple[str, dict] | tuple[None, None]:
+    for kind in KINDS:
+        for obj in plan.get(kind) or []:
+            if obj.get("id") == ref:
+                return kind, obj
+    return None, None
+
+
+def _check_text(value: str, *, name: bool = False) -> str:
+    text = value.strip()
+    if len(text) > 500 or (name and not text):
+        raise EditError("invalid_field")
+    return text
+
+
+def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, list[ResultRef]]:
+    """Pure: returns the edited copies and the objects that block a requested removal."""
+    plan, setting = copy.deepcopy(plan), copy.deepcopy(setting)
+    blocked: list[ResultRef] = []
+    for op in patch.operations:
+        if isinstance(op, SetLore):
+            if not set(op.fields) <= LORE_KEYS:
+                raise EditError("unknown_lore_field", ",".join(sorted(set(op.fields) - LORE_KEYS)))
+            setting["lore"] = {**(setting.get("lore") or {}), **op.fields}
+        elif isinstance(op, UpdatePlotObject):
+            kind, obj = _find(plan, op.ref)
+            if obj is None:
+                raise EditError("unknown_ref", op.ref)
+            if not set(op.fields) <= TEXT_FIELDS[kind]:
+                raise EditError("field_not_editable", op.ref)
+            for key, value in op.fields.items():
+                obj[key] = _check_text(value, name=key == "name")
+        elif isinstance(op, UpdateItem):
+            item = next((i for i in plan.get("items") or [] if i.get("ref") == op.ref), None)
+            if item is None:
+                raise EditError("unknown_ref", op.ref)
+            if not set(op.fields) <= ITEM_FIELDS:
+                raise EditError("field_not_editable", op.ref)
+            for key, value in op.fields.items():
+                item[key] = _check_text(value, name=key in ("name", "template_id"))
+        elif isinstance(op, SetPlacement):
+            loc = next((x for x in plan.get("locations") or [] if x["id"] == op.location_ref), None)
+            if loc is None:
+                raise EditError("unknown_ref", op.location_ref)
+            parts = {p["ref"] for p in (loc.get("spatial") or {}).get("parts") or []}
+            if op.area_ref is not None and parts and op.area_ref not in parts:
+                raise EditError("unknown_part", f"{op.location_ref}/{op.area_ref}")
+            entry = {
+                "ref": op.ref,
+                "location_ref": op.location_ref,
+                "area_ref": op.area_ref,
+                "container_ref": op.container_ref,
+            }
+            plan["placements"] = [p for p in plan.get("placements") or [] if p.get("ref") != op.ref] + [entry]
+        elif isinstance(op, UpsertRoute):
+            route = {
+                "ref": op.ref,
+                "from": op.source,
+                "to": op.target,
+                "bidirectional": op.bidirectional,
+                "hidden": op.hidden,
+            }
+            plan["routes"] = [r for r in plan.get("routes") or [] if r.get("ref") != op.ref] + [route]
+        elif isinstance(op, EditMap):
+            loc = next((x for x in plan.get("locations") or [] if x["id"] == op.location_ref), None)
+            if loc is None:
+                raise EditError("unknown_ref", op.location_ref)
+            try:
+                loc["spatial"] = SpatialPlan.model_validate(op.spatial).model_dump(mode="json")
+            except ValueError as exc:
+                raise EditError("invalid_map", op.location_ref) from exc
+        elif isinstance(op, RemoveObject):
+            users = [u for u in users_of(plan, op.ref) if u.ref != op.ref]
+            if users:
+                blocked.extend(users)
+                continue
+            for key in (*KINDS, "items", "routes", "placements"):
+                idkey = "id" if key in KINDS else "ref"
+                plan[key] = [x for x in plan.get(key) or [] if x.get(idkey) != op.ref]
+    try:
+        compile_plan(plan)  # one validator: references, parts and routes stay consistent
+    except GeographyError as exc:
+        raise EditError(exc.code, ",".join(exc.refs)) from exc
+    return plan, setting, blocked
+
+
+def preview_edit(plan: dict, setting: dict, patch: DraftPatch) -> EditProposal:
+    """Dry run: the proposed patch, what it would invalidate; nothing is written."""
+    _apply(plan, setting, patch)
+    return EditProposal(base_revision=0, patch=patch, affected=affected_results(patch, plan))
+
+
+def _key(project_id: str, request_key: str) -> str:
+    return hashlib.sha256(f"{project_id}:{request_key}".encode()).hexdigest()[:64]
+
+
+def _digest(patch: DraftPatch) -> str:
+    body = json.dumps(patch.model_dump(mode="json", by_alias=True), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(body.encode()).hexdigest()
+
+
+async def apply_edits(
+    session: AsyncSession, project: AuthorProject, patch: DraftPatch, expected_revision: int, request_key: str
+) -> EditResult:
+    key, digest = _key(project.id, request_key), _digest(patch)
+    done = await session.scalar(
+        select(Event).where(Event.campaign_id == project.workspace_campaign_id, Event.idempotency_key == key)
+    )
+    if done is not None:
+        if done.payload.get("patch_digest") != digest:
+            raise Conflict("request_key уже использован для другой правки")
+        return EditResult.model_validate(done.payload["result"]).model_copy(update={"event_id": done.id})
+    await author_write(session, project, expected_revision)  # stale revision -> Conflict, no change
+    secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+    plan, setting = (secret.plot if secret else None) or {}, (secret.setting if secret else None) or {}
+    new_plan, new_setting, blocked = _apply(plan, setting, patch)
+    result_patch = patch
+    if blocked:
+        result_patch = DraftPatch(operations=[op for op in patch.operations if not isinstance(op, RemoveObject)])
+    affected = affected_results(result_patch, plan)
+    if secret is None:
+        secret = CampaignSecret(campaign_id=project.workspace_campaign_id)
+        session.add(secret)
+    changed = (new_plan, new_setting) != (plan, setting)
+    if changed:
+        secret.plot, secret.setting = new_plan, new_setting
+        await _sync_names(session, project, new_plan)
+        stale = set((project.dependencies or {}).get("stale") or [])
+        stale |= {f"{a.kind}:{a.ref}" for a in affected}
+        deps = {**(project.dependencies or {}), "stale": sorted(stale)}
+        if new_setting.get("lore") != setting.get("lore"):
+            from app.core.authoring.pipeline import output_digest
+
+            # A manual lore edit is a new input for the plot: a background result built on the old lore goes stale.
+            deps["lore"] = output_digest({"lore": new_setting.get("lore")})
+        project.dependencies = deps
+    result = EditResult(
+        applied=changed,
+        draft_revision=project.draft_revision,
+        affected=affected if changed else (),
+        blocked_by=tuple(blocked),
+    )
+    event = Event(
+        campaign_id=project.workspace_campaign_id,
+        tool="author_edit",
+        hidden=True,
+        idempotency_key=key,
+        payload={
+            "request_key": request_key,
+            "patch_digest": digest,
+            "before": {"plot": plan, "setting": setting} if changed else {},
+            "after": {"plot": new_plan, "setting": new_setting} if changed else {},
+            "result": result.model_dump(mode="json"),
+        },
+    )
+    session.add(event)
+    await session.flush()
+    return result.model_copy(update={"event_id": event.id})
+
+
+async def _sync_names(session: AsyncSession, project: AuthorProject, plan: dict) -> None:
+    """A renamed place or NPC renames its entity and geography node; maps are not rebuilt."""
+    for kind in ("locations", "npcs"):
+        for obj in plan.get(kind) or []:
+            if obj.get("entity_id"):
+                entity = await session.get(Entity, obj["entity_id"])
+                if entity is not None and entity.name != obj["name"]:
+                    entity.name = obj["name"]
+    for node in await session.scalars(
+        select(GeographyNode).where(GeographyNode.campaign_id == project.workspace_campaign_id)
+    ):
+        loc = next((x for x in plan.get("locations") or [] if x["id"] == node.ref), None)
+        if loc is not None and node.name != loc["name"]:
+            node.name = loc["name"]
