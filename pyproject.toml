@@ -16,7 +16,7 @@ dependencies = [
     "alembic>=1.13",
     "pyjwt>=2.8",
     "redis>=5.0",
-    "litellm>=1.80",
+    "litellm>=1.80,<1.106",  # 1.106 needs the optional mcp package for every tool call
     "jinja2>=3.1",
     "httpx>=0.27",
 ]
