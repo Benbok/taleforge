@@ -2667,6 +2667,8 @@ export interface components {
         AuthorMapOut: {
             /** Areas */
             areas: components["schemas"]["AuthorMapArea"][];
+            /** Layout Quality */
+            layout_quality?: string | null;
             /** Location Ref */
             location_ref: string;
             /** Name */

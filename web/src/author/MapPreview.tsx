@@ -16,6 +16,12 @@ export default function MapPreview({ map, onSelect }: AuthorMapPreviewProps) {
   if (!map.areas.length) return <p className="text-sm text-muted">Карта этой локации ещё не готова.</p>;
   return (
     <section aria-label={`Карта: ${map.name}`} className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h3 className="font-heading text-lg text-ink">{map.name}</h3>
+        <span className="text-sm text-muted">участков: {map.areas.length}</span>
+        {map.layout_quality === "normal" && <span className="text-sm text-ok">планировку придумала модель</span>}
+        {map.layout_quality === "fallback" && <span className="text-sm text-warn">запасная планировка по шаблону: модель не ответила</span>}
+      </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Участки">
         {map.areas.map((area) => (
           <button

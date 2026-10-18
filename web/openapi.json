@@ -264,6 +264,17 @@
       "title": "Areas",
       "type": "array"
      },
+     "layout_quality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Layout Quality"
+     },
      "location_ref": {
       "title": "Location Ref",
       "type": "string"

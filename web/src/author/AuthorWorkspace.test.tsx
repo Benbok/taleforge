@@ -154,3 +154,20 @@ it("принятый каркас сразу запускает бесплатн
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "geography" });
 });
+
+it("на шаге «Карты» видны карты всех мест и откуда взялась планировка", async () => {
+  const sketch = { shape: "room", cols: 6, rows: 4, party: [1, 1], walls: [], exits: [], features: [], terrain: [], edges: [] };
+  const mock = api(
+    (c) =>
+      c.url.includes("/maps/loc_cave")
+        ? { body: { location_ref: "loc_cave", name: "Пещера", layout_quality: "fallback", areas: [{ area_ref: "main", name: "Вход", sketch, ports: {} }] } }
+        : undefined,
+    stages({ lore: { status: "ready" }, plot: { status: "ready" }, geography: { status: "ready" }, materialize: { status: "ready" } }),
+  );
+  localStorage.setItem("author:reveal:ap_1", "1");
+  localStorage.setItem("author:step:ap_1", "maps");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  expect(await screen.findByText("запасная планировка по шаблону: модель не ответила")).toBeTruthy();
+  expect(screen.getByRole("group", { name: "Места" })).toBeTruthy();
+  expect(mock.calls.every((c) => c.method === "GET")).toBe(true);
+});

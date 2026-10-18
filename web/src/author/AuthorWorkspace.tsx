@@ -126,6 +126,12 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     enabled: revealed && !!location,
   });
 
+  useEffect(() => {
+    // на шаге «Карты» сразу открывается карта первого места
+    const locations = (full.data?.preparation.content as { plot?: Plot } | null | undefined)?.plot?.locations;
+    if (step === "maps" && !location && locations?.length) setLocation(locations[0].id);
+  }, [step, location, full.data]);
+
   const refresh = () => client.invalidateQueries({ queryKey: ["author", projectId] });
   const revision = summary.data?.project.draft_revision ?? 0;
   const fail = (e: unknown) => setMessage(e instanceof ApiError ? e.message : "не удалось выполнить действие");
@@ -432,6 +438,26 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         ) : (
           stageActions(step, false)
         )}
+        {!locked && step === "maps" && isDone("materialize") && (revealed ? (
+          <section aria-label="Карты мест" className="flex flex-col gap-3">
+            <h3 className="font-heading text-base text-ink">Карты мест</h3>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Места">
+              {(plot.locations ?? []).map((loc) => (
+                <button
+                  key={loc.id}
+                  type="button"
+                  className={`btn min-h-11 px-3 text-sm ${(location ?? plot.locations?.[0]?.id) === loc.id ? "btn-primary" : ""}`}
+                  aria-pressed={(location ?? plot.locations?.[0]?.id) === loc.id}
+                  onClick={() => setLocation(loc.id)}
+                >
+                  {loc.name}
+                </button>
+              ))}
+            </div>
+            {map.isLoading && <p className="text-sm text-muted">Загрузка карты…</p>}
+            {map.data && <MapPreview key={map.data.location_ref} map={map.data} />}
+          </section>
+        ) : hidden)}
         {!locked && revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (
           <>
             <h3 className="font-heading text-base text-ink">

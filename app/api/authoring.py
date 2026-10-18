@@ -175,7 +175,12 @@ async def author_map(project_id: str, location_ref: str, session: SessionDep, us
                 ports=(area.state or {}).get("route_ports") or {},
             )
         )
-    return AuthorMapOut(location_ref=location_ref, name=root.name, areas=out)
+    from app.core.world_generation import storage
+
+    layout = await storage.find(session, project.workspace_campaign_id, root.id, "location_layout")
+    return AuthorMapOut(
+        location_ref=location_ref, name=root.name, areas=out, layout_quality=layout.quality if layout else None
+    )
 
 
 @router.post("/projects/{project_id}/validate", response_model=ValidationReport)

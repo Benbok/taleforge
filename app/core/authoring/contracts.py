@@ -349,6 +349,7 @@ class AuthorMapOut(Contract):
     location_ref: str
     name: str
     areas: list[AuthorMapArea]
+    layout_quality: str | None = None  # normal: planned by the model; fallback: deterministic template
 
 
 class LaunchRequest(Contract):
