@@ -332,13 +332,19 @@
       "required_facts_by_role": {
         "parse": [
           "request"
-        ]
+        ],
+        "decide": [
+          "request"
+        ],
+        "narrate": []
       },
       "forbidden_facts_by_role": {
         "parse": []
       },
       "expected_world": {
-        "rejections": 1
+        "min_messages": 2,
+        "min_turns": 1,
+        "rejections": 0
       },
       "rubric": [
         "persisted_outcome",

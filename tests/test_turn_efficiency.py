@@ -339,11 +339,10 @@ def test_invalid_reported_price_cannot_bypass_budget(cost):
 @pytest.mark.parametrize("scenario", ["attack", "miss", "critical", "native", "speech", "unparsed"])
 def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeypatch, scenario):
     """Same scene, dice and purpose-aware scripted model in both flag configurations."""
-    from app.db.models import Campaign, Entity, Event, InventoryItem, LlmCall, MasterTurn
+    from app.db.models import Campaign, Entity, Event, InventoryItem, LlmCall, MasterTurn, Message
     from tests.game import party, run
     from tests.test_combat import _setup
     from tests.test_master import act, rows
-    from tests.test_ws import connect, next_of
 
     optimized = os.environ.get("TALEFORGE_EVAL_VARIANT") == "optimized"
     live = os.environ.get("TALEFORGE_EVAL_LIVE") == "1"
@@ -404,11 +403,14 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
 
     llm.complete = complete
     if scenario == "unparsed":
-        with connect(game_client, player, cid) as (ws, _):
-            ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Непонятная заявка."}})
-            rejected = next_of(ws, "message.rejected")
-        assert "уточните" in rejected["payload"]["reason"].lower()
-        assert rows(settings, MasterTurn, MasterTurn.campaign_id == cid) == []
+        text = act(game_client, player, cid, "Непонятная заявка.")
+        assert text["kind"] == "narration"
+        (message,) = rows(settings, Message, Message.campaign_id == cid, Message.kind == "action")
+        assert message.content == "Непонятная заявка."
+        assert message.intent["actions"][0]["verb"] == "custom"
+        assert message.intent["parser_fallback"] is True
+        (turn,) = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)
+        assert turn.status == "done"
         return
     text = act(game_client, player, cid, "Привет!" if scenario == "speech" else "Атакую гоблина длинным мечом.")
     assert text["kind"] == "narration"

@@ -213,7 +213,8 @@ def test_concurrent_same_part_has_one_effect(game):
         door = Entity(
             id="door", campaign_id=campaign_id, kind="object", name="Дверь", location_id=ch.location_id, state={}
         )
-        ctx.session.add(door)
+        ctx.session.add_all([msg, door])
+        await ctx.session.flush()
         await refresh_world(ctx)
         refs = bind_message_actions(msg, hero)
         return refs[0]
