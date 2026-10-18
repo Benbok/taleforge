@@ -42,3 +42,26 @@ def place_port_cells(sketch: dict) -> list[tuple[int, int]]:
         return min(cell[0], cell[1], cols - 1 - cell[0], rows - 1 - cell[1])
 
     return [min(region, key=lambda c: (edge(c), c[1], c[0]))]
+
+
+def port_exit(sketch: dict, cells: list, route_ref: str, name: str, to_id: str | None, hidden: bool) -> dict:
+    """The port projected onto the area sketch as a geographic exit at its nearest edge."""
+    cols, rows = int(sketch["cols"]), int(sketch["rows"])
+    x, y = cells[0]
+    side, at = min(
+        (("w", y, x), ("e", y, cols - 1 - x), ("n", x, y), ("s", x, rows - 1 - y)), key=lambda t: (t[2], t[0])
+    )[:2]
+    return {
+        "name": name,
+        "side": side,
+        "at": at,
+        "width": 1,
+        "kind": "passage",
+        "state": "open",
+        "hidden": hidden,
+        "to": to_id,
+        "beyond": None,
+        "passage_ref": None,
+        "route_ref": route_ref,
+        "cells": [list(c) for c in cells],
+    }

@@ -5179,6 +5179,11 @@ export interface components {
              */
             room_ref?: string | null;
             /**
+             * Route Ref
+             * @default null
+             */
+            route_ref?: string | null;
+            /**
              * Side
              * @enum {string}
              */

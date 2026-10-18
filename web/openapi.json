@@ -8270,6 +8270,18 @@
       "default": null,
       "title": "Room Ref"
      },
+     "route_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Route Ref"
+     },
      "side": {
       "enum": [
        "n",

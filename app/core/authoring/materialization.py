@@ -195,18 +195,26 @@ async def bind_geography(maker, campaign_id: str) -> None:
         view = await sync_geography(s, campaign_id, draft, entity_by_ref)
         entities = {e.id: e for e in await s.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
         ids = {n.ref: n.entity_id for n in view.nodes if n.entity_id}
+        names = {n.ref: n.name for n in view.nodes}
         for link in view.links:
-            for end in (link.source, link.target):
-                try:
-                    port = ports.resolve_port(entities, ids, end)
-                except Exception:  # noqa: BLE001 — an unresolved port is reported by validation, not guessed here
-                    continue
+            try:
+                ends = [ports.resolve_port(entities, ids, end) for end in (link.source, link.target)]
+            except Exception:  # noqa: BLE001 — an unresolved port is reported by validation, not guessed here
+                continue
+            for i, port in enumerate(ends):
+                other = ends[1 - i]
                 area = entities[port.area_id]
                 sketch = (area.state or {}).get("sketch")
                 cells = ports.place_port_cells(sketch) if sketch else []
                 held = dict((area.state or {}).get("route_ports") or {})
                 held[link.ref] = {"cells": [list(c) for c in cells]}
-                area.state = {**(area.state or {}), "route_ports": held}
+                state = {**(area.state or {}), "route_ports": held}
+                if sketch and cells and (i == 0 or link.bidirectional):
+                    exits = [x for x in sketch.get("exits") or [] if x.get("route_ref") != link.ref]
+                    label = names.get(other.node_ref, other.node_ref)
+                    exit_ = ports.port_exit(sketch, cells, link.ref, label, other.area_id, link.hidden)
+                    state["sketch"] = {**sketch, "exits": [*exits, exit_]}
+                area.state = state
         await s.commit()
 
 

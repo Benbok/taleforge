@@ -496,6 +496,7 @@ class MapSketchExit(_Strict):
     width: int | None = None  # участок комплекса: ширина проёма, живой проход и клетки проёма
     passage_ref: str | None = None
     cells: list[list[int]] | None = None
+    route_ref: str | None = None  # authored geography route; travel by it, not by a Blueprint passage
 
 
 class MapSketchFeature(_Strict):
