@@ -322,11 +322,27 @@ class JobOut(Contract):
     attempt_count: int = 0
 
 
+class ValidationSummary(Contract):
+    source_revision: int
+    errors: int
+    warnings: int
+    current: bool  # made for the current draft revision; a later edit makes it outdated
+
+
+class PublishedBrief(Contract):
+    id: str
+    version: int
+    source_revision: int
+    published_at: str
+
+
 class ProjectView(Contract):
     """Summary and full are different DTOs: the spoiler-free one has no ``content`` field at all."""
 
     project: ProjectDetail
     preparation: PreparationView
+    validation: ValidationSummary | None = None
+    published: list[PublishedBrief] = Field(default_factory=list)  # newest first
 
 
 class VersionOut(Contract):

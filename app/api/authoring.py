@@ -88,10 +88,34 @@ async def create(body: AuthorProjectCreate, session: SessionDep, user: UserDep) 
 async def project_view(
     project_id: str, session: SessionDep, user: UserDep, view: Annotated[View, Query()] = "summary"
 ) -> ProjectView:
+    from app.core.authoring.contracts import PublishedBrief, ValidationSummary
+    from app.db.models import AdventureVersion
+
     project = await require_project(session, user, project_id)
     world = await session.get(Campaign, project.workspace_campaign_id)
+    report = project.validation_report or None
+    versions = await session.scalars(
+        select(AdventureVersion)
+        .where(AdventureVersion.project_id == project.id)
+        .order_by(AdventureVersion.version.desc())
+    )
     return ProjectView(
-        project=_detail(project, world), preparation=await jobs.stage_view(session, project.id, full=view == "full")
+        project=_detail(project, world),
+        preparation=await jobs.stage_view(session, project.id, full=view == "full"),
+        validation=ValidationSummary(
+            source_revision=int(report.get("source_revision") or 0),
+            errors=len(report.get("errors") or []),
+            warnings=len(report.get("warnings") or []),
+            current=report.get("source_revision") == project.draft_revision,
+        )
+        if report
+        else None,
+        published=[
+            PublishedBrief(
+                id=v.id, version=v.version, source_revision=v.source_revision, published_at=v.published_at.isoformat()
+            )
+            for v in versions
+        ],
     )
 
 

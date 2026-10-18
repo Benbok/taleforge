@@ -123,7 +123,7 @@ it("устаревший шаг можно повторить или остав�
 
 it("отказ публикации показывает причины", async () => {
   api((c) => {
-    if (c.url.includes("/validate")) return { body: { source_revision: 7, source_digest: "d", errors: [{ code: "missing_geometry", object_ref: "loc_cave/crawl" }], warnings: [], coverage: {} } };
+    if (c.url.includes("/validate")) return { body: { source_revision: 7, source_digest: "d", errors: [], warnings: [], coverage: {} } };
     if (c.url.endsWith("/publish")) return { status: 409, body: { detail: "publication_blocked", issues: [{ code: "stale_result", object_ref: "layout:loc_cave", related_refs: [] }] } };
     return undefined;
   });
@@ -131,7 +131,7 @@ it("отказ публикации показывает причины", async 
   await screen.findByText("Туманный остров");
   fireEvent.click(within(nav()).getByText("Проверка и публикация"));
   fireEvent.click(await screen.findByRole("button", { name: "Проверить" }));
-  expect(await screen.findByText(/ошибок 1/)).toBeTruthy();
+  await waitFor(() => expect((screen.getByRole("button", { name: "Опубликовать" }) as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(screen.getByRole("button", { name: "Опубликовать" }));
   expect(await screen.findByText(/Публикация отклонена/)).toBeTruthy();
   expect(screen.getByText("stale_result")).toBeTruthy();
@@ -219,4 +219,39 @@ it("характер персонажа сохраняется правкой е
     patch: { operations: [{ op: "update_plot_object", ref: "npc_a", fields: { character: "хитёр, труслив" } }] },
   });
   expect(screen.getAllByText("Характеры персонажей").length).toBe(2); // чек-лист и раздел редактора
+});
+
+it("проверка и публикация берутся с сервера и не теряются после перезагрузки", async () => {
+  const prep = { project_id: "ap_1", draft_revision: 7, stages: stages({ lore: { status: "ready" }, plot: { status: "ready" } }), spent_usd: 0, stale: [] };
+  api((c) =>
+    c.url.endsWith("?view=summary")
+      ? {
+          body: {
+            project,
+            preparation: prep,
+            validation: { source_revision: 7, errors: 0, warnings: 1, current: true },
+            published: [{ id: "av_1", version: 1, source_revision: 7, published_at: "2026-10-18T19:41:00Z" }],
+          },
+        }
+      : undefined,
+  );
+  localStorage.setItem("author:step:ap_1", "review");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  expect(await screen.findByText(/Текущий черновик опубликован как версия 1/)).toBeTruthy();
+  expect(screen.getAllByText("опубликовано: версия 1").length).toBe(2); // значок в шапке и подпись шага
+  const review = within(nav()).getByText("Проверка и публикация").closest("button")!;
+  expect(review.getAttribute("data-state")).toBe("done");
+});
+
+it("изменения после проверки просят проверить снова", async () => {
+  const prep = { project_id: "ap_1", draft_revision: 9, stages: stages(), spent_usd: 0, stale: [] };
+  api((c) =>
+    c.url.endsWith("?view=summary")
+      ? { body: { project: { ...project, draft_revision: 9 }, preparation: prep, validation: { source_revision: 7, errors: 0, warnings: 0, current: false }, published: [] } }
+      : undefined,
+  );
+  localStorage.setItem("author:step:ap_1", "review");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  expect(await screen.findByText(/после неё черновик изменился/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Опубликовать" }) as HTMLButtonElement).disabled).toBe(true);
 });

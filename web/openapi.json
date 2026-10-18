@@ -11990,6 +11990,23 @@
      },
      "project": {
       "$ref": "#/components/schemas/ProjectDetail"
+     },
+     "published": {
+      "items": {
+       "$ref": "#/components/schemas/PublishedBrief"
+      },
+      "title": "Published",
+      "type": "array"
+     },
+     "validation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ValidationSummary"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "required": [
@@ -12114,6 +12131,35 @@
      "request_key"
     ],
     "title": "PublishRequest",
+    "type": "object"
+   },
+   "PublishedBrief": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "published_at": {
+      "title": "Published At",
+      "type": "string"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "version": {
+      "title": "Version",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "version",
+     "source_revision",
+     "published_at"
+    ],
+    "title": "PublishedBrief",
     "type": "object"
    },
    "ReactionClosed": {
@@ -14325,6 +14371,35 @@
      "source_digest"
     ],
     "title": "ValidationReport",
+    "type": "object"
+   },
+   "ValidationSummary": {
+    "additionalProperties": false,
+    "properties": {
+     "current": {
+      "title": "Current",
+      "type": "boolean"
+     },
+     "errors": {
+      "title": "Errors",
+      "type": "integer"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "warnings": {
+      "title": "Warnings",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "source_revision",
+     "errors",
+     "warnings",
+     "current"
+    ],
+    "title": "ValidationSummary",
     "type": "object"
    },
    "VersionOut": {

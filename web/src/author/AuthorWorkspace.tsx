@@ -216,6 +216,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       setPublishError(null);
       setPublishIssues(null);
       setMessage(`Опубликована версия ${v.version}.`);
+      void refresh();
     },
     onError: (e) => {
       setPublishError(e instanceof ApiError ? e.message : "ошибка публикации");
@@ -237,6 +238,29 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const worldBuilt = isDone("materialize");
   const mapStale = [...stale].filter((r) => !r.startsWith("stage:"));
   const mapsRunning = ["queued", "running"].includes(stageOf("maps")?.status ?? "");
+
+  const validation = summary.data.validation;
+  const published = summary.data.published ?? [];
+  const publishedNow = published.find((v) => v.source_revision === project.draft_revision);
+  // состояние проверки и публикации хранит сервер: после перезагрузки страница показывает то же самое
+  const reviewState: { state: StepState; note: string } = publishedNow
+    ? { state: "done", note: `опубликовано: версия ${publishedNow.version}` }
+    : !validation
+      ? { state: "empty", note: "не проверено" }
+      : !validation.current
+        ? { state: "stale", note: "были изменения — проверьте снова" }
+        : validation.errors
+          ? { state: "problem", note: `ошибок: ${validation.errors}` }
+          : { state: "partial", note: "проверено, можно публиковать" };
+  const reviewText = publishedNow
+    ? `Текущий черновик опубликован как версия ${publishedNow.version}. Новые игры из библиотеки берут её.`
+    : !validation
+      ? "Проверка ещё не проводилась."
+      : !validation.current
+        ? `Проверка была на ревизии ${validation.source_revision}, после неё черновик изменился (сейчас ревизия ${project.draft_revision}). Проверьте снова — это бесплатно и быстро.`
+        : validation.errors
+          ? `Проверка нашла ошибок: ${validation.errors}. Исправьте их и проверьте снова.`
+          : `Проверка пройдена${validation.warnings ? `, предупреждений: ${validation.warnings}` : ""}. Можно публиковать${published.length ? ` новую версию (последняя — ${published[0].version})` : ""}.`;
 
   const loreItems = loreProgress(lore);
   const plotItems = plotProgress(plot);
@@ -285,8 +309,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     {
       id: "review",
       title: "Проверка и публикация",
-      state: report ? ((report.errors ?? []).length ? "problem" : "done") : "empty",
-      note: report ? `ошибок: ${(report.errors ?? []).length}` : "не проверено",
+      ...reviewState,
     },
   ];
 
@@ -677,12 +700,33 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     body = (
       <>
         <StepHeader title="Проверка и публикация" purpose="Проверка находит всё, что не готово: пустые карты, недостижимые места, предметы только в тексте, устаревшие результаты. Опубликовать можно только без ошибок." />
-        <ValidationPanel report={report} publishIssues={publishIssues} publishError={publishError} busy={busy} onValidate={() => validate.mutate()} onPublish={() => publish.mutate()} />
+        <div className={`flex flex-col gap-2 rounded-xl border p-4 ${reviewState.state === "done" ? "border-patina/60" : reviewState.state === "problem" || reviewState.state === "stale" ? "border-warn/60" : "border-line"} bg-surface`} role="status">
+          <p className="text-sm text-ink">{reviewText}</p>
+          {(summary.data.published ?? []).length > 0 && (
+            <ul className="flex flex-col gap-0.5 text-xs text-muted" aria-label="Опубликованные версии">
+              {(summary.data.published ?? []).map((v) => (
+                <li key={v.id}>
+                  версия {v.version} — ревизия {v.source_revision}, {new Date(v.published_at).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" })}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <ValidationPanel
+          report={report}
+          canPublish={!!validation?.current && validation.errors === 0}
+          publishIssues={publishIssues}
+          publishError={publishError}
+          busy={busy}
+          onValidate={() => validate.mutate()}
+          onPublish={() => publish.mutate()}
+        />
       </>
     );
   }
 
   const spent = preparation.spent_usd ?? 0;
+  const latest = (summary.data.published ?? [])[0];
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6">
       {/* Top Project HUD */}
@@ -692,6 +736,11 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
           <span className="rounded-full bg-line-soft px-2.5 py-0.5 text-xs font-medium text-muted">
             ревизия {project.draft_revision}
           </span>
+          {latest && (
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${latest.source_revision === project.draft_revision ? "bg-patina text-on-accent" : "border border-warn/50 text-warn"}`}>
+              {latest.source_revision === project.draft_revision ? `опубликовано: версия ${latest.version}` : `изменено после версии ${latest.version}`}
+            </span>
+          )}
           <span className="rounded-full border border-line-soft bg-raised px-2.5 py-0.5 text-xs text-muted">
             потрачено ${spent.toFixed(4)}
             {preparation.budget_usd != null ? ` из $${preparation.budget_usd.toFixed(2)}` : ""}

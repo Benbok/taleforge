@@ -6565,6 +6565,9 @@ export interface components {
         ProjectView: {
             preparation: components["schemas"]["PreparationView"];
             project: components["schemas"]["ProjectDetail"];
+            /** Published */
+            published?: components["schemas"]["PublishedBrief"][];
+            validation?: components["schemas"]["ValidationSummary"] | null;
         };
         /** ProviderActivePatch */
         ProviderActivePatch: {
@@ -6596,6 +6599,17 @@ export interface components {
             expected_revision: number;
             /** Request Key */
             request_key: string;
+        };
+        /** PublishedBrief */
+        PublishedBrief: {
+            /** Id */
+            id: string;
+            /** Published At */
+            published_at: string;
+            /** Source Revision */
+            source_revision: number;
+            /** Version */
+            version: number;
         };
         /** ReactionClosed */
         ReactionClosed: {
@@ -7286,6 +7300,17 @@ export interface components {
              */
             warnings?: components["schemas"]["ValidationIssue"][];
         };
+        /** ValidationSummary */
+        ValidationSummary: {
+            /** Current */
+            current: boolean;
+            /** Errors */
+            errors: number;
+            /** Source Revision */
+            source_revision: number;
+            /** Warnings */
+            warnings: number;
+        };
         /** VersionOut */
         VersionOut: {
             /** Id */
@@ -7702,6 +7727,7 @@ export type ProjectView = components['schemas']['ProjectView'];
 export type ProviderActivePatch = components['schemas']['ProviderActivePatch'];
 export type ProviderOut = components['schemas']['ProviderOut'];
 export type PublishRequest = components['schemas']['PublishRequest'];
+export type PublishedBrief = components['schemas']['PublishedBrief'];
 export type ReactionClosed = components['schemas']['ReactionClosed'];
 export type ReactionPrompt = components['schemas']['ReactionPrompt'];
 export type RegisterByInviteIn = components['schemas']['RegisterByInviteIn'];
@@ -7753,6 +7779,7 @@ export type UserRoleIn = components['schemas']['UserRoleIn'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type ValidationIssue = components['schemas']['ValidationIssue'];
 export type ValidationReport = components['schemas']['ValidationReport'];
+export type ValidationSummary = components['schemas']['ValidationSummary'];
 export type VersionOut = components['schemas']['VersionOut'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];

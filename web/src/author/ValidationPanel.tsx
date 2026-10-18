@@ -2,6 +2,8 @@ import type { ValidationIssue, ValidationReport } from "../lib/api.gen";
 
 interface Props {
   report: ValidationReport | null;
+  /** Можно ли публиковать по данным сервера; без этого — только после проверки в этой вкладке. */
+  canPublish?: boolean;
   publishIssues: ValidationIssue[] | null;
   publishError: string | null;
   busy: boolean;
@@ -38,6 +40,7 @@ function Issues({ title, issues }: { title: string; issues: ValidationIssue[] })
 
 export default function ValidationPanel({
   report,
+  canPublish: serverAllows,
   publishIssues,
   publishError,
   busy,
@@ -46,7 +49,8 @@ export default function ValidationPanel({
 }: Props) {
   const errorCount = (report?.errors ?? []).length;
   const warningCount = (report?.warnings ?? []).length;
-  const canPublish = report !== null && errorCount === 0;
+  // сервер знает, проверена ли текущая ревизия; проверка в этой вкладке уточняет его ответ
+  const canPublish = report !== null ? errorCount === 0 : !!serverAllows;
 
   return (
     <section aria-label="Проверка и публикация" className="flex flex-col gap-5">
@@ -86,7 +90,7 @@ export default function ValidationPanel({
               canPublish ? "btn-primary shadow-sm" : ""
             }`}
             type="button"
-            disabled={busy || !report}
+            disabled={busy || !canPublish}
             onClick={onPublish}
           >
             Опубликовать
