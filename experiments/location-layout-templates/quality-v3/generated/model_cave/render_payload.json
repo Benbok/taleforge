@@ -1,0 +1,531 @@
+{
+  "template_id": "model_cave",
+  "root_id": "quality_model_cave",
+  "entry": "main",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "main",
+      "name": "Входной грот",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "cave",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            5,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "quality_model_cave",
+            "beyond": null,
+            "passage_ref": "in_main_w",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Проход",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                6,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_main_stalactite_1",
+            "name": "Сталактит",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_main_rubble_1",
+            "name": "Щебень",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                4,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_main_table_1",
+            "name": "Каменный стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                2,
+                5,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_main_bench_1",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_main_torch_1",
+            "name": "Факел",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_main_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "main",
+          "rev": 1
+        },
+        "mask": [
+          "##...##",
+          "#.....#",
+          ".......",
+          ".......",
+          ".......",
+          "#......",
+          "##...##",
+          "##...##"
+        ]
+      }
+    },
+    {
+      "id": "part_1",
+      "name": "Каменный проход",
+      "offset": [
+        7,
+        1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "cave",
+        "cols": 5,
+        "rows": 5,
+        "party": [
+          0,
+          2
+        ],
+        "walls": [
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Проход",
+            "side": "w",
+            "at": 2,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                0,
+                2
+              ]
+            ]
+          },
+          {
+            "name": "Арка грота",
+            "side": "e",
+            "at": 2,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                4,
+                2
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_1_outcrop_1",
+            "name": "Скальный выступ",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_part_1_rubble_2",
+            "name": "Трещина",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_1",
+          "rev": 1
+        },
+        "mask": [
+          "#...#",
+          ".....",
+          ".....",
+          "#....",
+          "#...#"
+        ]
+      }
+    },
+    {
+      "id": "part_2",
+      "name": "Глубокий грот",
+      "offset": [
+        12,
+        -1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "cave",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Арка грота",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_2_stalagmite_1",
+            "name": "Сталагмит",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_part_2_stalagmite_2",
+            "name": "Сталагмит",
+            "kind": "nature",
+            "cells": [
+              [
+                4,
+                5,
+                5,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_part_2_lichen_1",
+            "name": "Влажный камень",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:lichen"
+          },
+          {
+            "id": "sf_part_2_glow_1",
+            "name": "Светящийся мох",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                2,
+                6,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:glow"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_2",
+          "rev": 1
+        },
+        "mask": [
+          "##...##",
+          "#....##",
+          ".......",
+          ".......",
+          "......#",
+          "#.....#",
+          "#.....#",
+          "##.#.##"
+        ]
+      }
+    }
+  ]
+}

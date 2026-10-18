@@ -23,6 +23,7 @@ audio/sfx-pilot/
 models/sfx/
 backups/
 web/.map-examples-build/
+web/.experiment-previews-build/
 
 # Временные и тестовые артефакты локального запуска
 .tmp-pytest*/

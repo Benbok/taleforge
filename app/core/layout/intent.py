@@ -96,6 +96,7 @@ class PartIntent(BaseModel):
     rows: int | None = Field(None, ge=1, le=30)
     level: int = Field(0, ge=-3, le=3)
     material: Literal["stone", "earth", "grass", "water", "wood"] | None = None
+    lighting: Literal["normal", "dim", "dark"] = "normal"
     connects_to: str | None = Field(None, description="часть выше по списку; пусто — предыдущая")
     side: Side | None = Field(None, description="с какой стороны родителя примыкает")
     passage_kind: Literal["door", "gate", "arch", "passage", "stairs", "hatch", "gap"] = "door"

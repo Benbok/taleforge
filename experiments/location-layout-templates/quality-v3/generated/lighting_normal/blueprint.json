@@ -1,0 +1,159 @@
+{
+  "seed": 7,
+  "entry": "hall",
+  "areas": [
+    {
+      "area_ref": "hall",
+      "role": "room",
+      "name": "Обычный свет",
+      "public_name": "Обычный свет",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "table",
+          "name": "Стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "bench",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              6,
+              5,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "crate",
+          "name": "Ящик",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "torch",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              9,
+              6,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              0,
+              5,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_1",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              11,
+              4,
+              11,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "in_hall_w",
+      "kind": "door",
+      "name": "Вход",
+      "public_name": "Вход",
+      "ends": [
+        {
+          "area_ref": "hall",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_lighting_normal"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

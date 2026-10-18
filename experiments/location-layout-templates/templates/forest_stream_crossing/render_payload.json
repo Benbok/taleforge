@@ -19,23 +19,23 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 10,
-        "rows": 10,
+        "cols": 12,
+        "rows": 12,
         "party": [
           0,
-          4
+          5
         ],
         "walls": [
           [
-            3,
+            4,
             2
           ],
           [
-            8,
+            10,
             1
           ],
           [
-            8,
+            10,
             2
           ]
         ],
@@ -43,7 +43,7 @@
           {
             "name": "Тракт с запада",
             "side": "w",
-            "at": 4,
+            "at": 5,
             "width": 2,
             "kind": "edge",
             "state": "open",
@@ -54,11 +54,11 @@
             "cells": [
               [
                 0,
-                4
+                5
               ],
               [
                 0,
-                5
+                6
               ]
             ]
           },
@@ -66,7 +66,7 @@
             "name": "Выход на мост",
             "side": "e",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -75,44 +75,52 @@
             "passage_ref": "p_stream_crossing",
             "cells": [
               [
-                9,
+                11,
                 0
               ],
               [
-                9,
+                11,
                 1
               ],
               [
-                9,
+                11,
                 2
               ],
               [
-                9,
+                11,
                 3
               ],
               [
-                9,
+                11,
                 4
               ],
               [
-                9,
+                11,
                 5
               ],
               [
-                9,
+                11,
                 6
               ],
               [
-                9,
+                11,
                 7
               ],
               [
-                9,
+                11,
                 8
               ],
               [
-                9,
+                11,
                 9
+              ],
+              [
+                11,
+                10
+              ],
+              [
+                11,
+                11
               ]
             ]
           }
@@ -124,9 +132,9 @@
             "kind": "object",
             "cells": [
               [
-                3,
+                4,
                 2,
-                3,
+                4,
                 2
               ]
             ],
@@ -141,10 +149,10 @@
             "kind": "light",
             "cells": [
               [
-                3,
-                7,
                 4,
-                7
+                9,
+                5,
+                9
               ]
             ],
             "cover": "none",
@@ -158,9 +166,9 @@
             "kind": "nature",
             "cells": [
               [
-                8,
+                10,
                 1,
-                8,
+                10,
                 2
               ]
             ],
@@ -178,15 +186,15 @@
             "cells": [
               [
                 0,
-                4,
-                9,
-                4
+                5,
+                11,
+                5
               ],
               [
                 0,
-                5,
-                9,
-                5
+                6,
+                11,
+                6
               ]
             ]
           }
@@ -195,37 +203,37 @@
           {
             "side": "n",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 4,
+            "length": 5,
             "meaning": "obstacle"
           },
           {
             "side": "w",
-            "start": 4,
+            "start": 5,
             "length": 2,
             "meaning": "boundary"
           },
           {
             "side": "w",
-            "start": 6,
-            "length": 4,
+            "start": 7,
+            "length": 5,
             "meaning": "obstacle"
           }
         ],
@@ -240,7 +248,7 @@
       "id": "stream_crossing",
       "name": "Переправа через ручей",
       "offset": [
-        10,
+        12,
         0
       ],
       "level": 0,
@@ -249,20 +257,20 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 12,
-        "rows": 10,
+        "cols": 14,
+        "rows": 12,
         "party": [
-          11,
+          13,
           0
         ],
         "walls": [
           [
-            6,
-            1
+            7,
+            2
           ],
           [
-            6,
-            8
+            7,
+            9
           ]
         ],
         "exits": [
@@ -270,7 +278,7 @@
             "name": "Подъем на откос",
             "side": "e",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -279,44 +287,52 @@
             "passage_ref": "p_east_bluff",
             "cells": [
               [
-                11,
+                13,
                 0
               ],
               [
-                11,
+                13,
                 1
               ],
               [
-                11,
+                13,
                 2
               ],
               [
-                11,
+                13,
                 3
               ],
               [
-                11,
+                13,
                 4
               ],
               [
-                11,
+                13,
                 5
               ],
               [
-                11,
+                13,
                 6
               ],
               [
-                11,
+                13,
                 7
               ],
               [
-                11,
+                13,
                 8
               ],
               [
-                11,
+                13,
                 9
+              ],
+              [
+                13,
+                10
+              ],
+              [
+                13,
+                11
               ]
             ]
           },
@@ -324,7 +340,7 @@
             "name": "Выход на мост",
             "side": "w",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -371,6 +387,14 @@
               [
                 0,
                 9
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                11
               ]
             ]
           }
@@ -382,16 +406,16 @@
             "kind": "cover",
             "cells": [
               [
-                5,
-                3,
-                7,
-                3
+                6,
+                4,
+                8,
+                4
               ],
               [
-                5,
                 6,
                 7,
-                6
+                8,
+                7
               ]
             ],
             "cover": "none",
@@ -405,16 +429,16 @@
             "kind": "nature",
             "cells": [
               [
-                6,
-                1,
-                6,
-                1
+                7,
+                2,
+                7,
+                2
               ],
               [
-                6,
-                8,
-                6,
-                8
+                7,
+                9,
+                7,
+                9
               ]
             ],
             "cover": "none",
@@ -429,9 +453,9 @@
             "cells": [
               [
                 2,
-                7,
+                9,
                 3,
-                8
+                10
               ]
             ],
             "cover": "none",
@@ -447,16 +471,16 @@
             "kind": "bridge",
             "cells": [
               [
-                6,
-                4,
                 7,
-                4
+                5,
+                8,
+                5
               ],
               [
-                6,
-                5,
                 7,
-                5
+                6,
+                8,
+                6
               ]
             ]
           },
@@ -465,27 +489,27 @@
             "cells": [
               [
                 0,
-                4,
                 5,
-                4
+                6,
+                5
               ],
               [
-                8,
-                4,
-                11,
-                4
+                9,
+                5,
+                13,
+                5
               ],
               [
                 0,
-                5,
-                5,
-                5
+                6,
+                6,
+                6
               ],
               [
-                8,
-                5,
-                11,
-                5
+                9,
+                6,
+                13,
+                6
               ]
             ]
           },
@@ -493,52 +517,64 @@
             "kind": "stream",
             "cells": [
               [
-                6,
-                0,
                 7,
+                0,
+                8,
                 0
               ],
               [
-                6,
-                1,
                 7,
+                1,
+                8,
                 1
               ],
               [
-                6,
-                2,
                 7,
+                2,
+                8,
                 2
               ],
               [
-                6,
-                3,
                 7,
+                3,
+                8,
                 3
               ],
               [
-                6,
-                6,
                 7,
-                6
+                4,
+                8,
+                4
               ],
               [
-                6,
                 7,
                 7,
+                8,
                 7
               ],
               [
-                6,
-                8,
                 7,
+                8,
+                8,
                 8
               ],
               [
-                6,
-                9,
                 7,
+                9,
+                8,
                 9
+              ],
+              [
+                7,
+                10,
+                8,
+                10
+              ],
+              [
+                7,
+                11,
+                8,
+                11
               ]
             ]
           }
@@ -547,25 +583,25 @@
           {
             "side": "n",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           }
         ],
@@ -580,7 +616,7 @@
       "id": "east_bluff",
       "name": "Восточный холм",
       "offset": [
-        22,
+        26,
         0
       ],
       "level": 0,
@@ -589,36 +625,36 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 10,
-        "rows": 10,
+        "cols": 12,
+        "rows": 12,
         "party": [
           0,
           0
         ],
         "walls": [
           [
-            2,
-            2
-          ],
-          [
             3,
             2
           ],
           [
-            7,
-            7
+            4,
+            2
           ],
           [
-            7,
-            8
+            9,
+            9
           ],
           [
-            8,
-            7
+            9,
+            10
           ],
           [
-            8,
-            8
+            10,
+            9
+          ],
+          [
+            10,
+            10
           ]
         ],
         "exits": [
@@ -626,7 +662,7 @@
             "name": "Подъем на откос",
             "side": "w",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -673,6 +709,14 @@
               [
                 0,
                 9
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                11
               ]
             ]
           }
@@ -684,9 +728,9 @@
             "kind": "cover",
             "cells": [
               [
-                2,
-                2,
                 3,
+                2,
+                4,
                 2
               ]
             ],
@@ -701,10 +745,10 @@
             "kind": "nature",
             "cells": [
               [
-                7,
-                7,
-                8,
-                8
+                9,
+                9,
+                10,
+                10
               ]
             ],
             "cover": "none",
@@ -718,10 +762,10 @@
             "kind": "light",
             "cells": [
               [
-                4,
-                7,
                 5,
-                7
+                9,
+                6,
+                9
               ]
             ],
             "cover": "none",
@@ -738,15 +782,15 @@
             "cells": [
               [
                 0,
-                4,
-                9,
-                4
+                5,
+                11,
+                5
               ],
               [
                 0,
-                5,
-                9,
-                5
+                6,
+                11,
+                6
               ]
             ]
           }
@@ -755,25 +799,25 @@
           {
             "side": "n",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           }
         ],

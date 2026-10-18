@@ -16,7 +16,7 @@
   ],
   "detail_preservation": {
     "upper_gallery": {
-      "torch_bracket": "preserved",
+      "torch_bracket": "shifted: [[4, 4, 5, 4]] -> [[7, 2, 7, 2]]",
       "rocky_ledge": "preserved",
       "crystal_cluster": "preserved"
     },

@@ -9,8 +9,8 @@
       "public_name": "Барбакан",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 10,
-      "rows": 8,
+      "cols": 12,
+      "rows": 10,
       "offset": [
         0,
         0
@@ -27,9 +27,9 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              4
+              5
             ]
           ],
           "solid": true,
@@ -42,9 +42,9 @@
           "kind": "object",
           "cells": [
             [
-              6,
-              1,
               7,
+              1,
+              8,
               1
             ]
           ],
@@ -58,10 +58,10 @@
           "kind": "light",
           "cells": [
             [
-              5,
-              5,
-              5,
-              5
+              6,
+              6,
+              6,
+              6
             ]
           ],
           "solid": false,
@@ -74,30 +74,31 @@
         {
           "side": "n",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "watchtower_ruin",
@@ -106,10 +107,10 @@
       "public_name": "Сторожевая башня",
       "environment": "indoor",
       "shape": "circle",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "offset": [
-        10,
+        12,
         0
       ],
       "level": 0,
@@ -123,10 +124,10 @@
           "kind": "cover",
           "cells": [
             [
-              3,
-              3,
               4,
-              4
+              4,
+              5,
+              5
             ]
           ],
           "solid": true,
@@ -139,16 +140,16 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              2,
-              5,
-              2
+              6,
+              3,
+              6,
+              3
             ],
             [
-              5,
-              5,
-              5,
-              5
+              6,
+              6,
+              6,
+              6
             ]
           ],
           "solid": false,
@@ -161,10 +162,26 @@
           "kind": "light",
           "cells": [
             [
+              1,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              8,
               2,
-              4,
-              2,
-              4
+              8,
+              2
             ]
           ],
           "solid": false,
@@ -175,7 +192,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "dungeon_casemate",
@@ -184,10 +202,10 @@
       "public_name": "Подземный каземат",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 8,
-      "rows": 6,
+      "cols": 10,
+      "rows": 7,
       "offset": [
-        10,
+        12,
         0
       ],
       "level": -1,
@@ -217,9 +235,9 @@
           "kind": "cover",
           "cells": [
             [
-              5,
+              7,
               1,
-              6,
+              8,
               2
             ]
           ],
@@ -233,10 +251,10 @@
           "kind": "furniture",
           "cells": [
             [
-              3,
-              3,
               4,
-              3
+              4,
+              5,
+              4
             ]
           ],
           "solid": false,
@@ -247,7 +265,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -260,14 +279,14 @@
         {
           "area_ref": "outer_barbican",
           "side": "e",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "watchtower_ruin",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         }
@@ -284,14 +303,14 @@
         {
           "area_ref": "watchtower_ruin",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "dungeon_casemate",
           "side": "w",
-          "start": 2,
+          "start": 3,
           "width": 1,
           "place_id": null
         }
@@ -308,7 +327,7 @@
         {
           "area_ref": "outer_barbican",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 2,
           "place_id": null
         },

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "temple_compact_shrine",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "archetype": "temple",
   "template_ids": [
     "location.temple"
@@ -27,10 +27,11 @@
         "environment": "indoor",
         "shape": "rect",
         "size": "medium",
-        "cols": 8,
-        "rows": 5,
+        "cols": 10,
+        "rows": 6,
         "level": 0,
         "material": "stone",
+        "lighting": "normal",
         "connects_to": null,
         "side": null,
         "passage_kind": "door",
@@ -46,10 +47,10 @@
             "kind": "object",
             "cells": [
               [
-                3,
-                2,
                 4,
-                2
+                3,
+                5,
+                3
               ]
             ],
             "solid": true,
@@ -62,16 +63,16 @@
             "kind": "furniture",
             "cells": [
               [
-                1,
-                1,
-                1,
-                3
+                2,
+                2,
+                2,
+                4
               ],
               [
-                6,
-                1,
-                6,
-                3
+                7,
+                2,
+                7,
+                4
               ]
             ],
             "solid": false,
@@ -84,9 +85,9 @@
             "kind": "light",
             "cells": [
               [
-                3,
-                0,
                 4,
+                0,
+                5,
                 0
               ]
             ],
@@ -107,10 +108,11 @@
         "environment": "indoor",
         "shape": "rect",
         "size": "medium",
-        "cols": 10,
-        "rows": 12,
+        "cols": 12,
+        "rows": 14,
         "level": 0,
         "material": "stone",
+        "lighting": "normal",
         "connects_to": "narthex",
         "side": "n",
         "passage_kind": "arch",
@@ -126,9 +128,9 @@
             "kind": "furniture",
             "cells": [
               [
-                4,
-                1,
                 5,
+                1,
+                6,
                 2
               ]
             ],
@@ -143,15 +145,15 @@
             "cells": [
               [
                 2,
-                4,
+                5,
                 2,
-                4
+                5
               ],
               [
                 2,
-                8,
+                9,
                 2,
-                8
+                9
               ]
             ],
             "solid": true,
@@ -164,16 +166,16 @@
             "kind": "cover",
             "cells": [
               [
-                7,
-                4,
-                7,
-                4
+                9,
+                5,
+                9,
+                5
               ],
               [
-                7,
-                8,
-                7,
-                8
+                9,
+                9,
+                9,
+                9
               ]
             ],
             "solid": true,
@@ -186,15 +188,15 @@
             "kind": "light",
             "cells": [
               [
-                3,
+                4,
                 1,
-                3,
+                4,
                 1
               ],
               [
-                6,
+                7,
                 1,
-                6,
+                7,
                 1
               ]
             ],
@@ -208,10 +210,10 @@
             "kind": "furniture",
             "cells": [
               [
-                4,
-                4,
                 5,
-                4
+                5,
+                6,
+                5
               ]
             ],
             "solid": false,
@@ -231,10 +233,11 @@
         "environment": "indoor",
         "shape": "rect",
         "size": "medium",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 7,
         "level": 0,
         "material": "stone",
+        "lighting": "normal",
         "connects_to": "sanctuary",
         "side": "e",
         "passage_kind": "door",
@@ -250,9 +253,9 @@
             "kind": "object",
             "cells": [
               [
-                4,
+                5,
                 1,
-                4,
+                5,
                 2
               ]
             ],
@@ -282,10 +285,10 @@
             "kind": "furniture",
             "cells": [
               [
-                2,
-                4,
                 3,
-                4
+                5,
+                4,
+                5
               ]
             ],
             "solid": false,

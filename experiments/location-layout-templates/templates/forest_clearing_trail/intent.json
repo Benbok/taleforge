@@ -11,10 +11,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": null,
       "side": null,
       "passage_kind": "door",
@@ -46,10 +47,10 @@
           "kind": "cover",
           "cells": [
             [
-              7,
-              7,
+              8,
               9,
-              7
+              10,
+              9
             ]
           ],
           "solid": false,
@@ -62,10 +63,10 @@
           "kind": "cover",
           "cells": [
             [
-              3,
-              7,
               4,
-              7
+              9,
+              5,
+              9
             ]
           ],
           "solid": false,
@@ -85,10 +86,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 14,
-      "rows": 10,
+      "cols": 17,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": "forest_verge",
       "side": "e",
       "passage_kind": "passage",
@@ -104,9 +106,9 @@
           "kind": "nature",
           "cells": [
             [
-              6,
+              8,
               1,
-              7,
+              9,
               2
             ]
           ],
@@ -120,10 +122,10 @@
           "kind": "light",
           "cells": [
             [
-              6,
               7,
-              7,
-              7
+              8,
+              8,
+              8
             ]
           ],
           "solid": false,
@@ -136,10 +138,10 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
-              8,
-              8,
-              8
+              6,
+              9,
+              9,
+              9
             ]
           ],
           "solid": false,
@@ -152,16 +154,16 @@
           "kind": "nature",
           "cells": [
             [
-              2,
-              2,
-              2,
-              2
+              3,
+              3,
+              3,
+              3
             ],
             [
-              6,
-              6,
-              6,
-              6
+              7,
+              7,
+              7,
+              7
             ]
           ],
           "solid": false,
@@ -181,10 +183,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 10,
-      "rows": 8,
+      "cols": 12,
+      "rows": 10,
       "level": 0,
       "material": "earth",
+      "lighting": "normal",
       "connects_to": "sunlit_clearing",
       "side": "n",
       "passage_kind": "passage",
@@ -200,10 +203,10 @@
           "kind": "hazard",
           "cells": [
             [
-              3,
-              3,
-              5,
-              4
+              4,
+              4,
+              6,
+              5
             ]
           ],
           "solid": false,
@@ -232,10 +235,10 @@
           "kind": "object",
           "cells": [
             [
-              7,
-              5,
-              8,
-              5
+              9,
+              6,
+              10,
+              6
             ]
           ],
           "solid": false,
@@ -263,7 +266,7 @@
       "band_ref": "forest_trail",
       "kind": "path",
       "axis": "we",
-      "at": 4,
+      "at": 5,
       "width": 2,
       "start": null,
       "end": null

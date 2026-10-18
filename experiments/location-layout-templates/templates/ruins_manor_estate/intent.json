@@ -11,10 +11,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": null,
       "side": null,
       "passage_kind": "door",
@@ -30,10 +31,10 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              4,
               6,
-              5
+              5,
+              7,
+              6
             ]
           ],
           "solid": true,
@@ -46,16 +47,16 @@
           "kind": "nature",
           "cells": [
             [
-              1,
               2,
-              1,
-              4
+              3,
+              2,
+              5
             ],
             [
-              7,
-              2,
-              7,
-              4
+              8,
+              3,
+              8,
+              5
             ]
           ],
           "solid": true,
@@ -68,10 +69,10 @@
           "kind": "furniture",
           "cells": [
             [
-              8,
-              2,
               9,
-              2
+              3,
+              10,
+              3
             ]
           ],
           "solid": false,
@@ -84,10 +85,10 @@
           "kind": "nature",
           "cells": [
             [
-              3,
-              7,
-              3,
-              7
+              4,
+              9,
+              4,
+              9
             ]
           ],
           "solid": false,
@@ -107,10 +108,11 @@
       "environment": "indoor",
       "shape": "l_shape",
       "size": "medium",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "level": 0,
       "material": "stone",
+      "lighting": "normal",
       "connects_to": "overgrown_park",
       "side": "e",
       "passage_kind": "arch",
@@ -126,10 +128,10 @@
           "kind": "hazard",
           "cells": [
             [
-              4,
-              4,
               5,
-              5
+              5,
+              6,
+              6
             ]
           ],
           "solid": false,
@@ -143,15 +145,15 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              3
+              4
             ],
             [
               2,
-              7,
+              8,
               2,
-              7
+              8
             ]
           ],
           "solid": true,
@@ -164,10 +166,10 @@
           "kind": "light",
           "cells": [
             [
-              8,
-              7,
-              8,
-              8
+              10,
+              9,
+              10,
+              10
             ]
           ],
           "solid": true,
@@ -187,10 +189,11 @@
       "environment": "indoor",
       "shape": "rect",
       "size": "medium",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "level": 0,
       "material": "wood",
+      "lighting": "normal",
       "connects_to": "collapsed_ballroom",
       "side": "s",
       "passage_kind": "door",
@@ -206,10 +209,10 @@
           "kind": "furniture",
           "cells": [
             [
-              2,
-              2,
               3,
-              3
+              3,
+              4,
+              4
             ]
           ],
           "solid": true,
@@ -222,9 +225,9 @@
           "kind": "furniture",
           "cells": [
             [
-              1,
+              2,
               0,
-              4,
+              5,
               0
             ]
           ],
@@ -238,10 +241,10 @@
           "kind": "object",
           "cells": [
             [
-              5,
-              2,
-              5,
-              3
+              6,
+              3,
+              6,
+              4
             ]
           ],
           "solid": false,

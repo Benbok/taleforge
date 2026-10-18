@@ -1,0 +1,449 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "grotto",
+      "name": "Входной грот",
+      "public_name": "Входной грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Сталактиты, Щебень",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Сталактиты",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Щебень",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              7,
+              4,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              3,
+              6,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Лишайник",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              5,
+              2,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кристаллы",
+          "kind": "nature",
+          "cells": [
+            [
+              5,
+              1,
+              5,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "cavern",
+      "name": "Каменный проход",
+      "public_name": "Каменный проход",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        -8
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Скальные выступы, Трещины",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Скальные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Трещины",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              2,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Лишайник",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              3,
+              2,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кристаллы",
+          "kind": "nature",
+          "cells": [
+            [
+              5,
+              6,
+              5,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "grotto",
+      "name": "Глубокий грот",
+      "public_name": "Глубокий грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        7,
+        -8
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Сталагмиты, Влажный камень",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Сталагмиты",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Влажный камень",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              6,
+              4,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              2,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Лишайник",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кристаллы",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "door",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "n",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "s",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "door",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "part_1",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_w",
+      "kind": "gap",
+      "name": "Вход",
+      "public_name": "Вход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_fallback_cave"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

@@ -21,13 +21,13 @@
       "garden_urn": "preserved"
     },
     "collapsed_ballroom": {
-      "fallen_chandelier": "shifted: [[4, 4, 5, 5]] -> [[3, 4, 4, 5]]",
+      "fallen_chandelier": "shifted: [[5, 5, 6, 6]] -> [[4, 5, 5, 6]]",
       "marble_pillars": "preserved",
       "grand_fireplace": "preserved"
     },
     "intact_study": {
       "carved_desk": "preserved",
-      "parchment_shelves": "shifted: [[1, 0, 4, 0]] -> [[1, 1, 4, 1]]",
+      "parchment_shelves": "shifted: [[2, 0, 5, 0]] -> [[2, 1, 5, 1]]",
       "hidden_safe": "preserved"
     }
   }

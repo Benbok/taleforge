@@ -14,9 +14,15 @@ from app.core import reach, sketch
 MAX_TRIES = 48  # кандидатов на объект: каждая проверка досягаемости — несколько обходов, транзакция не безгранична
 
 
-def place(sk: dict, objects: list[tuple[str, str]], seed: int, *, slots: list[dict] | None = None,
-          roles: dict[str, str] | None = None,
-          sizes: dict[str, tuple[int, int]] | None = None) -> tuple[dict, list[str]]:
+def place(
+    sk: dict,
+    objects: list[tuple[str, str]],
+    seed: int,
+    *,
+    slots: list[dict] | None = None,
+    roles: dict[str, str] | None = None,
+    sizes: dict[str, tuple[int, int]] | None = None,
+) -> tuple[dict, list[str]]:
     floor = sketch.floor_cells(sk) or {(c, r) for c in range(sk["cols"]) for r in range(sk["rows"])}
     keep = {tuple(sk["party"])}
     for x in sk.get("exits") or []:
@@ -52,12 +58,23 @@ def place(sk: dict, objects: list[tuple[str, str]], seed: int, *, slots: list[di
             if original is None and len(features) >= sketch.MAX_FEATURES:
                 continue
             occupied = set().union(*(_cells(f.get("cells") or []) for f in features if f is not original))
-            if not footprint or not footprint <= floor or footprint & (occupied | keep | set(
-                    map(tuple, sk.get("walls") or []))):
+            if (
+                not footprint
+                or not footprint <= floor
+                or footprint & (occupied | keep | set(map(tuple, sk.get("walls") or [])))
+            ):
                 continue
-            feature = {**(original or {}), "id": (original or {}).get("id", f"sf_{entity_id}"[:32]),
-                       "entity_id": entity_id, "name": name, "kind": "object", "cells": slot["cells"],
-                       "cover": "none", "hidden": False, "slot_ref": slot["slot_ref"]}
+            feature = {
+                **(original or {}),
+                "id": (original or {}).get("id", f"sf_{entity_id}"[:32]),
+                "entity_id": entity_id,
+                "name": name,
+                "kind": "object",
+                "cells": slot["cells"],
+                "cover": "none",
+                "hidden": False,
+                "slot_ref": slot["slot_ref"],
+            }
             trial_features = [f for f in features if f is not original] + [feature]
             if set(reach.reach_errors({**out, "features": trial_features})) <= baseline:
                 features = trial_features
@@ -70,7 +87,45 @@ def place(sk: dict, objects: list[tuple[str, str]], seed: int, *, slots: list[di
         if len(features) >= sketch.MAX_FEATURES:
             unplaced.append(entity_id)
             continue
-        candidates = [cell for cell in free if cell not in occupied]
+        candidates = []
+        blocked = occupied | keep | reach.blocked_cells(out)
+        for c, r in free:
+            if c + width > sk["cols"] or r + height > sk["rows"]:
+                continue
+            footprint = _cells([[c, r, c + width - 1, r + height - 1]])
+            if footprint <= floor and not footprint & blocked:
+                candidates.append((c, r))
+        walls = set(map(tuple, sk.get("walls") or []))
+        boundary = {
+            cell
+            for cell in floor
+            if any(
+                (cell[0] + dc, cell[1] + dr) not in floor or (cell[0] + dc, cell[1] + dr) in walls
+                for dc, dr in ((0, 1), (0, -1), (1, 0), (-1, 0))
+            )
+        }
+        storage = set().union(
+            *(
+                _cells(f.get("cells") or [])
+                for f in features
+                if f.get("visual_key")
+                in {"feature:shelf", "feature:crate", "feature:barrel", "feature:chest", "feature:counter"}
+            )
+        )
+        role = (roles or {}).get(entity_id, "prop")
+
+        def affinity(cell, *, width=width, height=height, boundary=boundary, storage=storage, role=role):
+            c, r = cell
+            right, bottom = c + width - 1, r + height - 1
+            aisle = min(sk["cols"], sk["rows"]) >= 8 and (
+                (c <= sk["cols"] // 2 and right >= sk["cols"] // 2 - 1)
+                or (r <= sk["rows"] // 2 and bottom >= sk["rows"] // 2 - 1)
+            )
+            edge = min((max(c - x, 0, x - right) + max(r - y, 0, y - bottom) for x, y in boundary), default=0)
+            nearby = min((max(c - x, 0, x - right) + max(r - y, 0, y - bottom) for x, y in storage), default=0)
+            return aisle, edge, nearby if role == "container" else 0
+
+        candidates.sort(key=affinity)  # stable seeded ties; slots above always retain priority
         for c, r in candidates[:MAX_TRIES]:
             cells = [[c, r, c + width - 1, r + height - 1]]
             footprint = _cells(cells)
@@ -93,8 +148,14 @@ def _cells(rects: list) -> set[tuple[int, int]]:
     return {(c, r) for c0, r0, c1, r1 in rects for c in range(c0, c1 + 1) for r in range(r0, r1 + 1)}
 
 
-def sync_objects(ctx, inverse: list, *, include: set[str] | None = None,
-                 changed: set[str] | None = None, rooms: set[str] | None = None) -> None:
+def sync_objects(
+    ctx,
+    inverse: list,
+    *,
+    include: set[str] | None = None,
+    changed: set[str] | None = None,
+    rooms: set[str] | None = None,
+) -> None:
     """Refresh live bindings at the event boundary; observation alone updates remembered maps."""
     entities = ctx.world.entities
     if changed is None and include is not None:
@@ -108,16 +169,23 @@ def sync_objects(ctx, inverse: list, *, include: set[str] | None = None,
             if entity is not None:
                 room_ids.add(entity.id if entity.kind == "location" else entity.location_id)
         candidates = [entities[key] for key in sorted(k for k in room_ids if k) if key in entities]
-    linked = {f["entity_id"] for e in candidates if e.kind == "location"
-              for f in ((e.state or {}).get("sketch") or {}).get("features", []) if f.get("entity_id")}
+    linked = {
+        f["entity_id"]
+        for e in candidates
+        if e.kind == "location"
+        for f in ((e.state or {}).get("sketch") or {}).get("features", [])
+        if f.get("entity_id")
+    }
     wanted = linked | (include or set()) | (changed or set())
     sizes = {}
     for room in candidates:
         for feature in ((room.state or {}).get("sketch") or {}).get("features", []):
             if feature.get("entity_id") and feature.get("cells"):
                 cells = _cells(feature["cells"])
-                sizes[feature["entity_id"]] = (max(c for c, _ in cells) - min(c for c, _ in cells) + 1,
-                                                max(r for _, r in cells) - min(r for _, r in cells) + 1)
+                sizes[feature["entity_id"]] = (
+                    max(c for c, _ in cells) - min(c for c, _ in cells) + 1,
+                    max(r for _, r in cells) - min(r for _, r in cells) + 1,
+                )
     if changed is None:
         for entity in entities.values():
             if entity.kind == "object" and ((entity.state or {}).get("world_object") or {}).get("generation_ref"):
@@ -128,26 +196,40 @@ def sync_objects(ctx, inverse: list, *, include: set[str] | None = None,
             return False
         st = entity.state or {}
         obj = st.get("world_object") or {}
-        return not (obj.get("container_id") or obj.get("physical") == "destroyed" or st.get("hidden")
-                    or st.get("secret"))
+        return not (
+            obj.get("container_id") or obj.get("physical") == "destroyed" or st.get("hidden") or st.get("secret")
+        )
 
     for room in candidates:
         sk = (room.state or {}).get("sketch")
         if room.kind != "location" or not isinstance(sk, dict) or not sk.get("blueprint"):
             continue
-        features = [f for f in sk.get("features", []) if not f.get("entity_id")
-                    or on_floor(entities.get(f["entity_id"]), room.id)]
+        features = [
+            f
+            for f in sk.get("features", [])
+            if not f.get("entity_id") or on_floor(entities.get(f["entity_id"]), room.id)
+        ]
         present = {f["entity_id"] for f in features if f.get("entity_id")}
-        objects = [entities[key] for key in sorted(wanted) if key not in present
-                   and on_floor(entities.get(key), room.id)]
+        objects = [
+            entities[key] for key in sorted(wanted) if key not in present and on_floor(entities.get(key), room.id)
+        ]
         if not objects and features == sk.get("features", []):
             continue
         roles = {e.id: ((e.state or {}).get("world_object") or {}).get("role", "prop") for e in objects}
-        new, _ = place({**sk, "features": features}, [(e.id, e.name) for e in objects],
-                       0, slots=(room.state or {}).get("object_slots"), roles=roles, sizes=sizes)
+        new, _ = place(
+            {**sk, "features": features},
+            [(e.id, e.name) for e in objects],
+            0,
+            slots=(room.state or {}).get("object_slots"),
+            roles=roles,
+            sizes=sizes,
+        )
         if new == sk:
             continue
         inverse.append({"table": "entities", "id": room.id, "field": "state", "before": copy.deepcopy(room.state)})
-        room.state = {**room.state, "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1},
-                      "placement_rev": int(room.state.get("placement_rev") or 0) + 1}
+        room.state = {
+            **room.state,
+            "sketch": {**new, "edit_rev": int(sk.get("edit_rev") or 0) + 1},
+            "placement_rev": int(room.state.get("placement_rev") or 0) + 1,
+        }
         ctx.signals.add("map.changed")

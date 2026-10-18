@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "entry": "sandy_shore",
+  "parts": [
+    {
+      "part_ref": "sandy_shore",
+      "role": "shore",
+      "name": "Песчаный берег залива",
+      "public_name": "Песчаный берег",
+      "description": "Отлогий берег с полосой влажного песка, кострищем для смоления и вешалами для просушки сетей.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 10,
+      "rows": 8,
+      "level": 0,
+      "material": "earth",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "tar_firepit",
+          "name": "Кострище для смоления лодок",
+          "kind": "light",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "net_drying_racks",
+          "name": "Вешала с рыболовными сетями",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              5,
+              4,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        },
+        {
+          "detail_ref": "upturned_skiff",
+          "name": "Перевёрнутая просмоленная плоскодонка",
+          "kind": "cover",
+          "cells": [
+            [
+              7,
+              3,
+              8,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:net"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "wooden_jetty",
+      "role": "pier",
+      "name": "Рыбацкие мостки",
+      "public_name": "Деревянные мостки",
+      "description": "Узкие бревенчатые мостки на кривых сваях с садками для живой рыбы.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 6,
+      "rows": 6,
+      "level": 0,
+      "material": "wood",
+      "connects_to": "sandy_shore",
+      "side": "s",
+      "passage_kind": "passage",
+      "passage_name": "Сходни на мостки",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "fish_corfs",
+          "name": "Садки для рыбы в воде",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              3,
+              2,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "gutting_bench",
+          "name": "Стол для разделки улова",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              2,
+              4,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "fisher_shack",
+      "role": "shack",
+      "name": "Хижина старого рыбака",
+      "public_name": "Рыбацкая хижина",
+      "description": "Низкая просмоленная постройка с очагом, верстаком для вязания сетей и запахом сушеной рыбы.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 6,
+      "rows": 6,
+      "level": 0,
+      "material": "wood",
+      "connects_to": "sandy_shore",
+      "side": "w",
+      "passage_kind": "door",
+      "passage_name": "Дверь хижины",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "smokehouse_stove",
+          "name": "Каменная коптильня",
+          "kind": "light",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "tackle_table",
+          "name": "Верстак со снастями",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              4,
+              4,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "salted_fish_barrels",
+          "name": "Бочонки с соленой сельдью",
+          "kind": "object",
+          "cells": [
+            [
+              4,
+              1,
+              4,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "fishing_water",
+      "role": "water",
+      "name": "Прибрежная вода",
+      "public_name": "Вода у мостков",
+      "description": "Мелкая прибрежная вода с садками и деревянными сваями.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 8,
+      "rows": 6,
+      "level": 0,
+      "material": "water",
+      "connects_to": "wooden_jetty",
+      "side": "e",
+      "passage_kind": "gap",
+      "passage_name": "Край мостков",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "fish_corfs_water",
+          "name": "Плавучие садки",
+          "kind": "object",
+          "cells": [
+            [
+              2,
+              2,
+              3,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "mooring_float",
+          "name": "Швартовочный поплавок",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              4,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "sandy_shore",
+      "side": "n",
+      "kind": "edge",
+      "public_name": "Тропинка из прибрежной деревни",
+      "outside_id": null,
+      "band": null,
+      "width": 2
+    }
+  ],
+  "bands": []
+}

@@ -1,0 +1,893 @@
+{
+  "seed": 7,
+  "entry": "road",
+  "areas": [
+    {
+      "area_ref": "road",
+      "role": "room",
+      "name": "Дорога у храма",
+      "public_name": "Дорога у храма",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 14,
+      "rows": 12,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              10,
+              11,
+              10,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              0,
+              1,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              12,
+              0,
+              13,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              10,
+              0,
+              10
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              11,
+              5,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_5_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              0,
+              9,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_6_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              13,
+              8,
+              13,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_7_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              0,
+              5,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "road",
+          "cells": [
+            [
+              0,
+              5,
+              13,
+              5
+            ],
+            [
+              0,
+              6,
+              13,
+              6
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 4,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 4,
+          "length": 4,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 8,
+          "length": 4,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "narthex",
+      "role": "room",
+      "name": "Притвор",
+      "public_name": "Притвор храма",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        14,
+        2
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              7,
+              4,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              0,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              7,
+              5,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "nave",
+      "role": "room",
+      "name": "Главный зал",
+      "public_name": "Главный неф",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 12,
+      "offset": [
+        21,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "pillar_left",
+          "name": "Разрушенная колонна",
+          "kind": "hazard",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "pillar_right",
+          "name": "Разрушенная колонна",
+          "kind": "hazard",
+          "cells": [
+            [
+              9,
+              1,
+              10,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "altar",
+          "name": "Каменный алтарь",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              9,
+              7,
+              10
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "chapel",
+      "role": "room",
+      "name": "Часовня",
+      "public_name": "Северная часовня",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 7,
+      "offset": [
+        23,
+        -7
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "shrine_table",
+          "name": "Обедненный алтарь",
+          "kind": "object",
+          "cells": [
+            [
+              2,
+              1,
+              5,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              7,
+              6,
+              7,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              7,
+              0,
+              7,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "crypt",
+      "role": "room",
+      "name": "Крипта",
+      "public_name": "Нижняя крипта",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 8,
+      "offset": [
+        21,
+        0
+      ],
+      "level": -1,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "rubble_1",
+          "name": "Обломки камня",
+          "kind": "hazard",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "bones_1",
+          "name": "Старые кости",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              5,
+              6,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bones"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              7,
+              0,
+              7,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              0,
+              5,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              7,
+              2,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "vault",
+      "role": "room",
+      "name": "Тайник",
+      "public_name": "Скрытая ниша",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 6,
+      "rows": 6,
+      "offset": [
+        29,
+        1
+      ],
+      "level": -1,
+      "material": "stone",
+      "description": "",
+      "secret": true,
+      "details": [
+        {
+          "detail_ref": "secret_chest",
+          "name": "Каменный сундук",
+          "kind": "object",
+          "cells": [
+            [
+              2,
+              2,
+              4,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              0,
+              1,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              5,
+              0,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              0,
+              5,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_narthex",
+      "kind": "door",
+      "name": "Главный вход",
+      "public_name": "Главный вход",
+      "ends": [
+        {
+          "area_ref": "road",
+          "side": "e",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "narthex",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_nave",
+      "kind": "arch",
+      "name": "Проход в неф",
+      "public_name": "Проход в неф",
+      "ends": [
+        {
+          "area_ref": "narthex",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "nave",
+          "side": "w",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_chapel",
+      "kind": "door",
+      "name": "Боковая дверь",
+      "public_name": "Боковая дверь",
+      "ends": [
+        {
+          "area_ref": "nave",
+          "side": "n",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "chapel",
+          "side": "s",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_crypt",
+      "kind": "stairs",
+      "name": "Спуск в крипту",
+      "public_name": "Спуск в крипту",
+      "ends": [
+        {
+          "area_ref": "nave",
+          "side": "w",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "crypt",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_vault",
+      "kind": "door",
+      "name": "Потайной проход",
+      "public_name": "Потайной проход",
+      "ends": [
+        {
+          "area_ref": "crypt",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "vault",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "closed",
+      "hidden": true
+    },
+    {
+      "passage_ref": "in_road_w",
+      "kind": "edge",
+      "name": "Дорога в деревню",
+      "public_name": "Дорога в деревню",
+      "ends": [
+        {
+          "area_ref": "road",
+          "side": "w",
+          "start": 4,
+          "width": 4,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_model_temple_no_holders"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [
+    "chapel"
+  ],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

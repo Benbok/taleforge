@@ -19,11 +19,11 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 12,
-        "rows": 10,
+        "cols": 14,
+        "rows": 12,
         "party": [
           0,
-          4
+          5
         ],
         "walls": [
           [
@@ -47,7 +47,7 @@
           {
             "name": "Тропа из предгорий",
             "side": "w",
-            "at": 4,
+            "at": 5,
             "width": 2,
             "kind": "edge",
             "state": "open",
@@ -58,11 +58,11 @@
             "cells": [
               [
                 0,
-                4
+                5
               ],
               [
                 0,
-                5
+                6
               ]
             ]
           },
@@ -70,7 +70,7 @@
             "name": "Тропа через деревья",
             "side": "e",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -79,44 +79,52 @@
             "passage_ref": "p_sunlit_clearing",
             "cells": [
               [
-                11,
+                13,
                 0
               ],
               [
-                11,
+                13,
                 1
               ],
               [
-                11,
+                13,
                 2
               ],
               [
-                11,
+                13,
                 3
               ],
               [
-                11,
+                13,
                 4
               ],
               [
-                11,
+                13,
                 5
               ],
               [
-                11,
+                13,
                 6
               ],
               [
-                11,
+                13,
                 7
               ],
               [
-                11,
+                13,
                 8
               ],
               [
-                11,
+                13,
                 9
+              ],
+              [
+                13,
+                10
+              ],
+              [
+                13,
+                11
               ]
             ]
           }
@@ -145,10 +153,10 @@
             "kind": "cover",
             "cells": [
               [
-                7,
-                7,
+                8,
                 9,
-                7
+                10,
+                9
               ]
             ],
             "cover": "none",
@@ -162,10 +170,10 @@
             "kind": "cover",
             "cells": [
               [
-                3,
-                7,
                 4,
-                7
+                9,
+                5,
+                9
               ]
             ],
             "cover": "none",
@@ -182,15 +190,15 @@
             "cells": [
               [
                 0,
-                4,
-                11,
-                4
+                5,
+                13,
+                5
               ],
               [
                 0,
-                5,
-                11,
-                5
+                6,
+                13,
+                6
               ]
             ]
           }
@@ -199,37 +207,37 @@
           {
             "side": "n",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 4,
+            "length": 5,
             "meaning": "obstacle"
           },
           {
             "side": "w",
-            "start": 4,
+            "start": 5,
             "length": 2,
             "meaning": "boundary"
           },
           {
             "side": "w",
-            "start": 6,
-            "length": 4,
+            "start": 7,
+            "length": 5,
             "meaning": "obstacle"
           }
         ],
@@ -244,7 +252,7 @@
       "id": "sunlit_clearing",
       "name": "Лесная поляна",
       "offset": [
-        12,
+        14,
         0
       ],
       "level": 0,
@@ -253,27 +261,27 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 14,
-        "rows": 10,
+        "cols": 17,
+        "rows": 12,
         "party": [
           2,
           0
         ],
         "walls": [
           [
-            6,
+            8,
             1
           ],
           [
-            6,
+            8,
             2
           ],
           [
-            7,
+            9,
             1
           ],
           [
-            7,
+            9,
             2
           ]
         ],
@@ -282,7 +290,7 @@
             "name": "Просека в чащу",
             "side": "n",
             "at": 2,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -329,6 +337,14 @@
               [
                 11,
                 0
+              ],
+              [
+                12,
+                0
+              ],
+              [
+                13,
+                0
               ]
             ]
           },
@@ -336,7 +352,7 @@
             "name": "Тропа через деревья",
             "side": "w",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -383,6 +399,14 @@
               [
                 0,
                 9
+              ],
+              [
+                0,
+                10
+              ],
+              [
+                0,
+                11
               ]
             ]
           }
@@ -394,9 +418,9 @@
             "kind": "nature",
             "cells": [
               [
-                6,
+                8,
                 1,
-                7,
+                9,
                 2
               ]
             ],
@@ -411,10 +435,10 @@
             "kind": "light",
             "cells": [
               [
-                6,
                 7,
-                7,
-                7
+                8,
+                8,
+                8
               ]
             ],
             "cover": "none",
@@ -428,10 +452,10 @@
             "kind": "furniture",
             "cells": [
               [
-                5,
-                8,
-                8,
-                8
+                6,
+                9,
+                9,
+                9
               ]
             ],
             "cover": "none",
@@ -445,16 +469,16 @@
             "kind": "nature",
             "cells": [
               [
-                2,
-                2,
-                2,
-                2
+                3,
+                3,
+                3,
+                3
               ],
               [
-                6,
-                6,
-                6,
-                6
+                7,
+                7,
+                7,
+                7
               ]
             ],
             "cover": "none",
@@ -471,15 +495,15 @@
             "cells": [
               [
                 0,
-                4,
-                13,
-                4
+                5,
+                16,
+                5
               ],
               [
                 0,
-                5,
-                13,
-                5
+                6,
+                16,
+                6
               ]
             ]
           }
@@ -494,31 +518,31 @@
           {
             "side": "n",
             "start": 2,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           },
           {
             "side": "n",
-            "start": 12,
-            "length": 2,
+            "start": 14,
+            "length": 3,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 14,
+            "length": 17,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           }
         ],
@@ -533,8 +557,8 @@
       "id": "dense_thicket",
       "name": "Чаща",
       "offset": [
-        14,
-        -8
+        16,
+        -10
       ],
       "level": 0,
       "secret": false,
@@ -542,11 +566,11 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 10,
-        "rows": 8,
+        "cols": 12,
+        "rows": 10,
         "party": [
           0,
-          7
+          9
         ],
         "walls": [
           [
@@ -571,7 +595,7 @@
             "name": "Просека в чащу",
             "side": "s",
             "at": 0,
-            "width": 10,
+            "width": 12,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -581,43 +605,51 @@
             "cells": [
               [
                 0,
-                7
+                9
               ],
               [
                 1,
-                7
+                9
               ],
               [
                 2,
-                7
+                9
               ],
               [
                 3,
-                7
+                9
               ],
               [
                 4,
-                7
+                9
               ],
               [
                 5,
-                7
+                9
               ],
               [
                 6,
-                7
+                9
               ],
               [
                 7,
-                7
+                9
               ],
               [
                 8,
-                7
+                9
               ],
               [
                 9,
-                7
+                9
+              ],
+              [
+                10,
+                9
+              ],
+              [
+                11,
+                9
               ]
             ]
           }
@@ -629,10 +661,10 @@
             "kind": "hazard",
             "cells": [
               [
-                3,
-                3,
-                5,
-                4
+                4,
+                4,
+                6,
+                5
               ]
             ],
             "cover": "none",
@@ -663,10 +695,10 @@
             "kind": "object",
             "cells": [
               [
-                7,
-                5,
-                8,
-                5
+                9,
+                6,
+                10,
+                6
               ]
             ],
             "cover": "none",
@@ -682,25 +714,25 @@
           {
             "side": "n",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "obstacle"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "continuation"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "obstacle"
           }
         ],

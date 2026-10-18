@@ -14,7 +14,7 @@ from typing import Any
 
 from app.core.layout.contracts import Blueprint
 from app.core.layout.geometry import build_area
-from app.core.layout.intent import ApproachIntent, BandIntent, DetailIntent, LayoutIntent, PartIntent
+from app.core.layout.intent import ApproachIntent, BandIntent, DetailIntent, LayoutIntent, ObjectSlotIntent, PartIntent
 from app.core.layout.provider import DeterministicLayoutProvider
 from app.core.layout.validation import validate
 
@@ -1516,7 +1516,7 @@ VISUAL_GROUPS = {
     "shelf": "pantry_shelves bookcase bottle_racks vestment_press storage_racks parchment_shelves weapon_rack_ruin",
     "barrel": "ale_casks wine_tuns salted_fish_barrels",
     "crate": "smuggled_crates cargo_pallets crate_stacks armory_crates fish_corfs fish_corfs_water",
-    "chest": "traveler_chests iron_strongbox relic_chest hidden_safe sarcophagi_north sarcophagi_south burial_niche",
+    "chest": "traveler_chests iron_strongbox relic_chest hidden_safe sarcophagi_north sarcophagi_south burial_niche cargo_chest",
     "hearth": "hearth stove iron_stove campfire camp_embers tar_firepit smokehouse_stove grand_fireplace watch_brazier",
     "torch": "wall_sconce cellar_lantern candle_stand incense_braziers eternal_flame torch_bracket quay_lantern oil_lantern",
     "altar": "grand_altar cracked_altar wayside_shrine holy_water_font ruined_fountain garden_urn fallen_statue dry_well",
@@ -1608,6 +1608,16 @@ def author_quality_v2(meta: dict[str, Any], intent: LayoutIntent) -> None:
             "storage_racks": ([[2, 6, 3, 6], [6, 6, 8, 6]], True),
             "overseer_desk": ([[8, 1, 8, 2]], True),
         })
+        # A bindable chest by the overseer's wall reserves generated cargo
+        # without making a second decorative chest or blocking the working aisle.
+        warehouse = parts["harbor_warehouse"]
+        warehouse.scene_profile = "scene_profile.warehouse"
+        warehouse.details.append(DetailIntent(
+            detail_ref="cargo_chest", name="Сундук портовых грузов", kind="object", cells=[[9, 4, 9, 4]],
+        ))
+        warehouse.object_slots.append(ObjectSlotIntent(
+            slot_ref="cargo_chest", role="container", detail_ref="cargo_chest", cells=[[9, 4, 9, 4]],
+        ))
         furnish("granite_quay", {
             "mooring_bollards": ([[2, 5, 2, 5], [9, 5, 9, 5]], True),
             "cargo_pallets": ([[1, 1, 2, 1], [8, 1, 9, 2]], True),
@@ -1627,9 +1637,83 @@ def author_quality_v2(meta: dict[str, Any], intent: LayoutIntent) -> None:
             detail.visual_key = VISUAL_KEYS[detail.detail_ref]
 
 
+def author_quality_v3(meta: dict[str, Any], intent: LayoutIntent) -> None:
+    """Add roughly 20% breathing room, translating complete furnishing groups.
+
+    Touching props (tables with benches, beds with chests) share a translation.
+    Every detail retains its exact footprint; walls retain their attached accents.
+    Narrow piers and corridors keep their characteristic width.
+    """
+    major, minor, _ = meta["version"].split(".")
+    meta["version"] = f"{major}.{int(minor) + 1}.0"
+
+    def cells(rectangles):
+        return {(x, y) for x1, y1, x2, y2 in rectangles
+                for x in range(x1, x2 + 1) for y in range(y1, y2 + 1)}
+
+    def translation(footprint, old_cols, old_rows, new_cols, new_rows):
+        result = []
+        for axis, old_size, new_size in ((0, old_cols, new_cols), (1, old_rows, new_rows)):
+            lo, hi = min(c[axis] for c in footprint), max(c[axis] for c in footprint)
+            added = new_size - old_size
+            if lo == 0:
+                result.append(0)
+            elif hi == old_size - 1:
+                result.append(added)
+            else:
+                result.append(int((lo + hi) / 2 / (old_size - 1) * added + 0.5))
+        return tuple(result)
+
+    def shifted(rectangles, delta):
+        dx, dy = delta
+        return [[x1 + dx, y1 + dy, x2 + dx, y2 + dy] for x1, y1, x2, y2 in rectangles]
+
+    entry = next(p for p in intent.parts if p.part_ref == intent.entry)
+    entry_size = (entry.cols, entry.rows)
+    for part in intent.parts:
+        old_cols, old_rows = part.cols, part.rows
+        narrow_pier = meta["id"] == "port_quay_warehouse" and old_cols == 4
+        part.cols = old_cols if old_cols < 4 or narrow_pier else int(old_cols * 1.2 + 0.5)
+        part.rows = old_rows if old_rows < 4 else int(old_rows * 1.2 + 0.5)
+        remaining = {d.detail_ref: cells(d.cells) for d in part.details}
+        deltas = {}
+        while remaining:
+            ref = next(iter(remaining))
+            group = [ref]
+            footprint = remaining.pop(ref)
+            while True:
+                neighbors = {(x + dx, y + dy) for x, y in footprint
+                             for dx, dy in ((0, 0), (-1, 0), (1, 0), (0, -1), (0, 1))}
+                touching = [ref for ref, occupied in remaining.items() if occupied & neighbors]
+                if not touching:
+                    break
+                for ref in touching:
+                    group.append(ref)
+                    footprint |= remaining.pop(ref)
+            delta = translation(footprint, old_cols, old_rows, part.cols, part.rows)
+            deltas.update({ref: delta for ref in group})
+        for detail in part.details:
+            detail.cells = shifted(detail.cells, deltas[detail.detail_ref])
+        for slot in part.object_slots:
+            delta = deltas.get(slot.detail_ref)
+            if delta is None:
+                delta = translation(cells(slot.cells), old_cols, old_rows, part.cols, part.rows)
+            slot.cells = shifted(slot.cells, delta)
+    # Bands use world coordinates relative to the entry, retaining their width.
+    for band in intent.bands:
+        scale = entry.rows / entry_size[1] if band.axis == "we" else entry.cols / entry_size[0]
+        band.at = int(band.at * scale + 0.5)
+        along_scale = entry.cols / entry_size[0] if band.axis == "we" else entry.rows / entry_size[1]
+        if band.start is not None:
+            band.start = int(band.start * along_scale + 0.5)
+        if band.end is not None:
+            band.end = int(band.end * along_scale + 0.5)
+
+
 def build_and_save_template(factory_fn, output_dir: Path) -> dict[str, Any]:
     meta, intent = factory_fn()
     author_quality_v2(meta, intent)
+    author_quality_v3(meta, intent)
     tid = meta["id"]
     tdir = output_dir / tid
     tdir.mkdir(parents=True, exist_ok=True)
@@ -1732,7 +1816,7 @@ def build_and_save_template(factory_fn, output_dir: Path) -> dict[str, Any]:
 def build_all():
     print(f"Building all {len(ALL_TEMPLATES)} templates...")
     manifest = {
-        "version": "1.1.0",
+        "version": "1.2.0",
         "description": "Экспериментальная коллекция из 12 шаблонов локаций для TaleForge",
         "templates": []
     }

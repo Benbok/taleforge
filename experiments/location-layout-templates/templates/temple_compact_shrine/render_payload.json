@@ -19,27 +19,27 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 8,
-        "rows": 5,
+        "cols": 10,
+        "rows": 6,
         "party": [
-          3,
-          4
+          4,
+          5
         ],
         "walls": [
           [
-            3,
-            2
+            4,
+            3
           ],
           [
-            4,
-            2
+            5,
+            3
           ]
         ],
         "exits": [
           {
             "name": "Парадные врата храма",
             "side": "s",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "door",
             "state": "open",
@@ -49,15 +49,15 @@
             "passage_ref": "in_narthex_s",
             "cells": [
               [
-                3,
-                4
+                4,
+                5
               ]
             ]
           },
           {
             "name": "Входная храмовая арка",
             "side": "n",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -67,7 +67,7 @@
             "passage_ref": "p_sanctuary",
             "cells": [
               [
-                4,
+                5,
                 0
               ]
             ]
@@ -80,10 +80,10 @@
             "kind": "object",
             "cells": [
               [
-                3,
-                2,
                 4,
-                2
+                3,
+                5,
+                3
               ]
             ],
             "cover": "none",
@@ -97,16 +97,16 @@
             "kind": "furniture",
             "cells": [
               [
-                1,
-                1,
-                1,
-                3
+                2,
+                2,
+                2,
+                4
               ],
               [
-                6,
-                1,
-                6,
-                3
+                7,
+                2,
+                7,
+                4
               ]
             ],
             "cover": "none",
@@ -120,10 +120,27 @@
             "kind": "light",
             "cells": [
               [
-                2,
+                3,
                 0,
                 3,
                 0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_narthex_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
               ]
             ],
             "cover": "none",
@@ -148,7 +165,7 @@
       "name": "Святилище",
       "offset": [
         -1,
-        -12
+        -14
       ],
       "level": 0,
       "secret": false,
@@ -156,28 +173,20 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 10,
-        "rows": 12,
+        "cols": 12,
+        "rows": 14,
         "party": [
-          9,
+          11,
           6
         ],
         "walls": [
           [
             2,
-            4
+            5
           ],
           [
             2,
-            8
-          ],
-          [
-            4,
-            1
-          ],
-          [
-            4,
-            2
+            9
           ],
           [
             5,
@@ -188,12 +197,20 @@
             2
           ],
           [
-            7,
-            4
+            6,
+            1
           ],
           [
-            7,
-            8
+            6,
+            2
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            9,
+            9
           ]
         ],
         "exits": [
@@ -210,7 +227,7 @@
             "passage_ref": "p_sacristy",
             "cells": [
               [
-                9,
+                11,
                 6
               ]
             ]
@@ -218,7 +235,7 @@
           {
             "name": "Входная храмовая арка",
             "side": "s",
-            "at": 5,
+            "at": 6,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -228,8 +245,8 @@
             "passage_ref": "p_sanctuary",
             "cells": [
               [
-                5,
-                11
+                6,
+                13
               ]
             ]
           }
@@ -241,9 +258,9 @@
             "kind": "furniture",
             "cells": [
               [
-                4,
-                1,
                 5,
+                1,
+                6,
                 2
               ]
             ],
@@ -259,15 +276,15 @@
             "cells": [
               [
                 2,
-                4,
+                5,
                 2,
-                4
+                5
               ],
               [
                 2,
-                8,
+                9,
                 2,
-                8
+                9
               ]
             ],
             "cover": "none",
@@ -281,16 +298,16 @@
             "kind": "cover",
             "cells": [
               [
-                7,
-                4,
-                7,
-                4
+                9,
+                5,
+                9,
+                5
               ],
               [
-                7,
-                8,
-                7,
-                8
+                9,
+                9,
+                9,
+                9
               ]
             ],
             "cover": "none",
@@ -304,16 +321,10 @@
             "kind": "light",
             "cells": [
               [
-                3,
-                1,
-                3,
-                1
-              ],
-              [
-                6,
-                1,
-                6,
-                1
+                4,
+                0,
+                4,
+                0
               ]
             ],
             "cover": "none",
@@ -327,16 +338,84 @@
             "kind": "furniture",
             "cells": [
               [
-                4,
-                4,
                 5,
-                4
+                5,
+                6,
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
             "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_sanctuary_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                8,
+                11,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_sanctuary_wall_torch_1",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                9,
+                0,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_sanctuary_wall_torch_2",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                13,
+                8,
+                13
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_sanctuary_wall_torch_3",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                0,
+                11,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -354,8 +433,8 @@
       "id": "sacristy",
       "name": "Ризница",
       "offset": [
-        9,
-        -9
+        11,
+        -11
       ],
       "level": 0,
       "secret": false,
@@ -363,19 +442,19 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 7,
         "party": [
           0,
           3
         ],
         "walls": [
           [
-            4,
+            5,
             1
           ],
           [
-            4,
+            5,
             2
           ]
         ],
@@ -406,9 +485,9 @@
             "kind": "object",
             "cells": [
               [
-                4,
+                5,
                 1,
-                4,
+                5,
                 2
               ]
             ],
@@ -440,10 +519,10 @@
             "kind": "furniture",
             "cells": [
               [
-                2,
-                4,
                 3,
-                4
+                5,
+                4,
+                5
               ]
             ],
             "cover": "none",

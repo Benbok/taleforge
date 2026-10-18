@@ -9,8 +9,8 @@
       "public_name": "Общий зал",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "offset": [
         0,
         0
@@ -26,9 +26,9 @@
           "kind": "light",
           "cells": [
             [
-              5,
-              0,
               6,
+              0,
+              7,
               0
             ]
           ],
@@ -43,15 +43,15 @@
           "cells": [
             [
               1,
+              2,
               1,
-              1,
-              3
+              4
             ],
             [
               2,
+              4,
               3,
-              3,
-              3
+              4
             ]
           ],
           "solid": true,
@@ -65,15 +65,15 @@
           "cells": [
             [
               2,
-              4,
+              5,
               2,
-              4
+              5
             ],
             [
               4,
-              3,
               4,
-              3
+              4,
+              4
             ]
           ],
           "solid": false,
@@ -86,9 +86,9 @@
           "kind": "furniture",
           "cells": [
             [
-              8,
+              10,
               2,
-              9,
+              11,
               2
             ]
           ],
@@ -102,15 +102,15 @@
           "kind": "furniture",
           "cells": [
             [
-              8,
+              10,
               1,
-              9,
+              11,
               1
             ],
             [
-              8,
+              10,
               3,
-              9,
+              11,
               3
             ]
           ],
@@ -124,10 +124,10 @@
           "kind": "furniture",
           "cells": [
             [
-              8,
-              7,
+              10,
               9,
-              7
+              11,
+              9
             ]
           ],
           "solid": true,
@@ -140,16 +140,16 @@
           "kind": "furniture",
           "cells": [
             [
+              10,
               8,
-              6,
-              9,
-              6
+              11,
+              8
             ],
             [
-              8,
-              8,
-              9,
-              8
+              10,
+              10,
+              11,
+              10
             ]
           ],
           "solid": false,
@@ -163,26 +163,91 @@
           "cells": [
             [
               1,
-              7,
+              9,
               1,
-              7
+              9
             ],
             [
               2,
-              8,
+              10,
               2,
-              8
+              10
             ]
           ],
           "solid": true,
           "hidden": false,
           "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              11,
+              8,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_1",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              8,
+              0,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_2",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              13,
+              4,
+              13,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_3",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              1,
+              0,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "kitchen_pantry",
@@ -191,11 +256,11 @@
       "public_name": "Кухня",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 6,
-      "rows": 7,
+      "cols": 7,
+      "rows": 8,
       "offset": [
-        -6,
-        1
+        -7,
+        2
       ],
       "level": 0,
       "material": "stone",
@@ -224,9 +289,9 @@
           "kind": "furniture",
           "cells": [
             [
-              2,
+              3,
               0,
-              4,
+              5,
               0
             ]
           ],
@@ -240,21 +305,38 @@
           "kind": "furniture",
           "cells": [
             [
-              2,
-              4,
               3,
-              4
+              5,
+              4,
+              5
             ]
           ],
           "solid": true,
           "hidden": false,
           "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "guest_rooms",
@@ -263,10 +345,10 @@
       "public_name": "Комнаты отдыха",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 7,
-      "rows": 8,
+      "cols": 8,
+      "rows": 10,
       "offset": [
-        12,
+        14,
         1
       ],
       "level": 0,
@@ -280,10 +362,10 @@
           "kind": "furniture",
           "cells": [
             [
-              4,
-              1,
               5,
-              1
+              2,
+              6,
+              2
             ]
           ],
           "solid": true,
@@ -296,10 +378,10 @@
           "kind": "furniture",
           "cells": [
             [
-              4,
-              6,
               5,
-              6
+              7,
+              6,
+              7
             ]
           ],
           "solid": true,
@@ -312,16 +394,16 @@
           "kind": "object",
           "cells": [
             [
-              6,
-              1,
-              6,
-              1
+              7,
+              2,
+              7,
+              2
             ],
             [
-              6,
-              6,
-              6,
-              6
+              7,
+              7,
+              7,
+              7
             ]
           ],
           "solid": true,
@@ -332,7 +414,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -345,14 +428,14 @@
         {
           "area_ref": "common_room",
           "side": "w",
-          "start": 4,
+          "start": 6,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "kitchen_pantry",
           "side": "e",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         }
@@ -369,14 +452,14 @@
         {
           "area_ref": "common_room",
           "side": "e",
-          "start": 5,
+          "start": 6,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "guest_rooms",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         }
@@ -393,7 +476,7 @@
         {
           "area_ref": "common_room",
           "side": "s",
-          "start": 5,
+          "start": 6,
           "width": 1,
           "place_id": null
         },

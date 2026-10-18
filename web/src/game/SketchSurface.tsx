@@ -3,6 +3,8 @@ import { exitSegments, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, Sketch, SketchExit } from "./map";
 import { MapFeature } from "./MapFeature";
 import { SketchMaterials } from "./SketchMaterials";
+import { SketchAtmosphere } from "./SketchAtmosphere";
+import { wallTorchMounts } from "./wallLighting";
 
 export interface SketchSurfaceProps {
   sketch: Sketch;
@@ -26,6 +28,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
 export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, children }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
+  const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
   const material = MATERIALS.has(sketch.material ?? "") ? sketch.material! : "stone";
   const clipId = `${idPrefix}-floor`;
   const decoratedWalls = new Set(sketch.features.filter((f) => f.solid && !f.hidden)
@@ -49,6 +52,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
           {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill={`url(#${idPrefix}-bridge-planks)`} />)}
         </g>
       ))}
+      <SketchAtmosphere sketch={sketch} floor={geometry.floor} contours={geometry.contours} idPrefix={idPrefix} torchMounts={torchMounts} />
       <rect width={sketch.cols} height={sketch.rows} fill={`url(#${idPrefix}-tactical-grid)`} clipPath={`url(#${clipId})`} pointerEvents="none" />
       <g data-layer="contours">
         {geometry.contours.map((segment, i) => <g key={i}>
@@ -68,7 +72,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
           strokeWidth=".03"
         />
       ))}
-      {sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} />)}
+      {sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} torchMounts={torchMounts.get(feature)} />)}
       {(sketch.edges ?? []).map((edge, i) => {
         const vertical = edge.side === "e" || edge.side === "w";
         const x = edge.side === "e" ? sketch.cols : 0;

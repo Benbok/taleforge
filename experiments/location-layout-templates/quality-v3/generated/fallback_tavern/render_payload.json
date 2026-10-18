@@ -1,0 +1,540 @@
+{
+  "template_id": "fallback_tavern",
+  "root_id": "quality_fallback_tavern",
+  "entry": "main",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "main",
+      "name": "Общий зал",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Вход",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "quality_fallback_tavern",
+            "beyond": null,
+            "passage_ref": "in_main_w",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Проход",
+            "side": "n",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                3,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_main_scenery_0",
+            "name": "Стойка",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_main_scenery_1",
+            "name": "Скамьи",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_main_decor_0_0",
+            "name": "Стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                6,
+                1,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_main_decor_0_1",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_main_decor_0_2",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                7,
+                1,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_main_decor_1_0",
+            "name": "Очаг",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                7,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_main_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                1,
+                0,
+                1,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "main",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_1",
+      "name": "Гостевые комнаты",
+      "offset": [
+        0,
+        -8
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          3,
+          7
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Проход",
+            "side": "s",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                3,
+                7
+              ]
+            ]
+          },
+          {
+            "name": "Лестница",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_1_scenery_0",
+            "name": "Кровати",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_1_scenery_1",
+            "name": "Занавески",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_1_decor_0_0",
+            "name": "Кровать",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                7,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bed"
+          },
+          {
+            "id": "sf_part_1_decor_1_0",
+            "name": "Ларь",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                6,
+                0,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chest"
+          },
+          {
+            "id": "sf_part_1_decor_2_0",
+            "name": "Светильник",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                0,
+                6,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_part_1_decor_3_0",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                3,
+                6,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_part_1_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                5,
+                0,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_1",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_2",
+      "name": "Погреб",
+      "offset": [
+        0,
+        -8
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Лестница",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "stairs",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_2_scenery_0",
+            "name": "Бочки",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_2_scenery_1",
+            "name": "Полки",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_2_decor_0_0",
+            "name": "Стеллаж",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "id": "sf_part_2_decor_1_0",
+            "name": "Сложенные ящики",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                7,
+                1,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_part_2_decor_2_0",
+            "name": "Бочка",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                0,
+                6,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_part_2_decor_3_0",
+            "name": "Ларь",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                5,
+                0,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_2",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

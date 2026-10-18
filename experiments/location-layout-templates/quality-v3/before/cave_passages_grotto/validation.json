@@ -1,0 +1,39 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 5,
+  "passage_count": 5,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "entry_chasm": {
+      "scree": "preserved",
+      "boulder": "preserved"
+    },
+    "winding_tunnel": {
+      "stalactites": "preserved"
+    },
+    "great_grotto": {
+      "stalagmite_pillars": "preserved",
+      "glowing_lichen": "preserved",
+      "rock_ledge": "preserved",
+      "grotto_rocks_east": "preserved",
+      "grotto_rocks_south": "preserved"
+    },
+    "subterranean_lake": {
+      "shimmering_pool": "preserved"
+    },
+    "side_den": {
+      "beast_bedding": "preserved",
+      "bone_pile": "preserved"
+    }
+  }
+}

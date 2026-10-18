@@ -32,8 +32,8 @@ from app.core.layout.intent import ApproachIntent, BandIntent, LayoutIntent, Par
 from app.core.layout.validation import validate
 
 SIZES = {
-    "indoor": {"small": (4, 4), "medium": (6, 6), "large": (8, 10)},
-    "outdoor": {"small": (8, 8), "medium": (12, 10), "large": (16, 12)},
+    "indoor": {"small": (5, 5), "medium": (7, 8), "large": (10, 12)},
+    "outdoor": {"small": (9, 10), "medium": (14, 12), "large": (18, 14)},
 }
 CORRIDOR = (2, 8)
 SIDE_ORDER = ("n", "e", "s", "w")
@@ -345,6 +345,7 @@ def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[st
         description=part.description,
         secret=part.secret,
         scene_profile=part.scene_profile,
+        lighting=part.lighting,
         object_slots=tuple(
             ObjectSlot(
                 s.slot_ref, s.role, tuple(tuple(r) for r in s.cells), s.detail_ref, s.hidden, s.max_cols, s.max_rows
@@ -374,27 +375,6 @@ def _place_details(bp: Blueprint) -> Blueprint:
         }
         occupied: set[Cell] = set()
         details = list(area.details)
-        generated: set[str] = set()
-        if min(area.cols, area.rows) >= 4 and len(details) < 2:
-            names = (
-                ("Каменные выступы", "Щебень")
-                if area.shape == "cave"
-                else (("Кустарник", "Камни") if area.environment == "outdoor" else ("Ниша в стене", "Отделка стен"))
-            )
-            refs = {d.detail_ref for d in details}
-            for i, name in enumerate(names):
-                if len(details) >= 2:
-                    break
-                ref = f"decor_{i}"
-                while ref in refs:
-                    ref += "_"
-                refs.add(ref)
-                generated.add(ref)
-                details.append(
-                    Detail(
-                        ref, name, "nature" if area.environment == "outdoor" else "furniture", ((1 + i, 1, 1 + i, 1),)
-                    )
-                )
         placed = []
 
         def fits(
@@ -436,8 +416,6 @@ def _place_details(bp: Blueprint) -> Blueprint:
                     occupied |= shifted
                     break
             else:
-                if d.detail_ref in generated:
-                    continue  # optional scenery cannot invalidate an authored room
                 raise LayoutError([f"{area.area_ref}: деталь «{d.name}» не помещается без перекрытия проходов"])
         by_ref = {d.detail_ref: d for d in placed}
         slots = tuple(
@@ -447,16 +425,27 @@ def _place_details(bp: Blueprint) -> Blueprint:
             from app.core.layout import furnish
 
             base = geometry.build_area(bp, replace(area, details=tuple(by_ref.values()), object_slots=()))
-            proposed, unplaced = furnish.place(base, [("slot_candidate", "Container")], bp.seed)
+            proposed, unplaced = furnish.place(
+                base, [("slot_candidate", "Container")], bp.seed, roles={"slot_candidate": "container"}
+            )
             if not unplaced:
                 feature = next(f for f in proposed["features"] if f.get("entity_id") == "slot_candidate")
                 slots = (ObjectSlot(f"{area.role}_container", "container", tuple(tuple(r) for r in feature["cells"])),)
+        from app.core.layout import scenery
+
         areas.append(
-            replace(
-                area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref), object_slots=slots
+            scenery.populate(
+                bp,
+                replace(
+                    area,
+                    details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref),
+                    object_slots=slots,
+                ),
             )
         )
-    result = replace(bp, areas=tuple(areas))
+    from app.core.layout.lighting import arrange
+
+    result = replace(bp, areas=tuple(arrange(bp, area) for area in areas))
     for area in result.areas:
         geometry.build_area(result, area)
     return result

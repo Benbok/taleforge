@@ -219,6 +219,17 @@ def test_layout_errors_from_provider_are_corrections():
     assert intent is None and "не помещается" in retry
 
 
+def test_secret_path_correction_restates_exact_flags_and_anchor_rule():
+    raw = model_layout(KEYS)
+    next(p for p in raw["parts"] if p["part_ref"] == "vault")["required"] = True
+    msgs: list = []
+    intent, _, retry = _ask(ScriptedLLM([{"tool_calls": [(layout_model.TOOL, raw)]}]), msgs)
+    assert intent is None and "тайный проход" in retry
+    correction = msgs[-1]["content"]
+    assert "vault: secret=true, required=false, anchors=[]" in correction
+    assert "connects_to" in correction and "открыт" in correction
+
+
 def test_model_failure_is_not_corrected():
     class Down:
         async def complete(self, *a, **kw):

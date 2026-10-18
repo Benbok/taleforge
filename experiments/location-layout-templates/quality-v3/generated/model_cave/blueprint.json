@@ -1,0 +1,360 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "room",
+      "name": "Входной грот",
+      "public_name": "Входной грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Просторный входной грот с нависающими сталактитами и россыпями щебня под ногами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "stalactite_1",
+          "name": "Сталактит",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "rubble_1",
+          "name": "Щебень",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              4,
+              2,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "table_1",
+          "name": "Каменный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              2,
+              5,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "bench_1",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              6,
+              4,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "torch_1",
+          "name": "Факел",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              5,
+              6,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              6,
+              2,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "room",
+      "name": "Каменный проход",
+      "public_name": "Каменный проход",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 5,
+      "rows": 5,
+      "offset": [
+        7,
+        1
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Узкий каменный проход со скальными выступами и трещинами в стенах.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "outcrop_1",
+          "name": "Скальный выступ",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "rubble_2",
+          "name": "Трещина",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "room",
+      "name": "Глубокий грот",
+      "public_name": "Глубокий грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        12,
+        -1
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Глубокий грот с массивными сталагмитами и влажными, блестящими от воды камнями.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "stalagmite_1",
+          "name": "Сталагмит",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "stalagmite_2",
+          "name": "Сталагмит",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              5,
+              5,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "lichen_1",
+          "name": "Влажный камень",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              5,
+              2,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "glow_1",
+          "name": "Светящийся мох",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              2,
+              6,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:glow"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "passage",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "e",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "w",
+          "start": 2,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "arch",
+      "name": "Арка грота",
+      "public_name": "Арка грота",
+      "ends": [
+        {
+          "area_ref": "part_1",
+          "side": "e",
+          "start": 2,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_w",
+      "kind": "gap",
+      "name": "Вход",
+      "public_name": "Вход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_model_cave"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {
+    "clue_logbook": "main",
+    "npc:npc_keeper": "main"
+  },
+  "required": [
+    "main",
+    "part_1",
+    "part_2"
+  ],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

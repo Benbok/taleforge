@@ -9,8 +9,8 @@
       "public_name": "Западный берег",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "offset": [
         0,
         0
@@ -26,9 +26,9 @@
           "kind": "object",
           "cells": [
             [
-              3,
+              4,
               2,
-              3,
+              4,
               2
             ]
           ],
@@ -42,10 +42,10 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              7,
               4,
-              7
+              9,
+              5,
+              9
             ]
           ],
           "solid": false,
@@ -58,9 +58,9 @@
           "kind": "nature",
           "cells": [
             [
-              8,
+              10,
               1,
-              8,
+              10,
               2
             ]
           ],
@@ -75,15 +75,15 @@
           "cells": [
             [
               0,
-              4,
-              9,
-              4
+              5,
+              11,
+              5
             ],
             [
               0,
-              5,
-              9,
-              5
+              6,
+              11,
+              6
             ]
           ]
         }
@@ -92,42 +92,43 @@
         {
           "side": "n",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 4,
+          "length": 5,
           "meaning": "obstacle"
         },
         {
           "side": "w",
-          "start": 4,
+          "start": 5,
           "length": 2,
           "meaning": "boundary"
         },
         {
           "side": "w",
-          "start": 6,
-          "length": 4,
+          "start": 7,
+          "length": 5,
           "meaning": "obstacle"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "stream_crossing",
@@ -136,10 +137,10 @@
       "public_name": "Переправа через ручей",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "offset": [
-        10,
+        12,
         0
       ],
       "level": 0,
@@ -153,16 +154,16 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              3,
-              7,
-              3
+              6,
+              4,
+              8,
+              4
             ],
             [
-              5,
               6,
               7,
-              6
+              8,
+              7
             ]
           ],
           "solid": false,
@@ -175,16 +176,16 @@
           "kind": "nature",
           "cells": [
             [
-              6,
-              1,
-              6,
-              1
+              7,
+              2,
+              7,
+              2
             ],
             [
-              6,
-              8,
-              6,
-              8
+              7,
+              9,
+              7,
+              9
             ]
           ],
           "solid": true,
@@ -198,9 +199,9 @@
           "cells": [
             [
               2,
-              7,
+              9,
               3,
-              8
+              10
             ]
           ],
           "solid": false,
@@ -213,16 +214,16 @@
           "kind": "bridge",
           "cells": [
             [
-              6,
-              4,
               7,
-              4
+              5,
+              8,
+              5
             ],
             [
-              6,
-              5,
               7,
-              5
+              6,
+              8,
+              6
             ]
           ]
         },
@@ -231,27 +232,27 @@
           "cells": [
             [
               0,
-              4,
               5,
-              4
+              6,
+              5
             ],
             [
-              8,
-              4,
-              11,
-              4
+              9,
+              5,
+              13,
+              5
             ],
             [
               0,
-              5,
-              5,
-              5
+              6,
+              6,
+              6
             ],
             [
-              8,
-              5,
-              11,
-              5
+              9,
+              6,
+              13,
+              6
             ]
           ]
         },
@@ -259,52 +260,64 @@
           "kind": "stream",
           "cells": [
             [
-              6,
-              0,
               7,
+              0,
+              8,
               0
             ],
             [
-              6,
-              1,
               7,
+              1,
+              8,
               1
             ],
             [
-              6,
-              2,
               7,
+              2,
+              8,
               2
             ],
             [
-              6,
-              3,
               7,
+              3,
+              8,
               3
             ],
             [
-              6,
-              6,
               7,
-              6
+              4,
+              8,
+              4
             ],
             [
-              6,
               7,
               7,
+              8,
               7
             ],
             [
-              6,
-              8,
               7,
+              8,
+              8,
               8
             ],
             [
-              6,
-              9,
               7,
+              9,
+              8,
               9
+            ],
+            [
+              7,
+              10,
+              8,
+              10
+            ],
+            [
+              7,
+              11,
+              8,
+              11
             ]
           ]
         }
@@ -313,30 +326,31 @@
         {
           "side": "n",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "east_bluff",
@@ -345,10 +359,10 @@
       "public_name": "Восточный холм",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "offset": [
-        22,
+        26,
         0
       ],
       "level": 0,
@@ -362,9 +376,9 @@
           "kind": "cover",
           "cells": [
             [
-              2,
-              2,
               3,
+              2,
+              4,
               2
             ]
           ],
@@ -378,10 +392,10 @@
           "kind": "nature",
           "cells": [
             [
-              7,
-              7,
-              8,
-              8
+              9,
+              9,
+              10,
+              10
             ]
           ],
           "solid": true,
@@ -394,10 +408,10 @@
           "kind": "light",
           "cells": [
             [
-              4,
-              7,
               5,
-              7
+              9,
+              6,
+              9
             ]
           ],
           "solid": false,
@@ -411,15 +425,15 @@
           "cells": [
             [
               0,
-              4,
-              9,
-              4
+              5,
+              11,
+              5
             ],
             [
               0,
-              5,
-              9,
-              5
+              6,
+              11,
+              6
             ]
           ]
         }
@@ -428,30 +442,31 @@
         {
           "side": "n",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -465,14 +480,14 @@
           "area_ref": "west_bank",
           "side": "e",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         },
         {
           "area_ref": "stream_crossing",
           "side": "w",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         }
       ],
@@ -489,14 +504,14 @@
           "area_ref": "stream_crossing",
           "side": "e",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         },
         {
           "area_ref": "east_bluff",
           "side": "w",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         }
       ],
@@ -512,7 +527,7 @@
         {
           "area_ref": "west_bank",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 2,
           "place_id": null
         },

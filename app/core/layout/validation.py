@@ -76,6 +76,8 @@ def _area(a: Area) -> list[str]:
         e.append(f"{name}: окружение {a.environment}")
     if a.material not in MATERIALS:
         e.append(f"{name}: материал {a.material}")
+    if a.lighting not in {"normal", "dim", "dark"}:
+        e.append(f"{name}: неизвестный режим освещения {a.lighting}")
     if not (1 <= a.cols <= MAX_SIDE and 1 <= a.rows <= MAX_SIDE):
         e.append(f"{name}: размер {a.cols}×{a.rows}, сторона от 1 до {MAX_SIDE}")
     if a.shape == "corridor" and min(a.cols, a.rows) > 2:

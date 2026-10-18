@@ -9,8 +9,8 @@
       "public_name": "Заросший парк",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "offset": [
         0,
         0
@@ -26,10 +26,10 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              4,
               6,
-              5
+              5,
+              7,
+              6
             ]
           ],
           "solid": true,
@@ -42,16 +42,16 @@
           "kind": "nature",
           "cells": [
             [
-              1,
               2,
-              1,
-              4
+              3,
+              2,
+              5
             ],
             [
-              7,
-              2,
-              7,
-              4
+              8,
+              3,
+              8,
+              5
             ]
           ],
           "solid": true,
@@ -64,10 +64,10 @@
           "kind": "furniture",
           "cells": [
             [
-              8,
-              2,
               9,
-              2
+              3,
+              10,
+              3
             ]
           ],
           "solid": false,
@@ -80,10 +80,10 @@
           "kind": "nature",
           "cells": [
             [
-              3,
-              7,
-              3,
-              7
+              4,
+              9,
+              4,
+              9
             ]
           ],
           "solid": false,
@@ -96,42 +96,43 @@
         {
           "side": "n",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 4,
+          "length": 5,
           "meaning": "obstacle"
         },
         {
           "side": "w",
-          "start": 4,
+          "start": 5,
           "length": 2,
           "meaning": "boundary"
         },
         {
           "side": "w",
-          "start": 6,
-          "length": 4,
+          "start": 7,
+          "length": 5,
           "meaning": "obstacle"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "collapsed_ballroom",
@@ -140,10 +141,10 @@
       "public_name": "Бальный зал",
       "environment": "indoor",
       "shape": "l_shape",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "offset": [
-        12,
+        14,
         0
       ],
       "level": 0,
@@ -157,10 +158,10 @@
           "kind": "hazard",
           "cells": [
             [
-              3,
               4,
-              4,
-              5
+              5,
+              5,
+              6
             ]
           ],
           "solid": false,
@@ -174,15 +175,15 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              3
+              4
             ],
             [
               2,
-              7,
+              8,
               2,
-              7
+              8
             ]
           ],
           "solid": true,
@@ -195,21 +196,38 @@
           "kind": "light",
           "cells": [
             [
-              8,
-              7,
-              8,
-              8
+              10,
+              9,
+              10,
+              10
             ]
           ],
           "solid": true,
           "hidden": false,
           "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              4,
+              0,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "intact_study",
@@ -218,11 +236,11 @@
       "public_name": "Уцелевший кабинет",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "offset": [
-        14,
-        10
+        16,
+        12
       ],
       "level": 0,
       "material": "wood",
@@ -235,10 +253,10 @@
           "kind": "furniture",
           "cells": [
             [
-              2,
-              2,
               3,
-              3
+              3,
+              4,
+              4
             ]
           ],
           "solid": true,
@@ -251,9 +269,9 @@
           "kind": "furniture",
           "cells": [
             [
+              2,
               1,
-              1,
-              4,
+              5,
               1
             ]
           ],
@@ -267,10 +285,10 @@
           "kind": "object",
           "cells": [
             [
-              5,
-              2,
-              5,
-              3
+              6,
+              3,
+              6,
+              4
             ]
           ],
           "solid": false,
@@ -281,7 +299,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -294,14 +313,14 @@
         {
           "area_ref": "overgrown_park",
           "side": "e",
-          "start": 5,
+          "start": 6,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "collapsed_ballroom",
           "side": "w",
-          "start": 5,
+          "start": 6,
           "width": 1,
           "place_id": null
         }
@@ -342,7 +361,7 @@
         {
           "area_ref": "overgrown_park",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 2,
           "place_id": null
         },

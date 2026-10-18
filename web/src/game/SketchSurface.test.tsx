@@ -34,4 +34,18 @@ describe("SVG-поверхность эскиза", () => {
     const ids = [...container.querySelectorAll("[id]")].map((node) => node.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("clips decorative light to the floor and ignores hidden emitters", () => {
+    const lit: Sketch = { ...sketch, features: [
+      { id: "fire", name: "Очаг", kind: "light", visual_key: "feature:hearth", cells: [[0, 1, 0, 1]] },
+      { id: "secret", name: "Тайный огонь", kind: "light", visual_key: "feature:torch", cells: [[2, 1, 2, 1]], hidden: true },
+    ] };
+    const { container } = render(<svg><SketchSurface sketch={lit} idPrefix="lit" /></svg>);
+    const lights = container.querySelectorAll('[data-light-source]');
+    expect(lights).toHaveLength(1);
+    expect(lights[0].getAttribute("data-light-source")).toBe("fire");
+    expect(lights[0].closest('[clip-path="url(#lit-floor)"]')).not.toBeNull();
+    expect(container.querySelector('[data-layer="atmosphere"]')?.getAttribute("pointer-events")).toBe("none");
+    expect(container.querySelector('[data-light-source="secret"]')).toBeNull();
+  });
 });

@@ -1,0 +1,610 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "quay",
+      "name": "Набережная",
+      "public_name": "Набережная",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 14,
+      "rows": 12,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Причальные тумбы, Канаты",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Причальные тумбы",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Канаты",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Швартовная тумба",
+          "kind": "furniture",
+          "cells": [
+            [
+              13,
+              11,
+              13,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Сложенная сеть",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              11,
+              1,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Бочка",
+          "kind": "furniture",
+          "cells": [
+            [
+              13,
+              2,
+              13,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Сложенные ящики",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              11,
+              9,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Швартовная тумба",
+          "kind": "furniture",
+          "cells": [
+            [
+              13,
+              7,
+              13,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "decor_5_0",
+          "name": "Сложенная сеть",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              3,
+              1,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        }
+      ],
+      "terrain": [
+        {
+          "kind": "path",
+          "cells": [
+            [
+              0,
+              5,
+              13,
+              5
+            ],
+            [
+              0,
+              6,
+              13,
+              6
+            ]
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 14,
+          "meaning": "continuation"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 5,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 5,
+          "length": 2,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 7,
+          "length": 5,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "pier",
+      "name": "Причалы",
+      "public_name": "Причалы",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 14,
+      "rows": 12,
+      "offset": [
+        0,
+        -12
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Деревянный настил, Сваи",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Деревянный настил",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Сваи",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Швартовная тумба",
+          "kind": "furniture",
+          "cells": [
+            [
+              13,
+              9,
+              13,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Сложенная сеть",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              9,
+              1,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Бочка",
+          "kind": "furniture",
+          "cells": [
+            [
+              11,
+              0,
+              11,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Сложенные ящики",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              4,
+              1,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Швартовная тумба",
+          "kind": "furniture",
+          "cells": [
+            [
+              13,
+              4,
+              13,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "decor_5_0",
+          "name": "Сложенная сеть",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              0,
+              5,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 14,
+          "meaning": "continuation"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [
+        {
+          "slot_ref": "pier_container",
+          "role": "container",
+          "cells": [
+            [
+              12,
+              0,
+              12,
+              0
+            ]
+          ],
+          "detail_ref": null,
+          "hidden": false,
+          "max_cols": 1,
+          "max_rows": 1
+        }
+      ],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "warehouse",
+      "name": "Склад",
+      "public_name": "Склад",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        14,
+        -10
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Пустые ящики, Стеллажи",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Пустые ящики",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Стеллажи",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              5,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Сложенные ящики",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Бочка",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Ларь",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              7,
+              3,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "edge",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "n",
+          "start": 0,
+          "width": 14,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "s",
+          "start": 0,
+          "width": 14,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "door",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "part_1",
+          "side": "e",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_w",
+      "kind": "edge",
+      "name": "Подход к месту",
+      "public_name": "Подход к месту",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 5,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_fallback_port"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

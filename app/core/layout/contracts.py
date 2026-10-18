@@ -98,6 +98,7 @@ class Area:
     edges: tuple[Edge, ...] = ()
     scene_profile: str | None = None
     object_slots: tuple[ObjectSlot, ...] = ()
+    lighting: str = "normal"  # dim/dark preserve an intentionally underlit scene
 
 
 @dataclass(frozen=True)
@@ -197,6 +198,7 @@ class Blueprint:
                 description=a.get("description") or "",
                 secret=bool(a.get("secret")),
                 scene_profile=a.get("scene_profile"),
+                lighting=a.get("lighting", "normal"),
                 object_slots=tuple(
                     ObjectSlot(
                         x["slot_ref"],

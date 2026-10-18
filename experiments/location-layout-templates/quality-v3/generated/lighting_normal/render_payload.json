@@ -1,0 +1,165 @@
+{
+  "template_id": "lighting_normal",
+  "root_id": "quality_lighting_normal",
+  "entry": "hall",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "hall",
+      "name": "Обычный свет",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Вход",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "quality_lighting_normal",
+            "beyond": null,
+            "passage_ref": "in_hall_w",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_hall_table",
+            "name": "Стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_hall_bench",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                6,
+                5,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_hall_crate",
+            "name": "Ящик",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_hall_torch",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                9,
+                6,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_hall_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                0,
+                5,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_hall_wall_torch_1",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                4,
+                11,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "hall",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

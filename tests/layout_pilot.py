@@ -49,9 +49,10 @@ def pilot_intent(outside_id: str = "en_village") -> LayoutIntent:
         "entry": "road",
         "parts": [
             {"part_ref": "road", "role": "field", "name": "Дорога у храма", "public_name": "Дорога у храма",
-             "environment": "outdoor", "shape": "open"},
+             "environment": "outdoor", "shape": "open", "cols": 12, "rows": 10},
             {"part_ref": "brook", "role": "field", "name": "Луг у ручья", "public_name": "Луг",
-             "environment": "outdoor", "shape": "open", "connects_to": "road", "side": "e", "passage_name": "Луг"},
+             "environment": "outdoor", "shape": "open", "cols": 12, "rows": 10,
+             "connects_to": "road", "side": "e", "passage_name": "Луг"},
             {"part_ref": "narthex", "name": "Притвор", "public_name": "Притвор", "cols": 6, "rows": 4,
              "connects_to": "road", "side": "n", "passage_name": "Двери храма", "passage_state": "closed"},
             {"part_ref": "nave", "name": "Неф", "public_name": "Главный зал", "cols": 8, "rows": 10,

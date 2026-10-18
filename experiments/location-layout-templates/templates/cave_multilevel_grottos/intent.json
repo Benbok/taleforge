@@ -11,10 +11,11 @@
       "environment": "indoor",
       "shape": "cave",
       "size": "medium",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "level": 0,
       "material": "stone",
+      "lighting": "normal",
       "connects_to": null,
       "side": null,
       "passage_kind": "door",
@@ -30,10 +31,10 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              3,
               4,
-              3
+              4,
+              5,
+              4
             ]
           ],
           "solid": false,
@@ -46,10 +47,10 @@
           "kind": "cover",
           "cells": [
             [
+              6,
               5,
-              4,
-              5,
-              5
+              6,
+              6
             ]
           ],
           "solid": true,
@@ -62,10 +63,10 @@
           "kind": "object",
           "cells": [
             [
-              2,
-              4,
-              2,
-              5
+              3,
+              5,
+              3,
+              6
             ]
           ],
           "solid": false,
@@ -85,10 +86,11 @@
       "environment": "indoor",
       "shape": "cave",
       "size": "medium",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "level": 0,
       "material": "stone",
+      "lighting": "normal",
       "connects_to": "upper_gallery",
       "side": "e",
       "passage_kind": "arch",
@@ -104,10 +106,10 @@
           "kind": "object",
           "cells": [
             [
-              3,
               4,
-              4,
-              4
+              5,
+              5,
+              5
             ]
           ],
           "solid": false,
@@ -120,10 +122,10 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              2,
-              4,
-              3
+              5,
+              3,
+              5,
+              4
             ]
           ],
           "solid": true,
@@ -143,10 +145,11 @@
       "environment": "indoor",
       "shape": "cave",
       "size": "medium",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "level": -1,
       "material": "earth",
+      "lighting": "normal",
       "connects_to": "chasm_overlook",
       "side": null,
       "passage_kind": "stairs",
@@ -162,10 +165,10 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              4,
-              6,
-              5
+              5,
+              5,
+              7,
+              6
             ]
           ],
           "solid": true,
@@ -179,9 +182,9 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              4
+              5
             ]
           ],
           "solid": false,
@@ -194,10 +197,10 @@
           "kind": "cover",
           "cells": [
             [
-              6,
               7,
-              7,
-              7
+              9,
+              8,
+              9
             ]
           ],
           "solid": true,
@@ -217,10 +220,11 @@
       "environment": "indoor",
       "shape": "cave",
       "size": "medium",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "level": -1,
       "material": "water",
+      "lighting": "normal",
       "connects_to": "lower_wet_cavern",
       "side": "s",
       "passage_kind": "passage",
@@ -236,10 +240,10 @@
           "kind": "hazard",
           "cells": [
             [
-              2,
-              2,
               3,
-              3
+              3,
+              4,
+              4
             ]
           ],
           "solid": false,
@@ -252,10 +256,10 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              2,
-              4,
-              3
+              5,
+              3,
+              5,
+              4
             ]
           ],
           "solid": false,

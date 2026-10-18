@@ -78,11 +78,16 @@ def freeze_profile(profile: SceneProfile) -> dict[str, Any]:
 
 def restore_profile(raw: dict[str, Any]) -> SceneProfile:
     return SceneProfile(
-        ref=raw["ref"], source=raw["source"], budget=raw["budget"], visible_share=raw["visible_share"],
-        limits=Limits(**raw["limits"]), items=tuple(ItemRule(**x) for x in raw.get("items", [])),
+        ref=raw["ref"],
+        source=raw["source"],
+        budget=raw["budget"],
+        visible_share=raw["visible_share"],
+        limits=Limits(**raw["limits"]),
+        items=tuple(ItemRule(**x) for x in raw.get("items", [])),
         containers=tuple(Furnishing(**x) for x in raw.get("containers", [])),
         inner=tuple(Furnishing(**x) for x in raw.get("inner", [])),
-        decor=tuple(Furnishing(**x) for x in raw.get("decor", [])), themes=tuple(raw.get("themes", [])),
+        decor=tuple(Furnishing(**x) for x in raw.get("decor", [])),
+        themes=tuple(raw.get("themes", [])),
     )
 
 
@@ -185,8 +190,40 @@ def profile_ref_for(location: Any, catalog: CatalogView) -> str:
     st = location.state if isinstance(location.state, dict) else {}
     if isinstance(st.get("scene_profile"), str):
         return st["scene_profile"]
-    roles = {"warehouse": "warehouse", "market": "workshop", "pier": "warehouse",
-             "quay": "warehouse", "cache": "cave"}
+    roles = {
+        "warehouse": "warehouse",
+        "storage": "warehouse",
+        "store": "warehouse",
+        "cellar": "warehouse",
+        "pantry": "warehouse",
+        "market": "workshop",
+        "shop": "workshop",
+        "workshop": "workshop",
+        "smithy": "workshop",
+        "pier": "warehouse",
+        "cargo_pier": "warehouse",
+        "quay": "warehouse",
+        "dock": "warehouse",
+        "cache": "cave",
+        "cave": "cave",
+        "grotto": "cave",
+        "cavern": "cave",
+        "tavern": "tavern",
+        "common_room": "tavern",
+        "dining": "tavern",
+        "dining_room": "tavern",
+        "bedroom": "house",
+        "guest_room": "house",
+        "guest_rooms": "house",
+        "kitchen": "house",
+        "house": "house",
+        "barracks": "barracks",
+        "dormitory": "barracks",
+        "guardroom": "barracks",
+        "laboratory": "laboratory",
+        "crypt": "crypt",
+        "tomb": "crypt",
+    }
     role_ref = roles.get(st.get("role"))
     if role_ref and catalog.find(f"scene_profile.{role_ref}", "scene_profile") is not None:
         return f"scene_profile.{role_ref}"

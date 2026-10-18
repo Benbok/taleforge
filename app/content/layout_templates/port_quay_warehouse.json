@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "port_quay_warehouse",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "archetype": "port",
   "template_ids": [
     "location.port"
@@ -27,10 +27,11 @@
         "environment": "outdoor",
         "shape": "open",
         "size": "medium",
-        "cols": 12,
-        "rows": 6,
+        "cols": 14,
+        "rows": 7,
         "level": 0,
         "material": "stone",
+        "lighting": "normal",
         "connects_to": null,
         "side": null,
         "passage_kind": "door",
@@ -46,16 +47,16 @@
             "kind": "object",
             "cells": [
               [
-                2,
-                5,
-                2,
-                5
+                3,
+                6,
+                3,
+                6
               ],
               [
-                9,
-                5,
-                9,
-                5
+                10,
+                6,
+                10,
+                6
               ]
             ],
             "solid": true,
@@ -68,15 +69,15 @@
             "kind": "cover",
             "cells": [
               [
-                1,
-                1,
                 2,
+                1,
+                3,
                 1
               ],
               [
-                8,
-                1,
                 9,
+                1,
+                10,
                 2
               ]
             ],
@@ -90,9 +91,9 @@
             "kind": "light",
             "cells": [
               [
-                10,
+                12,
                 0,
-                10,
+                12,
                 0
               ]
             ],
@@ -114,9 +115,10 @@
         "shape": "open",
         "size": "medium",
         "cols": 4,
-        "rows": 10,
+        "rows": 12,
         "level": 0,
         "material": "wood",
+        "lighting": "normal",
         "connects_to": "granite_quay",
         "side": "s",
         "passage_kind": "passage",
@@ -133,9 +135,9 @@
             "cells": [
               [
                 1,
-                4,
+                5,
                 1,
-                5
+                6
               ]
             ],
             "solid": true,
@@ -149,9 +151,9 @@
             "cells": [
               [
                 2,
-                3,
+                4,
                 2,
-                3
+                4
               ]
             ],
             "solid": false,
@@ -165,15 +167,15 @@
             "cells": [
               [
                 1,
-                8,
+                10,
                 1,
-                8
+                10
               ],
               [
                 2,
-                8,
+                10,
                 2,
-                8
+                10
               ]
             ],
             "solid": false,
@@ -193,10 +195,11 @@
         "environment": "indoor",
         "shape": "rect",
         "size": "medium",
-        "cols": 10,
-        "rows": 8,
+        "cols": 12,
+        "rows": 10,
         "level": 0,
         "material": "wood",
+        "lighting": "normal",
         "connects_to": "granite_quay",
         "side": "e",
         "passage_kind": "gate",
@@ -212,15 +215,15 @@
             "kind": "cover",
             "cells": [
               [
-                2,
-                1,
                 3,
+                1,
+                4,
                 2
               ],
               [
-                6,
-                1,
                 7,
+                1,
+                8,
                 2
               ]
             ],
@@ -234,16 +237,16 @@
             "kind": "furniture",
             "cells": [
               [
-                2,
-                6,
                 3,
-                6
+                8,
+                4,
+                8
               ],
               [
-                6,
-                6,
+                7,
                 8,
-                6
+                9,
+                8
               ]
             ],
             "solid": true,
@@ -256,19 +259,52 @@
             "kind": "furniture",
             "cells": [
               [
-                8,
+                9,
                 1,
-                8,
+                9,
                 2
               ]
             ],
             "solid": true,
             "hidden": false,
             "visual_key": "feature:table"
+          },
+          {
+            "detail_ref": "cargo_chest",
+            "name": "Сундук портовых грузов",
+            "kind": "object",
+            "cells": [
+              [
+                11,
+                5,
+                11,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chest"
           }
         ],
-        "scene_profile": null,
-        "object_slots": []
+        "scene_profile": "scene_profile.warehouse",
+        "object_slots": [
+          {
+            "slot_ref": "cargo_chest",
+            "role": "container",
+            "cells": [
+              [
+                11,
+                5,
+                11,
+                5
+              ]
+            ],
+            "detail_ref": "cargo_chest",
+            "hidden": false,
+            "max_cols": 1,
+            "max_rows": 1
+          }
+        ]
       },
       {
         "part_ref": "harbor_water_west",
@@ -280,9 +316,10 @@
         "shape": "open",
         "size": "medium",
         "cols": 4,
-        "rows": 10,
+        "rows": 12,
         "level": 0,
         "material": "water",
+        "lighting": "normal",
         "connects_to": "cargo_pier",
         "side": "w",
         "passage_kind": "passage",
@@ -299,9 +336,9 @@
             "cells": [
               [
                 2,
-                3,
+                4,
                 2,
-                3
+                4
               ]
             ],
             "solid": false,
@@ -322,9 +359,10 @@
         "shape": "open",
         "size": "medium",
         "cols": 4,
-        "rows": 10,
+        "rows": 12,
         "level": 0,
         "material": "water",
+        "lighting": "normal",
         "connects_to": "cargo_pier",
         "side": "e",
         "passage_kind": "passage",

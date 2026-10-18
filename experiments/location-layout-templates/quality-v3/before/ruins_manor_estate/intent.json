@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "entry": "overgrown_park",
+  "parts": [
+    {
+      "part_ref": "overgrown_park",
+      "role": "park",
+      "name": "Одичавший усадебный парк",
+      "public_name": "Заросший парк",
+      "description": "Бывший регулярный парк с одичавшими кустами роз, разбитыми скамьями и иссохшим мраморным фонтаном.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 12,
+      "rows": 10,
+      "level": 0,
+      "material": "grass",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "ruined_fountain",
+          "name": "Расколотый мраморный фонтан",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              4,
+              6,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        },
+        {
+          "detail_ref": "overgrown_hedges",
+          "name": "Одичавшая живая изгородь",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              2,
+              1,
+              4
+            ],
+            [
+              7,
+              2,
+              7,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "broken_benches",
+          "name": "Обломки резных парковых скамей",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              2,
+              9,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "garden_urn",
+          "name": "Мраморная урна с плющом",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              7,
+              3,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "collapsed_ballroom",
+      "role": "hall",
+      "name": "Рухнувший бальный зал",
+      "public_name": "Бальный зал",
+      "description": "Огромный парадный зал с провалившейся крышей, растрескавшимся паркетом и рухнувшей люстрой.",
+      "environment": "indoor",
+      "shape": "l_shape",
+      "size": "medium",
+      "cols": 10,
+      "rows": 10,
+      "level": 0,
+      "material": "stone",
+      "connects_to": "overgrown_park",
+      "side": "e",
+      "passage_kind": "arch",
+      "passage_name": "Парадная арка сада",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "fallen_chandelier",
+          "name": "Рухнувшая бронзовая люстра",
+          "kind": "hazard",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "marble_pillars",
+          "name": "Обломки мраморных колонн",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              3,
+              2,
+              3
+            ],
+            [
+              2,
+              7,
+              2,
+              7
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "grand_fireplace",
+          "name": "Разрушенный камин с гербом",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              7,
+              8,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "intact_study",
+      "role": "study",
+      "name": "Уцелевший кабинет лорда",
+      "public_name": "Уцелевший кабинет",
+      "description": "Изолированная сводчатая комната, чудом уцелевшая в пожаре: книги, карты поместья и секретер.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 6,
+      "rows": 6,
+      "level": 0,
+      "material": "wood",
+      "connects_to": "collapsed_ballroom",
+      "side": "s",
+      "passage_kind": "door",
+      "passage_name": "Окованная дубовая дверь",
+      "passage_state": "locked",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "carved_desk",
+          "name": "Массивный письменный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              2,
+              3,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "parchment_shelves",
+          "name": "Шкафы с семейными хрониками",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "hidden_safe",
+          "name": "Вмурованный в стену сейф",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              2,
+              5,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "overgrown_park",
+      "side": "w",
+      "kind": "edge",
+      "public_name": "Въездная усадебная аллея",
+      "outside_id": null,
+      "band": null,
+      "width": 2
+    }
+  ],
+  "bands": []
+}

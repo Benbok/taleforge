@@ -1,0 +1,79 @@
+[
+  {
+    "id": "model_temple_holders",
+    "title": "Модель: Храм с привязками",
+    "areas": 6,
+    "details": 32,
+    "explicit_art": 32
+  },
+  {
+    "id": "model_temple_no_holders",
+    "title": "Модель: Храм без привязок",
+    "areas": 6,
+    "details": 33,
+    "explicit_art": 33
+  },
+  {
+    "id": "model_tavern",
+    "title": "Модель: Таверна",
+    "areas": 3,
+    "details": 13,
+    "explicit_art": 13
+  },
+  {
+    "id": "model_cave",
+    "title": "Модель: Пещера",
+    "areas": 3,
+    "details": 12,
+    "explicit_art": 12
+  },
+  {
+    "id": "model_port",
+    "title": "Модель: Порт",
+    "areas": 3,
+    "details": 21,
+    "explicit_art": 21
+  },
+  {
+    "id": "fallback_tavern",
+    "title": "Резерв: Таверна",
+    "areas": 3,
+    "details": 20,
+    "explicit_art": 14
+  },
+  {
+    "id": "fallback_cave",
+    "title": "Резерв: Пещера",
+    "areas": 3,
+    "details": 18,
+    "explicit_art": 18
+  },
+  {
+    "id": "fallback_port",
+    "title": "Резерв: Порт",
+    "areas": 3,
+    "details": 22,
+    "explicit_art": 16
+  },
+  {
+    "id": "lighting_normal",
+    "title": "Свет: Обычный свет",
+    "areas": 1,
+    "details": 6,
+    "explicit_art": 6
+  },
+  {
+    "id": "lighting_dim",
+    "title": "Свет: Полумрак",
+    "areas": 1,
+    "details": 4,
+    "explicit_art": 4
+  },
+  {
+    "id": "lighting_dark",
+    "title": "Свет: Без источников света",
+    "areas": 1,
+    "details": 3,
+    "explicit_art": 3
+  }
+]

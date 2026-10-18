@@ -28,7 +28,7 @@ def test_authored_details_have_explicit_artwork(path):
 
 def test_tavern_has_paired_seating_and_a_wide_central_route():
     hall = parts("tavern_roadside")["common_room"]
-    assert hall["cols"] >= 10 and hall["rows"] >= 10
+    assert hall["cols"] >= 14 and hall["rows"] >= 12
     details = {d["detail_ref"]: d for d in hall["details"]}
     for suffix in ("north", "south"):
         table = cells(details[f"table_{suffix}"])
@@ -47,6 +47,7 @@ def test_tavern_has_paired_seating_and_a_wide_central_route():
 
 def test_grotto_has_separated_rock_clusters_with_room_to_circle():
     grotto = parts("cave_passages_grotto")["great_grotto"]
+    assert grotto["cols"] >= 17 and grotto["rows"] >= 14
     rocks = [d for d in grotto["details"] if d["solid"]]
     assert len(rocks) >= 3
     for detail in rocks:
@@ -65,7 +66,7 @@ def test_cargo_pier_is_narrow_and_has_an_unobstructed_working_lane():
     port = parts("port_quay_warehouse")
     pier = port["cargo_pier"]
     assert 3 <= pier["cols"] <= 4
-    assert pier["rows"] >= 2 * pier["cols"]
+    assert pier["rows"] >= 12
     assert pier["material"] == "wood"
     blocked = set().union(*(cells(d) for d in pier["details"] if d["solid"]))
     assert any(all((x, y) not in blocked for y in range(pier["rows"])) for x in range(pier["cols"]))

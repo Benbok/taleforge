@@ -30,7 +30,7 @@
       "wine_tuns": "preserved",
       "bottle_racks": "preserved",
       "ice_pit": "preserved",
-      "cellar_lantern": "preserved"
+      "cellar_lantern": "shifted: [[4, 5, 4, 5]] -> [[4, 9, 4, 9]]"
     },
     "secret_vault": {
       "iron_strongbox": "preserved",

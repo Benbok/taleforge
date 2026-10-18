@@ -1,0 +1,375 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "room",
+      "name": "Общий зал",
+      "public_name": "Общий зал",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "counter_1",
+          "name": "Стойка",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              3,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:counter"
+        },
+        {
+          "detail_ref": "bench_1",
+          "name": "Скамьи",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              4,
+              4,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "bench_2",
+          "name": "Скамьи",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              4,
+              8,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "torch_1",
+          "name": "Факел",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              4,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "room",
+      "name": "Гостевые комнаты",
+      "public_name": "Гостевые комнаты",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 6,
+      "offset": [
+        10,
+        1
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "bed_1",
+          "name": "Кровати",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "bed_2",
+          "name": "Кровати",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "curtain_1",
+          "name": "Занавески",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              1,
+              3,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "room",
+      "name": "Погреб",
+      "public_name": "Погреб",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 6,
+      "offset": [
+        0,
+        0
+      ],
+      "level": -1,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "barrel_1",
+          "name": "Бочки",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "shelf_1",
+          "name": "Полки",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              1,
+              6,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              1,
+              0,
+              1,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "door",
+      "name": "Дверь в комнаты",
+      "public_name": "Дверь в комнаты",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "hatch",
+      "name": "Люк в погреб",
+      "public_name": "Люк в погреб",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "w",
+          "start": 2,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_s",
+      "kind": "door",
+      "name": "Вход",
+      "public_name": "Вход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "s",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_model_tavern"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {
+    "npc:npc_keeper": "main",
+    "clue_logbook": "part_1"
+  },
+  "required": [
+    "main",
+    "part_1"
+  ],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

@@ -19,59 +19,59 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 12,
-        "rows": 10,
+        "cols": 14,
+        "rows": 12,
         "party": [
           0,
-          4
+          5
         ],
         "walls": [
           [
-            1,
-            2
-          ],
-          [
-            1,
+            2,
             3
           ],
           [
-            1,
+            2,
             4
           ],
           [
-            5,
-            4
-          ],
-          [
-            5,
+            2,
             5
-          ],
-          [
-            6,
-            4
           ],
           [
             6,
             5
           ],
           [
-            7,
-            2
+            6,
+            6
           ],
           [
             7,
+            5
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            8,
             3
           ],
           [
-            7,
+            8,
             4
+          ],
+          [
+            8,
+            5
           ]
         ],
         "exits": [
           {
             "name": "Въездная усадебная аллея",
             "side": "w",
-            "at": 4,
+            "at": 5,
             "width": 2,
             "kind": "edge",
             "state": "open",
@@ -82,18 +82,18 @@
             "cells": [
               [
                 0,
-                4
+                5
               ],
               [
                 0,
-                5
+                6
               ]
             ]
           },
           {
             "name": "Парадная арка сада",
             "side": "e",
-            "at": 5,
+            "at": 6,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -103,8 +103,8 @@
             "passage_ref": "p_collapsed_ballroom",
             "cells": [
               [
-                11,
-                5
+                13,
+                6
               ]
             ]
           }
@@ -116,10 +116,10 @@
             "kind": "cover",
             "cells": [
               [
-                5,
-                4,
                 6,
-                5
+                5,
+                7,
+                6
               ]
             ],
             "cover": "none",
@@ -133,16 +133,16 @@
             "kind": "nature",
             "cells": [
               [
-                1,
                 2,
-                1,
-                4
+                3,
+                2,
+                5
               ],
               [
-                7,
-                2,
-                7,
-                4
+                8,
+                3,
+                8,
+                5
               ]
             ],
             "cover": "none",
@@ -156,10 +156,10 @@
             "kind": "furniture",
             "cells": [
               [
-                8,
-                2,
                 9,
-                2
+                3,
+                10,
+                3
               ]
             ],
             "cover": "none",
@@ -173,10 +173,10 @@
             "kind": "nature",
             "cells": [
               [
-                3,
-                7,
-                3,
-                7
+                4,
+                9,
+                4,
+                9
               ]
             ],
             "cover": "none",
@@ -192,37 +192,37 @@
           {
             "side": "n",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 10,
+            "length": 12,
             "meaning": "obstacle"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 12,
+            "length": 14,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 4,
+            "length": 5,
             "meaning": "obstacle"
           },
           {
             "side": "w",
-            "start": 4,
+            "start": 5,
             "length": 2,
             "meaning": "boundary"
           },
           {
             "side": "w",
-            "start": 6,
-            "length": 4,
+            "start": 7,
+            "length": 5,
             "meaning": "obstacle"
           }
         ],
@@ -237,7 +237,7 @@
       "id": "collapsed_ballroom",
       "name": "Бальный зал",
       "offset": [
-        12,
+        14,
         0
       ],
       "level": 0,
@@ -246,35 +246,35 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 10,
-        "rows": 10,
+        "cols": 12,
+        "rows": 12,
         "party": [
           0,
-          5
+          6
         ],
         "walls": [
           [
             2,
-            3
+            4
           ],
           [
             2,
-            7
-          ],
-          [
-            8,
-            7
-          ],
-          [
-            8,
             8
+          ],
+          [
+            10,
+            9
+          ],
+          [
+            10,
+            10
           ]
         ],
         "exits": [
           {
             "name": "Парадная арка сада",
             "side": "w",
-            "at": 5,
+            "at": 6,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -285,7 +285,7 @@
             "cells": [
               [
                 0,
-                5
+                6
               ]
             ]
           },
@@ -303,7 +303,7 @@
             "cells": [
               [
                 5,
-                9
+                11
               ]
             ]
           }
@@ -315,10 +315,10 @@
             "kind": "hazard",
             "cells": [
               [
-                3,
                 4,
-                4,
-                5
+                5,
+                5,
+                6
               ]
             ],
             "cover": "none",
@@ -333,15 +333,15 @@
             "cells": [
               [
                 2,
-                3,
+                4,
                 2,
-                3
+                4
               ],
               [
                 2,
-                7,
+                8,
                 2,
-                7
+                8
               ]
             ],
             "cover": "none",
@@ -355,16 +355,33 @@
             "kind": "light",
             "cells": [
               [
-                8,
-                7,
-                8,
-                8
+                10,
+                9,
+                10,
+                10
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": true,
             "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_collapsed_ballroom_wall_torch",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                4,
+                0,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -377,16 +394,18 @@
           "rev": 1
         },
         "mask": [
-          ".....#####",
-          ".....#####",
-          ".....#####",
-          ".....#####",
-          ".....#####",
-          "..........",
-          "..........",
-          "..........",
-          "..........",
-          ".........."
+          "......######",
+          "......######",
+          "......######",
+          "......######",
+          "......######",
+          "......######",
+          "............",
+          "............",
+          "............",
+          "............",
+          "............",
+          "............"
         ]
       }
     },
@@ -394,8 +413,8 @@
       "id": "intact_study",
       "name": "Уцелевший кабинет",
       "offset": [
-        14,
-        10
+        16,
+        12
       ],
       "level": 0,
       "secret": false,
@@ -403,28 +422,28 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 7,
         "party": [
           3,
           0
         ],
         "walls": [
           [
-            2,
-            2
-          ],
-          [
-            2,
+            3,
             3
           ],
           [
             3,
-            2
+            4
           ],
           [
-            3,
+            4,
             3
+          ],
+          [
+            4,
+            4
           ]
         ],
         "exits": [
@@ -454,10 +473,10 @@
             "kind": "furniture",
             "cells": [
               [
-                2,
-                2,
                 3,
-                3
+                3,
+                4,
+                4
               ]
             ],
             "cover": "none",
@@ -471,9 +490,9 @@
             "kind": "furniture",
             "cells": [
               [
+                2,
                 1,
-                1,
-                4,
+                5,
                 1
               ]
             ],
@@ -488,10 +507,10 @@
             "kind": "object",
             "cells": [
               [
-                5,
-                2,
-                5,
-                3
+                6,
+                3,
+                6,
+                4
               ]
             ],
             "cover": "none",

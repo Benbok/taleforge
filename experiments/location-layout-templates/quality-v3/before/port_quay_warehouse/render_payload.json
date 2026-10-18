@@ -1,0 +1,995 @@
+{
+  "template_id": "port_quay_warehouse",
+  "root_id": "tpl_port_quay_warehouse",
+  "entry": "granite_quay",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "granite_quay",
+      "name": "Портовая набережная",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 6,
+        "party": [
+          0,
+          2
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ],
+          [
+            9,
+            1
+          ],
+          [
+            9,
+            2
+          ],
+          [
+            9,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход с припортовой улицы",
+            "side": "w",
+            "at": 2,
+            "width": 2,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_port_quay_warehouse",
+            "beyond": null,
+            "passage_ref": "in_granite_quay_w",
+            "cells": [
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Сходни на пирс",
+            "side": "s",
+            "at": 4,
+            "width": 4,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "cargo_pier",
+            "beyond": null,
+            "passage_ref": "p_cargo_pier",
+            "cells": [
+              [
+                4,
+                5
+              ],
+              [
+                5,
+                5
+              ],
+              [
+                6,
+                5
+              ],
+              [
+                7,
+                5
+              ]
+            ]
+          },
+          {
+            "name": "Складские ворота",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "harbor_warehouse",
+            "beyond": null,
+            "passage_ref": "p_harbor_warehouse",
+            "cells": [
+              [
+                11,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_granite_quay_mooring_bollards",
+            "name": "Чугунные причальные тумбы",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                5,
+                2,
+                5
+              ],
+              [
+                9,
+                5,
+                9,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_granite_quay_cargo_pallets",
+            "name": "Штабель грузовых поддонов",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ],
+              [
+                8,
+                1,
+                9,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_granite_quay_quay_lantern",
+            "name": "Портовый масляный фонарь",
+            "kind": "light",
+            "cells": [
+              [
+                10,
+                0,
+                10,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 6,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 4,
+            "length": 4,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 8,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 2,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 2,
+            "length": 2,
+            "meaning": "boundary"
+          },
+          {
+            "side": "w",
+            "start": 4,
+            "length": 2,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_quay_warehouse",
+          "area_ref": "granite_quay",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "cargo_pier",
+      "name": "Причал",
+      "offset": [
+        4,
+        6
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 4,
+        "rows": 10,
+        "party": [
+          0,
+          0
+        ],
+        "walls": [
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Сходни на пирс",
+            "side": "n",
+            "at": 0,
+            "width": 4,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "granite_quay",
+            "beyond": null,
+            "passage_ref": "p_cargo_pier",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                2,
+                0
+              ],
+              [
+                3,
+                0
+              ]
+            ]
+          },
+          {
+            "name": "Прискладская вода",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "harbor_water_east",
+            "beyond": null,
+            "passage_ref": "p_harbor_water_east",
+            "cells": [
+              [
+                3,
+                0
+              ],
+              [
+                3,
+                1
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                3,
+                7
+              ],
+              [
+                3,
+                8
+              ],
+              [
+                3,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Открытая вода",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "harbor_water_west",
+            "beyond": null,
+            "passage_ref": "p_harbor_water_west",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_cargo_pier_cargo_crane",
+            "name": "Поворотный грузовой кран",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                4,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crane"
+          },
+          {
+            "id": "sf_cargo_pier_coiled_hawsers",
+            "name": "Бухты тяжелых канатов",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_cargo_pier_cleats",
+            "name": "Швартовочные утки",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                8,
+                1,
+                8
+              ],
+              [
+                2,
+                8,
+                2,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 4,
+            "meaning": "continuation"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_quay_warehouse",
+          "area_ref": "cargo_pier",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "harbor_warehouse",
+      "name": "Портовый склад",
+      "offset": [
+        12,
+        -1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 8,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ],
+          [
+            8,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Складские ворота",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "granite_quay",
+            "beyond": null,
+            "passage_ref": "p_harbor_warehouse",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_harbor_warehouse_crate_stacks",
+            "name": "Штабеля опечатанных ящиков",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                1,
+                3,
+                2
+              ],
+              [
+                6,
+                1,
+                7,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_harbor_warehouse_storage_rack",
+            "name": "Многоярусные стеллажи",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                6,
+                3,
+                6
+              ],
+              [
+                6,
+                6,
+                8,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "id": "sf_harbor_warehouse_overseer_des",
+            "name": "Конторка портового смотрителя",
+            "kind": "furniture",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:table"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_port_quay_warehouse",
+          "area_ref": "harbor_warehouse",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "harbor_water_west",
+      "name": "Западная акватория",
+      "offset": [
+        0,
+        6
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 4,
+        "rows": 10,
+        "party": [
+          3,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Открытая вода",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "cargo_pier",
+            "beyond": null,
+            "passage_ref": "p_harbor_water_west",
+            "cells": [
+              [
+                3,
+                0
+              ],
+              [
+                3,
+                1
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                3,
+                7
+              ],
+              [
+                3,
+                8
+              ],
+              [
+                3,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_harbor_water_west_floating_bu",
+            "name": "Сигнальный буй",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_harbor_water_west_decor_0",
+            "name": "Кустарник",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "water",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_quay_warehouse",
+          "area_ref": "harbor_water_west",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "harbor_water_east",
+      "name": "Восточная акватория",
+      "offset": [
+        8,
+        6
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 4,
+        "rows": 10,
+        "party": [
+          0,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Прискладская вода",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "cargo_pier",
+            "beyond": null,
+            "passage_ref": "p_harbor_water_east",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_harbor_water_east_wooden_pile",
+            "name": "Торчащие сваи",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:pillar"
+          },
+          {
+            "id": "sf_harbor_water_east_decor_0",
+            "name": "Кустарник",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                0,
+                1,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "outdoor",
+        "material": "water",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 4,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_quay_warehouse",
+          "area_ref": "harbor_water_east",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

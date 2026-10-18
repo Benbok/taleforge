@@ -19,23 +19,23 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 8,
-        "rows": 8,
+        "cols": 10,
+        "rows": 10,
         "party": [
           0,
-          3
+          4
         ],
         "walls": [
           [
-            4,
-            5
+            5,
+            6
           ]
         ],
         "exits": [
           {
             "name": "Вход в пещеру",
             "side": "w",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "gap",
             "state": "open",
@@ -46,14 +46,14 @@
             "cells": [
               [
                 0,
-                3
+                4
               ]
             ]
           },
           {
             "name": "Узкий лаз",
             "side": "e",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "passage",
             "state": "open",
@@ -63,8 +63,8 @@
             "passage_ref": "p_winding_tunnel",
             "cells": [
               [
-                7,
-                4
+                9,
+                5
               ]
             ]
           }
@@ -76,15 +76,15 @@
             "kind": "nature",
             "cells": [
               [
+                3,
                 2,
-                2,
-                2,
+                3,
                 2
               ],
               [
-                3,
+                4,
                 1,
-                3,
+                4,
                 1
               ]
             ],
@@ -99,15 +99,100 @@
             "kind": "cover",
             "cells": [
               [
-                4,
                 5,
-                4,
-                5
+                6,
+                5,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_entry_chasm_decor_0_0",
+            "name": "Каменные выступы",
+            "kind": "nature",
+            "cells": [
+              [
+                0,
+                6,
+                1,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_entry_chasm_decor_1_0",
+            "name": "Осыпь",
+            "kind": "nature",
+            "cells": [
+              [
+                9,
+                3,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_entry_chasm_decor_2_0",
+            "name": "Лишайник",
+            "kind": "nature",
+            "cells": [
+              [
+                7,
+                7,
+                8,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:lichen"
+          },
+          {
+            "id": "sf_entry_chasm_decor_3_0",
+            "name": "Кристаллы",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                9,
+                3,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crystal"
+          },
+          {
+            "id": "sf_entry_chasm_decor_4_0",
+            "name": "Каменные выступы",
+            "kind": "nature",
+            "cells": [
+              [
+                6,
+                1,
+                7,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
             "visual_key": "feature:rock"
           }
         ],
@@ -121,14 +206,16 @@
           "rev": 1
         },
         "mask": [
-          "###...##",
-          "##.....#",
-          "#.......",
-          "........",
-          "#.......",
-          "........",
-          "#......#",
-          "####..##"
+          "###....###",
+          "##......##",
+          "#........#",
+          "#.........",
+          "..........",
+          "#.........",
+          ".........#",
+          "##.......#",
+          "###....#.#",
+          "###....###"
         ]
       }
     },
@@ -136,8 +223,8 @@
       "id": "winding_tunnel",
       "name": "Каменный проход",
       "offset": [
-        8,
-        3
+        10,
+        4
       ],
       "level": 0,
       "secret": false,
@@ -145,10 +232,10 @@
       "revision": 1,
       "sketch": {
         "shape": "corridor",
-        "cols": 6,
+        "cols": 7,
         "rows": 2,
         "party": [
-          5,
+          6,
           1
         ],
         "walls": [],
@@ -166,7 +253,7 @@
             "passage_ref": "p_great_grotto",
             "cells": [
               [
-                5,
+                6,
                 1
               ]
             ]
@@ -197,9 +284,9 @@
             "kind": "nature",
             "cells": [
               [
-                2,
-                0,
                 3,
+                0,
+                4,
                 0
               ]
             ],
@@ -224,7 +311,7 @@
       "id": "great_grotto",
       "name": "Подземный грот",
       "offset": [
-        14,
+        17,
         -2
       ],
       "level": 0,
@@ -233,47 +320,47 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 14,
-        "rows": 12,
+        "cols": 17,
+        "rows": 14,
         "party": [
           0,
-          6
+          7
         ],
         "walls": [
-          [
-            4,
-            3
-          ],
-          [
-            4,
-            4
-          ],
           [
             5,
             4
           ],
           [
+            5,
+            5
+          ],
+          [
             6,
-            8
-          ],
-          [
-            9,
             5
           ],
           [
-            10,
-            5
+            7,
+            9
           ],
           [
-            10,
+            11,
             6
+          ],
+          [
+            12,
+            6
+          ],
+          [
+            12,
+            7
           ]
         ],
         "exits": [
           {
             "name": "Высокий скальный свод",
             "side": "w",
-            "at": 6,
+            "at": 7,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -284,14 +371,14 @@
             "cells": [
               [
                 0,
-                6
+                7
               ]
             ]
           },
           {
             "name": "Низкий пролаз",
             "side": "s",
-            "at": 7,
+            "at": 8,
             "width": 1,
             "kind": "passage",
             "state": "open",
@@ -301,15 +388,15 @@
             "passage_ref": "p_side_den",
             "cells": [
               [
-                7,
-                11
+                8,
+                13
               ]
             ]
           },
           {
             "name": "Скальный берег озера",
             "side": "n",
-            "at": 7,
+            "at": 8,
             "width": 1,
             "kind": "gap",
             "state": "open",
@@ -319,7 +406,7 @@
             "passage_ref": "p_subterranean_lake",
             "cells": [
               [
-                7,
+                8,
                 0
               ]
             ]
@@ -332,16 +419,16 @@
             "kind": "cover",
             "cells": [
               [
+                5,
                 4,
-                3,
-                4,
-                4
+                5,
+                5
               ],
               [
+                6,
                 5,
-                4,
-                5,
-                4
+                6,
+                5
               ]
             ],
             "cover": "none",
@@ -355,15 +442,15 @@
             "kind": "light",
             "cells": [
               [
-                10,
+                12,
                 2,
-                10,
+                12,
                 2
               ],
               [
-                11,
+                13,
                 3,
-                11,
+                13,
                 3
               ]
             ],
@@ -378,10 +465,10 @@
             "kind": "cover",
             "cells": [
               [
-                3,
-                9,
                 4,
-                9
+                11,
+                5,
+                11
               ]
             ],
             "cover": "none",
@@ -395,16 +482,16 @@
             "kind": "cover",
             "cells": [
               [
-                9,
-                5,
-                10,
-                5
+                11,
+                6,
+                12,
+                6
               ],
               [
-                10,
-                6,
-                10,
-                6
+                12,
+                7,
+                12,
+                7
               ]
             ],
             "cover": "none",
@@ -418,10 +505,10 @@
             "kind": "cover",
             "cells": [
               [
-                6,
-                8,
-                6,
-                8
+                7,
+                9,
+                7,
+                9
               ]
             ],
             "cover": "none",
@@ -440,18 +527,20 @@
           "rev": 1
         },
         "mask": [
-          "####......####",
-          "##........#.##",
-          "#...........##",
-          "#............#",
-          "..............",
-          "..............",
-          ".............#",
-          "..............",
-          "##...........#",
-          "##...........#",
-          "###.........##",
-          "####.#....####"
+          "#####.....#.#####",
+          "###.........#.###",
+          "##.............##",
+          "#..............##",
+          "#...............#",
+          "................#",
+          ".................",
+          "................#",
+          ".................",
+          "##..............#",
+          "##.............##",
+          "###............##",
+          "###...........###",
+          "######......#####"
         ]
       }
     },
@@ -459,8 +548,8 @@
       "id": "subterranean_lake",
       "name": "Подземное озеро",
       "offset": [
-        17,
-        -10
+        20,
+        -12
       ],
       "level": 0,
       "secret": false,
@@ -468,18 +557,18 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 8,
-        "rows": 8,
+        "cols": 10,
+        "rows": 10,
         "party": [
-          4,
-          7
+          5,
+          9
         ],
         "walls": [],
         "exits": [
           {
             "name": "Скальный берег озера",
             "side": "s",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "gap",
             "state": "open",
@@ -489,8 +578,8 @@
             "passage_ref": "p_subterranean_lake",
             "cells": [
               [
-                4,
-                7
+                5,
+                9
               ]
             ]
           }
@@ -502,32 +591,16 @@
             "kind": "light",
             "cells": [
               [
-                3,
-                3,
                 4,
-                4
+                4,
+                5,
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
             "visual_key": "feature:glow"
-          },
-          {
-            "id": "sf_subterranean_lake_decor_0",
-            "name": "Каменные выступы",
-            "kind": "furniture",
-            "cells": [
-              [
-                1,
-                1,
-                1,
-                1
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false
           }
         ],
         "environment": "indoor",
@@ -540,14 +613,16 @@
           "rev": 1
         },
         "mask": [
-          "###...##",
-          "#......#",
-          ".......#",
-          "#.......",
-          ".......#",
-          ".......#",
-          "#......#",
-          "###...##"
+          "###...####",
+          "#......#.#",
+          "#........#",
+          "..........",
+          "#.........",
+          "..........",
+          "..........",
+          "##.......#",
+          "##.....#.#",
+          "###....###"
         ]
       }
     },
@@ -555,8 +630,8 @@
       "id": "side_den",
       "name": "Тёмная ниша",
       "offset": [
-        18,
-        10
+        22,
+        12
       ],
       "level": 0,
       "secret": false,
@@ -564,8 +639,8 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 7,
         "party": [
           3,
           0
@@ -598,10 +673,10 @@
             "kind": "nature",
             "cells": [
               [
-                2,
                 3,
-                3,
-                4
+                4,
+                4,
+                5
               ]
             ],
             "cover": "none",
@@ -615,16 +690,50 @@
             "kind": "object",
             "cells": [
               [
-                3,
-                2,
                 4,
-                2
+                3,
+                5,
+                3
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
             "visual_key": "feature:bones"
+          },
+          {
+            "id": "sf_side_den_decor_0_0",
+            "name": "Каменные выступы",
+            "kind": "nature",
+            "cells": [
+              [
+                0,
+                2,
+                1,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_side_den_decor_1_0",
+            "name": "Осыпь",
+            "kind": "nature",
+            "cells": [
+              [
+                0,
+                4,
+                0,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
           }
         ],
         "environment": "indoor",
@@ -637,12 +746,13 @@
           "rev": 1
         },
         "mask": [
-          "#...##",
-          "......",
-          ".....#",
-          "......",
-          "#.....",
-          "#...##"
+          "##...##",
+          "##...##",
+          "......#",
+          ".......",
+          ".......",
+          "#.....#",
+          "##..###"
         ]
       }
     }

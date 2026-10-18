@@ -17,13 +17,13 @@
     "narthex": {
       "holy_water_font": "preserved",
       "prayer_benches": "preserved",
-      "candle_stand": "shifted: [[3, 0, 4, 0]] -> [[2, 0, 3, 0]]"
+      "candle_stand": "shifted: [[4, 0, 5, 0]] -> [[3, 0, 3, 0]]"
     },
     "sanctuary": {
       "grand_altar": "preserved",
       "columns_west": "preserved",
       "columns_east": "preserved",
-      "incense_braziers": "preserved",
+      "incense_braziers": "shifted: [[4, 1, 4, 1], [7, 1, 7, 1]] -> [[4, 0, 4, 0]]",
       "lectern": "preserved"
     },
     "sacristy": {

@@ -20,27 +20,27 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 8,
-        "rows": 8,
+        "cols": 10,
+        "rows": 10,
         "party": [
-          3,
-          7
+          4,
+          9
         ],
         "walls": [
           [
-            5,
-            4
+            6,
+            5
           ],
           [
-            5,
-            5
+            6,
+            6
           ]
         ],
         "exits": [
           {
             "name": "Входная расщелина с поверхности",
             "side": "s",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "gap",
             "state": "open",
@@ -50,15 +50,15 @@
             "passage_ref": "in_upper_gallery_s",
             "cells": [
               [
-                3,
-                7
+                4,
+                9
               ]
             ]
           },
           {
             "name": "Широкий скальный пролом",
             "side": "e",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -68,8 +68,8 @@
             "passage_ref": "p_chasm_overlook",
             "cells": [
               [
-                7,
-                4
+                9,
+                5
               ]
             ]
           }
@@ -81,10 +81,10 @@
             "kind": "light",
             "cells": [
               [
-                3,
-                3,
-                4,
-                3
+                7,
+                2,
+                7,
+                2
               ]
             ],
             "cover": "none",
@@ -98,10 +98,10 @@
             "kind": "cover",
             "cells": [
               [
+                6,
                 5,
-                4,
-                5,
-                5
+                6,
+                6
               ]
             ],
             "cover": "none",
@@ -115,16 +115,33 @@
             "kind": "object",
             "cells": [
               [
-                2,
-                4,
-                2,
-                5
+                3,
+                5,
+                3,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
             "visual_key": "feature:crystal"
+          },
+          {
+            "id": "sf_upper_gallery_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                1,
+                7,
+                1,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -137,14 +154,16 @@
           "rev": 1
         },
         "mask": [
-          "##....##",
-          "#......#",
-          ".......#",
-          ".......#",
-          "........",
-          "........",
-          "#......#",
-          "##..####"
+          "#####.####",
+          "#........#",
+          "#.......##",
+          ".........#",
+          "..........",
+          "..........",
+          ".........#",
+          "#........#",
+          "#........#",
+          "###...####"
         ]
       }
     },
@@ -152,7 +171,7 @@
       "id": "chasm_overlook",
       "name": "Край провала",
       "offset": [
-        8,
+        10,
         0
       ],
       "level": 0,
@@ -161,27 +180,27 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 8,
-        "rows": 8,
+        "cols": 10,
+        "rows": 10,
         "party": [
           0,
-          4
+          5
         ],
         "walls": [
           [
-            4,
-            2
+            5,
+            3
           ],
           [
-            4,
-            3
+            5,
+            4
           ]
         ],
         "exits": [
           {
             "name": "Широкий скальный пролом",
             "side": "w",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -192,14 +211,14 @@
             "cells": [
               [
                 0,
-                4
+                5
               ]
             ]
           },
           {
             "name": "Скальный спуск по расщелине",
             "side": "w",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "stairs",
             "state": "open",
@@ -210,7 +229,7 @@
             "cells": [
               [
                 0,
-                3
+                4
               ]
             ]
           }
@@ -222,10 +241,10 @@
             "kind": "object",
             "cells": [
               [
-                3,
                 4,
-                4,
-                4
+                5,
+                5,
+                5
               ]
             ],
             "cover": "none",
@@ -239,15 +258,100 @@
             "kind": "cover",
             "cells": [
               [
-                4,
-                2,
-                4,
-                3
+                5,
+                3,
+                5,
+                4
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_chasm_overlook_decor_0_0",
+            "name": "Каменные выступы",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_chasm_overlook_decor_1_0",
+            "name": "Осыпь",
+            "kind": "nature",
+            "cells": [
+              [
+                8,
+                8,
+                8,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_chasm_overlook_decor_2_0",
+            "name": "Лишайник",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                8,
+                3,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:lichen"
+          },
+          {
+            "id": "sf_chasm_overlook_decor_3_0",
+            "name": "Кристаллы",
+            "kind": "nature",
+            "cells": [
+              [
+                9,
+                3,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crystal"
+          },
+          {
+            "id": "sf_chasm_overlook_decor_4_0",
+            "name": "Каменные выступы",
+            "kind": "nature",
+            "cells": [
+              [
+                8,
+                6,
+                9,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
             "visual_key": "feature:rock"
           }
         ],
@@ -261,14 +365,16 @@
           "rev": 1
         },
         "mask": [
-          "##....##",
-          "#......#",
-          ".......#",
-          ".......#",
-          ".......#",
-          "........",
-          "##.....#",
-          "###..###"
+          "###...####",
+          "#......###",
+          "##......##",
+          "..........",
+          "..........",
+          ".........#",
+          "..........",
+          "#........#",
+          "##.......#",
+          "###.#.####"
         ]
       }
     },
@@ -276,7 +382,7 @@
       "id": "lower_wet_cavern",
       "name": "Нижний грот",
       "offset": [
-        8,
+        10,
         0
       ],
       "level": -1,
@@ -285,32 +391,20 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 10,
-        "rows": 10,
+        "cols": 12,
+        "rows": 12,
         "party": [
           0,
-          4
+          5
         ],
         "walls": [
           [
-            4,
-            4
-          ],
-          [
-            4,
-            5
-          ],
-          [
-            5,
-            4
-          ],
-          [
             5,
             5
           ],
           [
-            6,
-            4
+            5,
+            6
           ],
           [
             6,
@@ -318,18 +412,30 @@
           ],
           [
             6,
-            7
+            6
           ],
           [
             7,
-            7
+            5
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            7,
+            9
+          ],
+          [
+            8,
+            9
           ]
         ],
         "exits": [
           {
             "name": "Скальный спуск по расщелине",
             "side": "w",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "stairs",
             "state": "open",
@@ -340,7 +446,7 @@
             "cells": [
               [
                 0,
-                4
+                5
               ]
             ]
           },
@@ -358,7 +464,7 @@
             "cells": [
               [
                 5,
-                9
+                11
               ]
             ]
           }
@@ -370,10 +476,10 @@
             "kind": "cover",
             "cells": [
               [
-                4,
-                4,
-                6,
-                5
+                5,
+                5,
+                7,
+                6
               ]
             ],
             "cover": "none",
@@ -388,9 +494,9 @@
             "cells": [
               [
                 2,
-                3,
+                4,
                 2,
-                4
+                5
               ]
             ],
             "cover": "none",
@@ -404,10 +510,10 @@
             "kind": "cover",
             "cells": [
               [
-                6,
                 7,
-                7,
-                7
+                9,
+                8,
+                9
               ]
             ],
             "cover": "none",
@@ -426,16 +532,18 @@
           "rev": 1
         },
         "mask": [
-          "###....###",
-          "#.......##",
-          "#........#",
-          "#.........",
-          "..........",
-          "#.........",
-          "..........",
-          "#........#",
-          "#........#",
-          "###...####"
+          "####....####",
+          "##......#.##",
+          "#..........#",
+          "#..........#",
+          "#...........",
+          "............",
+          "#...........",
+          "...........#",
+          "#..........#",
+          "#..........#",
+          "##........##",
+          "####..#.####"
         ]
       }
     },
@@ -443,8 +551,8 @@
       "id": "submerged_lair",
       "name": "Затопленный карман",
       "offset": [
-        10,
-        10
+        12,
+        12
       ],
       "level": -1,
       "secret": false,
@@ -452,8 +560,8 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 7,
         "party": [
           3,
           0
@@ -486,10 +594,10 @@
             "kind": "hazard",
             "cells": [
               [
-                2,
-                2,
                 3,
-                3
+                3,
+                4,
+                4
               ]
             ],
             "cover": "none",
@@ -503,10 +611,10 @@
             "kind": "cover",
             "cells": [
               [
-                4,
-                2,
-                4,
-                3
+                5,
+                3,
+                5,
+                4
               ]
             ],
             "cover": "none",
@@ -525,12 +633,13 @@
           "rev": 1
         },
         "mask": [
-          "#.#..#",
-          ".....#",
-          "......",
-          "......",
-          "......",
-          "####.#"
+          "###.###",
+          "#.....#",
+          ".......",
+          ".......",
+          ".......",
+          "#....##",
+          "####.##"
         ]
       }
     }

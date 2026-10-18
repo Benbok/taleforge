@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "entry": "outer_barbican",
+  "parts": [
+    {
+      "part_ref": "outer_barbican",
+      "role": "barbican",
+      "name": "Внешний барбакан",
+      "public_name": "Барбакан",
+      "description": "Открытый двор передового укрепления с зубчатыми обломками стен, коновязью и следами осады.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 10,
+      "rows": 8,
+      "level": 0,
+      "material": "earth",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "broken_gate_timber",
+          "name": "Обломки дубовых ворот",
+          "kind": "cover",
+          "cells": [
+            [
+              2,
+              3,
+              2,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "weapon_rack_ruin",
+          "name": "Искореженные стойки для копий",
+          "kind": "object",
+          "cells": [
+            [
+              6,
+              1,
+              7,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "watch_brazier",
+          "name": "Походная жаровня караула",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "watchtower_ruin",
+      "role": "tower",
+      "name": "Основание сторожевой башни",
+      "public_name": "Сторожевая башня",
+      "description": "Круглое каменное основание башни с узкими бойницами и каменной лестницей, уходящей вниз.",
+      "environment": "indoor",
+      "shape": "circle",
+      "size": "medium",
+      "cols": 8,
+      "rows": 8,
+      "level": 0,
+      "material": "stone",
+      "connects_to": "outer_barbican",
+      "side": "e",
+      "passage_kind": "door",
+      "passage_name": "Укрепленная дверь башни",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "spiral_stairs_center",
+          "name": "Каменная винтовая лестница",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "archer_embrasures",
+          "name": "Узкие бойницы в кладке",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              2,
+              5,
+              2
+            ],
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "oil_lantern",
+          "name": "Гарнизонный фонарь",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              4,
+              2,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "dungeon_casemate",
+      "role": "casemate",
+      "name": "Подземный каземат и арсенал",
+      "public_name": "Подземный каземат",
+      "description": "Толстостенный подземный бункер для хранения пороха, стрел и содержания пленных.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 8,
+      "rows": 6,
+      "level": -1,
+      "material": "stone",
+      "connects_to": "watchtower_ruin",
+      "side": null,
+      "passage_kind": "stairs",
+      "passage_name": "Лестница в каземат",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "armory_crates",
+          "name": "Сундуки с арбалетными болтами",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "iron_grate_cell",
+          "name": "Решётчатый карцер",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "interrogation_table",
+          "name": "Каменный стол караульного",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:table"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "outer_barbican",
+      "side": "w",
+      "kind": "gap",
+      "public_name": "Пролом во внешней стене",
+      "outside_id": null,
+      "band": null,
+      "width": 2
+    }
+  ],
+  "bands": []
+}

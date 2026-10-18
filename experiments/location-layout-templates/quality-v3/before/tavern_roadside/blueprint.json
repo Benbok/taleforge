@@ -1,0 +1,418 @@
+{
+  "seed": 7,
+  "entry": "common_room",
+  "areas": [
+    {
+      "area_ref": "common_room",
+      "role": "tavern_hall",
+      "name": "Общий зал таверны",
+      "public_name": "Общий зал",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Просторный деревянный зал с массивными дубовыми балками, тёплым очагом в торце и удобными столами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "hearth",
+          "name": "Большой очаг",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "bar_counter",
+          "name": "Барная стойка",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              3
+            ],
+            [
+              2,
+              3,
+              3,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:counter"
+        },
+        {
+          "detail_ref": "bar_stools",
+          "name": "Табуреты у стойки",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              4,
+              2,
+              4
+            ],
+            [
+              4,
+              3,
+              4,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "table_north",
+          "name": "Северный обеденный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              2,
+              9,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "benches_north",
+          "name": "Скамьи северного стола",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              1,
+              9,
+              1
+            ],
+            [
+              8,
+              3,
+              9,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "table_south",
+          "name": "Южный обеденный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              7,
+              9,
+              7
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "benches_south",
+          "name": "Скамья южного стола",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              6,
+              9,
+              6
+            ],
+            [
+              8,
+              8,
+              9,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "ale_casks",
+          "name": "Бочки с элем",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              7,
+              1,
+              7
+            ],
+            [
+              2,
+              8,
+              2,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "kitchen_pantry",
+      "role": "kitchen",
+      "name": "Кухня и кладовая",
+      "public_name": "Кухня",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 6,
+      "rows": 7,
+      "offset": [
+        -6,
+        1
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Жаркое каменное помещение с печью, разделочным столом и полками с припасами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "stove",
+          "name": "Кухонная печь",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              1,
+              0,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "pantry_shelves",
+          "name": "Стеллажи с припасами",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "prep_table",
+          "name": "Разделочный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              4,
+              3,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "guest_rooms",
+      "role": "quarters",
+      "name": "Комнаты постояльцев",
+      "public_name": "Комнаты отдыха",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        12,
+        1
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Тихий жилой отсек со спальными местами для уставших путников.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "bunks_north",
+          "name": "Спальные лежанки",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              1,
+              5,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "bunks_south",
+          "name": "Дополнительные лежанки",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              6,
+              5,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "traveler_chests",
+          "name": "Кованые сундуки",
+          "kind": "object",
+          "cells": [
+            [
+              6,
+              1,
+              6,
+              1
+            ],
+            [
+              6,
+              6,
+              6,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_kitchen_pantry",
+      "kind": "door",
+      "name": "Дверь на кухню",
+      "public_name": "Дверь на кухню",
+      "ends": [
+        {
+          "area_ref": "common_room",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "kitchen_pantry",
+          "side": "e",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_guest_rooms",
+      "kind": "door",
+      "name": "Дверь в коридор покоев",
+      "public_name": "Дверь в коридор покоев",
+      "ends": [
+        {
+          "area_ref": "common_room",
+          "side": "e",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "guest_rooms",
+          "side": "w",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_common_room_s",
+      "kind": "door",
+      "name": "Вход с тракта",
+      "public_name": "Вход с тракта",
+      "ends": [
+        {
+          "area_ref": "common_room",
+          "side": "s",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_tavern_roadside"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

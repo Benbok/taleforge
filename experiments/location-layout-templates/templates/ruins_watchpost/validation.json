@@ -23,7 +23,7 @@
     "watchtower_ruin": {
       "spiral_stairs_center": "preserved",
       "archer_embrasures": "preserved",
-      "oil_lantern": "preserved"
+      "oil_lantern": "shifted: [[3, 5, 3, 5]] -> [[1, 7, 1, 7]]"
     },
     "dungeon_casemate": {
       "armory_crates": "preserved",

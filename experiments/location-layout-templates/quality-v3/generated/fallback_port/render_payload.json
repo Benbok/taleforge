@@ -1,0 +1,761 @@
+{
+  "template_id": "fallback_port",
+  "root_id": "quality_fallback_port",
+  "entry": "main",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "main",
+      "name": "Набережная",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "open",
+        "cols": 14,
+        "rows": 12,
+        "party": [
+          0,
+          5
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Подход к месту",
+            "side": "w",
+            "at": 5,
+            "width": 2,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "quality_fallback_port",
+            "beyond": null,
+            "passage_ref": "in_main_w",
+            "cells": [
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ]
+            ]
+          },
+          {
+            "name": "Проход",
+            "side": "n",
+            "at": 0,
+            "width": 14,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                2,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                4,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                6,
+                0
+              ],
+              [
+                7,
+                0
+              ],
+              [
+                8,
+                0
+              ],
+              [
+                9,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                11,
+                0
+              ],
+              [
+                12,
+                0
+              ],
+              [
+                13,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_main_scenery_0",
+            "name": "Причальные тумбы",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_main_scenery_1",
+            "name": "Канаты",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_main_decor_0_0",
+            "name": "Швартовная тумба",
+            "kind": "furniture",
+            "cells": [
+              [
+                13,
+                11,
+                13,
+                11
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_main_decor_1_0",
+            "name": "Сложенная сеть",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                11,
+                1,
+                11
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_main_decor_2_0",
+            "name": "Бочка",
+            "kind": "furniture",
+            "cells": [
+              [
+                13,
+                2,
+                13,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_main_decor_3_0",
+            "name": "Сложенные ящики",
+            "kind": "furniture",
+            "cells": [
+              [
+                8,
+                11,
+                9,
+                11
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_main_decor_4_0",
+            "name": "Швартовная тумба",
+            "kind": "furniture",
+            "cells": [
+              [
+                13,
+                7,
+                13,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_main_decor_5_0",
+            "name": "Сложенная сеть",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                3,
+                1,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [
+          {
+            "kind": "path",
+            "cells": [
+              [
+                0,
+                5,
+                13,
+                5
+              ],
+              [
+                0,
+                6,
+                13,
+                6
+              ]
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 14,
+            "meaning": "continuation"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 14,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 5,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 5,
+            "length": 2,
+            "meaning": "boundary"
+          },
+          {
+            "side": "w",
+            "start": 7,
+            "length": 5,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "main",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_1",
+      "name": "Причалы",
+      "offset": [
+        0,
+        -12
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "open",
+        "cols": 14,
+        "rows": 12,
+        "party": [
+          0,
+          11
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Проход",
+            "side": "s",
+            "at": 0,
+            "width": 14,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                0,
+                11
+              ],
+              [
+                1,
+                11
+              ],
+              [
+                2,
+                11
+              ],
+              [
+                3,
+                11
+              ],
+              [
+                4,
+                11
+              ],
+              [
+                5,
+                11
+              ],
+              [
+                6,
+                11
+              ],
+              [
+                7,
+                11
+              ],
+              [
+                8,
+                11
+              ],
+              [
+                9,
+                11
+              ],
+              [
+                10,
+                11
+              ],
+              [
+                11,
+                11
+              ],
+              [
+                12,
+                11
+              ],
+              [
+                13,
+                11
+              ]
+            ]
+          },
+          {
+            "name": "Проход",
+            "side": "e",
+            "at": 6,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                13,
+                6
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_1_scenery_0",
+            "name": "Деревянный настил",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_1_scenery_1",
+            "name": "Сваи",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_1_decor_0_0",
+            "name": "Швартовная тумба",
+            "kind": "furniture",
+            "cells": [
+              [
+                13,
+                9,
+                13,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_part_1_decor_1_0",
+            "name": "Сложенная сеть",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                9,
+                1,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_part_1_decor_2_0",
+            "name": "Бочка",
+            "kind": "furniture",
+            "cells": [
+              [
+                11,
+                0,
+                11,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_part_1_decor_3_0",
+            "name": "Сложенные ящики",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                4,
+                1,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_part_1_decor_4_0",
+            "name": "Швартовная тумба",
+            "kind": "furniture",
+            "cells": [
+              [
+                13,
+                4,
+                13,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_part_1_decor_5_0",
+            "name": "Сложенная сеть",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                0,
+                5,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 14,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 14,
+            "meaning": "continuation"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_1",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_2",
+      "name": "Склад",
+      "offset": [
+        14,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 8,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Проход",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_2_scenery_0",
+            "name": "Пустые ящики",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_2_scenery_1",
+            "name": "Стеллажи",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          },
+          {
+            "id": "sf_part_2_decor_0_0",
+            "name": "Стеллаж",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "id": "sf_part_2_decor_1_0",
+            "name": "Сложенные ящики",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                7,
+                1,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_part_2_decor_2_0",
+            "name": "Бочка",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                0,
+                6,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_part_2_decor_3_0",
+            "name": "Ларь",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                7,
+                3,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_2",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

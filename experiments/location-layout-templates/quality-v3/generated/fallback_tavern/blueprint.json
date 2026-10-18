@@ -1,0 +1,481 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "common_room",
+      "name": "Общий зал",
+      "public_name": "Общий зал",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Стойка, Скамьи",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Стойка",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Скамьи",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "decor_0_1",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_0_2",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Очаг",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              1,
+              0,
+              1,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "bedroom",
+      "name": "Гостевые комнаты",
+      "public_name": "Гостевые комнаты",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        -8
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Кровати, Занавески",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Кровати",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Занавески",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Кровать",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Ларь",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              0,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              3,
+              6,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              5,
+              0,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "cellar",
+      "name": "Погреб",
+      "public_name": "Погреб",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 8,
+      "offset": [
+        0,
+        -8
+      ],
+      "level": -1,
+      "material": "stone",
+      "description": "Бочки, Полки",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scenery_0",
+          "name": "Бочки",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "scenery_1",
+          "name": "Полки",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": null
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              5,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Сложенные ящики",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Бочка",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Ларь",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              5,
+              0,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "door",
+      "name": "Проход",
+      "public_name": "Проход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "n",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "s",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "stairs",
+      "name": "Лестница",
+      "public_name": "Лестница",
+      "ends": [
+        {
+          "area_ref": "part_1",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_w",
+      "kind": "door",
+      "name": "Вход",
+      "public_name": "Вход",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_fallback_tavern"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

@@ -73,6 +73,11 @@ def spatial_schema() -> dict:
             "below": {"type": "boolean", "description": "уровнем ниже входа: подвал, крипта"},
             "secret": {"type": "boolean", "description": "за тайным проходом"},
             "required": {"type": "boolean", "description": "сюжетная цель: к ней ведёт открытый путь"},
+            "lighting": {
+                "type": "string",
+                "enum": ["normal", "dim", "dark"],
+                "description": "Необязательно: dim — намеренный полумрак, dark — неосвещённая сцена.",
+            },
         },
         "required": ["ref", "name"],
     }

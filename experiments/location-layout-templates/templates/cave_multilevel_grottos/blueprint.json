@@ -9,8 +9,8 @@
       "public_name": "Верхняя галерея",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "offset": [
         0,
         0
@@ -26,10 +26,10 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              3,
-              4,
-              3
+              7,
+              2,
+              7,
+              2
             ]
           ],
           "solid": false,
@@ -42,10 +42,10 @@
           "kind": "cover",
           "cells": [
             [
+              6,
               5,
-              4,
-              5,
-              5
+              6,
+              6
             ]
           ],
           "solid": true,
@@ -58,21 +58,38 @@
           "kind": "object",
           "cells": [
             [
-              2,
-              4,
-              2,
-              5
+              3,
+              5,
+              3,
+              6
             ]
           ],
           "solid": false,
           "hidden": false,
           "visual_key": "feature:crystal"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              1,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "chasm_overlook",
@@ -81,10 +98,10 @@
       "public_name": "Край провала",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "offset": [
-        8,
+        10,
         0
       ],
       "level": 0,
@@ -98,10 +115,10 @@
           "kind": "object",
           "cells": [
             [
-              3,
               4,
-              4,
-              4
+              5,
+              5,
+              5
             ]
           ],
           "solid": false,
@@ -114,13 +131,93 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              2,
-              4,
-              3
+              5,
+              3,
+              5,
+              4
             ]
           ],
           "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              8,
+              8,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Лишайник",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              8,
+              3,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кристаллы",
+          "kind": "nature",
+          "cells": [
+            [
+              9,
+              3,
+              9,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              6,
+              9,
+              6
+            ]
+          ],
+          "solid": false,
           "hidden": false,
           "visual_key": "feature:rock"
         }
@@ -128,7 +225,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "lower_wet_cavern",
@@ -137,10 +235,10 @@
       "public_name": "Нижний грот",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "offset": [
-        8,
+        10,
         0
       ],
       "level": -1,
@@ -154,10 +252,10 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              4,
-              6,
-              5
+              5,
+              5,
+              7,
+              6
             ]
           ],
           "solid": true,
@@ -171,9 +269,9 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              4
+              5
             ]
           ],
           "solid": false,
@@ -186,10 +284,10 @@
           "kind": "cover",
           "cells": [
             [
-              6,
               7,
-              7,
-              7
+              9,
+              8,
+              9
             ]
           ],
           "solid": true,
@@ -200,7 +298,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "submerged_lair",
@@ -209,11 +308,11 @@
       "public_name": "Затопленный карман",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "offset": [
-        10,
-        10
+        12,
+        12
       ],
       "level": -1,
       "material": "water",
@@ -226,10 +325,10 @@
           "kind": "hazard",
           "cells": [
             [
-              2,
-              2,
               3,
-              3
+              3,
+              4,
+              4
             ]
           ],
           "solid": false,
@@ -242,10 +341,10 @@
           "kind": "cover",
           "cells": [
             [
-              4,
-              2,
-              4,
-              3
+              5,
+              3,
+              5,
+              4
             ]
           ],
           "solid": false,
@@ -256,7 +355,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -269,14 +369,14 @@
         {
           "area_ref": "upper_gallery",
           "side": "e",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "chasm_overlook",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         }
@@ -293,14 +393,14 @@
         {
           "area_ref": "chasm_overlook",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "lower_wet_cavern",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         }
@@ -341,7 +441,7 @@
         {
           "area_ref": "upper_gallery",
           "side": "s",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         },

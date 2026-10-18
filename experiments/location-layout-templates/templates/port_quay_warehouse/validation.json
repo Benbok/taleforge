@@ -27,7 +27,8 @@
     "harbor_warehouse": {
       "crate_stacks": "preserved",
       "storage_racks": "preserved",
-      "overseer_desk": "preserved"
+      "overseer_desk": "preserved",
+      "cargo_chest": "preserved"
     },
     "harbor_water_west": {
       "floating_buoy": "preserved"

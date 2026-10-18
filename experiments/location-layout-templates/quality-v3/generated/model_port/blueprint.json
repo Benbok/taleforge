@@ -1,0 +1,565 @@
+{
+  "seed": 7,
+  "entry": "main",
+  "areas": [
+    {
+      "area_ref": "main",
+      "role": "room",
+      "name": "Набережная",
+      "public_name": "Набережная",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 14,
+      "rows": 12,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              0,
+              1,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              10,
+              11,
+              11,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              10,
+              1,
+              10
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              11,
+              0,
+              11,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              11,
+              5,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_5_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              0,
+              5,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_6_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              2,
+              0,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_7_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              2,
+              9,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 12,
+          "meaning": "continuation"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 14,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 4,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 4,
+          "length": 4,
+          "meaning": "boundary"
+        },
+        {
+          "side": "w",
+          "start": 8,
+          "length": 4,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_1",
+      "role": "room",
+      "name": "Причалы",
+      "public_name": "Причалы",
+      "environment": "outdoor",
+      "shape": "open",
+      "cols": 12,
+      "rows": 12,
+      "offset": [
+        14,
+        0
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              11,
+              9,
+              11,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              0,
+              3,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              11,
+              3,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              11,
+              0,
+              11,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Кустарник",
+          "kind": "nature",
+          "cells": [
+            [
+              8,
+              11,
+              9,
+              11
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        },
+        {
+          "detail_ref": "decor_5_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              7,
+              0,
+              8,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_6_0",
+          "name": "Дерево",
+          "kind": "nature",
+          "cells": [
+            [
+              11,
+              4,
+              11,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 12,
+          "meaning": "continuation"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "part_2",
+      "role": "room",
+      "name": "Склад",
+      "public_name": "Склад",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 8,
+      "rows": 8,
+      "offset": [
+        3,
+        -8
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "crates_1",
+          "name": "Пустые ящики",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "shelves_1",
+          "name": "Стеллажи",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              7,
+              1,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              7,
+              7,
+              7,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              2,
+              0,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_part_1",
+      "kind": "edge",
+      "name": "Проход к причалам",
+      "public_name": "Проход к причалам",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "e",
+          "start": 0,
+          "width": 12,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_1",
+          "side": "w",
+          "start": 0,
+          "width": 12,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_part_2",
+      "kind": "door",
+      "name": "Дверь склада",
+      "public_name": "Дверь склада",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "n",
+          "start": 7,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "part_2",
+          "side": "s",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_main_w",
+      "kind": "edge",
+      "name": "Подход к месту",
+      "public_name": "Подход к месту",
+      "ends": [
+        {
+          "area_ref": "main",
+          "side": "w",
+          "start": 4,
+          "width": 4,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "quality_model_port"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {
+    "npc:npc_keeper": "main",
+    "clue_logbook": "part_1"
+  },
+  "required": [
+    "main",
+    "part_1"
+  ],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

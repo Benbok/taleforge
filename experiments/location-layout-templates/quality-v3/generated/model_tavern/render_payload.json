@@ -1,0 +1,590 @@
+{
+  "template_id": "model_tavern",
+  "root_id": "quality_model_tavern",
+  "entry": "main",
+  "levels": [
+    -1,
+    0
+  ],
+  "areas": [
+    {
+      "id": "main",
+      "name": "Общий зал",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 8,
+        "party": [
+          4,
+          7
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            8,
+            4
+          ],
+          [
+            8,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход",
+            "side": "s",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "quality_model_tavern",
+            "beyond": null,
+            "passage_ref": "in_main_s",
+            "cells": [
+              [
+                4,
+                7
+              ]
+            ]
+          },
+          {
+            "name": "Дверь в комнаты",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                9,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Люк в погреб",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "hatch",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_main_counter_1",
+            "name": "Стойка",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                3,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:counter"
+          },
+          {
+            "id": "sf_main_bench_1",
+            "name": "Скамьи",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                4,
+                4,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_main_bench_2",
+            "name": "Скамьи",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                4,
+                8,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_main_torch_1",
+            "name": "Факел",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                7,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_main_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                0,
+                4,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "main",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_1",
+      "name": "Гостевые комнаты",
+      "offset": [
+        10,
+        1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 8,
+        "rows": 6,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Дверь в комнаты",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_1",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_1_bed_1",
+            "name": "Кровати",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bed"
+          },
+          {
+            "id": "sf_part_1_bed_2",
+            "name": "Кровати",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bed"
+          },
+          {
+            "id": "sf_part_1_curtain_1",
+            "name": "Занавески",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                1,
+                3,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_1",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "part_2",
+      "name": "Погреб",
+      "offset": [
+        0,
+        0
+      ],
+      "level": -1,
+      "secret": false,
+      "status": "here",
+      "revision": 0,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 6,
+        "party": [
+          0,
+          2
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Люк в погреб",
+            "side": "w",
+            "at": 2,
+            "width": 1,
+            "kind": "hatch",
+            "state": "open",
+            "hidden": false,
+            "to": null,
+            "beyond": null,
+            "passage_ref": "p_part_2",
+            "cells": [
+              [
+                0,
+                2
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_part_2_barrel_1",
+            "name": "Бочки",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_part_2_shelf_1",
+            "name": "Полки",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                1,
+                6,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "id": "sf_part_2_decor_0_0",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_part_2_decor_1_0",
+            "name": "Светильник",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_part_2_decor_4_0",
+            "name": "Светильник",
+            "kind": "light",
+            "cells": [
+              [
+                1,
+                0,
+                1,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": null,
+          "area_ref": "part_2",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

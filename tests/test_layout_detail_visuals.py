@@ -12,6 +12,10 @@ from app.core.layout.intent import DetailIntent, LayoutIntent
 from app.core.layout.provider import DeterministicLayoutProvider
 
 
+def _authored(features):
+    return [f for f in features if f["id"] in {"sf_hall_pillar", "sf_hall_secret"}]
+
+
 def _blueprint(visual_key: str | None = None) -> Blueprint:
     details = [
         {"detail_ref": "pillar", "name": "Pillar", "kind": "cover", "cells": [[2, 2, 2, 2]], "solid": True},
@@ -35,7 +39,11 @@ def _blueprint(visual_key: str | None = None) -> Blueprint:
 def test_detail_visual_identity_survives_persistence_and_viewer_privacy():
     bp = _blueprint("stone_pillar")
     persisted = bp.to_json()
-    assert [detail["visual_key"] for detail in persisted["areas"][0]["details"]] == [
+    assert [
+        detail["visual_key"]
+        for detail in persisted["areas"][0]["details"]
+        if detail["detail_ref"] in {"pillar", "secret"}
+    ] == [
         "stone_pillar",
         "stone_pillar",
     ]
@@ -44,8 +52,8 @@ def test_detail_visual_identity_survives_persistence_and_viewer_privacy():
     sk = build_area(restored, restored.area("hall"))
     player = sketch.for_viewer(sk, master=False, visible_places=set())
     master = sketch.for_viewer(sk, master=True, visible_places=set())
-    assert [(f["name"], f["visual_key"]) for f in player["features"]] == [("Pillar", "stone_pillar")]
-    assert [(f["name"], f["visual_key"]) for f in master["features"]] == [
+    assert [(f["name"], f["visual_key"]) for f in _authored(player["features"])] == [("Pillar", "stone_pillar")]
+    assert [(f["name"], f["visual_key"]) for f in _authored(master["features"])] == [
         ("Pillar", "stone_pillar"),
         ("Secret marker", "stone_pillar"),
     ]
@@ -61,7 +69,7 @@ def test_legacy_or_empty_detail_visual_key_does_not_add_sketch_metadata(visual_k
             detail.pop("visual_key", None)
     restored = Blueprint.from_json(persisted)
     sk = build_area(restored, restored.area("hall"))
-    assert all("visual_key" not in feature for feature in sk["features"])
+    assert all("visual_key" not in feature for feature in _authored(sk["features"]))
     assert sk["walls"] == [[2, 2]]
 
 
@@ -77,7 +85,7 @@ def test_unknown_detail_visual_key_is_inert_metadata():
         tuple(plain_sk["party"]),
     )
     without_visuals = deepcopy(decorated_sk)
-    for feature in without_visuals["features"]:
+    for feature in _authored(without_visuals["features"]):
         feature.pop("visual_key", None)
     assert without_visuals == plain_sk
 

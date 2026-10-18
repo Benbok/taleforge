@@ -44,13 +44,23 @@ SYSTEM = (
     "- Сохраняй окружение обязательных частей: открытая местность — outdoor, помещения — indoor. "
     "Если заданы форма или материал, сохрани их в shape и material. "
     "Для открытой местности обычно shape=open; corridor — только узкий коридор с min(cols,rows)<=2. "
-    "Для каждой части предложи хотя бы две характерные декоративные детали; учитывай назначение места. "
+    "Обычная комната — около 7×8 клеток, большой зал — 10×12, открытый участок — 14×12; "
+    "кладовая меньше, коридор остаётся узким. Не сжимай весь комплекс в маленькие комнаты. "
+    "Для обычной части предложи 4–6 характерных деталей, для большого зала 6–8, для коридора 1–2. "
+    "Собирай логичные группы: стол со скамьями, кровать с сундуком, стеллажи со штабелями, "
+    "скальные островки с мхом. Несколько самостоятельных предметов — отдельные детали. "
     "У каждой детали свой detail_ref, уникальный внутри части (например pillar_1, pillar_2). "
     "Выбери для неё подходящий visual_key из схемы: bed — кровать, nest — звериная лежка, "
     "hearth/torch — огонь, lichen/glow — природное свечение; rock — скала, pillar — колонна. "
     "cells детали — локальные включительные прямоугольники [c0,r0,c1,r1] внутри cols×rows. "
-    "Начинай с компактных деталей по 1–2 клетки, оставляй свободными центр и подходы к выходам; "
+    "Начинай с компактных деталей по 1–2 клетки; стол может быть 2×2, кровать 1×2. "
+    "Оставляй проходы между группами шириной 1–2 клетки и свободные подходы к выходам; "
     "для больших деталей увеличь помещение. Не делай маленькую пустую комнату вместо целого места.\n"
+    "- Настенные факелы (feature:torch) размещай вдоль настоящих стен, не в центре комнаты; "
+    "для обычного освещения распределяй несколько источников по разным стенам с учётом размера. "
+    "Очаг остаётся на своём месте. lighting=normal — обычное освещение при наличии огня; "
+    "если сцена намеренно оставляет тёмные углы или единственный факел, задай lighting=dim; "
+    "для неосвещённой сцены — lighting=dark. Сервер не добавляет источники при dim/dark.\n"
     "- Подходы ведут снаружи к частям (kind: edge для дорог и открытых границ, door/gate/arch для входов); "
     "outside_id не задаётся. Сначала выбери для подхода свободную внешнюю сторону части, затем "
     "размещай соседей: не пристраивай часть снаружи этой стороны. Для entry с подходом side=w "
@@ -119,6 +129,11 @@ def spec(m: Mandate) -> dict[str, Any]:
             "size": {"type": "string", "enum": _enum(PartIntent, "size")},
             "cols": {"type": "integer", "minimum": 1, "maximum": MAX_SIDE},
             "rows": {"type": "integer", "minimum": 1, "maximum": MAX_SIDE},
+            "lighting": {
+                "type": "string",
+                "enum": ["normal", "dim", "dark"],
+                "description": "dim/dark сохраняют намеренный полумрак/темноту без добавления источников света.",
+            },
             "level": {"type": "integer", "minimum": -3, "maximum": 3},
             "connects_to": {"type": "string", "description": "part_ref родителя выше по списку, не его название."},
             "side": {"type": "string", "enum": ["n", "e", "s", "w"], "description": "Сторона родителя."},
@@ -223,6 +238,10 @@ def _lines(m: Mandate, *, mood: bool, purposes: bool) -> list[str]:
             if on
         ]
         flags.extend((f"environment={'outdoor' if p.outdoor else 'indoor'}", f"secret={str(p.secret).lower()}"))
+        if p.role is not None:
+            flags.append(f"role={p.role}")
+        if p.lighting is not None:
+            flags.append(f"lighting={p.lighting} — задано сценой, сохрани")
         if p.below:
             flags.append("level=-1")
         what = f" — {p.purpose}" if purposes and p.purpose else ""
@@ -330,6 +349,15 @@ async def ask(
 def _correction(m: Mandate, args: Any, intent: LayoutIntent | None, detail: str) -> str:
     """Explain the rejected references/geometry without changing or weakening the proposal."""
     lines = [f"Сервер не принял план: {detail}."]
+    if "тайн" in detail or "required" in detail:
+        for part in m.spatial.parts:
+            if part.secret:
+                lines.append(f"{part.ref}: secret=true, required=false, anchors=[] — точные флаги тайной части.")
+        lines.append(
+            "Обязательные части и все anchors размести на открытом пути от entry: "
+            "их connects_to и вся цепочка родителей должны вести через открытые части. "
+            "Тайная часть не может быть единственным путём к обязательной."
+        )
     if "полос" in detail or "band" in detail:
         bands = args.get("bands") if isinstance(args, dict) else None
         refs = (

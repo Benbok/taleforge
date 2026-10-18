@@ -11,10 +11,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 10,
-      "rows": 8,
+      "cols": 12,
+      "rows": 10,
       "level": 0,
       "material": "earth",
+      "lighting": "normal",
       "connects_to": null,
       "side": null,
       "passage_kind": "door",
@@ -31,9 +32,9 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
-              4
+              5
             ]
           ],
           "solid": true,
@@ -46,9 +47,9 @@
           "kind": "object",
           "cells": [
             [
-              6,
-              1,
               7,
+              1,
+              8,
               1
             ]
           ],
@@ -62,10 +63,10 @@
           "kind": "light",
           "cells": [
             [
-              5,
-              5,
-              5,
-              5
+              6,
+              6,
+              6,
+              6
             ]
           ],
           "solid": false,
@@ -85,10 +86,11 @@
       "environment": "indoor",
       "shape": "circle",
       "size": "medium",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "level": 0,
       "material": "stone",
+      "lighting": "normal",
       "connects_to": "outer_barbican",
       "side": "e",
       "passage_kind": "door",
@@ -104,10 +106,10 @@
           "kind": "cover",
           "cells": [
             [
-              3,
-              3,
               4,
-              4
+              4,
+              5,
+              5
             ]
           ],
           "solid": true,
@@ -120,16 +122,16 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              2,
-              5,
-              2
+              6,
+              3,
+              6,
+              3
             ],
             [
-              5,
-              5,
-              5,
-              5
+              6,
+              6,
+              6,
+              6
             ]
           ],
           "solid": false,
@@ -142,10 +144,10 @@
           "kind": "light",
           "cells": [
             [
-              2,
-              4,
-              2,
-              4
+              3,
+              5,
+              3,
+              5
             ]
           ],
           "solid": false,
@@ -165,10 +167,11 @@
       "environment": "indoor",
       "shape": "rect",
       "size": "medium",
-      "cols": 8,
-      "rows": 6,
+      "cols": 10,
+      "rows": 7,
       "level": -1,
       "material": "stone",
+      "lighting": "normal",
       "connects_to": "watchtower_ruin",
       "side": null,
       "passage_kind": "stairs",
@@ -200,9 +203,9 @@
           "kind": "cover",
           "cells": [
             [
-              5,
+              7,
               1,
-              6,
+              8,
               2
             ]
           ],
@@ -216,10 +219,10 @@
           "kind": "furniture",
           "cells": [
             [
-              3,
-              3,
               4,
-              3
+              4,
+              5,
+              4
             ]
           ],
           "solid": false,

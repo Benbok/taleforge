@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { LocationMapSvg } from "../src/game/LocationMap";
 import type { MapLocationPlan } from "../src/game/map";
 
-const STYLES = `
+export const STYLES = `
 <defs>
   <style>
     :root, svg {
@@ -86,7 +86,7 @@ const COMPARISON_KEY_AREAS: Record<string, string> = {
   cave_passages_grotto: "great_grotto",
 };
 
-async function renderPayloadViews(
+export async function renderPayloadViews(
   payload: RenderPayload,
   targetDir: string,
   prefix: string,
@@ -190,7 +190,7 @@ async function renderPayloadViews(
   }
 }
 
-export async function renderAllExperimentPreviews() {
+export async function renderAllExperimentPreviews({ templatesOnly = false } = {}) {
   const templatesRoot = resolve(process.cwd(), "../experiments/location-layout-templates/templates");
   const comparisonsRoot = resolve(process.cwd(), "../experiments/location-layout-templates/comparisons");
   const entries = await readdir(templatesRoot, { withFileTypes: true });
@@ -261,6 +261,8 @@ export async function renderAllExperimentPreviews() {
     await renderPayloadViews(payload, previewsDir, `catalog-${tid}`, COMPARISON_KEY_AREAS[tid]);
     console.log(`[renderer] Rendered standard SVG previews for ${tid}`);
   }
+
+  if (templatesOnly) return;
 
   // 3. Рендерим честные сравнения для 3 ключевых шаблонов:
   // - Сравнение старых и новых данных одним renderer (layout_comparison)

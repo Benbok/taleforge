@@ -1,0 +1,310 @@
+{
+  "schema_version": 1,
+  "entry": "overgrown_courtyard",
+  "parts": [
+    {
+      "part_ref": "overgrown_courtyard",
+      "role": "courtyard",
+      "name": "Заросший храмовый двор",
+      "public_name": "Храмовый двор",
+      "description": "Открытый двор, поросший густой травой, с обломками рухнувшей колоннады и разбитой каменной чашей.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 12,
+      "rows": 10,
+      "level": 0,
+      "material": "grass",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "fallen_statue",
+          "name": "Поваленная статуя божества",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        },
+        {
+          "detail_ref": "rubble_piles",
+          "name": "Груды битого камня",
+          "kind": "hazard",
+          "cells": [
+            [
+              2,
+              2,
+              3,
+              2
+            ],
+            [
+              7,
+              6,
+              7,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "dry_well",
+          "name": "Осквернённый сухой колодец",
+          "kind": "cover",
+          "cells": [
+            [
+              5,
+              6,
+              6,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        },
+        {
+          "detail_ref": "weed_thicket",
+          "name": "Заросли колючей травы",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              7,
+              3,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "ruined_nave",
+      "role": "sanctuary",
+      "name": "Полуразрушенный неф",
+      "public_name": "Разрушенный неф",
+      "description": "Уцелевшая часть храма с частично обвалившимся сводом, расколотым алтарным камнем и следами костров.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 10,
+      "rows": 10,
+      "level": 0,
+      "material": "stone",
+      "connects_to": "overgrown_courtyard",
+      "side": "e",
+      "passage_kind": "gate",
+      "passage_name": "Обветшалый портал храма",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "cracked_altar",
+          "name": "Расколотый алтарный камень",
+          "kind": "furniture",
+          "cells": [
+            [
+              7,
+              4,
+              8,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        },
+        {
+          "detail_ref": "standing_pillars",
+          "name": "Уцелевшие пилоны свода",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              2,
+              3,
+              2
+            ],
+            [
+              3,
+              7,
+              3,
+              7
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "ash_remains",
+          "name": "Остывшее кострище бродяг",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "collapsed_arch",
+          "name": "Обвал каменной кладки",
+          "kind": "cover",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "crypt_undercroft",
+      "role": "crypt",
+      "name": "Погребальная крипта",
+      "public_name": "Древняя крипта",
+      "description": "Холодное подземное хранилище предков с каменными саркофагами вдоль стен и тяжелым запахом пыли.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 8,
+      "rows": 8,
+      "level": -1,
+      "material": "stone",
+      "connects_to": "ruined_nave",
+      "side": null,
+      "passage_kind": "stairs",
+      "passage_name": "Ступени в подземный склеп",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "sarcophagi_north",
+          "name": "Ряд надгробных саркофагов",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              3,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "sarcophagi_south",
+          "name": "Южные надгробия",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              6,
+              3,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "burial_niche",
+          "name": "Стена с погребальными урнами",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              2,
+              6,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "eternal_flame",
+          "name": "Угасший жертвенник",
+          "kind": "light",
+          "cells": [
+            [
+              4,
+              3,
+              4,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "overgrown_courtyard",
+      "side": "w",
+      "kind": "edge",
+      "public_name": "Старая храмовая дорога",
+      "outside_id": null,
+      "band": "temple_road",
+      "width": 2
+    }
+  ],
+  "bands": [
+    {
+      "band_ref": "temple_road",
+      "kind": "road",
+      "axis": "we",
+      "at": 4,
+      "width": 2,
+      "start": null,
+      "end": null
+    }
+  ]
+}

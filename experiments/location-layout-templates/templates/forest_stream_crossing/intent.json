@@ -11,10 +11,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": null,
       "side": null,
       "passage_kind": "door",
@@ -30,9 +31,9 @@
           "kind": "object",
           "cells": [
             [
-              3,
+              4,
               2,
-              3,
+              4,
               2
             ]
           ],
@@ -46,10 +47,10 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              7,
               4,
-              7
+              9,
+              5,
+              9
             ]
           ],
           "solid": false,
@@ -62,9 +63,9 @@
           "kind": "nature",
           "cells": [
             [
-              8,
+              10,
               1,
-              8,
+              10,
               2
             ]
           ],
@@ -85,10 +86,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": "west_bank",
       "side": "e",
       "passage_kind": "passage",
@@ -104,16 +106,16 @@
           "kind": "cover",
           "cells": [
             [
-              5,
-              3,
-              7,
-              3
+              6,
+              4,
+              8,
+              4
             ],
             [
-              5,
               6,
               7,
-              6
+              8,
+              7
             ]
           ],
           "solid": false,
@@ -126,16 +128,16 @@
           "kind": "nature",
           "cells": [
             [
-              6,
-              1,
-              6,
-              1
+              7,
+              2,
+              7,
+              2
             ],
             [
-              6,
-              8,
-              6,
-              8
+              7,
+              9,
+              7,
+              9
             ]
           ],
           "solid": true,
@@ -149,9 +151,9 @@
           "cells": [
             [
               2,
-              7,
+              9,
               3,
-              8
+              10
             ]
           ],
           "solid": false,
@@ -171,10 +173,11 @@
       "environment": "outdoor",
       "shape": "open",
       "size": "medium",
-      "cols": 10,
-      "rows": 10,
+      "cols": 12,
+      "rows": 12,
       "level": 0,
       "material": "grass",
+      "lighting": "normal",
       "connects_to": "stream_crossing",
       "side": "e",
       "passage_kind": "passage",
@@ -190,9 +193,9 @@
           "kind": "cover",
           "cells": [
             [
-              2,
-              2,
               3,
+              2,
+              4,
               2
             ]
           ],
@@ -206,10 +209,10 @@
           "kind": "nature",
           "cells": [
             [
-              7,
-              7,
-              8,
-              8
+              9,
+              9,
+              10,
+              10
             ]
           ],
           "solid": true,
@@ -222,10 +225,10 @@
           "kind": "light",
           "cells": [
             [
-              4,
-              7,
               5,
-              7
+              9,
+              6,
+              9
             ]
           ],
           "solid": false,
@@ -253,7 +256,7 @@
       "band_ref": "trade_road",
       "kind": "road",
       "axis": "we",
-      "at": 4,
+      "at": 5,
       "width": 2,
       "start": null,
       "end": null
@@ -262,7 +265,7 @@
       "band_ref": "forest_brook",
       "kind": "stream",
       "axis": "ns",
-      "at": 16,
+      "at": 19,
       "width": 2,
       "start": null,
       "end": null

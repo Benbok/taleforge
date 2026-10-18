@@ -1,0 +1,650 @@
+{
+  "template_id": "cave_passages_grotto",
+  "root_id": "tpl_cave_passages_grotto",
+  "entry": "entry_chasm",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "entry_chasm",
+      "name": "Входной грот",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            4,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход в пещеру",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_cave_passages_grotto",
+            "beyond": null,
+            "passage_ref": "in_entry_chasm_w",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Узкий лаз",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "winding_tunnel",
+            "beyond": null,
+            "passage_ref": "p_winding_tunnel",
+            "cells": [
+              [
+                7,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_entry_chasm_scree",
+            "name": "Осыпь щебня",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                2,
+                2,
+                2
+              ],
+              [
+                3,
+                1,
+                3,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_entry_chasm_boulder",
+            "name": "Каменный валун",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                5,
+                4,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_passages_grotto",
+          "area_ref": "entry_chasm",
+          "rev": 1
+        },
+        "mask": [
+          "###...##",
+          "##.....#",
+          "#.......",
+          "........",
+          "#.......",
+          "........",
+          "#......#",
+          "####..##"
+        ]
+      }
+    },
+    {
+      "id": "winding_tunnel",
+      "name": "Каменный проход",
+      "offset": [
+        8,
+        3
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "corridor",
+        "cols": 6,
+        "rows": 2,
+        "party": [
+          5,
+          1
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Высокий скальный свод",
+            "side": "e",
+            "at": 1,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "great_grotto",
+            "beyond": null,
+            "passage_ref": "p_great_grotto",
+            "cells": [
+              [
+                5,
+                1
+              ]
+            ]
+          },
+          {
+            "name": "Узкий лаз",
+            "side": "w",
+            "at": 1,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "entry_chasm",
+            "beyond": null,
+            "passage_ref": "p_winding_tunnel",
+            "cells": [
+              [
+                0,
+                1
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_winding_tunnel_stalactites",
+            "name": "Острые сталактиты",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                0,
+                3,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_passages_grotto",
+          "area_ref": "winding_tunnel",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "great_grotto",
+      "name": "Подземный грот",
+      "offset": [
+        14,
+        -2
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 14,
+        "rows": 12,
+        "party": [
+          0,
+          6
+        ],
+        "walls": [
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            10,
+            5
+          ],
+          [
+            10,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Высокий скальный свод",
+            "side": "w",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "winding_tunnel",
+            "beyond": null,
+            "passage_ref": "p_great_grotto",
+            "cells": [
+              [
+                0,
+                6
+              ]
+            ]
+          },
+          {
+            "name": "Низкий пролаз",
+            "side": "s",
+            "at": 7,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "side_den",
+            "beyond": null,
+            "passage_ref": "p_side_den",
+            "cells": [
+              [
+                7,
+                11
+              ]
+            ]
+          },
+          {
+            "name": "Скальный берег озера",
+            "side": "n",
+            "at": 7,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "subterranean_lake",
+            "beyond": null,
+            "passage_ref": "p_subterranean_lake",
+            "cells": [
+              [
+                7,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_great_grotto_stalagmite_pilla",
+            "name": "Колонны сталагмитов",
+            "kind": "cover",
+            "cells": [
+              [
+                4,
+                3,
+                4,
+                4
+              ],
+              [
+                5,
+                4,
+                5,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_great_grotto_glowing_lichen",
+            "name": "Светящийся мох",
+            "kind": "light",
+            "cells": [
+              [
+                10,
+                2,
+                10,
+                2
+              ],
+              [
+                11,
+                3,
+                11,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:lichen"
+          },
+          {
+            "id": "sf_great_grotto_rock_ledge",
+            "name": "Скальный уступ",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                9,
+                4,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_great_grotto_grotto_rocks_eas",
+            "name": "Скальный островок",
+            "kind": "cover",
+            "cells": [
+              [
+                9,
+                5,
+                10,
+                5
+              ],
+              [
+                10,
+                6,
+                10,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_great_grotto_grotto_rocks_sou",
+            "name": "Низкие сталагмиты",
+            "kind": "cover",
+            "cells": [
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_passages_grotto",
+          "area_ref": "great_grotto",
+          "rev": 1
+        },
+        "mask": [
+          "####......####",
+          "##........#.##",
+          "#...........##",
+          "#............#",
+          "..............",
+          "..............",
+          ".............#",
+          "..............",
+          "##...........#",
+          "##...........#",
+          "###.........##",
+          "####.#....####"
+        ]
+      }
+    },
+    {
+      "id": "subterranean_lake",
+      "name": "Подземное озеро",
+      "offset": [
+        17,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 8,
+        "rows": 8,
+        "party": [
+          4,
+          7
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Скальный берег озера",
+            "side": "s",
+            "at": 4,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "great_grotto",
+            "beyond": null,
+            "passage_ref": "p_subterranean_lake",
+            "cells": [
+              [
+                4,
+                7
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_subterranean_lake_shimmering_",
+            "name": "Фосфоресцирующая заводь",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:glow"
+          },
+          {
+            "id": "sf_subterranean_lake_decor_0",
+            "name": "Каменные выступы",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                1,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false
+          }
+        ],
+        "environment": "indoor",
+        "material": "water",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_passages_grotto",
+          "area_ref": "subterranean_lake",
+          "rev": 1
+        },
+        "mask": [
+          "###...##",
+          "#......#",
+          ".......#",
+          "#.......",
+          ".......#",
+          ".......#",
+          "#......#",
+          "###...##"
+        ]
+      }
+    },
+    {
+      "id": "side_den",
+      "name": "Тёмная ниша",
+      "offset": [
+        18,
+        10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 6,
+        "rows": 6,
+        "party": [
+          3,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Низкий пролаз",
+            "side": "n",
+            "at": 3,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "great_grotto",
+            "beyond": null,
+            "passage_ref": "p_side_den",
+            "cells": [
+              [
+                3,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_side_den_beast_bedding",
+            "name": "Лёжка хищника",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                3,
+                3,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:nest"
+          },
+          {
+            "id": "sf_side_den_bone_pile",
+            "name": "Куча обглоданных костей",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bones"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_passages_grotto",
+          "area_ref": "side_den",
+          "rev": 1
+        },
+        "mask": [
+          "#...##",
+          "......",
+          ".....#",
+          "......",
+          "#.....",
+          "#...##"
+        ]
+      }
+    }
+  ]
+}

@@ -9,8 +9,8 @@
       "public_name": "Притвор",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 8,
-      "rows": 5,
+      "cols": 10,
+      "rows": 6,
       "offset": [
         0,
         0
@@ -26,10 +26,10 @@
           "kind": "object",
           "cells": [
             [
-              3,
-              2,
               4,
-              2
+              3,
+              5,
+              3
             ]
           ],
           "solid": true,
@@ -42,16 +42,16 @@
           "kind": "furniture",
           "cells": [
             [
-              1,
-              1,
-              1,
-              3
+              2,
+              2,
+              2,
+              4
             ],
             [
-              6,
-              1,
-              6,
-              3
+              7,
+              2,
+              7,
+              4
             ]
           ],
           "solid": false,
@@ -64,10 +64,26 @@
           "kind": "light",
           "cells": [
             [
-              2,
+              3,
               0,
               3,
               0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              6,
+              5,
+              6,
+              5
             ]
           ],
           "solid": false,
@@ -78,7 +94,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "sanctuary",
@@ -87,11 +104,11 @@
       "public_name": "Святилище",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 10,
-      "rows": 12,
+      "cols": 12,
+      "rows": 14,
       "offset": [
         -1,
-        -12
+        -14
       ],
       "level": 0,
       "material": "stone",
@@ -104,9 +121,9 @@
           "kind": "furniture",
           "cells": [
             [
-              4,
-              1,
               5,
+              1,
+              6,
               2
             ]
           ],
@@ -121,15 +138,15 @@
           "cells": [
             [
               2,
-              4,
+              5,
               2,
-              4
+              5
             ],
             [
               2,
-              8,
+              9,
               2,
-              8
+              9
             ]
           ],
           "solid": true,
@@ -142,16 +159,16 @@
           "kind": "cover",
           "cells": [
             [
-              7,
-              4,
-              7,
-              4
+              9,
+              5,
+              9,
+              5
             ],
             [
-              7,
-              8,
-              7,
-              8
+              9,
+              9,
+              9,
+              9
             ]
           ],
           "solid": true,
@@ -164,16 +181,10 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              1,
-              3,
-              1
-            ],
-            [
-              6,
-              1,
-              6,
-              1
+              4,
+              0,
+              4,
+              0
             ]
           ],
           "solid": false,
@@ -186,21 +197,86 @@
           "kind": "furniture",
           "cells": [
             [
-              4,
-              4,
               5,
-              4
+              5,
+              6,
+              5
             ]
           ],
           "solid": false,
           "hidden": false,
           "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              11,
+              8,
+              11,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_1",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              9,
+              0,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_2",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              13,
+              8,
+              13
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "wall_torch_3",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              11,
+              0,
+              11,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "sacristy",
@@ -209,11 +285,11 @@
       "public_name": "Ризница",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "offset": [
-        9,
-        -9
+        11,
+        -11
       ],
       "level": 0,
       "material": "stone",
@@ -226,9 +302,9 @@
           "kind": "object",
           "cells": [
             [
-              4,
+              5,
               1,
-              4,
+              5,
               2
             ]
           ],
@@ -258,10 +334,10 @@
           "kind": "furniture",
           "cells": [
             [
-              2,
-              4,
               3,
-              4
+              5,
+              4,
+              5
             ]
           ],
           "solid": false,
@@ -272,7 +348,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -285,14 +362,14 @@
         {
           "area_ref": "narthex",
           "side": "n",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "sanctuary",
           "side": "s",
-          "start": 5,
+          "start": 6,
           "width": 1,
           "place_id": null
         }
@@ -333,7 +410,7 @@
         {
           "area_ref": "narthex",
           "side": "s",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         },

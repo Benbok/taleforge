@@ -9,8 +9,8 @@
       "public_name": "Опушка леса",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "offset": [
         0,
         0
@@ -42,10 +42,10 @@
           "kind": "cover",
           "cells": [
             [
-              7,
-              7,
+              8,
               9,
-              7
+              10,
+              9
             ]
           ],
           "solid": false,
@@ -58,10 +58,10 @@
           "kind": "cover",
           "cells": [
             [
-              3,
-              7,
               4,
-              7
+              9,
+              5,
+              9
             ]
           ],
           "solid": false,
@@ -75,15 +75,15 @@
           "cells": [
             [
               0,
-              4,
-              11,
-              4
+              5,
+              13,
+              5
             ],
             [
               0,
-              5,
-              11,
-              5
+              6,
+              13,
+              6
             ]
           ]
         }
@@ -92,42 +92,43 @@
         {
           "side": "n",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 12,
+          "length": 14,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 4,
+          "length": 5,
           "meaning": "obstacle"
         },
         {
           "side": "w",
-          "start": 4,
+          "start": 5,
           "length": 2,
           "meaning": "boundary"
         },
         {
           "side": "w",
-          "start": 6,
-          "length": 4,
+          "start": 7,
+          "length": 5,
           "meaning": "obstacle"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "sunlit_clearing",
@@ -136,10 +137,10 @@
       "public_name": "Лесная поляна",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 14,
-      "rows": 10,
+      "cols": 17,
+      "rows": 12,
       "offset": [
-        12,
+        14,
         0
       ],
       "level": 0,
@@ -153,9 +154,9 @@
           "kind": "nature",
           "cells": [
             [
-              6,
+              8,
               1,
-              7,
+              9,
               2
             ]
           ],
@@ -169,10 +170,10 @@
           "kind": "light",
           "cells": [
             [
-              6,
               7,
-              7,
-              7
+              8,
+              8,
+              8
             ]
           ],
           "solid": false,
@@ -185,10 +186,10 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
-              8,
-              8,
-              8
+              6,
+              9,
+              9,
+              9
             ]
           ],
           "solid": false,
@@ -201,16 +202,16 @@
           "kind": "nature",
           "cells": [
             [
-              2,
-              2,
-              2,
-              2
+              3,
+              3,
+              3,
+              3
             ],
             [
-              6,
-              6,
-              6,
-              6
+              7,
+              7,
+              7,
+              7
             ]
           ],
           "solid": false,
@@ -224,15 +225,15 @@
           "cells": [
             [
               0,
-              4,
-              13,
-              4
+              5,
+              16,
+              5
             ],
             [
               0,
-              5,
-              13,
-              5
+              6,
+              16,
+              6
             ]
           ]
         }
@@ -247,36 +248,37 @@
         {
           "side": "n",
           "start": 2,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         },
         {
           "side": "n",
-          "start": 12,
-          "length": 2,
+          "start": 14,
+          "length": 3,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 14,
+          "length": 17,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "dense_thicket",
@@ -285,11 +287,11 @@
       "public_name": "Чаща",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 10,
-      "rows": 8,
+      "cols": 12,
+      "rows": 10,
       "offset": [
-        14,
-        -8
+        16,
+        -10
       ],
       "level": 0,
       "material": "earth",
@@ -302,10 +304,10 @@
           "kind": "hazard",
           "cells": [
             [
-              3,
-              3,
-              5,
-              4
+              4,
+              4,
+              6,
+              5
             ]
           ],
           "solid": false,
@@ -334,10 +336,10 @@
           "kind": "object",
           "cells": [
             [
-              7,
-              5,
-              8,
-              5
+              9,
+              6,
+              10,
+              6
             ]
           ],
           "solid": false,
@@ -350,30 +352,31 @@
         {
           "side": "n",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 10,
+          "length": 12,
           "meaning": "continuation"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         }
       ],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -387,14 +390,14 @@
           "area_ref": "forest_verge",
           "side": "e",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         },
         {
           "area_ref": "sunlit_clearing",
           "side": "w",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         }
       ],
@@ -411,14 +414,14 @@
           "area_ref": "sunlit_clearing",
           "side": "n",
           "start": 2,
-          "width": 10,
+          "width": 12,
           "place_id": null
         },
         {
           "area_ref": "dense_thicket",
           "side": "s",
           "start": 0,
-          "width": 10,
+          "width": 12,
           "place_id": null
         }
       ],
@@ -434,7 +437,7 @@
         {
           "area_ref": "forest_verge",
           "side": "w",
-          "start": 4,
+          "start": 5,
           "width": 2,
           "place_id": null
         },

@@ -18,20 +18,35 @@ from app.core.layout.intent import REF, LayoutIntent
 
 ROAD_KINDS = ("road", "path")
 APPROACH_SIDES = ("w", "s", "e")
-OUTDOOR_ROWS = {"small": 8, "medium": 10, "large": 12}  # как app/core/layout/provider.py SIZES["outdoor"]
+OUTDOOR_ROWS = {"small": 10, "medium": 12, "large": 14}  # как app/core/layout/provider.py SIZES["outdoor"]
 MAX_HOLDERS = 8  # PartIntent.anchors: не больше восьми привязок на часть
+
+# Stable preset identities, indexed in the same order as PRESETS; never infer artwork from public names.
+_PRESET_ROLES = {
+    "location.tavern": ("common_room", "bedroom", "cellar"),
+    "location.port": ("quay", "pier", "warehouse"),
+    "location.cave": ("grotto", "cavern", "grotto"),
+    "location.mountain_pass": ("rocky_slope", "cliff", "rocky_slope"),
+    "location.temple": ("hall", "sanctuary", "bedroom"),
+    "location.keep": ("courtyard", "barracks", "hall"),
+    "location.crypt": ("crypt", "tomb", "crypt"),
+    "location.ship": ("pier", "bedroom", "storage"),
+    "location.market": ("market", "market", "storage"),
+}
 
 
 class SpatialPart(BaseModel):
     ref: str = Field(pattern=REF, description="id части внутри места: nave, crypt")
     name: str = Field(min_length=1, max_length=80, description="название для героев, без тайн")
     purpose: str = Field("", max_length=300, description="что здесь, одной фразой")
+    role: str | None = Field(None, max_length=32, description="стабильная роль части: warehouse, bedroom, grotto")
     outdoor: bool = Field(False, description="открытая местность: поле, двор, берег")
     below: bool = Field(False, description="уровнем ниже входа: подвал, крипта")
     secret: bool = Field(False, description="за тайным проходом")
     required: bool = Field(False, description="сюжетная цель: к ней обязан вести открытый путь")
     shape: Literal["rect", "cave", "open"] | None = None
     material: Literal["stone", "earth", "grass", "water", "wood"] | None = None
+    lighting: Literal["normal", "dim", "dark"] | None = None
     scenery: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
@@ -74,9 +89,33 @@ class SpatialPlan(BaseModel):
         return self
 
 
-OUTDOOR_TAGS = {"wild", "rural", "city", "district", "settlement", "region", "belt", "strip", "route",
-                "road", "rail", "coast", "sea", "river", "lake", "rift", "ruins", "port", "harbor",
-                "village", "station", "crater", "carcass", "skeleton", "landmark"}
+OUTDOOR_TAGS = {
+    "wild",
+    "rural",
+    "city",
+    "district",
+    "settlement",
+    "region",
+    "belt",
+    "strip",
+    "route",
+    "road",
+    "rail",
+    "coast",
+    "sea",
+    "river",
+    "lake",
+    "rift",
+    "ruins",
+    "port",
+    "harbor",
+    "village",
+    "station",
+    "crater",
+    "carcass",
+    "skeleton",
+    "landmark",
+}
 
 
 def default_spatial(name: str, tags=(), *, template_id: str = "") -> SpatialPlan:
@@ -85,32 +124,56 @@ def default_spatial(name: str, tags=(), *, template_id: str = "") -> SpatialPlan
 
     if preset := PRESETS.get(template_id):
         parts = [
-            SpatialPart(ref="main" if i == 0 else f"part_{i}", name=title,
-                        outdoor=kind == "open", below=kind == "below",
-                        shape=kind if kind in {"open", "cave"} else None, scenery=list(scenery),
-                        material=MATERIALS[template_id][i] if template_id in MATERIALS else None,
-                        purpose=", ".join(scenery))
+            SpatialPart(
+                ref="main" if i == 0 else f"part_{i}",
+                name=title,
+                role=_PRESET_ROLES[template_id][i] if template_id in _PRESET_ROLES else None,
+                outdoor=kind == "open",
+                below=kind == "below",
+                shape=kind if kind in {"open", "cave"} else None,
+                scenery=list(scenery),
+                material=MATERIALS[template_id][i] if template_id in MATERIALS else None,
+                purpose=", ".join(scenery),
+            )
             for i, (title, kind, scenery) in enumerate(preset)
         ]
         outdoor = {p.outdoor for p in parts}
         environment = "mixed" if len(outdoor) == 2 else "outdoor" if parts[0].outdoor else "indoor"
-        return SpatialPlan(environment=environment, parts=parts,
-                           approaches=[SpatialApproach(name="Подход к месту" if parts[0].outdoor else "Вход",
-                                                       kind="gap" if template_id in {"location.ship", "location.cave",
-                                                                                    "location.lair"} else
-                                                       "path" if parts[0].outdoor else "door")])
+        return SpatialPlan(
+            environment=environment,
+            parts=parts,
+            approaches=[
+                SpatialApproach(
+                    name="Подход к месту" if parts[0].outdoor else "Вход",
+                    kind="gap"
+                    if template_id in {"location.ship", "location.cave", "location.lair"}
+                    else "path"
+                    if parts[0].outdoor
+                    else "door",
+                )
+            ],
+        )
     tags = set(tags)
-    outdoor = (bool(tags & OUTDOOR_TAGS) and not tags & {"underground", "underwater"}
-               and template_id not in INDOOR_LOCATIONS)
+    outdoor = (
+        bool(tags & OUTDOOR_TAGS) and not tags & {"underground", "underwater"} and template_id not in INDOOR_LOCATIONS
+    )
     kind, way = ("gap", "Расщелина") if "underground" in tags else ("path", "Тропа") if outdoor else ("door", "Вход")
     return SpatialPlan(
         environment="outdoor" if outdoor else "indoor",
         parts=[
-            SpatialPart(ref="main" if i == 0 else f"part_{i}",
-                        name=(name.strip()[:80] or "Место") if i == 0 else title, outdoor=outdoor,
-                        shape="open" if outdoor else "cave" if "underground" in tags else None)
-            for i, title in enumerate(("Вход", "Основной участок" if outdoor else "Основное помещение",
-                                       "Дальний участок" if outdoor else "Дальнее помещение"))
+            SpatialPart(
+                ref="main" if i == 0 else f"part_{i}",
+                name=(name.strip()[:80] or "Место") if i == 0 else title,
+                outdoor=outdoor,
+                shape="open" if outdoor else "cave" if "underground" in tags else None,
+            )
+            for i, title in enumerate(
+                (
+                    "Вход",
+                    "Основной участок" if outdoor else "Основное помещение",
+                    "Дальний участок" if outdoor else "Дальнее помещение",
+                )
+            )
         ],
         approaches=[SpatialApproach(name=way, kind=kind)],
     )
@@ -169,13 +232,15 @@ def _intent(m: Mandate, *, bands: bool, approaches: int) -> LayoutIntent:
     for i, p in enumerate(sp.parts):
         level = -1 if p.below else 0
         outdoor = p.outdoor and level == 0
+        natural = p.shape == "cave" or p.role in {"cliff", "cliffs", "rocky_slope"}
         d = {
             "part_ref": p.ref,
-            "role": "field" if outdoor else "room",
+            "role": p.role or ("field" if outdoor else "room"),
             "name": p.name,
             "public_name": p.name,
             "description": p.purpose,
             "material": p.material,
+            "lighting": p.lighting or "normal",
             "environment": "outdoor" if outdoor else "indoor",
             "shape": p.shape or ("open" if outdoor else "rect"),
             "size": "small" if p.secret else sp.scale,
@@ -184,8 +249,14 @@ def _intent(m: Mandate, *, bands: bool, approaches: int) -> LayoutIntent:
             "required": p.required,
             "anchors": [],
             "details": [
-                {"detail_ref": f"scenery_{j}", "name": title, "kind": "nature" if outdoor else "furniture",
-                 "cells": [[1 + j, 1, 1 + j, 1]], "solid": False}
+                {
+                    "detail_ref": f"scenery_{j}",
+                    "name": title,
+                    "kind": "nature" if outdoor or natural else "furniture",
+                    "cells": [[1 + j, 1, 1 + j, 1]],
+                    "solid": False,
+                    **({"visual_key": "feature:rock" if j % 2 == 0 else "feature:rubble"} if natural else {}),
+                }
                 for j, title in enumerate(p.scenery)
             ],
         }
@@ -249,6 +320,8 @@ def obligations(intent: LayoutIntent, m: Mandate) -> list[str]:
             errors.append(f"{sp.ref}: форма задана планом — {sp.shape}")
         if sp.material is not None and p.material != sp.material:
             errors.append(f"{sp.ref}: материал задан планом — {sp.material}")
+        if sp.lighting is not None and p.lighting != sp.lighting:
+            errors.append(f"{sp.ref}: освещение задано планом — lighting={sp.lighting}")
         if sp.below and p.level >= 0:
             errors.append(f"{sp.ref}: часть уровнем ниже входа (level < 0)")
         if sp.required and not p.required:

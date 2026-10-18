@@ -9,8 +9,8 @@
       "public_name": "Входной грот",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "offset": [
         0,
         0
@@ -26,15 +26,15 @@
           "kind": "nature",
           "cells": [
             [
+              3,
               2,
-              2,
-              2,
+              3,
               2
             ],
             [
-              3,
+              4,
               1,
-              3,
+              4,
               1
             ]
           ],
@@ -48,13 +48,93 @@
           "kind": "cover",
           "cells": [
             [
-              4,
               5,
-              4,
-              5
+              6,
+              5,
+              6
             ]
           ],
           "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              9,
+              3,
+              9,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Лишайник",
+          "kind": "nature",
+          "cells": [
+            [
+              7,
+              7,
+              8,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:lichen"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кристаллы",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              9,
+              3,
+              9
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        },
+        {
+          "detail_ref": "decor_4_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              6,
+              1,
+              7,
+              1
+            ]
+          ],
+          "solid": false,
           "hidden": false,
           "visual_key": "feature:rock"
         }
@@ -62,7 +142,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "winding_tunnel",
@@ -71,11 +152,11 @@
       "public_name": "Каменный проход",
       "environment": "indoor",
       "shape": "corridor",
-      "cols": 6,
+      "cols": 7,
       "rows": 2,
       "offset": [
-        8,
-        3
+        10,
+        4
       ],
       "level": 0,
       "material": "stone",
@@ -88,9 +169,9 @@
           "kind": "nature",
           "cells": [
             [
-              2,
-              0,
               3,
+              0,
+              4,
               0
             ]
           ],
@@ -102,7 +183,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "great_grotto",
@@ -111,10 +193,10 @@
       "public_name": "Подземный грот",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 14,
-      "rows": 12,
+      "cols": 17,
+      "rows": 14,
       "offset": [
-        14,
+        17,
         -2
       ],
       "level": 0,
@@ -128,16 +210,16 @@
           "kind": "cover",
           "cells": [
             [
+              5,
               4,
-              3,
-              4,
-              4
+              5,
+              5
             ],
             [
+              6,
               5,
-              4,
-              5,
-              4
+              6,
+              5
             ]
           ],
           "solid": true,
@@ -150,15 +232,15 @@
           "kind": "light",
           "cells": [
             [
-              10,
+              12,
               2,
-              10,
+              12,
               2
             ],
             [
-              11,
+              13,
               3,
-              11,
+              13,
               3
             ]
           ],
@@ -172,10 +254,10 @@
           "kind": "cover",
           "cells": [
             [
-              3,
-              9,
               4,
-              9
+              11,
+              5,
+              11
             ]
           ],
           "solid": false,
@@ -188,16 +270,16 @@
           "kind": "cover",
           "cells": [
             [
-              9,
-              5,
-              10,
-              5
+              11,
+              6,
+              12,
+              6
             ],
             [
-              10,
-              6,
-              10,
-              6
+              12,
+              7,
+              12,
+              7
             ]
           ],
           "solid": true,
@@ -210,10 +292,10 @@
           "kind": "cover",
           "cells": [
             [
-              6,
-              8,
-              6,
-              8
+              7,
+              9,
+              7,
+              9
             ]
           ],
           "solid": true,
@@ -224,7 +306,8 @@
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "subterranean_lake",
@@ -233,11 +316,11 @@
       "public_name": "Подземное озеро",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 8,
-      "rows": 8,
+      "cols": 10,
+      "rows": 10,
       "offset": [
-        17,
-        -10
+        20,
+        -12
       ],
       "level": 0,
       "material": "water",
@@ -250,37 +333,22 @@
           "kind": "light",
           "cells": [
             [
-              3,
-              3,
               4,
-              4
+              4,
+              5,
+              5
             ]
           ],
           "solid": false,
           "hidden": false,
           "visual_key": "feature:glow"
-        },
-        {
-          "detail_ref": "decor_0",
-          "name": "Каменные выступы",
-          "kind": "furniture",
-          "cells": [
-            [
-              1,
-              1,
-              1,
-              1
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": null
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     },
     {
       "area_ref": "side_den",
@@ -289,11 +357,11 @@
       "public_name": "Тёмная ниша",
       "environment": "indoor",
       "shape": "cave",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 7,
       "offset": [
-        18,
-        10
+        22,
+        12
       ],
       "level": 0,
       "material": "earth",
@@ -306,10 +374,10 @@
           "kind": "nature",
           "cells": [
             [
-              2,
               3,
-              3,
-              4
+              4,
+              4,
+              5
             ]
           ],
           "solid": false,
@@ -322,21 +390,54 @@
           "kind": "object",
           "cells": [
             [
-              3,
-              2,
               4,
-              2
+              3,
+              5,
+              3
             ]
           ],
           "solid": false,
           "hidden": false,
           "visual_key": "feature:bones"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Каменные выступы",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              2,
+              1,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Осыпь",
+          "kind": "nature",
+          "cells": [
+            [
+              0,
+              4,
+              0,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
         }
       ],
       "terrain": [],
       "edges": [],
       "scene_profile": null,
-      "object_slots": []
+      "object_slots": [],
+      "lighting": "normal"
     }
   ],
   "passages": [
@@ -349,7 +450,7 @@
         {
           "area_ref": "entry_chasm",
           "side": "e",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         },
@@ -380,7 +481,7 @@
         {
           "area_ref": "great_grotto",
           "side": "w",
-          "start": 6,
+          "start": 7,
           "width": 1,
           "place_id": null
         }
@@ -397,14 +498,14 @@
         {
           "area_ref": "great_grotto",
           "side": "n",
-          "start": 7,
+          "start": 8,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "subterranean_lake",
           "side": "s",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         }
@@ -421,7 +522,7 @@
         {
           "area_ref": "great_grotto",
           "side": "s",
-          "start": 7,
+          "start": 8,
           "width": 1,
           "place_id": null
         },
@@ -445,7 +546,7 @@
         {
           "area_ref": "entry_chasm",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         },

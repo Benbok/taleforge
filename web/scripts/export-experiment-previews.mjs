@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 const output = resolve(import.meta.dirname, "../.experiment-previews-build");
 await build({
   configFile: false,
+  publicDir: false,
   build: {
     ssr: resolve(import.meta.dirname, "render-experiment-previews.tsx"),
     outDir: output,
@@ -16,5 +17,5 @@ await build({
 const { renderAllExperimentPreviews } = await import(
   pathToFileURL(resolve(output, "render.mjs")).href
 );
-await renderAllExperimentPreviews();
+await renderAllExperimentPreviews({ templatesOnly: process.argv.includes("--templates-only") });
 console.log("All experiment previews rendered successfully.");

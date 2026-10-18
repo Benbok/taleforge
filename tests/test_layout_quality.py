@@ -58,12 +58,22 @@ def test_model_cannot_turn_outdoor_part_into_room():
 def test_detail_in_passage_is_relocated():
     from app.core.layout.intent import LayoutIntent
 
-    intent = LayoutIntent.model_validate({
-        "entry": "main", "parts": [{"part_ref": "main", "name": "Зал", "public_name": "Зал",
-            "details": [{"detail_ref": "column", "name": "Колонна", "solid": True,
-                         "cells": [[0, 2, 0, 2]]}]}],
-        "approaches": [{"part_ref": "main", "side": "w", "public_name": "Вход"}],
-    })
+    intent = LayoutIntent.model_validate(
+        {
+            "entry": "main",
+            "parts": [
+                {
+                    "part_ref": "main",
+                    "name": "Зал",
+                    "public_name": "Зал",
+                    "cols": 6,
+                    "rows": 6,
+                    "details": [{"detail_ref": "column", "name": "Колонна", "solid": True, "cells": [[0, 2, 0, 2]]}],
+                }
+            ],
+            "approaches": [{"part_ref": "main", "side": "w", "public_name": "Вход"}],
+        }
+    )
     bp = DeterministicLayoutProvider().propose(intent, seed=7, root_id="root")
     column = next(d for d in bp.areas[0].details if d.detail_ref == "column")
     assert column.cells != ((0, 2, 0, 2),)
@@ -73,11 +83,27 @@ def test_detail_in_passage_is_relocated():
 def test_optional_scenery_does_not_invalidate_a_full_authored_room():
     from app.core.layout.intent import LayoutIntent
 
-    intent = LayoutIntent.model_validate({
-        "entry": "main", "parts": [{"part_ref": "main", "name": "Зал", "public_name": "Зал",
-            "details": [{"detail_ref": "tiles", "name": "Обстановка",
-                         "cells": [[0, 0, 5, 2], [0, 4, 5, 5], [0, 3, 2, 3], [4, 3, 5, 3]]}]}],
-    })
+    intent = LayoutIntent.model_validate(
+        {
+            "entry": "main",
+            "parts": [
+                {
+                    "part_ref": "main",
+                    "name": "Зал",
+                    "public_name": "Зал",
+                    "cols": 6,
+                    "rows": 6,
+                    "details": [
+                        {
+                            "detail_ref": "tiles",
+                            "name": "Обстановка",
+                            "cells": [[0, 0, 5, 2], [0, 4, 5, 5], [0, 3, 2, 3], [4, 3, 5, 3]],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
     bp = DeterministicLayoutProvider().propose(intent, seed=7, root_id="root")
     assert bp.areas[0].details[0].detail_ref == "tiles"
     assert bp.areas[0].details[0].cells == ((0, 0, 5, 2), (0, 4, 5, 5), (0, 3, 2, 3), (4, 3, 5, 3))
@@ -91,9 +117,14 @@ def test_rock_between_full_width_edges_keeps_exits_reachable():
     intent = intent_candidates(mandate)[0]
     for part in intent.parts[1:]:
         part.side = "e"
-    intent.parts[1].details.append(DetailIntent(
-        detail_ref="rock", name="Валун", solid=True, cells=[[1, 1, 1, 1]],
-    ))
+    intent.parts[1].details.append(
+        DetailIntent(
+            detail_ref="rock",
+            name="Валун",
+            solid=True,
+            cells=[[1, 1, 1, 1]],
+        )
+    )
     bp = DeterministicLayoutProvider().propose(intent, seed=7, root_id="root")
     middle = bp.areas[1]
     assert any(d.detail_ref == "rock" for d in middle.details)
@@ -118,12 +149,18 @@ def test_model_missing_details_is_populated_and_cave_shape_is_enforced():
         layout_model.to_intent(mandate, raw)
 
 
-@pytest.mark.parametrize("template_id, outdoor", [
-    ("location.whisperer_vault", False), ("location.whisperer_choirs", False),
-    ("location.drowned_flooded_womb", False), ("location.old_mother_heart", False),
-    ("location.hook_grey_field", True), ("location.hook_rim", True),
-    ("location.city_gornilo", True),
-])
+@pytest.mark.parametrize(
+    "template_id, outdoor",
+    [
+        ("location.whisperer_vault", False),
+        ("location.whisperer_choirs", False),
+        ("location.drowned_flooded_womb", False),
+        ("location.old_mother_heart", False),
+        ("location.hook_grey_field", True),
+        ("location.hook_rim", True),
+        ("location.city_gornilo", True),
+    ],
+)
 def test_setting_environment_matches_public_location(template_id, outdoor):
     record = next(r for r in RECORDS if r["id"] == template_id)
     sp = default_spatial(record["name"], record.get("tags", []), template_id=template_id)
