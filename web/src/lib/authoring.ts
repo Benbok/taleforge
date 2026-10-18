@@ -9,6 +9,8 @@ import type {
   EditRequest,
   EditResult,
   EditsRequest,
+  ImportPlotRequest,
+  ImportResult,
   JobOut,
   LaunchReceipt,
   LaunchRequest,
@@ -18,6 +20,7 @@ import type {
   ProjectView,
   PublishRequest,
   StageReceipt,
+  StageTask,
   ValidationReport,
   VersionOut,
 } from "./api.gen";
@@ -53,6 +56,8 @@ export const authoring = {
   validate: (id: string, view: View = "summary") =>
     api<ValidationReport>(`${base(id)}/validate?view=${view}`, { method: "POST" }),
   publish: (id: string, body: PublishRequest) => api<VersionOut>(`${base(id)}/publish`, { body }),
+  task: (id: string, stage: "lore" | "plot") => api<StageTask>(`${base(id)}/tasks/${stage}`),
+  importPlot: (id: string, body: ImportPlotRequest) => api<ImportResult>(`${base(id)}/plot/import`, { body }),
   library: () => api<VersionOut[]>("/api/adventures"),
   launch: (versionId: string, body: LaunchRequest) => api<LaunchReceipt>(`/api/adventures/${versionId}/games`, { body }),
 };
@@ -97,4 +102,8 @@ export const STAGE_STATE_LABELS: Record<string, string> = {
   blocked: "остановлено",
   failed: "ошибка",
   stale: "устарело",
+  manual: "заполнено вручную",
 };
+
+/** Какой этап должен быть готов (сгенерирован или заполнен вручную) до запуска этого. */
+export const UPSTREAM: Record<string, string> = { geography: "plot", materialize: "geography", maps: "materialize" };

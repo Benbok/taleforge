@@ -54,6 +54,11 @@ class UpdatePlotObject(Contract):
     fields: dict[str, str]
 
 
+class SetPlotText(Contract):
+    op: Literal["set_plot_text"]
+    fields: dict[str, str]
+
+
 class UpdateItem(Contract):
     op: Literal["update_item"]
     ref: str = Ref
@@ -89,7 +94,7 @@ class EditMap(Contract):
 
 
 PatchOp = Annotated[
-    SetLore | UpdatePlotObject | UpdateItem | SetPlacement | UpsertRoute | RemoveObject | EditMap,
+    SetLore | SetPlotText | UpdatePlotObject | UpdateItem | SetPlacement | UpsertRoute | RemoveObject | EditMap,
     Field(discriminator="op"),
 ]
 
@@ -349,6 +354,26 @@ class AuthorMapOut(Contract):
 class LaunchRequest(Contract):
     options: InstanceOptions
     request_key: str = Field(min_length=1, max_length=128)
+
+
+class ImportPlotRequest(Contract):
+    plan: dict
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class ImportResult(Contract):
+    plan_version_id: str
+    cleared_entities: int = 0
+    source: str = "import"
+
+
+class StageTask(Contract):
+    stage: str
+    system: str
+    user: str
+    schema_: dict = Field(alias="schema")
+    how: str
 
 
 class LaunchReceipt(Contract):

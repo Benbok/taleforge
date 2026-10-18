@@ -18,6 +18,11 @@ def test_materialize_stage_runs_through_the_runner(settings, _fast_retry):
         svc = SimpleNamespace(maker=maker, llm=None, bus=None, coordination=InMemoryCoordination())
         async with maker() as s:
             project = await s.get(AuthorProject, pid)
+            await jobs.request_stage(s, project, "geography", None, project.draft_revision, "g1")
+            await s.commit()
+        await AuthorRunner(svc).run_due()
+        async with maker() as s:
+            project = await s.get(AuthorProject, pid)
             receipt = await jobs.request_stage(s, project, "materialize", None, project.draft_revision, "m1")
             await s.commit()
         await AuthorRunner(svc).run_due()

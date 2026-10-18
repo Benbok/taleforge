@@ -16,6 +16,7 @@ from app.core.authoring.contracts import (
     ResultRef,
     SetLore,
     SetPlacement,
+    SetPlotText,
     UpdateItem,
     UpdatePlotObject,
     UpsertRoute,
@@ -65,6 +66,7 @@ TEXT_FIELDS = {
     "antagonists": {"name", "goal", "methods", "weakness", "secret"},
 }
 ITEM_FIELDS = {"name", "description", "template_id"}
+PLOT_TEXT = {"title", "tagline", "public_intro", "conflict", "stakes"}
 
 
 class EditError(Conflict):
@@ -100,6 +102,13 @@ def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, li
                 raise EditError("unknown_lore_field", ",".join(sorted(set(op.fields) - LORE_KEYS)))
             checked = {key: _check_lore_field(key, value) for key, value in op.fields.items()}
             setting["lore"] = {**(setting.get("lore") or {}), **checked}
+        elif isinstance(op, SetPlotText):
+            if not set(op.fields) <= PLOT_TEXT:
+                raise EditError("field_not_editable", ",".join(sorted(set(op.fields) - PLOT_TEXT)))
+            for key, value in op.fields.items():
+                if len(value) > 4000 or (key == "title" and not value.strip()):
+                    raise EditError("invalid_field", key)
+                plan[key] = value.strip()
         elif isinstance(op, UpdatePlotObject):
             kind, obj = _find(plan, op.ref)
             if obj is None:

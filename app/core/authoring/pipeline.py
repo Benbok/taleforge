@@ -51,7 +51,46 @@ async def plot_stage(ctx: StageContext) -> dict:
     version_id = await architect.generate(ctx.svc, ctx.world_id, prepare_intro=False, author_job_id=ctx.job_id)
     if version_id is None:
         raise StageError("plot_failed")
-    return {"plan_version_id": version_id}
+    removed = await clear_materialized_world(ctx.svc.maker, ctx.project_id, ctx.world_id)
+    return {"plan_version_id": version_id, "cleared_entities": removed}
+
+
+async def clear_materialized_world(maker, project_id: str, world_id: str) -> int:
+    async with maker() as s:
+        removed = await clear_world(s, project_id, world_id)
+        await s.commit()
+        return removed
+
+
+async def clear_world(s, project_id: str, world_id: str) -> int:
+    """A new plot replaces the old one: places, NPCs, maps and routes built for the old plot are removed.
+
+    Plot anchors stay (the plot already re-synced them) and wait for the new places again. Runs in the caller's
+    transaction; the stages built on the removed world are marked stale."""
+    from sqlalchemy import delete, update
+
+    from app.db.models import Entity, GeographyLink, GeographyNode, PlotAnchorBinding
+
+    ids = list(await s.scalars(select(Entity.id).where(Entity.campaign_id == world_id)))
+    if not ids:
+        return 0
+    await s.execute(delete(GeographyLink).where(GeographyLink.campaign_id == world_id))
+    await s.execute(delete(GeographyNode).where(GeographyNode.campaign_id == world_id))
+    await s.execute(delete(Entity).where(Entity.campaign_id == world_id))  # generation rows cascade
+    await s.execute(
+        update(PlotAnchorBinding)
+        .where(PlotAnchorBinding.campaign_id == world_id)
+        .values(holder_entity_id=None, target_location_id=None, state="reserved")
+    )
+    project = await s.get(AuthorProject, project_id)
+    deps = dict(project.dependencies or {})
+    stale = {r for r in deps.get("stale") or [] if r.startswith("stage:")}  # map refs of removed places are moot
+    stale |= {f"stage:{down}" for down in downstream("plot") if down in deps}
+    deps["stale"] = sorted(stale)
+    project.dependencies = deps
+    project.validation_report = None
+    await s.flush()
+    return len(ids)
 
 
 async def materialize_stage(ctx: StageContext) -> dict:
@@ -152,7 +191,21 @@ async def record_output(session, project: AuthorProject, job: AuthorJob, result:
     apply = APPLY.get(job.stage)
     if apply is not None:
         await apply(session, project, result)
-    project.dependencies = {**(project.dependencies or {}), job.stage: output_digest(result)}
+    deps = dict(project.dependencies or {})
+    digest = output_digest(result)
+    stale = set(deps.get("stale") or []) - {f"stage:{job.stage}"}  # this stage is current again
+    if job.stage != "validate" and deps.get(job.stage) not in (None, digest):
+        # a changed result makes everything built on it stale until rebuilt or accepted
+        stale |= {f"stage:{down}" for down in downstream(job.stage) if down in deps}
+    deps[job.stage] = digest
+    deps["stale"] = sorted(stale)
+    project.dependencies = deps
+
+
+def downstream(stage: str) -> list[str]:
+    from app.core.authoring.jobs import STAGES
+
+    return [s for s in STAGES[STAGES.index(stage) + 1 :] if s != "validate"] if stage in STAGES else []
 
 
 async def _expected(session, project, job, stage_digest) -> str:

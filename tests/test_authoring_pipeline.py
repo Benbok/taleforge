@@ -152,7 +152,7 @@ def test_plot_reuses_architect_without_intro(settings, monkeypatch):
         await AuthorRunner(svc).run_due()
         async with maker() as s:
             job = await s.get(AuthorJob, receipt.job_id)
-            assert job.status == "ready" and job.result == {"plan_version_id": "plan_1"}
+            assert job.status == "ready" and job.result["plan_version_id"] == "plan_1"
         assert seen["prepare_intro"] is False and seen["author_job_id"] == receipt.job_id
 
     _run(settings, body)

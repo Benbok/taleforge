@@ -2898,6 +2898,7 @@
          "remove_object": "#/components/schemas/RemoveObject",
          "set_lore": "#/components/schemas/SetLore",
          "set_placement": "#/components/schemas/SetPlacement",
+         "set_plot_text": "#/components/schemas/SetPlotText",
          "update_item": "#/components/schemas/UpdateItem",
          "update_plot_object": "#/components/schemas/UpdatePlotObject",
          "upsert_route": "#/components/schemas/UpsertRoute"
@@ -2907,6 +2908,9 @@
        "oneOf": [
         {
          "$ref": "#/components/schemas/SetLore"
+        },
+        {
+         "$ref": "#/components/schemas/SetPlotText"
         },
         {
          "$ref": "#/components/schemas/UpdatePlotObject"
@@ -6002,6 +6006,57 @@
      }
     },
     "title": "ImportIn",
+    "type": "object"
+   },
+   "ImportPlotRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "plan": {
+      "additionalProperties": true,
+      "title": "Plan",
+      "type": "object"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "plan",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "ImportPlotRequest",
+    "type": "object"
+   },
+   "ImportResult": {
+    "additionalProperties": false,
+    "properties": {
+     "cleared_entities": {
+      "default": 0,
+      "title": "Cleared Entities",
+      "type": "integer"
+     },
+     "plan_version_id": {
+      "title": "Plan Version Id",
+      "type": "string"
+     },
+     "source": {
+      "default": "import",
+      "title": "Source",
+      "type": "string"
+     }
+    },
+    "required": [
+     "plan_version_id"
+    ],
+    "title": "ImportResult",
     "type": "object"
    },
    "InstanceOptions": {
@@ -12793,6 +12848,29 @@
     "title": "SetPlacement",
     "type": "object"
    },
+   "SetPlotText": {
+    "additionalProperties": false,
+    "properties": {
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Fields",
+      "type": "object"
+     },
+     "op": {
+      "const": "set_plot_text",
+      "title": "Op",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "fields"
+    ],
+    "title": "SetPlotText",
+    "type": "object"
+   },
    "SfxInput": {
     "additionalProperties": false,
     "properties": {
@@ -13152,6 +13230,41 @@
      "stage"
     ],
     "title": "StageStatus",
+    "type": "object"
+   },
+   "StageTask": {
+    "additionalProperties": false,
+    "properties": {
+     "how": {
+      "title": "How",
+      "type": "string"
+     },
+     "schema": {
+      "additionalProperties": true,
+      "title": "Schema",
+      "type": "object"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "system": {
+      "title": "System",
+      "type": "string"
+     },
+     "user": {
+      "title": "User",
+      "type": "string"
+     }
+    },
+    "required": [
+     "stage",
+     "system",
+     "user",
+     "schema",
+     "how"
+    ],
+    "title": "StageTask",
     "type": "object"
    },
    "StandIn": {
@@ -16677,6 +16790,64 @@
     ]
    }
   },
+  "/api/author/projects/{project_id}/plot/import": {
+   "post": {
+    "description": "A plot made elsewhere passes the architect's server check and then counts as a ready plot stage.",
+    "operationId": "import_plot_api_author_projects__project_id__plot_import_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportPlotRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Import Plot",
+    "tags": [
+     "author"
+    ]
+   }
+  },
   "/api/author/projects/{project_id}/prepare": {
    "post": {
     "operationId": "prepare_api_author_projects__project_id__prepare_post",
@@ -16786,6 +16957,67 @@
      }
     ],
     "summary": "Publish",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/tasks/{stage}": {
+   "get": {
+    "description": "The stage's prompt and answer schema, to run it by hand in any outside model. Read-only, no model call.",
+    "operationId": "stage_task_api_author_projects__project_id__tasks__stage__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "enum": [
+        "lore",
+        "plot"
+       ],
+       "title": "Stage",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StageTask"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Stage Task",
     "tags": [
      "author"
     ]

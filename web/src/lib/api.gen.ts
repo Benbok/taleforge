@@ -762,6 +762,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/author/projects/{project_id}/plot/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Plot
+         * @description A plot made elsewhere passes the architect's server check and then counts as a ready plot stage.
+         */
+        post: operations["import_plot_api_author_projects__project_id__plot_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/prepare": {
         parameters: {
             query?: never;
@@ -790,6 +810,26 @@ export interface paths {
         put?: never;
         /** Publish */
         post: operations["publish_api_author_projects__project_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/tasks/{stage}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stage Task
+         * @description The stage's prompt and answer schema, to run it by hand in any outside model. Read-only, no model call.
+         */
+        get: operations["stage_task_api_author_projects__project_id__tasks__stage__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3455,7 +3495,7 @@ export interface components {
         /** DraftPatch */
         DraftPatch: {
             /** Operations */
-            operations?: (components["schemas"]["SetLore"] | components["schemas"]["UpdatePlotObject"] | components["schemas"]["UpdateItem"] | components["schemas"]["SetPlacement"] | components["schemas"]["UpsertRoute"] | components["schemas"]["RemoveObject"] | components["schemas"]["EditMap"])[];
+            operations?: (components["schemas"]["SetLore"] | components["schemas"]["SetPlotText"] | components["schemas"]["UpdatePlotObject"] | components["schemas"]["UpdateItem"] | components["schemas"]["SetPlacement"] | components["schemas"]["UpsertRoute"] | components["schemas"]["RemoveObject"] | components["schemas"]["EditMap"])[];
         };
         /** EditMap */
         EditMap: {
@@ -4487,6 +4527,32 @@ export interface components {
              * @default
              */
             note?: string;
+        };
+        /** ImportPlotRequest */
+        ImportPlotRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Plan */
+            plan: {
+                [key: string]: unknown;
+            };
+            /** Request Key */
+            request_key: string;
+        };
+        /** ImportResult */
+        ImportResult: {
+            /**
+             * Cleared Entities
+             * @default 0
+             */
+            cleared_entities?: number;
+            /** Plan Version Id */
+            plan_version_id: string;
+            /**
+             * Source
+             * @default import
+             */
+            source?: string;
         };
         /** InstanceOptions */
         InstanceOptions: {
@@ -6597,6 +6663,18 @@ export interface components {
             /** Ref */
             ref: string;
         };
+        /** SetPlotText */
+        SetPlotText: {
+            /** Fields */
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_plot_text";
+        };
         /** SfxInput */
         SfxInput: {
             /**
@@ -6705,6 +6783,21 @@ export interface components {
              * @default not_requested
              */
             status?: string;
+        };
+        /** StageTask */
+        StageTask: {
+            /** How */
+            how: string;
+            /** Schema */
+            schema: {
+                [key: string]: unknown;
+            };
+            /** Stage */
+            stage: string;
+            /** System */
+            system: string;
+            /** User */
+            user: string;
         };
         /** StandIn */
         StandIn: {
@@ -7260,6 +7353,8 @@ export type HeroEffect = components['schemas']['HeroEffect'];
 export type HeroPublic = components['schemas']['HeroPublic'];
 export type HeroSheet = components['schemas']['HeroSheet'];
 export type ImportIn = components['schemas']['ImportIn'];
+export type ImportPlotRequest = components['schemas']['ImportPlotRequest'];
+export type ImportResult = components['schemas']['ImportResult'];
 export type InstanceOptions = components['schemas']['InstanceOptions'];
 export type IntroDraftIn = components['schemas']['IntroDraftIn'];
 export type InventoryRow = components['schemas']['InventoryRow'];
@@ -7384,6 +7479,7 @@ export type ServerEvent = components['schemas']['ServerEvent'];
 export type SessionSummary = components['schemas']['SessionSummary'];
 export type SetLore = components['schemas']['SetLore'];
 export type SetPlacement = components['schemas']['SetPlacement'];
+export type SetPlotText = components['schemas']['SetPlotText'];
 export type SfxInput = components['schemas']['SfxInput'];
 export type SignupIn = components['schemas']['SignupIn'];
 export type SnapshotCampaign = components['schemas']['SnapshotCampaign'];
@@ -7393,6 +7489,7 @@ export type SoundPatch = components['schemas']['SoundPatch'];
 export type SpellsIn = components['schemas']['SpellsIn'];
 export type StageReceipt = components['schemas']['StageReceipt'];
 export type StageStatus = components['schemas']['StageStatus'];
+export type StageTask = components['schemas']['StageTask'];
 export type StandIn = components['schemas']['StandIn'];
 export type StandInChanged = components['schemas']['StandInChanged'];
 export type StatExplained = components['schemas']['StatExplained'];
@@ -8930,6 +9027,41 @@ export interface operations {
             };
         };
     };
+    import_plot_api_author_projects__project_id__plot_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPlotRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     prepare_api_author_projects__project_id__prepare_post: {
         parameters: {
             query?: never;
@@ -8987,6 +9119,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stage_task_api_author_projects__project_id__tasks__stage__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                stage: "lore" | "plot";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageTask"];
                 };
             };
             /** @description Validation Error */

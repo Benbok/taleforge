@@ -21,6 +21,21 @@ UPSTREAM = {
     "maps": "materialize",
     "validate": "maps",
 }
+# A stage needs the previous one ready. The plot may start from the brief alone; validation runs any time.
+REQUIRED_UPSTREAM = {"geography": "plot", "materialize": "geography", "maps": "materialize"}
+
+
+async def missing_upstream(session: AsyncSession, project: AuthorProject, stage: str) -> str | None:
+    """Readiness is about content, not who made it: a plot written or imported by hand counts as ready."""
+    upstream = REQUIRED_UPSTREAM.get(stage)
+    if upstream is None:
+        return None
+    if upstream == "plot":
+        secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+        return None if ((secret.plot if secret else None) or {}).get("locations") else "plot"
+    return None if upstream in (project.dependencies or {}) else upstream
+
+
 LEASE = timedelta(minutes=10)
 ACTIVE = ("queued", "running")
 
@@ -70,6 +85,9 @@ async def request_stage(
         return _receipt(same_key)
     if project.draft_revision != expected_revision:
         raise Conflict("stale_revision")
+    missing = await missing_upstream(session, project, stage)
+    if missing:
+        raise Conflict(f"upstream_not_ready: сначала этап {missing}")
     digest = await stage_digest(session, project, stage, target_ref)
     existing = await session.scalar(
         select(AuthorJob).where(
@@ -188,10 +206,11 @@ async def stage_view(session: AsyncSession, project_id: str, *, full: bool) -> P
             .order_by(AuthorJob.created_at.desc(), AuthorJob.id.desc())
             .limit(1)
         )
+        manual = job is None and stage in (project.dependencies or {})  # written or imported by the author
         stages.append(
             StageStatus(
                 stage=stage,
-                status="not_requested" if job is None else job.status,
+                status=("manual" if manual else "not_requested") if job is None else job.status,
                 job_id=job.id if job else None,
                 error_code=job.error_code if job else None,
                 source_revision=job.source_revision if job else None,

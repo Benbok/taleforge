@@ -5,6 +5,7 @@ import type { DraftPatch, EditProposal, ValidationIssue, ValidationReport } from
 import { authoring, authorKeys, newRequestKey } from "../lib/authoring";
 import ContentEditor, { type DraftContent } from "./ContentEditor";
 import GeographyView from "./GeographyView";
+import ManualPanel from "./ManualPanel";
 import MapPreview from "./MapPreview";
 import StagePanel from "./StagePanel";
 import ValidationPanel from "./ValidationPanel";
@@ -120,6 +121,18 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         <>
           <GeographyView regions={plot.regions ?? []} locations={plot.locations ?? []} routes={plot.routes ?? []} selected={location} onSelect={setLocation} />
           {location && map.data && <MapPreview map={map.data} />}
+          <ManualPanel
+            projectId={projectId}
+            revision={revision}
+            plot={(content.plot ?? {}) as Record<string, unknown>}
+            busy={busy}
+            onChanged={(text) => {
+              setMessage(text);
+              void refresh();
+            }}
+            onLore={(fields) => edit.mutate({ operations: [{ op: "set_lore", fields: fields as never }] })}
+            onPlotText={(fields) => edit.mutate({ operations: [{ op: "set_plot_text", fields }] })}
+          />
           <ContentEditor
             content={content}
             busy={busy}

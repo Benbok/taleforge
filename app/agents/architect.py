@@ -235,34 +235,7 @@ async def generate(
                 return None
             version_id = None
             if plan is not None:
-                prev = await s.scalar(select(func.max(CampaignPlan.version)).where(CampaignPlan.campaign_id == cid))
-                version = int(prev or 0) + 1
-                plan["structure_id"] = sid or plan.get("structure_id")
-                plan["version"] = version
-                row = CampaignPlan(campaign_id=cid, version=version, content=plan, note=note or "")
-                s.add(row)
-                secret = await s.get(CampaignSecret, cid)
-                if secret is None:
-                    secret = CampaignSecret(campaign_id=cid)
-                    s.add(secret)
-                for key in ("character_links", "hooks"):  # связи героев переживают новый вариант каркаса
-                    if (secret.plot or {}).get(key):
-                        plan[key] = secret.plot[key]
-                if plan.get("hooks"):
-                    targets = set(plot.hook_targets(plan))
-                    plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
-                secret.plot = plan
-                await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
-                await sync_plan_metadata(s, c, plan)  # адаптивной кампании — метаданные закрепления каркаса
-                settings = dict(c.settings or {})
-                settings["poster"] = plot.poster(plan)
-                if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
-                    c.public_intro = plan["public_intro"]
-                    settings["intro_from_plan"] = True
-                c.settings = settings
-                await set_status(s, c, status="ready", version=version, error=None)
-                await s.flush()
-                version_id = row.id
+                version_id = (await apply_plan(s, c, plan, sid, note)).id
             else:
                 await set_status(s, c, status="failed", error="; ".join(errors)[:1000])
             await s.commit()
@@ -284,6 +257,40 @@ async def generate(
                 await s.commit()
                 await publish(svc, cid, c)
         return None
+
+
+async def apply_plan(s, c: Campaign, plan: dict, sid: str | None, note: str = "") -> CampaignPlan:
+    """Accept a checked plan: a new version, the current copy, anchors, poster. Used by the architect and by an
+    author who imports a plan made elsewhere."""
+    cid = c.id
+    prev = await s.scalar(select(func.max(CampaignPlan.version)).where(CampaignPlan.campaign_id == cid))
+    version = int(prev or 0) + 1
+    plan["structure_id"] = sid or plan.get("structure_id")
+    plan["version"] = version
+    row = CampaignPlan(campaign_id=cid, version=version, content=plan, note=note or "")
+    s.add(row)
+    secret = await s.get(CampaignSecret, cid)
+    if secret is None:
+        secret = CampaignSecret(campaign_id=cid)
+        s.add(secret)
+    for key in ("character_links", "hooks"):  # связи героев переживают новый вариант каркаса
+        if (secret.plot or {}).get(key):
+            plan[key] = secret.plot[key]
+    if plan.get("hooks"):
+        targets = set(plot.hook_targets(plan))
+        plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
+    secret.plot = plan
+    await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
+    await sync_plan_metadata(s, c, plan)  # адаптивной кампании — метаданные закрепления каркаса
+    settings = dict(c.settings or {})
+    settings["poster"] = plot.poster(plan)
+    if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
+        c.public_intro = plan["public_intro"]
+        settings["intro_from_plan"] = True
+    c.settings = settings
+    await set_status(s, c, status="ready", version=version, error=None)
+    await s.flush()
+    return row
 
 
 def _assistant(reply, tc) -> dict:

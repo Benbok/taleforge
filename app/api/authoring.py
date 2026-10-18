@@ -20,6 +20,8 @@ from app.core.authoring.contracts import (
     EditRequest,
     EditResult,
     EditsRequest,
+    ImportPlotRequest,
+    ImportResult,
     JobOut,
     PrepareRequest,
     ProjectDetail,
@@ -27,6 +29,7 @@ from app.core.authoring.contracts import (
     ProjectView,
     PublishRequest,
     StageReceipt,
+    StageTask,
     ValidationIssue,
     ValidationReport,
     VersionOut,
@@ -211,3 +214,28 @@ def version_out(version) -> VersionOut:
         public_summary=version.public_summary,
         published_at=version.published_at.isoformat(),
     )
+
+
+@router.get("/projects/{project_id}/tasks/{stage}", response_model=StageTask)
+async def stage_task(project_id: str, stage: Literal["lore", "plot"], session: SessionDep, user: UserDep) -> StageTask:
+    """The stage's prompt and answer schema, to run it by hand in any outside model. Read-only, no model call."""
+    from app.core.authoring.manual import task_for
+
+    project = await require_project(session, user, project_id)
+    return StageTask.model_validate(await task_for(session, project, stage))
+
+
+@router.post("/projects/{project_id}/plot/import", response_model=ImportResult)
+async def import_plot(project_id: str, body: ImportPlotRequest, session: SessionDep, user: UserDep):
+    """A plot made elsewhere passes the architect's server check and then counts as a ready plot stage."""
+    from app.core.authoring.manual import ImportRejected
+    from app.core.authoring.manual import import_plot as do_import
+
+    project = await require_project(session, user, project_id)
+    try:
+        result = await do_import(session, project, body.plan, body.expected_revision, body.request_key)
+    except ImportRejected as exc:
+        await session.rollback()
+        return JSONResponse({"detail": "import_rejected", "errors": exc.errors[:50]}, status_code=409)
+    await session.commit()
+    return ImportResult.model_validate(result)
