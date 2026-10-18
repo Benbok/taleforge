@@ -412,10 +412,12 @@ def test_old_single_action_and_unparsed_custom_still_work(game_client, admin_g, 
 
     msgs = rows(settings, Message, Message.kind == "action")
     assert len(msgs) == 2
-    # Первая неразобранная заявка получила статус unhandled / cancelled
+    # Неразобранная заявка передаётся мастеру как нейтральное custom-действие.
+    assert msgs[0].intent["parser_fallback"] is True
+    assert msgs[0].intent["actions"][0]["verb"] == "custom"
     p1_prog = msgs[0].data.get("resolution_progress")
     assert p1_prog and len(p1_prog) == 1
-    assert list(p1_prog.values())[0]["status"] in ("denied", "cancelled", "unhandled")
+    assert list(p1_prog.values())[0]["status"] in ("completed", "denied", "cancelled", "unhandled")
 
     # Вторая заявка закрыта проверкой
     p2_prog = msgs[1].data.get("resolution_progress")
