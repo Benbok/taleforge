@@ -111,7 +111,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:shelf"
+            "visual_key": "feature:weapon_rack"
           },
           {
             "id": "sf_outer_barbican_watch_brazier",
@@ -128,7 +128,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:hearth"
+            "visual_key": "feature:brazier"
           }
         ],
         "environment": "outdoor",
@@ -423,7 +423,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:pillar"
+            "visual_key": "feature:cage"
           },
           {
             "id": "sf_dungeon_casemate_interrogatio",
@@ -440,7 +440,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           }
         ],
         "environment": "indoor",

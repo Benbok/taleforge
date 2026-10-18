@@ -1,0 +1,41 @@
+{
+  "id": "cave_fungal_chasm",
+  "version": "1.2.0",
+  "archetype": "cave",
+  "variant": "C",
+  "variant_name": "Грибная расселина",
+  "purpose": "Глубокая пещерная расселина со светящимся лесом грибов, каменным карнизом и логовом пещерных пауков",
+  "visual_concept": "Мерцающие сине-зеленым светом заросли исполинских грибов, скользкие скалы и трещины с кристаллами.",
+  "environment": "indoor",
+  "materials": [
+    "earth",
+    "stone"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Встреча с сумеречным следопытом или сборщиком целебных спор.",
+    "exploration": "Сбор ядовитых и светящихся грибов, поиск кристаллов в трещинах.",
+    "combat": "Грибные наросты дают мягкое укрытие; валуны прикрывают от атак сверху."
+  },
+  "allowable_adaptations": [
+    "Подземные фермы дроу",
+    "Заражённые спорами туннели"
+  ],
+  "discovered_constraints": [
+    "При форме cave отступать от краев."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

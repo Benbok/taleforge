@@ -1,0 +1,40 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "burial_chapel": {
+      "grand_altar": "preserved",
+      "brazier": "preserved",
+      "tombstone": "preserved",
+      "carpet": "preserved"
+    },
+    "hall_of_sarcophagi": {
+      "sarcophagus": "preserved",
+      "statue": "preserved",
+      "brazier": "preserved",
+      "wall_sconce": "shifted: [[2, 1, 2, 1], [9, 1, 9, 1]] -> [[2, 0, 2, 0]]"
+    },
+    "flooded_ossuary": {
+      "bone_pile": "preserved",
+      "rubble_piles": "preserved",
+      "relic_chest": "preserved"
+    },
+    "hierophant_crypt": {
+      "sarcophagus": "preserved",
+      "statue": "preserved",
+      "relic_chest": "preserved"
+    }
+  }
+}

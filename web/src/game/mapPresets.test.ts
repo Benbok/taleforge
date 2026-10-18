@@ -14,7 +14,7 @@ describe("каталог визуальных элементов карты", ()
     const templates = import.meta.glob<{ intent: { parts: { details: SketchFeature[] }[] } }>(
       "../../../app/content/layout_templates/*.json", { eager: true, import: "default" },
     );
-    expect(Object.keys(templates)).toHaveLength(12);
+    expect(Object.keys(templates)).toHaveLength(24);
     for (const template of Object.values(templates)) for (const part of template.intent.parts) {
       for (const detail of part.details) {
         expect(detail.visual_key).toBeTruthy();

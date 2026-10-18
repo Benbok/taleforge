@@ -37,8 +37,8 @@ def test_catalog_geometry_and_visuals_agree(path, seed):
         assert bp.to_json() == json.loads((path.parent/'blueprint.json').read_text(encoding='utf-8'))
 
 
-def test_catalog_covers_six_archetypes_with_two_variants():
-    assert len(TEMPLATES) == 12
+def test_catalog_covers_six_archetypes_with_four_variants():
+    assert len(TEMPLATES) == 24
     entries = [json.loads((p.parent/'metadata.json').read_text(encoding='utf-8')) for p in TEMPLATES]
     for archetype in ('tavern', 'temple', 'cave', 'forest', 'port', 'ruins'):
-        assert {e['variant'] for e in entries if e['archetype'] == archetype} == {'A', 'B'}
+        assert {e['variant'] for e in entries if e['archetype'] == archetype} == {'A', 'B', 'C', 'D'}

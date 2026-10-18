@@ -34,7 +34,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:altar"
+          "visual_key": "feature:fountain"
         },
         {
           "detail_ref": "prayer_benches",
@@ -182,14 +182,20 @@
           "cells": [
             [
               4,
-              0,
+              1,
               4,
-              0
+              1
+            ],
+            [
+              7,
+              1,
+              7,
+              1
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:torch"
+          "visual_key": "feature:brazier"
         },
         {
           "detail_ref": "lectern",
@@ -206,70 +212,6 @@
           "solid": false,
           "hidden": false,
           "visual_key": "feature:table"
-        },
-        {
-          "detail_ref": "wall_torch_0",
-          "name": "Настенный факел",
-          "kind": "light",
-          "cells": [
-            [
-              11,
-              8,
-              11,
-              8
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:torch"
-        },
-        {
-          "detail_ref": "wall_torch_1",
-          "name": "Настенный факел",
-          "kind": "light",
-          "cells": [
-            [
-              0,
-              9,
-              0,
-              9
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:torch"
-        },
-        {
-          "detail_ref": "wall_torch_2",
-          "name": "Настенный факел",
-          "kind": "light",
-          "cells": [
-            [
-              8,
-              13,
-              8,
-              13
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:torch"
-        },
-        {
-          "detail_ref": "wall_torch_3",
-          "name": "Настенный факел",
-          "kind": "light",
-          "cells": [
-            [
-              11,
-              0,
-              11,
-              0
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
@@ -326,7 +268,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:shelf"
+          "visual_key": "feature:wardrobe"
         },
         {
           "detail_ref": "study_desk",
@@ -342,7 +284,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:table"
+          "visual_key": "feature:desk"
         }
       ],
       "terrain": [],

@@ -1041,28 +1041,52 @@ async def request_preparation(ctx: ToolContext, loc: Entity, inverse: list) -> d
     Без флага кампании ``scene_generation`` место готовится только ради сюжетных носителей, с профилем
     ``minimal`` (docs/world-objects-delivery3.md, §2.6; docs/world-objects-delivery4.md, §2.3)."""
     from app.core import plot_anchors
+    from app.core.layout import plan as layout_plan
     from app.core.layout import store as layout_store
     from app.core.preparation import receipt
     from app.core.world_generation import storage
 
+    out: dict = {}
     geo = await layout_store.request_geometry(ctx, loc)
     if geo is not None:
         ctx.operation_refs.add(geo)  # ход дождётся геометрии участка до описания
+
+    layout_flag = bool((ctx.campaign.settings or {}).get("location_layouts", True))
+    layout_row = None
+    if layout_flag and layout_plan.eligible(ctx.world, loc):
+        layout_row = await layout_plan.reserve_for_location(ctx, loc, inverse)
+        if layout_row is not None:
+            if storage.activate(layout_row):
+                ctx.operation_refs.add(layout_row.id)
+                out["layout"] = receipt(layout_row.id)
+            elif layout_row.status not in ("ready", "blocked"):
+                ctx.operation_refs.add(layout_row.id)
+
     flag = bool((ctx.campaign.settings or {}).get("scene_generation"))
     row = await storage.find(ctx.session, ctx.campaign.id, loc.id, "location_initial")
     if row is not None and row.status == "ready":  # поздние зацепки готового места — сразу, в этой транзакции
         made = await plot_anchors.materialize_late(ctx, loc, row.id)
         if made:
             await observe(ctx, loc.id, inverse, only=made)
-        return {"plot_anchors": made} if made else {}
+            out["plot_anchors"] = made
+        return out
     if row is None:
         if not flag and not await plot_anchors.reserved_for(ctx.session, ctx.campaign.id, loc.id):
-            return {}
+            if "layout" in out and layout_row is not None:
+                out["preparation"] = out["layout"]
+                out["operation_ref"] = layout_row.id
+            return out
         row = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, loc, minimal=not flag)
         inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
-    if not storage.activate(row):
-        return {}  # место уже готовится: квитанция была у первого входа
-    return {"preparation": receipt(row.id), "operation_ref": row.id}
+    if storage.activate(row):
+        out["preparation"] = receipt(row.id)
+        out["operation_ref"] = row.id
+    elif row.status not in ("ready", "blocked"):
+        ctx.operation_refs.add(row.id)
+    elif "layout" in out and "operation_ref" not in out and layout_row is not None:
+        out["preparation"] = out["layout"]
+        out["operation_ref"] = layout_row.id
+    return out
 
 
 class EnterRoomArgs(BaseModel):

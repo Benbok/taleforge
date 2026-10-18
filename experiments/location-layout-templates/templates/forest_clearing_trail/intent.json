@@ -55,7 +55,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:tree"
+          "visual_key": "feature:log"
         },
         {
           "detail_ref": "moss_rock",
@@ -168,7 +168,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:shrub"
+          "visual_key": "feature:mushrooms"
         }
       ],
       "scene_profile": null,
@@ -243,7 +243,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:tree"
+          "visual_key": "feature:stump"
         }
       ],
       "scene_profile": null,

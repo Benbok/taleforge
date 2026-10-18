@@ -681,21 +681,21 @@
             "visual_key": "feature:torch"
           },
           {
-            "id": "sf_secret_vault_decor_4_0",
-            "name": "Светильник",
-            "kind": "light",
+            "id": "sf_secret_vault_decor_3_0",
+            "name": "Кресло",
+            "kind": "furniture",
             "cells": [
               [
-                2,
                 0,
                 2,
-                0
+                0,
+                2
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:torch"
+            "visual_key": "feature:chair"
           }
         ],
         "environment": "indoor",

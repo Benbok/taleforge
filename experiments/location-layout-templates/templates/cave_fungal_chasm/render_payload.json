@@ -1,0 +1,532 @@
+{
+  "template_id": "cave_fungal_chasm",
+  "root_id": "tpl_cave_fungal_chasm",
+  "entry": "spore_entry",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "spore_entry",
+      "name": "Грибной грот",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            6,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Входная расселина в пещеру",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_cave_fungal_chasm",
+            "beyond": null,
+            "passage_ref": "in_spore_entry_w",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Узкий проход по карнизу",
+            "side": "e",
+            "at": 5,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "chasm_bridge",
+            "beyond": null,
+            "passage_ref": "p_chasm_bridge",
+            "cells": [
+              [
+                9,
+                5
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_spore_entry_mushrooms",
+            "name": "Скопления светящихся грибов",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                3,
+                6,
+                3,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mushrooms"
+          },
+          {
+            "id": "sf_spore_entry_boulder",
+            "name": "Обкатанный валун",
+            "kind": "cover",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_spore_entry_scree",
+            "name": "Осыпь мелких камней",
+            "kind": "nature",
+            "cells": [
+              [
+                5,
+                3,
+                6,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_fungal_chasm",
+          "area_ref": "spore_entry",
+          "rev": 1
+        },
+        "mask": [
+          "###.#..###",
+          "###......#",
+          "#.......##",
+          "..........",
+          ".........#",
+          "#.........",
+          "..........",
+          "#........#",
+          "#.#......#",
+          "###.#..###"
+        ]
+      }
+    },
+    {
+      "id": "chasm_bridge",
+      "name": "Узкий карниз",
+      "offset": [
+        10,
+        4
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "corridor",
+        "cols": 7,
+        "rows": 2,
+        "party": [
+          0,
+          1
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Узкий проход по карнизу",
+            "side": "w",
+            "at": 1,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "spore_entry",
+            "beyond": null,
+            "passage_ref": "p_chasm_bridge",
+            "cells": [
+              [
+                0,
+                1
+              ]
+            ]
+          },
+          {
+            "name": "Сводчатый вход в каверну",
+            "side": "e",
+            "at": 1,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "fungal_heart",
+            "beyond": null,
+            "passage_ref": "p_fungal_heart",
+            "cells": [
+              [
+                6,
+                1
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_chasm_bridge_stalactites",
+            "name": "Острые сталактиты",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                0,
+                4,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_fungal_chasm",
+          "area_ref": "chasm_bridge",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "fungal_heart",
+      "name": "Светящийся грот",
+      "offset": [
+        17,
+        -1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 14,
+        "rows": 12,
+        "party": [
+          0,
+          6
+        ],
+        "walls": [
+          [
+            7,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            9,
+            7
+          ],
+          [
+            9,
+            8
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Сводчатый вход в каверну",
+            "side": "w",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "chasm_bridge",
+            "beyond": null,
+            "passage_ref": "p_fungal_heart",
+            "cells": [
+              [
+                0,
+                6
+              ]
+            ]
+          },
+          {
+            "name": "Узкая трещина в логово",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "spider_lair",
+            "beyond": null,
+            "passage_ref": "p_spider_lair",
+            "cells": [
+              [
+                6,
+                11
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_fungal_heart_mushrooms",
+            "name": "Лес гигантских грибов",
+            "kind": "nature",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                4
+              ],
+              [
+                9,
+                4,
+                9,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mushrooms"
+          },
+          {
+            "id": "sf_fungal_heart_crystal_cluster",
+            "name": "Друза светящихся кристаллов",
+            "kind": "object",
+            "cells": [
+              [
+                7,
+                8,
+                8,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crystal"
+          },
+          {
+            "id": "sf_fungal_heart_shimmering_pool",
+            "name": "Мерцающий ручей",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                7,
+                5,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:glow"
+          },
+          {
+            "id": "sf_fungal_heart_stalagmite_pilla",
+            "name": "Колонны сталагмитов",
+            "kind": "cover",
+            "cells": [
+              [
+                9,
+                7,
+                9,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_fungal_chasm",
+          "area_ref": "fungal_heart",
+          "rev": 1
+        },
+        "mask": [
+          "####.#.#..####",
+          "##........####",
+          "#...........##",
+          "#...........##",
+          "..............",
+          ".............#",
+          "..............",
+          ".............#",
+          "##...........#",
+          "##...........#",
+          "###........###",
+          "####.#.##.####"
+        ]
+      }
+    },
+    {
+      "id": "spider_lair",
+      "name": "Паучье логово",
+      "offset": [
+        20,
+        11
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "cave",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          3,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Узкая трещина в логово",
+            "side": "n",
+            "at": 3,
+            "width": 1,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "fungal_heart",
+            "beyond": null,
+            "passage_ref": "p_spider_lair",
+            "cells": [
+              [
+                3,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_spider_lair_beast_bedding",
+            "name": "Кокон из паутины",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:nest"
+          },
+          {
+            "id": "sf_spider_lair_bone_pile",
+            "name": "Оглоданные кости",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                5,
+                4,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bones"
+          },
+          {
+            "id": "sf_spider_lair_scree",
+            "name": "Каменные осколки",
+            "kind": "nature",
+            "cells": [
+              [
+                5,
+                3,
+                5,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_fungal_chasm",
+          "area_ref": "spider_lair",
+          "rev": 1
+        },
+        "mask": [
+          "##..###",
+          "#.....#",
+          ".......",
+          "#.....#",
+          "#.....#",
+          "##....#",
+          "##...##"
+        ]
+      }
+    }
+  ]
+}

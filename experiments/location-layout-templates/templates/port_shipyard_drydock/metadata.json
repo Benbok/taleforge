@@ -1,0 +1,42 @@
+{
+  "id": "port_shipyard_drydock",
+  "version": "1.2.0",
+  "archetype": "port",
+  "variant": "C",
+  "variant_name": "Корабельная верфь и сухой док",
+  "purpose": "Портовый судоремонтный док со стапелями, кузницей корабельной оснастки и плотницким двором",
+  "visual_concept": "Каменный док с деревянными подпорками, подъёмным краном, наковальней, горном и лесом брёвен.",
+  "environment": "mixed",
+  "materials": [
+    "stone",
+    "wood",
+    "water"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Заказ ремонта корабля, наём плотников и матросов.",
+    "exploration": "Поиск контрабанды в двойном дне ремонтируемого баркаса.",
+    "combat": "Подъёмный кран и стапели позволяют атаковать с верхнего яруса; верстаки дают укрытие."
+  },
+  "allowable_adaptations": [
+    "Военный арсенал флота",
+    "Логово саботажников"
+  ],
+  "discovered_constraints": [
+    "Бассейн открытый (outdoor), кузница закрытая (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

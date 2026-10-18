@@ -71,7 +71,11 @@ export const FEATURE_VISUALS: Record<SketchFeature["kind"], MapVisualPreset> = {
 
 export type FeatureForm = "table" | "bench" | "bed" | "counter" | "shelf" | "barrel" | "crate" | "chest"
   | "hearth" | "torch" | "altar" | "pillar" | "rock" | "rubble" | "tree" | "shrub" | "reeds"
-  | "crystal" | "bones" | "net" | "crane" | "mooring" | "glow" | "lichen" | "nest" | "hazard" | "token";
+  | "crystal" | "bones" | "net" | "crane" | "mooring" | "glow" | "lichen" | "nest"
+  | "chair" | "desk" | "wardrobe" | "weapon_rack" | "workbench" | "anvil" | "forge" | "cauldron"
+  | "chandelier" | "brazier" | "statue" | "fountain" | "well" | "sarcophagus" | "tombstone"
+  | "cart" | "cage" | "carpet" | "stump" | "log" | "mushrooms" | "sack"
+  | "hazard" | "token";
 export interface FeatureVisual extends MapVisualPreset { form: FeatureForm; }
 
 /** Explicit artwork keys; localised names and template IDs never select a drawing. */
@@ -85,6 +89,14 @@ export const FEATURE_VARIANTS: Record<string, FeatureVisual> = Object.fromEntrie
     reeds: ["nature", "Камыш"], crystal: ["nature", "Кристаллы"], bones: ["object", "Кости"],
     net: ["object", "Сети"], crane: ["object", "Кран"], mooring: ["object", "Кнехт"],
     glow: ["light", "Мягкое свечение"], lichen: ["light", "Светящийся мох"], nest: ["nature", "Лёжка"],
+    chair: ["furniture", "Стул"], desk: ["furniture", "Письменный стол"], wardrobe: ["furniture", "Шкаф"],
+    weapon_rack: ["furniture", "Оружейная стойка"], workbench: ["furniture", "Верстак"],
+    anvil: ["object", "Наковальня"], forge: ["light", "Кузнечный горн"], cauldron: ["object", "Котёл"],
+    chandelier: ["light", "Люстра"], brazier: ["light", "Жаровня"], statue: ["cover", "Статуя"],
+    fountain: ["object", "Фонтан"], well: ["object", "Колодец"], sarcophagus: ["cover", "Саркофаг"],
+    tombstone: ["cover", "Надгробие"], cart: ["cover", "Телега"], cage: ["object", "Клетка"],
+    carpet: ["furniture", "Ковёр"], stump: ["nature", "Пень"], log: ["nature", "Бревно"],
+    mushrooms: ["nature", "Грибы"], sack: ["object", "Мешки"],
   }) as [FeatureForm, [SketchFeature["kind"], string]][])
     .map(([form, [kind, label]]) => [`feature:${form}`, { ...FEATURE_VISUALS[kind], form, label }]),
 );

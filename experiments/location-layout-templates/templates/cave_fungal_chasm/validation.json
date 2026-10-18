@@ -1,0 +1,37 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "spore_entry": {
+      "mushrooms": "preserved",
+      "boulder": "preserved",
+      "scree": "preserved"
+    },
+    "chasm_bridge": {
+      "stalactites": "preserved"
+    },
+    "fungal_heart": {
+      "mushrooms": "preserved",
+      "crystal_cluster": "preserved",
+      "shimmering_pool": "preserved",
+      "stalagmite_pillars": "preserved"
+    },
+    "spider_lair": {
+      "beast_bedding": "preserved",
+      "bone_pile": "preserved",
+      "scree": "preserved"
+    }
+  }
+}

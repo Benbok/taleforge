@@ -197,7 +197,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:bench"
+            "visual_key": "feature:chair"
           },
           {
             "id": "sf_common_room_table_north",
@@ -501,7 +501,7 @@
             "cover": "none",
             "hidden": false,
             "solid": true,
-            "visual_key": "feature:table"
+            "visual_key": "feature:workbench"
           },
           {
             "id": "sf_kitchen_pantry_wall_torch_0",

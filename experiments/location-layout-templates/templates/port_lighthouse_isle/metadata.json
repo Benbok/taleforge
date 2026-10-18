@@ -1,0 +1,42 @@
+{
+  "id": "port_lighthouse_isle",
+  "version": "1.2.0",
+  "archetype": "port",
+  "variant": "D",
+  "variant_name": "Маячный остров и сторожевая вышка",
+  "purpose": "Одинокий скалистый остров с каменным причалом, основанием маяка и домом смотрителя",
+  "visual_concept": "Каменный пирс на ветреном утесе, круглая башня маяка с винтовой лестницей, дом смотрителя с очагом.",
+  "environment": "mixed",
+  "materials": [
+    "stone",
+    "water",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Расспросы старого смотрителя маяка о кораблекрушениях и морских чудовищах.",
+    "exploration": "Подъём на сигнальную платформу маяка, обнаружение сигнальных кодов контрабандистов.",
+    "combat": "Оборона узкой лестницы на скалу; сильный ветер и крутые обрывы в воду."
+  },
+  "allowable_adaptations": [
+    "Наблюдательный пост береговой артиллерии",
+    "Тайный алтарь глубин"
+  ],
+  "discovered_constraints": [
+    "Причал открытый (outdoor), комнаты закрытые (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

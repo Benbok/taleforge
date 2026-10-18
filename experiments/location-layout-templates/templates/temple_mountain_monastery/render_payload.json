@@ -1,0 +1,547 @@
+{
+  "template_id": "temple_mountain_monastery",
+  "root_id": "tpl_temple_mountain_monastery",
+  "entry": "monastery_courtyard",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "monastery_courtyard",
+      "name": "Монастырский двор",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            9,
+            4
+          ],
+          [
+            9,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Тропа к монастырским воротам",
+            "side": "s",
+            "at": 5,
+            "width": 2,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_temple_mountain_monastery",
+            "beyond": null,
+            "passage_ref": "in_monastery_courtyard_s",
+            "cells": [
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Кованые врата святилища",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "bell_sanctuary",
+            "beyond": null,
+            "passage_ref": "p_bell_sanctuary",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_monastery_courtyard_well",
+            "name": "Глубокий каменный колодец",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:well"
+          },
+          {
+            "id": "sf_monastery_courtyard_statue",
+            "name": "Статуя святого основателя",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                4,
+                9,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_monastery_courtyard_log_seat",
+            "name": "Каменные скамьи для молитвы",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                1
+              ],
+              [
+                8,
+                1,
+                9,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_monastery_courtyard_fountain",
+            "name": "Чаша для омовений",
+            "kind": "object",
+            "cells": [
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:fountain"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_temple_mountain_monastery",
+          "area_ref": "monastery_courtyard",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "bell_sanctuary",
+      "name": "Храм святого колокола",
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          6,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            8,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Кованые врата святилища",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "monastery_courtyard",
+            "beyond": null,
+            "passage_ref": "p_bell_sanctuary",
+            "cells": [
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Дверь в библиотеку",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "scriptorium",
+            "beyond": null,
+            "passage_ref": "p_scriptorium",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_bell_sanctuary_grand_altar",
+            "name": "Главный алтарь Света",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:altar"
+          },
+          {
+            "id": "sf_bell_sanctuary_chandelier",
+            "name": "Подвесной храмовый светильник",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chandelier"
+          },
+          {
+            "id": "sf_bell_sanctuary_brazier",
+            "name": "Бронзовые курильницы",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                3,
+                3
+              ],
+              [
+                8,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "id": "sf_bell_sanctuary_carpet",
+            "name": "Молитвенный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                2,
+                6,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:carpet"
+          },
+          {
+            "id": "sf_bell_sanctuary_prayer_benches",
+            "name": "Скамьи братии",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ],
+              [
+                7,
+                6,
+                8,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_mountain_monastery",
+          "area_ref": "bell_sanctuary",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "scriptorium",
+      "name": "Скрипторий",
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            5
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            8,
+            2
+          ],
+          [
+            8,
+            3
+          ],
+          [
+            8,
+            4
+          ],
+          [
+            8,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Дверь в библиотеку",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "bell_sanctuary",
+            "beyond": null,
+            "passage_ref": "p_scriptorium",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_scriptorium_desk",
+            "name": "Письменные столы переписчиков",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                3,
+                5,
+                4,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:desk"
+          },
+          {
+            "id": "sf_scriptorium_chair",
+            "name": "Стулья переписчиков",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                3,
+                5,
+                3
+              ],
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_scriptorium_bookcase",
+            "name": "Шкафы с древними манускриптами",
+            "kind": "object",
+            "cells": [
+              [
+                8,
+                2,
+                8,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:shelf"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_mountain_monastery",
+          "area_ref": "scriptorium",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,401 @@
+{
+  "seed": 7,
+  "entry": "rocky_jetty",
+  "areas": [
+    {
+      "area_ref": "rocky_jetty",
+      "role": "pier",
+      "name": "Скалистый причал шлюпок",
+      "public_name": "Причал маяка",
+      "environment": "outdoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 7,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Гранитный пирс, обдуваемый морскими ветрами, с кольцами для причаливания лодок.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "mooring_bollards",
+          "name": "Швартовые тумбы",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              5,
+              2,
+              5
+            ],
+            [
+              7,
+              5,
+              7,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "coiled_hawsers",
+          "name": "Рыболовные снасти и сети",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        },
+        {
+          "detail_ref": "quay_lantern",
+          "name": "Направляющий фонарь причала",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              1,
+              8,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 7,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 7,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [
+        {
+          "slot_ref": "pier_container",
+          "role": "container",
+          "cells": [
+            [
+              6,
+              6,
+              6,
+              6
+            ]
+          ],
+          "detail_ref": null,
+          "hidden": false,
+          "max_cols": 1,
+          "max_rows": 1
+        }
+      ],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "lighthouse_tower",
+      "role": "sanctuary",
+      "name": "Основание башни маяка",
+      "public_name": "Башня маяка",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 10,
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Круглая каменная башня с массивными стенами, винтовой лестницей и жаровней.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "spiral_stairs_center",
+          "name": "Винтовая лестница на вершину маяка",
+          "kind": "object",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "watch_brazier",
+          "name": "Сигнальная чаша жаровни",
+          "kind": "light",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:brazier"
+        },
+        {
+          "detail_ref": "armory_crates",
+          "name": "Ящики с маслом и фитилями",
+          "kind": "object",
+          "cells": [
+            [
+              8,
+              1,
+              8,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "keepers_dwelling",
+      "role": "quarters",
+      "name": "Жилище смотрителя",
+      "public_name": "Дом смотрителя",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 7,
+      "offset": [
+        10,
+        -9
+      ],
+      "level": 0,
+      "material": "wood",
+      "description": "Скромный каменный коттедж с тёплым камином, кроватью, столом и шкафом.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "hearth",
+          "name": "Очаг смотрителя",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "bunks_north",
+          "name": "Кровать с лоскутным одеялом",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        },
+        {
+          "detail_ref": "desk",
+          "name": "Стол с подзорной трубой и вахтенным журналом",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              5,
+              3,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:desk"
+        },
+        {
+          "detail_ref": "chair",
+          "name": "Табурет смотрителя",
+          "kind": "furniture",
+          "cells": [
+            [
+              4,
+              5,
+              4,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "wardrobe",
+          "name": "Шкаф для одежды и провианта",
+          "kind": "furniture",
+          "cells": [
+            [
+              8,
+              5,
+              8,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:wardrobe"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              4,
+              6,
+              4,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_lighthouse_tower",
+      "kind": "door",
+      "name": "Тяжёлая железная дверь башни",
+      "public_name": "Тяжёлая железная дверь башни",
+      "ends": [
+        {
+          "area_ref": "rocky_jetty",
+          "side": "n",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "lighthouse_tower",
+          "side": "s",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_keepers_dwelling",
+      "kind": "door",
+      "name": "Дверь в жилой отсек",
+      "public_name": "Дверь в жилой отсек",
+      "ends": [
+        {
+          "area_ref": "lighthouse_tower",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "keepers_dwelling",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_rocky_jetty_s",
+      "kind": "passage",
+      "name": "Каменная лестница от воды",
+      "public_name": "Каменная лестница от воды",
+      "ends": [
+        {
+          "area_ref": "rocky_jetty",
+          "side": "s",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_port_lighthouse_isle"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

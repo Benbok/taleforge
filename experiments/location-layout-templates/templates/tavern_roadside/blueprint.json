@@ -78,7 +78,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:bench"
+          "visual_key": "feature:chair"
         },
         {
           "detail_ref": "table_north",
@@ -313,7 +313,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:table"
+          "visual_key": "feature:workbench"
         },
         {
           "detail_ref": "wall_torch_0",

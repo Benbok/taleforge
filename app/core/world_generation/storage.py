@@ -119,8 +119,11 @@ async def reserve_root(
         )
         if fixed:
             reservation = {**fixed, "seed": reservation["seed"], "anchors": reservation["anchors"]}
-        elif (location.state or {}).get("content_reservation"):
-            # Корень комплекса: случайная добыча уже распределена по участкам, остаются только носители зацепок.
+        elif (location.state or {}).get("content_reservation") or (
+            await find(session, campaign.id, location.id, "location_layout") is not None
+        ):
+            # Корень комплекса: случайная добыча уже распределена (или генерируется структура карты),
+            # остаются только носители зацепок, а случайная добыча распределится по участкам при публикации layout.
             reservation = {**reservation, "budget": 0,
                            "limits": {"entities": 0, "item_units": 0, "containers": 0}}
         row = WGS(

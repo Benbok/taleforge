@@ -39,7 +39,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:altar"
+          "visual_key": "feature:statue"
         },
         {
           "detail_ref": "rubble_piles",
@@ -77,7 +77,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:altar"
+          "visual_key": "feature:well"
         },
         {
           "detail_ref": "weed_thicket",
@@ -233,7 +233,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:chest"
+          "visual_key": "feature:sarcophagus"
         },
         {
           "detail_ref": "sarcophagi_south",
@@ -249,7 +249,7 @@
           ],
           "solid": true,
           "hidden": false,
-          "visual_key": "feature:chest"
+          "visual_key": "feature:sarcophagus"
         },
         {
           "detail_ref": "burial_niche",
@@ -265,7 +265,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:chest"
+          "visual_key": "feature:sarcophagus"
         },
         {
           "detail_ref": "eternal_flame",

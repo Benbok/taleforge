@@ -223,8 +223,8 @@
           },
           {
             "id": "sf_main_decor_4_0",
-            "name": "Швартовная тумба",
-            "kind": "furniture",
+            "name": "Мешки",
+            "kind": "object",
             "cells": [
               [
                 13,
@@ -236,24 +236,24 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:mooring"
+            "visual_key": "feature:sack"
           },
           {
             "id": "sf_main_decor_5_0",
-            "name": "Сложенная сеть",
-            "kind": "furniture",
+            "name": "Телега",
+            "kind": "cover",
             "cells": [
               [
                 0,
-                3,
+                8,
                 1,
-                3
+                9
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:net"
+            "visual_key": "feature:cart"
           }
         ],
         "environment": "outdoor",
@@ -535,8 +535,8 @@
           },
           {
             "id": "sf_part_1_decor_4_0",
-            "name": "Швартовная тумба",
-            "kind": "furniture",
+            "name": "Мешки",
+            "kind": "object",
             "cells": [
               [
                 13,
@@ -548,24 +548,24 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:mooring"
+            "visual_key": "feature:sack"
           },
           {
             "id": "sf_part_1_decor_5_0",
-            "name": "Сложенная сеть",
-            "kind": "furniture",
+            "name": "Телега",
+            "kind": "cover",
             "cells": [
               [
                 4,
                 0,
                 5,
-                0
+                1
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:net"
+            "visual_key": "feature:cart"
           }
         ],
         "environment": "outdoor",

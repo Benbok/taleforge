@@ -1,0 +1,736 @@
+{
+  "template_id": "tavern_coastal_inn",
+  "root_id": "tpl_tavern_coastal_inn",
+  "entry": "seaside_terrace",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "seaside_terrace",
+      "name": "Приморская терраса",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 7,
+        "party": [
+          5,
+          6
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            8,
+            3
+          ],
+          [
+            9,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Сходни с пирса",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_tavern_coastal_inn",
+            "beyond": null,
+            "passage_ref": "in_seaside_terrace_s",
+            "cells": [
+              [
+                5,
+                6
+              ]
+            ]
+          },
+          {
+            "name": "Дверь с террасы",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "sailors_hall",
+            "beyond": null,
+            "passage_ref": "p_sailors_hall",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_seaside_terrace_table_north",
+            "name": "Столики на открытом воздухе",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                8,
+                3,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_seaside_terrace_chair",
+            "name": "Плетёные кресла",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                4
+              ],
+              [
+                8,
+                4,
+                9,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_seaside_terrace_coiled_hawser",
+            "name": "Швартовые канаты и снасти",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_seaside_terrace_quay_lantern",
+            "name": "Сигнальный фонарь на столбе",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                1,
+                11,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 7,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 7,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_tavern_coastal_inn",
+          "area_ref": "seaside_terrace",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "sailors_hall",
+      "name": "Зал таверны",
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            6,
+            0
+          ],
+          [
+            7,
+            0
+          ],
+          [
+            7,
+            4
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Дверь в коридор комнат",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "attic_quarters",
+            "beyond": null,
+            "passage_ref": "p_attic_quarters",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Дверь на кухню",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "fish_smokehouse",
+            "beyond": null,
+            "passage_ref": "p_fish_smokehouse",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Дверь с террасы",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "seaside_terrace",
+            "beyond": null,
+            "passage_ref": "p_sailors_hall",
+            "cells": [
+              [
+                6,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_sailors_hall_hearth",
+            "name": "Большой камин из ракушечника",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                0,
+                7,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_sailors_hall_bar_counter",
+            "name": "Трактирная стойка",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                3,
+                1,
+                5
+              ],
+              [
+                2,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:counter"
+          },
+          {
+            "id": "sf_sailors_hall_bar_stools",
+            "name": "Табуреты у стойки",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_sailors_hall_chandelier",
+            "name": "Кованая люстра со свечами",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chandelier"
+          },
+          {
+            "id": "sf_sailors_hall_round_tables",
+            "name": "Круглый стол для игры в кости",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                4,
+                8,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_sailors_hall_ale_casks",
+            "name": "Бочонки рома",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                8,
+                2,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_sailors_hall_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                9,
+                4,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_sailors_hall_wall_torch_1",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                7,
+                11,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_coastal_inn",
+          "area_ref": "sailors_hall",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "fish_smokehouse",
+      "name": "Коптильня и кухня",
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            5,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Дверь на кухню",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "sailors_hall",
+            "beyond": null,
+            "passage_ref": "p_fish_smokehouse",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_fish_smokehouse_smokehouse_st",
+            "name": "Коптильная печь",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_fish_smokehouse_workbench",
+            "name": "Разделочный верстак",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:workbench"
+          },
+          {
+            "id": "sf_fish_smokehouse_salted_fish_b",
+            "name": "Бочки с соленой рыбой",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_fish_smokehouse_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                5,
+                0,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_coastal_inn",
+          "area_ref": "fish_smokehouse",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "attic_quarters",
+      "name": "Комнаты постояльцев",
+      "offset": [
+        -10,
+        -9
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 7,
+        "party": [
+          9,
+          3
+        ],
+        "walls": [
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            8,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Дверь в коридор комнат",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "sailors_hall",
+            "beyond": null,
+            "passage_ref": "p_attic_quarters",
+            "cells": [
+              [
+                9,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_attic_quarters_bunks_north",
+            "name": "Двухъярусные кровати",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                1,
+                3,
+                1
+              ],
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bed"
+          },
+          {
+            "id": "sf_attic_quarters_wardrobe",
+            "name": "Платяной шкаф",
+            "kind": "furniture",
+            "cells": [
+              [
+                8,
+                5,
+                8,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:wardrobe"
+          },
+          {
+            "id": "sf_attic_quarters_traveler_chest",
+            "name": "Сундуки постояльцев",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_tavern_coastal_inn",
+          "area_ref": "attic_quarters",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

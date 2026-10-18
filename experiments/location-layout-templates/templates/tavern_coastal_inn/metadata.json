@@ -1,0 +1,42 @@
+{
+  "id": "tavern_coastal_inn",
+  "version": "1.2.0",
+  "archetype": "tavern",
+  "variant": "D",
+  "variant_name": "Прибрежная гостиница на сваях",
+  "purpose": "Двухуровневая приморская таверна с террасой над водой, общим залом и коптильней",
+  "visual_concept": "Деревянное строение на сваях у кромки прилива: открытая дощатая терраса с видом на море и уютный зал с камином.",
+  "environment": "mixed",
+  "materials": [
+    "wood",
+    "water",
+    "stone"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Слухи моряков, сделки с контрабандистами прямо на террасе у шлюпок.",
+    "exploration": "Тайный люк в полу над водой для выгрузки запрещённых товаров.",
+    "combat": "Сбрасывание врагов за перила в воду; столы и бочки служат прикрытием от арбалетных болтов."
+  },
+  "allowable_adaptations": [
+    "Рыбацкий приют во время шторма",
+    "Штаб береговой охраны"
+  ],
+  "discovered_constraints": [
+    "Терраса открытая (outdoor), внутренние комнаты деревянные (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "entry": "camp_clearing",
+  "parts": [
+    {
+      "part_ref": "camp_clearing",
+      "role": "clearing",
+      "name": "Поляна лагеря",
+      "public_name": "Лагерная поляна",
+      "description": "Вытоптанная поляна с кострищем, грубо отёсанными брёвнами-скамьями и повозкой.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 12,
+      "rows": 10,
+      "level": 0,
+      "material": "earth",
+      "lighting": "normal",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "campfire",
+          "name": "Большое кострище с вертелом",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              4,
+              6,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "log",
+          "name": "Брёвна для сидения вокруг огня",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              2,
+              6,
+              2
+            ],
+            [
+              5,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:log"
+        },
+        {
+          "detail_ref": "cart",
+          "name": "Нагруженная повозка",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              4,
+              2,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:cart"
+        },
+        {
+          "detail_ref": "stump",
+          "name": "Колода для колки дров с топором",
+          "kind": "furniture",
+          "cells": [
+            [
+              10,
+              3,
+              10,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:stump"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "loot_shelter",
+      "role": "warehouse",
+      "name": "Навес для добычи",
+      "public_name": "Склад под навесом",
+      "description": "Дощатый навес со штабелями ящиков, бочками и стойками оружия.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 10,
+      "rows": 7,
+      "level": 0,
+      "material": "wood",
+      "lighting": "normal",
+      "connects_to": "camp_clearing",
+      "side": "n",
+      "passage_kind": "arch",
+      "passage_name": "Проход под навес",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "weapon_rack",
+          "name": "Стойки с мечами и луками",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:weapon_rack"
+        },
+        {
+          "detail_ref": "crate_stacks",
+          "name": "Ящики с купеческим товаром",
+          "kind": "object",
+          "cells": [
+            [
+              7,
+              1,
+              8,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "sack",
+          "name": "Мешки с мукой и вяленым мясом",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              5,
+              2,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:sack"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "chieftain_dugout",
+      "role": "quarters",
+      "name": "Землянка главаря",
+      "public_name": "Потайная землянка",
+      "description": "Низкое укреплённое бревенчатое убежище под холмом со столом и сундуком атамана.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 7,
+      "rows": 7,
+      "level": 0,
+      "material": "wood",
+      "lighting": "normal",
+      "connects_to": "camp_clearing",
+      "side": "e",
+      "passage_kind": "door",
+      "passage_name": "Замаскированный лаз в землянку",
+      "passage_state": "closed",
+      "secret": true,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "desk",
+          "name": "Стол главаря с добычей",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:desk"
+        },
+        {
+          "detail_ref": "chair",
+          "name": "Стул атамана",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              1,
+              4,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "iron_strongbox",
+          "name": "Сундук с атаманской долей",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              5,
+              1,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "bunks_north",
+          "name": "Лежанка главаря",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              5,
+              6,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "camp_clearing",
+      "side": "s",
+      "kind": "passage",
+      "public_name": "Потайная тропа в чаще",
+      "outside_id": null,
+      "band": null,
+      "width": 1
+    }
+  ],
+  "bands": []
+}

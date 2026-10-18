@@ -70,7 +70,7 @@
         },
         {
           "detail_ref": "decor_3_0",
-          "name": "Дерево",
+          "name": "Пень",
           "kind": "nature",
           "cells": [
             [
@@ -82,11 +82,11 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:tree"
+          "visual_key": "feature:stump"
         },
         {
           "detail_ref": "decor_4_0",
-          "name": "Кустарник",
+          "name": "Поваленное бревно",
           "kind": "nature",
           "cells": [
             [
@@ -98,23 +98,23 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:shrub"
+          "visual_key": "feature:log"
         },
         {
           "detail_ref": "decor_5_0",
-          "name": "Каменные выступы",
+          "name": "Грибы",
           "kind": "nature",
           "cells": [
             [
-              3,
-              0,
-              4,
-              0
+              11,
+              7,
+              11,
+              7
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:rock"
+          "visual_key": "feature:mushrooms"
         }
       ],
       "terrain": [],
@@ -244,6 +244,22 @@
         },
         {
           "detail_ref": "decor_3_0",
+          "name": "Кресло",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              6,
+              6,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "decor_4_0",
           "name": "Скамья",
           "kind": "furniture",
           "cells": [
@@ -259,15 +275,15 @@
           "visual_key": "feature:bench"
         },
         {
-          "detail_ref": "decor_4_0",
-          "name": "Светильник",
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
           "kind": "light",
           "cells": [
             [
-              6,
-              6,
-              6,
-              6
+              5,
+              0,
+              5,
+              0
             ]
           ],
           "solid": false,
@@ -453,20 +469,20 @@
           "visual_key": "feature:torch"
         },
         {
-          "detail_ref": "decor_4_0",
-          "name": "Светильник",
-          "kind": "light",
+          "detail_ref": "decor_3_0",
+          "name": "Кресло",
+          "kind": "furniture",
           "cells": [
             [
-              4,
               0,
-              4,
-              0
+              2,
+              0,
+              2
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:torch"
+          "visual_key": "feature:chair"
         }
       ],
       "terrain": [],
@@ -575,19 +591,19 @@
         },
         {
           "detail_ref": "decor_3_0",
-          "name": "Скамья",
+          "name": "Кресло",
           "kind": "furniture",
           "cells": [
             [
               0,
               0,
-              1,
+              0,
               0
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:bench"
+          "visual_key": "feature:chair"
         },
         {
           "detail_ref": "wall_torch_0",
@@ -680,11 +696,11 @@
         },
         {
           "detail_ref": "decor_3_0",
-          "name": "Скамья",
+          "name": "Кресло",
           "kind": "furniture",
           "cells": [
             [
-              3,
+              4,
               0,
               4,
               0
@@ -692,7 +708,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:bench"
+          "visual_key": "feature:chair"
         }
       ],
       "terrain": [],

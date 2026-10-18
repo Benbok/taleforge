@@ -3,22 +3,22 @@
     "id": "model_temple_holders",
     "title": "Модель: Храм с привязками",
     "areas": 6,
-    "details": 32,
-    "explicit_art": 32
+    "details": 33,
+    "explicit_art": 33
   },
   {
     "id": "model_temple_no_holders",
     "title": "Модель: Храм без привязок",
     "areas": 6,
-    "details": 33,
-    "explicit_art": 33
+    "details": 36,
+    "explicit_art": 36
   },
   {
     "id": "model_tavern",
     "title": "Модель: Таверна",
     "areas": 3,
-    "details": 13,
-    "explicit_art": 13
+    "details": 14,
+    "explicit_art": 14
   },
   {
     "id": "model_cave",
@@ -31,8 +31,8 @@
     "id": "model_port",
     "title": "Модель: Порт",
     "areas": 3,
-    "details": 21,
-    "explicit_art": 21
+    "details": 22,
+    "explicit_art": 22
   },
   {
     "id": "fallback_tavern",

@@ -1,0 +1,713 @@
+{
+  "template_id": "forest_druid_grove",
+  "root_id": "tpl_forest_druid_grove",
+  "entry": "sacred_clearing",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "sacred_clearing",
+      "name": "Священная поляна",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 14,
+        "rows": 12,
+        "party": [
+          6,
+          11
+        ],
+        "walls": [
+          [
+            2,
+            9
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            9,
+            3
+          ],
+          [
+            9,
+            4
+          ],
+          [
+            10,
+            9
+          ],
+          [
+            11,
+            9
+          ],
+          [
+            12,
+            9
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход на священную поляну",
+            "side": "s",
+            "at": 6,
+            "width": 2,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_forest_druid_grove",
+            "beyond": null,
+            "passage_ref": "in_sacred_clearing_s",
+            "cells": [
+              [
+                6,
+                11
+              ],
+              [
+                7,
+                11
+              ]
+            ]
+          },
+          {
+            "name": "Звериная тропа в чащу",
+            "side": "e",
+            "at": 1,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "heartwood_sanctum",
+            "beyond": null,
+            "passage_ref": "p_heartwood_sanctum",
+            "cells": [
+              [
+                13,
+                1
+              ],
+              [
+                13,
+                2
+              ],
+              [
+                13,
+                3
+              ],
+              [
+                13,
+                4
+              ],
+              [
+                13,
+                5
+              ],
+              [
+                13,
+                6
+              ],
+              [
+                13,
+                7
+              ],
+              [
+                13,
+                8
+              ],
+              [
+                13,
+                9
+              ],
+              [
+                13,
+                10
+              ]
+            ]
+          },
+          {
+            "name": "Тропа к роднику",
+            "side": "n",
+            "at": 2,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "spring_basin",
+            "beyond": null,
+            "passage_ref": "p_spring_basin",
+            "cells": [
+              [
+                2,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                4,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                6,
+                0
+              ],
+              [
+                7,
+                0
+              ],
+              [
+                8,
+                0
+              ],
+              [
+                9,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                11,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_sacred_clearing_wayside_shrin",
+            "name": "Алтарь Первозданной Природы",
+            "kind": "object",
+            "cells": [
+              [
+                6,
+                5,
+                7,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:altar"
+          },
+          {
+            "id": "sf_sacred_clearing_standing_pill",
+            "name": "Кольцо замшелых менгиров",
+            "kind": "object",
+            "cells": [
+              [
+                4,
+                3,
+                4,
+                4
+              ],
+              [
+                9,
+                3,
+                9,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:pillar"
+          },
+          {
+            "id": "sf_sacred_clearing_stump",
+            "name": "Широкий древний пень",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                9,
+                2,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:stump"
+          },
+          {
+            "id": "sf_sacred_clearing_log",
+            "name": "Поваленный поросший мхом ствол",
+            "kind": "cover",
+            "cells": [
+              [
+                10,
+                9,
+                12,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:log"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 2,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "n",
+            "start": 2,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "n",
+            "start": 12,
+            "length": 2,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 1,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 1,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "e",
+            "start": 11,
+            "length": 1,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 14,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_druid_grove",
+          "area_ref": "sacred_clearing",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "spring_basin",
+      "name": "Родник духов",
+      "offset": [
+        2,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          9
+        ],
+        "walls": [
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Тропа к роднику",
+            "side": "s",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "sacred_clearing",
+            "beyond": null,
+            "passage_ref": "p_spring_basin",
+            "cells": [
+              [
+                0,
+                9
+              ],
+              [
+                1,
+                9
+              ],
+              [
+                2,
+                9
+              ],
+              [
+                3,
+                9
+              ],
+              [
+                4,
+                9
+              ],
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ],
+              [
+                7,
+                9
+              ],
+              [
+                8,
+                9
+              ],
+              [
+                9,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_spring_basin_well",
+            "name": "Освящённый каменный родник",
+            "kind": "object",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:well"
+          },
+          {
+            "id": "sf_spring_basin_mushrooms",
+            "name": "Россыпь синих лесных грибов",
+            "kind": "nature",
+            "cells": [
+              [
+                2,
+                3,
+                3,
+                3
+              ],
+              [
+                6,
+                6,
+                7,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mushrooms"
+          },
+          {
+            "id": "sf_spring_basin_brambles",
+            "name": "Заросли дикого терновника",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                7,
+                2,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:shrub"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_druid_grove",
+          "area_ref": "spring_basin",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "heartwood_sanctum",
+      "name": "Роща Великого Дуба",
+      "offset": [
+        14,
+        1
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 10,
+        "rows": 10,
+        "party": [
+          0,
+          0
+        ],
+        "walls": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Звериная тропа в чащу",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "sacred_clearing",
+            "beyond": null,
+            "passage_ref": "p_heartwood_sanctum",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_heartwood_sanctum_ancient_oak",
+            "name": "Исполинский дуб-хранитель",
+            "kind": "nature",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:tree"
+          },
+          {
+            "id": "sf_heartwood_sanctum_statue",
+            "name": "Деревянный идол Лесного Отца",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                1,
+                3,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_heartwood_sanctum_dry_nest",
+            "name": "Гнездо гигантского орла",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:nest"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "grass",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "continuation"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_druid_grove",
+          "area_ref": "heartwood_sanctum",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

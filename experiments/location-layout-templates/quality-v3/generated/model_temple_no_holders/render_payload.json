@@ -131,7 +131,7 @@
           },
           {
             "id": "sf_road_decor_3_0",
-            "name": "Дерево",
+            "name": "Пень",
             "kind": "nature",
             "cells": [
               [
@@ -144,11 +144,11 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:tree"
+            "visual_key": "feature:stump"
           },
           {
             "id": "sf_road_decor_4_0",
-            "name": "Кустарник",
+            "name": "Поваленное бревно",
             "kind": "nature",
             "cells": [
               [
@@ -161,28 +161,11 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:shrub"
+            "visual_key": "feature:log"
           },
           {
             "id": "sf_road_decor_5_0",
-            "name": "Каменные выступы",
-            "kind": "nature",
-            "cells": [
-              [
-                8,
-                0,
-                9,
-                0
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:rock"
-          },
-          {
-            "id": "sf_road_decor_6_0",
-            "name": "Дерево",
+            "name": "Грибы",
             "kind": "nature",
             "cells": [
               [
@@ -190,6 +173,23 @@
                 8,
                 13,
                 8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mushrooms"
+          },
+          {
+            "id": "sf_road_decor_6_0",
+            "name": "Дерево",
+            "kind": "nature",
+            "cells": [
+              [
+                8,
+                0,
+                8,
+                0
               ]
             ],
             "cover": "none",
@@ -393,20 +393,20 @@
           },
           {
             "id": "sf_narthex_decor_3_0",
-            "name": "Скамья",
+            "name": "Кресло",
             "kind": "furniture",
             "cells": [
               [
                 0,
                 6,
-                1,
+                0,
                 6
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:bench"
+            "visual_key": "feature:chair"
           },
           {
             "id": "sf_narthex_wall_torch_0",
@@ -841,14 +841,31 @@
             "visual_key": "feature:shelf"
           },
           {
-            "id": "sf_chapel_decor_4_0",
-            "name": "Светильник",
-            "kind": "light",
+            "id": "sf_chapel_decor_3_0",
+            "name": "Кресло",
+            "kind": "furniture",
             "cells": [
               [
                 0,
                 0,
                 0,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_chapel_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                0,
+                2,
                 0
               ]
             ],
@@ -1032,6 +1049,23 @@
           },
           {
             "id": "sf_crypt_decor_3_0",
+            "name": "Кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                2,
+                7,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_crypt_decor_4_0",
             "name": "Скамья",
             "kind": "furniture",
             "cells": [
@@ -1048,8 +1082,8 @@
             "visual_key": "feature:bench"
           },
           {
-            "id": "sf_crypt_decor_4_0",
-            "name": "Светильник",
+            "id": "sf_crypt_wall_torch_0",
+            "name": "Настенный факел",
             "kind": "light",
             "cells": [
               [
@@ -1195,11 +1229,11 @@
           },
           {
             "id": "sf_vault_decor_3_0",
-            "name": "Скамья",
+            "name": "Кресло",
             "kind": "furniture",
             "cells": [
               [
-                4,
+                5,
                 0,
                 5,
                 0
@@ -1208,18 +1242,35 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:bench"
+            "visual_key": "feature:chair"
           },
           {
             "id": "sf_vault_decor_4_0",
-            "name": "Светильник",
-            "kind": "light",
+            "name": "Скамья",
+            "kind": "furniture",
             "cells": [
               [
-                5,
+                4,
                 5,
                 5,
                 5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_vault_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                0,
+                4,
+                0
               ]
             ],
             "cover": "none",

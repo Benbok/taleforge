@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "id": "temple_mountain_monastery",
+  "version": "1.2.0",
+  "archetype": "temple",
+  "template_ids": [
+    "location.temple"
+  ],
+  "tags": [],
+  "environment": "mixed",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "monastery_courtyard",
+    "part_1": "bell_sanctuary",
+    "part_2": "scriptorium"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "monastery_courtyard",
+    "parts": [
+      {
+        "part_ref": "monastery_courtyard",
+        "role": "courtyard",
+        "name": "Двор созерцания",
+        "public_name": "Монастырский двор",
+        "description": "Открытый мощёный двор на скальном уступе с каменным колодцем и статуей основателя.",
+        "environment": "outdoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "well",
+            "name": "Глубокий каменный колодец",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:well"
+          },
+          {
+            "detail_ref": "statue",
+            "name": "Статуя святого основателя",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                4,
+                9,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:statue"
+          },
+          {
+            "detail_ref": "log_seat",
+            "name": "Каменные скамьи для молитвы",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                1
+              ],
+              [
+                8,
+                1,
+                9,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "detail_ref": "fountain",
+            "name": "Чаша для омовений",
+            "kind": "object",
+            "cells": [
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:fountain"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "bell_sanctuary",
+        "role": "sanctuary",
+        "name": "Святилище колокола",
+        "public_name": "Храм святого колокола",
+        "description": "Каменная ротонда с великим колоколом под сводом, алтарём и резными скамьями.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "monastery_courtyard",
+        "side": "n",
+        "passage_kind": "door",
+        "passage_name": "Кованые врата святилища",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "grand_altar",
+            "name": "Главный алтарь Света",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:altar"
+          },
+          {
+            "detail_ref": "chandelier",
+            "name": "Подвесной храмовый светильник",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chandelier"
+          },
+          {
+            "detail_ref": "brazier",
+            "name": "Бронзовые курильницы",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                3,
+                3
+              ],
+              [
+                8,
+                3,
+                8,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "detail_ref": "carpet",
+            "name": "Молитвенный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                4,
+                6,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:carpet"
+          },
+          {
+            "detail_ref": "prayer_benches",
+            "name": "Скамьи братии",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ],
+              [
+                7,
+                6,
+                8,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:bench"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "scriptorium",
+        "role": "quarters",
+        "name": "Скрипторий и библиотека",
+        "public_name": "Скрипторий",
+        "description": "Тихая монастырская библиотека с пюпитрами, книжными шкафами и рабочими столами.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 10,
+        "rows": 7,
+        "level": 0,
+        "material": "wood",
+        "lighting": "normal",
+        "connects_to": "bell_sanctuary",
+        "side": "e",
+        "passage_kind": "door",
+        "passage_name": "Дверь в библиотеку",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "desk",
+            "name": "Письменные столы переписчиков",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                3,
+                5,
+                4,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:desk"
+          },
+          {
+            "detail_ref": "chair",
+            "name": "Стулья переписчиков",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                3,
+                5,
+                3
+              ],
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "detail_ref": "bookcase",
+            "name": "Шкафы с древними манускриптами",
+            "kind": "object",
+            "cells": [
+              [
+                8,
+                2,
+                8,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:shelf"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "monastery_courtyard",
+        "side": "s",
+        "kind": "gate",
+        "public_name": "Тропа к монастырским воротам",
+        "outside_id": null,
+        "band": null,
+        "width": 2
+      }
+    ],
+    "bands": []
+  }
+}

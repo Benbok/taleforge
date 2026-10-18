@@ -23,7 +23,7 @@
       "grand_altar": "preserved",
       "columns_west": "preserved",
       "columns_east": "preserved",
-      "incense_braziers": "shifted: [[4, 1, 4, 1], [7, 1, 7, 1]] -> [[4, 0, 4, 0]]",
+      "incense_braziers": "preserved",
       "lectern": "preserved"
     },
     "sacristy": {

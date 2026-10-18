@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "entry": "sacred_clearing",
+  "parts": [
+    {
+      "part_ref": "sacred_clearing",
+      "role": "clearing",
+      "name": "Поляна менгиров",
+      "public_name": "Священная поляна",
+      "description": "Просторная поляна в кольце вековых дубов с алтарным камнем и замшелыми менгирами.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 14,
+      "rows": 12,
+      "level": 0,
+      "material": "grass",
+      "lighting": "normal",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "wayside_shrine",
+          "name": "Алтарь Первозданной Природы",
+          "kind": "object",
+          "cells": [
+            [
+              6,
+              5,
+              7,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:altar"
+        },
+        {
+          "detail_ref": "standing_pillars",
+          "name": "Кольцо замшелых менгиров",
+          "kind": "object",
+          "cells": [
+            [
+              4,
+              3,
+              4,
+              4
+            ],
+            [
+              9,
+              3,
+              9,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:pillar"
+        },
+        {
+          "detail_ref": "stump",
+          "name": "Широкий древний пень",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              9,
+              2,
+              9
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:stump"
+        },
+        {
+          "detail_ref": "log",
+          "name": "Поваленный поросший мхом ствол",
+          "kind": "cover",
+          "cells": [
+            [
+              10,
+              9,
+              12,
+              9
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:log"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "spring_basin",
+      "role": "water_edge",
+      "name": "Чаша священного источника",
+      "public_name": "Родник духов",
+      "description": "Каменный бассейн с бьющей из-под корней чистой родниковой водой.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 10,
+      "rows": 10,
+      "level": 0,
+      "material": "grass",
+      "lighting": "normal",
+      "connects_to": "sacred_clearing",
+      "side": "n",
+      "passage_kind": "passage",
+      "passage_name": "Тропа к роднику",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "well",
+          "name": "Освящённый каменный родник",
+          "kind": "object",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:well"
+        },
+        {
+          "detail_ref": "mushrooms",
+          "name": "Россыпь синих лесных грибов",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              3,
+              3,
+              3
+            ],
+            [
+              6,
+              6,
+              7,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mushrooms"
+        },
+        {
+          "detail_ref": "brambles",
+          "name": "Заросли дикого терновника",
+          "kind": "cover",
+          "cells": [
+            [
+              1,
+              7,
+              2,
+              8
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shrub"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "heartwood_sanctum",
+      "role": "grove",
+      "name": "Куща Древа Жизни",
+      "public_name": "Роща Великого Дуба",
+      "description": "Густая роща вокруг тысячелетнего дуба с алтарными подношениями.",
+      "environment": "outdoor",
+      "shape": "open",
+      "size": "medium",
+      "cols": 10,
+      "rows": 10,
+      "level": 0,
+      "material": "grass",
+      "lighting": "normal",
+      "connects_to": "sacred_clearing",
+      "side": "e",
+      "passage_kind": "passage",
+      "passage_name": "Звериная тропа в чащу",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "ancient_oak",
+          "name": "Исполинский дуб-хранитель",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:tree"
+        },
+        {
+          "detail_ref": "statue",
+          "name": "Деревянный идол Лесного Отца",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              1,
+              3,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:statue"
+        },
+        {
+          "detail_ref": "dry_nest",
+          "name": "Гнездо гигантского орла",
+          "kind": "furniture",
+          "cells": [
+            [
+              7,
+              3,
+              8,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:nest"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "sacred_clearing",
+      "side": "s",
+      "kind": "gap",
+      "public_name": "Вход на священную поляну",
+      "outside_id": null,
+      "band": null,
+      "width": 2
+    }
+  ],
+  "bands": []
+}

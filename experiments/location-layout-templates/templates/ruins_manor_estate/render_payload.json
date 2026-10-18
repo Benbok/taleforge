@@ -125,7 +125,7 @@
             "cover": "none",
             "hidden": false,
             "solid": true,
-            "visual_key": "feature:altar"
+            "visual_key": "feature:fountain"
           },
           {
             "id": "sf_overgrown_park_overgrown_hedg",
@@ -182,7 +182,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:altar"
+            "visual_key": "feature:fountain"
           }
         ],
         "environment": "outdoor",
@@ -324,7 +324,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:rubble"
+            "visual_key": "feature:chandelier"
           },
           {
             "id": "sf_collapsed_ballroom_marble_pil",
@@ -482,7 +482,7 @@
             "cover": "none",
             "hidden": false,
             "solid": true,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           },
           {
             "id": "sf_intact_study_parchment_shelve",

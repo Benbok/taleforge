@@ -699,7 +699,7 @@
             "cover": "none",
             "hidden": false,
             "solid": true,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           },
           {
             "id": "sf_harbor_warehouse_cargo_chest",

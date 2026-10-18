@@ -1,0 +1,41 @@
+{
+  "id": "ruins_forgotten_crypt",
+  "version": "1.2.0",
+  "archetype": "ruins",
+  "variant": "C",
+  "variant_name": "Забытая усыпальница",
+  "purpose": "Обрушившийся древний мавзолей с оскверненными саркофагами, надгробиями, статуями и тайным реликварием",
+  "visual_concept": "Расколотые плиты, треснувшие саркофаги, повалившиеся статуи королей и завалы щебня под лунным светом.",
+  "environment": "indoor",
+  "materials": [
+    "stone",
+    "earth"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Спиритический контакт с призраком древнего лорда.",
+    "exploration": "Поиск гербовых печатей на саркофагах, разгадка барельефа тайника.",
+    "combat": "Саркофаги и поваленные колонны создают лабиринт тактических преград."
+  },
+  "allowable_adaptations": [
+    "Склеп проклятой династии",
+    "Логово вампира"
+  ],
+  "discovered_constraints": [
+    "Щебень и надгробия не блокируют проход между арками."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

@@ -1,0 +1,428 @@
+{
+  "schema_version": 1,
+  "id": "tavern_fortified_brewery",
+  "version": "1.2.0",
+  "archetype": "tavern",
+  "template_ids": [
+    "location.tavern"
+  ],
+  "tags": [],
+  "environment": "indoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "tasting_room",
+    "part_1": "brewhouse",
+    "part_2": "malt_store",
+    "part_3": "brewers_office"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "tasting_room",
+    "parts": [
+      {
+        "part_ref": "tasting_room",
+        "role": "tavern_hall",
+        "name": "Дегустационный зал",
+        "public_name": "Дегустационный зал",
+        "description": "Сводчатый зал с массивными дубовыми столами, жаровней и тяжёлой стойкой разлива.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "bar_counter",
+            "name": "Стойка разлива",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                2,
+                1,
+                4
+              ],
+              [
+                2,
+                4,
+                3,
+                4
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:counter"
+          },
+          {
+            "detail_ref": "bar_stools",
+            "name": "Табуреты у стойки",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                5,
+                3,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "detail_ref": "table_north",
+            "name": "Широкий дубовый стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:table"
+          },
+          {
+            "detail_ref": "chair",
+            "name": "Кресла для гостей",
+            "kind": "furniture",
+            "cells": [
+              [
+                7,
+                2,
+                8,
+                2
+              ],
+              [
+                7,
+                4,
+                8,
+                4
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "detail_ref": "brazier",
+            "name": "Угольная жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                10,
+                6,
+                10,
+                6
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "detail_ref": "carpet",
+            "name": "Суконный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                7,
+                7,
+                8
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:carpet"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "brewhouse",
+        "role": "kitchen",
+        "name": "Варочный цех",
+        "public_name": "Варочный цех",
+        "description": "Жаркий цех с медным варочным котлом, печью и верстаком бондаря.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 10,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "tasting_room",
+        "side": "e",
+        "passage_kind": "arch",
+        "passage_name": "Арочный проход в цех",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "cauldron",
+            "name": "Медный варочный котёл",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:cauldron"
+          },
+          {
+            "detail_ref": "forge",
+            "name": "Печной горн",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:forge"
+          },
+          {
+            "detail_ref": "workbench",
+            "name": "Верстак бондаря",
+            "kind": "furniture",
+            "cells": [
+              [
+                8,
+                7,
+                8,
+                8
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:workbench"
+          },
+          {
+            "detail_ref": "ale_casks",
+            "name": "Бочки с суслом",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                6,
+                2,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:barrel"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "malt_store",
+        "role": "cellar",
+        "name": "Склад хмеля и зерна",
+        "public_name": "Склад сырья",
+        "description": "Сухое прохладное помещение с мешками зерна и ящиками сушёного хмеля.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "wood",
+        "lighting": "normal",
+        "connects_to": "brewhouse",
+        "side": "n",
+        "passage_kind": "door",
+        "passage_name": "Дверь в зернохранилище",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "sack",
+            "name": "Мешки с отборным солодом",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:sack"
+          },
+          {
+            "detail_ref": "pantry_shelves",
+            "name": "Стеллажи для трав и хмеля",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "detail_ref": "traveler_chests",
+            "name": "Сундук со специями",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "brewers_office",
+        "role": "quarters",
+        "name": "Конторка главного пивовара",
+        "public_name": "Конторка пивовара",
+        "description": "Уединённый кабинет с письменным столом, шкафом с записями и сейфом.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "wood",
+        "lighting": "normal",
+        "connects_to": "tasting_room",
+        "side": "n",
+        "passage_kind": "door",
+        "passage_name": "Дубовая дверь кабинета",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "desk",
+            "name": "Письменный стол пивовара",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:desk"
+          },
+          {
+            "detail_ref": "chair",
+            "name": "Резное кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "detail_ref": "wardrobe",
+            "name": "Шкаф для образцов и документов",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                6
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:wardrobe"
+          },
+          {
+            "detail_ref": "iron_strongbox",
+            "name": "Кованый сейф гильдии",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "tasting_room",
+        "side": "s",
+        "kind": "gate",
+        "public_name": "Входные ворота пивоварни",
+        "outside_id": null,
+        "band": null,
+        "width": 2
+      }
+    ],
+    "bands": []
+  }
+}

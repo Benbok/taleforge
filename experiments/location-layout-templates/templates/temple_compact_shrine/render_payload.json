@@ -89,7 +89,7 @@
             "cover": "none",
             "hidden": false,
             "solid": true,
-            "visual_key": "feature:altar"
+            "visual_key": "feature:fountain"
           },
           {
             "id": "sf_narthex_prayer_benches",
@@ -322,15 +322,21 @@
             "cells": [
               [
                 4,
-                0,
+                1,
                 4,
-                0
+                1
+              ],
+              [
+                7,
+                1,
+                7,
+                1
               ]
             ],
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:torch"
+            "visual_key": "feature:brazier"
           },
           {
             "id": "sf_sanctuary_lectern",
@@ -348,74 +354,6 @@
             "hidden": false,
             "solid": false,
             "visual_key": "feature:table"
-          },
-          {
-            "id": "sf_sanctuary_wall_torch_0",
-            "name": "Настенный факел",
-            "kind": "light",
-            "cells": [
-              [
-                11,
-                8,
-                11,
-                8
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:torch"
-          },
-          {
-            "id": "sf_sanctuary_wall_torch_1",
-            "name": "Настенный факел",
-            "kind": "light",
-            "cells": [
-              [
-                0,
-                9,
-                0,
-                9
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:torch"
-          },
-          {
-            "id": "sf_sanctuary_wall_torch_2",
-            "name": "Настенный факел",
-            "kind": "light",
-            "cells": [
-              [
-                8,
-                13,
-                8,
-                13
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:torch"
-          },
-          {
-            "id": "sf_sanctuary_wall_torch_3",
-            "name": "Настенный факел",
-            "kind": "light",
-            "cells": [
-              [
-                11,
-                0,
-                11,
-                0
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -511,7 +449,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:shelf"
+            "visual_key": "feature:wardrobe"
           },
           {
             "id": "sf_sacristy_study_desk",
@@ -528,7 +466,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           }
         ],
         "environment": "indoor",

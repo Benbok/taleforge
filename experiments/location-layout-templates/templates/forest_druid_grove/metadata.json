@@ -1,0 +1,42 @@
+{
+  "id": "forest_druid_grove",
+  "version": "1.2.0",
+  "archetype": "forest",
+  "variant": "C",
+  "variant_name": "Друидическая роща",
+  "purpose": "Древнее святилище в сердце чащи со священным дубом, менгирами, чашей источников и поляной трав",
+  "visual_concept": "Величественная поляна среди вековых деревьев: алтарный камень, круги менгиров, поваленные замшелые бревна и родник.",
+  "environment": "outdoor",
+  "materials": [
+    "grass",
+    "wood",
+    "stone"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Ритуал с друидами Круга, исцеление ран священными водами источника.",
+    "exploration": "Поиск редких целебных грибов, расшифровка огамических надписей на менгирах.",
+    "combat": "Стволы деревьев и менгиры обеспечивают полное укрытие от стрелков; чаща замедляет движение."
+  },
+  "allowable_adaptations": [
+    "Осквернённая роща ведьм",
+    "Эльфийский пограничный форпост"
+  ],
+  "discovered_constraints": [
+    "Полностью открытое окружение (outdoor=True)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

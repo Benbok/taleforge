@@ -55,7 +55,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:shelf"
+          "visual_key": "feature:weapon_rack"
         },
         {
           "detail_ref": "watch_brazier",
@@ -71,7 +71,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:hearth"
+          "visual_key": "feature:brazier"
         }
       ],
       "scene_profile": null,
@@ -211,7 +211,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:pillar"
+          "visual_key": "feature:cage"
         },
         {
           "detail_ref": "interrogation_table",
@@ -227,7 +227,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:table"
+          "visual_key": "feature:desk"
         }
       ],
       "scene_profile": null,

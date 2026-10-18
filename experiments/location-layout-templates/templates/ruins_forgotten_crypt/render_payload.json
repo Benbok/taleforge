@@ -1,0 +1,514 @@
+{
+  "template_id": "ruins_forgotten_crypt",
+  "root_id": "tpl_ruins_forgotten_crypt",
+  "entry": "collapsed_atrium",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "collapsed_atrium",
+      "name": "Разрушенный атриум",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Провал в наружной стене",
+            "side": "s",
+            "at": 5,
+            "width": 2,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_ruins_forgotten_crypt",
+            "beyond": null,
+            "passage_ref": "in_collapsed_atrium_s",
+            "cells": [
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Полуразрушенная входная арка",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "sepulcher_chamber",
+            "beyond": null,
+            "passage_ref": "p_sepulcher_chamber",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_collapsed_atrium_rubble_piles",
+            "name": "Груды обвалившегося свода",
+            "kind": "nature",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_collapsed_atrium_fallen_statu",
+            "name": "Расколотая статуя воина",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_collapsed_atrium_tombstone",
+            "name": "Потрескавшиеся надгробия",
+            "kind": "cover",
+            "cells": [
+              [
+                9,
+                6,
+                10,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:tombstone"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_forgotten_crypt",
+          "area_ref": "collapsed_atrium",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "sepulcher_chamber",
+      "name": "Палата саркофагов",
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          6,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            3
+          ],
+          [
+            8,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Полуразрушенная входная арка",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "collapsed_atrium",
+            "beyond": null,
+            "passage_ref": "p_sepulcher_chamber",
+            "cells": [
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Сдвижная плита с барельефом",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "secret_reliquary",
+            "beyond": null,
+            "passage_ref": "p_secret_reliquary",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_sepulcher_chamber_sarcophagus",
+            "name": "Саркофаги лордов",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:sarcophagus"
+          },
+          {
+            "id": "sf_sepulcher_chamber_statue",
+            "name": "Статуя плакальщицы",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_sepulcher_chamber_brazier",
+            "name": "Погребальная жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                6,
+                6,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "id": "sf_sepulcher_chamber_bone_pile",
+            "name": "Прах защитников гробницы",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                6,
+                2,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bones"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_forgotten_crypt",
+          "area_ref": "sepulcher_chamber",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "secret_reliquary",
+      "name": "Потайной реликварий",
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "secret": true,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            2
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Сдвижная плита с барельефом",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "sepulcher_chamber",
+            "beyond": null,
+            "passage_ref": "p_secret_reliquary",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_secret_reliquary_relic_chest",
+            "name": "Древний кованый ларец",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:chest"
+          },
+          {
+            "id": "sf_secret_reliquary_statue",
+            "name": "Бронзовый идол предков",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_secret_reliquary_decor_0_0",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                6,
+                1,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_secret_reliquary_decor_1_0",
+            "name": "Светильник",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                0,
+                0,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_secret_reliquary_decor_2_0",
+            "name": "Стеллаж",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                0,
+                6,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:shelf"
+          },
+          {
+            "id": "sf_secret_reliquary_decor_3_0",
+            "name": "Кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                6,
+                3,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_secret_reliquary_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                6,
+                5,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_forgotten_crypt",
+          "area_ref": "secret_reliquary",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

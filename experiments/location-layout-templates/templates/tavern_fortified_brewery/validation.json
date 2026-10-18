@@ -1,0 +1,43 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "tasting_room": {
+      "bar_counter": "preserved",
+      "bar_stools": "preserved",
+      "table_north": "preserved",
+      "chair": "preserved",
+      "brazier": "preserved",
+      "carpet": "preserved"
+    },
+    "brewhouse": {
+      "cauldron": "preserved",
+      "forge": "preserved",
+      "workbench": "preserved",
+      "ale_casks": "preserved"
+    },
+    "malt_store": {
+      "sack": "preserved",
+      "pantry_shelves": "preserved",
+      "traveler_chests": "preserved"
+    },
+    "brewers_office": {
+      "desk": "preserved",
+      "chair": "preserved",
+      "wardrobe": "preserved",
+      "iron_strongbox": "preserved"
+    }
+  }
+}

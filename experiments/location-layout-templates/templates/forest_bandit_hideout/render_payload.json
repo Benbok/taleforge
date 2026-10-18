@@ -1,0 +1,522 @@
+{
+  "template_id": "forest_bandit_hideout",
+  "root_id": "tpl_forest_bandit_hideout",
+  "entry": "camp_clearing",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "camp_clearing",
+      "name": "Лагерная поляна",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "open",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            10,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Потайная тропа в чаще",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "passage",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_forest_bandit_hideout",
+            "beyond": null,
+            "passage_ref": "in_camp_clearing_s",
+            "cells": [
+              [
+                5,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Проход под навес",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "loot_shelter",
+            "beyond": null,
+            "passage_ref": "p_loot_shelter",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          },
+          {
+            "name": "Замаскированный лаз в землянку",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "chieftain_dugout",
+            "beyond": null,
+            "passage_ref": "p_chieftain_dugout",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_camp_clearing_campfire",
+            "name": "Большое кострище с вертелом",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                4,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_camp_clearing_log",
+            "name": "Брёвна для сидения вокруг огня",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                2,
+                6,
+                2
+              ],
+              [
+                5,
+                7,
+                6,
+                7
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:log"
+          },
+          {
+            "id": "sf_camp_clearing_cart",
+            "name": "Нагруженная повозка",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                4,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:cart"
+          },
+          {
+            "id": "sf_camp_clearing_stump",
+            "name": "Колода для колки дров с топором",
+            "kind": "furniture",
+            "cells": [
+              [
+                10,
+                3,
+                10,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:stump"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "earth",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_forest_bandit_hideout",
+          "area_ref": "camp_clearing",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "loot_shelter",
+      "name": "Склад под навесом",
+      "offset": [
+        1,
+        -7
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 7,
+        "party": [
+          5,
+          6
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Проход под навес",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "camp_clearing",
+            "beyond": null,
+            "passage_ref": "p_loot_shelter",
+            "cells": [
+              [
+                5,
+                6
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_loot_shelter_weapon_rack",
+            "name": "Стойки с мечами и луками",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:weapon_rack"
+          },
+          {
+            "id": "sf_loot_shelter_crate_stacks",
+            "name": "Ящики с купеческим товаром",
+            "kind": "object",
+            "cells": [
+              [
+                7,
+                1,
+                8,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_loot_shelter_sack",
+            "name": "Мешки с мукой и вяленым мясом",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:sack"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_forest_bandit_hideout",
+          "area_ref": "loot_shelter",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "chieftain_dugout",
+      "name": "Потайная землянка",
+      "offset": [
+        12,
+        1
+      ],
+      "level": 0,
+      "secret": true,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            5
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Замаскированный лаз в землянку",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "camp_clearing",
+            "beyond": null,
+            "passage_ref": "p_chieftain_dugout",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_chieftain_dugout_desk",
+            "name": "Стол главаря с добычей",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:desk"
+          },
+          {
+            "id": "sf_chieftain_dugout_chair",
+            "name": "Стул атамана",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_chieftain_dugout_iron_strongb",
+            "name": "Сундук с атаманской долей",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:chest"
+          },
+          {
+            "id": "sf_chieftain_dugout_bunks_north",
+            "name": "Лежанка главаря",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:bed"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_forest_bandit_hideout",
+          "area_ref": "chieftain_dugout",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

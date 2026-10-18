@@ -1,0 +1,38 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "breached_barbican": {
+      "cart": "preserved",
+      "rubble_piles": "preserved",
+      "well": "preserved"
+    },
+    "gate_vault": {
+      "broken_gate_timber": "preserved",
+      "wall_sconce": "shifted: [[8, 2, 8, 2], [8, 5, 8, 5]] -> [[9, 1, 9, 1]]"
+    },
+    "guard_casemate": {
+      "hearth": "preserved",
+      "desk": "preserved",
+      "chair": "preserved",
+      "weapon_rack": "preserved"
+    },
+    "collapsed_armory": {
+      "armory_crates": "preserved",
+      "weapon_rack": "preserved",
+      "rubble_piles": "preserved"
+    }
+  }
+}

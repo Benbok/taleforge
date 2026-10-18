@@ -1,0 +1,523 @@
+{
+  "seed": 7,
+  "entry": "breached_barbican",
+  "areas": [
+    {
+      "area_ref": "breached_barbican",
+      "role": "courtyard",
+      "name": "Пробитый внешний барбакан",
+      "public_name": "Двор перед воротами",
+      "environment": "outdoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Открытый мощёный двор перед воротами с разбитой повозкой и завалами камней.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "cart",
+          "name": "Разбитая осадная повозка",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:cart"
+        },
+        {
+          "detail_ref": "rubble_piles",
+          "name": "Груды обвалившихся зубцов стены",
+          "kind": "nature",
+          "cells": [
+            [
+              9,
+              3,
+              10,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "well",
+          "name": "Старый гарнизонный колодец",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              6,
+              4,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:well"
+        }
+      ],
+      "terrain": [],
+      "edges": [
+        {
+          "side": "n",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "e",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "s",
+          "start": 0,
+          "length": 12,
+          "meaning": "obstacle"
+        },
+        {
+          "side": "w",
+          "start": 0,
+          "length": 10,
+          "meaning": "obstacle"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "gate_vault",
+      "role": "hall",
+      "name": "Сводчатый проезд ворот",
+      "public_name": "Воротный проезд",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 10,
+      "rows": 7,
+      "offset": [
+        1,
+        -7
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Массивный каменный тоннель со сломанной железной герсой и настенными факелами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "broken_gate_timber",
+          "name": "Останки створок ворот",
+          "kind": "cover",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "wall_sconce",
+          "name": "Кованые настенные факелы",
+          "kind": "light",
+          "cells": [
+            [
+              9,
+              1,
+              9,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:table"
+        },
+        {
+          "detail_ref": "decor_0_1",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              0,
+              6,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_0_2",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              2,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Очаг",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              0,
+              2,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "guard_casemate",
+      "role": "quarters",
+      "name": "Караульное помещение",
+      "public_name": "Караулка",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 7,
+      "offset": [
+        -6,
+        -7
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Каменное помещение стражи с очагом, столом караульного и оружейной стойкой.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "hearth",
+          "name": "Очаг стражников",
+          "kind": "light",
+          "cells": [
+            [
+              3,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        },
+        {
+          "detail_ref": "desk",
+          "name": "Караульный стол",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:desk"
+        },
+        {
+          "detail_ref": "chair",
+          "name": "Табуреты",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              4,
+              4,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "weapon_rack",
+          "name": "Оружейная стойка с алебардами",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:weapon_rack"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              6,
+              2,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "collapsed_armory",
+      "role": "warehouse",
+      "name": "Заваленный арсенал",
+      "public_name": "Оружейный склад",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 7,
+      "offset": [
+        11,
+        -7
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Склад оружия со следами обвала, коваными сундуками и ящиками со стрелами.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "armory_crates",
+          "name": "Ящики с наконечниками стрел",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              1,
+              4,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
+        },
+        {
+          "detail_ref": "weapon_rack",
+          "name": "Стойки для доспехов",
+          "kind": "furniture",
+          "cells": [
+            [
+              5,
+              4,
+              5,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:weapon_rack"
+        },
+        {
+          "detail_ref": "rubble_piles",
+          "name": "Обвалившаяся потолочная балка",
+          "kind": "nature",
+          "cells": [
+            [
+              1,
+              5,
+              2,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_gate_vault",
+      "kind": "arch",
+      "name": "Арка крепостных ворот",
+      "public_name": "Арка крепостных ворот",
+      "ends": [
+        {
+          "area_ref": "breached_barbican",
+          "side": "n",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "gate_vault",
+          "side": "s",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_guard_casemate",
+      "kind": "door",
+      "name": "Узкая дверь караулки",
+      "public_name": "Узкая дверь караулки",
+      "ends": [
+        {
+          "area_ref": "gate_vault",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "guard_casemate",
+          "side": "e",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_collapsed_armory",
+      "kind": "door",
+      "name": "Кованая дверь арсенала",
+      "public_name": "Кованая дверь арсенала",
+      "ends": [
+        {
+          "area_ref": "gate_vault",
+          "side": "e",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "collapsed_armory",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_breached_barbican_s",
+      "kind": "gap",
+      "name": "Пролом во внешней стене",
+      "public_name": "Пролом во внешней стене",
+      "ends": [
+        {
+          "area_ref": "breached_barbican",
+          "side": "s",
+          "start": 5,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_ruins_fortified_gatehouse"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

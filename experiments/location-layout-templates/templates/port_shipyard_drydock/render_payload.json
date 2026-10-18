@@ -1,0 +1,669 @@
+{
+  "template_id": "port_shipyard_drydock",
+  "root_id": "tpl_port_shipyard_drydock",
+  "entry": "drydock_basin",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "drydock_basin",
+      "name": "Бассейн сухого дока",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 14,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            8,
+            3
+          ],
+          [
+            9,
+            3
+          ],
+          [
+            10,
+            3
+          ],
+          [
+            11,
+            6
+          ],
+          [
+            12,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Въезд на территорию верфи",
+            "side": "w",
+            "at": 4,
+            "width": 2,
+            "kind": "gate",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_port_shipyard_drydock",
+            "beyond": null,
+            "passage_ref": "in_drydock_basin_w",
+            "cells": [
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ]
+            ]
+          },
+          {
+            "name": "Широкий въезд в кузницу",
+            "side": "n",
+            "at": 7,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "shipwright_forge",
+            "beyond": null,
+            "passage_ref": "p_shipwright_forge",
+            "cells": [
+              [
+                7,
+                0
+              ]
+            ]
+          },
+          {
+            "name": "Спуск на причал",
+            "side": "s",
+            "at": 1,
+            "width": 12,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "timber_quay",
+            "beyond": null,
+            "passage_ref": "p_timber_quay",
+            "cells": [
+              [
+                1,
+                9
+              ],
+              [
+                2,
+                9
+              ],
+              [
+                3,
+                9
+              ],
+              [
+                4,
+                9
+              ],
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ],
+              [
+                7,
+                9
+              ],
+              [
+                8,
+                9
+              ],
+              [
+                9,
+                9
+              ],
+              [
+                10,
+                9
+              ],
+              [
+                11,
+                9
+              ],
+              [
+                12,
+                9
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_drydock_basin_cargo_crane",
+            "name": "Тяжёлый кран для корабельных балок",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                3,
+                3,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crane"
+          },
+          {
+            "id": "sf_drydock_basin_log",
+            "name": "Дубовые корабельные брёвна",
+            "kind": "cover",
+            "cells": [
+              [
+                8,
+                3,
+                10,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:log"
+          },
+          {
+            "id": "sf_drydock_basin_cart",
+            "name": "Тележка с инструментами",
+            "kind": "object",
+            "cells": [
+              [
+                11,
+                6,
+                12,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:cart"
+          },
+          {
+            "id": "sf_drydock_basin_tar_firepit",
+            "name": "Жаровня для варки смолы",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                6,
+                3,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:hearth"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 14,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 1,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 1,
+            "length": 12,
+            "meaning": "continuation"
+          },
+          {
+            "side": "s",
+            "start": 13,
+            "length": 1,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_shipyard_drydock",
+          "area_ref": "drydock_basin",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "shipwright_forge",
+      "name": "Кузница верфи",
+      "offset": [
+        2,
+        -7
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 7,
+        "party": [
+          5,
+          6
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Широкий въезд в кузницу",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "drydock_basin",
+            "beyond": null,
+            "passage_ref": "p_shipwright_forge",
+            "cells": [
+              [
+                5,
+                6
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_shipwright_forge_forge",
+            "name": "Кузнечный горн верфи",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                1,
+                8,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:forge"
+          },
+          {
+            "id": "sf_shipwright_forge_anvil",
+            "name": "Тяжёлая наковальня",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                2,
+                5,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:anvil"
+          },
+          {
+            "id": "sf_shipwright_forge_workbench",
+            "name": "Верстак слесаря",
+            "kind": "furniture",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:workbench"
+          },
+          {
+            "id": "sf_shipwright_forge_barrel",
+            "name": "Бочки с водой для закалки",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_port_shipyard_drydock",
+          "area_ref": "shipwright_forge",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "timber_quay",
+      "name": "Причал для разгрузки леса",
+      "offset": [
+        1,
+        10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 5,
+        "party": [
+          0,
+          0
+        ],
+        "walls": [],
+        "exits": [
+          {
+            "name": "Спуск на причал",
+            "side": "n",
+            "at": 0,
+            "width": 12,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "drydock_basin",
+            "beyond": null,
+            "passage_ref": "p_timber_quay",
+            "cells": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                2,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                4,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                6,
+                0
+              ],
+              [
+                7,
+                0
+              ],
+              [
+                8,
+                0
+              ],
+              [
+                9,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                11,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_timber_quay_mooring_bollards",
+            "name": "Швартовые кнехты",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                3,
+                2,
+                3
+              ],
+              [
+                9,
+                3,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_timber_quay_coiled_hawsers",
+            "name": "Тяжелые канаты",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_timber_quay_decor_0_0",
+            "name": "Швартовная тумба",
+            "kind": "furniture",
+            "cells": [
+              [
+                11,
+                4,
+                11,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_timber_quay_decor_1_0",
+            "name": "Сложенная сеть",
+            "kind": "furniture",
+            "cells": [
+              [
+                6,
+                4,
+                7,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_timber_quay_decor_2_0",
+            "name": "Бочка",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                2,
+                0,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:barrel"
+          },
+          {
+            "id": "sf_timber_quay_decor_4_0",
+            "name": "Мешки",
+            "kind": "object",
+            "cells": [
+              [
+                11,
+                2,
+                11,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:sack"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "continuation"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 5,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 5,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_port_shipyard_drydock",
+          "area_ref": "timber_quay",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

@@ -9,7 +9,8 @@ import pytest
 ROOT = Path(__file__).parents[1]
 CATALOG = ROOT / "experiments/location-layout-templates/templates"
 BEFORE = ROOT / "experiments/location-layout-templates/quality-v3/before"
-TEMPLATES = sorted(path.parent.name for path in CATALOG.glob("*/intent.json"))
+TEMPLATES = sorted(path.parent.name for path in BEFORE.glob("*/intent.json"))
+ALL_TEMPLATES = sorted(path.parent.name for path in CATALOG.glob("*/intent.json"))
 
 
 def read_intent(directory, template):
@@ -48,7 +49,7 @@ def test_all_templates_gain_room_without_enlarging_furniture(template):
     )
 
 
-@pytest.mark.parametrize("template", TEMPLATES)
+@pytest.mark.parametrize("template", ALL_TEMPLATES)
 @pytest.mark.parametrize("seed", [1, 7, 42])
 def test_roomier_templates_compile_with_reachable_exits(template, seed):
     from app.core.layout.geometry import build_area

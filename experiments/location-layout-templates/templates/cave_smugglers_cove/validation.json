@@ -1,0 +1,41 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "tidal_harbor": {
+      "upturned_skiff": "preserved",
+      "mooring_bollards": "preserved",
+      "coiled_hawsers": "preserved",
+      "oil_lantern": "shifted: [[9, 6, 9, 6]] -> [[11, 6, 11, 6]]"
+    },
+    "smugglers_cache": {
+      "crate_stacks": "preserved",
+      "cart": "preserved",
+      "sack": "preserved",
+      "watch_brazier": "preserved"
+    },
+    "prisoner_niche": {
+      "cage": "preserved",
+      "bone_pile": "preserved",
+      "wall_sconce": "shifted: [[5, 1, 5, 1]] -> [[5, 0, 5, 0]]"
+    },
+    "captains_den": {
+      "desk": "preserved",
+      "chair": "preserved",
+      "iron_strongbox": "preserved",
+      "carpet": "preserved"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "temple_sunken_catacombs",
+  "version": "1.2.0",
+  "archetype": "temple",
+  "variant": "C",
+  "variant_name": "Затопленные катакомбы",
+  "purpose": "Древний подземный некрополь с погребальной часовней, залом саркофагов и осквернённым оссуарием",
+  "visual_concept": "Мрачные сводчатые склепы с каменными саркофагами, надгробиями, горящими жаровнями и тайной нишей первосвященника.",
+  "environment": "indoor",
+  "materials": [
+    "stone",
+    "water"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Встреча с хранителем могил или фанатиками культа смерти.",
+    "exploration": "Поиск древних реликвий в саркофагах и раскрытие потайного склепа.",
+    "combat": "Укрытия за массивными каменными саркофагами и статуями святых."
+  },
+  "allowable_adaptations": [
+    "Логово нежити",
+    "Тайный культовый алтарь"
+  ],
+  "discovered_constraints": [
+    "Саркофаги и надгробия не должны блокировать центральный проход."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

@@ -56,10 +56,10 @@ def test_generated_port_plan_uses_template_details_and_keeps_extra_parts():
     assert any(d['detail_ref'] == 'crate_stacks' for d in warehouse['details'])
 
 
-def test_runtime_catalog_contains_twelve_valid_templates():
+def test_runtime_catalog_contains_twenty_four_valid_templates():
     catalog = load_catalog()
-    assert len(catalog) == 12
-    assert len({t.id for t in catalog}) == 12
+    assert len(catalog) == 24
+    assert len({t.id for t in catalog}) == 24
     assert all(len(t.checksum) == 64 for t in catalog)
 
 

@@ -1,0 +1,627 @@
+{
+  "template_id": "temple_sunken_catacombs",
+  "root_id": "tpl_temple_sunken_catacombs",
+  "entry": "burial_chapel",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "burial_chapel",
+      "name": "Погребальная часовня",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            8,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход в усыпальницу",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_temple_sunken_catacombs",
+            "beyond": null,
+            "passage_ref": "in_burial_chapel_s",
+            "cells": [
+              [
+                5,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Высокая погребальная арка",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "hall_of_sarcophagi",
+            "beyond": null,
+            "passage_ref": "p_hall_of_sarcophagi",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_burial_chapel_grand_altar",
+            "name": "Заупокойный алтарь",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:altar"
+          },
+          {
+            "id": "sf_burial_chapel_brazier",
+            "name": "Храмовая жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                3,
+                3
+              ],
+              [
+                8,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "id": "sf_burial_chapel_tombstone",
+            "name": "Надгробные плиты",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                5,
+                3,
+                5
+              ],
+              [
+                8,
+                5,
+                9,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:tombstone"
+          },
+          {
+            "id": "sf_burial_chapel_carpet",
+            "name": "Погребальный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                4,
+                6,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:carpet"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_sunken_catacombs",
+          "area_ref": "burial_chapel",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "hall_of_sarcophagi",
+      "name": "Зал саркофагов",
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            2,
+            6
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            7,
+            3
+          ],
+          [
+            8,
+            3
+          ],
+          [
+            9,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Железная решётка оссуария",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "flooded_ossuary",
+            "beyond": null,
+            "passage_ref": "p_flooded_ossuary",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Высокая погребальная арка",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "burial_chapel",
+            "beyond": null,
+            "passage_ref": "p_hall_of_sarcophagi",
+            "cells": [
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Потайная каменная плита",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "hierophant_crypt",
+            "beyond": null,
+            "passage_ref": "p_hierophant_crypt",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_hall_of_sarcophagi_sarcophagu",
+            "name": "Каменные саркофаги",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:sarcophagus"
+          },
+          {
+            "id": "sf_hall_of_sarcophagi_statue",
+            "name": "Статуи скорбящих стражей",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ],
+              [
+                9,
+                6,
+                9,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_hall_of_sarcophagi_brazier",
+            "name": "Неугасимая жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "id": "sf_hall_of_sarcophagi_wall_sconc",
+            "name": "Настенные факелы",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                0,
+                2,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_hall_of_sarcophagi_wall_torch",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                4,
+                9,
+                4,
+                9
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_sunken_catacombs",
+          "area_ref": "hall_of_sarcophagi",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "flooded_ossuary",
+      "name": "Костехранилище",
+      "offset": [
+        -7,
+        -9
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          6,
+          3
+        ],
+        "walls": [
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Железная решётка оссуария",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "hall_of_sarcophagi",
+            "beyond": null,
+            "passage_ref": "p_flooded_ossuary",
+            "cells": [
+              [
+                6,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_flooded_ossuary_bone_pile",
+            "name": "Груды освящённых костей",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bones"
+          },
+          {
+            "id": "sf_flooded_ossuary_rubble_piles",
+            "name": "Осыпавшаяся кладка",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_flooded_ossuary_relic_chest",
+            "name": "Кованый реликварий",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_sunken_catacombs",
+          "area_ref": "flooded_ossuary",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "hierophant_crypt",
+      "name": "Потайной склеп",
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "secret": true,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            5
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            4,
+            2
+          ],
+          [
+            5,
+            1
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Потайная каменная плита",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "hall_of_sarcophagi",
+            "beyond": null,
+            "passage_ref": "p_hierophant_crypt",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_hierophant_crypt_sarcophagus",
+            "name": "Мраморный саркофаг первосвященника",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:sarcophagus"
+          },
+          {
+            "id": "sf_hierophant_crypt_statue",
+            "name": "Статуя божества",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:statue"
+          },
+          {
+            "id": "sf_hierophant_crypt_relic_chest",
+            "name": "Сундук со священными сосудами",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_temple_sunken_catacombs",
+          "area_ref": "hierophant_crypt",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

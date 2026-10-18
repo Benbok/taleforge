@@ -1,0 +1,42 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 4,
+  "passage_count": 4,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "seaside_terrace": {
+      "table_north": "preserved",
+      "chair": "preserved",
+      "coiled_hawsers": "preserved",
+      "quay_lantern": "preserved"
+    },
+    "sailors_hall": {
+      "hearth": "preserved",
+      "bar_counter": "preserved",
+      "bar_stools": "preserved",
+      "chandelier": "preserved",
+      "round_tables": "preserved",
+      "ale_casks": "preserved"
+    },
+    "fish_smokehouse": {
+      "smokehouse_stove": "preserved",
+      "workbench": "preserved",
+      "salted_fish_barrels": "preserved"
+    },
+    "attic_quarters": {
+      "bunks_north": "preserved",
+      "wardrobe": "preserved",
+      "traveler_chests": "preserved"
+    }
+  }
+}

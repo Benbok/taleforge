@@ -263,8 +263,24 @@
           "visual_key": "feature:torch"
         },
         {
-          "detail_ref": "decor_4_0",
-          "name": "Светильник",
+          "detail_ref": "decor_3_0",
+          "name": "Кресло",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              5,
+              3,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
           "kind": "light",
           "cells": [
             [

@@ -1,0 +1,397 @@
+{
+  "seed": 7,
+  "entry": "collapsed_atrium",
+  "areas": [
+    {
+      "area_ref": "collapsed_atrium",
+      "role": "courtyard",
+      "name": "Обрушившийся атриум мавзолея",
+      "public_name": "Разрушенный атриум",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Входной зал со сквозным провалом в куполе, осыпями и разбитыми статуями.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "rubble_piles",
+          "name": "Груды обвалившегося свода",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ],
+            [
+              7,
+              3,
+              8,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        },
+        {
+          "detail_ref": "fallen_statue",
+          "name": "Расколотая статуя воина",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              6,
+              4,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:statue"
+        },
+        {
+          "detail_ref": "tombstone",
+          "name": "Потрескавшиеся надгробия",
+          "kind": "cover",
+          "cells": [
+            [
+              9,
+              6,
+              10,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:tombstone"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "sepulcher_chamber",
+      "role": "crypt",
+      "name": "Зал древних саркофагов",
+      "public_name": "Палата саркофагов",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Главный погребальный покой с тремя резными гранитными саркофагами и чашами огня.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "sarcophagus",
+          "name": "Саркофаги лордов",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ],
+            [
+              7,
+              3,
+              8,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:sarcophagus"
+        },
+        {
+          "detail_ref": "statue",
+          "name": "Статуя плакальщицы",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:statue"
+        },
+        {
+          "detail_ref": "brazier",
+          "name": "Погребальная жаровня",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              6,
+              6,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:brazier"
+        },
+        {
+          "detail_ref": "bone_pile",
+          "name": "Прах защитников гробницы",
+          "kind": "cover",
+          "cells": [
+            [
+              1,
+              6,
+              2,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bones"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    },
+    {
+      "area_ref": "secret_reliquary",
+      "role": "vault",
+      "name": "Потайной реликварий династии",
+      "public_name": "Потайной реликварий",
+      "environment": "indoor",
+      "shape": "rect",
+      "cols": 7,
+      "rows": 7,
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Скрытая комната с нетронутым золочёным ларцом и дарами богам.",
+      "secret": true,
+      "details": [
+        {
+          "detail_ref": "relic_chest",
+          "name": "Древний кованый ларец",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
+        },
+        {
+          "detail_ref": "statue",
+          "name": "Бронзовый идол предков",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              5,
+              5,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:statue"
+        },
+        {
+          "detail_ref": "decor_0_0",
+          "name": "Скамья",
+          "kind": "furniture",
+          "cells": [
+            [
+              0,
+              6,
+              1,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bench"
+        },
+        {
+          "detail_ref": "decor_1_0",
+          "name": "Светильник",
+          "kind": "light",
+          "cells": [
+            [
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        },
+        {
+          "detail_ref": "decor_2_0",
+          "name": "Стеллаж",
+          "kind": "furniture",
+          "cells": [
+            [
+              6,
+              0,
+              6,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:shelf"
+        },
+        {
+          "detail_ref": "decor_3_0",
+          "name": "Кресло",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              6,
+              3,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:chair"
+        },
+        {
+          "detail_ref": "wall_torch_0",
+          "name": "Настенный факел",
+          "kind": "light",
+          "cells": [
+            [
+              5,
+              6,
+              5,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:torch"
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": [],
+      "lighting": "normal"
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_sepulcher_chamber",
+      "kind": "arch",
+      "name": "Полуразрушенная входная арка",
+      "public_name": "Полуразрушенная входная арка",
+      "ends": [
+        {
+          "area_ref": "collapsed_atrium",
+          "side": "n",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "sepulcher_chamber",
+          "side": "s",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_secret_reliquary",
+      "kind": "door",
+      "name": "Сдвижная плита с барельефом",
+      "public_name": "Сдвижная плита с барельефом",
+      "ends": [
+        {
+          "area_ref": "sepulcher_chamber",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "secret_reliquary",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "closed",
+      "hidden": true
+    },
+    {
+      "passage_ref": "in_collapsed_atrium_s",
+      "kind": "gap",
+      "name": "Провал в наружной стене",
+      "public_name": "Провал в наружной стене",
+      "ends": [
+        {
+          "area_ref": "collapsed_atrium",
+          "side": "s",
+          "start": 5,
+          "width": 2,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_ruins_forgotten_crypt"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

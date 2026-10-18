@@ -1,0 +1,687 @@
+{
+  "template_id": "ruins_fortified_gatehouse",
+  "root_id": "tpl_ruins_fortified_gatehouse",
+  "entry": "breached_barbican",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "breached_barbican",
+      "name": "Двор перед воротами",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Пролом во внешней стене",
+            "side": "s",
+            "at": 5,
+            "width": 2,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_ruins_fortified_gatehouse",
+            "beyond": null,
+            "passage_ref": "in_breached_barbican_s",
+            "cells": [
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Арка крепостных ворот",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "gate_vault",
+            "beyond": null,
+            "passage_ref": "p_gate_vault",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_breached_barbican_cart",
+            "name": "Разбитая осадная повозка",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:cart"
+          },
+          {
+            "id": "sf_breached_barbican_rubble_pile",
+            "name": "Груды обвалившихся зубцов стены",
+            "kind": "nature",
+            "cells": [
+              [
+                9,
+                3,
+                10,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_breached_barbican_well",
+            "name": "Старый гарнизонный колодец",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:well"
+          }
+        ],
+        "environment": "outdoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [
+          {
+            "side": "n",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "e",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "s",
+            "start": 0,
+            "length": 12,
+            "meaning": "obstacle"
+          },
+          {
+            "side": "w",
+            "start": 0,
+            "length": 10,
+            "meaning": "obstacle"
+          }
+        ],
+        "blueprint": {
+          "root_id": "tpl_ruins_fortified_gatehouse",
+          "area_ref": "breached_barbican",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "gate_vault",
+      "name": "Воротный проезд",
+      "offset": [
+        1,
+        -7
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 10,
+        "rows": 7,
+        "party": [
+          9,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Кованая дверь арсенала",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "collapsed_armory",
+            "beyond": null,
+            "passage_ref": "p_collapsed_armory",
+            "cells": [
+              [
+                9,
+                3
+              ]
+            ]
+          },
+          {
+            "name": "Арка крепостных ворот",
+            "side": "s",
+            "at": 5,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "breached_barbican",
+            "beyond": null,
+            "passage_ref": "p_gate_vault",
+            "cells": [
+              [
+                5,
+                6
+              ]
+            ]
+          },
+          {
+            "name": "Узкая дверь караулки",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "guard_casemate",
+            "beyond": null,
+            "passage_ref": "p_guard_casemate",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_gate_vault_broken_gate_timber",
+            "name": "Останки створок ворот",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "id": "sf_gate_vault_wall_sconce",
+            "name": "Кованые настенные факелы",
+            "kind": "light",
+            "cells": [
+              [
+                9,
+                1,
+                9,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_gate_vault_decor_0_0",
+            "name": "Стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:table"
+          },
+          {
+            "id": "sf_gate_vault_decor_0_1",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                0,
+                6,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_gate_vault_decor_0_2",
+            "name": "Скамья",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                2,
+                6,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bench"
+          },
+          {
+            "id": "sf_gate_vault_decor_1_0",
+            "name": "Очаг",
+            "kind": "furniture",
+            "cells": [
+              [
+                0,
+                6,
+                1,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_gate_vault_decor_2_0",
+            "name": "Светильник",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                0,
+                2,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_fortified_gatehouse",
+          "area_ref": "gate_vault",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "guard_casemate",
+      "name": "Караулка",
+      "offset": [
+        -6,
+        -7
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          6,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            0
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            0
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Узкая дверь караулки",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "gate_vault",
+            "beyond": null,
+            "passage_ref": "p_guard_casemate",
+            "cells": [
+              [
+                6,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_guard_casemate_hearth",
+            "name": "Очаг стражников",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                0,
+                4,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:hearth"
+          },
+          {
+            "id": "sf_guard_casemate_desk",
+            "name": "Караульный стол",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:desk"
+          },
+          {
+            "id": "sf_guard_casemate_chair",
+            "name": "Табуреты",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                4,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_guard_casemate_weapon_rack",
+            "name": "Оружейная стойка с алебардами",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:weapon_rack"
+          },
+          {
+            "id": "sf_guard_casemate_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_fortified_gatehouse",
+          "area_ref": "guard_casemate",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "collapsed_armory",
+      "name": "Оружейный склад",
+      "offset": [
+        11,
+        -7
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Кованая дверь арсенала",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "open",
+            "hidden": false,
+            "to": "gate_vault",
+            "beyond": null,
+            "passage_ref": "p_collapsed_armory",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_collapsed_armory_armory_crate",
+            "name": "Ящики с наконечниками стрел",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                1,
+                4,
+                1
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_collapsed_armory_weapon_rack",
+            "name": "Стойки для доспехов",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:weapon_rack"
+          },
+          {
+            "id": "sf_collapsed_armory_rubble_piles",
+            "name": "Обвалившаяся потолочная балка",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:rubble"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_ruins_fortified_gatehouse",
+          "area_ref": "collapsed_armory",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

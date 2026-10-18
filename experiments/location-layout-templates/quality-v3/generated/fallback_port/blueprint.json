@@ -118,8 +118,8 @@
         },
         {
           "detail_ref": "decor_4_0",
-          "name": "Швартовная тумба",
-          "kind": "furniture",
+          "name": "Мешки",
+          "kind": "object",
           "cells": [
             [
               13,
@@ -130,23 +130,23 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:mooring"
+          "visual_key": "feature:sack"
         },
         {
           "detail_ref": "decor_5_0",
-          "name": "Сложенная сеть",
-          "kind": "furniture",
+          "name": "Телега",
+          "kind": "cover",
           "cells": [
             [
               0,
-              3,
+              8,
               1,
-              3
+              9
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:net"
+          "visual_key": "feature:cart"
         }
       ],
       "terrain": [
@@ -326,8 +326,8 @@
         },
         {
           "detail_ref": "decor_4_0",
-          "name": "Швартовная тумба",
-          "kind": "furniture",
+          "name": "Мешки",
+          "kind": "object",
           "cells": [
             [
               13,
@@ -338,23 +338,23 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:mooring"
+          "visual_key": "feature:sack"
         },
         {
           "detail_ref": "decor_5_0",
-          "name": "Сложенная сеть",
-          "kind": "furniture",
+          "name": "Телега",
+          "kind": "cover",
           "cells": [
             [
               4,
               0,
               5,
-              0
+              1
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:net"
+          "visual_key": "feature:cart"
         }
       ],
       "terrain": [],

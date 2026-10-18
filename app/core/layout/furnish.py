@@ -109,7 +109,16 @@ def place(
                 _cells(f.get("cells") or [])
                 for f in features
                 if f.get("visual_key")
-                in {"feature:shelf", "feature:crate", "feature:barrel", "feature:chest", "feature:counter"}
+                in {
+                    "feature:shelf",
+                    "feature:crate",
+                    "feature:barrel",
+                    "feature:chest",
+                    "feature:counter",
+                    "feature:wardrobe",
+                    "feature:sack",
+                    "feature:workbench",
+                }
             )
         )
         role = (roles or {}).get(entity_id, "prop")

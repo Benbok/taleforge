@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "id": "temple_sunken_catacombs",
+  "version": "1.2.0",
+  "archetype": "temple",
+  "template_ids": [
+    "location.temple"
+  ],
+  "tags": [],
+  "environment": "indoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "burial_chapel",
+    "part_1": "hall_of_sarcophagi",
+    "part_2": "flooded_ossuary",
+    "part_3": "hierophant_crypt"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "burial_chapel",
+    "parts": [
+      {
+        "part_ref": "burial_chapel",
+        "role": "hall",
+        "name": "Погребальная часовня",
+        "public_name": "Погребальная часовня",
+        "description": "Входной покой некрополя с алтарём заупокойной службы и каменными надгробиями.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "grand_altar",
+            "name": "Заупокойный алтарь",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                6,
+                1
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:altar"
+          },
+          {
+            "detail_ref": "brazier",
+            "name": "Храмовая жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                3,
+                3,
+                3,
+                3
+              ],
+              [
+                8,
+                3,
+                8,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "detail_ref": "tombstone",
+            "name": "Надгробные плиты",
+            "kind": "cover",
+            "cells": [
+              [
+                2,
+                5,
+                3,
+                5
+              ],
+              [
+                8,
+                5,
+                9,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:tombstone"
+          },
+          {
+            "detail_ref": "carpet",
+            "name": "Погребальный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                5,
+                4,
+                6,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:carpet"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "hall_of_sarcophagi",
+        "role": "sanctuary",
+        "name": "Галерея саркофагов",
+        "public_name": "Зал саркофагов",
+        "description": "Высокий каменный зал с массивными саркофагами знатных патрициев и статуями стражей.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "burial_chapel",
+        "side": "n",
+        "passage_kind": "arch",
+        "passage_name": "Высокая погребальная арка",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "sarcophagus",
+            "name": "Каменные саркофаги",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                7,
+                3,
+                8,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:sarcophagus"
+          },
+          {
+            "detail_ref": "statue",
+            "name": "Статуи скорбящих стражей",
+            "kind": "object",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ],
+              [
+                9,
+                6,
+                9,
+                6
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:statue"
+          },
+          {
+            "detail_ref": "brazier",
+            "name": "Неугасимая жаровня",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                5,
+                6,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:brazier"
+          },
+          {
+            "detail_ref": "wall_sconce",
+            "name": "Настенные факелы",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                1,
+                2,
+                1
+              ],
+              [
+                9,
+                1,
+                9,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "flooded_ossuary",
+        "role": "crypt",
+        "name": "Оссуарий",
+        "public_name": "Костехранилище",
+        "description": "Низкий сырой свод с грудами костей и осыпавшимися нишами.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "hall_of_sarcophagi",
+        "side": "w",
+        "passage_kind": "door",
+        "passage_name": "Железная решётка оссуария",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "bone_pile",
+            "name": "Груды освящённых костей",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                1,
+                2,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:bones"
+          },
+          {
+            "detail_ref": "rubble_piles",
+            "name": "Осыпавшаяся кладка",
+            "kind": "nature",
+            "cells": [
+              [
+                1,
+                5,
+                2,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:rubble"
+          },
+          {
+            "detail_ref": "relic_chest",
+            "name": "Кованый реликварий",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                5,
+                5,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "hierophant_crypt",
+        "role": "vault",
+        "name": "Склеп первосвященника",
+        "public_name": "Потайной склеп",
+        "description": "Скрытая усыпальница с мраморным саркофагом и священными дарами.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "hall_of_sarcophagi",
+        "side": "e",
+        "passage_kind": "door",
+        "passage_name": "Потайная каменная плита",
+        "passage_state": "closed",
+        "secret": true,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "sarcophagus",
+            "name": "Мраморный саркофаг первосвященника",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:sarcophagus"
+          },
+          {
+            "detail_ref": "statue",
+            "name": "Статуя божества",
+            "kind": "object",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                1
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:statue"
+          },
+          {
+            "detail_ref": "relic_chest",
+            "name": "Сундук со священными сосудами",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:chest"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "burial_chapel",
+        "side": "s",
+        "kind": "door",
+        "public_name": "Вход в усыпальницу",
+        "outside_id": null,
+        "band": null,
+        "width": 1
+      }
+    ],
+    "bands": []
+  }
+}

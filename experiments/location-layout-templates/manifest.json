@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "description": "Экспериментальная коллекция из 12 шаблонов локаций для TaleForge",
+  "version": "1.3.0",
+  "description": "Экспериментальная коллекция из 24 шаблонов локаций для TaleForge",
   "templates": [
     {
       "id": "tavern_roadside",
@@ -43,6 +43,47 @@
       }
     },
     {
+      "id": "tavern_fortified_brewery",
+      "archetype": "tavern",
+      "variant": "C",
+      "variant_name": "Укреплённая пивоварня",
+      "purpose": "Каменная приграничная пивоварня с дегустационным залом, варочным цехом и хранилищем хмеля",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "wood"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "tavern_coastal_inn",
+      "archetype": "tavern",
+      "variant": "D",
+      "variant_name": "Прибрежная гостиница на сваях",
+      "purpose": "Двухуровневая приморская таверна с террасой над водой, общим залом и коптильней",
+      "environment": "mixed",
+      "materials": [
+        "wood",
+        "water",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
       "id": "temple_compact_shrine",
       "archetype": "temple",
       "variant": "A",
@@ -71,6 +112,46 @@
       "materials": [
         "grass",
         "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "temple_sunken_catacombs",
+      "archetype": "temple",
+      "variant": "C",
+      "variant_name": "Затопленные катакомбы",
+      "purpose": "Древний подземный некрополь с погребальной часовней, залом саркофагов и осквернённым оссуарием",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "water"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "temple_mountain_monastery",
+      "archetype": "temple",
+      "variant": "D",
+      "variant_name": "Высокогорный монастырь",
+      "purpose": "Изолированный скальный монастырь с двором созерцания, святилищем колокола и скрипторием",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "wood"
       ],
       "selected_seed": 7,
       "tested_seeds": {
@@ -123,6 +204,47 @@
       }
     },
     {
+      "id": "cave_fungal_chasm",
+      "archetype": "cave",
+      "variant": "C",
+      "variant_name": "Грибная расселина",
+      "purpose": "Глубокая пещерная расселина со светящимся лесом грибов, каменным карнизом и логовом пещерных пауков",
+      "environment": "indoor",
+      "materials": [
+        "earth",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "cave_smugglers_cove",
+      "archetype": "cave",
+      "variant": "D",
+      "variant_name": "Бухта контрабандистов",
+      "purpose": "Приливная морская пещера с тайной стоянкой лодок, причалом, складом товаров и карцером",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "water",
+        "wood"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
       "id": "forest_clearing_trail",
       "archetype": "forest",
       "variant": "A",
@@ -152,6 +274,47 @@
       "materials": [
         "grass",
         "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "forest_druid_grove",
+      "archetype": "forest",
+      "variant": "C",
+      "variant_name": "Друидическая роща",
+      "purpose": "Древнее святилище в сердце чащи со священным дубом, менгирами, чашей источников и поляной трав",
+      "environment": "outdoor",
+      "materials": [
+        "grass",
+        "wood",
+        "stone"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "forest_bandit_hideout",
+      "archetype": "forest",
+      "variant": "D",
+      "variant_name": "Укреплённый лагерь разбойников",
+      "purpose": "Лесной лагерь на поляне с частоколом, кострищем, телегой с добычей и потайной землянкой",
+      "environment": "mixed",
+      "materials": [
+        "earth",
+        "wood"
       ],
       "selected_seed": 7,
       "tested_seeds": {
@@ -204,6 +367,48 @@
       }
     },
     {
+      "id": "port_shipyard_drydock",
+      "archetype": "port",
+      "variant": "C",
+      "variant_name": "Корабельная верфь и сухой док",
+      "purpose": "Портовый судоремонтный док со стапелями, кузницей корабельной оснастки и плотницким двором",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "wood",
+        "water"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "port_lighthouse_isle",
+      "archetype": "port",
+      "variant": "D",
+      "variant_name": "Маячный остров и сторожевая вышка",
+      "purpose": "Одинокий скалистый остров с каменным причалом, основанием маяка и домом смотрителя",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "water",
+        "wood"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
       "id": "ruins_manor_estate",
       "archetype": "ruins",
       "variant": "A",
@@ -233,6 +438,46 @@
       "materials": [
         "stone",
         "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "ruins_forgotten_crypt",
+      "archetype": "ruins",
+      "variant": "C",
+      "variant_name": "Забытая усыпальница",
+      "purpose": "Обрушившийся древний мавзолей с оскверненными саркофагами, надгробиями, статуями и тайным реликварием",
+      "environment": "indoor",
+      "materials": [
+        "stone",
+        "earth"
+      ],
+      "selected_seed": 7,
+      "tested_seeds": {
+        "1": "passed",
+        "7": "passed",
+        "42": "passed",
+        "99": "passed",
+        "123": "passed"
+      }
+    },
+    {
+      "id": "ruins_fortified_gatehouse",
+      "archetype": "ruins",
+      "variant": "D",
+      "variant_name": "Разрушенный барбакан и надвратная башня",
+      "purpose": "Остатки циклопических крепостных ворот с пробитой аркой, караулкой, арсеналом и колодцем",
+      "environment": "mixed",
+      "materials": [
+        "stone",
+        "wood"
       ],
       "selected_seed": 7,
       "tested_seeds": {

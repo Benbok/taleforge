@@ -1,0 +1,36 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "monastery_courtyard": {
+      "well": "preserved",
+      "statue": "preserved",
+      "log_seat": "preserved",
+      "fountain": "preserved"
+    },
+    "bell_sanctuary": {
+      "grand_altar": "preserved",
+      "chandelier": "preserved",
+      "brazier": "preserved",
+      "carpet": "shifted: [[5, 4, 6, 6]] -> [[5, 2, 6, 4]]",
+      "prayer_benches": "preserved"
+    },
+    "scriptorium": {
+      "desk": "preserved",
+      "chair": "preserved",
+      "bookcase": "preserved"
+    }
+  }
+}

@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "id": "cave_smugglers_cove",
+  "version": "1.2.0",
+  "archetype": "cave",
+  "template_ids": [
+    "location.cave"
+  ],
+  "tags": [],
+  "environment": "indoor",
+  "scale": "medium",
+  "part_bindings": {
+    "main": "tidal_harbor",
+    "part_1": "smugglers_cache",
+    "part_2": "prisoner_niche",
+    "part_3": "captains_den"
+  },
+  "intent": {
+    "schema_version": 1,
+    "entry": "tidal_harbor",
+    "parts": [
+      {
+        "part_ref": "tidal_harbor",
+        "role": "pier",
+        "name": "Приливная гавань",
+        "public_name": "Подземная стоянка лодок",
+        "description": "Высокая пещера с водой, деревянным причалом, швартовыми кольцами и лодкой.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": null,
+        "side": null,
+        "passage_kind": "door",
+        "passage_name": "Проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "upturned_skiff",
+            "name": "Шлюпка у причала",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "detail_ref": "mooring_bollards",
+            "name": "Швартовые тумбы",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ],
+              [
+                5,
+                6,
+                5,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "detail_ref": "coiled_hawsers",
+            "name": "Бухты канатов и сетей",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                3,
+                10,
+                3
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "detail_ref": "oil_lantern",
+            "name": "Штормовой фонарь на балке",
+            "kind": "light",
+            "cells": [
+              [
+                9,
+                6,
+                9,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "smugglers_cache",
+        "role": "warehouse",
+        "name": "Склад контрабанды",
+        "public_name": "Пещерный склад",
+        "description": "Сухой скальный зал с горами ящиков, бочками и тележкой.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 12,
+        "rows": 10,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "tidal_harbor",
+        "side": "n",
+        "passage_kind": "arch",
+        "passage_name": "Прорубленный в скале проход",
+        "passage_state": "open",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "crate_stacks",
+            "name": "Штабели грузов",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                8,
+                3,
+                9,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:crate"
+          },
+          {
+            "detail_ref": "cart",
+            "name": "Двухколёсная грузовая тележка",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:cart"
+          },
+          {
+            "detail_ref": "sack",
+            "name": "Мешки с ценностями",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                6,
+                10,
+                6
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:sack"
+          },
+          {
+            "detail_ref": "watch_brazier",
+            "name": "Жаровня караульных",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:brazier"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "prisoner_niche",
+        "role": "vault",
+        "name": "Карцер для пленников",
+        "public_name": "Боковая ниша с клеткой",
+        "description": "Сырой тупик с железной подвесной клеткой и цепями в стенах.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "stone",
+        "lighting": "normal",
+        "connects_to": "smugglers_cache",
+        "side": "w",
+        "passage_kind": "door",
+        "passage_name": "Кованая решётка",
+        "passage_state": "locked",
+        "secret": false,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "cage",
+            "name": "Железная клетка для пленников",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:cage"
+          },
+          {
+            "detail_ref": "bone_pile",
+            "name": "Останки беглеца",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:bones"
+          },
+          {
+            "detail_ref": "wall_sconce",
+            "name": "Факел на стене",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                1,
+                5,
+                1
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      },
+      {
+        "part_ref": "captains_den",
+        "role": "quarters",
+        "name": "Каюта главаря",
+        "public_name": "Потайная каморка главаря",
+        "description": "Отделанный деревом потайной грот с резным столом, ковром и сундуком.",
+        "environment": "indoor",
+        "shape": "rect",
+        "size": "medium",
+        "cols": 7,
+        "rows": 7,
+        "level": 0,
+        "material": "wood",
+        "lighting": "normal",
+        "connects_to": "smugglers_cache",
+        "side": "e",
+        "passage_kind": "door",
+        "passage_name": "Маскировочная дверь",
+        "passage_state": "closed",
+        "secret": true,
+        "required": false,
+        "anchors": [],
+        "details": [
+          {
+            "detail_ref": "desk",
+            "name": "Стол главаря с картами",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:desk"
+          },
+          {
+            "detail_ref": "chair",
+            "name": "Резное капитанское кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "detail_ref": "iron_strongbox",
+            "name": "Сундук с золотом",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:chest"
+          },
+          {
+            "detail_ref": "carpet",
+            "name": "Роскошный восточный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                5
+              ]
+            ],
+            "solid": false,
+            "hidden": false,
+            "visual_key": "feature:carpet"
+          }
+        ],
+        "scene_profile": null,
+        "object_slots": []
+      }
+    ],
+    "approaches": [
+      {
+        "part_ref": "tidal_harbor",
+        "side": "s",
+        "kind": "gap",
+        "public_name": "Вход со стороны моря во время отлива",
+        "outside_id": null,
+        "band": null,
+        "width": 2
+      }
+    ],
+    "bands": []
+  }
+}

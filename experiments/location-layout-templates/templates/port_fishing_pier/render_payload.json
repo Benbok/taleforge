@@ -379,7 +379,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:bench"
+            "visual_key": "feature:workbench"
           },
           {
             "id": "sf_wooden_jetty_decor_0_0",
@@ -568,7 +568,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:table"
+            "visual_key": "feature:workbench"
           },
           {
             "id": "sf_fisher_shack_salted_fish_barr",

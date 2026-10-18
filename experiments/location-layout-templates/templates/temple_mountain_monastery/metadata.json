@@ -1,0 +1,41 @@
+{
+  "id": "temple_mountain_monastery",
+  "version": "1.2.0",
+  "archetype": "temple",
+  "variant": "D",
+  "variant_name": "Высокогорный монастырь",
+  "purpose": "Изолированный скальный монастырь с двором созерцания, святилищем колокола и скрипторием",
+  "visual_concept": "Двор на вершине утеса с колодцем и статуей, каменное святилище с колоколом и тихий скрипторий.",
+  "environment": "mixed",
+  "materials": [
+    "stone",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Беседа с монахами-молчальниками, доступ к монастырской библиотеке.",
+    "exploration": "Изучение древних манускриптов и механизмов башенного колокола.",
+    "combat": "Узкие ступени и двор с колодцем создают перепады высот и укрытия."
+  },
+  "allowable_adaptations": [
+    "Оплот ордена паладинов",
+    "Горная обсерватория"
+  ],
+  "discovered_constraints": [
+    "Двор открытый (outdoor), святилище и скрипторий закрытые (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

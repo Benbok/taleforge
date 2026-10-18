@@ -1,0 +1,674 @@
+{
+  "template_id": "cave_smugglers_cove",
+  "root_id": "tpl_cave_smugglers_cove",
+  "entry": "tidal_harbor",
+  "levels": [
+    0
+  ],
+  "areas": [
+    {
+      "id": "tidal_harbor",
+      "name": "Подземная стоянка лодок",
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "here",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          5,
+          9
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Вход со стороны моря во время отлива",
+            "side": "s",
+            "at": 5,
+            "width": 2,
+            "kind": "gap",
+            "state": "open",
+            "hidden": false,
+            "to": "tpl_cave_smugglers_cove",
+            "beyond": null,
+            "passage_ref": "in_tidal_harbor_s",
+            "cells": [
+              [
+                5,
+                9
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Прорубленный в скале проход",
+            "side": "n",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "smugglers_cache",
+            "beyond": null,
+            "passage_ref": "p_smugglers_cache",
+            "cells": [
+              [
+                6,
+                0
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_tidal_harbor_upturned_skiff",
+            "name": "Шлюпка у причала",
+            "kind": "cover",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_tidal_harbor_mooring_bollards",
+            "name": "Швартовые тумбы",
+            "kind": "furniture",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ],
+              [
+                5,
+                6,
+                5,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:mooring"
+          },
+          {
+            "id": "sf_tidal_harbor_coiled_hawsers",
+            "name": "Бухты канатов и сетей",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                3,
+                10,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:net"
+          },
+          {
+            "id": "sf_tidal_harbor_oil_lantern",
+            "name": "Штормовой фонарь на балке",
+            "kind": "light",
+            "cells": [
+              [
+                11,
+                6,
+                11,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_tidal_harbor_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                0,
+                4,
+                0,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_tidal_harbor_wall_torch_1",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                8,
+                0,
+                8,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_smugglers_cove",
+          "area_ref": "tidal_harbor",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "smugglers_cache",
+      "name": "Пещерный склад",
+      "offset": [
+        0,
+        -10
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 12,
+        "rows": 10,
+        "party": [
+          0,
+          4
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            8,
+            3
+          ],
+          [
+            9,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Кованая решётка",
+            "side": "w",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "locked",
+            "hidden": false,
+            "to": "prisoner_niche",
+            "beyond": null,
+            "passage_ref": "p_prisoner_niche",
+            "cells": [
+              [
+                0,
+                4
+              ]
+            ]
+          },
+          {
+            "name": "Прорубленный в скале проход",
+            "side": "s",
+            "at": 6,
+            "width": 1,
+            "kind": "arch",
+            "state": "open",
+            "hidden": false,
+            "to": "tidal_harbor",
+            "beyond": null,
+            "passage_ref": "p_smugglers_cache",
+            "cells": [
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "name": "Маскировочная дверь",
+            "side": "e",
+            "at": 4,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "captains_den",
+            "beyond": null,
+            "passage_ref": "p_captains_den",
+            "cells": [
+              [
+                11,
+                4
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_smugglers_cache_crate_stacks",
+            "name": "Штабели грузов",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ],
+              [
+                8,
+                3,
+                9,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:crate"
+          },
+          {
+            "id": "sf_smugglers_cache_cart",
+            "name": "Двухколёсная грузовая тележка",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                6,
+                4,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:cart"
+          },
+          {
+            "id": "sf_smugglers_cache_sack",
+            "name": "Мешки с ценностями",
+            "kind": "object",
+            "cells": [
+              [
+                9,
+                6,
+                10,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:sack"
+          },
+          {
+            "id": "sf_smugglers_cache_watch_brazier",
+            "name": "Жаровня караульных",
+            "kind": "light",
+            "cells": [
+              [
+                6,
+                5,
+                6,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:brazier"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_smugglers_cove",
+          "area_ref": "smugglers_cache",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "prisoner_niche",
+      "name": "Боковая ниша с клеткой",
+      "offset": [
+        -7,
+        -9
+      ],
+      "level": 0,
+      "secret": false,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          6,
+          3
+        ],
+        "walls": [
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            4,
+            4
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Кованая решётка",
+            "side": "e",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "locked",
+            "hidden": false,
+            "to": "smugglers_cache",
+            "beyond": null,
+            "passage_ref": "p_prisoner_niche",
+            "cells": [
+              [
+                6,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_prisoner_niche_cage",
+            "name": "Железная клетка для пленников",
+            "kind": "object",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                4
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:cage"
+          },
+          {
+            "id": "sf_prisoner_niche_bone_pile",
+            "name": "Останки беглеца",
+            "kind": "cover",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:bones"
+          },
+          {
+            "id": "sf_prisoner_niche_wall_sconce",
+            "name": "Факел на стене",
+            "kind": "light",
+            "cells": [
+              [
+                5,
+                0,
+                5,
+                0
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          },
+          {
+            "id": "sf_prisoner_niche_wall_torch_0",
+            "name": "Настенный факел",
+            "kind": "light",
+            "cells": [
+              [
+                2,
+                6,
+                2,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:torch"
+          }
+        ],
+        "environment": "indoor",
+        "material": "stone",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_smugglers_cove",
+          "area_ref": "prisoner_niche",
+          "rev": 1
+        }
+      }
+    },
+    {
+      "id": "captains_den",
+      "name": "Потайная каморка главаря",
+      "offset": [
+        12,
+        -9
+      ],
+      "level": 0,
+      "secret": true,
+      "status": "remembered",
+      "revision": 1,
+      "sketch": {
+        "shape": "room",
+        "cols": 7,
+        "rows": 7,
+        "party": [
+          0,
+          3
+        ],
+        "walls": [
+          [
+            1,
+            5
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            4,
+            3
+          ]
+        ],
+        "exits": [
+          {
+            "name": "Маскировочная дверь",
+            "side": "w",
+            "at": 3,
+            "width": 1,
+            "kind": "door",
+            "state": "closed",
+            "hidden": true,
+            "to": "smugglers_cache",
+            "beyond": null,
+            "passage_ref": "p_captains_den",
+            "cells": [
+              [
+                0,
+                3
+              ]
+            ]
+          }
+        ],
+        "features": [
+          {
+            "id": "sf_captains_den_desk",
+            "name": "Стол главаря с картами",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                3,
+                4,
+                3
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:desk"
+          },
+          {
+            "id": "sf_captains_den_chair",
+            "name": "Резное капитанское кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                2,
+                4,
+                2
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_captains_den_iron_strongbox",
+            "name": "Сундук с золотом",
+            "kind": "object",
+            "cells": [
+              [
+                1,
+                5,
+                1,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:chest"
+          },
+          {
+            "id": "sf_captains_den_carpet",
+            "name": "Роскошный восточный ковёр",
+            "kind": "furniture",
+            "cells": [
+              [
+                4,
+                4,
+                5,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:carpet"
+          }
+        ],
+        "environment": "indoor",
+        "material": "wood",
+        "terrain": [],
+        "edges": [],
+        "blueprint": {
+          "root_id": "tpl_cave_smugglers_cove",
+          "area_ref": "captains_den",
+          "rev": 1
+        }
+      }
+    }
+  ]
+}

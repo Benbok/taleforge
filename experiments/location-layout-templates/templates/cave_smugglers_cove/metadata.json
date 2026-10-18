@@ -1,0 +1,42 @@
+{
+  "id": "cave_smugglers_cove",
+  "version": "1.2.0",
+  "archetype": "cave",
+  "variant": "D",
+  "variant_name": "Бухта контрабандистов",
+  "purpose": "Приливная морская пещера с тайной стоянкой лодок, причалом, складом товаров и карцером",
+  "visual_concept": "Скальная каверна с естественной гаванью: деревянные мостки, ящики с грузом, фонари и железная клетка.",
+  "environment": "indoor",
+  "materials": [
+    "stone",
+    "water",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Переговоры с контрабандистами, подкуп часовых у причала.",
+    "exploration": "Вскрытие ящиков с заморским товаром, освобождение пленника из клетки.",
+    "combat": "Бой на шатких мостках; перевёрнутые лодки и тюки служат бруствером."
+  },
+  "allowable_adaptations": [
+    "Пиратское убежище",
+    "База сектантов морского бога"
+  ],
+  "discovered_constraints": [
+    "Пристань примыкает к пещере; клетка в боковой нише."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

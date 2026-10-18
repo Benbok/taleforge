@@ -162,7 +162,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:tree"
+            "visual_key": "feature:log"
           },
           {
             "id": "sf_forest_verge_moss_rock",
@@ -484,7 +484,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:shrub"
+            "visual_key": "feature:mushrooms"
           }
         ],
         "environment": "outdoor",
@@ -704,7 +704,7 @@
             "cover": "none",
             "hidden": false,
             "solid": false,
-            "visual_key": "feature:tree"
+            "visual_key": "feature:stump"
           }
         ],
         "environment": "outdoor",

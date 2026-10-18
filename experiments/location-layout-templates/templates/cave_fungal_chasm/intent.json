@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "entry": "spore_entry",
+  "parts": [
+    {
+      "part_ref": "spore_entry",
+      "role": "cave_entrance",
+      "name": "Входная расселина спор",
+      "public_name": "Грибной грот",
+      "description": "Сырой каменный свод с плотными зарослями светящихся грибов и каменными осыпями.",
+      "environment": "indoor",
+      "shape": "cave",
+      "size": "medium",
+      "cols": 10,
+      "rows": 10,
+      "level": 0,
+      "material": "earth",
+      "lighting": "normal",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "mushrooms",
+          "name": "Скопления светящихся грибов",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ],
+            [
+              3,
+              6,
+              3,
+              6
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mushrooms"
+        },
+        {
+          "detail_ref": "boulder",
+          "name": "Обкатанный валун",
+          "kind": "cover",
+          "cells": [
+            [
+              6,
+              5,
+              6,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "scree",
+          "name": "Осыпь мелких камней",
+          "kind": "nature",
+          "cells": [
+            [
+              5,
+              3,
+              6,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "chasm_bridge",
+      "role": "corridor",
+      "name": "Каменный карниз над бездной",
+      "public_name": "Узкий карниз",
+      "description": "Опасная тропа вдоль трещины со свисающими сталактитами.",
+      "environment": "indoor",
+      "shape": "corridor",
+      "size": "medium",
+      "cols": 7,
+      "rows": 2,
+      "level": 0,
+      "material": "stone",
+      "lighting": "normal",
+      "connects_to": "spore_entry",
+      "side": "e",
+      "passage_kind": "passage",
+      "passage_name": "Узкий проход по карнизу",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "stalactites",
+          "name": "Острые сталактиты",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              0,
+              4,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "fungal_heart",
+      "role": "grotto",
+      "name": "Великая грибная каверна",
+      "public_name": "Светящийся грот",
+      "description": "Огромный грот с исполинскими грибами, кристаллами и мерцающим подземным озером.",
+      "environment": "indoor",
+      "shape": "cave",
+      "size": "medium",
+      "cols": 14,
+      "rows": 12,
+      "level": 0,
+      "material": "stone",
+      "lighting": "normal",
+      "connects_to": "chasm_bridge",
+      "side": "e",
+      "passage_kind": "arch",
+      "passage_name": "Сводчатый вход в каверну",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "mushrooms",
+          "name": "Лес гигантских грибов",
+          "kind": "nature",
+          "cells": [
+            [
+              4,
+              4,
+              5,
+              4
+            ],
+            [
+              9,
+              4,
+              9,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mushrooms"
+        },
+        {
+          "detail_ref": "crystal_cluster",
+          "name": "Друза светящихся кристаллов",
+          "kind": "object",
+          "cells": [
+            [
+              7,
+              8,
+              8,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crystal"
+        },
+        {
+          "detail_ref": "shimmering_pool",
+          "name": "Мерцающий ручей",
+          "kind": "light",
+          "cells": [
+            [
+              4,
+              7,
+              5,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:glow"
+        },
+        {
+          "detail_ref": "stalagmite_pillars",
+          "name": "Колонны сталагмитов",
+          "kind": "cover",
+          "cells": [
+            [
+              9,
+              7,
+              9,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "spider_lair",
+      "role": "lair",
+      "name": "Логово пещерных тварей",
+      "public_name": "Паучье логово",
+      "description": "Тёмная боковая расщелина, затянутая паутиной, с костями жертв.",
+      "environment": "indoor",
+      "shape": "cave",
+      "size": "medium",
+      "cols": 7,
+      "rows": 7,
+      "level": 0,
+      "material": "earth",
+      "lighting": "normal",
+      "connects_to": "fungal_heart",
+      "side": "s",
+      "passage_kind": "gap",
+      "passage_name": "Узкая трещина в логово",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "beast_bedding",
+          "name": "Кокон из паутины",
+          "kind": "furniture",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:nest"
+        },
+        {
+          "detail_ref": "bone_pile",
+          "name": "Оглоданные кости",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              5,
+              4,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:bones"
+        },
+        {
+          "detail_ref": "scree",
+          "name": "Каменные осколки",
+          "kind": "nature",
+          "cells": [
+            [
+              5,
+              3,
+              5,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:rubble"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "spore_entry",
+      "side": "w",
+      "kind": "gap",
+      "public_name": "Входная расселина в пещеру",
+      "outside_id": null,
+      "band": null,
+      "width": 1
+    }
+  ],
+  "bands": []
+}

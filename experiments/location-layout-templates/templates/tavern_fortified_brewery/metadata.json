@@ -1,0 +1,41 @@
+{
+  "id": "tavern_fortified_brewery",
+  "version": "1.2.0",
+  "archetype": "tavern",
+  "variant": "C",
+  "variant_name": "Укреплённая пивоварня",
+  "purpose": "Каменная приграничная пивоварня с дегустационным залом, варочным цехом и хранилищем хмеля",
+  "visual_concept": "Массивное каменное здание с толстыми стенами, медными варочными котлами, рядами бочек и конторкой мастера.",
+  "environment": "indoor",
+  "materials": [
+    "stone",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Торговля с гильдией пивоваров, наём караванной стражи в дегустационном зале.",
+    "exploration": "Поиск редких рецептов в конторке или тайника в солодовне.",
+    "combat": "Медные чаны и стойки бочек создают прочные укрытия; узкие переходы удобны для обороны."
+  },
+  "allowable_adaptations": [
+    "Превращение в подпольную алхимическую лабораторию",
+    "Осада пограничного форпоста"
+  ],
+  "discovered_constraints": [
+    "Чаны и печи должны стоять у стен для безопасных проходов к выходам."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

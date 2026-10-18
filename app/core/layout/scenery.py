@@ -40,32 +40,71 @@ _PROPS = {
     "tree": ("Дерево", "nature", (0, 0, 0, 0)),
     "shrub": ("Кустарник", "nature", (0, 0, 1, 0)),
     "reeds": ("Камыши", "nature", (0, 0, 1, 0)),
+    "chair": ("Кресло", "furniture", (0, 0, 0, 0)),
+    "desk": ("Письменный стол", "furniture", (0, 0, 1, 0)),
+    "wardrobe": ("Шкаф", "furniture", (0, 0, 1, 0)),
+    "weapon_rack": ("Оружейная стойка", "furniture", (0, 0, 1, 0)),
+    "workbench": ("Верстак", "furniture", (0, 0, 1, 0)),
+    "anvil": ("Наковальня", "object", (0, 0, 0, 0)),
+    "forge": ("Кузнечный горн", "light", (0, 0, 1, 0)),
+    "cauldron": ("Котёл", "object", (0, 0, 0, 0)),
+    "chandelier": ("Люстра", "light", (0, 0, 0, 0)),
+    "brazier": ("Жаровня", "light", (0, 0, 0, 0)),
+    "statue": ("Статуя", "cover", (0, 0, 0, 0)),
+    "fountain": ("Фонтан", "object", (0, 0, 1, 1)),
+    "well": ("Колодец", "object", (0, 0, 1, 1)),
+    "sarcophagus": ("Саркофаг", "cover", (0, 0, 1, 0)),
+    "tombstone": ("Надгробие", "cover", (0, 0, 0, 0)),
+    "cart": ("Телега", "cover", (0, 0, 1, 1)),
+    "cage": ("Клетка", "object", (0, 0, 0, 0)),
+    "carpet": ("Ковёр", "furniture", (0, 0, 1, 1)),
+    "stump": ("Пень", "nature", (0, 0, 0, 0)),
+    "log": ("Поваленное бревно", "nature", (0, 0, 1, 0)),
+    "mushrooms": ("Грибы", "nature", (0, 0, 0, 0)),
+    "sack": ("Мешки", "object", (0, 0, 0, 0)),
 }
 
 
 def _motifs(area: Area) -> list[tuple]:
     role = area.role
     if area.shape == "cave" or role in {"cave", "grotto", "cavern", "cliff", "cliffs", "rocky_slope"}:
-        keys = ("rock", "rubble", "lichen", "crystal") if area.shape == "cave" else ("rock", "rubble", "lichen")
+        keys = (
+            ("rock", "rubble", "lichen", "crystal")
+            if area.shape == "cave"
+            else ("rock", "rubble", "lichen", "mushrooms")
+        )
     elif role in {"pier", "quay", "dock", "cargo_pier"}:
-        keys = ("mooring", "net", "barrel", "crate")
+        keys = ("mooring", "net", "barrel", "crate", "sack", "cart")
     elif role in {"warehouse", "storage", "store", "cellar", "pantry", "cache"}:
-        keys = ("shelf", "crate", "barrel", "chest")
-    elif role in {"chapel", "temple", "shrine", "sanctuary", "crypt", "tomb"}:
-        keys = ("altar", "bench", "torch", "pillar")
+        keys = ("shelf", "crate", "barrel", "chest", "sack", "wardrobe")
+    elif role in {"crypt", "tomb"}:
+        keys = ("sarcophagus", "tombstone", "brazier", "pillar", "statue")
+    elif role in {"chapel", "temple", "shrine", "sanctuary"}:
+        keys = ("altar", "bench", "torch", "pillar", "statue", "brazier", "carpet")
     elif role in {"bedroom", "guest_room", "guest_rooms", "sleeping", "barracks", "dormitory"}:
-        keys = ("bed", "chest", "torch", "bench")
-    elif role in {"workshop", "laboratory", "kitchen", "smithy"}:
-        keys = ("table", "shelf", "barrel", "hearth")
+        keys = ("bed", "chest", "torch", "bench", "wardrobe", "chair", "carpet")
+    elif role in {"workshop", "smithy"}:
+        keys = ("workbench", "anvil", "forge", "weapon_rack", "table", "barrel")
+    elif role in {"kitchen"}:
+        keys = ("table", "hearth", "cauldron", "shelf", "barrel", "sack")
+    elif role in {"laboratory", "study", "library", "office"}:
+        keys = ("desk", "chair", "shelf", "carpet", "table", "torch")
     elif role in {"market", "shop", "stall"}:
-        keys = ("counter", "crate", "barrel", "shelf")
+        keys = ("counter", "crate", "barrel", "shelf", "sack")
     elif area.environment == "outdoor":
-        keys = ("reeds", "shrub", "rock") if role in {"bank", "riverbank", "marsh"} else ("tree", "shrub", "rock")
-    elif role in {"tavern", "common_room", "dining", "dining_room", "hall", "great_hall"}:
+        keys = (
+            ("reeds", "shrub", "rock", "log")
+            if role in {"bank", "riverbank", "marsh"}
+            else ("tree", "shrub", "rock", "stump", "log", "mushrooms")
+        )
+    elif role in {"common_room"}:
         keys = ("hearth", "torch", "barrel")
         return [_SEATING, *[((key, *_PROPS[key]),) for key in keys]]
+    elif role in {"tavern", "dining", "dining_room", "hall", "great_hall"}:
+        keys = ("hearth", "torch", "barrel", "chair", "chandelier", "carpet")
+        return [_SEATING, *[((key, *_PROPS[key]),) for key in keys]]
     else:
-        keys = ("bench", "torch", "shelf")
+        keys = ("bench", "torch", "shelf", "chair")
     return [((key, *_PROPS[key]),) for key in keys]
 
 

@@ -428,20 +428,20 @@
           "visual_key": "feature:torch"
         },
         {
-          "detail_ref": "decor_4_0",
-          "name": "Светильник",
-          "kind": "light",
+          "detail_ref": "decor_3_0",
+          "name": "Кресло",
+          "kind": "furniture",
           "cells": [
             [
-              2,
               0,
               2,
-              0
+              0,
+              2
             ]
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:torch"
+          "visual_key": "feature:chair"
         }
       ],
       "terrain": [],

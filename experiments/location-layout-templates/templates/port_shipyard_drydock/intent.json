@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "entry": "drydock_basin",
+  "parts": [
+    {
+      "part_ref": "drydock_basin",
+      "role": "pier",
+      "name": "Сухой док со стапелями",
+      "public_name": "Бассейн сухого дока",
+      "description": "Глубокий каменный бассейн с деревянными кильблоками, балками и подъёмным краном.",
+      "environment": "outdoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 14,
+      "rows": 10,
+      "level": 0,
+      "material": "stone",
+      "lighting": "normal",
+      "connects_to": null,
+      "side": null,
+      "passage_kind": "door",
+      "passage_name": "Проход",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "cargo_crane",
+          "name": "Тяжёлый кран для корабельных балок",
+          "kind": "object",
+          "cells": [
+            [
+              2,
+              3,
+              3,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crane"
+        },
+        {
+          "detail_ref": "log",
+          "name": "Дубовые корабельные брёвна",
+          "kind": "cover",
+          "cells": [
+            [
+              8,
+              3,
+              10,
+              3
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:log"
+        },
+        {
+          "detail_ref": "cart",
+          "name": "Тележка с инструментами",
+          "kind": "object",
+          "cells": [
+            [
+              11,
+              6,
+              12,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:cart"
+        },
+        {
+          "detail_ref": "tar_firepit",
+          "name": "Жаровня для варки смолы",
+          "kind": "light",
+          "cells": [
+            [
+              2,
+              6,
+              3,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:hearth"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "shipwright_forge",
+      "role": "workshop",
+      "name": "Кузница оснастки и цепей",
+      "public_name": "Кузница верфи",
+      "description": "Жаркая мастерская с горном, наковальней и верстаком для ковки якорей.",
+      "environment": "indoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 10,
+      "rows": 7,
+      "level": 0,
+      "material": "stone",
+      "lighting": "normal",
+      "connects_to": "drydock_basin",
+      "side": "n",
+      "passage_kind": "arch",
+      "passage_name": "Широкий въезд в кузницу",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "forge",
+          "name": "Кузнечный горн верфи",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              1,
+              8,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:forge"
+        },
+        {
+          "detail_ref": "anvil",
+          "name": "Тяжёлая наковальня",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              2,
+              5,
+              2
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:anvil"
+        },
+        {
+          "detail_ref": "workbench",
+          "name": "Верстак слесаря",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              2,
+              1
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:workbench"
+        },
+        {
+          "detail_ref": "barrel",
+          "name": "Бочки с водой для закалки",
+          "kind": "object",
+          "cells": [
+            [
+              1,
+              5,
+              2,
+              5
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:barrel"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "part_ref": "timber_quay",
+      "role": "quay",
+      "name": "Причальная набережная пиломатериалов",
+      "public_name": "Причал для разгрузки леса",
+      "description": "Широкий гранитный причал с кнехтами, штабелями досок и мостками.",
+      "environment": "outdoor",
+      "shape": "rect",
+      "size": "medium",
+      "cols": 12,
+      "rows": 5,
+      "level": 0,
+      "material": "stone",
+      "lighting": "normal",
+      "connects_to": "drydock_basin",
+      "side": "s",
+      "passage_kind": "passage",
+      "passage_name": "Спуск на причал",
+      "passage_state": "open",
+      "secret": false,
+      "required": false,
+      "anchors": [],
+      "details": [
+        {
+          "detail_ref": "mooring_bollards",
+          "name": "Швартовые кнехты",
+          "kind": "furniture",
+          "cells": [
+            [
+              2,
+              3,
+              2,
+              3
+            ],
+            [
+              9,
+              3,
+              9,
+              3
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:mooring"
+        },
+        {
+          "detail_ref": "coiled_hawsers",
+          "name": "Тяжелые канаты",
+          "kind": "object",
+          "cells": [
+            [
+              5,
+              1,
+              6,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false,
+          "visual_key": "feature:net"
+        }
+      ],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "approaches": [
+    {
+      "part_ref": "drydock_basin",
+      "side": "w",
+      "kind": "gate",
+      "public_name": "Въезд на территорию верфи",
+      "outside_id": null,
+      "band": null,
+      "width": 2
+    }
+  ],
+  "bands": []
+}

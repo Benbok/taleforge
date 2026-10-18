@@ -1,0 +1,33 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "collapsed_atrium": {
+      "rubble_piles": "preserved",
+      "fallen_statue": "preserved",
+      "tombstone": "preserved"
+    },
+    "sepulcher_chamber": {
+      "sarcophagus": "preserved",
+      "statue": "preserved",
+      "brazier": "preserved",
+      "bone_pile": "preserved"
+    },
+    "secret_reliquary": {
+      "relic_chest": "preserved",
+      "statue": "preserved"
+    }
+  }
+}

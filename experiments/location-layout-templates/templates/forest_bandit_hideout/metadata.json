@@ -1,0 +1,41 @@
+{
+  "id": "forest_bandit_hideout",
+  "version": "1.2.0",
+  "archetype": "forest",
+  "variant": "D",
+  "variant_name": "Укреплённый лагерь разбойников",
+  "purpose": "Лесной лагерь на поляне с частоколом, кострищем, телегой с добычей и потайной землянкой",
+  "visual_concept": "Поляна с кострищем, ящиками, оружием на стойках и замаскированной землянкой главаря.",
+  "environment": "mixed",
+  "materials": [
+    "earth",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Допрос захваченного разбойника, переговоры об освобождении заложников.",
+    "exploration": "Обыск телеги с награбленным добром, поиск замаскированного входа в землянку.",
+    "combat": "Кострище как источник огня; телега и брёвна служат стрелковыми баррикадами."
+  },
+  "allowable_adaptations": [
+    "Лагерь повстанцев",
+    "Охотничья стоянка на пушного зверя"
+  ],
+  "discovered_constraints": [
+    "Поляна открытая (outdoor), навес и землянка деревянные (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

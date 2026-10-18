@@ -55,7 +55,7 @@
             ],
             "solid": true,
             "hidden": false,
-            "visual_key": "feature:altar"
+            "visual_key": "feature:fountain"
           },
           {
             "detail_ref": "overgrown_hedges",
@@ -109,7 +109,7 @@
             ],
             "solid": false,
             "hidden": false,
-            "visual_key": "feature:altar"
+            "visual_key": "feature:fountain"
           }
         ],
         "scene_profile": null,
@@ -152,7 +152,7 @@
             ],
             "solid": false,
             "hidden": false,
-            "visual_key": "feature:rubble"
+            "visual_key": "feature:chandelier"
           },
           {
             "detail_ref": "marble_pillars",
@@ -233,7 +233,7 @@
             ],
             "solid": true,
             "hidden": false,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           },
           {
             "detail_ref": "parchment_shelves",

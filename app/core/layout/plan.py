@@ -79,3 +79,65 @@ async def reserve_from_plan(ctx, root: Entity, sketch: dict[str, Any], inverse: 
     )
     inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
     return row
+
+
+async def reserve_for_location(ctx, root: Entity, inverse: list) -> WorldGenerationState | None:
+    """Резерв структуры для локации (как из каркаса, так и незапланированной)."""
+    from app.core import plot as plot_mod
+    from app.core.world_generation import storage
+
+    if not eligible(ctx.world, root):
+        return None
+    row = await storage.find(ctx.session, ctx.campaign.id, root.id, "location_layout")
+    if row is not None:
+        return row
+    plot_id = (root.state or {}).get("plot_id")
+    if plot_id:
+        kind, sketch = plot_mod._index(ctx.world.plot or {}).get(plot_id, (None, None))
+        if kind == "location" and sketch:
+            return await reserve_from_plan(ctx, root, sketch, inverse)
+
+    template_id = str(root.template_id or "")
+    record = ctx.world.catalog.find(template_id, "location_template")
+    tags = tuple((record.data.get("tags") if record is not None else None) or [])
+    spatial = default_spatial(root.name, tags, template_id=template_id)
+    links = []
+    if root.location_id:
+        links.append(root.location_id)
+    for other_id in (root.state or {}).get("links", {}).keys():
+        if other_id not in links:
+            links.append(other_id)
+    if links:
+        spatial.links = links[:4]
+
+    from app.core import plot_anchors
+
+    anchors = [
+        Holder(key=b.anchor_id, name=plot_anchors.anchor_reserve(b)["name"][:80])
+        for b in await plot_anchors.reserved_for(ctx.session, ctx.campaign.id, root.id)
+    ][:MAX_HOLDERS]
+    room = MAX_HOLDERS - len(anchors)
+    residents = [
+        Holder(key=f"npc:{en.id}", name=str(en.name or en.id)[:80])
+        for en in ctx.world.entities.values()
+        if en.kind == "creature" and en.location_id == root.id
+    ][:room]
+    mandate = Mandate(
+        place=root.name,
+        mood=str(root.description or "")[:300],
+        spatial=spatial,
+        anchors=anchors,
+        residents=residents,
+    )
+    from app.core.layout.template_selection import TemplateContext
+
+    row = await store.reserve_plan_layout(
+        ctx.session,
+        ctx.campaign,
+        root,
+        mandate,
+        template_context=TemplateContext(template_id=template_id, tags=tags),
+        source="improvisation",
+    )
+    inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})
+    return row

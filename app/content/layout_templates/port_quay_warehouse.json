@@ -267,7 +267,7 @@
             ],
             "solid": true,
             "hidden": false,
-            "visual_key": "feature:table"
+            "visual_key": "feature:desk"
           },
           {
             "detail_ref": "cargo_chest",

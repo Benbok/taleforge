@@ -558,8 +558,25 @@
             "visual_key": "feature:torch"
           },
           {
-            "id": "sf_part_2_decor_4_0",
-            "name": "Светильник",
+            "id": "sf_part_2_decor_3_0",
+            "name": "Кресло",
+            "kind": "furniture",
+            "cells": [
+              [
+                3,
+                5,
+                3,
+                5
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": false,
+            "visual_key": "feature:chair"
+          },
+          {
+            "id": "sf_part_2_wall_torch_0",
+            "name": "Настенный факел",
             "kind": "light",
             "cells": [
               [

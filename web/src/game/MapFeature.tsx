@@ -320,6 +320,736 @@ function Artwork({ footprint: f, visual: v, seed, mount }: { footprint: FeatureF
           <circle cx={a - .008} cy={y + .28} r=".02" fill="#fff0ba" />
         </g>)}
       </g>;
+    case "chair":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        if (n < .35) {
+          return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+            <ellipse cx=".03" cy=".05" rx=".29" ry=".27" fill="#141c17" opacity=".45" />
+            <circle r=".28" fill={WOOD} stroke="#3b2b1d" strokeWidth=".04" />
+            <circle r=".18" fill="none" stroke="#be935b" strokeWidth=".025" opacity=".6" />
+            <circle r=".09" fill="none" stroke="#523a28" strokeWidth=".02" opacity=".5" />
+            {[0, 120, 240].map((deg) => {
+              const rad = (deg * Math.PI) / 180;
+              return <circle key={deg} cx={Math.cos(rad) * .19} cy={Math.sin(rad) * .19} r=".025" fill={BRASS} stroke="#3b2b1d" strokeWidth=".01" />;
+            })}
+          </g>;
+        } else if (n < .7) {
+          const rot = Math.floor(variation(seed, c, r, 1) * 4) * 90;
+          return <g key={`${c},${r}`} transform={`translate(${cx} ${cy}) rotate(${rot})`}>
+            <rect x="-.22" y="-.18" width=".44" height=".42" rx=".05" fill="#141c17" opacity=".4" transform="translate(.03 .04)" />
+            <rect x="-.22" y="-.18" width=".44" height=".42" rx=".05" fill={WOOD} stroke="#3b2b1d" strokeWidth=".035" />
+            <path d="M-.18 0h.36" stroke="#5c3f25" strokeWidth=".02" />
+            <path d="M-.23 -.2q.23 -.07 .46 0" fill="none" stroke="#d5ab71" strokeWidth=".06" strokeLinecap="round" />
+            <path d="M-.11 -.19v.06 M0 -.21v.06 M.11 -.19v.06" stroke="#3b2b1d" strokeWidth=".025" />
+          </g>;
+        } else {
+          const rot = Math.floor(variation(seed, c, r, 2) * 4) * 90;
+          const cushionColor = n > .85 ? "#69292c" : "#2a434c";
+          return <g key={`${c},${r}`} transform={`translate(${cx} ${cy}) rotate(${rot})`}>
+            <rect x="-.26" y="-.24" width=".52" height=".5" rx=".07" fill="#141c17" opacity=".45" transform="translate(.04 .05)" />
+            <rect x="-.26" y="-.24" width=".52" height=".5" rx=".07" fill="#2d221a" stroke="#1d1611" strokeWidth=".03" />
+            <rect x="-.18" y="-.16" width=".36" height=".34" rx=".05" fill={cushionColor} stroke="#a8895b" strokeWidth=".025" />
+            <rect x="-.27" y="-.16" width=".08" height=".34" rx=".03" fill={WOOD} stroke="#382516" strokeWidth=".02" />
+            <rect x=".19" y="-.16" width=".08" height=".34" rx=".03" fill={WOOD} stroke="#382516" strokeWidth=".02" />
+            <rect x="-.26" y="-.26" width=".52" height=".1" rx=".04" fill={WOOD} stroke="#382516" strokeWidth=".02" />
+          </g>;
+        }
+      })}</g>;
+    case "desk": {
+      const n = variation(seed, x, y);
+      return <g>
+        <WoodGrain footprint={f} seed={seed} />
+        <rect {...frame} rx=".05" fill="none" stroke="#dcb781" strokeWidth=".06" />
+        <rect x={frame.x + .05} y={frame.y + .05} width={frame.width - .1} height={frame.height - .1} rx=".03" fill="none" stroke="#352618" strokeWidth=".03" opacity=".7" />
+        <rect x={cx - Math.min(.38, w * .35)} y={cy - Math.min(.22, h * .35)} width={Math.min(.76, w * .7)} height={Math.min(.44, h * .7)} rx=".03" fill="#262d29" stroke="#5a685e" strokeWidth=".025" />
+        {n < .35 ? <g>
+          <rect x={cx - .28} y={cy - .14} width=".3" height=".24" rx=".02" fill="#ded8b8" stroke="#94876b" strokeWidth=".02" />
+          <path d={`M${cx - .24} ${cy - .08}h.2 M${cx - .24} ${cy - .02}h.2 M${cx - .24} ${cy + .04}h.14`} stroke="#695e47" strokeWidth=".016" />
+          <circle cx={cx + .2} cy={cy - .06} r=".05" fill="#181a1b" stroke={BRASS} strokeWidth=".015" />
+          <path d={`M${cx + .2} ${cy - .06}l.08 -.14`} stroke="#d4cbaf" strokeWidth=".025" strokeLinecap="round" />
+          <rect x={cx + .14} y={cy + .06} width=".16" height=".12" rx=".02" fill="#75352c" stroke="#2b1410" strokeWidth=".015" />
+        </g> : n < .7 ? <g>
+          <rect x={cx - .3} y={cy - .16} width=".42" height=".3" rx=".02" fill="#e8dec3" stroke="#877551" strokeWidth=".02" />
+          <circle cx={cx - .1} cy={cy - .02} r=".08" fill="none" stroke="#a68e63" strokeWidth=".018" strokeDasharray=".03 .03" />
+          <path d={`M${cx - .1} ${cy - .08}v.12 M${cx - .16} ${cy - .02}h.12`} stroke="#8a744e" strokeWidth=".02" />
+          <path d={`M${cx + .2} ${cy - .08}l.06 .2 M${cx + .2} ${cy - .08}l-.06 .2`} stroke={BRASS} strokeWidth=".025" strokeLinecap="round" />
+          <circle cx={cx + .24} cy={cy + .08} r=".045" fill={BRASS} stroke="#3b2b1d" strokeWidth=".015" />
+          <circle cx={cx + .24} cy={cy + .08} r=".02" fill="#ffe3a3" />
+        </g> : <g>
+          <rect x={cx - .24} y={cy - .14} width=".32" height=".26" rx=".02" fill="#523927" stroke="#b08d5b" strokeWidth=".02" />
+          <path d={`M${cx - .08} ${cy - .14}v.26`} stroke="#8f2b2b" strokeWidth=".02" />
+          {[[-.12, .1], [.18, -.06], [.22, .02], [.16, .08]].map(([dx, dy], i) => (
+            <circle key={i} cx={cx + dx} cy={cy + dy} r=".032" fill={BRASS} stroke="#42341b" strokeWidth=".012" />
+          ))}
+        </g>}
+      </g>;
+    }
+    case "wardrobe": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        <WoodGrain footprint={f} seed={seed} />
+        <rect {...frame} rx=".05" fill="none" stroke="#2a1f16" strokeWidth=".08" />
+        <rect {...frame} rx=".05" fill="none" stroke="#d5ad77" strokeWidth=".04" />
+        <path d={horizontal ? `M${cx} ${y + .14}V${y + h - .14}` : `M${x + .14} ${cy}H${x + w - .14}`} stroke="#3b291a" strokeWidth=".05" />
+        {n < .4 ? <g>
+          {[-.1, .1].map((offset) => horizontal ? (
+            <g key={offset}>
+              <rect x={cx + offset * w - .12} y={cy - .2} width=".24" height=".4" rx=".03" fill="#201710" opacity=".35" />
+              <circle cx={cx + (offset > 0 ? .05 : -.05)} cy={cy} r=".03" fill={BRASS} stroke="#352414" strokeWidth=".015" />
+            </g>
+          ) : (
+            <g key={offset}>
+              <rect x={cx - .2} y={cy + offset * h - .12} width=".4" height=".24" rx=".03" fill="#201710" opacity=".35" />
+              <circle cx={cx} cy={cy + (offset > 0 ? .05 : -.05)} r=".03" fill={BRASS} stroke="#352414" strokeWidth=".015" />
+            </g>
+          ))}
+        </g> : n < .75 ? <g>
+          <path d={horizontal ? `M${x + .16} ${y + h - .24}H${x + w - .16}` : `M${x + w - .24} ${y + .16}V${y + h - .16}`} stroke="#3b291a" strokeWidth=".04" />
+          {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => (
+            <circle key={i} cx={cx + sx * (w * .38)} cy={cy + sy * (h * .36)} r=".03" fill={BRASS} stroke="#352414" strokeWidth=".015" />
+          ))}
+        </g> : <g>
+          {[-.22, .22].map((pos) => horizontal ? (
+            <path key={pos} d={`M${cx + pos * w} ${y + .12}V${y + h - .12}`} stroke="#3b4042" strokeWidth=".07" />
+          ) : (
+            <path key={pos} d={`M${x + .12} ${cy + pos * h}H${x + w - .12}`} stroke="#3b4042" strokeWidth=".07" />
+          ))}
+          <rect x={cx - .07} y={cy - .07} width=".14" height=".14" rx=".02" fill="#2d3336" stroke="#8fa0a8" strokeWidth=".02" />
+        </g>}
+      </g>;
+    }
+    case "weapon_rack": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        <WoodGrain footprint={f} seed={seed} />
+        <rect {...frame} rx=".03" fill="none" stroke="#cfa773" strokeWidth=".05" />
+        {horizontal ? (
+          <g>
+            <path d={`M${x + .16} ${y + .22}H${x + w - .16} M${x + .16} ${y + h - .22}H${x + w - .16}`} stroke="#352618" strokeWidth=".06" />
+            {n < .4 ? (
+              Array.from({ length: Math.max(3, Math.floor(w * 2)) }, (_, i) => {
+                const px = x + .28 + (i * (w - .56)) / (Math.max(3, Math.floor(w * 2)) - 1);
+                return <g key={i}>
+                  <path d={`M${px} ${y + .14}V${y + h - .14}`} stroke="#b6bfc7" strokeWidth=".045" />
+                  <path d={`M${px - .06} ${y + .24}H${px + .06}`} stroke={BRASS} strokeWidth=".03" />
+                  <circle cx={px} cy={y + .14} r=".025" fill={BRASS} />
+                </g>;
+              })
+            ) : n < .75 ? (
+              Array.from({ length: Math.max(2, Math.floor(w * 1.5)) }, (_, i) => {
+                const px = x + .3 + (i * (w - .6)) / (Math.max(2, Math.floor(w * 1.5)) - 1);
+                return <g key={i}>
+                  <path d={`M${px} ${y + .12}V${y + h - .12}`} stroke="#6e5033" strokeWidth=".05" />
+                  <path d={`M${px - .04} ${y + .18}L${px} ${y + .1}L${px + .04} ${y + .18}Z`} fill="#d4dde6" stroke="#48535e" strokeWidth=".015" />
+                </g>;
+              })
+            ) : (
+              <g>
+                <path d={`M${cx - .3} ${cy}H${cx + .3}`} stroke="#8a6946" strokeWidth=".06" />
+                <circle cx={cx} cy={cy} r=".2" fill="#5c442c" stroke="#c49b66" strokeWidth=".035" />
+                <circle cx={cx} cy={cy} r=".06" fill={BRASS} stroke="#2b2014" strokeWidth=".02" />
+              </g>
+            )}
+          </g>
+        ) : (
+          <g>
+            <path d={`M${x + .22} ${y + .16}V${y + h - .16} M${x + w - .22} ${y + .16}V${y + h - .16}`} stroke="#352618" strokeWidth=".06" />
+            {Array.from({ length: Math.max(3, Math.floor(h * 2)) }, (_, i) => {
+              const py = y + .28 + (i * (h - .56)) / (Math.max(3, Math.floor(h * 2)) - 1);
+              return <g key={i}>
+                <path d={`M${x + .14} ${py}H${x + w - .14}`} stroke="#b6bfc7" strokeWidth=".045" />
+                <path d={`M${x + .24} ${py - .06}V${py + .06}`} stroke={BRASS} strokeWidth=".03" />
+                <circle cx={x + .14} cy={py} r=".025" fill={BRASS} />
+              </g>;
+            })}
+          </g>
+        )}
+      </g>;
+    }
+    case "workbench": {
+      const n = variation(seed, x, y);
+      return <g>
+        <WoodGrain footprint={f} seed={seed} />
+        <rect {...frame} rx=".04" fill="none" stroke="#d5aa72" strokeWidth=".07" />
+        <rect x={x + .08} y={y + .08} width=".14" height=".2" rx=".02" fill="#4a5054" stroke="#25292c" strokeWidth=".025" />
+        <path d={`M${x + .02} ${y + .18}H${x + .16}`} stroke="#8a9499" strokeWidth=".03" />
+        {n < .4 ? <g>
+          <rect x={cx - .2} y={cy - .1} width=".22" height=".12" rx=".02" fill="#583f28" stroke="#1d150e" strokeWidth=".02" />
+          <path d={`M${cx - .09} ${cy - .1}l-.04 -.06`} stroke="#c2ccd1" strokeWidth=".03" />
+          <path d={`M${cx + .1} ${cy - .06}q.08 -.08 .14 0t.08 .06 M${cx + .06} ${cy + .08}q.06 -.06 .12 0`} fill="none" stroke="#e2be85" strokeWidth=".02" />
+          <path d={`M${cx - .15} ${cy + .12}l.38 .08`} stroke="#b8c4c9" strokeWidth=".03" strokeDasharray=".04 .02" />
+        </g> : n < .75 ? <g>
+          <circle cx={cx - .14} cy={cy} r=".09" fill="#717a75" stroke="#353b38" strokeWidth=".025" />
+          <path d={`M${cx - .14} ${cy}l.08 -.08`} stroke="#4a524e" strokeWidth=".035" strokeLinecap="round" />
+          <ellipse cx={cx + .16} cy={cy + .04} rx=".08" ry=".07" fill="#609e84" opacity=".7" stroke="#b4e3ce" strokeWidth=".02" />
+          <path d={`M${cx + .16} ${cy - .03}v-.08`} stroke="#b4e3ce" strokeWidth=".03" />
+          <path d={`M${cx} ${cy - .14}q.06 .08 .12 .02t.08 .1`} fill="none" stroke="#5a8250" strokeWidth=".03" />
+        </g> : <g>
+          <circle cx={cx - .12} cy={cy - .04} r=".08" fill="none" stroke={BRASS} strokeWidth=".035" strokeDasharray=".04 .03" />
+          <circle cx={cx + .04} cy={cy + .04} r=".06" fill="none" stroke={BRASS} strokeWidth=".03" strokeDasharray=".03 .025" />
+          <path d={`M${cx + .18} ${cy - .12}l-.08 .2`} stroke="#6b7478" strokeWidth=".035" />
+          <rect x={cx + .16} y={cy - .14} width=".08" height=".05" rx=".01" fill="#424749" />
+        </g>}
+      </g>;
+    }
+    case "anvil":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".06" rx=".39" ry=".36" fill="#141c17" opacity=".5" />
+          <circle r=".37" fill="#583f28" stroke="#2f2014" strokeWidth=".05" />
+          <circle r=".34" fill="none" stroke="#7a5a3a" strokeWidth=".025" />
+          <circle r=".36" fill="none" stroke="#4a5054" strokeWidth=".03" />
+          <path d="M-.26 -.07L-.14 -.12H.16L.24 -.08L.26 0L.24 .08L.16 .12H-.14L-.26 .07Z" fill="#3a4044" stroke="#1d2022" strokeWidth=".03" />
+          <rect x="-.12" y="-.09" width=".24" height=".18" rx=".02" fill="#757e85" stroke="#b0bac2" strokeWidth=".02" />
+          <path d="M.12 -.07L.25 0L.12 .07Z" fill="#88939a" />
+          <rect x="-.09" y="-.03" width=".04" height=".04" fill="#1d2022" />
+          <circle cx=".05" cy="0" r=".018" fill="#1d2022" />
+          {n < .4 ? (
+            <g transform="translate(-.12 .18) rotate(25)">
+              <rect x="-.03" y="-.12" width=".06" height=".24" rx=".015" fill={WOOD} stroke="#3b2b1d" strokeWidth=".015" />
+              <rect x="-.06" y="-.14" width=".12" height=".07" rx=".02" fill="#50565a" stroke="#8fa0a8" strokeWidth=".015" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <path d="M-.08 -.02H.12" stroke="#f25822" strokeWidth=".04" strokeLinecap="round" />
+              <path d="M-.06 -.02H.1" stroke="#ffc04d" strokeWidth=".02" strokeLinecap="round" />
+              <circle cx=".02" cy="-.08" r=".015" fill="#ffa834" />
+            </g>
+          ) : (
+            <path d="M-.15 .18a.07 .07 0 1 1 .14 0" fill="none" stroke="#6b7378" strokeWidth=".03" strokeLinecap="round" />
+          )}
+        </g>;
+      })}</g>;
+    case "forge": {
+      const n = variation(seed, x, y);
+      return <g>
+        <rect {...frame} rx=".08" fill="#383d3a" stroke="#1d211e" strokeWidth=".07" />
+        <rect x={frame.x + .05} y={frame.y + .05} width={frame.width - .1} height={frame.height - .1} rx=".06" fill="none" stroke="#68706b" strokeWidth=".03" />
+        <rect x={cx - Math.min(.36, w * .32)} y={cy - Math.min(.26, h * .32)} width={Math.min(.72, w * .64)} height={Math.min(.52, h * .64)} rx=".04" fill="#1b120c" stroke="#0d0906" strokeWidth=".03" />
+        <ellipse cx={cx} cy={cy} rx={Math.min(.3, w * .26)} ry={Math.min(.2, h * .24)} fill="#cf4c17" opacity=".4" />
+        <ellipse cx={cx} cy={cy} rx={Math.min(.22, w * .18)} ry={Math.min(.14, h * .16)} fill="#f07824" opacity=".6" />
+        <ellipse cx={cx} cy={cy} rx={Math.min(.12, w * .1)} ry={Math.min(.08, h * .08)} fill="#ffd369" />
+        {[-.14, 0, .14].map((offset) => (
+          <path key={offset} d={`M${cx + offset} ${cy - .2}V${cy + .2}`} stroke="#222628" strokeWidth=".035" opacity=".7" />
+        ))}
+        {n < .4 ? (
+          <g transform={`translate(${x + .2} ${cy})`}>
+            <rect x="-.06" y="-.14" width=".12" height=".28" rx=".03" fill={WOOD} stroke="#3b2b1d" strokeWidth=".02" />
+            <path d="M0 -.14v-.1" stroke="#4a5054" strokeWidth=".03" />
+          </g>
+        ) : n < .75 ? (
+          <circle cx={cx} cy={cy} r=".1" fill="#2d3033" stroke="#e86523" strokeWidth=".025" />
+        ) : (
+          <rect x={x + w - .32} y={cy - .2} width=".2" height=".4" rx=".03" fill="#243f4d" stroke="#5a7d8f" strokeWidth=".025" />
+        )}
+      </g>;
+    }
+    case "cauldron":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".07" rx=".38" ry=".35" fill="#121815" opacity=".5" />
+          <circle r=".36" fill="#25282a" stroke="#151718" strokeWidth=".06" />
+          <circle r=".33" fill="none" stroke="#5a6066" strokeWidth=".03" />
+          <path d="M-.36 -.06q-.1 .06 0 .12 M.36 -.06q.1 .06 0 .12" fill="none" stroke="#4b5156" strokeWidth=".04" />
+          {n < .35 ? (
+            <g>
+              <circle r=".29" fill="#784421" />
+              <ellipse cx="-.06" cy="-.06" rx=".08" ry=".06" fill="#d97d38" />
+              <ellipse cx=".08" cy=".08" rx=".07" ry=".05" fill="#d9c884" />
+              <circle cx=".04" cy="-.12" r=".04" fill="#a85828" />
+              <path d="M-.18 .16L.22 -.24" stroke="#9e7547" strokeWidth=".045" strokeLinecap="round" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <circle r=".29" fill="#2e8550" />
+              <circle cx="-.06" cy="-.08" r=".07" fill="#7ceb97" opacity=".8" />
+              <circle cx=".12" cy="-.02" r=".05" fill="#7ceb97" opacity=".8" />
+              <circle cx="-.02" cy=".12" r=".06" fill="#a2ffd0" opacity=".9" />
+              <path d="M-.1 -.05q.15 -.12 .2 0t-.12 .14" fill="none" stroke="#b6ffe0" strokeWidth=".025" opacity=".8" />
+            </g>
+          ) : (
+            <g>
+              <circle r=".29" fill="#1c2624" />
+              <path d="M-.14 -.04q.1 .08 .28 -.02" fill="none" stroke="#415952" strokeWidth=".03" />
+              <circle cx="-.04" cy=".06" r=".03" fill="#2f423d" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "chandelier":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <circle r=".45" fill="#efa84c" opacity=".12" />
+          <circle r=".08" fill="#2e2b24" stroke={BRASS} strokeWidth=".025" />
+          {n < .45 ? (
+            <g>
+              {[0, 60, 120, 180, 240, 300].map((deg) => {
+                const rad = (deg * Math.PI) / 180;
+                const px = Math.cos(rad) * .32, py = Math.sin(rad) * .32;
+                return <g key={deg}>
+                  <path d={`M0 0Q${px * .4} ${py * .7} ${px} ${py}`} fill="none" stroke={BRASS} strokeWidth=".03" />
+                  <circle cx={px} cy={py} r=".05" fill="#3b321e" stroke={BRASS} strokeWidth=".015" />
+                  <circle cx={px} cy={py} r=".025" fill="#ffb347" />
+                  <circle cx={px} cy={py} r=".012" fill="#fff5cc" />
+                </g>;
+              })}
+            </g>
+          ) : n < .8 ? (
+            <g>
+              <circle r=".34" fill="none" stroke="#373c3f" strokeWidth=".045" />
+              <path d="M-.34 0H.34 M0 -.34V.34" stroke="#583f28" strokeWidth=".03" />
+              {[[-.24, 0], [.24, 0], [0, -.24], [0, .24]].map(([px, py], i) => (
+                <g key={i}>
+                  <rect x={px - .03} y={py - .03} width=".06" height=".06" fill="#ded9c8" stroke="#373c3f" strokeWidth=".015" />
+                  <circle cx={px} cy={py} r=".025" fill="#ff9933" />
+                  <circle cx={px} cy={py} r=".012" fill="#fff2b2" />
+                </g>
+              ))}
+            </g>
+          ) : (
+            <g>
+              <polygon points="0,-.34 .29,-.17 .29,.17 0,.34 -.29,.17 -.29,-.17" fill="none" stroke={BRASS} strokeWidth=".035" />
+              <circle r=".18" fill="#ffe099" opacity=".25" />
+              <circle r=".06" fill="#ffd15c" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "brazier":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".07" rx=".38" ry=".35" fill="#141c17" opacity=".5" />
+          <circle r=".44" fill="#efa84c" opacity=".14" />
+          {[30, 150, 270].map((deg) => {
+            const rad = (deg * Math.PI) / 180;
+            return <path key={deg} d={`M${Math.cos(rad) * .28} ${Math.sin(rad) * .28}L${Math.cos(rad) * .42} ${Math.sin(rad) * .42}`} stroke="#222527" strokeWidth=".06" strokeLinecap="round" />;
+          })}
+          <circle r=".34" fill="#323438" stroke="#18191b" strokeWidth=".05" />
+          <circle r=".31" fill="none" stroke="#686f75" strokeWidth=".025" />
+          {n < .4 ? (
+            <g>
+              <circle r=".26" fill="#b84518" />
+              <ellipse cx="-.03" cy="-.02" rx=".18" ry=".15" fill="#f28e2b" />
+              <ellipse cx="0" cy="-.04" rx=".1" ry=".08" fill="#ffe894" />
+              <path d="M-.08 .08Q-.15 -.12 0 -.22Q.15 -.12 .08 .08Z" fill="#ff771c" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <circle r=".26" fill="#2d1610" />
+              {[[-.1, -.06], [.08, -.08], [-.04, .08], [.1, .06], [0, 0]].map(([px, py], i) => (
+                <circle key={i} cx={px} cy={py} r=".06" fill={i % 2 ? "#e84e1b" : "#ff8f3d"} />
+              ))}
+              <path d="M-.12 .04q.14 -.18 .24 0" fill="none" stroke="#8c9196" strokeWidth=".03" opacity=".5" />
+            </g>
+          ) : (
+            <g>
+              <circle r=".26" fill="#122a33" />
+              <ellipse cx="0" cy="0" rx=".18" ry=".15" fill="#2ca8ba" />
+              <ellipse cx="0" cy="-.03" rx=".1" ry=".08" fill="#94f5ff" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "statue":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".05" cy=".07" rx=".36" ry=".33" fill="#141c17" opacity=".5" />
+          <rect x="-.32" y="-.32" width=".64" height=".64" rx=".06" fill="#585e5b" stroke="#323835" strokeWidth=".04" />
+          <rect x="-.25" y="-.25" width=".5" height=".5" rx=".04" fill="#717a75" stroke="#9da6a1" strokeWidth=".025" />
+          {n < .35 ? (
+            <g>
+              <ellipse cx="0" cy=".02" rx=".2" ry=".12" fill="#88928d" stroke="#383d3b" strokeWidth=".02" />
+              <circle cx="0" cy="-.06" r=".09" fill="#9ba5a0" stroke="#383d3b" strokeWidth=".02" />
+              <path d="M0 -.13v.14" stroke="#383d3b" strokeWidth=".02" />
+              <circle cx="-.15" cy=".05" r=".09" fill="#69736e" stroke="#cad4cf" strokeWidth=".025" />
+              <path d="M.12 -.1v.24 M.07 -.04h.1" stroke="#cbd5d0" strokeWidth=".03" strokeLinecap="round" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <path d="M-.18 .18C-.2 -.05 -.15 -.18 0 -.18C.15 -.18 .2 -.05 .18 .18Z" fill="#818b86" stroke="#3c4240" strokeWidth=".02" />
+              <circle cx="0" cy="-.08" r=".085" fill="#6b7570" stroke="#3c4240" strokeWidth=".02" />
+              <rect x="-.1" y=".04" width=".2" height=".12" rx=".02" fill="#d9d4c1" stroke="#4d4739" strokeWidth=".018" />
+              <path d="M0 .04v.12" stroke="#4d4739" strokeWidth=".018" />
+            </g>
+          ) : (
+            <g>
+              <ellipse cx="0" cy="0" rx=".18" ry=".13" fill="#858f8a" stroke="#3c4240" strokeWidth=".02" />
+              <path d="M-.08 -.12l.06 .1l-.04 .1" fill="none" stroke="#252a28" strokeWidth=".025" />
+              <circle cx=".1" cy="-.06" r=".05" fill="#5b7a54" />
+              <circle cx="-.1" cy=".08" r=".04" fill="#5b7a54" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "fountain": {
+      const n = variation(seed, x, y);
+      return <g>
+        <ellipse cx={cx + .05} cy={cy + .08} rx={w * .44} ry={h * .42} fill="#141c17" opacity=".45" />
+        <rect {...frame} rx={Math.min(w, h) * .4} fill="#5d6360" stroke="#2e3330" strokeWidth=".08" />
+        <rect {...frame} rx={Math.min(w, h) * .4} fill="none" stroke="#9da6a1" strokeWidth=".04" />
+        <rect x={frame.x + .14} y={frame.y + .14} width={frame.width - .28} height={frame.height - .28} rx={Math.min(w, h) * .35} fill="#264c5e" stroke="#5ca6ba" strokeWidth=".03" />
+        <ellipse cx={cx} cy={cy} rx={w * .26} ry={h * .24} fill="none" stroke="#88d5e8" strokeWidth=".025" opacity=".6" />
+        <ellipse cx={cx} cy={cy} rx={w * .18} ry={h * .16} fill="none" stroke="#b6ecf7" strokeWidth=".025" opacity=".7" />
+        <circle cx={cx} cy={cy} r={Math.min(w, h) * .12} fill="#727c78" stroke="#323835" strokeWidth=".03" />
+        <circle cx={cx} cy={cy} r={Math.min(w, h) * .05} fill="#b4f0fc" />
+        {n < .35 ? (
+          <g>
+            {[45, 135, 225, 315].map((deg) => {
+              const rad = (deg * Math.PI) / 180;
+              return <circle key={deg} cx={cx + Math.cos(rad) * w * .2} cy={cy + Math.sin(rad) * h * .18} r=".03" fill="#ffffff" opacity=".8" />;
+            })}
+          </g>
+        ) : n < .75 ? (
+          <g>
+            <ellipse cx={cx - w * .16} cy={cy - h * .12} rx=".08" ry=".06" fill="#386644" />
+            <ellipse cx={cx + w * .18} cy={cy + h * .1} rx=".07" ry=".05" fill="#386644" />
+            <circle cx={cx - w * .16} cy={cy - h * .12} r=".02" fill="#ffffff" />
+          </g>
+        ) : (
+          <g>
+            {[[-.12, -.08], [.14, -.06], [.08, .12], [-.1, .1]].map(([dx, dy], i) => (
+              <circle key={i} cx={cx + dx * w} cy={cy + dy * h} r=".03" fill={BRASS} stroke="#4a3e21" strokeWidth=".01" />
+            ))}
+          </g>
+        )}
+      </g>;
+    }
+    case "well": {
+      const n = variation(seed, x, y);
+      const rad = Math.min(w, h) * .42;
+      return <g>
+        <ellipse cx={cx + .05} cy={cy + .08} rx={rad + .02} ry={rad} fill="#141c17" opacity=".5" />
+        <circle cx={cx} cy={cy} r={rad} fill="#565d5a" stroke="#252a28" strokeWidth=".07" />
+        <circle cx={cx} cy={cy} r={rad - .03} fill="none" stroke="#9ca7a2" strokeWidth=".03" />
+        <circle cx={cx} cy={cy} r={rad * .7} fill="#142129" stroke="#0b1317" strokeWidth=".04" />
+        <ellipse cx={cx} cy={cy + .04} rx={rad * .45} ry={rad * .3} fill="#243f4f" opacity=".6" />
+        <rect x={cx - w * .46} y={cy - .07} width={w * .92} height=".14" rx=".03" fill={WOOD} stroke="#3b291a" strokeWidth=".03" />
+        <rect x={cx - .12} y={cy - .06} width=".24" height=".12" rx=".02" fill="#c2aa7c" stroke="#52432a" strokeWidth=".02" />
+        {n < .4 ? (
+          <g>
+            <circle cx={cx + rad * .65} cy={cy - .1} r=".09" fill={WOOD} stroke="#3b2b1d" strokeWidth=".025" />
+            <path d={`M${cx + rad * .65 - .08} ${cy - .1}h.16`} stroke="#4a5054" strokeWidth=".02" />
+          </g>
+        ) : n < .75 ? (
+          <g>
+            <rect x={cx - w * .44} y={cy - .18} width={w * .88} height=".36" rx=".04" fill="#7a5538" stroke="#3b2515" strokeWidth=".03" opacity=".9" />
+            <path d={`M${cx - w * .42} ${cy}H${cx + w * .42}`} stroke="#4a2e19" strokeWidth=".03" />
+          </g>
+        ) : (
+          <g transform={`translate(${cx + w * .44} ${cy})`}>
+            <circle r=".05" fill="#4a5054" stroke="#1d2022" strokeWidth=".02" />
+            <path d="M0 0l.08 .08" stroke="#889296" strokeWidth=".03" strokeLinecap="round" />
+          </g>
+        )}
+      </g>;
+    }
+    case "sarcophagus": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        <rect {...frame} rx=".06" fill="#4d5350" stroke="#252927" strokeWidth=".07" />
+        <rect x={frame.x + .05} y={frame.y + .05} width={frame.width - .1} height={frame.height - .1} rx=".04" fill="#69716d" stroke="#9ba49f" strokeWidth=".03" />
+        {n < .4 ? (
+          <g>
+            {horizontal ? (
+              <g>
+                <circle cx={x + .35} cy={cy} r=".14" fill="#88928d" stroke="#3d4440" strokeWidth=".02" />
+                <path d={`M${x + .26} ${cy}h.08 M${x + .48} ${cy - .1}L${cx + .2} ${cy + .06} M${x + .48} ${cy + .1}L${cx + .2} ${cy - .06}`} stroke="#3d4440" strokeWidth=".03" />
+                <path d={`M${cx} ${cy}H${x + w - .3}`} stroke="#b0bac0" strokeWidth=".04" strokeLinecap="round" />
+              </g>
+            ) : (
+              <g>
+                <circle cx={cx} cy={y + .35} r=".14" fill="#88928d" stroke="#3d4440" strokeWidth=".02" />
+                <path d={`M${cx} ${y + .26}v.08 M${cx - .1} ${y + .48}L${cx + .06} ${cy + .2} M${cx + .1} ${y + .48}L${cx - .06} ${cy + .2}`} stroke="#3d4440" strokeWidth=".03" />
+                <path d={`M${cx} ${cy}V${y + h - .3}`} stroke="#b0bac0" strokeWidth=".04" strokeLinecap="round" />
+              </g>
+            )}
+          </g>
+        ) : n < .75 ? (
+          <g>
+            <path d={horizontal ? `M${x + .3} ${cy}H${x + w - .3}` : `M${cx} ${y + .3}V${y + h - .3}`} stroke="#38403c" strokeWidth=".035" />
+            {[[-.25, -.08], [0, .08], [.25, -.08]].map(([dx, dy], i) => (
+              <circle key={i} cx={cx + (horizontal ? dx * w : dy * w)} cy={cy + (horizontal ? dy * h : dx * h)} r=".04" fill="#2d3330" stroke="#7e8884" strokeWidth=".015" />
+            ))}
+          </g>
+        ) : (
+          <g>
+            <rect x={frame.x + .08} y={frame.y + .08} width={frame.width - .16} height={Math.min(.25, frame.height * .4)} fill="#0f1412" />
+            <path d={`M${x + .2} ${y + .15}l.1 .15`} stroke="#b0bac0" strokeWidth=".03" />
+          </g>
+        )}
+      </g>;
+    }
+    case "tombstone":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".08" rx=".34" ry=".22" fill="#141c17" opacity=".45" />
+          <ellipse cx="0" cy=".12" rx=".26" ry=".14" fill="#2d261e" opacity=".6" />
+          {n < .35 ? (
+            <g>
+              <path d="M-.18 .12V-.06C-.18 -.18 .18 -.18 .18 -.06V.12Z" fill="#6e7570" stroke="#353b37" strokeWidth=".035" />
+              <path d="M-.1 .02H.1 M-.08 -.06H.08" stroke="#353b37" strokeWidth=".02" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <path d="M-.06 .16V-.2H.06V.16Z M-.18 -.1H.18V-.02H-.18Z" fill="#78807b" stroke="#353b37" strokeWidth=".03" />
+              <circle cx="0" cy="-.06" r=".08" fill="none" stroke="#9aa39e" strokeWidth=".02" />
+            </g>
+          ) : (
+            <g transform="rotate(-15)">
+              <rect x="-.16" y="-.16" width=".32" height=".28" rx=".03" fill="#636a66" stroke="#303533" strokeWidth=".03" />
+              <path d="M-.08 -.16l.06 .14l-.04 .1" fill="none" stroke="#252927" strokeWidth=".02" />
+              <circle cx=".08" cy=".04" r=".04" fill="#5b7a54" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "cart": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        {horizontal ? (
+          <path d={`M${x + .1} ${cy}H${x - .12}`} stroke="#4a3520" strokeWidth=".06" strokeLinecap="round" />
+        ) : (
+          <path d={`M${cx} ${y + .1}V${y - .12}`} stroke="#4a3520" strokeWidth=".06" strokeLinecap="round" />
+        )}
+        <rect x={cx - Math.min(.4, w * .35)} y={cy - Math.min(.3, h * .35)} width={Math.min(.8, w * .7)} height={Math.min(.6, h * .7)} rx=".04" fill={WOOD} stroke="#352618" strokeWidth=".06" />
+        <rect x={cx - Math.min(.36, w * .32)} y={cy - Math.min(.26, h * .32)} width={Math.min(.72, w * .64)} height={Math.min(.52, h * .64)} rx=".03" fill="none" stroke="#cfa773" strokeWidth=".03" />
+        {horizontal ? (
+          <g>
+            <rect x={cx - .2} y={cy - Math.min(.36, h * .4)} width=".4" height=".08" rx=".02" fill="#2d3235" stroke="#121516" strokeWidth=".02" />
+            <rect x={cx - .2} y={cy + Math.min(.28, h * .32)} width=".4" height=".08" rx=".02" fill="#2d3235" stroke="#121516" strokeWidth=".02" />
+          </g>
+        ) : (
+          <g>
+            <rect x={cx - Math.min(.36, w * .4)} y={cy - .2} width=".08" height=".4" rx=".02" fill="#2d3235" stroke="#121516" strokeWidth=".02" />
+            <rect x={cx + Math.min(.28, w * .32)} y={cy - .2} width=".08" height=".4" rx=".02" fill="#2d3235" stroke="#121516" strokeWidth=".02" />
+          </g>
+        )}
+        {n < .4 ? (
+          <g>
+            <rect x={cx - .2} y={cy - .15} width=".22" height=".22" rx=".02" fill="#755639" stroke="#352414" strokeWidth=".02" />
+            <circle cx={cx + .14} cy={cy} r=".12" fill="#583f28" stroke="#2a1c0e" strokeWidth=".025" />
+          </g>
+        ) : n < .75 ? (
+          <g>
+            <rect x={cx - .28} y={cy - .2} width=".56" height=".4" rx=".06" fill="#9c947d" stroke="#524d3e" strokeWidth=".03" />
+            <path d={`M${cx - .28} ${cy - .08}L${cx + .28} ${cy + .08} M${cx - .28} ${cy + .08}L${cx + .28} ${cy - .08}`} stroke="#3b372a" strokeWidth=".02" />
+          </g>
+        ) : (
+          <g>
+            <ellipse cx={cx} cy={cy} rx=".28" ry=".18" fill="#d9be6f" />
+            <path d={`M${cx - .2} ${cy}q.15 -.08 .35 .04 M${cx - .15} ${cy + .06}q.2 .06 .3 -.02`} stroke="#ab9044" strokeWidth=".02" />
+          </g>
+        )}
+      </g>;
+    }
+    case "cage":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".03" cy=".05" rx=".38" ry=".38" fill="#141c17" opacity=".45" />
+          <rect x="-.34" y="-.34" width=".68" height=".68" rx=".06" fill="#1b2022" opacity=".7" stroke="#3a4044" strokeWidth=".06" />
+          {[-.2, -.07, .07, .2].map((pos) => (
+            <path key={pos} d={`M${pos} -.34V.34`} stroke="#6c757c" strokeWidth=".035" />
+          ))}
+          {[-.14, .14].map((pos) => (
+            <path key={pos} d={`M-.34 ${pos}H.34`} stroke="#4a5054" strokeWidth=".03" />
+          ))}
+          {n < .35 ? (
+            <path d="M.2 -.15l.12 .3" stroke="#8fa0a8" strokeWidth=".04" strokeLinecap="round" />
+          ) : n < .75 ? (
+            <g>
+              <ellipse cx="0" cy=".12" rx=".18" ry=".1" fill="#7a6b47" opacity=".6" />
+              <circle cx="-.08" cy="-.06" r=".04" fill="none" stroke="#8fa0a8" strokeWidth=".02" />
+            </g>
+          ) : (
+            <g transform="translate(.08 .08)">
+              <path d="M-.06 -.04l.12 .08 M-.04 .06l.08 -.12" stroke="#c7bda0" strokeWidth=".03" strokeLinecap="round" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "carpet": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        <rect x={frame.x + .03} y={frame.y + .04} width={frame.width} height={frame.height} rx=".03" fill="#080e0b" opacity=".4" />
+        {n < .35 ? (
+          <g>
+            <rect {...frame} rx=".03" fill="#852222" stroke="#c79d38" strokeWidth=".05" />
+            <rect x={frame.x + .08} y={frame.y + .08} width={frame.width - .16} height={frame.height - .16} rx=".02" fill="#691616" stroke="#e0be67" strokeWidth=".025" />
+            <polygon points={`${cx},${cy - Math.min(.25, h * .25)} ${cx + Math.min(.35, w * .35)},${cy} ${cx},${cy + Math.min(.25, h * .25)} ${cx - Math.min(.35, w * .35)},${cy}`} fill="#243640" stroke="#e0be67" strokeWidth=".025" />
+            {horizontal ? (
+              <g stroke="#d8cfa8" strokeWidth=".025" strokeDasharray=".03 .025">
+                <path d={`M${frame.x} ${frame.y}V${frame.y + frame.height}`} />
+                <path d={`M${frame.x + frame.width} ${frame.y}V${frame.y + frame.height}`} />
+              </g>
+            ) : (
+              <g stroke="#d8cfa8" strokeWidth=".025" strokeDasharray=".03 .025">
+                <path d={`M${frame.x} ${frame.y}H${frame.x + frame.width}`} />
+                <path d={`M${frame.x} ${frame.y + frame.height}H${frame.x + frame.width}`} />
+              </g>
+            )}
+          </g>
+        ) : n < .75 ? (
+          <g>
+            <rect {...frame} rx=".03" fill="#213c59" stroke="#c2d4e6" strokeWidth=".05" />
+            <rect x={frame.x + .07} y={frame.y + .07} width={frame.width - .14} height={frame.height - .14} rx=".02" fill="#172b40" stroke="#7da1c4" strokeWidth=".02" />
+            <circle cx={cx} cy={cy} r={Math.min(w, h) * .2} fill="none" stroke="#c2d4e6" strokeWidth=".03" strokeDasharray=".04 .03" />
+          </g>
+        ) : (
+          <g>
+            <rect {...frame} rx=".04" fill="#525e3b" stroke="#a3b380" strokeWidth=".045" />
+            <ellipse cx={cx} cy={cy} rx={w * .35} ry={h * .32} fill="#3b4528" stroke="#879964" strokeWidth=".03" />
+          </g>
+        )}
+      </g>;
+    }
+    case "stump":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".06" rx=".39" ry=".37" fill="#12281e" opacity=".5" />
+          <circle r=".37" fill="#4d3826" stroke="#251a11" strokeWidth=".05" />
+          <circle r=".31" fill="#9e754a" stroke="#6b4c2b" strokeWidth=".025" />
+          <circle r=".22" fill="none" stroke="#75502c" strokeWidth=".02" opacity=".7" />
+          <circle r=".13" fill="none" stroke="#75502c" strokeWidth=".02" opacity=".7" />
+          <path d="M0 0l.18 .12 M0 0l-.14 .16 M0 0l-.06 -.2" stroke="#3d2816" strokeWidth=".02" />
+          {n < .35 ? (
+            <circle r=".05" fill="#c79b6b" />
+          ) : n < .75 ? (
+            <g>
+              <circle cx="0" cy=".02" r=".08" fill="#26180c" />
+              <path d="M.32 -.12q.08 .06 0 .12" fill="#d99f59" stroke="#784818" strokeWidth=".015" />
+            </g>
+          ) : (
+            <g transform="rotate(30)">
+              <rect x="-.02" y="-.26" width=".04" height=".4" rx=".01" fill="#d6cfb8" stroke="#423420" strokeWidth=".015" />
+              <path d="M-.02 -.04L-.12 .06L-.02 .12Z" fill="#b0bac2" stroke="#353c40" strokeWidth=".02" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "log": {
+      const n = variation(seed, x, y);
+      const horizontal = w >= h;
+      return <g>
+        {horizontal ? (
+          <g>
+            <ellipse cx={cx + .05} cy={cy + .08} rx={w * .44} ry=".26" fill="#12281e" opacity=".5" />
+            <rect x={x + .15} y={cy - .2} width={w - .3} height=".4" rx=".08" fill="#543c26" stroke="#261a0f" strokeWidth=".05" />
+            <path d={`M${x + .25} ${cy - .08}H${x + w - .25} M${x + .2} ${cy + .08}H${x + w - .2}`} stroke="#382515" strokeWidth=".03" />
+            <ellipse cx={x + .16} cy={cy} rx=".06" ry=".18" fill="#997046" stroke="#261a0f" strokeWidth=".02" />
+            <ellipse cx={x + w - .16} cy={cy} rx=".06" ry=".18" fill="#997046" stroke="#261a0f" strokeWidth=".02" />
+            {n > .4 && n < .75 && (
+              <g>
+                <circle cx={cx - .2} cy={cy - .15} r=".08" fill="#486b42" />
+                <circle cx={cx + .15} cy={cy - .16} r=".06" fill="#486b42" />
+                <circle cx={cx} cy={cy - .19} r=".04" fill="#c98d36" />
+              </g>
+            )}
+          </g>
+        ) : (
+          <g>
+            <ellipse cx={cx + .05} cy={cy + .08} rx=".26" ry={h * .44} fill="#12281e" opacity=".5" />
+            <rect x={cx - .2} y={y + .15} width=".4" height={h - .3} rx=".08" fill="#543c26" stroke="#261a0f" strokeWidth=".05" />
+            <path d={`M${cx - .08} ${y + .25}V${y + h - .25} M${cx + .08} ${y + .2}V${y + h - .2}`} stroke="#382515" strokeWidth=".03" />
+            <ellipse cx={cx} cy={y + .16} rx=".18" ry=".06" fill="#997046" stroke="#261a0f" strokeWidth=".02" />
+            <ellipse cx={cx} cy={y + h - .16} rx=".18" ry=".06" fill="#997046" stroke="#261a0f" strokeWidth=".02" />
+          </g>
+        )}
+      </g>;
+    }
+    case "mushrooms":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".02" cy=".05" rx=".38" ry=".32" fill="#141c17" opacity=".4" />
+          {n < .35 ? (
+            <g>
+              {[[-.14, -.08, .16], [.12, -.04, .14], [-.02, .14, .18], [.15, .15, .11]].map(([mx, my, rad], i) => (
+                <g key={i}>
+                  <circle cx={mx} cy={my} r={rad} fill="#b52828" stroke="#4a0f0f" strokeWidth=".02" />
+                  <circle cx={mx - rad * .3} cy={my - rad * .3} r={rad * .25} fill="#f0ece1" />
+                  <circle cx={mx + rad * .2} cy={my - rad * .2} r={rad * .2} fill="#f0ece1" />
+                  <circle cx={mx} cy={my + rad * .25} r={rad * .2} fill="#f0ece1" />
+                </g>
+              ))}
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <circle r=".4" fill="#1fb5a2" opacity=".2" />
+              {[[-.12, -.06, .15], [.1, -.08, .13], [0, .12, .17], [.16, .1, .1]].map(([mx, my, rad], i) => (
+                <g key={i}>
+                  <ellipse cx={mx} cy={my} rx={rad} ry={rad * .85} fill="#1fb5a2" stroke="#5effea" strokeWidth=".025" />
+                  <circle cx={mx} cy={my} r={rad * .4} fill="#a8fff3" />
+                </g>
+              ))}
+            </g>
+          ) : (
+            <g>
+              {[[-.15, -.06, .15], [.12, -.08, .14], [-.02, .12, .16], [.14, .12, .12]].map(([mx, my, rad], i) => (
+                <g key={i}>
+                  <ellipse cx={mx} cy={my} rx={rad} ry={rad * .8} fill="#c98d36" stroke="#52350f" strokeWidth=".02" />
+                  <circle cx={mx} cy={my} r={rad * .3} fill="#e5b060" />
+                </g>
+              ))}
+            </g>
+          )}
+        </g>;
+      })}</g>;
+    case "sack":
+      return <g>{cells.map(([c, r]) => {
+        const n = variation(seed, c, r);
+        const cx = c + .5, cy = r + .5;
+        return <g key={`${c},${r}`} transform={`translate(${cx} ${cy})`}>
+          <ellipse cx=".04" cy=".06" rx=".36" ry=".32" fill="#141c17" opacity=".45" />
+          {n < .35 ? (
+            <g>
+              <ellipse cx="0" cy=".02" rx=".28" ry=".24" fill="#a88d67" stroke="#3b2e1e" strokeWidth=".03" />
+              <path d="M-.15 .02q.15 -.06 .3 0" stroke="#755e3f" strokeWidth=".02" />
+              <circle cx="-.08" cy="-.18" r=".05" fill="#8c7352" stroke="#3b2e1e" strokeWidth=".015" />
+              <circle cx=".08" cy="-.18" r=".05" fill="#8c7352" stroke="#3b2e1e" strokeWidth=".015" />
+              <rect x="-.06" y="-.16" width=".12" height=".05" rx=".015" fill="#ded0b6" stroke="#4d3b24" strokeWidth=".015" />
+            </g>
+          ) : n < .75 ? (
+            <g>
+              <ellipse cx="-.1" cy="-.06" rx=".2" ry=".16" fill="#9e8460" stroke="#3b2e1e" strokeWidth=".025" />
+              <ellipse cx=".1" cy="-.04" rx=".2" ry=".16" fill="#a88d67" stroke="#3b2e1e" strokeWidth=".025" />
+              <ellipse cx="0" cy=".12" rx=".22" ry=".17" fill="#bfa57e" stroke="#3b2e1e" strokeWidth=".025" />
+              <circle cx="-.1" cy="-.18" r=".04" fill="#6e5739" />
+              <circle cx=".12" cy="-.16" r=".04" fill="#6e5739" />
+            </g>
+          ) : (
+            <g>
+              <ellipse cx="-.06" cy="-.02" rx=".24" ry=".2" fill="#9e8460" stroke="#3b2e1e" strokeWidth=".025" />
+              <ellipse cx=".15" cy=".06" rx=".14" ry=".1" fill="#e0c572" stroke="#6e5c2b" strokeWidth=".02" />
+              <circle cx=".12" cy=".04" r=".02" fill="#fff0ba" />
+              <circle cx=".18" cy=".08" r=".018" fill="#fff0ba" />
+            </g>
+          )}
+        </g>;
+      })}</g>;
     default: {
       const distance = ([c, r]: [number, number]) => (c + .5 - cx) ** 2 + (r + .5 - cy) ** 2;
       const [c, r] = [...cells].sort((a, b) => distance(a) - distance(b) || a[1] - b[1] || a[0] - b[0])[0];
@@ -333,10 +1063,10 @@ export function MapFeature({ feature, idPrefix, onFeature, torchMounts }: {
   torchMounts?: (WallTorchMount | undefined)[];
 }) {
   const visual = featureVisual(feature);
-  const wood = ["table", "bench", "bed", "counter", "shelf", "barrel", "crate", "chest", "crane"].includes(visual.form);
-  const natural = ["tree", "shrub", "reeds"].includes(visual.form);
-  const loose = natural || ["barrel", "pillar", "rock", "rubble", "crystal", "bones", "net", "mooring", "torch", "glow", "lichen", "nest", "bench"].includes(visual.form);
-  const color = wood ? WOOD : natural ? "#294f38" : ["rock", "rubble", "pillar", "altar", "hearth"].includes(visual.form) ? STONE : visual.color;
+  const wood = ["table", "bench", "bed", "counter", "shelf", "barrel", "crate", "chest", "crane", "chair", "desk", "wardrobe", "weapon_rack", "workbench", "cart"].includes(visual.form);
+  const natural = ["tree", "shrub", "reeds", "stump", "log", "mushrooms"].includes(visual.form);
+  const loose = natural || ["barrel", "pillar", "rock", "rubble", "crystal", "bones", "net", "mooring", "torch", "glow", "lichen", "nest", "bench", "chair", "anvil", "cauldron", "chandelier", "brazier", "statue", "fountain", "well", "tombstone", "cart", "cage", "carpet", "sack"].includes(visual.form);
+  const color = wood ? WOOD : natural ? "#294f38" : ["rock", "rubble", "pillar", "altar", "hearth", "anvil", "forge", "statue", "fountain", "well", "sarcophagus", "tombstone"].includes(visual.form) ? STONE : visual.form === "carpet" ? "#852222" : visual.color;
   const activate = feature.entity_id && onFeature ? () => onFeature(feature.entity_id!, feature.name) : undefined;
   const seed = feature.id ?? feature.entity_id ?? visual.form;
   return <g data-feature-id={feature.entity_id ?? feature.id} data-feature-solid={feature.solid ? "true" : undefined}

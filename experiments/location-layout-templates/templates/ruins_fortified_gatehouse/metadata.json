@@ -1,0 +1,41 @@
+{
+  "id": "ruins_fortified_gatehouse",
+  "version": "1.2.0",
+  "archetype": "ruins",
+  "variant": "D",
+  "variant_name": "Разрушенный барбакан и надвратная башня",
+  "purpose": "Остатки циклопических крепостных ворот с пробитой аркой, караулкой, арсеналом и колодцем",
+  "visual_concept": "Зубчатые стены в трещинах, поваленные опускные решётки, разбитые повозки и оружейные стойки.",
+  "environment": "mixed",
+  "materials": [
+    "stone",
+    "wood"
+  ],
+  "selected_seed": 7,
+  "gameplay_opportunities": {
+    "social": "Стычка или переговоры с заставой наёмников, занявшей ворота.",
+    "exploration": "Поиск механизма подъёма решётки, обыск заваленного арсенала.",
+    "combat": "Бойницы в караулке и пролом в воротах дают тактическое преимущество обороняющимся."
+  },
+  "allowable_adaptations": [
+    "Пограничный КПП",
+    "Форпост орков"
+  ],
+  "discovered_constraints": [
+    "Барбакан открытый (outdoor), караулка и арсенал закрытые (indoor)."
+  ],
+  "generation_model": {
+    "provider": "deterministic",
+    "builder_version": "layout-v1",
+    "parameters": {
+      "fallback": false
+    }
+  },
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  }
+}

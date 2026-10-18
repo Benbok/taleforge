@@ -1,0 +1,35 @@
+{
+  "valid": true,
+  "errors": [],
+  "tested_seeds": {
+    "1": "passed",
+    "7": "passed",
+    "42": "passed",
+    "99": "passed",
+    "123": "passed"
+  },
+  "area_count": 3,
+  "passage_count": 3,
+  "levels": [
+    0
+  ],
+  "detail_preservation": {
+    "rocky_jetty": {
+      "mooring_bollards": "preserved",
+      "coiled_hawsers": "preserved",
+      "quay_lantern": "preserved"
+    },
+    "lighthouse_tower": {
+      "spiral_stairs_center": "preserved",
+      "watch_brazier": "preserved",
+      "armory_crates": "preserved"
+    },
+    "keepers_dwelling": {
+      "hearth": "preserved",
+      "bunks_north": "preserved",
+      "desk": "preserved",
+      "chair": "preserved",
+      "wardrobe": "preserved"
+    }
+  }
+}

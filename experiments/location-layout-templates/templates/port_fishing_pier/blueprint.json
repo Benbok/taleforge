@@ -172,7 +172,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:bench"
+          "visual_key": "feature:workbench"
         },
         {
           "detail_ref": "decor_0_0",
@@ -335,7 +335,7 @@
           ],
           "solid": false,
           "hidden": false,
-          "visual_key": "feature:table"
+          "visual_key": "feature:workbench"
         },
         {
           "detail_ref": "salted_fish_barrels",

@@ -113,7 +113,13 @@ async def request_geometry(ctx: Any, area: Any) -> str | None:
 
 
 async def reserve_plan_layout(
-    session: AsyncSession, campaign: Campaign, root: Entity, mandate: Mandate, *, template_context=None
+    session: AsyncSession,
+    campaign: Campaign,
+    root: Entity,
+    mandate: Mandate,
+    *,
+    template_context=None,
+    source: str = "plan",
 ) -> WorldGenerationState:
     """Резерв структуры из каркаса: мандат и seed фиксируются один раз; повтор возвращает ту же строку."""
     from app.core.world_generation import storage
@@ -127,7 +133,7 @@ async def reserve_plan_layout(
         "seed": seed,
         "root_id": root.id,
         "plot_id": _state(root).get("plot_id"),
-        "source": "plan",
+        "source": source,
         "mandate": mandate.model_dump(mode="json"),
     }
     if (campaign.settings or {}).get("location_layout_templates", False):
