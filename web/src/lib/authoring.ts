@@ -95,7 +95,7 @@ export const STAGE_LABELS: Record<string, string> = {
 };
 
 export const STAGE_STATE_LABELS: Record<string, string> = {
-  not_requested: "не запрошено",
+  not_requested: "ещё не выполнен",
   queued: "в очереди",
   running: "выполняется",
   ready: "готово",

@@ -63,7 +63,9 @@ it("шаги показывают порядок: следующие закры�
   expect(state("Лор мира")).toBe("done");
   expect(state("Места, NPC и предметы")).toBe("locked");
   fireEvent.click(within(nav()).getByText("Карты"));
-  expect(await screen.findByText("Сначала завершите предыдущий шаг.")).toBeTruthy();
+  // закрытый шаг не показывает данные каркаса, а ведёт к шагу, которого не хватает
+  fireEvent.click(await screen.findByRole("button", { name: "Перейти к шагу «Места, NPC и предметы»" }));
+  expect(await screen.findByRole("button", { name: "Перейти к шагу «География»" })).toBeTruthy();
 });
 
 it("вставка лора показывает, что станет заполненным и что расходится со схемой, и сохраняет только разделы лора", async () => {
@@ -133,4 +135,22 @@ it("отказ публикации показывает причины", async 
   fireEvent.click(screen.getByRole("button", { name: "Опубликовать" }));
   expect(await screen.findByText(/Публикация отклонена/)).toBeTruthy();
   expect(screen.getByText("stale_result")).toBeTruthy();
+});
+
+
+it("принятый каркас сразу запускает бесплатную проверку географии", async () => {
+  const mock = api((c) =>
+    c.url.endsWith("/plot/import")
+      ? { body: { plan_version_id: "pl_1", cleared_entities: 0, source: "import" } }
+      : c.url.endsWith("/prepare")
+        ? { status: 202, body: { job_id: "aj_g", stage: "geography", status: "queued", source_revision: 8 } }
+        : undefined,
+  );
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  await open();
+  fireEvent.click(within(nav()).getByText("Сюжет и NPC"));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Вставить каркас сюжета (JSON)" }), { target: { value: '{"title": "Т", "locations": [{}, {}]}' } });
+  fireEvent.click(screen.getByRole("button", { name: "Проверить и принять каркас" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
+  expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "geography" });
 });

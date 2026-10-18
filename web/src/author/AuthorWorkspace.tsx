@@ -221,8 +221,9 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         ["maps", "Карты", isDone("materialize")],
       ] as [string, string, boolean][]
     ).map(([id, title, open]) => {
-      const state = buildState(stageOf(id), !open, stale.has(`stage:${id}`) || (id === "maps" && mapStale.length > 0));
-      const note = state === "locked" ? "после предыдущего шага" : state === "stale" ? "устарело" : statusLabel(id);
+      const mapsCurrent = id === "maps" && open && mapStale.length === 0 && !stale.has("stage:maps") && (stageOf(id)?.status ?? "not_requested") === "not_requested";
+      const state = mapsCurrent ? "done" : buildState(stageOf(id), !open, stale.has(`stage:${id}`) || (id === "maps" && mapStale.length > 0));
+      const note = mapsCurrent ? "все карты актуальны" : state === "locked" ? "после предыдущего шага" : state === "stale" ? "устарело" : statusLabel(id);
       return { id, title, state, note };
     }),
     {
@@ -251,7 +252,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
           {active ? "выполняется…" : isStale ? "устарело" : STAGE_STATE_LABELS[status]}
           {st?.error_code ? `, код ${st.error_code}` : ""}
         </span>
-        <button className="btn min-h-11 px-3 text-sm" type="button" disabled={busy || active} onClick={() => run(status !== "not_requested")}>
+        <button className={`btn min-h-11 px-3 text-sm ${!paid && status === "not_requested" ? "btn-primary" : ""}`} type="button" disabled={busy || active} onClick={() => run(status !== "not_requested")}>
           {verb}
           {paid ? " (платно)" : ""}
         </button>
@@ -291,7 +292,14 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     try {
       const r = await authoring.importPlot(projectId, { plan: value, expected_revision: revision, request_key: newRequestKey() });
       setPlotErrors([]);
-      setMessage(r.cleared_entities ? `Каркас принят; прежние места и карты (${r.cleared_entities}) удалены.` : "Каркас принят сервером.");
+      setMessage(r.cleared_entities ? `Каркас принят; прежние места и карты (${r.cleared_entities}) удалены. Проверяю географию…` : "Каркас принят сервером. Проверяю географию…");
+      // география бесплатная и детерминированная: запускаем её сразу, чтобы не искать следующий шаг вручную
+      try {
+        const fresh = await authoring.getProject(projectId, "summary");
+        await authoring.prepare(projectId, { stage: "geography", expected_revision: fresh.project.draft_revision, request_key: newRequestKey(), regenerate: isDone("geography") });
+      } catch {
+        /* не вышло — шаг «География» запускается кнопкой */
+      }
       void refresh();
       return true;
     } catch (e) {
@@ -395,13 +403,40 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       maps: ["Карты", "Пересобирает карты мест, которые вы изменили: новая карта заменяет старую только целиком готовой."],
     };
     const locked = steps.find((s) => s.id === step)?.state === "locked";
+    const status = stageOf(step)?.status ?? "not_requested";
+    const upstream: Record<string, [string, string]> = {
+      geography: ["plot", "Сюжет и NPC"],
+      materialize: ["geography", "География"],
+      maps: ["materialize", "Места, NPC и предметы"],
+    };
+    const [needId, needTitle] = upstream[step];
+    const geographyChecked = isDone("geography");
     body = (
       <>
-        <StepHeader title={info[step][0]} purpose={info[step][1]}>
-          {locked ? <p className="text-sm text-muted">Сначала завершите предыдущий шаг.</p> : stageActions(step, false)}
-        </StepHeader>
-        {revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (
+        <StepHeader title={info[step][0]} purpose={info[step][1]} />
+        {locked ? (
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-4" role="status">
+            <p className="text-sm text-ink-2">Этот шаг откроется, когда будет выполнен шаг «{needTitle}».</p>
+            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep(needId)}>Перейти к шагу «{needTitle}»</button>
+          </div>
+        ) : step === "maps" && isDone("materialize") && mapStale.length === 0 && status === "not_requested" ? (
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-patina/50 bg-surface p-4" role="status">
+            <p className="text-sm text-ink-2">Все карты созданы на предыдущем шаге и актуальны — пересобирать нечего. Этот шаг нужен, только если вы измените части мест.</p>
+            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep("review")}>Перейти к проверке</button>
+          </div>
+        ) : status === "not_requested" ? (
+          <div className="flex flex-col gap-3 rounded-xl border-2 border-accent/60 bg-surface p-4">
+            <p className="text-sm text-ink-2">Шаг ещё не выполнен. Он бесплатный и занимает несколько секунд: нажмите кнопку, и откроется следующий шаг.</p>
+            {stageActions(step, false)}
+          </div>
+        ) : (
+          stageActions(step, false)
+        )}
+        {!locked && revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (
           <>
+            <h3 className="font-heading text-base text-ink">
+              {step === "geography" && !geographyChecked ? "Как записано в каркасе (ещё не проверено)" : "Места и маршруты"}
+            </h3>
             <GeographyView regions={plot.regions ?? []} locations={plot.locations ?? []} routes={plot.routes ?? []} selected={location} onSelect={setLocation} />
             {location && map.data && <MapPreview map={map.data} />}
           </>
