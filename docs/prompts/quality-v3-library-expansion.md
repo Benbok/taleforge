@@ -24,9 +24,31 @@ repro_layout.py или внешние генераторы с ключами и�
 проходами, предметами и освещением.
 
 Сейчас подключение частичное: `develop` места из каркаса резервирует
-`location_layout`, но `create_location` в `app/tools/master/places.py` этот путь
-не вызывает. `prepare_location` и `prepare_complex` исключены из инструментов
-ИИ через `HOST_TOOLS` в `app/agents/master/common.py`.
+`location_layout` (`reserve_from_plan` в `app/core/layout/plan.py`,
+`reserve_plan_layout` в `app/core/layout/store.py`), но `create_location`
+в `app/tools/master/places.py` этот путь не вызывает. `prepare_location`
+и `prepare_complex` входят в `HOST_TOOLS` (`app/tools/master/generation.py`),
+и `app/agents/master/common.py` убирает их из инструментов ИИ.
+
+Что уже работает и что нужно переиспользовать, а не дублировать: при
+`make_current` вызов `create_location` идёт через `enter_current` в
+`request_preparation` (`app/tools/master/places.py`). Там в транзакции команды
+резервируется и активируется `location_initial`: наполнение и сюжетные
+зацепки при включённом `scene_generation`, иначе профиль `minimal` ради
+носителей. Мастер получает квитанцию и `operation_ref`, ход ждёт подготовки.
+`request_geometry` запрашивает `location_geometry`, но только для участка уже
+существующего комплекса. Не хватает резерва `location_layout`, то есть
+структуры карты нового места. Подключай его в этой же точке, рядом с
+`request_preparation`, через те же квитанцию, `operation_refs` и `inverse`.
+Не заводи параллельный механизм ожидания. Учти порядок фаз: при публикации
+`location_layout` executor вызывает `reserve_complex`
+(`app/core/world_generation/storage.py`). Тот делит бюджет наполнения между
+участками и учитывает уже готовое наполнение корня. Поэтому `location_initial`
+корня, начатый раньше карты, не должен расходовать бюджет дважды или
+раскладывать предметы до появления участков. Покрой этот случай тестом,
+он возникает при входе в новое место в том же ходе. Мандат для места
+без наброска каркаса придётся собрать из аргументов `create_location`
+(название, описание, `template_id`, родитель, связи, `secret`).
 
 Доработай игровой путь создания незапланированных мест. Используй существующие
 мандаты, подбор шаблонов, техническую модель при включённых настройках и
