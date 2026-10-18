@@ -143,3 +143,25 @@ def find_leaks(value: Any, source_ids: set[str], path: str = "") -> list[str]:
             if isinstance(key, str) and key in source_ids:
                 found.append(f"{path}.{key}")
     return found
+
+
+def restore_state(state: dict, ids: dict[str, str]) -> dict:
+    """Inverse of ``adapt_state``: logical refs back to the ids of the new world, only in adapter structures."""
+    return {k: (remap(v, ids) if k in ADAPTED_STATE else v) for k, v in (state or {}).items()}
+
+
+def restore_plot(plot: dict, ids: dict[str, str]) -> dict:
+    """Entity ids return only in ``entity_id`` fields and inside ``[[ref|name]]`` markup."""
+
+    def walk(node: Any, key: str = "") -> Any:
+        if isinstance(node, dict):
+            return {k: walk(v, k) for k, v in node.items()}
+        if isinstance(node, list):
+            return [walk(v, key) for v in node]
+        if isinstance(node, str):
+            if key == "entity_id":
+                return ids.get(node, node)
+            return TEXT_REF.sub(lambda m: f"[[{ids.get(m.group(1), m.group(1))}|{m.group(2)}]]", node)
+        return node
+
+    return walk(plot)

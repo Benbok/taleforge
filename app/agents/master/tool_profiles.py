@@ -39,7 +39,7 @@ _COMBAT = frozenset(
     "place_area remove_area set_scene_mode cast_spell use_feature grant_inspiration".split()
 )
 _EXPLORATION = frozenset(
-    "move traverse_passage enter_room cross_threshold reveal_area reveal_knowledge "
+    "move travel_route traverse_passage enter_room cross_threshold reveal_area reveal_knowledge "
     "learn_fact advance_time rest use_item give_item keep_found_item take_item "
     "equip_item place_item pick_up_item drop_item pass_item create_container "
     "open_container store_object retrieve_object search_container resolve_location "

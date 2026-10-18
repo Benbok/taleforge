@@ -385,6 +385,16 @@ async def _opening_npcs(ctx, node, fresh_where, where) -> bool:
     return True
 
 
+async def relocate_to_prepared_start(ctx, place) -> bool:
+    """A game launched from a published adventure already has its start place: it is entered, not developed again."""
+    if not getattr(ctx.campaign, "adventure_version_id", None) or ctx.world.scene.location_id == place.id:
+        return False
+    from app.tools.master.places import relocate_scene
+
+    await relocate_scene(ctx, place, [])
+    return True
+
+
 async def _open_first_place(svc, cid: str, where: dict) -> bool:
     """Место первой сцены попадает в мир до вступления: у него появляется карточка, и имя в тексте становится
     ссылкой. Детали и тайна места остаются в каркасе, в карточку идёт только настроение («mood»)."""
@@ -408,6 +418,8 @@ async def _open_first_place(svc, cid: str, where: dict) -> bool:
                 await s.rollback()
                 return False
             place = ctx.world.entities.get((result.get("result") or {}).get("entity_id") or "")
+        else:
+            await relocate_to_prepared_start(ctx, place)
         # готовое приключение: отряд начинает в первой комнате книги, иначе героя нет на её карте, пока мастер
         # не вспомнит про enter_room
         found = adventure.module_place(place, ctx.world.catalog, ctx.world.entities)

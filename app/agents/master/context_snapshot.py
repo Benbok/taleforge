@@ -189,7 +189,9 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
         place = world.entities.get(origin)
         if place is None:
             continue
-        for exit_ in location_exits(place, getattr(world, "catalog", None), world.entities):
+        for exit_ in location_exits(
+            place, getattr(world, "catalog", None), world.entities, geography=getattr(world, "geography", None)
+        ):
             entity = world.entities.get(exit_.target_id)
             if entity is None and not exit_.room_ref:
                 continue

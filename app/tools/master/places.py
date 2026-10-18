@@ -1147,7 +1147,9 @@ async def enter_room(ctx: ToolContext, a: EnterRoomArgs) -> dict:
     }
 
 
-async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, inverse: list, dice: list) -> dict:
+async def move_heroes(
+    ctx: ToolContext, heroes: list[Character], loc: Entity, inverse: list, dice: list, *, connect: bool = True
+) -> dict:
     """Герои переходят в место ``loc``: посещения и пути на карте, вход в бой и выход из него, сцена — за отрядом."""
     scene_loc = ctx.world.scene.location_id
     moved = []
@@ -1166,7 +1168,8 @@ async def move_heroes(ctx: ToolContext, heroes: list[Character], loc: Entity, in
         was = ctx.world.entities.get(ch.location_id or scene_loc or "")
         if was is not None and was.id != loc.id:
             _visit(ctx, was, [ch], inverse)
-            _connect(ctx, was, loc, inverse)
+            if connect:  # an authored route is already permanent: it must not also create a state link
+                _connect(ctx, was, loc, inverse)
         inverse.append({"table": "characters", "id": ch.id, "field": "location_id", "before": ch.location_id})
         ch.location_id = loc.id
         moved.append(ch)

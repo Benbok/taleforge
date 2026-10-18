@@ -115,7 +115,7 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
             return False
         return True
 
-    if name in {"move_character", "move", "enter_room", "cross_threshold", "traverse_passage"}:
+    if name in {"move_character", "move", "travel_route", "enter_room", "cross_threshold", "traverse_passage"}:
         return verb in {"move", "dash", "disengage"}
 
     if name in {"give_item", "pass_item"}:
