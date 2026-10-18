@@ -95,9 +95,7 @@ async def task_for(session: AsyncSession, project: AuthorProject, stage: str) ->
         from app.agents import architect
 
         text, _sid = await architect.build_input(session, world)
-        text += "
-
-" + await allowed_templates(session, world)
+        text = "\n\n".join([text, await allowed_templates(session, world)])
         return {
             "stage": "plot",
             "system": plot.SYSTEM,
@@ -114,9 +112,8 @@ async def allowed_templates(session: AsyncSession, world: Campaign) -> str:
 
     def block(kind: str, title: str) -> str:
         rows = sorted(catalog.by_kind(kind), key=lambda e: e.id)
-        return f"{title} ({len(rows)}):
-" + "
-".join(f"- {e.id} — {e.name}" for e in rows) if rows else ""
+        lines = [f"{title} ({len(rows)}):", *(f"- {e.id} — {e.name}" for e in rows)]
+        return "\n".join(lines) if rows else ""
 
     parts = [
         "Допустимые template_id: используй только id из этих списков, буква в букву; другие сервер отклонит.",
@@ -124,6 +121,4 @@ async def allowed_templates(session: AsyncSession, world: Campaign) -> str:
         block("creature_template", "Шаблоны существ (npcs[].template_id и antagonists[].template_id)"),
         block("plot_structure", "Шаблоны сюжета (structure_id)"),
     ]
-    return "
-
-".join(p for p in parts if p)
+    return "\n\n".join(p for p in parts if p)
