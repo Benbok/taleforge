@@ -43,6 +43,17 @@ def test_schema_is_strict_and_lists_holders():
     assert set(part["properties"]["shape"]["enum"]) == {"rect", "circle", "l_shape", "corridor", "open", "cave"}
 
 
+def test_parts_limit_is_checked_by_server_not_schema():
+    # maxItems у parts поверх вложенных ограниченных details/cells Gemini отклоняет целиком: 400 INVALID_ARGUMENT
+    params = layout_model.spec(temple_mandate())["function"]["parameters"]
+    assert "maxItems" not in params["properties"]["parts"]
+    raw = model_layout(KEYS)
+    extra = {"part_ref": "x", "name": "x", "public_name": "x", "connects_to": raw["parts"][0]["part_ref"]}
+    raw["parts"] += [{**extra, "part_ref": f"extra_{i}"} for i in range(13 - len(raw["parts"]))]
+    with pytest.raises(Blocked, match="parts"):
+        layout_model.to_intent(temple_mandate(), raw)
+
+
 def test_brief_carries_no_plot_secrets():
     plan = temple_plan()
     port = plan["locations"][0]

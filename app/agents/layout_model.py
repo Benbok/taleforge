@@ -16,7 +16,7 @@ from typing import Any, get_args
 from pydantic import ValidationError
 
 from app.agents.world_generator import Attempt
-from app.core.layout.contracts import MAX_AREAS, MAX_SIDE, LayoutError
+from app.core.layout.contracts import MAX_SIDE, LayoutError
 from app.core.layout.intent import BandIntent, DetailIntent, LayoutIntent, PartIntent
 from app.core.layout.spatial import Mandate, obligations
 from app.core.world_generation.contracts import Blocked
@@ -136,7 +136,9 @@ def spec(m: Mandate) -> dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "entry": {"type": "string"},
-            "parts": {"type": "array", "minItems": 1, "maxItems": MAX_AREAS, "items": part},
+            # Без maxItems: поверх вложенных ограниченных details/cells Gemini отклоняет схему целиком
+            # (400 INVALID_ARGUMENT). Лимит MAX_AREAS — в SYSTEM, проверяет LayoutIntent.
+            "parts": {"type": "array", "minItems": 1, "items": part},
             "approaches": {"type": "array", "minItems": 1, "maxItems": 8, "items": approach},
             "bands": {"type": "array", "maxItems": 6, "items": band},
         },
