@@ -70,10 +70,14 @@ function buildState(stage: StageStatus | undefined, locked: boolean, stale: bool
 
 function StepHeader({ title, purpose, children }: { title: string; purpose: string; children?: ReactNode }) {
   return (
-    <header className="flex flex-col gap-2">
-      <h2 className="font-heading text-2xl text-ink">{title}</h2>
-      <p className="max-w-prose text-sm text-ink-2">{purpose}</p>
-      {children && <div className="flex flex-wrap items-start gap-2">{children}</div>}
+    <header className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="font-heading text-2xl font-bold text-ink">{title}</h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-ink-2">{purpose}</p>
+        </div>
+        {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+      </div>
     </header>
   );
 }
@@ -218,8 +222,8 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     },
   });
 
-  if (summary.isLoading) return <p className="p-4 text-muted">Загрузка…</p>;
-  if (summary.error || !summary.data) return <p className="p-4 text-bad" role="alert">Проект недоступен.</p>;
+  if (summary.isLoading) return <p className="p-8 text-center text-muted">Загрузка проекта…</p>;
+  if (summary.error || !summary.data) return <p className="p-8 text-center text-bad" role="alert">Проект недоступен.</p>;
   const { project, preparation } = summary.data;
   const content = (full.data?.preparation.content ?? null) as (DraftContent & { plot?: Plot }) | null;
   const lore = (content?.setting?.lore ?? {}) as Lore;
@@ -284,16 +288,23 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     const verb = status === "not_requested" ? (paid ? "Сгенерировать моделью" : first) : failed || isStale ? "Повторить" : paid ? "Новый вариант" : "Запустить снова";
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`text-sm ${failed ? "text-bad" : "text-muted"}`} role="status">
+        <span className={`text-xs font-medium ${failed ? "text-bad" : "text-muted"}`} role="status">
           {active ? "выполняется…" : isStale ? "устарело" : STAGE_STATE_LABELS[status]}
           {st?.error_code ? `, код ${st.error_code}` : ""}
         </span>
-        <button className={`btn min-h-11 px-3 text-sm ${!paid && status === "not_requested" ? "btn-primary" : ""}`} type="button" disabled={busy || active} onClick={() => run(status !== "not_requested")}>
+        <button
+          className={`btn min-h-11 px-4 text-sm font-medium ${!paid && status === "not_requested" ? "btn-primary" : ""}`}
+          type="button"
+          disabled={busy || active}
+          onClick={() => run(status !== "not_requested")}
+        >
           {verb}
           {paid ? " (платно)" : ""}
         </button>
         {isStale && (
-          <button className="btn min-h-11 px-3 text-sm" type="button" disabled={busy} onClick={() => accept.mutate(`stage:${name}`)}>Оставить как есть</button>
+          <button className="btn min-h-11 px-3 text-sm" type="button" disabled={busy} onClick={() => accept.mutate(`stage:${name}`)}>
+            Оставить как есть
+          </button>
         )}
       </div>
     );
@@ -303,10 +314,18 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     setRevealed(value);
     remember(revealKey, value ? "1" : "0");
   };
+
   const hidden = (
-    <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-4">
-      <p className="text-sm text-ink-2">Содержимое скрыто, чтобы случайно не увидеть тайны мира. Для заполнения его нужно открыть.</p>
-      <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => reveal(true)}>Показать содержимое</button>
+    <div className="flex flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <div className="flex flex-col gap-1.5">
+        <h3 className="font-heading text-lg font-semibold text-ink">Режим защиты от спойлеров</h3>
+        <p className="max-w-xl text-sm leading-relaxed text-ink-2">
+          Содержимое скрыто, чтобы случайно не увидеть тайны мира. Для заполнения его нужно открыть.
+        </p>
+      </div>
+      <button className="btn btn-primary min-h-11 px-5 text-sm font-medium" type="button" onClick={() => reveal(true)}>
+        Показать содержимое
+      </button>
     </div>
   );
 
@@ -323,13 +342,13 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       return false;
     }
   };
+
   const pastePlot = async (value: Record<string, unknown>) => {
     if (worldBuilt && !window.confirm("Новый каркас удалит уже созданные места, NPC и карты. Продолжить?")) return false;
     try {
       const r = await authoring.importPlot(projectId, { plan: value, expected_revision: revision, request_key: newRequestKey() });
       setPlotErrors([]);
       setMessage(r.cleared_entities ? `Каркас принят; прежние места и карты (${r.cleared_entities}) удалены. Проверяю географию…` : "Каркас принят сервером. Проверяю географию…");
-      // география бесплатная и детерминированная: запускаем её сразу, чтобы не искать следующий шаг вручную
       try {
         const fresh = await authoring.getProject(projectId, "summary");
         await authoring.prepare(projectId, { stage: "geography", expected_revision: fresh.project.draft_revision, request_key: newRequestKey(), regenerate: isDone("geography") });
@@ -344,7 +363,21 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       return false;
     }
   };
+
   const changedTexts = Object.fromEntries(Object.entries(texts).filter(([k, v]) => v !== String(plot[k] ?? "")));
+
+  const NextStepFooter = ({ nextId, nextTitle }: { nextId: string; nextTitle: string }) => (
+    <div className="mt-4 flex items-center justify-between border-t border-line-soft pt-4">
+      <span className="text-xs text-muted">Завершили работу над этим этапом?</span>
+      <button
+        className="btn btn-primary min-h-11 px-4 text-sm font-medium"
+        type="button"
+        onClick={() => setStep(nextId)}
+      >
+        Перейти к шагу «{nextTitle}» →
+      </button>
+    </div>
+  );
 
   let body: ReactNode;
   if (step === "lore") {
@@ -355,18 +388,25 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         </StepHeader>
         {!revealed ? hidden : (
           <>
-            <TaskBox load={() => authoring.task(projectId, "lore")} />
-            <JsonPaste
-              label="Вставить лор (JSON)"
-              schema={loreTask.data?.schema ?? null}
-              partial
-              busy={busy}
-              applyLabel="Добавить в лор"
-              preview={(v) => loreProgress({ ...lore, ...Object.fromEntries(Object.entries(v).filter(([k]) => LORE_KEYS.includes(k))) })}
-              onApply={pasteLore}
-            />
+            <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between border-b border-line-soft pb-2.5">
+                <span className="font-heading text-sm font-semibold text-ink">Внешняя модель или импорт</span>
+                <span className="text-xs text-muted">Задание и вставка JSON</span>
+              </div>
+              <TaskBox load={() => authoring.task(projectId, "lore")} />
+              <JsonPaste
+                label="Вставить лор (JSON)"
+                schema={loreTask.data?.schema ?? null}
+                partial
+                busy={busy}
+                applyLabel="Добавить в лор"
+                preview={(v) => loreProgress({ ...lore, ...Object.fromEntries(Object.entries(v).filter(([k]) => LORE_KEYS.includes(k))) })}
+                onApply={pasteLore}
+              />
+            </div>
             <Checklist title="Что заполнено в лоре" items={loreItems} onJump={(k) => jump("lore", k)} />
             <LoreEditor lore={lore} busy={busy} onSave={(fields) => edit.mutate({ operations: [{ op: "set_lore", fields: fields as never }] })} />
+            <NextStepFooter nextId="plot" nextTitle="Сюжет и NPC" />
           </>
         )}
       </>
@@ -379,30 +419,43 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         </StepHeader>
         {!revealed ? hidden : (
           <>
-            <TaskBox load={() => authoring.task(projectId, "plot")} />
-            {plotTask.error && (
-              <p className="text-sm text-warn">Схема сюжета недоступна ({plotTask.error instanceof ApiError ? plotTask.error.message : "ошибка"}); вставку всё равно проверит сервер.</p>
-            )}
-            <JsonPaste
-              label="Вставить каркас сюжета (JSON)"
-              schema={plotTask.data?.schema ?? null}
-              busy={busy}
-              applyLabel="Проверить и принять каркас"
-              serverErrors={plotErrors}
-              preview={(v) => plotProgress(v)}
-              onApply={pastePlot}
-            />
+            <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between border-b border-line-soft pb-2.5">
+                <span className="font-heading text-sm font-semibold text-ink">Внешняя модель или импорт</span>
+                <span className="text-xs text-muted">Задание и вставка каркаса сюжета</span>
+              </div>
+              <TaskBox load={() => authoring.task(projectId, "plot")} />
+              {plotTask.error && (
+                <p className="text-sm text-warn">Схема сюжета недоступна ({plotTask.error instanceof ApiError ? plotTask.error.message : "ошибка"}); вставку всё равно проверит сервер.</p>
+              )}
+              <JsonPaste
+                label="Вставить каркас сюжета (JSON)"
+                schema={plotTask.data?.schema ?? null}
+                busy={busy}
+                applyLabel="Проверить и принять каркас"
+                serverErrors={plotErrors}
+                preview={(v) => plotProgress(v)}
+                onApply={pastePlot}
+              />
+            </div>
             <Checklist title="Что заполнено в сюжете" items={plotItems} onJump={(k) => jump("plot", k)} />
-            <fieldset className="flex flex-col gap-2">
-              <legend className="font-heading text-base text-ink">Тексты сюжета</legend>
+            <fieldset className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between border-b border-line-soft pb-2">
+                <legend className="font-heading text-base font-semibold text-ink">Тексты сюжета</legend>
+                <span className="text-xs text-muted">Основные описания для мастера и игроков</span>
+              </div>
               {PLOT_TEXT.map(([key, label]) => (
-                <label key={key} id={`plot-${key}`} className="flex scroll-mt-24 flex-col gap-1 text-sm">
-                  <span className="text-muted">{label}</span>
-                  <textarea className="min-h-11 rounded-lg border border-line bg-raised p-2" value={texts[key] ?? String(plot[key] ?? "")} onChange={(e) => setTexts({ ...texts, [key]: e.target.value })} />
+                <label key={key} id={`plot-${key}`} className="flex scroll-mt-24 flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-ink">{label}</span>
+                  <textarea
+                    className="min-h-20 rounded-xl border border-line bg-raised p-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                    value={texts[key] ?? String(plot[key] ?? "")}
+                    onChange={(e) => setTexts({ ...texts, [key]: e.target.value })}
+                  />
                 </label>
               ))}
               <button
-                className="btn btn-primary min-h-11 self-start px-3 text-sm"
+                className="btn btn-primary min-h-11 self-start px-4 text-sm font-medium"
                 type="button"
                 disabled={busy || !Object.keys(changedTexts).length}
                 onClick={() => {
@@ -425,6 +478,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
                 onDismissProposal={() => setProposal(null)}
               />
             </div>
+            <NextStepFooter nextId="geography" nextTitle="География" />
           </>
         )}
       </>
@@ -451,21 +505,23 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       <>
         <StepHeader title={info[step][0]} purpose={info[step][1]} />
         {locked ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-4" role="status">
+          <div className="flex flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm" role="status">
             <p className="text-sm text-ink-2">Этот шаг откроется, когда будет выполнен шаг «{needTitle}».</p>
-            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep(needId)}>Перейти к шагу «{needTitle}»</button>
+            <button className="btn btn-primary min-h-11 px-4 text-sm font-medium" type="button" onClick={() => setStep(needId)}>
+              Перейти к шагу «{needTitle}»
+            </button>
           </div>
         ) : step === "maps" && isDone("materialize") ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border-2 border-accent/60 bg-surface p-4">
-            <p className="text-sm text-ink-2">
+          <div className="flex flex-col items-start gap-3 rounded-2xl border-2 border-accent/60 bg-surface p-5 shadow-sm">
+            <p className="text-sm leading-relaxed text-ink-2">
               {mapsRunning
                 ? "Карты пересобираются. Когда закончится, карта ниже обновится сама."
                 : "Карты созданы на предыдущем шаге. Пересоберите их, чтобы получить новые планировки — например, после исправления генератора. Прежняя карта остаётся, пока новая не готова целиком."}
             </p>
             {stageOf("maps")?.error_code && !mapsRunning && <p className="text-sm text-bad">Прошлая пересборка не удалась: {stageOf("maps")?.error_code}</p>}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-1">
               <button
-                className="btn btn-primary min-h-11 px-4 text-sm"
+                className="btn btn-primary min-h-11 px-5 text-sm font-medium"
                 type="button"
                 disabled={busy || mapsRunning}
                 onClick={() => {
@@ -476,19 +532,21 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
               >
                 {mapsRunning ? "Пересобираю карты…" : "Пересобрать карты"}
               </button>
-              <button className="btn min-h-11 px-4 text-sm" type="button" onClick={() => setStep("review")}>Перейти к проверке</button>
+              <button className="btn min-h-11 px-4 text-sm" type="button" onClick={() => setStep("review")}>
+                Перейти к проверке
+              </button>
             </div>
           </div>
         ) : status === "not_requested" ? (
-          <div className="flex flex-col gap-3 rounded-xl border-2 border-accent/60 bg-surface p-4">
-            <p className="text-sm text-ink-2">Шаг ещё не выполнен. Он бесплатный и занимает несколько секунд: нажмите кнопку, и откроется следующий шаг.</p>
+          <div className="flex flex-col gap-3 rounded-2xl border-2 border-accent/60 bg-surface p-5 shadow-sm">
+            <p className="text-sm leading-relaxed text-ink-2">Шаг ещё не выполнен. Он бесплатный и занимает несколько секунд: нажмите кнопку, и откроется следующий шаг.</p>
             {stageActions(step, false)}
           </div>
         ) : (
           stageActions(step, false)
         )}
         {!locked && step === "maps" && isDone("materialize") && (revealed ? (
-          <section aria-label="Карты мест" className="flex flex-col gap-3">
+          <section aria-label="Карты мест" className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Вид">
               {([["world", "Схема мира"], ["places", "Карты мест"]] as const).map(([id, label]) => (
                 <button
@@ -496,7 +554,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
                   role="tab"
                   type="button"
                   aria-selected={mapView === id}
-                  className={`btn min-h-11 px-4 text-sm ${mapView === id ? "btn-primary" : ""}`}
+                  className={`btn min-h-11 px-5 text-sm font-medium ${mapView === id ? "btn-primary shadow-sm" : ""}`}
                   onClick={() => setMapView(id)}
                 >
                   {label}
@@ -506,60 +564,66 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
             {mapView === "world" ? (
               overview.data ? <WorldOverview overview={overview.data} /> : <p className="text-sm text-muted">Загрузка схемы…</p>
             ) : (
-            <>
-            <h3 className="font-heading text-base text-ink">Карты мест</h3>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Места">
-              {(plot.locations ?? []).map((loc) => (
-                <button
-                  key={loc.id}
-                  type="button"
-                  className={`btn min-h-11 px-3 text-sm ${(location ?? plot.locations?.[0]?.id) === loc.id ? "btn-primary" : ""}`}
-                  aria-pressed={(location ?? plot.locations?.[0]?.id) === loc.id}
-                  onClick={() => setLocation(loc.id)}
-                >
-                  {loc.name}
-                </button>
-              ))}
+            <div className="flex flex-col gap-4">
+              <h3 className="font-heading text-base font-semibold text-ink">Карты мест</h3>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Места">
+                {(plot.locations ?? []).map((loc) => (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    className={`btn min-h-11 px-4 text-sm font-medium ${(location ?? plot.locations?.[0]?.id) === loc.id ? "btn-primary shadow-sm" : ""}`}
+                    aria-pressed={(location ?? plot.locations?.[0]?.id) === loc.id}
+                    onClick={() => setLocation(loc.id)}
+                  >
+                    {loc.name}
+                  </button>
+                ))}
+              </div>
+              {map.isLoading && <p className="text-sm text-muted">Загрузка карты…</p>}
+              {map.data && (
+                <MapPreview
+                  key={map.data.location_ref}
+                  map={map.data}
+                  rebuild={{
+                    disabled: busy || mapsRunning,
+                    running: mapsRunning && rebuilding === map.data.location_ref,
+                    onRebuild: () => {
+                      const ref = map.data!.location_ref;
+                      setRebuilding(ref);
+                      prepare.mutate({ stage: "maps", regenerate: true, target: ref });
+                    },
+                  }}
+                />
+              )}
+              <p className="text-xs text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</p>
             </div>
-            {map.isLoading && <p className="text-sm text-muted">Загрузка карты…</p>}
-            {map.data && (
-              <MapPreview
-                key={map.data.location_ref}
-                map={map.data}
-                rebuild={{
-                  disabled: busy || mapsRunning,
-                  running: mapsRunning && rebuilding === map.data.location_ref,
-                  onRebuild: () => {
-                    const ref = map.data!.location_ref;
-                    setRebuilding(ref);
-                    prepare.mutate({ stage: "maps", regenerate: true, target: ref });
-                  },
-                }}
-              />
-            )}
-            <p className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</p>
-            </>
             )}
           </section>
         ) : hidden)}
         {!locked && revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (
-          <>
-            <h3 className="font-heading text-base text-ink">
+          <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 shadow-sm">
+            <h3 className="font-heading text-base font-semibold text-ink">
               {step === "geography" && !geographyChecked ? "Как записано в каркасе (ещё не проверено)" : "Места и маршруты"}
             </h3>
             <GeographyView regions={plot.regions ?? []} locations={plot.locations ?? []} routes={plot.routes ?? []} selected={location} onSelect={setLocation} />
             {location && map.data && <MapPreview map={map.data} />}
-          </>
+          </div>
         )}
         {step === "maps" && mapStale.length > 0 && (
-          <ul className="flex flex-col gap-1 rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm" aria-label="Устаревшие карты">
+          <ul className="flex flex-col gap-1.5 rounded-2xl border border-warn/40 bg-warn/10 p-4 text-sm" aria-label="Устаревшие карты">
             {mapStale.map((ref) => (
-              <li key={ref} className="flex items-center gap-3">
-                <code>{ref}</code>
-                <button className="btn min-h-11 px-3 text-xs" type="button" disabled={busy} onClick={() => accept.mutate(ref)}>Принять как есть</button>
+              <li key={ref} className="flex items-center justify-between gap-3 rounded-lg border border-line-soft bg-surface/70 p-2">
+                <code className="text-xs font-mono">{ref}</code>
+                <button className="btn min-h-9 px-3 text-xs" type="button" disabled={busy} onClick={() => accept.mutate(ref)}>Принять как есть</button>
               </li>
             ))}
           </ul>
+        )}
+        {!locked && step === "geography" && isDone("geography") && (
+          <NextStepFooter nextId="materialize" nextTitle="Места, NPC и предметы" />
+        )}
+        {!locked && step === "materialize" && isDone("materialize") && (
+          <NextStepFooter nextId="maps" nextTitle="Карты" />
         )}
       </>
     );
@@ -574,27 +638,39 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
 
   const spent = preparation.spent_usd ?? 0;
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading text-2xl text-ink">{project.title}</h1>
-        <span className="text-sm text-muted">ревизия {project.draft_revision}</span>
-        <span className="text-sm text-muted">
-          потрачено ${spent.toFixed(4)}
-          {preparation.budget_usd != null ? ` из $${preparation.budget_usd.toFixed(2)}` : ""}
-        </span>
-        <button className="btn ml-auto min-h-11 px-3 text-sm" type="button" aria-pressed={revealed} onClick={() => reveal(!revealed)}>
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      {/* Top Project HUD */}
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-ink">{project.title}</h1>
+          <span className="rounded-full bg-line-soft px-2.5 py-0.5 text-xs font-medium text-muted">
+            ревизия {project.draft_revision}
+          </span>
+          <span className="rounded-full border border-line-soft bg-raised px-2.5 py-0.5 text-xs text-muted">
+            потрачено ${spent.toFixed(4)}
+            {preparation.budget_usd != null ? ` из $${preparation.budget_usd.toFixed(2)}` : ""}
+          </span>
+        </div>
+        <button
+          className="btn min-h-10 px-3.5 text-xs font-medium"
+          type="button"
+          aria-pressed={revealed}
+          onClick={() => reveal(!revealed)}
+        >
           {revealed ? "Скрыть содержимое" : "Показать содержимое"}
         </button>
       </header>
+
       {message && (
-        <p className="flex items-center justify-between gap-3 rounded-lg border border-line bg-raised p-3 text-sm" role="status">
-          {message}
-          <button className="btn min-h-9 px-2 text-xs" type="button" onClick={() => setMessage(null)}>Скрыть</button>
-        </p>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-raised p-3.5 text-sm shadow-sm" role="status">
+          <span className="text-ink">{message}</span>
+          <button className="btn min-h-8 px-2.5 text-xs" type="button" onClick={() => setMessage(null)}>Скрыть</button>
+        </div>
       )}
-      <div className="grid gap-6 lg:grid-cols-[17rem_1fr]">
+
+      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
         <StepNav steps={steps} active={step} onSelect={setStep} />
-        <main className="flex min-w-0 flex-col gap-4">{body}</main>
+        <main className="flex min-w-0 flex-col gap-5">{body}</main>
       </div>
     </div>
   );
