@@ -150,6 +150,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         )
         await app.state.master.resume_timers()
         app.state.master.start_recovery()  # ходы с сохранёнными действиями дописываются (поставка 2)
+        from app.core.authoring.runner import AuthorRunner
+
+        app.state.author_runner = AuthorRunner(app.state.master)
+        app.state.author_runner.start()  # незавершённые этапы автора подхватываются после перезапуска
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
         app.state.master.players = PlayerAgents(app.state.master)
@@ -161,6 +165,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         try:
             yield
         finally:
+            await app.state.author_runner.stop()
             await app.state.presence.stop()
             await app.state.rest.stop()
             await app.state.master.players.stop()

@@ -150,7 +150,15 @@ async def publish(svc, cid: str, c: Campaign) -> None:
     await svc.bus.publish(cid, envelope("campaign.plan", cid, payload), None)
 
 
-async def generate(svc, cid: str, note: str = "", structure_id: str | None = None) -> str | None:
+async def generate(
+    svc,
+    cid: str,
+    note: str = "",
+    structure_id: str | None = None,
+    *,
+    prepare_intro: bool = True,
+    author_job_id: str | None = None,
+) -> str | None:
     """Строит каркас в фоне. Возвращает id версии или None при сбое (статус и ошибка — в settings.plan)."""
     try:
         async with svc.maker() as s:
@@ -168,7 +176,9 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
         msgs = [{"role": "system", "content": plot.SYSTEM}, {"role": "user", "content": prompt}]
         plan, errors, calls = None, ["модель не сдала каркас"], []
         for _ in range(ATTEMPTS):
-            call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="plan", model=model)
+            call = LlmCall(
+                campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="plan", model=model, author_job_id=author_job_id
+            )
             calls.append(call)
             try:
                 reply = await svc.llm.complete(
@@ -252,7 +262,7 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 await set_status(s, c, status="failed", error="; ".join(errors)[:1000])
             await s.commit()
             await publish(svc, cid, c)
-        if version_id is not None:
+        if version_id is not None and prepare_intro:
             from app.agents import prelude
 
             try:  # вступление с голосом готовится сразу, чтобы старт кампании не ждал модель

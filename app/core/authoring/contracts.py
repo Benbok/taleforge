@@ -70,6 +70,25 @@ class InstanceOptions(Contract):
     tts_enabled: bool = True
 
 
+class StageStatus(Contract):
+    stage: str
+    status: str = "not_requested"
+    job_id: str | None = None
+    error_code: str | None = None
+    source_revision: int | None = None
+
+
+class PreparationView(Contract):
+    project_id: str
+    draft_revision: int
+    stages: tuple[StageStatus, ...] = ()
+    spent_usd: float = 0
+    budget_usd: float | None = None
+    cost_unknown: bool = False
+    # Содержимое черновика отдаётся только редактору; режим без спойлеров его не включает.
+    content: dict | None = None
+
+
 class LaunchReceipt(Contract):
     campaign_id: str
     adventure_version_id: str
