@@ -23,9 +23,13 @@ export default function StagePanel({ view, busy, onPrepare, onAcceptStale }: Pro
               <span className="text-sm text-muted" role="status">{STAGE_STATE_LABELS[state ?? ""] ?? state}</span>
               {stage.error_code && <span className="text-sm text-warn">код: {stage.error_code}</span>}
               <span className="ml-auto flex gap-2">
-                <button className="btn min-h-11 px-3 text-sm" disabled={busy || active} onClick={() => onPrepare(stage.stage, false)} type="button">
-                  {stage.status === "not_requested" ? "Подготовить" : "Повторить"}
-                </button>
+                {stage.status === "not_requested" && (
+                  <button className="btn min-h-11 px-3 text-sm" disabled={busy} onClick={() => onPrepare(stage.stage, false)} type="button">Подготовить</button>
+                )}
+                {/* неудачная попытка повторяется новой работой: готовый прежний результат её не подменяет */}
+                {(stage.status === "failed" || stage.status === "blocked" || stage.status === "stale") && (
+                  <button className="btn min-h-11 px-3 text-sm" disabled={busy || active} onClick={() => onPrepare(stage.stage, true)} type="button">Повторить</button>
+                )}
                 {stage.status === "ready" && (
                   <button className="btn min-h-11 px-3 text-sm" disabled={busy} onClick={() => onPrepare(stage.stage, true)} type="button">Новый вариант</button>
                 )}

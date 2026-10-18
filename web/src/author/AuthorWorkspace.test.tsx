@@ -142,3 +142,15 @@ it("отказ публикации показывает причины и не 
   expect(screen.getByText("stale_result")).toBeTruthy();
   expect(screen.queryByText(/Опубликована версия/)).toBeNull();
 });
+
+it("повтор неудачного этапа запускает новую попытку, а не возвращает старый результат", async () => {
+  const mock = api(
+    (call) => (call.url.endsWith("/prepare") ? { status: 202, body: { job_id: "aj_2", stage: "lore", status: "queued", source_revision: 7 } } : undefined),
+    stages({ lore: { status: "failed", error_code: "llm_unavailable" } }),
+  );
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Повторить" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
+  expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "lore", regenerate: true });
+  expect(await screen.findByText("Этап поставлен в очередь.")).toBeTruthy();
+});

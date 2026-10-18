@@ -47,7 +47,10 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const prepare = useMutation({
     mutationFn: (v: { stage: string; regenerate: boolean }) =>
       authoring.prepare(projectId, { stage: v.stage, expected_revision: revision, request_key: newRequestKey(), regenerate: v.regenerate }),
-    onSuccess: refresh,
+    onSuccess: (receipt) => {
+      setMessage(receipt.status === "ready" ? "Этап уже готов с теми же входными данными — результат не изменился." : "Этап поставлен в очередь.");
+      void refresh();
+    },
     onError: fail,
   });
   const edit = useMutation({
