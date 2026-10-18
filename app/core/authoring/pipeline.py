@@ -66,6 +66,39 @@ async def materialize_stage(ctx: StageContext) -> dict:
     return {"report": report.model_dump(mode="json")}
 
 
+async def geography_stage(ctx: StageContext) -> dict:
+    """Compile regions, locations and routes from the plan into stored geography; no materialization."""
+    from app.core.geography.compiler import compile_plan
+    from app.core.geography.contracts import GeographyError
+    from app.core.geography.storage import sync_geography
+
+    async with ctx.svc.maker() as s:
+        secret = await s.get(CampaignSecret, ctx.world_id)
+        try:
+            draft = compile_plan((secret.plot if secret else None) or {})
+        except GeographyError as exc:
+            raise StageError(exc.code) from exc
+        entity_by_ref = {
+            x["id"]: x["entity_id"]
+            for x in ((secret.plot if secret else None) or {}).get("locations") or []
+            if x.get("entity_id")
+        }
+        view = await sync_geography(s, ctx.world_id, draft, entity_by_ref)
+        await s.commit()
+    return {"nodes": len(view.nodes), "links": len(view.links)}
+
+
+async def validate_stage(ctx: StageContext) -> dict:
+    from app.core.authoring.validation import store_report, validate_project
+
+    async with ctx.svc.maker() as s:
+        project = await s.get(AuthorProject, ctx.project_id)
+        report = await validate_project(s, project)
+        await store_report(s, project, report)
+        await s.commit()
+    return {"errors": len(report.errors), "warnings": len(report.warnings), "source_revision": report.source_revision}
+
+
 async def apply_lore(session, project: AuthorProject, result: dict) -> None:
     secret = await session.get(CampaignSecret, project.workspace_campaign_id)
     if secret is None:
@@ -75,15 +108,22 @@ async def apply_lore(session, project: AuthorProject, result: dict) -> None:
 
 
 APPLY = {"lore": apply_lore}
-HANDLERS: dict[str, Handler] = {"lore": lore_stage, "plot": plot_stage, "materialize": materialize_stage}
+HANDLERS: dict[str, Handler] = {
+    "lore": lore_stage,
+    "plot": plot_stage,
+    "geography": geography_stage,
+    "materialize": materialize_stage,
+    "validate": validate_stage,
+}
 
 
 async def record_output(session, project: AuthorProject, job: AuthorJob, result: dict) -> None:
     """Short transaction: re-check inputs and revision, apply the result, publish the stage's output digest."""
     from app.core.authoring.jobs import stage_digest
 
-    current = await session.scalar(select(AuthorProject.draft_revision).where(AuthorProject.id == project.id))
-    await author_write(session, project, current)
+    if job.stage != "validate":  # a report must not advance the revision it describes
+        current = await session.scalar(select(AuthorProject.draft_revision).where(AuthorProject.id == project.id))
+        await author_write(session, project, current)
     await session.refresh(project)
     if job.input_digest != await _expected(session, project, job, stage_digest):
         raise StageError("stale_input")

@@ -70,6 +70,51 @@ async def ensure_actor(ctx, plot_ref: str) -> str:
     return result["entity_id"]
 
 
+async def ensure_item(ctx, item: dict) -> str:
+    """Put a key item into its concrete area (or container). An item that exists only in text is not prepared."""
+    from app.tools.master.items import _put_in_scene
+
+    ref = item["ref"]
+    existing = next((e for e in ctx.world.entities.values() if (e.state or {}).get("item_ref") == ref), None)
+    if existing is not None:
+        return existing.id
+    placement = item.get("placement") or next(
+        (p for p in (ctx.world.plot or {}).get("placements") or [] if p.get("ref") == ref), None
+    )
+    if not placement:
+        raise MaterializationError("item_not_placed", ref)
+    location = next(
+        (x for x in (ctx.world.plot or {}).get("locations") or [] if x["id"] == placement["location_ref"]), None
+    )
+    root = ctx.world.entities.get((location or {}).get("entity_id") or "")
+    if root is None:
+        raise MaterializationError("home_not_materialized", ref)
+    area_id = (
+        layout_store.area_ids(root).get(placement.get("area_ref") or "", root.id)
+        if placement.get("area_ref")
+        else root.id
+    )
+    if area_id not in ctx.world.entities:
+        raise MaterializationError("unresolved_port", ref)
+    if ctx.world.catalog.find(item["template_id"], "item_template") is None:
+        raise MaterializationError("unknown_template", ref)
+    container = placement.get("container_ref")
+    if container and container not in ctx.world.entities:
+        raise MaterializationError("container_missing", ref)
+    entity, _inverse = await _put_in_scene(
+        ctx,
+        item["template_id"],
+        item.get("name") or None,
+        1,
+        "near",
+        place=area_id,
+        container_id=container,
+        force_new=True,
+    )
+    entity.state = {**(entity.state or {}), "item_ref": ref}
+    return entity.id
+
+
 async def _with_context(maker, campaign_id: str, dice_factory, body):
     async with maker() as s:
         campaign = await s.get(Campaign, campaign_id)
@@ -122,7 +167,47 @@ async def prepare_world(maker, project_id: str, preparer, dice_factory=Dice) -> 
                 blocked[npc["id"]] = exc.code
 
     await _with_context(maker, campaign_id, dice_factory, actors)
+
+    async def items(ctx):
+        for item in list((ctx.world.plot or {}).get("items") or []):
+            try:
+                await ensure_item(ctx, item)
+            except MaterializationError as exc:
+                blocked[item["ref"]] = exc.code
+
+    await _with_context(maker, campaign_id, dice_factory, items)
+    await bind_geography(maker, campaign_id)
     return await report(maker, campaign_id, blocked)
+
+
+async def bind_geography(maker, campaign_id: str) -> None:
+    """Record entity ids on geography nodes and store each route port as concrete cells of its area."""
+    from app.core.geography import ports
+    from app.core.geography.compiler import compile_plan
+    from app.core.geography.storage import sync_geography
+    from app.db.models import CampaignSecret
+
+    async with maker() as s:
+        secret = await s.get(CampaignSecret, campaign_id)
+        plan = (secret.plot if secret else None) or {}
+        draft = compile_plan(plan)
+        entity_by_ref = {x["id"]: x["entity_id"] for x in plan.get("locations") or [] if x.get("entity_id")}
+        view = await sync_geography(s, campaign_id, draft, entity_by_ref)
+        entities = {e.id: e for e in await s.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
+        ids = {n.ref: n.entity_id for n in view.nodes if n.entity_id}
+        for link in view.links:
+            for end in (link.source, link.target):
+                try:
+                    port = ports.resolve_port(entities, ids, end)
+                except Exception:  # noqa: BLE001 — an unresolved port is reported by validation, not guessed here
+                    continue
+                area = entities[port.area_id]
+                sketch = (area.state or {}).get("sketch")
+                cells = ports.place_port_cells(sketch) if sketch else []
+                held = dict((area.state or {}).get("route_ports") or {})
+                held[link.ref] = {"cells": [list(c) for c in cells]}
+                area.state = {**(area.state or {}), "route_ports": held}
+        await s.commit()
 
 
 async def report(maker, campaign_id: str, blocked: dict[str, str] | None = None) -> MaterializationReport:

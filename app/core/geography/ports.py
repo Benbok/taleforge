@@ -24,3 +24,21 @@ def resolve_port(entities: dict, entity_ids: dict[str, str], endpoint: RouteEndp
     if endpoint.area_ref:
         raise GeographyError("unresolved_port", f"{endpoint.node_ref}/{endpoint.area_ref}")
     return RoutePort(node_ref=endpoint.node_ref, area_ref="", area_id=place.id)
+
+
+def place_port_cells(sketch: dict) -> list[tuple[int, int]]:
+    """Deterministic exit cell: the walkable cell nearest the area's border, reachable from its entrance."""
+    from app.core import reach
+
+    party = tuple(sketch.get("party") or ())
+    if len(party) != 2:
+        return []
+    region = reach.walk_region(sketch, party)
+    if not region:
+        return []
+    cols, rows = int(sketch["cols"]), int(sketch["rows"])
+
+    def edge(cell):
+        return min(cell[0], cell[1], cols - 1 - cell[0], rows - 1 - cell[1])
+
+    return [min(region, key=lambda c: (edge(c), c[1], c[0]))]
