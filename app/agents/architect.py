@@ -101,6 +101,11 @@ async def build_input(s, c: Campaign, note: str = "", structure_id: str | None =
         figures.append(plot.figure_line(e, secret.data.get("text", "") if secret else ""))
     places = [plot.place_line(e) for e in catalog.by_kind("location_template") if "atlas" in tags(e)][:PLACES]
     secret = await s.get(CampaignSecret, c.id)
+    authored = ((secret.setting if secret else None) or {}).get("lore")
+    if authored:  # the author's world is the frame of the plot, ahead of the pack's general lore
+        from app.core.authoring.lore_text import render_lore
+
+        lore_text = "\n".join(["Мир автора (основа сюжета):", render_lore(authored), "", lore_text])
     previous = secret.plot if secret and secret.plot and secret.plot.get("title") else None
     party = sum(1 for x in c.seats if x.role == "player")
     text = plot.plan_input(
@@ -150,7 +155,15 @@ async def publish(svc, cid: str, c: Campaign) -> None:
     await svc.bus.publish(cid, envelope("campaign.plan", cid, payload), None)
 
 
-async def generate(svc, cid: str, note: str = "", structure_id: str | None = None) -> str | None:
+async def generate(
+    svc,
+    cid: str,
+    note: str = "",
+    structure_id: str | None = None,
+    *,
+    prepare_intro: bool = True,
+    author_job_id: str | None = None,
+) -> str | None:
     """Строит каркас в фоне. Возвращает id версии или None при сбое (статус и ошибка — в settings.plan)."""
     try:
         async with svc.maker() as s:
@@ -168,7 +181,9 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
         msgs = [{"role": "system", "content": plot.SYSTEM}, {"role": "user", "content": prompt}]
         plan, errors, calls = None, ["модель не сдала каркас"], []
         for _ in range(ATTEMPTS):
-            call = LlmCall(campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="plan", model=model)
+            call = LlmCall(
+                campaign_id=cid, seat_id=seat_id, turn_id=None, purpose="plan", model=model, author_job_id=author_job_id
+            )
             calls.append(call)
             try:
                 reply = await svc.llm.complete(
@@ -220,39 +235,12 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 return None
             version_id = None
             if plan is not None:
-                prev = await s.scalar(select(func.max(CampaignPlan.version)).where(CampaignPlan.campaign_id == cid))
-                version = int(prev or 0) + 1
-                plan["structure_id"] = sid or plan.get("structure_id")
-                plan["version"] = version
-                row = CampaignPlan(campaign_id=cid, version=version, content=plan, note=note or "")
-                s.add(row)
-                secret = await s.get(CampaignSecret, cid)
-                if secret is None:
-                    secret = CampaignSecret(campaign_id=cid)
-                    s.add(secret)
-                for key in ("character_links", "hooks"):  # связи героев переживают новый вариант каркаса
-                    if (secret.plot or {}).get(key):
-                        plan[key] = secret.plot[key]
-                if plan.get("hooks"):
-                    targets = set(plot.hook_targets(plan))
-                    plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
-                secret.plot = plan
-                await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
-                await sync_plan_metadata(s, c, plan)  # адаптивной кампании — метаданные закрепления каркаса
-                settings = dict(c.settings or {})
-                settings["poster"] = plot.poster(plan)
-                if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
-                    c.public_intro = plan["public_intro"]
-                    settings["intro_from_plan"] = True
-                c.settings = settings
-                await set_status(s, c, status="ready", version=version, error=None)
-                await s.flush()
-                version_id = row.id
+                version_id = (await apply_plan(s, c, plan, sid, note)).id
             else:
                 await set_status(s, c, status="failed", error="; ".join(errors)[:1000])
             await s.commit()
             await publish(svc, cid, c)
-        if version_id is not None:
+        if version_id is not None and prepare_intro:
             from app.agents import prelude
 
             try:  # вступление с голосом готовится сразу, чтобы старт кампании не ждал модель
@@ -269,6 +257,40 @@ async def generate(svc, cid: str, note: str = "", structure_id: str | None = Non
                 await s.commit()
                 await publish(svc, cid, c)
         return None
+
+
+async def apply_plan(s, c: Campaign, plan: dict, sid: str | None, note: str = "") -> CampaignPlan:
+    """Accept a checked plan: a new version, the current copy, anchors, poster. Used by the architect and by an
+    author who imports a plan made elsewhere."""
+    cid = c.id
+    prev = await s.scalar(select(func.max(CampaignPlan.version)).where(CampaignPlan.campaign_id == cid))
+    version = int(prev or 0) + 1
+    plan["structure_id"] = sid or plan.get("structure_id")
+    plan["version"] = version
+    row = CampaignPlan(campaign_id=cid, version=version, content=plan, note=note or "")
+    s.add(row)
+    secret = await s.get(CampaignSecret, cid)
+    if secret is None:
+        secret = CampaignSecret(campaign_id=cid)
+        s.add(secret)
+    for key in ("character_links", "hooks"):  # связи героев переживают новый вариант каркаса
+        if (secret.plot or {}).get(key):
+            plan[key] = secret.plot[key]
+    if plan.get("hooks"):
+        targets = set(plot.hook_targets(plan))
+        plan["hooks"] = {k: h for k, h in plan["hooks"].items() if h.get("ref") in targets}
+    secret.plot = plan
+    await plot_anchors.sync_bindings(s, cid, plan)  # зацепки прежнего варианта уходят из резерва
+    await sync_plan_metadata(s, c, plan)  # адаптивной кампании — метаданные закрепления каркаса
+    settings = dict(c.settings or {})
+    settings["poster"] = plot.poster(plan)
+    if not (c.public_intro or "").strip() or settings.get("intro_from_plan"):
+        c.public_intro = plan["public_intro"]
+        settings["intro_from_plan"] = True
+    c.settings = settings
+    await set_status(s, c, status="ready", version=version, error=None)
+    await s.flush()
+    return row
 
 
 def _assistant(reply, tc) -> dict:

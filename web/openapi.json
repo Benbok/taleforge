@@ -1,6 +1,37 @@
 {
  "components": {
   "schemas": {
+   "AcceptStaleRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "refs": {
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Refs",
+      "type": "array"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "refs",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "AcceptStaleRequest",
+    "type": "object"
+   },
    "AudioAttribution": {
     "additionalProperties": false,
     "properties": {
@@ -191,6 +222,141 @@
      "name"
     ],
     "title": "AuthOk",
+    "type": "object"
+   },
+   "AuthorMapArea": {
+    "additionalProperties": false,
+    "properties": {
+     "area_ref": {
+      "title": "Area Ref",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "ports": {
+      "additionalProperties": true,
+      "title": "Ports",
+      "type": "object"
+     },
+     "sketch": {
+      "additionalProperties": true,
+      "title": "Sketch",
+      "type": "object"
+     }
+    },
+    "required": [
+     "area_ref",
+     "name",
+     "sketch"
+    ],
+    "title": "AuthorMapArea",
+    "type": "object"
+   },
+   "AuthorMapOut": {
+    "additionalProperties": false,
+    "properties": {
+     "areas": {
+      "items": {
+       "$ref": "#/components/schemas/AuthorMapArea"
+      },
+      "title": "Areas",
+      "type": "array"
+     },
+     "layout_quality": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Layout Quality"
+     },
+     "location_ref": {
+      "title": "Location Ref",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "location_ref",
+     "name",
+     "areas"
+    ],
+    "title": "AuthorMapOut",
+    "type": "object"
+   },
+   "AuthorProjectCreate": {
+    "additionalProperties": false,
+    "properties": {
+     "brief": {
+      "$ref": "#/components/schemas/BriefIn"
+     },
+     "budget_usd": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget Usd"
+     },
+     "difficulty": {
+      "default": "normal",
+      "enum": [
+       "easy",
+       "normal",
+       "hard",
+       "deadly"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+     },
+     "master": {
+      "$ref": "#/components/schemas/MasterIn"
+     },
+     "pack_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pack Id"
+     },
+     "pack_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pack Version"
+     },
+     "title": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "title"
+    ],
+    "title": "AuthorProjectCreate",
     "type": "object"
    },
    "Bond": {
@@ -2730,6 +2896,210 @@
      "effects"
     ],
     "title": "Derived",
+    "type": "object"
+   },
+   "DraftPatch": {
+    "additionalProperties": false,
+    "properties": {
+     "operations": {
+      "items": {
+       "discriminator": {
+        "mapping": {
+         "edit_map": "#/components/schemas/EditMap",
+         "remove_object": "#/components/schemas/RemoveObject",
+         "set_lore": "#/components/schemas/SetLore",
+         "set_placement": "#/components/schemas/SetPlacement",
+         "set_plot_text": "#/components/schemas/SetPlotText",
+         "update_item": "#/components/schemas/UpdateItem",
+         "update_plot_object": "#/components/schemas/UpdatePlotObject",
+         "upsert_route": "#/components/schemas/UpsertRoute"
+        },
+        "propertyName": "op"
+       },
+       "oneOf": [
+        {
+         "$ref": "#/components/schemas/SetLore"
+        },
+        {
+         "$ref": "#/components/schemas/SetPlotText"
+        },
+        {
+         "$ref": "#/components/schemas/UpdatePlotObject"
+        },
+        {
+         "$ref": "#/components/schemas/UpdateItem"
+        },
+        {
+         "$ref": "#/components/schemas/SetPlacement"
+        },
+        {
+         "$ref": "#/components/schemas/UpsertRoute"
+        },
+        {
+         "$ref": "#/components/schemas/RemoveObject"
+        },
+        {
+         "$ref": "#/components/schemas/EditMap"
+        }
+       ]
+      },
+      "maxItems": 100,
+      "title": "Operations",
+      "type": "array"
+     }
+    },
+    "title": "DraftPatch",
+    "type": "object"
+   },
+   "EditMap": {
+    "additionalProperties": false,
+    "properties": {
+     "location_ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Location Ref",
+      "type": "string"
+     },
+     "op": {
+      "const": "edit_map",
+      "title": "Op",
+      "type": "string"
+     },
+     "spatial": {
+      "additionalProperties": true,
+      "title": "Spatial",
+      "type": "object"
+     }
+    },
+    "required": [
+     "op",
+     "location_ref",
+     "spatial"
+    ],
+    "title": "EditMap",
+    "type": "object"
+   },
+   "EditProposal": {
+    "additionalProperties": false,
+    "properties": {
+     "affected": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ResultRef"
+      },
+      "title": "Affected",
+      "type": "array"
+     },
+     "base_revision": {
+      "title": "Base Revision",
+      "type": "integer"
+     },
+     "patch": {
+      "$ref": "#/components/schemas/DraftPatch"
+     },
+     "summary": {
+      "default": "",
+      "title": "Summary",
+      "type": "string"
+     }
+    },
+    "required": [
+     "base_revision",
+     "patch"
+    ],
+    "title": "EditProposal",
+    "type": "object"
+   },
+   "EditRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "base_revision": {
+      "title": "Base Revision",
+      "type": "integer"
+     },
+     "instruction": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Instruction",
+      "type": "string"
+     }
+    },
+    "required": [
+     "instruction",
+     "base_revision"
+    ],
+    "title": "EditRequest",
+    "type": "object"
+   },
+   "EditResult": {
+    "additionalProperties": false,
+    "properties": {
+     "affected": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ResultRef"
+      },
+      "title": "Affected",
+      "type": "array"
+     },
+     "applied": {
+      "title": "Applied",
+      "type": "boolean"
+     },
+     "blocked_by": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ResultRef"
+      },
+      "title": "Blocked By",
+      "type": "array"
+     },
+     "draft_revision": {
+      "title": "Draft Revision",
+      "type": "integer"
+     },
+     "event_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Event Id"
+     }
+    },
+    "required": [
+     "applied",
+     "draft_revision"
+    ],
+    "title": "EditResult",
+    "type": "object"
+   },
+   "EditsRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "patch": {
+      "$ref": "#/components/schemas/DraftPatch"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "patch",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "EditsRequest",
     "type": "object"
    },
    "Empty": {
@@ -5649,6 +6019,93 @@
     "title": "ImportIn",
     "type": "object"
    },
+   "ImportPlotRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "plan": {
+      "additionalProperties": true,
+      "title": "Plan",
+      "type": "object"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "plan",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "ImportPlotRequest",
+    "type": "object"
+   },
+   "ImportResult": {
+    "additionalProperties": false,
+    "properties": {
+     "cleared_entities": {
+      "default": 0,
+      "title": "Cleared Entities",
+      "type": "integer"
+     },
+     "plan_version_id": {
+      "title": "Plan Version Id",
+      "type": "string"
+     },
+     "source": {
+      "default": "import",
+      "title": "Source",
+      "type": "string"
+     }
+    },
+    "required": [
+     "plan_version_id"
+    ],
+    "title": "ImportResult",
+    "type": "object"
+   },
+   "InstanceOptions": {
+    "additionalProperties": false,
+    "properties": {
+     "master": {
+      "$ref": "#/components/schemas/MasterIn"
+     },
+     "name": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "owner_plays": {
+      "default": true,
+      "title": "Owner Plays",
+      "type": "boolean"
+     },
+     "players": {
+      "default": 4,
+      "maximum": 6.0,
+      "minimum": 1.0,
+      "title": "Players",
+      "type": "integer"
+     },
+     "tts_enabled": {
+      "default": true,
+      "title": "Tts Enabled",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "InstanceOptions",
+    "type": "object"
+   },
    "IntroDraftIn": {
     "properties": {
      "hook_id": {
@@ -5881,6 +6338,51 @@
     "title": "InvitePreviewOut",
     "type": "object"
    },
+   "JobOut": {
+    "additionalProperties": false,
+    "properties": {
+     "attempt_count": {
+      "default": 0,
+      "title": "Attempt Count",
+      "type": "integer"
+     },
+     "error_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Code"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "stage",
+     "status",
+     "source_revision"
+    ],
+    "title": "JobOut",
+    "type": "object"
+   },
    "KnowledgeRevealed": {
     "additionalProperties": false,
     "properties": {
@@ -5916,6 +6418,50 @@
      "name"
     ],
     "title": "KnowledgeRevealed",
+    "type": "object"
+   },
+   "LaunchReceipt": {
+    "additionalProperties": false,
+    "properties": {
+     "adventure_version_id": {
+      "title": "Adventure Version Id",
+      "type": "string"
+     },
+     "campaign_id": {
+      "title": "Campaign Id",
+      "type": "string"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "campaign_id",
+     "adventure_version_id",
+     "url"
+    ],
+    "title": "LaunchReceipt",
+    "type": "object"
+   },
+   "LaunchRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "options": {
+      "$ref": "#/components/schemas/InstanceOptions"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "options",
+     "request_key"
+    ],
+    "title": "LaunchRequest",
     "type": "object"
    },
    "LibraryHeroIn": {
@@ -7789,6 +8335,18 @@
       ],
       "default": null,
       "title": "Room Ref"
+     },
+     "route_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Route Ref"
      },
      "side": {
       "enum": [
@@ -10572,6 +11130,116 @@
     "title": "PlanRequestIn",
     "type": "object"
    },
+   "PreparationView": {
+    "additionalProperties": false,
+    "properties": {
+     "budget_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget Usd"
+     },
+     "content": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Content"
+     },
+     "cost_unknown": {
+      "default": false,
+      "title": "Cost Unknown",
+      "type": "boolean"
+     },
+     "draft_revision": {
+      "title": "Draft Revision",
+      "type": "integer"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "string"
+     },
+     "spent_usd": {
+      "default": 0,
+      "title": "Spent Usd",
+      "type": "number"
+     },
+     "stages": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/StageStatus"
+      },
+      "title": "Stages",
+      "type": "array"
+     },
+     "stale": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Stale",
+      "type": "array"
+     }
+    },
+    "required": [
+     "project_id",
+     "draft_revision"
+    ],
+    "title": "PreparationView",
+    "type": "object"
+   },
+   "PrepareRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "target_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Ref"
+     }
+    },
+    "required": [
+     "stage",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "PrepareRequest",
+    "type": "object"
+   },
    "PresenceChanged": {
     "additionalProperties": false,
     "properties": {
@@ -10899,6 +11567,97 @@
     "title": "Progress",
     "type": "object"
    },
+   "ProjectDetail": {
+    "additionalProperties": false,
+    "properties": {
+     "brief": {
+      "$ref": "#/components/schemas/BriefIn"
+     },
+     "budget_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget Usd"
+     },
+     "draft_revision": {
+      "title": "Draft Revision",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "draft_revision"
+    ],
+    "title": "ProjectDetail",
+    "type": "object"
+   },
+   "ProjectSummary": {
+    "additionalProperties": false,
+    "properties": {
+     "budget_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget Usd"
+     },
+     "draft_revision": {
+      "title": "Draft Revision",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "draft_revision"
+    ],
+    "title": "ProjectSummary",
+    "type": "object"
+   },
+   "ProjectView": {
+    "additionalProperties": false,
+    "description": "Summary and full are different DTOs: the spoiler-free one has no ``content`` field at all.",
+    "properties": {
+     "preparation": {
+      "$ref": "#/components/schemas/PreparationView"
+     },
+     "project": {
+      "$ref": "#/components/schemas/ProjectDetail"
+     }
+    },
+    "required": [
+     "project",
+     "preparation"
+    ],
+    "title": "ProjectView",
+    "type": "object"
+   },
    "ProviderActivePatch": {
     "properties": {
      "provider": {
@@ -10995,6 +11754,27 @@
     "title": "ProviderOut",
     "type": "object"
    },
+   "PublishRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "PublishRequest",
+    "type": "object"
+   },
    "ReactionClosed": {
     "additionalProperties": false,
     "properties": {
@@ -11072,6 +11852,28 @@
      "password"
     ],
     "title": "RegisterByInviteIn",
+    "type": "object"
+   },
+   "RemoveObject": {
+    "additionalProperties": false,
+    "properties": {
+     "op": {
+      "const": "remove_object",
+      "title": "Op",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "ref"
+    ],
+    "title": "RemoveObject",
     "type": "object"
    },
    "RestEnded": {
@@ -11274,6 +12076,25 @@
      "deadline"
     ],
     "title": "RestVote",
+    "type": "object"
+   },
+   "ResultRef": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "ref": {
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "ref"
+    ],
+    "title": "ResultRef",
     "type": "object"
    },
    "ReviewIn": {
@@ -11945,6 +12766,122 @@
     "title": "SessionSummary",
     "type": "object"
    },
+   "SetLore": {
+    "additionalProperties": false,
+    "properties": {
+     "fields": {
+      "additionalProperties": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "items": {
+          "additionalProperties": {
+           "type": "string"
+          },
+          "type": "object"
+         },
+         "type": "array"
+        }
+       ]
+      },
+      "title": "Fields",
+      "type": "object"
+     },
+     "op": {
+      "const": "set_lore",
+      "title": "Op",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "fields"
+    ],
+    "title": "SetLore",
+    "type": "object"
+   },
+   "SetPlacement": {
+    "additionalProperties": false,
+    "properties": {
+     "area_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Area Ref"
+     },
+     "container_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Container Ref"
+     },
+     "location_ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Location Ref",
+      "type": "string"
+     },
+     "op": {
+      "const": "set_placement",
+      "title": "Op",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "ref",
+     "location_ref"
+    ],
+    "title": "SetPlacement",
+    "type": "object"
+   },
+   "SetPlotText": {
+    "additionalProperties": false,
+    "properties": {
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Fields",
+      "type": "object"
+     },
+     "op": {
+      "const": "set_plot_text",
+      "title": "Op",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "fields"
+    ],
+    "title": "SetPlotText",
+    "type": "object"
+   },
    "SfxInput": {
     "additionalProperties": false,
     "properties": {
@@ -12223,6 +13160,122 @@
      }
     },
     "title": "SpellsIn",
+    "type": "object"
+   },
+   "StageReceipt": {
+    "additionalProperties": false,
+    "properties": {
+     "job_id": {
+      "title": "Job Id",
+      "type": "string"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "job_id",
+     "stage",
+     "status",
+     "source_revision"
+    ],
+    "title": "StageReceipt",
+    "type": "object"
+   },
+   "StageStatus": {
+    "additionalProperties": false,
+    "properties": {
+     "error_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Code"
+     },
+     "job_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Job Id"
+     },
+     "source_revision": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Revision"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "status": {
+      "default": "not_requested",
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "stage"
+    ],
+    "title": "StageStatus",
+    "type": "object"
+   },
+   "StageTask": {
+    "additionalProperties": false,
+    "properties": {
+     "how": {
+      "title": "How",
+      "type": "string"
+     },
+     "schema": {
+      "additionalProperties": true,
+      "title": "Schema",
+      "type": "object"
+     },
+     "stage": {
+      "title": "Stage",
+      "type": "string"
+     },
+     "system": {
+      "title": "System",
+      "type": "string"
+     },
+     "user": {
+      "title": "User",
+      "type": "string"
+     }
+    },
+    "required": [
+     "stage",
+     "system",
+     "user",
+     "schema",
+     "how"
+    ],
+    "title": "StageTask",
     "type": "object"
    },
    "StandIn": {
@@ -12625,6 +13678,112 @@
     "title": "TurnEconomy",
     "type": "object"
    },
+   "UpdateItem": {
+    "additionalProperties": false,
+    "properties": {
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Fields",
+      "type": "object"
+     },
+     "op": {
+      "const": "update_item",
+      "title": "Op",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "ref",
+     "fields"
+    ],
+    "title": "UpdateItem",
+    "type": "object"
+   },
+   "UpdatePlotObject": {
+    "additionalProperties": false,
+    "properties": {
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Fields",
+      "type": "object"
+     },
+     "op": {
+      "const": "update_plot_object",
+      "title": "Op",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "ref",
+     "fields"
+    ],
+    "title": "UpdatePlotObject",
+    "type": "object"
+   },
+   "UpsertRoute": {
+    "additionalProperties": false,
+    "properties": {
+     "bidirectional": {
+      "default": true,
+      "title": "Bidirectional",
+      "type": "boolean"
+     },
+     "from": {
+      "maxLength": 130,
+      "minLength": 1,
+      "title": "From",
+      "type": "string"
+     },
+     "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "op": {
+      "const": "upsert_route",
+      "title": "Op",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Ref",
+      "type": "string"
+     },
+     "to": {
+      "maxLength": 130,
+      "minLength": 1,
+      "title": "To",
+      "type": "string"
+     }
+    },
+    "required": [
+     "op",
+     "ref",
+     "from",
+     "to"
+    ],
+    "title": "UpsertRoute",
+    "type": "object"
+   },
    "UserCreateIn": {
     "properties": {
      "name": {
@@ -12745,6 +13904,126 @@
      "type"
     ],
     "title": "ValidationError",
+    "type": "object"
+   },
+   "ValidationIssue": {
+    "additionalProperties": false,
+    "properties": {
+     "code": {
+      "title": "Code",
+      "type": "string"
+     },
+     "message": {
+      "default": "",
+      "title": "Message",
+      "type": "string"
+     },
+     "object_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Object Ref"
+     },
+     "related_refs": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Related Refs",
+      "type": "array"
+     }
+    },
+    "required": [
+     "code"
+    ],
+    "title": "ValidationIssue",
+    "type": "object"
+   },
+   "ValidationReport": {
+    "additionalProperties": false,
+    "properties": {
+     "coverage": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Coverage",
+      "type": "object"
+     },
+     "errors": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ValidationIssue"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "source_digest": {
+      "title": "Source Digest",
+      "type": "string"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "warnings": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ValidationIssue"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "source_revision",
+     "source_digest"
+    ],
+    "title": "ValidationReport",
+    "type": "object"
+   },
+   "VersionOut": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "string"
+     },
+     "public_summary": {
+      "additionalProperties": true,
+      "title": "Public Summary",
+      "type": "object"
+     },
+     "published_at": {
+      "title": "Published At",
+      "type": "string"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "version": {
+      "title": "Version",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "project_id",
+     "version",
+     "source_revision",
+     "public_summary",
+     "published_at"
+    ],
+    "title": "VersionOut",
     "type": "object"
    },
    "Vote": {
@@ -14812,6 +16091,94 @@
     ]
    }
   },
+  "/api/adventures": {
+   "get": {
+    "description": "Own published versions with a public summary; the bundle is never part of a list.",
+    "operationId": "library_api_adventures_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/VersionOut"
+         },
+         "title": "Response Library Api Adventures Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Library",
+    "tags": [
+     "adventures"
+    ]
+   }
+  },
+  "/api/adventures/{version_id}/games": {
+   "post": {
+    "operationId": "launch_api_adventures__version_id__games_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "version_id",
+      "required": true,
+      "schema": {
+       "title": "Version Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LaunchRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LaunchReceipt"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Launch",
+    "tags": [
+     "adventures"
+    ]
+   }
+  },
   "/api/audio/{track_id}": {
    "get": {
     "description": "Файл трека. Адрес несёт версию (?v=), поэтому браузер скачивает трек один раз.",
@@ -15017,6 +16384,714 @@
     "summary": "Signup",
     "tags": [
      "auth"
+    ]
+   }
+  },
+  "/api/author/projects": {
+   "get": {
+    "operationId": "list_projects_api_author_projects_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ProjectSummary"
+         },
+         "title": "Response List Projects Api Author Projects Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "List Projects",
+    "tags": [
+     "author"
+    ]
+   },
+   "post": {
+    "operationId": "create_api_author_projects_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AuthorProjectCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}": {
+   "get": {
+    "operationId": "project_view_api_author_projects__project_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "view",
+      "required": false,
+      "schema": {
+       "default": "summary",
+       "enum": [
+        "summary",
+        "full"
+       ],
+       "title": "View",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Project View",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/edits": {
+   "post": {
+    "operationId": "edits_api_author_projects__project_id__edits_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EditsRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Edits",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/edits/accept-stale": {
+   "post": {
+    "operationId": "accept_api_author_projects__project_id__edits_accept_stale_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AcceptStaleRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Accept",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/edits/preview": {
+   "post": {
+    "operationId": "preview_edits_api_author_projects__project_id__edits_preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EditRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditProposal"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Preview Edits",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/jobs": {
+   "get": {
+    "operationId": "list_jobs_api_author_projects__project_id__jobs_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/JobOut"
+         },
+         "title": "Response List Jobs Api Author Projects  Project Id  Jobs Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "List Jobs",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/maps/{location_ref}": {
+   "get": {
+    "description": "Full authoring map, only on explicit request. Read-only: no visits, no hero, no player knowledge.",
+    "operationId": "author_map_api_author_projects__project_id__maps__location_ref__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_ref",
+      "required": true,
+      "schema": {
+       "title": "Location Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthorMapOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Author Map",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/plot/import": {
+   "post": {
+    "description": "A plot made elsewhere passes the architect's server check and then counts as a ready plot stage.",
+    "operationId": "import_plot_api_author_projects__project_id__plot_import_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportPlotRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Import Plot",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/prepare": {
+   "post": {
+    "operationId": "prepare_api_author_projects__project_id__prepare_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PrepareRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StageReceipt"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Prepare",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/publish": {
+   "post": {
+    "operationId": "publish_api_author_projects__project_id__publish_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PublishRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Publish",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/tasks/{stage}": {
+   "get": {
+    "description": "The stage's prompt and answer schema, to run it by hand in any outside model. Read-only, no model call.",
+    "operationId": "stage_task_api_author_projects__project_id__tasks__stage__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "stage",
+      "required": true,
+      "schema": {
+       "enum": [
+        "lore",
+        "plot"
+       ],
+       "title": "Stage",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StageTask"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Stage Task",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/validate": {
+   "post": {
+    "operationId": "validate_api_author_projects__project_id__validate_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "view",
+      "required": false,
+      "schema": {
+       "default": "summary",
+       "enum": [
+        "summary",
+        "full"
+       ],
+       "title": "View",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ValidationReport"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Validate",
+    "tags": [
+     "author"
     ]
    }
   },

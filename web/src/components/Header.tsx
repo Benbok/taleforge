@@ -119,6 +119,14 @@ export default function Header({ children, activeTab, onTabChange, onlineCount }
           {user.platform_role !== "player" && (
             <Link
               className="hidden text-sm text-muted no-underline hover:text-ink sm:inline font-mono text-[11px] tracking-wider"
+              to="/author"
+            >
+              АВТОР
+            </Link>
+          )}
+          {user.platform_role !== "player" && (
+            <Link
+              className="hidden text-sm text-muted no-underline hover:text-ink sm:inline font-mono text-[11px] tracking-wider"
               to="/admin"
             >
               АДМИНКА

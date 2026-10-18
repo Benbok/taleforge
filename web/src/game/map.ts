@@ -125,6 +125,7 @@ export interface SketchExit {
   hidden?: boolean;
   width?: number | null;
   passage_ref?: string | null;
+  route_ref?: string | null; // авторский маршрут к участку другого места
   cells?: number[][] | null;
 }
 
@@ -367,7 +368,7 @@ interface MapWindowState {
   setTab(tab: Tab): void;
   request(): void;
   traverse: TraverseState;
-  traverseTo(passage_ref: string, source_id?: string | null): void;
+  traverseTo(passage_ref: string, source_id?: string | null, route_ref?: string | null): void;
   traverseResult(result: TraverseResult): void;
   resetForViewer(): void;
   receive(data: MapState): void;
@@ -410,13 +411,14 @@ export const useMapWindow = create<MapWindowState>((set, get) => ({
   },
   mapRequest: null,
   traverse: { busy: false, request_id: null, reason: null, error: null },
-  traverseTo(passage_ref, source_id) {
+  traverseTo(passage_ref, source_id, route_ref) {
     const current = get().traverse;
     if (current.busy) return;
     const request_id = `t${++traverseSeq}`;
     const as_seat = useGame.getState().playAs;
+    // авторский маршрут между участками идёт по route_ref; проход комплекса — по passage_ref
     const sent = useGame.getState().socket?.send("map.traverse", {
-      passage_ref,
+      ...(route_ref ? { route_ref } : { passage_ref }),
       ...(source_id ? { source_id } : {}),
       request_id,
       ...(as_seat ? { as_seat } : {}),

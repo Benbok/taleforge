@@ -318,7 +318,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 continue
 
             if kind == "map.traverse":
-                _background(_traverse(app, user, conn, payload))
+                # an authored route between areas travels by route_ref; a Blueprint passage keeps passage_ref
+                _background(
+                    _route(app, user, conn, payload)
+                    if payload.get("route_ref")
+                    else _traverse(app, user, conn, payload)
+                )
                 continue
 
             if kind == "stat.explain":
@@ -797,6 +802,67 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
         if turn_message is not None:
             await publish_message(app.state.bus, turn_message, turn_names)
             app.state.master.notify(conn.campaign_id)
+
+
+async def _route(app, user: User, conn: Connection, payload: dict) -> None:
+    """Герой зрителя идёт по авторскому маршруту. Сервер сам проверяет порт, доступность и отряд (travel_route);
+    неудача — никто не двигается, другой маршрут не подставляется."""
+    from app.core.geography.travel import travel_route
+    from app.core.inspect import viewer_hero
+    from app.tools.runtime import flush_outbox, open_context, publish_changes
+
+    request_id = payload.get("request_id")
+    ref = payload.get("route_ref")
+
+    async def answer(body: dict) -> None:
+        await conn.send(envelope("map.traverse.result", conn.campaign_id, {"request_id": request_id, **body}))
+
+    if not isinstance(ref, str) or not 0 < len(ref) <= 64:
+        await answer({"ok": False, "error": "route_ref — строка"})
+        return
+    ctx = messages = turn_message = turn_names = None
+    try:
+        async with app.state.sessionmaker() as session:
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            hero = await viewer_hero(session, viewer)
+            if hero is None:
+                await answer({"ok": False, "error": "у тебя нет героя в этой кампании"})
+                return
+            campaign = await session.get(Campaign, conn.campaign_id)
+            ctx = await open_context(session, campaign, app.state.dice_factory(), turn_id=None, seat_id=None)
+            result = await travel_route(ctx, ref, [hero.id], action_ref={"source": "map", "request_id": request_id})
+            if result.failure_code:
+                await session.rollback()
+                await answer({"ok": False, "moved": False, "reason": result.failure_code})
+                return
+            area = ctx.world.entities[result.destination_area_id]
+            messages = await flush_outbox(session, ctx)
+            game = await chat.active_session(session, conn.campaign_id)
+            if game is not None:
+                turn_message = await chat.post_message(
+                    session,
+                    viewer,
+                    "action",
+                    f"Я прошёл по пути и оказался в «{area.name}». Осматриваюсь.",
+                    app.state.settings.message_max_len,
+                )
+                turn_message.intent = {"actions": []}
+                turn_message.data = {**(turn_message.data or {}), "map_travel": {"route_id": ref, "area_id": area.id}}
+                turn_names = await _names(session, viewer.campaign)
+            await session.commit()
+    except NotFound as e:
+        await answer({"ok": False, "error": str(e)})
+        return
+    except Exception:  # noqa: BLE001 — игрок получает ответ и при сбое
+        log.exception("переход по маршруту в кампании %s не удался", conn.campaign_id)
+        await answer({"ok": False, "error": "переход не удался"})
+        return
+    await answer({"ok": True, "moved": True, "area_id": area.id, "area": area.name, "passage": ref})
+    await publish_changes(app.state.bus, ctx, messages)
+    await app.state.bus.publish(conn.campaign_id, envelope("map.changed", conn.campaign_id, {}), None)
+    if turn_message is not None:
+        await publish_message(app.state.bus, turn_message, turn_names)
+        app.state.master.notify(conn.campaign_id)
 
 
 async def _publish_turn(app, ctx) -> None:

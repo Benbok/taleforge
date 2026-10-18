@@ -29,7 +29,9 @@ from app.api import (
     voice,
     worlds,
 )
+from app.api import adventures as adventures_api
 from app.api import audio as audio_api
+from app.api import authoring as authoring_api
 from app.api import generation as generation_api
 from app.api import modules as modules_api
 from app.api import sfx as sfx_api
@@ -150,6 +152,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         )
         await app.state.master.resume_timers()
         app.state.master.start_recovery()  # ходы с сохранёнными действиями дописываются (поставка 2)
+        from app.core.authoring.runner import AuthorRunner
+
+        app.state.author_runner = AuthorRunner(app.state.master)
+        app.state.author_runner.start()  # незавершённые этапы автора подхватываются после перезапуска
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
         app.state.master.players = PlayerAgents(app.state.master)
@@ -161,6 +167,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         try:
             yield
         finally:
+            await app.state.author_runner.stop()
             await app.state.presence.stop()
             await app.state.rest.stop()
             await app.state.master.players.stop()
@@ -184,6 +191,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
 
     app.include_router(auth.router)
     app.include_router(admin.router)
+    app.include_router(authoring_api.router)
+    app.include_router(adventures_api.router)
     app.include_router(campaigns.router)
     app.include_router(characters.router)
     app.include_router(home.router)

@@ -129,7 +129,7 @@ async def get_viewer(
     ``as_seat`` — место, чьего героя этот игрок ведёт по итогам голосования, пока его игрок офлайн (раздел 11).
     ``ai_seat`` — ещё и место ИИ-игрока, за которое владелец собирает героя (этап 9); говорит за него только ИИ."""
     campaign = await session.get(Campaign, campaign_id)
-    if campaign is None:
+    if campaign is None or campaign.purpose != "game":
         raise NotFound("кампания не найдена")
     viewer = Viewer(user, campaign, seat_for(campaign, user.id))
     if not viewer.is_owner and viewer.seat is None:
@@ -155,7 +155,7 @@ def stand_in_seats(campaign: Campaign, user_id: str) -> list[str]:
 
 async def list_campaigns(session: AsyncSession, user: User) -> list[Campaign]:
     seated = select(Seat.campaign_id).where(Seat.user_id == user.id, Seat.occupant_type == "human")
-    q = select(Campaign).where((Campaign.owner_id == user.id) | Campaign.id.in_(seated))
+    q = select(Campaign).where(Campaign.purpose == "game", (Campaign.owner_id == user.id) | Campaign.id.in_(seated))
     return list((await session.scalars(q.order_by(Campaign.created_at.desc()))).all())
 
 
@@ -279,6 +279,42 @@ async def create_campaign(
     owner_plays: bool = True,
     brief: dict | None = None,
 ) -> Campaign:
+    return await create_world(
+        session,
+        owner,
+        name=name,
+        ruleset_version=ruleset_version,
+        pack=pack,
+        difficulty=difficulty,
+        players=players,
+        master=master,
+        public_intro=public_intro,
+        settings=settings,
+        owner_plays=owner_plays,
+        brief=brief,
+        purpose="game",
+    )
+
+
+async def create_world(
+    session: AsyncSession,
+    owner: User,
+    *,
+    name: str,
+    ruleset_version: str,
+    pack: ContentPack | None,
+    difficulty: str,
+    players: int | None,
+    master: dict,
+    public_intro: str = "",
+    settings: dict | None = None,
+    owner_plays: bool = True,
+    brief: dict | None = None,
+    purpose: str = "game",
+) -> Campaign:
+    """Internal construction shared by games and authorized author workspaces."""
+    if purpose not in ("game", "author_workspace"):
+        raise Conflict("неизвестное назначение мира")
     if not is_admin(owner):
         raise AccessDenied("кампании создаёт только Admin")
     if difficulty not in DIFFICULTIES:
@@ -287,6 +323,9 @@ async def create_campaign(
     count = players if players is not None else rec["recommended"]
     if not 1 <= count <= MAX_PLAYERS:
         raise Conflict(f"игроков от 1 до {MAX_PLAYERS}")
+    if purpose == "author_workspace":
+        count = 0
+        owner_plays = False
 
     master_type = master.get("type")
     if master_type == "owner":
@@ -312,6 +351,7 @@ async def create_campaign(
     }
 
     campaign = Campaign(
+        purpose=purpose,
         owner_id=owner.id,
         name=name,
         ruleset_id="dnd5e",
@@ -333,11 +373,12 @@ async def create_campaign(
     await session.flush()
     session.add(CampaignSecret(campaign_id=campaign.id))
     await session.flush()
-    from app.db.narrative import ensure_state
+    if purpose == "game":
+        from app.db.narrative import ensure_state
 
-    st = await ensure_state(session, campaign.id)
-    st.mode = n_mode
-    await session.flush()
+        st = await ensure_state(session, campaign.id)
+        st.mode = n_mode
+        await session.flush()
     return campaign
 
 

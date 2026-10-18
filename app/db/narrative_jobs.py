@@ -21,7 +21,7 @@ from app.core.narrative.contracts import (
     WorkClaim,
 )
 from app.core.narrative.keys import narrative_key
-from app.db.models import Event, NarrativeWork, new_id
+from app.db.models import Campaign, Event, NarrativeWork, new_id
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -143,6 +143,7 @@ class SqlNarrativeJobs:
 
             # 2. Priority A: prepared jobs ready for apply phase
             apply_query = select(NarrativeWork).where(
+                NarrativeWork.campaign_id.in_(select(Campaign.id).where(Campaign.purpose == "game")),
                 NarrativeWork.status == "prepared",
                 (NarrativeWork.lease_until.is_(None) | (NarrativeWork.lease_until <= now_utc)),
                 (NarrativeWork.retry_after.is_(None) | (NarrativeWork.retry_after <= now_utc)),
@@ -223,6 +224,7 @@ class SqlNarrativeJobs:
             busy_campaigns = set(busy_campaigns_rows.all())
 
             author_query = select(NarrativeWork).where(
+                NarrativeWork.campaign_id.in_(select(Campaign.id).where(Campaign.purpose == "game")),
                 NarrativeWork.status.in_(("pending", "retry_wait")),
                 (NarrativeWork.lease_until.is_(None) | (NarrativeWork.lease_until <= now_utc)),
                 (NarrativeWork.retry_after.is_(None) | (NarrativeWork.retry_after <= now_utc)),

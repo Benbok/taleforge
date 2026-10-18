@@ -148,7 +148,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map" }: 
             onClose={() => setPicked(null)}
             destination={map.areas.find((area) => area.id === picked.to)?.name}
             onApproach={() => stepTo({ near: (picked.cells ?? []).map(([x, y]) => [x - party[0], y - party[1]]) })}
-            onTraverse={() => picked.passage_ref && traverseTo(picked.passage_ref, current.id)}
+            onTraverse={() => picked.route_ref ? traverseTo("", current.id, picked.route_ref) : picked.passage_ref && traverseTo(picked.passage_ref, current.id)}
             onInteract={() => insert(`Взаимодействую с «${picked.name}».`)} />
         </div>
       )}

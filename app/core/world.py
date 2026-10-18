@@ -384,6 +384,8 @@ class World:
     _actors: dict[str, Actor] = field(default_factory=dict)
     # принятый канон кампании (app/core/narrative/view.py): роли, мотивы и переопределения модуля
     narrative_view: Any | None = None
+    # authored routes between concrete areas; only games launched from a published adventure have them
+    geography: Any | None = None
 
     def narrative_entry(self, rec: Entry | None, *, audience: tuple[str, ...] | None = None) -> Entry | None:
         """Запись пакета с переопределениями этой кампании; общий каталог не мутируется."""
@@ -1048,6 +1050,11 @@ async def load_world(
         )
         for hero_id, entity_id in (await session.execute(q)).all():
             map_known.setdefault(hero_id, set()).add(entity_id)
+    geography = None
+    if getattr(campaign, "adventure_version_id", None):
+        from app.core.geography.storage import load_geography
+
+        geography = await load_geography(session, campaign.id)
     return World(
         campaign=campaign,
         catalog=catalog,
@@ -1060,5 +1067,6 @@ async def load_world(
         revealed=revealed,
         map_known=map_known,
         narrative_view=narrative_view,
+        geography=geography,
         revision=revision if (base := world_tx.base_revision(session, campaign.id)) is None else base,
     )

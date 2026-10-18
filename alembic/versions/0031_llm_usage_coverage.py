@@ -14,10 +14,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Some deployments applied these columns under the colliding revision.
+    existing = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("llm_calls")}
     with op.batch_alter_table("llm_calls") as batch:
-        batch.add_column(sa.Column("tokens_cached", sa.Integer(), nullable=True))
-        batch.add_column(sa.Column("cost_known", sa.Boolean(), nullable=True))
-        batch.add_column(sa.Column("diagnostics", sa.JSON(), nullable=True))
+        for name, kind in (("tokens_cached", sa.Integer()), ("cost_known", sa.Boolean()), ("diagnostics", sa.JSON())):
+            if name not in existing:
+                batch.add_column(sa.Column(name, kind, nullable=True))
 
 
 def downgrade() -> None:
