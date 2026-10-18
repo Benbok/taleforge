@@ -54,6 +54,18 @@ async def plot_stage(ctx: StageContext) -> dict:
     return {"plan_version_id": version_id}
 
 
+async def materialize_stage(ctx: StageContext) -> dict:
+    """Create every planned place and NPC and run the existing layout/geometry/contents phases."""
+    from app.core.authoring.materialization import prepare_world
+    from app.core.world_generation.service import Orchestrator
+
+    preparer = Orchestrator(ctx.svc.coordination, getattr(ctx.svc, "bus", None), llm=getattr(ctx.svc, "llm", None))
+    report = await prepare_world(ctx.svc.maker, ctx.project_id, preparer)
+    if not report.complete:  # partial maps stay saved; the stage reports what is missing
+        raise StageError("materialize_incomplete")
+    return {"report": report.model_dump(mode="json")}
+
+
 async def apply_lore(session, project: AuthorProject, result: dict) -> None:
     secret = await session.get(CampaignSecret, project.workspace_campaign_id)
     if secret is None:
@@ -63,7 +75,7 @@ async def apply_lore(session, project: AuthorProject, result: dict) -> None:
 
 
 APPLY = {"lore": apply_lore}
-HANDLERS: dict[str, Handler] = {"lore": lore_stage, "plot": plot_stage}
+HANDLERS: dict[str, Handler] = {"lore": lore_stage, "plot": plot_stage, "materialize": materialize_stage}
 
 
 async def record_output(session, project: AuthorProject, job: AuthorJob, result: dict) -> None:

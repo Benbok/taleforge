@@ -89,6 +89,49 @@ class PreparationView(Contract):
     content: dict | None = None
 
 
+class MaterializationReceipt(Contract):
+    ref: str
+    entity_id: str
+    created: bool
+    layout_ref: str | None = None
+
+
+class PlacementSpec(Contract):
+    """Where a key object or NPC starts: a concrete part of a location, optionally inside a container."""
+
+    ref: str
+    location_ref: str
+    area_ref: str | None = None
+    container_ref: str | None = None
+
+
+class ItemSpec(Contract):
+    ref: str
+    template_id: str
+    name: str = ""
+    key: bool = False
+    placement: PlacementSpec | None = None
+
+
+class AreaStatus(Contract):
+    ref: str
+    entity_id: str | None = None
+    status: str = "not_requested"  # not_requested | preparing | ready | blocked
+    reasons: tuple[str, ...] = ()
+
+
+class MaterializationReport(Contract):
+    locations: tuple[AreaStatus, ...] = ()
+    actors: tuple[AreaStatus, ...] = ()
+    pending_rows: int = 0
+    blocked_rows: int = 0
+
+    @property
+    def complete(self) -> bool:
+        everything = (*self.locations, *self.actors)
+        return bool(everything) and all(a.status == "ready" for a in everything) and not self.pending_rows
+
+
 class LaunchReceipt(Contract):
     campaign_id: str
     adventure_version_id: str

@@ -70,6 +70,7 @@ async def create_project(session: AsyncSession, owner: User, request: AuthorProj
             "narrative_mode": "strict",
             "scene_generation": True,
             "scene_generation_llm": True,
+            "location_layouts": True,  # every planned place gets a prepared map before play
         },
     )
     try:
