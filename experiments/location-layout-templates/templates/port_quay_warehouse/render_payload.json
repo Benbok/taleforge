@@ -27,20 +27,36 @@
         ],
         "walls": [
           [
-            3,
-            4
+            1,
+            1
           ],
           [
-            4,
-            4
+            2,
+            1
           ],
           [
-            7,
-            4
+            2,
+            5
           ],
           [
             8,
-            4
+            1
+          ],
+          [
+            8,
+            2
+          ],
+          [
+            9,
+            1
+          ],
+          [
+            9,
+            2
+          ],
+          [
+            9,
+            5
           ]
         ],
         "exits": [
@@ -69,8 +85,8 @@
           {
             "name": "Сходни на пирс",
             "side": "s",
-            "at": 3,
-            "width": 6,
+            "at": 4,
+            "width": 4,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -78,10 +94,6 @@
             "beyond": null,
             "passage_ref": "p_cargo_pier",
             "cells": [
-              [
-                3,
-                5
-              ],
               [
                 4,
                 5
@@ -96,10 +108,6 @@
               ],
               [
                 7,
-                5
-              ],
-              [
-                8,
                 5
               ]
             ]
@@ -130,21 +138,22 @@
             "kind": "object",
             "cells": [
               [
-                3,
-                4,
-                4,
-                4
+                2,
+                5,
+                2,
+                5
               ],
               [
-                7,
-                4,
-                8,
-                4
+                9,
+                5,
+                9,
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:mooring"
           },
           {
             "id": "sf_granite_quay_cargo_pallets",
@@ -152,15 +161,22 @@
             "kind": "cover",
             "cells": [
               [
+                1,
+                1,
                 2,
-                2,
-                3,
+                1
+              ],
+              [
+                8,
+                1,
+                9,
                 2
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:crate"
           },
           {
             "id": "sf_granite_quay_quay_lantern",
@@ -168,15 +184,16 @@
             "kind": "light",
             "cells": [
               [
-                5,
-                1,
-                5,
-                1
+                10,
+                0,
+                10,
+                0
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "outdoor",
@@ -198,19 +215,19 @@
           {
             "side": "s",
             "start": 0,
-            "length": 3,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "s",
-            "start": 3,
-            "length": 6,
+            "start": 4,
+            "length": 4,
             "meaning": "continuation"
           },
           {
             "side": "s",
-            "start": 9,
-            "length": 3,
+            "start": 8,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
@@ -243,7 +260,7 @@
       "id": "cargo_pier",
       "name": "Причал",
       "offset": [
-        3,
+        4,
         6
       ],
       "level": 0,
@@ -252,8 +269,8 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 6,
-        "rows": 8,
+        "cols": 4,
+        "rows": 10,
         "party": [
           0,
           0
@@ -261,19 +278,11 @@
         "walls": [
           [
             1,
-            3
+            4
           ],
           [
             1,
-            4
-          ],
-          [
-            2,
-            3
-          ],
-          [
-            2,
-            4
+            5
           ]
         ],
         "exits": [
@@ -281,7 +290,7 @@
             "name": "Сходни на пирс",
             "side": "n",
             "at": 0,
-            "width": 6,
+            "width": 4,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -304,14 +313,60 @@
               [
                 3,
                 0
-              ],
+              ]
+            ]
+          },
+          {
+            "name": "Прискладская вода",
+            "side": "e",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
+            "state": "open",
+            "hidden": false,
+            "to": "harbor_water_east",
+            "beyond": null,
+            "passage_ref": "p_harbor_water_east",
+            "cells": [
               [
-                4,
+                3,
                 0
               ],
               [
-                5,
-                0
+                3,
+                1
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                3,
+                7
+              ],
+              [
+                3,
+                8
+              ],
+              [
+                3,
+                9
               ]
             ]
           },
@@ -319,7 +374,7 @@
             "name": "Открытая вода",
             "side": "w",
             "at": 0,
-            "width": 8,
+            "width": 10,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -358,6 +413,14 @@
               [
                 0,
                 7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
               ]
             ]
           }
@@ -370,14 +433,15 @@
             "cells": [
               [
                 1,
-                3,
-                2,
-                4
+                4,
+                1,
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:crane"
           },
           {
             "id": "sf_cargo_pier_coiled_hawsers",
@@ -385,15 +449,16 @@
             "kind": "cover",
             "cells": [
               [
-                4,
                 2,
-                4,
+                3,
+                2,
                 3
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:net"
           },
           {
             "id": "sf_cargo_pier_cleats",
@@ -402,20 +467,21 @@
             "cells": [
               [
                 1,
-                6,
+                8,
                 1,
-                7
+                8
               ],
               [
-                4,
-                6,
-                4,
-                7
+                2,
+                8,
+                2,
+                8
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:mooring"
           }
         ],
         "environment": "outdoor",
@@ -425,25 +491,25 @@
           {
             "side": "n",
             "start": 0,
-            "length": 6,
+            "length": 4,
             "meaning": "continuation"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 8,
-            "meaning": "obstacle"
+            "length": 10,
+            "meaning": "continuation"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 6,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "continuation"
           }
         ],
@@ -459,7 +525,7 @@
       "name": "Портовый склад",
       "offset": [
         12,
-        0
+        -1
       ],
       "level": 0,
       "secret": false,
@@ -467,11 +533,11 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 8,
-        "rows": 6,
+        "cols": 10,
+        "rows": 8,
         "party": [
           0,
-          3
+          4
         ],
         "walls": [
           [
@@ -483,19 +549,63 @@
             2
           ],
           [
+            2,
+            6
+          ],
+          [
             3,
             1
           ],
           [
             3,
             2
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            7,
+            2
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            8,
+            2
+          ],
+          [
+            8,
+            6
           ]
         ],
         "exits": [
           {
             "name": "Складские ворота",
             "side": "w",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "gate",
             "state": "open",
@@ -506,25 +616,7 @@
             "cells": [
               [
                 0,
-                3
-              ]
-            ]
-          },
-          {
-            "name": "Прискладская вода",
-            "side": "s",
-            "at": 4,
-            "width": 1,
-            "kind": "passage",
-            "state": "open",
-            "hidden": false,
-            "to": "harbor_water_east",
-            "beyond": null,
-            "passage_ref": "p_harbor_water_east",
-            "cells": [
-              [
-                4,
-                5
+                4
               ]
             ]
           }
@@ -540,11 +632,18 @@
                 1,
                 3,
                 2
+              ],
+              [
+                6,
+                1,
+                7,
+                2
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:crate"
           },
           {
             "id": "sf_harbor_warehouse_storage_rack",
@@ -552,15 +651,22 @@
             "kind": "furniture",
             "cells": [
               [
+                2,
                 6,
-                1,
+                3,
+                6
+              ],
+              [
                 6,
-                4
+                6,
+                8,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_harbor_warehouse_overseer_des",
@@ -568,15 +674,16 @@
             "kind": "furniture",
             "cells": [
               [
-                3,
-                4,
-                4,
-                4
+                8,
+                1,
+                8,
+                2
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:table"
           }
         ],
         "environment": "indoor",
@@ -594,7 +701,7 @@
       "id": "harbor_water_west",
       "name": "Западная акватория",
       "offset": [
-        -3,
+        0,
         6
       ],
       "level": 0,
@@ -603,10 +710,10 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 6,
-        "rows": 8,
+        "cols": 4,
+        "rows": 10,
         "party": [
-          5,
+          3,
           0
         ],
         "walls": [],
@@ -615,7 +722,7 @@
             "name": "Открытая вода",
             "side": "e",
             "at": 0,
-            "width": 8,
+            "width": 10,
             "kind": "edge",
             "state": "open",
             "hidden": false,
@@ -624,36 +731,44 @@
             "passage_ref": "p_harbor_water_west",
             "cells": [
               [
-                5,
+                3,
                 0
               ],
               [
-                5,
+                3,
                 1
               ],
               [
-                5,
+                3,
                 2
               ],
               [
-                5,
+                3,
                 3
               ],
               [
-                5,
+                3,
                 4
               ],
               [
-                5,
+                3,
                 5
               ],
               [
-                5,
+                3,
                 6
               ],
               [
-                5,
+                3,
                 7
+              ],
+              [
+                3,
+                8
+              ],
+              [
+                3,
+                9
               ]
             ]
           }
@@ -673,7 +788,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:mooring"
           },
           {
             "id": "sf_harbor_water_west_decor_0",
@@ -699,25 +815,25 @@
           {
             "side": "n",
             "start": 0,
-            "length": 6,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "continuation"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 6,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "obstacle"
           }
         ],
@@ -732,7 +848,7 @@
       "id": "harbor_water_east",
       "name": "Восточная акватория",
       "offset": [
-        12,
+        8,
         6
       ],
       "level": 0,
@@ -741,29 +857,65 @@
       "revision": 1,
       "sketch": {
         "shape": "open",
-        "cols": 8,
-        "rows": 8,
+        "cols": 4,
+        "rows": 10,
         "party": [
-          4,
+          0,
           0
         ],
         "walls": [],
         "exits": [
           {
             "name": "Прискладская вода",
-            "side": "n",
-            "at": 4,
-            "width": 1,
-            "kind": "passage",
+            "side": "w",
+            "at": 0,
+            "width": 10,
+            "kind": "edge",
             "state": "open",
             "hidden": false,
-            "to": "harbor_warehouse",
+            "to": "cargo_pier",
             "beyond": null,
             "passage_ref": "p_harbor_water_east",
             "cells": [
               [
-                4,
+                0,
                 0
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0,
+                2
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                4
+              ],
+              [
+                0,
+                5
+              ],
+              [
+                0,
+                6
+              ],
+              [
+                0,
+                7
+              ],
+              [
+                0,
+                8
+              ],
+              [
+                0,
+                9
               ]
             ]
           }
@@ -783,7 +935,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_harbor_water_east_decor_0",
@@ -809,26 +962,26 @@
           {
             "side": "n",
             "start": 0,
-            "length": 8,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "e",
             "start": 0,
-            "length": 8,
+            "length": 10,
             "meaning": "obstacle"
           },
           {
             "side": "s",
             "start": 0,
-            "length": 8,
+            "length": 4,
             "meaning": "obstacle"
           },
           {
             "side": "w",
             "start": 0,
-            "length": 8,
-            "meaning": "obstacle"
+            "length": 10,
+            "meaning": "continuation"
           }
         ],
         "blueprint": {

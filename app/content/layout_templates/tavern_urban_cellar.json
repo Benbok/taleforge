@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "tavern_urban_cellar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "archetype": "tavern",
   "template_ids": [
     "location.tavern"
@@ -53,7 +53,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:counter"
           },
           {
             "detail_ref": "round_tables",
@@ -63,12 +64,19 @@
               [
                 5,
                 2,
+                6,
+                2
+              ],
+              [
+                6,
+                5,
                 7,
-                3
+                5
               ]
             ],
-            "solid": false,
-            "hidden": false
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:table"
           },
           {
             "detail_ref": "iron_stove",
@@ -83,7 +91,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:hearth"
           },
           {
             "detail_ref": "ale_casks",
@@ -92,15 +101,24 @@
             "cells": [
               [
                 1,
-                2,
                 1,
-                5
+                1,
+                1
+              ],
+              [
+                1,
+                4,
+                1,
+                4
               ]
             ],
-            "solid": false,
-            "hidden": false
+            "solid": true,
+            "hidden": false,
+            "visual_key": "feature:barrel"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "private_parlor",
@@ -137,7 +155,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:table"
           },
           {
             "detail_ref": "bookcase",
@@ -152,7 +171,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shelf"
           },
           {
             "detail_ref": "wall_sconce",
@@ -167,9 +187,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:torch"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "cold_cellar",
@@ -206,7 +229,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:barrel"
           },
           {
             "detail_ref": "bottle_racks",
@@ -221,7 +245,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shelf"
           },
           {
             "detail_ref": "ice_pit",
@@ -236,7 +261,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rubble"
           },
           {
             "detail_ref": "cellar_lantern",
@@ -251,9 +277,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:torch"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "secret_vault",
@@ -290,7 +319,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:chest"
           },
           {
             "detail_ref": "smuggled_crates",
@@ -305,9 +335,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:crate"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       }
     ],
     "approaches": [

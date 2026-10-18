@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { exitSegments, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, Sketch, SketchExit } from "./map";
-import { MapGlyph } from "./MapGlyph";
-import { FEATURE_VISUALS } from "./mapPresets";
+import { MapFeature } from "./MapFeature";
+import { SketchMaterials } from "./SketchMaterials";
 
 export interface SketchSurfaceProps {
   sketch: Sketch;
@@ -33,14 +33,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
   return (
     <g role="img" data-sketch-surface={areaId}>
       <defs>
-        <pattern id={`${idPrefix}-pattern-${material}`} width="1" height="1" patternUnits="userSpaceOnUse">
-          <rect width="1" height="1" fill={`var(--tf-map-${material}, var(--tf-map-floor, #3b3b3b))`} />
-          {material === "water" ? (
-            <path d="M0 .5 Q .25 .35 .5 .5 T 1 .5" fill="none" stroke="var(--tf-map-water-mark, #ffffff22)" strokeWidth=".05" />
-          ) : (
-            <path d="M1 0H0V1" fill="none" stroke="var(--tf-map-mark, #ffffff18)" strokeWidth=".04" />
-          )}
-        </pattern>
+        <SketchMaterials idPrefix={idPrefix} material={material} rough={sketch.shape === "cave"} />
         <clipPath id={clipId}>
           {geometry.floor.map(([x, y]) => <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />)}
         </clipPath>
@@ -53,11 +46,15 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
       ))}
       {(sketch.terrain ?? []).filter((t) => t.kind === "bridge").map((terrain, i) => (
         <g key={`bridge-${i}`} data-terrain="bridge" clipPath={`url(#${clipId})`}>
-          {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill="var(--tf-map-bridge, #a77b52)" />)}
+          {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill={`url(#${idPrefix}-bridge-planks)`} />)}
         </g>
       ))}
+      <rect width={sketch.cols} height={sketch.rows} fill={`url(#${idPrefix}-tactical-grid)`} clipPath={`url(#${clipId})`} pointerEvents="none" />
       <g data-layer="contours">
-        {geometry.contours.map((segment, i) => <line key={i} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-wall={sketch.shape === "open" ? undefined : "true"} stroke="var(--tf-map-wall, #111)" strokeWidth={sketch.shape === "open" ? ".025" : ".12"} />)}
+        {geometry.contours.map((segment, i) => <g key={i}>
+          {sketch.shape !== "open" && material !== "water" && <line x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} stroke="#080c0e" opacity=".45" strokeWidth=".32" />}
+          <line x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-wall={sketch.shape === "open" || material === "water" ? undefined : "true"} stroke={material === "water" ? "var(--tf-map-water-mark, #67999e)" : "var(--tf-map-wall, #111)"} strokeWidth={sketch.shape === "open" || material === "water" ? ".025" : ".12"} />
+        </g>)}
       </g>
       {(sketch.walls ?? []).filter(([x, y]) => !decoratedWalls.has(`${x},${y}`)).map(([x, y], i) => (
         <rect
@@ -71,32 +68,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
           strokeWidth=".03"
         />
       ))}
-      {sketch.features.map((feature, i) => {
-        const visual = FEATURE_VISUALS[feature.kind] ?? FEATURE_VISUALS.object;
-        const first = feature.cells[0];
-        if (!first) return null;
-        return <g key={`feature-${i}`} data-feature-id={feature.entity_id ?? feature.id}
-          data-feature-solid={feature.solid ? "true" : undefined}
-          onClick={feature.entity_id && onFeature ? () => onFeature(feature.entity_id!, feature.name) : undefined}>
-          {terrainCells(feature.cells).map(([x, y], j) => (
-            <rect
-              key={j}
-              x={feature.solid ? x + .05 : x + .1}
-              y={feature.solid ? y + .05 : y + .1}
-              width={feature.solid ? .9 : .8}
-              height={feature.solid ? .9 : .8}
-              rx={feature.solid ? .12 : .1}
-              ry={feature.solid ? .12 : .1}
-              fill={visual.color}
-              opacity={feature.solid ? .42 : .18}
-              stroke={feature.solid ? visual.color : undefined}
-              strokeWidth={feature.solid ? ".04" : undefined}
-            />
-          ))}
-          <MapGlyph name={visual.glyph} x={first[0] + .15} y={first[1] + .15} width={.7} height={.7} color={visual.color} />
-          <title>{feature.name}</title>
-        </g>;
-      })}
+      {sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} />)}
       {(sketch.edges ?? []).map((edge, i) => {
         const vertical = edge.side === "e" || edge.side === "w";
         const x = edge.side === "e" ? sketch.cols : 0;

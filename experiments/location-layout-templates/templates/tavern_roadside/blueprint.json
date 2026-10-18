@@ -9,8 +9,8 @@
       "public_name": "Общий зал",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 8,
-      "rows": 8,
+      "cols": 12,
+      "rows": 10,
       "offset": [
         0,
         0
@@ -26,14 +26,15 @@
           "kind": "light",
           "cells": [
             [
-              3,
+              5,
               0,
-              4,
+              6,
               0
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         },
         {
           "detail_ref": "bar_counter",
@@ -44,17 +45,18 @@
               1,
               1,
               1,
-              2
+              3
             ],
             [
               2,
-              2,
-              2,
-              2
+              3,
+              3,
+              3
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:counter"
         },
         {
           "detail_ref": "bar_stools",
@@ -63,13 +65,20 @@
           "cells": [
             [
               2,
-              3,
+              4,
               2,
+              4
+            ],
+            [
+              4,
+              3,
+              4,
               3
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         },
         {
           "detail_ref": "table_north",
@@ -77,14 +86,15 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
+              8,
               2,
-              6,
+              9,
               2
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         },
         {
           "detail_ref": "benches_north",
@@ -92,20 +102,21 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
+              8,
               1,
-              6,
+              9,
               1
             ],
             [
-              5,
+              8,
               3,
-              6,
+              9,
               3
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         },
         {
           "detail_ref": "table_south",
@@ -113,14 +124,15 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
-              6,
-              6,
-              6
+              8,
+              7,
+              9,
+              7
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         },
         {
           "detail_ref": "benches_south",
@@ -128,14 +140,21 @@
           "kind": "furniture",
           "cells": [
             [
-              5,
-              5,
+              8,
               6,
-              5
+              9,
+              6
+            ],
+            [
+              8,
+              8,
+              9,
+              8
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         },
         {
           "detail_ref": "ale_casks",
@@ -144,13 +163,20 @@
           "cells": [
             [
               1,
-              6,
+              7,
               1,
               7
+            ],
+            [
+              2,
+              8,
+              2,
+              8
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:barrel"
         }
       ],
       "terrain": [],
@@ -165,10 +191,10 @@
       "public_name": "Кухня",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 5,
-      "rows": 6,
+      "cols": 6,
+      "rows": 7,
       "offset": [
-        -5,
+        -6,
         1
       ],
       "level": 0,
@@ -183,13 +209,14 @@
           "cells": [
             [
               0,
-              2,
+              1,
               0,
-              3
+              2
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         },
         {
           "detail_ref": "pantry_shelves",
@@ -197,14 +224,15 @@
           "kind": "furniture",
           "cells": [
             [
-              1,
+              2,
               0,
-              3,
+              4,
               0
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shelf"
         },
         {
           "detail_ref": "prep_table",
@@ -213,13 +241,14 @@
           "cells": [
             [
               2,
+              4,
               3,
-              2,
               4
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
         }
       ],
       "terrain": [],
@@ -234,10 +263,10 @@
       "public_name": "Комнаты отдыха",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 6,
-      "rows": 6,
+      "cols": 7,
+      "rows": 8,
       "offset": [
-        8,
+        12,
         1
       ],
       "level": 0,
@@ -251,14 +280,15 @@
           "kind": "furniture",
           "cells": [
             [
+              4,
               1,
-              1,
-              2,
+              5,
               1
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
         },
         {
           "detail_ref": "bunks_south",
@@ -266,14 +296,15 @@
           "kind": "furniture",
           "cells": [
             [
-              1,
               4,
-              2,
-              4
+              6,
+              5,
+              6
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:bed"
         },
         {
           "detail_ref": "traveler_chests",
@@ -281,14 +312,21 @@
           "kind": "object",
           "cells": [
             [
-              4,
-              2,
-              4,
-              3
+              6,
+              1,
+              6,
+              1
+            ],
+            [
+              6,
+              6,
+              6,
+              6
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:chest"
         }
       ],
       "terrain": [],
@@ -331,14 +369,14 @@
         {
           "area_ref": "common_room",
           "side": "e",
-          "start": 4,
+          "start": 5,
           "width": 1,
           "place_id": null
         },
         {
           "area_ref": "guest_rooms",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         }
@@ -355,7 +393,7 @@
         {
           "area_ref": "common_room",
           "side": "s",
-          "start": 3,
+          "start": 5,
           "width": 1,
           "place_id": null
         },

@@ -37,7 +37,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         },
         {
           "detail_ref": "net_drying_racks",
@@ -52,7 +53,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:net"
         },
         {
           "detail_ref": "upturned_skiff",
@@ -67,9 +69,12 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:net"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "wooden_jetty",
@@ -106,7 +111,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crate"
         },
         {
           "detail_ref": "gutting_bench",
@@ -121,9 +127,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "fisher_shack",
@@ -160,7 +169,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         },
         {
           "detail_ref": "tackle_table",
@@ -175,7 +185,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         },
         {
           "detail_ref": "salted_fish_barrels",
@@ -190,9 +201,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:barrel"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "fishing_water",
@@ -229,7 +243,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crate"
         },
         {
           "detail_ref": "mooring_float",
@@ -244,9 +259,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:mooring"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "approaches": [

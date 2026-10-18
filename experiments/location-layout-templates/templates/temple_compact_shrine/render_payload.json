@@ -88,7 +88,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_narthex_prayer_benches",
@@ -110,7 +111,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           },
           {
             "id": "sf_narthex_candle_stand",
@@ -126,7 +128,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -246,7 +249,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_sanctuary_columns_west",
@@ -268,7 +272,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_sanctuary_columns_east",
@@ -290,7 +295,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_sanctuary_incense_braziers",
@@ -312,7 +318,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           },
           {
             "id": "sf_sanctuary_lectern",
@@ -328,7 +335,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:table"
           }
         ],
         "environment": "indoor",
@@ -406,7 +414,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:chest"
           },
           {
             "id": "sf_sacristy_vestment_press",
@@ -422,7 +431,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_sacristy_study_desk",
@@ -438,7 +448,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:table"
           }
         ],
         "environment": "indoor",

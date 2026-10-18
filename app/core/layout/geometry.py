@@ -60,12 +60,18 @@ def build_area(bp: Blueprint, area: Area, *, root_id: str | None = None, ids: di
             "id": f"sf_{area.area_ref}_{d.detail_ref}"[:32], "name": d.name, "kind": d.kind,
             "cells": [list(r) for r in d.cells], "cover": "none", "hidden": d.hidden,
             "solid": d.solid,
+            **({"visual_key": d.visual_key} if d.visual_key else {}),
         })  # fmt: skip
     for slot in area.object_slots:
         cells = rect_cells(slot.cells)
-        if (not cells or not cells <= floor or slot.role not in {"prop", "container", "item"}
-                or slot.max_cols < 1 or slot.max_rows < 1
-                or any(len(r) != 4 or r[0] > r[2] or r[1] > r[3] for r in slot.cells)):
+        if (
+            not cells
+            or not cells <= floor
+            or slot.role not in {"prop", "container", "item"}
+            or slot.max_cols < 1
+            or slot.max_rows < 1
+            or any(len(r) != 4 or r[0] > r[2] or r[1] > r[3] for r in slot.cells)
+        ):
             errors.append(f"{area.area_ref}: slot {slot.slot_ref} invalid footprint or role")
         if slot.detail_ref:
             detail = next((d for d in area.details if d.detail_ref == slot.detail_ref), None)

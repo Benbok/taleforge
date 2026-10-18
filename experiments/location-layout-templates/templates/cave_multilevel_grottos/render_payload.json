@@ -89,7 +89,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           },
           {
             "id": "sf_upper_gallery_rocky_ledge",
@@ -105,7 +106,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           },
           {
             "id": "sf_upper_gallery_crystal_cluster",
@@ -121,7 +123,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:crystal"
           }
         ],
         "environment": "indoor",
@@ -227,7 +230,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:net"
           },
           {
             "id": "sf_chasm_overlook_stalagmites_br",
@@ -243,7 +247,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           }
         ],
         "environment": "indoor",
@@ -373,7 +378,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_lower_wet_cavern_luminescent_",
@@ -389,7 +395,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:lichen"
           },
           {
             "id": "sf_lower_wet_cavern_mossy_pillar",
@@ -405,7 +412,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:pillar"
           }
         ],
         "environment": "indoor",
@@ -486,7 +494,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_submerged_lair_dry_nest",
@@ -502,7 +511,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:nest"
           }
         ],
         "environment": "indoor",

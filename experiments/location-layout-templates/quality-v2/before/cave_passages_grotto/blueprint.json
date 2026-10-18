@@ -1,0 +1,404 @@
+{
+  "seed": 7,
+  "entry": "entry_chasm",
+  "areas": [
+    {
+      "area_ref": "entry_chasm",
+      "role": "cave_entrance",
+      "name": "Входная расщелина",
+      "public_name": "Входной грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 8,
+      "rows": 8,
+      "offset": [
+        0,
+        0
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Сырой каменный свод, куда едва пробивается дневной свет.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "scree",
+          "name": "Осыпь щебня",
+          "kind": "nature",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "boulder",
+          "name": "Каменный валун",
+          "kind": "cover",
+          "cells": [
+            [
+              4,
+              5,
+              4,
+              5
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "winding_tunnel",
+      "role": "corridor",
+      "name": "Узкий лаз",
+      "public_name": "Каменный проход",
+      "environment": "indoor",
+      "shape": "corridor",
+      "cols": 6,
+      "rows": 2,
+      "offset": [
+        8,
+        3
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Низкий вытянутый тоннель с трещинами в своде.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "stalactites",
+          "name": "Острые сталактиты",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              0,
+              3,
+              0
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "great_grotto",
+      "role": "grotto",
+      "name": "Большой подземный грот",
+      "public_name": "Подземный грот",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 12,
+      "rows": 10,
+      "offset": [
+        14,
+        -1
+      ],
+      "level": 0,
+      "material": "stone",
+      "description": "Огромная каверна с высоким сводом, причудливыми сталагмитами и выходом к подземному озеру.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "stalagmite_pillars",
+          "name": "Колонны сталагмитов",
+          "kind": "cover",
+          "cells": [
+            [
+              3,
+              3,
+              3,
+              4
+            ]
+          ],
+          "solid": true,
+          "hidden": false
+        },
+        {
+          "detail_ref": "glowing_lichen",
+          "name": "Светящийся мох",
+          "kind": "light",
+          "cells": [
+            [
+              8,
+              2,
+              9,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "rock_ledge",
+          "name": "Скальный уступ",
+          "kind": "cover",
+          "cells": [
+            [
+              4,
+              7,
+              6,
+              7
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "subterranean_lake",
+      "role": "water_basin",
+      "name": "Подземное озеро",
+      "public_name": "Подземное озеро",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 8,
+      "rows": 8,
+      "offset": [
+        16,
+        -9
+      ],
+      "level": 0,
+      "material": "water",
+      "description": "Холодная затопленная каверна с чистой подземной водой и отражающимися отблесками мха.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "shimmering_pool",
+          "name": "Фосфоресцирующая заводь",
+          "kind": "light",
+          "cells": [
+            [
+              3,
+              3,
+              4,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "decor_0",
+          "name": "Каменные выступы",
+          "kind": "furniture",
+          "cells": [
+            [
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    },
+    {
+      "area_ref": "side_den",
+      "role": "den",
+      "name": "Боковая ниша",
+      "public_name": "Тёмная ниша",
+      "environment": "indoor",
+      "shape": "cave",
+      "cols": 6,
+      "rows": 6,
+      "offset": [
+        17,
+        9
+      ],
+      "level": 0,
+      "material": "earth",
+      "description": "Укромный глухой тупик, усыпанный костями и сухим мхом.",
+      "secret": false,
+      "details": [
+        {
+          "detail_ref": "beast_bedding",
+          "name": "Лёжка хищника",
+          "kind": "nature",
+          "cells": [
+            [
+              2,
+              3,
+              3,
+              4
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        },
+        {
+          "detail_ref": "bone_pile",
+          "name": "Куча обглоданных костей",
+          "kind": "object",
+          "cells": [
+            [
+              3,
+              2,
+              4,
+              2
+            ]
+          ],
+          "solid": false,
+          "hidden": false
+        }
+      ],
+      "terrain": [],
+      "edges": [],
+      "scene_profile": null,
+      "object_slots": []
+    }
+  ],
+  "passages": [
+    {
+      "passage_ref": "p_winding_tunnel",
+      "kind": "passage",
+      "name": "Узкий лаз",
+      "public_name": "Узкий лаз",
+      "ends": [
+        {
+          "area_ref": "entry_chasm",
+          "side": "e",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "winding_tunnel",
+          "side": "w",
+          "start": 1,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_great_grotto",
+      "kind": "arch",
+      "name": "Высокий скальный свод",
+      "public_name": "Высокий скальный свод",
+      "ends": [
+        {
+          "area_ref": "winding_tunnel",
+          "side": "e",
+          "start": 1,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "great_grotto",
+          "side": "w",
+          "start": 5,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_subterranean_lake",
+      "kind": "gap",
+      "name": "Скальный берег озера",
+      "public_name": "Скальный берег озера",
+      "ends": [
+        {
+          "area_ref": "great_grotto",
+          "side": "n",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "subterranean_lake",
+          "side": "s",
+          "start": 4,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "p_side_den",
+      "kind": "passage",
+      "name": "Низкий пролаз",
+      "public_name": "Низкий пролаз",
+      "ends": [
+        {
+          "area_ref": "great_grotto",
+          "side": "s",
+          "start": 6,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": "side_den",
+          "side": "n",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    },
+    {
+      "passage_ref": "in_entry_chasm_w",
+      "kind": "gap",
+      "name": "Вход в пещеру",
+      "public_name": "Вход в пещеру",
+      "ends": [
+        {
+          "area_ref": "entry_chasm",
+          "side": "w",
+          "start": 3,
+          "width": 1,
+          "place_id": null
+        },
+        {
+          "area_ref": null,
+          "side": null,
+          "start": 0,
+          "width": 1,
+          "place_id": "tpl_cave_passages_grotto"
+        }
+      ],
+      "state": "open",
+      "hidden": false
+    }
+  ],
+  "anchors": {},
+  "required": [],
+  "plot_id": null,
+  "revision": 1,
+  "schema_version": 1,
+  "builder_version": "layout-v1"
+}

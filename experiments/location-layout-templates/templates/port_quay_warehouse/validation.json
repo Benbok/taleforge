@@ -15,7 +15,7 @@
   ],
   "detail_preservation": {
     "granite_quay": {
-      "mooring_bollards": "shifted: [[3, 5, 4, 5], [7, 5, 8, 5]] -> [[3, 4, 4, 4], [7, 4, 8, 4]]",
+      "mooring_bollards": "preserved",
       "cargo_pallets": "preserved",
       "quay_lantern": "preserved"
     },

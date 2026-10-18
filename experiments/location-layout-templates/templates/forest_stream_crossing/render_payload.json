@@ -132,7 +132,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           },
           {
             "id": "sf_west_bank_wayside_shrine",
@@ -148,7 +149,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_west_bank_willow_tree",
@@ -164,7 +166,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:tree"
           }
         ],
         "environment": "outdoor",
@@ -393,7 +396,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:net"
           },
           {
             "id": "sf_stream_crossing_river_stones",
@@ -415,7 +419,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           },
           {
             "id": "sf_stream_crossing_reeds_bed",
@@ -431,7 +436,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:reeds"
           }
         ],
         "environment": "outdoor",
@@ -686,7 +692,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:net"
           },
           {
             "id": "sf_east_bluff_lookout_pine",
@@ -702,7 +709,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:tree"
           },
           {
             "id": "sf_east_bluff_camp_embers",
@@ -718,7 +726,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:hearth"
           }
         ],
         "environment": "outdoor",

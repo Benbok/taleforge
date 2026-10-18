@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ruins_manor_estate",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "archetype": "ruins",
   "template_ids": [
     "location.ruins"
@@ -53,7 +53,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           },
           {
             "detail_ref": "overgrown_hedges",
@@ -61,14 +62,21 @@
             "kind": "nature",
             "cells": [
               [
+                1,
                 2,
+                1,
+                4
+              ],
+              [
+                7,
                 2,
-                4,
-                2
+                7,
+                4
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shrub"
           },
           {
             "detail_ref": "broken_benches",
@@ -83,7 +91,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:bench"
           },
           {
             "detail_ref": "garden_urn",
@@ -98,9 +107,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "collapsed_ballroom",
@@ -137,7 +149,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rubble"
           },
           {
             "detail_ref": "marble_pillars",
@@ -158,7 +171,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:pillar"
           },
           {
             "detail_ref": "grand_fireplace",
@@ -173,9 +187,12 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:hearth"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "intact_study",
@@ -212,7 +229,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:table"
           },
           {
             "detail_ref": "parchment_shelves",
@@ -227,7 +245,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shelf"
           },
           {
             "detail_ref": "hidden_safe",
@@ -242,9 +261,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:chest"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       }
     ],
     "approaches": [

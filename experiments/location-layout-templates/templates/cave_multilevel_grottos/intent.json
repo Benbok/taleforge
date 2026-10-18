@@ -37,7 +37,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:torch"
         },
         {
           "detail_ref": "rocky_ledge",
@@ -52,7 +53,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         },
         {
           "detail_ref": "crystal_cluster",
@@ -67,9 +69,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crystal"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "chasm_overlook",
@@ -106,7 +111,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:net"
         },
         {
           "detail_ref": "stalagmites_brink",
@@ -121,9 +127,12 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "lower_wet_cavern",
@@ -160,7 +169,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rubble"
         },
         {
           "detail_ref": "luminescent_spores",
@@ -175,7 +185,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:lichen"
         },
         {
           "detail_ref": "mossy_pillar",
@@ -190,9 +201,12 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "submerged_lair",
@@ -229,7 +243,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rubble"
         },
         {
           "detail_ref": "dry_nest",
@@ -244,9 +259,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:nest"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "approaches": [

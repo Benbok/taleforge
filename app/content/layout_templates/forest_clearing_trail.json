@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "forest_clearing_trail",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "archetype": "forest",
   "template_ids": [
     "location.forest"
@@ -53,7 +53,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shrub"
           },
           {
             "detail_ref": "fallen_trunk",
@@ -68,7 +69,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:tree"
           },
           {
             "detail_ref": "moss_rock",
@@ -83,9 +85,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rock"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "sunlit_clearing",
@@ -122,7 +127,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:tree"
           },
           {
             "detail_ref": "campfire",
@@ -137,7 +143,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:hearth"
           },
           {
             "detail_ref": "log_seat",
@@ -152,7 +159,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:bench"
           },
           {
             "detail_ref": "mushrooms",
@@ -160,16 +168,25 @@
             "kind": "nature",
             "cells": [
               [
-                11,
                 2,
-                12,
-                3
+                2,
+                2,
+                2
+              ],
+              [
+                6,
+                6,
+                6,
+                6
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shrub"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "dense_thicket",
@@ -206,7 +223,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shrub"
           },
           {
             "detail_ref": "granite_outcrop",
@@ -221,7 +239,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rock"
           },
           {
             "detail_ref": "ancient_stump",
@@ -236,9 +255,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:tree"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       }
     ],
     "approaches": [

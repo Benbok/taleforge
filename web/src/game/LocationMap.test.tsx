@@ -21,6 +21,67 @@ it("рисует твёрдую мебель без повторной зали�
   expect(sketch.walls).toEqual([[0, 0], [1, 1]]);
 });
 
+it("выбирает силуэт детали по visual_key, независимо от её имени", () => {
+  const sketch = { ...map.areas[0].sketch, features: [
+    { id: "a", name: "Произвольное имя", kind: "furniture" as const, visual_key: "feature:bed", cells: [[0, 0, 0, 1]] },
+    { id: "b", name: "Кровать", kind: "object" as const, visual_key: "feature:barrel", cells: [[1, 0, 1, 0]] },
+  ] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="artwork" /></svg>);
+  expect(container.querySelector('[data-feature-id="a"] [data-feature-form="bed"]')).not.toBeNull();
+  expect(container.querySelector('[data-feature-id="b"] [data-feature-form="barrel"]')).not.toBeNull();
+});
+
+it("объединяет клетки Г-образной стойки и не рисует предмет в пустом углу", () => {
+  const sketch = { ...map.areas[0].sketch, features: [
+    { id: "counter", name: "Стойка", kind: "furniture" as const, visual_key: "feature:counter", solid: true,
+      cells: [[0, 0, 1, 0], [1, 0, 1, 1]] },
+  ] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="footprint" /></svg>);
+  const bodies = container.querySelectorAll('[data-feature-id="counter"] [data-feature-body]');
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0].getAttribute("data-footprint-area")).toBe("3");
+  expect(bodies[0].tagName.toLowerCase()).toBe("path");
+  expect(sketch.features[0].cells).toEqual([[0, 0, 1, 0], [1, 0, 1, 1]]);
+});
+
+it("не интерпретирует неизвестный visual_key как URL или имя встроенного свойства", () => {
+  const sketch = { ...map.areas[0].sketch, features: [
+    { id: "unknown", name: "Стол", kind: "furniture" as const, visual_key: "toString", cells: [[0, 0, 0, 0]] },
+    { id: "url", name: "Ящик", kind: "object" as const, visual_key: "https://example.invalid/a.svg", cells: [[1, 0, 1, 0]] },
+  ] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="fallback" /></svg>);
+  expect(container.querySelector('[data-feature-id="unknown"] [data-feature-form="table"]')).not.toBeNull();
+  expect(container.querySelector('[data-feature-id="url"] [data-feature-form="crate"]')).not.toBeNull();
+  expect(container.querySelector("image, img, use")).toBeNull();
+});
+
+it("отличает светящийся мох и звериную лежку от огня и кровати", () => {
+  const sketch = { ...map.areas[0].sketch, features: [
+    { id: "lichen", name: "Мох", kind: "light" as const, visual_key: "feature:lichen", cells: [[0, 0, 0, 0]] },
+    { id: "nest", name: "Лёжка", kind: "nature" as const, visual_key: "feature:nest", cells: [[1, 0, 1, 0]] },
+  ] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="natural-props" /></svg>);
+  expect(container.querySelector('[data-feature-id="lichen"] [data-feature-form="lichen"]')).not.toBeNull();
+  expect(container.querySelector('[data-feature-id="nest"] [data-feature-form="nest"]')).not.toBeNull();
+  expect(container.querySelector('[data-feature-form="torch"], [data-feature-form="bed"]')).toBeNull();
+});
+
+it("оставляет иконку сущности и опасности на занятой клетке составной детали", () => {
+  const ring = [[0, 0, 2, 0], [0, 2, 2, 2], [0, 1, 0, 1], [2, 1, 2, 1]];
+  const sketch = { ...map.areas[0].sketch, cols: 3, rows: 3, features: [
+    { id: "chest", name: "Сундук", kind: "object" as const, entity_type: "item" as const,
+      visual_key: "item:chest", cells: ring },
+    { id: "hazard", name: "Опасность", kind: "hazard" as const, cells: ring },
+  ] };
+  const { container } = render(<svg><SketchSurface sketch={sketch} idPrefix="ring-icons" /></svg>);
+  for (const id of ["chest", "hazard"]) {
+    const glyph = container.querySelector(`[data-feature-id="${id}"] svg`)!;
+    const x = Math.floor(Number(glyph.getAttribute("x")) + .35);
+    const y = Math.floor(Number(glyph.getAttribute("y")) + .35);
+    expect(x === 0 || x === 2 || y === 0 || y === 2).toBe(true);
+  }
+});
+
 describe("единая карта комплекса", () => {
   it("рисует текущий и запомненный участок в общих offsets", () => {
     const { container } = render(<LocationMap map={map} />);

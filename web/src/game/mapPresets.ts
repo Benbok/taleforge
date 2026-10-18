@@ -68,3 +68,39 @@ export const FEATURE_VISUALS: Record<SketchFeature["kind"], MapVisualPreset> = {
   object: { family: "feature", glyph: "box", color: "var(--tf-patina)", shape: "square", label: "Объект" },
   nature: { family: "feature", glyph: "nature", color: "var(--tf-patina)", shape: "square", label: "Природный объект" },
 };
+
+export type FeatureForm = "table" | "bench" | "bed" | "counter" | "shelf" | "barrel" | "crate" | "chest"
+  | "hearth" | "torch" | "altar" | "pillar" | "rock" | "rubble" | "tree" | "shrub" | "reeds"
+  | "crystal" | "bones" | "net" | "crane" | "mooring" | "glow" | "lichen" | "nest" | "hazard" | "token";
+export interface FeatureVisual extends MapVisualPreset { form: FeatureForm; }
+
+/** Explicit artwork keys; localised names and template IDs never select a drawing. */
+export const FEATURE_VARIANTS: Record<string, FeatureVisual> = Object.fromEntries(
+  (Object.entries({
+    table: ["furniture", "Стол"], bench: ["furniture", "Скамья"], bed: ["furniture", "Кровать"],
+    counter: ["furniture", "Стойка"], shelf: ["furniture", "Стеллаж"], barrel: ["object", "Бочка"],
+    crate: ["object", "Ящик"], chest: ["object", "Сундук"], hearth: ["light", "Очаг"], torch: ["light", "Свет"],
+    altar: ["object", "Алтарь"], pillar: ["cover", "Колонна"], rock: ["cover", "Скала"],
+    rubble: ["cover", "Обломки"], tree: ["nature", "Дерево"], shrub: ["nature", "Кустарник"],
+    reeds: ["nature", "Камыш"], crystal: ["nature", "Кристаллы"], bones: ["object", "Кости"],
+    net: ["object", "Сети"], crane: ["object", "Кран"], mooring: ["object", "Кнехт"],
+    glow: ["light", "Мягкое свечение"], lichen: ["light", "Светящийся мох"], nest: ["nature", "Лёжка"],
+  }) as [FeatureForm, [SketchFeature["kind"], string]][])
+    .map(([form, [kind, label]]) => [`feature:${form}`, { ...FEATURE_VISUALS[kind], form, label }]),
+);
+
+const DEFAULT_FEATURE_FORMS: Record<SketchFeature["kind"], FeatureForm> = {
+  furniture: "table", cover: "rock", hazard: "hazard", light: "torch", object: "crate", nature: "shrub",
+};
+
+export function featureVisual(feature: Pick<SketchFeature, "kind" | "visual_key" | "entity_type">): FeatureVisual {
+  const key = feature.visual_key;
+  if (key && Object.hasOwn(FEATURE_VARIANTS, key)) return FEATURE_VARIANTS[key];
+  // Materialised world objects keep the same trusted entity artwork used by map tokens.
+  if (key && feature.entity_type && Object.hasOwn(VISUAL_VARIANTS, key)
+    && VISUAL_VARIANTS[key].family === feature.entity_type) {
+    return { ...entityVisual(feature.entity_type, key), form: "token" };
+  }
+  const kind = Object.hasOwn(FEATURE_VISUALS, feature.kind) ? feature.kind : "object";
+  return { ...FEATURE_VISUALS[kind], form: DEFAULT_FEATURE_FORMS[kind] };
+}

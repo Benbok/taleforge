@@ -109,7 +109,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_overgrown_courtyard_rubble_pi",
@@ -117,15 +118,22 @@
             "kind": "hazard",
             "cells": [
               [
-                8,
                 2,
-                9,
-                3
+                1,
+                3,
+                1
+              ],
+              [
+                7,
+                5,
+                7,
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_overgrown_courtyard_dry_well",
@@ -141,7 +149,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_overgrown_courtyard_weed_thic",
@@ -157,7 +166,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shrub"
           }
         ],
         "environment": "outdoor",
@@ -324,7 +334,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:altar"
           },
           {
             "id": "sf_ruined_nave_standing_pillars",
@@ -346,7 +357,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_ruined_nave_ash_remains",
@@ -362,7 +374,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_ruined_nave_collapsed_arch",
@@ -378,7 +391,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           }
         ],
         "environment": "indoor",
@@ -472,7 +486,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:chest"
           },
           {
             "id": "sf_crypt_undercroft_sarcophagi_s",
@@ -488,7 +503,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:chest"
           },
           {
             "id": "sf_crypt_undercroft_burial_niche",
@@ -504,7 +520,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:chest"
           },
           {
             "id": "sf_crypt_undercroft_eternal_flam",
@@ -520,7 +537,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",

@@ -136,7 +136,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:shrub"
           },
           {
             "id": "sf_forest_verge_fallen_trunk",
@@ -152,7 +153,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:tree"
           },
           {
             "id": "sf_forest_verge_moss_rock",
@@ -168,7 +170,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rock"
           }
         ],
         "environment": "outdoor",
@@ -399,7 +402,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:tree"
           },
           {
             "id": "sf_sunlit_clearing_campfire",
@@ -415,7 +419,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_sunlit_clearing_log_seat",
@@ -431,7 +436,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           },
           {
             "id": "sf_sunlit_clearing_mushrooms",
@@ -439,15 +445,22 @@
             "kind": "nature",
             "cells": [
               [
-                11,
                 2,
-                12,
-                3
+                2,
+                2,
+                2
+              ],
+              [
+                6,
+                6,
+                6,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shrub"
           }
         ],
         "environment": "outdoor",
@@ -624,7 +637,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shrub"
           },
           {
             "id": "sf_dense_thicket_granite_outcrop",
@@ -640,7 +654,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           },
           {
             "id": "sf_dense_thicket_ancient_stump",
@@ -656,7 +671,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:tree"
           }
         ],
         "environment": "outdoor",

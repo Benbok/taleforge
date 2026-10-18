@@ -30,14 +30,21 @@
           "kind": "nature",
           "cells": [
             [
-              3,
               2,
-              4,
+              2,
+              2,
               2
+            ],
+            [
+              3,
+              1,
+              3,
+              1
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rubble"
         },
         {
           "detail_ref": "boulder",
@@ -52,9 +59,12 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "winding_tunnel",
@@ -91,9 +101,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rubble"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "great_grotto",
@@ -104,8 +117,8 @@
       "environment": "indoor",
       "shape": "cave",
       "size": "medium",
-      "cols": 12,
-      "rows": 10,
+      "cols": 14,
+      "rows": 12,
       "level": 0,
       "material": "stone",
       "connects_to": "winding_tunnel",
@@ -123,14 +136,21 @@
           "kind": "cover",
           "cells": [
             [
+              4,
               3,
-              3,
-              3,
+              4,
+              4
+            ],
+            [
+              5,
+              4,
+              5,
               4
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         },
         {
           "detail_ref": "glowing_lichen",
@@ -138,14 +158,21 @@
           "kind": "light",
           "cells": [
             [
-              8,
+              10,
               2,
-              9,
+              10,
               2
+            ],
+            [
+              11,
+              3,
+              11,
+              3
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:lichen"
         },
         {
           "detail_ref": "rock_ledge",
@@ -153,16 +180,57 @@
           "kind": "cover",
           "cells": [
             [
+              3,
+              9,
               4,
-              7,
-              6,
-              7
+              9
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "grotto_rocks_east",
+          "name": "Скальный островок",
+          "kind": "cover",
+          "cells": [
+            [
+              9,
+              5,
+              10,
+              5
+            ],
+            [
+              10,
+              6,
+              10,
+              6
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
+        },
+        {
+          "detail_ref": "grotto_rocks_south",
+          "name": "Низкие сталагмиты",
+          "kind": "cover",
+          "cells": [
+            [
+              6,
+              8,
+              6,
+              8
+            ]
+          ],
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:rock"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "subterranean_lake",
@@ -199,9 +267,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:glow"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "side_den",
@@ -238,7 +309,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:nest"
         },
         {
           "detail_ref": "bone_pile",
@@ -253,9 +325,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bones"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "approaches": [

@@ -1504,8 +1504,132 @@ ALL_TEMPLATES = [
 ]
 
 
+# These are authored art choices, resolved offline rather than inferred by the renderer.
+VISUAL_GROUPS = {
+    "table": "table_north table_south prep_table round_tables leather_chairs overseer_desk tackle_table carved_desk study_desk interrogation_table lectern",
+    "bench": "bar_stools benches_north benches_south prayer_benches log_seat broken_benches gutting_bench",
+    "bed": "bunks_north bunks_south",
+    "nest": "beast_bedding dry_nest",
+    "lichen": "glowing_lichen luminescent_spores",
+    "glow": "shimmering_pool",
+    "counter": "bar_counter long_bar",
+    "shelf": "pantry_shelves bookcase bottle_racks vestment_press storage_racks parchment_shelves weapon_rack_ruin",
+    "barrel": "ale_casks wine_tuns salted_fish_barrels",
+    "crate": "smuggled_crates cargo_pallets crate_stacks armory_crates fish_corfs fish_corfs_water",
+    "chest": "traveler_chests iron_strongbox relic_chest hidden_safe sarcophagi_north sarcophagi_south burial_niche",
+    "hearth": "hearth stove iron_stove campfire camp_embers tar_firepit smokehouse_stove grand_fireplace watch_brazier",
+    "torch": "wall_sconce cellar_lantern candle_stand incense_braziers eternal_flame torch_bracket quay_lantern oil_lantern",
+    "altar": "grand_altar cracked_altar wayside_shrine holy_water_font ruined_fountain garden_urn fallen_statue dry_well",
+    "pillar": "columns_west columns_east standing_pillars marble_pillars wooden_piles mossy_pillar spiral_stairs_center archer_embrasures iron_grate_cell",
+    "rock": "boulder stalagmite_pillars stalagmites_brink rock_ledge rocky_ledge moss_rock granite_outcrop river_stones mile_marker grotto_rocks_east grotto_rocks_south",
+    "rubble": "scree stalactites rubble_piles ash_remains collapsed_arch floating_debris fallen_chandelier broken_gate_timber ice_pit dripping_basin",
+    "tree": "ancient_oak fallen_trunk ancient_stump willow_tree lookout_pine",
+    "shrub": "brambles mushrooms twisted_roots weed_thicket overgrown_hedges",
+    "reeds": "reeds_bed",
+    "crystal": "crystal_cluster",
+    "bones": "bone_pile",
+    "net": "net_drying_racks coiled_hawsers climbing_rig bridge_railings hunter_blind upturned_skiff",
+    "crane": "cargo_crane",
+    "mooring": "mooring_bollards cleats floating_buoy mooring_float",
+}
+VISUAL_KEYS = {ref: f"feature:{key}" for key, refs in VISUAL_GROUPS.items() for ref in refs.split()}
+
+
+def author_quality_v2(meta: dict[str, Any], intent: LayoutIntent) -> None:
+    """Apply reviewed local furnishing plans without changing narrative part identities."""
+    tid = meta["id"]
+    meta["version"] = "1.2.0" if tid in {"tavern_roadside", "cave_passages_grotto", "port_quay_warehouse"} else "1.1.0"
+    parts = {p.part_ref: p for p in intent.parts}
+
+    def furnish(part_ref, placements):
+        for detail in parts[part_ref].details:
+            if detail.detail_ref in placements:
+                detail.cells, detail.solid = placements[detail.detail_ref]
+
+    if tid == "tavern_roadside":
+        parts["common_room"].cols = 12
+        parts["common_room"].rows = 10
+        furnish("common_room", {
+            "hearth": ([[5, 0, 6, 0]], True),
+            "bar_counter": ([[1, 1, 1, 3], [2, 3, 3, 3]], True),
+            "bar_stools": ([[2, 4, 2, 4], [4, 3, 4, 3]], False),
+            "table_north": ([[8, 2, 9, 2]], True),
+            "benches_north": ([[8, 1, 9, 1], [8, 3, 9, 3]], False),
+            "table_south": ([[8, 7, 9, 7]], True),
+            "benches_south": ([[8, 6, 9, 6], [8, 8, 9, 8]], False),
+            "ale_casks": ([[1, 7, 1, 7], [2, 8, 2, 8]], True),
+        })
+        parts["kitchen_pantry"].cols = 6
+        parts["kitchen_pantry"].rows = 7
+        furnish("kitchen_pantry", {
+            "stove": ([[0, 1, 0, 2]], True),
+            "pantry_shelves": ([[2, 0, 4, 0]], True),
+            "prep_table": ([[2, 4, 3, 4]], True),
+        })
+        parts["guest_rooms"].cols = 7
+        parts["guest_rooms"].rows = 8
+        furnish("guest_rooms", {
+            "bunks_north": ([[4, 1, 5, 1]], True),
+            "bunks_south": ([[4, 6, 5, 6]], True),
+            "traveler_chests": ([[6, 1, 6, 1], [6, 6, 6, 6]], True),
+        })
+    elif tid == "cave_passages_grotto":
+        parts["great_grotto"].cols = 14
+        parts["great_grotto"].rows = 12
+        furnish("great_grotto", {
+            "stalagmite_pillars": ([[4, 3, 4, 4], [5, 4, 5, 4]], True),
+            "glowing_lichen": ([[10, 2, 10, 2], [11, 3, 11, 3]], False),
+            "rock_ledge": ([[3, 9, 4, 9]], False),
+        })
+        parts["great_grotto"].details.extend([
+            DetailIntent(detail_ref="grotto_rocks_east", name="\u0421\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043e\u0441\u0442\u0440\u043e\u0432\u043e\u043a", kind="cover", solid=True, cells=[[9, 5, 10, 5], [10, 6, 10, 6]]),
+            DetailIntent(detail_ref="grotto_rocks_south", name="\u041d\u0438\u0437\u043a\u0438\u0435 \u0441\u0442\u0430\u043b\u0430\u0433\u043c\u0438\u0442\u044b", kind="cover", solid=True, cells=[[6, 8, 6, 8]]),
+        ])
+        # L-shaped rock islands and offset wall accents retain the existing cave floor algorithm.
+        furnish("entry_chasm", {"scree": ([[2, 2, 2, 2], [3, 1, 3, 1]], False)})
+    elif tid == "port_quay_warehouse":
+        parts["cargo_pier"].cols = 4
+        parts["cargo_pier"].rows = 10
+        furnish("cargo_pier", {
+            "cargo_crane": ([[1, 4, 1, 5]], True),
+            "coiled_hawsers": ([[2, 3, 2, 3]], False),
+            "cleats": ([[1, 8, 1, 8], [2, 8, 2, 8]], False),
+        })
+        parts["harbor_water_west"].cols = 4
+        parts["harbor_water_west"].rows = 10
+        parts["harbor_water_east"].cols = 4
+        parts["harbor_water_east"].rows = 10
+        parts["harbor_water_east"].connects_to = "cargo_pier"
+        parts["harbor_water_east"].side = "e"
+        parts["harbor_warehouse"].cols = 10
+        parts["harbor_warehouse"].rows = 8
+        furnish("harbor_warehouse", {
+            "crate_stacks": ([[2, 1, 3, 2], [6, 1, 7, 2]], True),
+            "storage_racks": ([[2, 6, 3, 6], [6, 6, 8, 6]], True),
+            "overseer_desk": ([[8, 1, 8, 2]], True),
+        })
+        furnish("granite_quay", {
+            "mooring_bollards": ([[2, 5, 2, 5], [9, 5, 9, 5]], True),
+            "cargo_pallets": ([[1, 1, 2, 1], [8, 1, 9, 2]], True),
+            "quay_lantern": ([[10, 0, 10, 0]], False),
+        })
+    elif tid == "tavern_urban_cellar":
+        furnish("taproom", {"round_tables": ([[5, 2, 6, 2], [6, 5, 7, 5]], True),
+                             "ale_casks": ([[1, 1, 1, 1], [1, 4, 1, 4]], True)})
+    elif tid == "temple_ruined_courtyard":
+        furnish("overgrown_courtyard", {"rubble_piles": ([[2, 2, 3, 2], [7, 6, 7, 6]], False)})
+    elif tid == "forest_clearing_trail":
+        furnish("sunlit_clearing", {"mushrooms": ([[2, 2, 2, 2], [6, 6, 6, 6]], False)})
+    elif tid == "ruins_manor_estate":
+        furnish("overgrown_park", {"overgrown_hedges": ([[1, 2, 1, 4], [7, 2, 7, 4]], True)})
+    for part in intent.parts:
+        for detail in part.details:
+            detail.visual_key = VISUAL_KEYS[detail.detail_ref]
+
+
 def build_and_save_template(factory_fn, output_dir: Path) -> dict[str, Any]:
     meta, intent = factory_fn()
+    author_quality_v2(meta, intent)
     tid = meta["id"]
     tdir = output_dir / tid
     tdir.mkdir(parents=True, exist_ok=True)
@@ -1596,6 +1720,11 @@ def build_and_save_template(factory_fn, output_dir: Path) -> dict[str, Any]:
         ]
     }
     (tdir / "render_payload.json").write_text(json.dumps(render_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    resource_path = ROOT / "app" / "content" / "layout_templates" / f"{tid}.json"
+    resource = json.loads(resource_path.read_text(encoding="utf-8"))
+    resource["intent"] = intent.model_dump(mode="json")
+    resource["version"] = meta["version"]
+    resource_path.write_text(json.dumps(resource, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"[{tid}] Built! Areas: {len(bp.areas)}, Passages: {len(bp.passages)}, Levels: {validation_report['levels']}")
     return meta
 
@@ -1603,7 +1732,7 @@ def build_and_save_template(factory_fn, output_dir: Path) -> dict[str, Any]:
 def build_all():
     print(f"Building all {len(ALL_TEMPLATES)} templates...")
     manifest = {
-        "version": "1.0.0",
+        "version": "1.1.0",
         "description": "Экспериментальная коллекция из 12 шаблонов локаций для TaleForge",
         "templates": []
     }

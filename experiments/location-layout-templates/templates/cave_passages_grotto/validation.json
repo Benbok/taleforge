@@ -24,7 +24,9 @@
     "great_grotto": {
       "stalagmite_pillars": "preserved",
       "glowing_lichen": "preserved",
-      "rock_ledge": "preserved"
+      "rock_ledge": "preserved",
+      "grotto_rocks_east": "preserved",
+      "grotto_rocks_south": "preserved"
     },
     "subterranean_lake": {
       "shimmering_pool": "preserved"

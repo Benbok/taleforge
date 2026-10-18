@@ -26,20 +26,21 @@
           "kind": "object",
           "cells": [
             [
-              3,
-              4,
-              4,
-              4
+              2,
+              5,
+              2,
+              5
             ],
             [
-              7,
-              4,
-              8,
-              4
+              9,
+              5,
+              9,
+              5
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:mooring"
         },
         {
           "detail_ref": "cargo_pallets",
@@ -47,14 +48,21 @@
           "kind": "cover",
           "cells": [
             [
+              1,
+              1,
               2,
-              2,
-              3,
+              1
+            ],
+            [
+              8,
+              1,
+              9,
               2
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:crate"
         },
         {
           "detail_ref": "quay_lantern",
@@ -62,14 +70,15 @@
           "kind": "light",
           "cells": [
             [
-              5,
-              1,
-              5,
-              1
+              10,
+              0,
+              10,
+              0
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
       ],
       "terrain": [],
@@ -89,19 +98,19 @@
         {
           "side": "s",
           "start": 0,
-          "length": 3,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "s",
-          "start": 3,
-          "length": 6,
+          "start": 4,
+          "length": 4,
           "meaning": "continuation"
         },
         {
           "side": "s",
-          "start": 9,
-          "length": 3,
+          "start": 8,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
@@ -133,10 +142,10 @@
       "public_name": "Причал",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 6,
-      "rows": 8,
+      "cols": 4,
+      "rows": 10,
       "offset": [
-        3,
+        4,
         6
       ],
       "level": 0,
@@ -151,13 +160,14 @@
           "cells": [
             [
               1,
-              3,
-              2,
-              4
+              4,
+              1,
+              5
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crane"
         },
         {
           "detail_ref": "coiled_hawsers",
@@ -165,14 +175,15 @@
           "kind": "cover",
           "cells": [
             [
-              4,
               2,
-              4,
+              3,
+              2,
               3
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:net"
         },
         {
           "detail_ref": "cleats",
@@ -181,19 +192,20 @@
           "cells": [
             [
               1,
-              6,
+              8,
               1,
-              7
+              8
             ],
             [
-              4,
-              6,
-              4,
-              7
+              2,
+              8,
+              2,
+              8
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:mooring"
         }
       ],
       "terrain": [],
@@ -201,47 +213,30 @@
         {
           "side": "n",
           "start": 0,
-          "length": 6,
+          "length": 4,
           "meaning": "continuation"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 8,
-          "meaning": "obstacle"
+          "length": 10,
+          "meaning": "continuation"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 6,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "continuation"
         }
       ],
       "scene_profile": null,
-      "object_slots": [
-        {
-          "slot_ref": "pier_container",
-          "role": "container",
-          "cells": [
-            [
-              5,
-              4,
-              5,
-              4
-            ]
-          ],
-          "detail_ref": null,
-          "hidden": false,
-          "max_cols": 1,
-          "max_rows": 1
-        }
-      ]
+      "object_slots": []
     },
     {
       "area_ref": "harbor_warehouse",
@@ -250,11 +245,11 @@
       "public_name": "Портовый склад",
       "environment": "indoor",
       "shape": "rect",
-      "cols": 8,
-      "rows": 6,
+      "cols": 10,
+      "rows": 8,
       "offset": [
         12,
-        0
+        -1
       ],
       "level": 0,
       "material": "wood",
@@ -271,10 +266,17 @@
               1,
               3,
               2
+            ],
+            [
+              6,
+              1,
+              7,
+              2
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crate"
         },
         {
           "detail_ref": "storage_racks",
@@ -282,14 +284,21 @@
           "kind": "furniture",
           "cells": [
             [
+              2,
               6,
-              1,
+              3,
+              6
+            ],
+            [
               6,
-              4
+              6,
+              8,
+              6
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:shelf"
         },
         {
           "detail_ref": "overseer_desk",
@@ -297,14 +306,15 @@
           "kind": "furniture",
           "cells": [
             [
-              3,
-              4,
-              4,
-              4
+              8,
+              1,
+              8,
+              2
             ]
           ],
-          "solid": false,
-          "hidden": false
+          "solid": true,
+          "hidden": false,
+          "visual_key": "feature:table"
         }
       ],
       "terrain": [],
@@ -319,10 +329,10 @@
       "public_name": "Западная акватория",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 6,
-      "rows": 8,
+      "cols": 4,
+      "rows": 10,
       "offset": [
-        -3,
+        0,
         6
       ],
       "level": 0,
@@ -343,7 +353,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:mooring"
         },
         {
           "detail_ref": "decor_0",
@@ -358,7 +369,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": null
         }
       ],
       "terrain": [],
@@ -366,25 +378,25 @@
         {
           "side": "n",
           "start": 0,
-          "length": 6,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "continuation"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 6,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         }
       ],
@@ -398,10 +410,10 @@
       "public_name": "Восточная акватория",
       "environment": "outdoor",
       "shape": "open",
-      "cols": 8,
-      "rows": 8,
+      "cols": 4,
+      "rows": 10,
       "offset": [
-        12,
+        8,
         6
       ],
       "level": 0,
@@ -422,7 +434,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "decor_0",
@@ -437,7 +450,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": null
         }
       ],
       "terrain": [],
@@ -445,26 +459,26 @@
         {
           "side": "n",
           "start": 0,
-          "length": 8,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "e",
           "start": 0,
-          "length": 8,
+          "length": 10,
           "meaning": "obstacle"
         },
         {
           "side": "s",
           "start": 0,
-          "length": 8,
+          "length": 4,
           "meaning": "obstacle"
         },
         {
           "side": "w",
           "start": 0,
-          "length": 8,
-          "meaning": "obstacle"
+          "length": 10,
+          "meaning": "continuation"
         }
       ],
       "scene_profile": null,
@@ -481,15 +495,15 @@
         {
           "area_ref": "granite_quay",
           "side": "s",
-          "start": 3,
-          "width": 6,
+          "start": 4,
+          "width": 4,
           "place_id": null
         },
         {
           "area_ref": "cargo_pier",
           "side": "n",
           "start": 0,
-          "width": 6,
+          "width": 4,
           "place_id": null
         }
       ],
@@ -512,7 +526,7 @@
         {
           "area_ref": "harbor_warehouse",
           "side": "w",
-          "start": 3,
+          "start": 4,
           "width": 1,
           "place_id": null
         }
@@ -530,14 +544,14 @@
           "area_ref": "cargo_pier",
           "side": "w",
           "start": 0,
-          "width": 8,
+          "width": 10,
           "place_id": null
         },
         {
           "area_ref": "harbor_water_west",
           "side": "e",
           "start": 0,
-          "width": 8,
+          "width": 10,
           "place_id": null
         }
       ],
@@ -546,22 +560,22 @@
     },
     {
       "passage_ref": "p_harbor_water_east",
-      "kind": "passage",
+      "kind": "edge",
       "name": "Прискладская вода",
       "public_name": "Прискладская вода",
       "ends": [
         {
-          "area_ref": "harbor_warehouse",
-          "side": "s",
-          "start": 4,
-          "width": 1,
+          "area_ref": "cargo_pier",
+          "side": "e",
+          "start": 0,
+          "width": 10,
           "place_id": null
         },
         {
           "area_ref": "harbor_water_east",
-          "side": "n",
-          "start": 4,
-          "width": 1,
+          "side": "w",
+          "start": 0,
+          "width": 10,
           "place_id": null
         }
       ],

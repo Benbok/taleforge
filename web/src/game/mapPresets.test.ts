@@ -4,11 +4,25 @@ import { createElement } from "react";
 import type { EntityType } from "../lib/types";
 import { Token } from "./GridBoard";
 import { MAP_GLYPHS, MapGlyph } from "./MapGlyph";
-import { entityVisual, EXIT_VISUALS, FEATURE_VISUALS, MAP_PRESETS, VISUAL_VARIANTS } from "./mapPresets";
+import { entityVisual, EXIT_VISUALS, FEATURE_VARIANTS, FEATURE_VISUALS, featureVisual, MAP_PRESETS, VISUAL_VARIANTS } from "./mapPresets";
+import type { SketchFeature } from "./map";
 
 const TYPES: EntityType[] = ["hero", "creature", "npc", "item", "landmark", "location", "lore"];
 
 describe("каталог визуальных элементов карты", () => {
+  it("все рисунки рабочего каталога шаблонов поддерживаются игровым renderer", () => {
+    const templates = import.meta.glob<{ intent: { parts: { details: SketchFeature[] }[] } }>(
+      "../../../app/content/layout_templates/*.json", { eager: true, import: "default" },
+    );
+    expect(Object.keys(templates)).toHaveLength(12);
+    for (const template of Object.values(templates)) for (const part of template.intent.parts) {
+      for (const detail of part.details) {
+        expect(detail.visual_key).toBeTruthy();
+        expect(Object.hasOwn(FEATURE_VARIANTS, detail.visual_key!)).toBe(true);
+        expect(featureVisual(detail)).toBe(FEATURE_VARIANTS[detail.visual_key!]);
+      }
+    }
+  });
   it("у каждого типа и элемента есть векторная иконка и читаемый стиль", () => {
     const visuals = [...Object.values(MAP_PRESETS), ...Object.values(VISUAL_VARIANTS),
       ...Object.values(EXIT_VISUALS), ...Object.values(FEATURE_VISUALS)];

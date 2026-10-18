@@ -37,7 +37,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:altar"
         },
         {
           "detail_ref": "prayer_benches",
@@ -58,7 +59,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         },
         {
           "detail_ref": "candle_stand",
@@ -73,9 +75,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "sanctuary",
@@ -112,7 +117,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:altar"
         },
         {
           "detail_ref": "columns_west",
@@ -133,7 +139,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "columns_east",
@@ -154,7 +161,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "incense_braziers",
@@ -175,7 +183,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:torch"
         },
         {
           "detail_ref": "lectern",
@@ -190,9 +199,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "sacristy",
@@ -229,7 +241,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:chest"
         },
         {
           "detail_ref": "vestment_press",
@@ -244,7 +257,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:shelf"
         },
         {
           "detail_ref": "study_desk",
@@ -259,9 +273,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "approaches": [

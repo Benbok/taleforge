@@ -138,7 +138,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_sandy_shore_net_drying_racks",
@@ -154,7 +155,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:net"
           },
           {
             "id": "sf_sandy_shore_upturned_skiff",
@@ -170,7 +172,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:net"
           }
         ],
         "environment": "outdoor",
@@ -346,7 +349,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:crate"
           },
           {
             "id": "sf_wooden_jetty_gutting_bench",
@@ -362,7 +366,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           }
         ],
         "environment": "outdoor",
@@ -465,7 +470,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_fisher_shack_tackle_table",
@@ -481,7 +487,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:table"
           },
           {
             "id": "sf_fisher_shack_salted_fish_barr",
@@ -497,7 +504,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:barrel"
           }
         ],
         "environment": "indoor",
@@ -586,7 +594,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:crate"
           },
           {
             "id": "sf_fishing_water_mooring_float",
@@ -602,7 +611,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:mooring"
           }
         ],
         "environment": "outdoor",

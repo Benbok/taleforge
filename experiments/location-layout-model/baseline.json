@@ -1,0 +1,1063 @@
+{
+  "model": "gemini/gemini-3.5-flash-lite",
+  "seed": 7,
+  "runs": 2,
+  "records": [
+    {
+      "case": "temple_holders",
+      "run": 1,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1585,
+          "tokens_out": 596,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0019655000000000002,
+          "latency_ms": 3219,
+          "error": ": Value error, подход «Дорога в деревню»: нет полосы road"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2214,
+          "tokens_out": 635,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0022517,
+          "latency_ms": 2140,
+          "error": "подход «Дорога в деревню»: нет места на стороне s"
+        }
+      ]
+    },
+    {
+      "case": "temple_holders",
+      "run": 2,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1585,
+          "tokens_out": 784,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0024355,
+          "latency_ms": 2359,
+          "error": "подход «Дорога в деревню»: нет места на стороне s"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2399,
+          "tokens_out": 745,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0025822,
+          "latency_ms": 2312,
+          "error": "подход «Дорога в деревню»: нет места на стороне w"
+        }
+      ]
+    },
+    {
+      "case": "temple_no_holders",
+      "run": 1,
+      "accepted": true,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1528,
+          "tokens_out": 933,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0027909000000000002,
+          "latency_ms": 2889,
+          "error": "проход p_vault: лестница или люк соединяют разные уровни"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2492,
+          "tokens_out": 931,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0030751,
+          "latency_ms": 2625,
+          "error": null
+        }
+      ],
+      "intent": {
+        "schema_version": 1,
+        "entry": "road",
+        "parts": [
+          {
+            "part_ref": "road",
+            "role": "room",
+            "name": "Дорога у храма",
+            "public_name": "Дорога у храма",
+            "description": "",
+            "environment": "outdoor",
+            "shape": "open",
+            "size": "medium",
+            "cols": null,
+            "rows": 8,
+            "level": 0,
+            "material": "earth",
+            "connects_to": null,
+            "side": null,
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "narthex",
+            "role": "room",
+            "name": "Притвор",
+            "public_name": "Притвор храма",
+            "description": "",
+            "environment": "indoor",
+            "shape": "rect",
+            "size": "small",
+            "cols": null,
+            "rows": 5,
+            "level": 0,
+            "material": "stone",
+            "connects_to": "road",
+            "side": "n",
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "nave",
+            "role": "room",
+            "name": "Главный зал",
+            "public_name": "Главный зал",
+            "description": "",
+            "environment": "indoor",
+            "shape": "rect",
+            "size": "large",
+            "cols": null,
+            "rows": 8,
+            "level": 0,
+            "material": "stone",
+            "connects_to": "narthex",
+            "side": "n",
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "col1",
+                "name": "Каменная колонна",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              },
+              {
+                "detail_ref": "col2",
+                "name": "Каменная колонна",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    5,
+                    2,
+                    5,
+                    2
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              },
+              {
+                "detail_ref": "altar",
+                "name": "Разрушенный алтарь",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    3,
+                    6,
+                    4,
+                    7
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "chapel",
+            "role": "room",
+            "name": "Часовня",
+            "public_name": "Боковая часовня",
+            "description": "",
+            "environment": "indoor",
+            "shape": "rect",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": 0,
+            "material": "stone",
+            "connects_to": "nave",
+            "side": "e",
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": true,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "shrine",
+                "name": "Статуя святого",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    3,
+                    3
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              },
+              {
+                "detail_ref": "bench",
+                "name": "Скамья для молитвы",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    1,
+                    5,
+                    2,
+                    5
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "crypt",
+            "role": "room",
+            "name": "Крипта",
+            "public_name": "Крипта под залом",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": -1,
+            "material": "stone",
+            "connects_to": "nave",
+            "side": "s",
+            "passage_kind": "stairs",
+            "passage_name": "Лестница в крипту",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "tomb1",
+                "name": "Каменный саркофаг",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    3,
+                    3
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              },
+              {
+                "detail_ref": "tomb2",
+                "name": "Плита пола",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    5
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "vault",
+            "role": "room",
+            "name": "Тайник",
+            "public_name": "Забытый тайник",
+            "description": "",
+            "environment": "indoor",
+            "shape": "rect",
+            "size": "small",
+            "cols": null,
+            "rows": 4,
+            "level": -1,
+            "material": "stone",
+            "connects_to": "crypt",
+            "side": "e",
+            "passage_kind": "arch",
+            "passage_name": "Скрытый проход",
+            "passage_state": "closed",
+            "secret": true,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "chest",
+                "name": "Железный сундук",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    3,
+                    3
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              },
+              {
+                "detail_ref": "shelf",
+                "name": "Каменная полка",
+                "kind": "furniture",
+                "cells": [
+                  [
+                    1,
+                    4,
+                    1,
+                    5
+                  ]
+                ],
+                "solid": true,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          }
+        ],
+        "approaches": [
+          {
+            "part_ref": "road",
+            "side": "s",
+            "kind": "edge",
+            "public_name": "Дорога в деревню",
+            "outside_id": null,
+            "band": null,
+            "width": 3
+          }
+        ],
+        "bands": []
+      }
+    },
+    {
+      "case": "temple_no_holders",
+      "run": 2,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1528,
+          "tokens_out": 667,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0021259,
+          "latency_ms": 2312,
+          "error": "проход p_vault: лестница или люк соединяют разные уровни"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2227,
+          "tokens_out": 665,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0023306,
+          "latency_ms": 2250,
+          "error": "обязательный участок vault доступен только через тайный проход"
+        }
+      ]
+    },
+    {
+      "case": "tavern",
+      "run": 1,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1532,
+          "tokens_out": 620,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0020096000000000003,
+          "latency_ms": 2968,
+          "error": "part_2: тайность части задана каркасом — открытая"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2182,
+          "tokens_out": 620,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0022046,
+          "latency_ms": 2656,
+          "error": "main: деталь «Скамьи для гостей» не помещается без перекрытия проходов"
+        }
+      ]
+    },
+    {
+      "case": "tavern",
+      "run": 2,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1532,
+          "tokens_out": 570,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0018846000000000002,
+          "latency_ms": 2032,
+          "error": "part_2: деталь «Полки с припасами» не помещается без перекрытия проходов"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2141,
+          "tokens_out": 570,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0020673,
+          "latency_ms": 2968,
+          "error": "проход in_main_s: шире одной клетки бывает только край, арка, ворота или пролом"
+        }
+      ]
+    },
+    {
+      "case": "cave",
+      "run": 1,
+      "accepted": true,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1561,
+          "tokens_out": 572,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0018983000000000001,
+          "latency_ms": 2203,
+          "error": null
+        }
+      ],
+      "intent": {
+        "schema_version": 1,
+        "entry": "main",
+        "parts": [
+          {
+            "part_ref": "main",
+            "role": "room",
+            "name": "Входной грот",
+            "public_name": "Входной грот",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": 0,
+            "material": "earth",
+            "connects_to": null,
+            "side": null,
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "stalactites",
+                "name": "Сталактиты",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "gravel",
+                "name": "Щебень",
+                "kind": "nature",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    4
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_1",
+            "role": "room",
+            "name": "Каменный проход",
+            "public_name": "Каменный проход",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 5,
+            "level": 0,
+            "material": "earth",
+            "connects_to": "main",
+            "side": "n",
+            "passage_kind": "door",
+            "passage_name": "Узкий проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [
+              "clue_logbook",
+              "npc:npc_keeper"
+            ],
+            "details": [
+              {
+                "detail_ref": "rock_ledges",
+                "name": "Скальные выступы",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "cracks",
+                "name": "Трещины",
+                "kind": "nature",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    4
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_2",
+            "role": "room",
+            "name": "Глубокий грот",
+            "public_name": "Глубокий грот",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": 0,
+            "material": "earth",
+            "connects_to": "part_1",
+            "side": "n",
+            "passage_kind": "door",
+            "passage_name": "Проход вглубь",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "stalagmites",
+                "name": "Сталагмиты",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "wet_stone",
+                "name": "Влажный камень",
+                "kind": "nature",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    4
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          }
+        ],
+        "approaches": [
+          {
+            "part_ref": "main",
+            "side": "s",
+            "kind": "gap",
+            "public_name": "Вход",
+            "outside_id": null,
+            "band": null,
+            "width": 3
+          }
+        ],
+        "bands": []
+      }
+    },
+    {
+      "case": "cave",
+      "run": 2,
+      "accepted": true,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1561,
+          "tokens_out": 604,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0019783,
+          "latency_ms": 2014,
+          "error": null
+        }
+      ],
+      "intent": {
+        "schema_version": 1,
+        "entry": "main",
+        "parts": [
+          {
+            "part_ref": "main",
+            "role": "room",
+            "name": "Входной грот",
+            "public_name": "Входной грот",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": 0,
+            "material": "earth",
+            "connects_to": null,
+            "side": null,
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "stalactites",
+                "name": "Сталактиты",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "rubble",
+                "name": "Щебень",
+                "kind": "nature",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    4
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_1",
+            "role": "room",
+            "name": "Каменный проход",
+            "public_name": "Каменный проход",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 5,
+            "level": 0,
+            "material": "earth",
+            "connects_to": "main",
+            "side": "s",
+            "passage_kind": "arch",
+            "passage_name": "Узкий проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [
+              "clue_logbook",
+              "npc:npc_keeper"
+            ],
+            "details": [
+              {
+                "detail_ref": "rock_ledges",
+                "name": "Скальные выступы",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "cracks",
+                "name": "Трещины",
+                "kind": "nature",
+                "cells": [
+                  [
+                    3,
+                    3,
+                    3,
+                    3
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_2",
+            "role": "room",
+            "name": "Глубокий грот",
+            "public_name": "Глубокий грот",
+            "description": "",
+            "environment": "indoor",
+            "shape": "cave",
+            "size": "medium",
+            "cols": null,
+            "rows": 6,
+            "level": -1,
+            "material": "earth",
+            "connects_to": "part_1",
+            "side": "s",
+            "passage_kind": "stairs",
+            "passage_name": "Каменная лестница вниз",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [
+              {
+                "detail_ref": "stalagmites",
+                "name": "Сталагмиты",
+                "kind": "nature",
+                "cells": [
+                  [
+                    2,
+                    2,
+                    2,
+                    2
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              },
+              {
+                "detail_ref": "wet_stone",
+                "name": "Влажный камень",
+                "kind": "nature",
+                "cells": [
+                  [
+                    4,
+                    4,
+                    4,
+                    4
+                  ]
+                ],
+                "solid": false,
+                "hidden": false
+              }
+            ],
+            "scene_profile": null,
+            "object_slots": []
+          }
+        ],
+        "approaches": [
+          {
+            "part_ref": "main",
+            "side": "n",
+            "kind": "gap",
+            "public_name": "Вход",
+            "outside_id": null,
+            "band": null,
+            "width": 2
+          }
+        ],
+        "bands": []
+      }
+    },
+    {
+      "case": "port",
+      "run": 1,
+      "accepted": false,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1567,
+          "tokens_out": 586,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0019351000000000001,
+          "latency_ms": 2031,
+          "error": ": Value error, подход «Подход к месту»: нет полосы path_1"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 2186,
+          "tokens_out": 624,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0022158000000000004,
+          "latency_ms": 2031,
+          "error": "подход «Подход к месту»: нет места на стороне s"
+        }
+      ]
+    },
+    {
+      "case": "port",
+      "run": 2,
+      "accepted": true,
+      "attempts": [
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1567,
+          "tokens_out": 303,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0012276000000000001,
+          "latency_ms": 1702,
+          "error": "part_1: форма задана планом — open"
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "tokens_in": 1897,
+          "tokens_out": 309,
+          "tokens_reasoning": 0,
+          "tokens_cached": null,
+          "cost_known": true,
+          "cost": 0.0013416,
+          "latency_ms": 1547,
+          "error": null
+        }
+      ],
+      "intent": {
+        "schema_version": 1,
+        "entry": "main",
+        "parts": [
+          {
+            "part_ref": "main",
+            "role": "room",
+            "name": "Набережная",
+            "public_name": "Набережная",
+            "description": "",
+            "environment": "outdoor",
+            "shape": "open",
+            "size": "medium",
+            "cols": 20,
+            "rows": 15,
+            "level": 0,
+            "material": "stone",
+            "connects_to": null,
+            "side": null,
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [
+              "clue_logbook",
+              "npc:npc_keeper"
+            ],
+            "details": [],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_1",
+            "role": "room",
+            "name": "Причалы",
+            "public_name": "Причалы",
+            "description": "Деревянные причалы старой гавани.",
+            "environment": "outdoor",
+            "shape": "open",
+            "size": "medium",
+            "cols": 15,
+            "rows": 10,
+            "level": 0,
+            "material": "wood",
+            "connects_to": "main",
+            "side": "s",
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [],
+            "scene_profile": null,
+            "object_slots": []
+          },
+          {
+            "part_ref": "part_2",
+            "role": "room",
+            "name": "Склад",
+            "public_name": "Склад",
+            "description": "Старый портовый склад.",
+            "environment": "indoor",
+            "shape": "rect",
+            "size": "medium",
+            "cols": 10,
+            "rows": 10,
+            "level": 0,
+            "material": "wood",
+            "connects_to": "main",
+            "side": "e",
+            "passage_kind": "door",
+            "passage_name": "Проход",
+            "passage_state": "open",
+            "secret": false,
+            "required": false,
+            "anchors": [],
+            "details": [],
+            "scene_profile": null,
+            "object_slots": []
+          }
+        ],
+        "approaches": [
+          {
+            "part_ref": "main",
+            "side": "n",
+            "kind": "edge",
+            "public_name": "Подход к месту",
+            "outside_id": null,
+            "band": null,
+            "width": 10
+          }
+        ],
+        "bands": []
+      }
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "accepted": 4,
+    "first_call": 2,
+    "calls": 18,
+    "cost": 0.038320200000000006
+  }
+}

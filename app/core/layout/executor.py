@@ -76,9 +76,12 @@ async def _draft(maker, claim: storage.Claim, provider, llm=None) -> tuple[Bluep
                 log.info("layout %s: template snapshot rejected", claim.ref)
                 diagnostics.append("template_rejected:snapshot_invalid")
             else:
-                return _with_anchors(blueprint, waiting), "normal", [
-                    f"source:template:{selection.get('id')}:{selection.get('version')}"
-                ], claim
+                return (
+                    _with_anchors(blueprint, waiting),
+                    "normal",
+                    [f"source:template:{selection.get('id')}:{selection.get('version')}"],
+                    claim,
+                )
         elif isinstance(selection, dict):
             diagnostics.append(f"template_rejected:{selection.get('reason', 'no_candidate')}")
         if over:
@@ -138,7 +141,7 @@ async def _ask_model(maker, claim, llm, model, mandate, provider, kw) -> tuple[L
         provider.propose(intent, **kw)
 
     try:
-        while True:
+        while len(calls) < LLM_LIMIT:
             if msgs and layout_model.input_estimate(mandate, msgs) > layout_model.MAX_IN:
                 reason = "context_budget"
                 break  # не занимаем попытку и не пишем LlmCall без сетевого вызова
@@ -202,8 +205,10 @@ async def _publish_layout(
         if area.scene_profile is not None:
             state["scene_profile"] = area.scene_profile
         if area.object_slots:
-            state["object_slots"] = [dict(asdict(slot), feature_id=f"sf_{area.area_ref}_{slot.detail_ref}"[:32]
-                                         if slot.detail_ref else None) for slot in area.object_slots]
+            state["object_slots"] = [
+                dict(asdict(slot), feature_id=f"sf_{area.area_ref}_{slot.detail_ref}"[:32] if slot.detail_ref else None)
+                for slot in area.object_slots
+            ]
         if area.secret:
             state["secret"] = True
         en = Entity(campaign_id=ctx.campaign.id, kind="location", name=area.public_name,
@@ -241,8 +246,9 @@ async def _publish_layout(
         "residents": residents,
         "notes": [n for n in notes if not n.startswith(("source:template:", "template_rejected:"))],
         "source": next((n for n in notes if n.startswith("source:template:")), "generated"),
-        "template_fallback": next((n.removeprefix("template_rejected:") for n in notes
-                                   if n.startswith("template_rejected:")), None),
+        "template_fallback": next(
+            (n.removeprefix("template_rejected:") for n in notes if n.startswith("template_rejected:")), None
+        ),
     }
 
 

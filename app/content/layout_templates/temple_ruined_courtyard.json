@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "temple_ruined_courtyard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "archetype": "temple",
   "template_ids": [
     "location.temple"
@@ -53,7 +53,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           },
           {
             "detail_ref": "rubble_piles",
@@ -61,14 +62,21 @@
             "kind": "hazard",
             "cells": [
               [
-                8,
                 2,
-                9,
-                3
+                2,
+                3,
+                2
+              ],
+              [
+                7,
+                6,
+                7,
+                6
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rubble"
           },
           {
             "detail_ref": "dry_well",
@@ -83,7 +91,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           },
           {
             "detail_ref": "weed_thicket",
@@ -98,9 +107,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:shrub"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "ruined_nave",
@@ -137,7 +149,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           },
           {
             "detail_ref": "standing_pillars",
@@ -158,7 +171,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:pillar"
           },
           {
             "detail_ref": "ash_remains",
@@ -173,7 +187,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rubble"
           },
           {
             "detail_ref": "collapsed_arch",
@@ -188,9 +203,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rubble"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "crypt_undercroft",
@@ -227,7 +245,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:chest"
           },
           {
             "detail_ref": "sarcophagi_south",
@@ -242,7 +261,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:chest"
           },
           {
             "detail_ref": "burial_niche",
@@ -257,7 +277,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:chest"
           },
           {
             "detail_ref": "eternal_flame",
@@ -272,9 +293,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:torch"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       }
     ],
     "approaches": [

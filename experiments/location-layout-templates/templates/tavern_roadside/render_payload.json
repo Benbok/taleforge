@@ -19,11 +19,11 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 8,
-        "rows": 8,
+        "cols": 12,
+        "rows": 10,
         "party": [
-          3,
-          7
+          5,
+          9
         ],
         "walls": [
           [
@@ -35,39 +35,55 @@
             2
           ],
           [
+            1,
+            3
+          ],
+          [
+            1,
+            7
+          ],
+          [
             2,
-            2
+            3
+          ],
+          [
+            2,
+            8
           ],
           [
             3,
-            0
-          ],
-          [
-            4,
-            0
+            3
           ],
           [
             5,
-            2
-          ],
-          [
-            5,
-            6
+            0
           ],
           [
             6,
+            0
+          ],
+          [
+            8,
             2
           ],
           [
-            6,
-            6
+            8,
+            7
+          ],
+          [
+            9,
+            2
+          ],
+          [
+            9,
+            7
           ]
         ],
         "exits": [
           {
             "name": "Вход с тракта",
             "side": "s",
-            "at": 3,
+            "at": 5,
             "width": 1,
             "kind": "door",
             "state": "open",
@@ -77,15 +93,15 @@
             "passage_ref": "in_common_room_s",
             "cells": [
               [
-                3,
-                7
+                5,
+                9
               ]
             ]
           },
           {
             "name": "Дверь в коридор покоев",
             "side": "e",
-            "at": 4,
+            "at": 5,
             "width": 1,
             "kind": "door",
             "state": "open",
@@ -95,8 +111,8 @@
             "passage_ref": "p_guest_rooms",
             "cells": [
               [
-                7,
-                4
+                11,
+                5
               ]
             ]
           },
@@ -126,15 +142,16 @@
             "kind": "light",
             "cells": [
               [
-                3,
+                5,
                 0,
-                4,
+                6,
                 0
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_common_room_bar_counter",
@@ -145,18 +162,19 @@
                 1,
                 1,
                 1,
-                2
+                3
               ],
               [
                 2,
-                2,
-                2,
-                2
+                3,
+                3,
+                3
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:counter"
           },
           {
             "id": "sf_common_room_bar_stools",
@@ -165,14 +183,21 @@
             "cells": [
               [
                 2,
-                3,
+                4,
                 2,
+                4
+              ],
+              [
+                4,
+                3,
+                4,
                 3
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           },
           {
             "id": "sf_common_room_table_north",
@@ -180,15 +205,16 @@
             "kind": "furniture",
             "cells": [
               [
-                5,
+                8,
                 2,
-                6,
+                9,
                 2
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:table"
           },
           {
             "id": "sf_common_room_benches_north",
@@ -196,21 +222,22 @@
             "kind": "furniture",
             "cells": [
               [
-                5,
+                8,
                 1,
-                6,
+                9,
                 1
               ],
               [
-                5,
+                8,
                 3,
-                6,
+                9,
                 3
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           },
           {
             "id": "sf_common_room_table_south",
@@ -218,15 +245,16 @@
             "kind": "furniture",
             "cells": [
               [
-                5,
-                6,
-                6,
-                6
+                8,
+                7,
+                9,
+                7
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:table"
           },
           {
             "id": "sf_common_room_benches_south",
@@ -234,15 +262,22 @@
             "kind": "furniture",
             "cells": [
               [
-                5,
-                5,
+                8,
                 6,
-                5
+                9,
+                6
+              ],
+              [
+                8,
+                8,
+                9,
+                8
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bench"
           },
           {
             "id": "sf_common_room_ale_casks",
@@ -251,14 +286,21 @@
             "cells": [
               [
                 1,
-                6,
+                7,
                 1,
                 7
+              ],
+              [
+                2,
+                8,
+                2,
+                8
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:barrel"
           }
         ],
         "environment": "indoor",
@@ -276,7 +318,7 @@
       "id": "kitchen_pantry",
       "name": "Кухня",
       "offset": [
-        -5,
+        -6,
         1
       ],
       "level": 0,
@@ -285,20 +327,40 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 5,
-        "rows": 6,
+        "cols": 6,
+        "rows": 7,
         "party": [
-          4,
+          5,
           3
         ],
         "walls": [
           [
             0,
-            2
+            1
           ],
           [
             0,
-            3
+            2
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            0
           ]
         ],
         "exits": [
@@ -315,7 +377,7 @@
             "passage_ref": "p_kitchen_pantry",
             "cells": [
               [
-                4,
+                5,
                 3
               ]
             ]
@@ -329,14 +391,15 @@
             "cells": [
               [
                 0,
-                2,
+                1,
                 0,
-                3
+                2
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_kitchen_pantry_pantry_shelves",
@@ -344,15 +407,16 @@
             "kind": "furniture",
             "cells": [
               [
-                1,
+                2,
                 0,
-                3,
+                4,
                 0
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_kitchen_pantry_prep_table",
@@ -361,14 +425,15 @@
             "cells": [
               [
                 2,
+                4,
                 3,
-                2,
                 4
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:table"
           }
         ],
         "environment": "indoor",
@@ -386,7 +451,7 @@
       "id": "guest_rooms",
       "name": "Комнаты отдыха",
       "offset": [
-        8,
+        12,
         1
       ],
       "level": 0,
@@ -395,18 +460,43 @@
       "revision": 1,
       "sketch": {
         "shape": "room",
-        "cols": 6,
-        "rows": 6,
+        "cols": 7,
+        "rows": 8,
         "party": [
           0,
-          3
+          4
         ],
-        "walls": [],
+        "walls": [
+          [
+            4,
+            1
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            5,
+            1
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            6,
+            6
+          ]
+        ],
         "exits": [
           {
             "name": "Дверь в коридор покоев",
             "side": "w",
-            "at": 3,
+            "at": 4,
             "width": 1,
             "kind": "door",
             "state": "open",
@@ -417,7 +507,7 @@
             "cells": [
               [
                 0,
-                3
+                4
               ]
             ]
           }
@@ -429,15 +519,16 @@
             "kind": "furniture",
             "cells": [
               [
+                4,
                 1,
-                1,
-                2,
+                5,
                 1
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:bed"
           },
           {
             "id": "sf_guest_rooms_bunks_south",
@@ -445,15 +536,16 @@
             "kind": "furniture",
             "cells": [
               [
-                1,
                 4,
-                2,
-                4
+                6,
+                5,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:bed"
           },
           {
             "id": "sf_guest_rooms_traveler_chests",
@@ -461,15 +553,22 @@
             "kind": "object",
             "cells": [
               [
-                4,
-                2,
-                4,
-                3
+                6,
+                1,
+                6,
+                1
+              ],
+              [
+                6,
+                6,
+                6,
+                6
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:chest"
           }
         ],
         "environment": "indoor",

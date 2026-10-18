@@ -48,6 +48,7 @@ class Detail:
     cells: tuple[Rect, ...]
     solid: bool = False  # колонна, валун: геометрия (непроходимая клетка), а не предмет
     hidden: bool = False
+    visual_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -196,10 +197,18 @@ class Blueprint:
                 description=a.get("description") or "",
                 secret=bool(a.get("secret")),
                 scene_profile=a.get("scene_profile"),
-                object_slots=tuple(ObjectSlot(
-                    x["slot_ref"], x["role"], rects(x["cells"]), x.get("detail_ref"),
-                    bool(x.get("hidden")), int(x.get("max_cols", 1)), int(x.get("max_rows", 1)),
-                ) for x in a.get("object_slots") or ()),
+                object_slots=tuple(
+                    ObjectSlot(
+                        x["slot_ref"],
+                        x["role"],
+                        rects(x["cells"]),
+                        x.get("detail_ref"),
+                        bool(x.get("hidden")),
+                        int(x.get("max_cols", 1)),
+                        int(x.get("max_rows", 1)),
+                    )
+                    for x in a.get("object_slots") or ()
+                ),
                 details=tuple(
                     Detail(
                         x["detail_ref"],
@@ -208,6 +217,7 @@ class Blueprint:
                         rects(x["cells"]),
                         bool(x.get("solid")),
                         bool(x.get("hidden")),
+                        x.get("visual_key"),
                     )
                     for x in a.get("details") or ()
                 ),

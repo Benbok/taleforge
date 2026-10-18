@@ -28,6 +28,14 @@
         ],
         "walls": [
           [
+            1,
+            1
+          ],
+          [
+            1,
+            4
+          ],
+          [
             2,
             2
           ],
@@ -41,6 +49,22 @@
           ],
           [
             2,
+            5
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            7,
             5
           ],
           [
@@ -119,7 +143,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:counter"
           },
           {
             "id": "sf_taproom_round_tables",
@@ -129,13 +154,20 @@
               [
                 5,
                 2,
+                6,
+                2
+              ],
+              [
+                6,
+                5,
                 7,
-                3
+                5
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:table"
           },
           {
             "id": "sf_taproom_iron_stove",
@@ -151,7 +183,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:hearth"
           },
           {
             "id": "sf_taproom_ale_casks",
@@ -160,14 +193,21 @@
             "cells": [
               [
                 1,
-                2,
                 1,
-                5
+                1,
+                1
+              ],
+              [
+                1,
+                4,
+                1,
+                4
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": true,
+            "visual_key": "feature:barrel"
           }
         ],
         "environment": "indoor",
@@ -236,7 +276,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:table"
           },
           {
             "id": "sf_private_parlor_bookcase",
@@ -252,7 +293,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_private_parlor_wall_sconce",
@@ -268,7 +310,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -368,7 +411,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:barrel"
           },
           {
             "id": "sf_cold_cellar_bottle_racks",
@@ -384,7 +428,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_cold_cellar_ice_pit",
@@ -400,7 +445,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_cold_cellar_cellar_lantern",
@@ -416,7 +462,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -494,7 +541,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:chest"
           },
           {
             "id": "sf_secret_vault_smuggled_crates",
@@ -510,7 +558,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:crate"
           }
         ],
         "environment": "indoor",

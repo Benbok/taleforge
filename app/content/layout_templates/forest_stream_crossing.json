@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "forest_stream_crossing",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "archetype": "forest",
   "template_ids": [
     "location.forest"
@@ -53,7 +53,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rock"
           },
           {
             "detail_ref": "wayside_shrine",
@@ -68,7 +69,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:altar"
           },
           {
             "detail_ref": "willow_tree",
@@ -83,9 +85,12 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:tree"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "stream_crossing",
@@ -128,7 +133,8 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:net"
           },
           {
             "detail_ref": "river_stones",
@@ -149,7 +155,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:rock"
           },
           {
             "detail_ref": "reeds_bed",
@@ -164,9 +171,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:reeds"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       },
       {
         "part_ref": "east_bluff",
@@ -203,7 +213,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:net"
           },
           {
             "detail_ref": "lookout_pine",
@@ -218,7 +229,8 @@
               ]
             ],
             "solid": true,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:tree"
           },
           {
             "detail_ref": "camp_embers",
@@ -233,9 +245,12 @@
               ]
             ],
             "solid": false,
-            "hidden": false
+            "hidden": false,
+            "visual_key": "feature:hearth"
           }
-        ]
+        ],
+        "scene_profile": null,
+        "object_slots": []
       }
     ],
     "approaches": [

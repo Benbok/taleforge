@@ -16,6 +16,36 @@ from app.core.layout.contracts import MAX_SIDE
 REF = r"^[a-z][a-z0-9_]{0,31}$"
 Side = Literal["n", "e", "s", "w"]
 
+# Optional presentation metadata shared with the map artwork catalogue.
+# Unknown saved keys remain valid and use the client's category fallback.
+DETAIL_VISUAL_KEYS = (
+    "feature:table",
+    "feature:bench",
+    "feature:bed",
+    "feature:counter",
+    "feature:shelf",
+    "feature:barrel",
+    "feature:crate",
+    "feature:chest",
+    "feature:hearth",
+    "feature:torch",
+    "feature:altar",
+    "feature:pillar",
+    "feature:rock",
+    "feature:rubble",
+    "feature:tree",
+    "feature:shrub",
+    "feature:reeds",
+    "feature:crystal",
+    "feature:bones",
+    "feature:net",
+    "feature:crane",
+    "feature:mooring",
+    "feature:glow",
+    "feature:lichen",
+    "feature:nest",
+)
+
 
 class DetailIntent(BaseModel):
     detail_ref: str = Field(pattern=REF)
@@ -24,6 +54,7 @@ class DetailIntent(BaseModel):
     cells: list[list[int]] = Field(min_length=1, max_length=4, description="[c0, r0, c1, r1] в клетках части")
     solid: bool = Field(False, description="колонна, валун: непроходимая геометрия, не предмет")
     hidden: bool = False
+    visual_key: str | None = Field(None, max_length=64)
 
     @field_validator("cells")
     @classmethod

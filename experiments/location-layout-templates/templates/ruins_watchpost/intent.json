@@ -37,7 +37,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rubble"
         },
         {
           "detail_ref": "weapon_rack_ruin",
@@ -52,7 +53,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:shelf"
         },
         {
           "detail_ref": "watch_brazier",
@@ -67,9 +69,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "watchtower_ruin",
@@ -106,7 +111,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "archer_embrasures",
@@ -127,7 +133,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "oil_lantern",
@@ -142,9 +149,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:torch"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     },
     {
       "part_ref": "dungeon_casemate",
@@ -181,7 +191,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:crate"
         },
         {
           "detail_ref": "iron_grate_cell",
@@ -196,7 +207,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:pillar"
         },
         {
           "detail_ref": "interrogation_table",
@@ -211,9 +223,12 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:table"
         }
-      ]
+      ],
+      "scene_profile": null,
+      "object_slots": []
     }
   ],
   "approaches": [

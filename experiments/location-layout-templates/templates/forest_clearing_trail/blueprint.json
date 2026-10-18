@@ -33,7 +33,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:shrub"
         },
         {
           "detail_ref": "fallen_trunk",
@@ -48,7 +49,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:tree"
         },
         {
           "detail_ref": "moss_rock",
@@ -63,7 +65,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         }
       ],
       "terrain": [
@@ -157,7 +160,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:tree"
         },
         {
           "detail_ref": "campfire",
@@ -172,7 +176,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:hearth"
         },
         {
           "detail_ref": "log_seat",
@@ -187,7 +192,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:bench"
         },
         {
           "detail_ref": "mushrooms",
@@ -195,14 +201,21 @@
           "kind": "nature",
           "cells": [
             [
-              11,
               2,
-              12,
-              3
+              2,
+              2,
+              2
+            ],
+            [
+              6,
+              6,
+              6,
+              6
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:shrub"
         }
       ],
       "terrain": [
@@ -296,7 +309,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:shrub"
         },
         {
           "detail_ref": "granite_outcrop",
@@ -311,7 +325,8 @@
             ]
           ],
           "solid": true,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:rock"
         },
         {
           "detail_ref": "ancient_stump",
@@ -326,7 +341,8 @@
             ]
           ],
           "solid": false,
-          "hidden": false
+          "hidden": false,
+          "visual_key": "feature:tree"
         }
       ],
       "terrain": [],

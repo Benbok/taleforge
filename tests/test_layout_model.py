@@ -4,6 +4,7 @@ import asyncio
 import json
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from app.agents import layout_model
 from app.agents.llm import LLMError, LLMReply, ScriptedLLM, ToolCall
@@ -43,6 +44,22 @@ def test_schema_is_strict_and_lists_holders():
     assert set(part["properties"]["shape"]["enum"]) == {"rect", "circle", "l_shape", "corridor", "open", "cave"}
 
 
+def test_model_can_choose_artwork_without_changing_occupied_cells():
+    params = layout_model.spec(temple_mandate())["function"]["parameters"]
+    detail_schema = params["properties"]["parts"]["items"]["properties"]["details"]["items"]
+    artwork = detail_schema["properties"].get("visual_key")
+    assert artwork is not None
+    assert {"feature:bed", "feature:barrel", "feature:lichen", "feature:nest"} <= set(artwork["enum"])
+    raw = model_layout(KEYS)
+    detail = next(p for p in raw["parts"] if p["part_ref"] == "nave")["details"][0]
+    original_cells = detail["cells"]
+    detail["visual_key"] = "feature:pillar"
+    intent, attempt, retry = _ask(ScriptedLLM([{"tool_calls": [(layout_model.TOOL, raw)]}]))
+    assert intent is not None and retry is None and attempt.error is None
+    pillar = next(p for p in intent.parts if p.part_ref == "nave").details[0]
+    assert pillar.visual_key == "feature:pillar" and pillar.cells == original_cells
+
+
 def test_parts_limit_is_checked_by_server_not_schema():
     # maxItems у parts поверх вложенных ограниченных details/cells Gemini отклоняет целиком: 400 INVALID_ARGUMENT
     params = layout_model.spec(temple_mandate())["function"]["parameters"]
@@ -52,6 +69,70 @@ def test_parts_limit_is_checked_by_server_not_schema():
     raw["parts"] += [{**extra, "part_ref": f"extra_{i}"} for i in range(13 - len(raw["parts"]))]
     with pytest.raises(Blocked, match="parts"):
         layout_model.to_intent(temple_mandate(), raw)
+
+
+def test_schema_disallows_made_up_anchors_when_mandate_has_no_holders():
+    mandate = temple_mandate(anchors=(), residents=())
+    params = layout_model.spec(mandate)["function"]["parameters"]
+    raw = {
+        "entry": "road",
+        "parts": [{"part_ref": "road", "name": "Дорога", "public_name": "Дорога"}],
+        "approaches": [{"part_ref": "road", "side": "w", "public_name": "Вход"}],
+    }
+    validator = Draft202012Validator(params)
+    assert validator.is_valid(raw)
+    # Do not depend on Gemini/LiteLLM preserving an empty enum.
+    Draft202012Validator.check_schema(params)
+    assert "anchors" not in params["properties"]["parts"]["items"]["properties"]
+    raw["parts"][0]["anchors"] = ["Дорога у храма"]
+    assert not validator.is_valid(raw)
+
+
+@pytest.mark.parametrize(
+    "mutate, expected",
+    [
+        (lambda raw: raw["approaches"][0].update(band="Дорога в деревню"), ("band_ref", "road", "stream")),
+        (lambda raw: raw["parts"][0].update(anchors=["Дорога у храма"]), ("anchors", "clue_relic", "npc:npc_warden")),
+        (
+            lambda raw: next(p for p in raw["parts"] if p["part_ref"] == "vault").update(passage_kind="stairs"),
+            ("vault", "sacristy", "level=0", "door"),
+        ),
+        (
+            lambda raw: raw["approaches"][0].update(side="n", band="road"),
+            ("side", "bands", "свобод"),
+        ),
+        (
+            lambda raw: next(p for p in raw["parts"] if p["part_ref"] == "nave").update(shape="corridor"),
+            ("shape", "cols", "rows", "open"),
+        ),
+        (
+            lambda raw: next(p for p in raw["parts"] if p["part_ref"] == "nave")["details"].append(
+                {"detail_ref": "altar", "name": "Второй алтарь", "cells": [[4, 3, 4, 3]]}
+            ),
+            ("detail_ref", "уникал"),
+        ),
+        (
+            lambda raw: next(p for p in raw["parts"] if p["part_ref"] == "nave")["details"][0].update(
+                cells=[[4, 3, 1, 1]]
+            ),
+            ("c1>=c0", "r1>=r0", "cells=[[1,1,1,1]]"),
+        ),
+    ],
+)
+def test_correction_explains_reference_and_geometry_constraints(mutate, expected):
+    raw = model_layout(KEYS)
+    mutate(raw)
+    msgs: list = []
+    llm = ScriptedLLM(
+        [{"tool_calls": [(layout_model.TOOL, raw)]}, {"tool_calls": [(layout_model.TOOL, model_layout(KEYS))]}]
+    )
+    intent, attempt, retry = _ask(llm, msgs)
+    assert intent is None and attempt.error and retry
+    feedback = msgs[-1]["content"]
+    for value in expected:
+        assert value in feedback
+    intent, attempt, retry = _ask(llm, msgs)
+    assert intent is not None and attempt.error is None and retry is None
 
 
 def test_brief_carries_no_plot_secrets():

@@ -326,7 +326,7 @@ def _terrain(bands: list[BandIntent], boxes: dict[str, _Box], by: dict[str, Part
 
 def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[str, set[Cell]]) -> Area:
     details = tuple(
-        Detail(d.detail_ref, d.name, d.kind, tuple(tuple(r) for r in d.cells), d.solid, d.hidden)  # type: ignore[misc]
+        Detail(d.detail_ref, d.name, d.kind, tuple(tuple(r) for r in d.cells), d.solid, d.hidden, d.visual_key)  # type: ignore[misc]
         for d in part.details
     )
     outdoor = part.environment == "outdoor"
@@ -345,8 +345,12 @@ def _area(part: PartIntent, box: _Box, passages: list[Passage], terrain: dict[st
         description=part.description,
         secret=part.secret,
         scene_profile=part.scene_profile,
-        object_slots=tuple(ObjectSlot(s.slot_ref, s.role, tuple(tuple(r) for r in s.cells),
-                                     s.detail_ref, s.hidden, s.max_cols, s.max_rows) for s in part.object_slots),
+        object_slots=tuple(
+            ObjectSlot(
+                s.slot_ref, s.role, tuple(tuple(r) for r in s.cells), s.detail_ref, s.hidden, s.max_cols, s.max_rows
+            )
+            for s in part.object_slots
+        ),
         details=details,
         terrain=tuple(Terrain(k, tuple(runs(cells))) for k, cells in sorted(terrain.items()) if cells),
         edges=_edges(part.part_ref, box, passages) if outdoor else (),
@@ -366,15 +370,16 @@ def _place_details(bp: Blueprint) -> Blueprint:
     for area in bp.areas:
         floor = geometry.area_floor(bp, area)
         entrances = {
-            c for _, end in bp.ends_of(area.area_ref)
-            for c in geometry.end_cells(floor, area, end) if c is not None
+            c for _, end in bp.ends_of(area.area_ref) for c in geometry.end_cells(floor, area, end) if c is not None
         }
         occupied: set[Cell] = set()
         details = list(area.details)
         generated: set[str] = set()
         if min(area.cols, area.rows) >= 4 and len(details) < 2:
-            names = ("Каменные выступы", "Щебень") if area.shape == "cave" else (
-                ("Кустарник", "Камни") if area.environment == "outdoor" else ("Ниша в стене", "Отделка стен")
+            names = (
+                ("Каменные выступы", "Щебень")
+                if area.shape == "cave"
+                else (("Кустарник", "Камни") if area.environment == "outdoor" else ("Ниша в стене", "Отделка стен"))
             )
             refs = {d.detail_ref for d in details}
             for i, name in enumerate(names):
@@ -385,11 +390,16 @@ def _place_details(bp: Blueprint) -> Blueprint:
                     ref += "_"
                 refs.add(ref)
                 generated.add(ref)
-                details.append(Detail(ref, name, "nature" if area.environment == "outdoor" else "furniture",
-                                      ((1 + i, 1, 1 + i, 1),)))
+                details.append(
+                    Detail(
+                        ref, name, "nature" if area.environment == "outdoor" else "furniture", ((1 + i, 1, 1 + i, 1),)
+                    )
+                )
         placed = []
-        def fits(detail: Detail, *, floor=floor, entrances=entrances,
-                 occupied=occupied, area=area, placed=placed) -> bool:
+
+        def fits(
+            detail: Detail, *, floor=floor, entrances=entrances, occupied=occupied, area=area, placed=placed
+        ) -> bool:
             cells = rect_cells(detail.cells)
             if not cells <= floor:
                 return False
@@ -397,8 +407,11 @@ def _place_details(bp: Blueprint) -> Blueprint:
                 return False
             try:
                 interim = {d.detail_ref: d for d in [*placed, detail]}
-                slots = tuple(replace(s, cells=interim[s.detail_ref].cells) if s.detail_ref else s
-                              for s in area.object_slots if not s.detail_ref or s.detail_ref in interim)
+                slots = tuple(
+                    replace(s, cells=interim[s.detail_ref].cells) if s.detail_ref else s
+                    for s in area.object_slots
+                    if not s.detail_ref or s.detail_ref in interim
+                )
                 geometry.build_area(bp, replace(area, details=tuple([*placed, detail]), object_slots=slots))
             except geometry.GeometryError:
                 return False
@@ -412,15 +425,12 @@ def _place_details(bp: Blueprint) -> Blueprint:
                 occupied |= cells
                 continue
             candidates = sorted(
-                ((dc, dr) for dc in range(-area.cols + 1, area.cols)
-                 for dr in range(-area.rows + 1, area.rows)),
+                ((dc, dr) for dc in range(-area.cols + 1, area.cols) for dr in range(-area.rows + 1, area.rows)),
                 key=lambda shift: (abs(shift[0]) + abs(shift[1]), shift[1], shift[0]),
             )
             for dc, dr in candidates:
                 shifted = {(c + dc, r + dr) for c, r in cells}
-                moved = replace(d, cells=tuple(
-                    (c0 + dc, r0 + dr, c1 + dc, r1 + dr) for c0, r0, c1, r1 in d.cells
-                ))
+                moved = replace(d, cells=tuple((c0 + dc, r0 + dr, c1 + dc, r1 + dr) for c0, r0, c1, r1 in d.cells))
                 if fits(moved):
                     placed.append(moved)
                     occupied |= shifted
@@ -430,8 +440,9 @@ def _place_details(bp: Blueprint) -> Blueprint:
                     continue  # optional scenery cannot invalidate an authored room
                 raise LayoutError([f"{area.area_ref}: деталь «{d.name}» не помещается без перекрытия проходов"])
         by_ref = {d.detail_ref: d for d in placed}
-        slots = tuple(replace(s, cells=by_ref[s.detail_ref].cells) if s.detail_ref in by_ref else s
-                      for s in area.object_slots)
+        slots = tuple(
+            replace(s, cells=by_ref[s.detail_ref].cells) if s.detail_ref in by_ref else s for s in area.object_slots
+        )
         if not slots and area.role in {"market", "cache", "pier"}:
             from app.core.layout import furnish
 
@@ -439,10 +450,12 @@ def _place_details(bp: Blueprint) -> Blueprint:
             proposed, unplaced = furnish.place(base, [("slot_candidate", "Container")], bp.seed)
             if not unplaced:
                 feature = next(f for f in proposed["features"] if f.get("entity_id") == "slot_candidate")
-                slots = (ObjectSlot(f"{area.role}_container", "container",
-                                    tuple(tuple(r) for r in feature["cells"])),)
-        areas.append(replace(area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref),
-                             object_slots=slots))
+                slots = (ObjectSlot(f"{area.role}_container", "container", tuple(tuple(r) for r in feature["cells"])),)
+        areas.append(
+            replace(
+                area, details=tuple(by_ref[d.detail_ref] for d in details if d.detail_ref in by_ref), object_slots=slots
+            )
+        )
     result = replace(bp, areas=tuple(areas))
     for area in result.areas:
         geometry.build_area(result, area)

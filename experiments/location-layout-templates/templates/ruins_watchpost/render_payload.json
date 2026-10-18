@@ -93,7 +93,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_outer_barbican_weapon_rack_ru",
@@ -109,7 +110,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:shelf"
           },
           {
             "id": "sf_outer_barbican_watch_brazier",
@@ -125,7 +127,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:hearth"
           }
         ],
         "environment": "outdoor",
@@ -254,7 +257,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_watchtower_ruin_archer_embras",
@@ -276,7 +280,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_watchtower_ruin_oil_lantern",
@@ -292,7 +297,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:torch"
           }
         ],
         "environment": "indoor",
@@ -380,7 +386,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:crate"
           },
           {
             "id": "sf_dungeon_casemate_iron_grate_c",
@@ -396,7 +403,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:pillar"
           },
           {
             "id": "sf_dungeon_casemate_interrogatio",
@@ -412,7 +420,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:table"
           }
         ],
         "environment": "indoor",

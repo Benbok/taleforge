@@ -76,15 +76,22 @@
             "kind": "nature",
             "cells": [
               [
-                3,
                 2,
-                4,
+                2,
+                2,
                 2
+              ],
+              [
+                3,
+                1,
+                3,
+                1
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           },
           {
             "id": "sf_entry_chasm_boulder",
@@ -100,7 +107,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           }
         ],
         "environment": "indoor",
@@ -197,7 +205,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rubble"
           }
         ],
         "environment": "indoor",
@@ -216,7 +225,7 @@
       "name": "Подземный грот",
       "offset": [
         14,
-        -1
+        -2
       ],
       "level": 0,
       "secret": false,
@@ -224,27 +233,47 @@
       "revision": 1,
       "sketch": {
         "shape": "cave",
-        "cols": 12,
-        "rows": 10,
+        "cols": 14,
+        "rows": 12,
         "party": [
           0,
-          5
+          6
         ],
         "walls": [
           [
-            3,
+            4,
             3
           ],
           [
-            3,
+            4,
             4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            10,
+            5
+          ],
+          [
+            10,
+            6
           ]
         ],
         "exits": [
           {
             "name": "Высокий скальный свод",
             "side": "w",
-            "at": 5,
+            "at": 6,
             "width": 1,
             "kind": "arch",
             "state": "open",
@@ -255,14 +284,14 @@
             "cells": [
               [
                 0,
-                5
+                6
               ]
             ]
           },
           {
             "name": "Низкий пролаз",
             "side": "s",
-            "at": 6,
+            "at": 7,
             "width": 1,
             "kind": "passage",
             "state": "open",
@@ -272,15 +301,15 @@
             "passage_ref": "p_side_den",
             "cells": [
               [
-                6,
-                9
+                7,
+                11
               ]
             ]
           },
           {
             "name": "Скальный берег озера",
             "side": "n",
-            "at": 6,
+            "at": 7,
             "width": 1,
             "kind": "gap",
             "state": "open",
@@ -290,7 +319,7 @@
             "passage_ref": "p_subterranean_lake",
             "cells": [
               [
-                6,
+                7,
                 0
               ]
             ]
@@ -303,15 +332,22 @@
             "kind": "cover",
             "cells": [
               [
+                4,
                 3,
-                3,
-                3,
+                4,
+                4
+              ],
+              [
+                5,
+                4,
+                5,
                 4
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": true
+            "solid": true,
+            "visual_key": "feature:rock"
           },
           {
             "id": "sf_great_grotto_glowing_lichen",
@@ -319,15 +355,22 @@
             "kind": "light",
             "cells": [
               [
-                8,
+                10,
                 2,
-                9,
+                10,
                 2
+              ],
+              [
+                11,
+                3,
+                11,
+                3
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:lichen"
           },
           {
             "id": "sf_great_grotto_rock_ledge",
@@ -335,15 +378,56 @@
             "kind": "cover",
             "cells": [
               [
+                3,
+                9,
                 4,
-                7,
-                6,
-                7
+                9
               ]
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_great_grotto_grotto_rocks_eas",
+            "name": "Скальный островок",
+            "kind": "cover",
+            "cells": [
+              [
+                9,
+                5,
+                10,
+                5
+              ],
+              [
+                10,
+                6,
+                10,
+                6
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
+          },
+          {
+            "id": "sf_great_grotto_grotto_rocks_sou",
+            "name": "Низкие сталагмиты",
+            "kind": "cover",
+            "cells": [
+              [
+                6,
+                8,
+                6,
+                8
+              ]
+            ],
+            "cover": "none",
+            "hidden": false,
+            "solid": true,
+            "visual_key": "feature:rock"
           }
         ],
         "environment": "indoor",
@@ -356,16 +440,18 @@
           "rev": 1
         },
         "mask": [
-          "###......###",
-          "###.......##",
-          "#..........#",
-          "...........#",
-          "............",
-          "............",
-          "............",
-          "#..........#",
-          "###.......##",
-          "####...#.###"
+          "####......####",
+          "##........#.##",
+          "#...........##",
+          "#............#",
+          "..............",
+          "..............",
+          ".............#",
+          "..............",
+          "##...........#",
+          "##...........#",
+          "###.........##",
+          "####.#....####"
         ]
       }
     },
@@ -373,8 +459,8 @@
       "id": "subterranean_lake",
       "name": "Подземное озеро",
       "offset": [
-        16,
-        -9
+        17,
+        -10
       ],
       "level": 0,
       "secret": false,
@@ -424,7 +510,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:glow"
           },
           {
             "id": "sf_subterranean_lake_decor_0",
@@ -468,8 +555,8 @@
       "id": "side_den",
       "name": "Тёмная ниша",
       "offset": [
-        17,
-        9
+        18,
+        10
       ],
       "level": 0,
       "secret": false,
@@ -519,7 +606,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:nest"
           },
           {
             "id": "sf_side_den_bone_pile",
@@ -535,7 +623,8 @@
             ],
             "cover": "none",
             "hidden": false,
-            "solid": false
+            "solid": false,
+            "visual_key": "feature:bones"
           }
         ],
         "environment": "indoor",
