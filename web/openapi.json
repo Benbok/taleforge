@@ -6257,6 +6257,11 @@
        }
       ],
       "title": "Voice"
+     },
+     "voiced": {
+      "default": true,
+      "title": "Voiced",
+      "type": "boolean"
      }
     },
     "required": [

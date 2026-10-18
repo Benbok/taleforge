@@ -372,7 +372,7 @@ async def intro_prepare(project_id: str, body: IntroRequest, session: SessionDep
         session,
         project,
         "intro",
-        encode(body.provider, body.voice, body.rewrite),
+        encode(body.provider, body.voice, body.rewrite, body.voiced),
         body.expected_revision,
         body.request_key,
         regenerate=True,

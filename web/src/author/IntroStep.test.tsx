@@ -42,12 +42,13 @@ it("выбор источника: облако недоступно, по ум�
   expect((screen.getByRole("radio", { name: /Локально — Voice Studio/ }) as HTMLInputElement).checked).toBe(true);
   expect(textbox.value).toBe("Туман над бухтой.");
   fireEvent.change(await screen.findByRole("combobox"), { target: { value: "p1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Только озвучить текущий текст" }));
+  fireEvent.click(screen.getByRole("button", { name: "Переозвучить" }));
   await waitFor(() => expect(mock.calls.some((c) => c.method === "POST" && c.url.endsWith("/intro"))).toBe(true));
   expect(mock.calls.find((c) => c.method === "POST" && c.url.endsWith("/intro"))?.body).toMatchObject({
     provider: "voicestudio",
     voice: "p1",
     rewrite: false,
+    voiced: true,
     expected_revision: 7,
   });
 });
@@ -67,4 +68,21 @@ it("свой текст сохраняется, а устаревшее всту
   fireEvent.click(screen.getByRole("button", { name: "Сохранить свой текст" }));
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/intro/text"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/intro/text"))).toMatchObject({ method: "PUT", body: { text: "Своё начало.", expected_revision: 7 } });
+});
+
+
+it("«Переписать только текст» просит новый текст без записи", async () => {
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  const { mock } = mount((c) =>
+    c.url.endsWith("/intro") && c.method === "GET"
+      ? { body: intro({ voices: [{ id: "v1", duration: 2 }], provider: "voicestudio" }) }
+      : c.url.endsWith("/vs-profiles")
+        ? { body: [] }
+        : c.url.endsWith("/intro") && c.method === "POST"
+          ? { status: 202, body: { job_id: "aj_t", stage: "intro", status: "queued", source_revision: 7 } }
+          : undefined,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Переписать только текст" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.method === "POST" && c.url.endsWith("/intro"))).toBe(true));
+  expect(mock.calls.find((c) => c.method === "POST" && c.url.endsWith("/intro"))?.body).toMatchObject({ rewrite: true, voiced: false });
 });

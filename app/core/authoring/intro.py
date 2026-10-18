@@ -22,15 +22,19 @@ class IntroError(Exception):
         self.code = code
 
 
-def encode(provider: str, voice: str | None, rewrite: bool) -> str:
-    return f"{provider}|{voice or ''}|{'rewrite' if rewrite else 'revoice'}"
+MODES = ("rewrite", "revoice", "text")  # text and voice | voice only | text only
 
 
-def decode(target: str) -> tuple[str, str | None, bool]:
+def encode(provider: str, voice: str | None, rewrite: bool, voiced: bool = True) -> str:
+    mode = "rewrite" if rewrite and voiced else "text" if rewrite else "revoice"
+    return f"{provider}|{voice or ''}|{mode}"
+
+
+def decode(target: str) -> tuple[str, str | None, str]:
     provider, voice, mode = (target.split("|") + ["", "", ""])[:3]
     if provider not in PROVIDERS:
         raise IntroError("unknown_provider")
-    return provider, voice or None, mode != "revoice"
+    return provider, voice or None, mode if mode in MODES else "rewrite"
 
 
 def voice_dir(media_dir: Path, campaign_id: str) -> Path:
@@ -60,7 +64,10 @@ def copy_voices(media_dir: Path, source_id: str, target_id: str, voices: list[di
 
 async def prepare(svc, project_id: str, world_id: str, job_id: str, target: str) -> dict:
     """Write (or keep) the text, then voice it by the chosen source. Returns what was stored."""
-    provider, voice, rewrite = decode(target)
+    provider, voice, mode = decode(target)
+    rewrite = mode in ("rewrite", "text")
+    if mode == "text":
+        provider = "none"  # new words: the old recording no longer matches and is dropped
     media_dir = Path(getattr(svc, "media_dir", None) or "media")
     async with svc.maker() as s:
         world = await s.get(Campaign, world_id)
@@ -73,6 +80,8 @@ async def prepare(svc, project_id: str, world_id: str, job_id: str, target: str)
         messages = prelude._intro_messages(world, cfg, plan)
         await s.rollback()
     text = "" if rewrite else str(old.get("text") or "")
+    if mode == "revoice" and not text:
+        raise IntroError("no_text")
     if not text:
         call = LlmCall(campaign_id=world_id, purpose="campaign_intro", model=model, author_job_id=job_id)
         text = await prelude.write_intro(svc, messages, call, api_base, temperature)
@@ -96,8 +105,8 @@ async def prepare(svc, project_id: str, world_id: str, job_id: str, target: str)
         "text": text,
         "voices": voices,
         "version": plan.get("version"),
-        "provider": provider,
-        "voice": voice,
+        "provider": provider if voices else None,
+        "voice": voice if voices else None,
         "parts": len(voiceover.split(text)),
     }
     async with svc.maker() as s:

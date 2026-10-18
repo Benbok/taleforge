@@ -413,7 +413,8 @@ class IntroOut(Contract):
 class IntroRequest(Contract):
     provider: Literal["voicestudio", "gemini", "none"]
     voice: str | None = Field(default=None, max_length=128)
-    rewrite: bool = True
+    rewrite: bool = True  # write a new text
+    voiced: bool = True  # voice it; rewrite without voice changes only the text
     expected_revision: int
     request_key: str = Field(min_length=1, max_length=128)
 

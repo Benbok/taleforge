@@ -128,3 +128,23 @@ def test_own_text_drops_the_old_recording_and_voices_copy_into_a_game(settings, 
         assert intro["text"] == "Своё вступление автора." and intro["voices"] == []
 
     _with_maker(settings, body)
+
+
+def test_text_only_rewrite_keeps_no_stale_recording(settings, tmp_path):
+    pid, cid = _prepared_project(settings, homed_plan())
+
+    async def body(maker):
+        svc = svc_for(maker, tmp_path)
+        await request(maker, pid, encode("voicestudio", None, rewrite=True), "i1")
+        await AuthorRunner(svc).run_due()
+        old = (await stored(maker, cid))["voices"]
+        await request(maker, pid, encode("voicestudio", None, rewrite=True, voiced=False), "i2")
+        await AuthorRunner(svc).run_due()
+        intro = await stored(maker, cid)
+        assert svc.llm.calls == 2 and intro["voices"] == [] and intro["provider"] is None
+        assert not list(
+            (tmp_path / "voice" / cid).glob(f"{old[0]['id']}.*")
+        )  # старая запись к новому тексту не подходит
+        assert len(svc.tts.used) == len(old)  # озвучки при «только текст» не было
+
+    _with_maker(settings, body)

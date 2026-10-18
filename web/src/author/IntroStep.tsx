@@ -56,8 +56,15 @@ export default function IntroStep({ projectId, revision, running, status, errorC
   }, [running]);
 
   const prepare = useMutation({
-    mutationFn: (rewrite: boolean) =>
-      authoring.prepareIntro(projectId, { provider, voice: voice || null, rewrite, expected_revision: revision, request_key: newRequestKey() }),
+    mutationFn: (mode: { rewrite: boolean; voiced: boolean }) =>
+      authoring.prepareIntro(projectId, {
+        provider,
+        voice: voice || null,
+        rewrite: mode.rewrite,
+        voiced: mode.voiced,
+        expected_revision: revision,
+        request_key: newRequestKey(),
+      }),
     onSuccess: () => {
       onQueued("Вступление готовится.");
       void client.invalidateQueries({ queryKey: ["author", projectId] });
@@ -107,15 +114,42 @@ export default function IntroStep({ projectId, revision, running, status, errorC
           </label>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
-          <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" disabled={busy} onClick={() => prepare.mutate(true)}>
-            {running ? "Готовлю вступление…" : hasText ? "Написать заново и озвучить" : "Написать и озвучить"}
-          </button>
-          {hasText && provider !== "none" && (
-            <button className="btn min-h-11 px-4 text-sm" type="button" disabled={busy} onClick={() => prepare.mutate(false)}>
-              Только озвучить текущий текст
+          {hasText ? (
+            <>
+              <button
+                className="btn btn-primary min-h-11 px-4 text-sm"
+                type="button"
+                disabled={busy || provider === "none"}
+                onClick={() => prepare.mutate({ rewrite: false, voiced: true })}
+                title="Тот же текст, новая запись выбранным голосом; модель не вызывается"
+              >
+                {running ? "Готовлю…" : "Переозвучить"}
+              </button>
+              <button
+                className="btn min-h-11 px-4 text-sm"
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm("Модель напишет новый текст; текущая запись к нему не подойдёт и будет удалена. Продолжить?")) {
+                    prepare.mutate({ rewrite: true, voiced: false });
+                  }
+                }}
+              >
+                Переписать только текст
+              </button>
+              <button className="btn min-h-11 px-4 text-sm" type="button" disabled={busy || provider === "none"} onClick={() => prepare.mutate({ rewrite: true, voiced: true })}>
+                Переписать и озвучить
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" disabled={busy} onClick={() => prepare.mutate({ rewrite: true, voiced: provider !== "none" })}>
+              {running ? "Готовлю вступление…" : provider === "none" ? "Написать текст" : "Написать и озвучить"}
             </button>
           )}
         </div>
+        {hasText && (
+          <p className="text-xs text-muted">«Переозвучить» не вызывает модель: меняется только запись. «Переписать только текст» — новый текст без записи; озвучить его можно следом.</p>
+        )}
         <p className="text-xs text-muted">Текст пишет модель мастера (доли цента). Записанное вступление переносится в каждую игру по этому приключению — игры не платят за него снова.</p>
       </fieldset>
 

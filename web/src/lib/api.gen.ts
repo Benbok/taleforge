@@ -4713,6 +4713,11 @@ export interface components {
             rewrite?: boolean;
             /** Voice */
             voice?: string | null;
+            /**
+             * Voiced
+             * @default true
+             */
+            voiced?: boolean;
         };
         /** IntroTextRequest */
         IntroTextRequest: {
