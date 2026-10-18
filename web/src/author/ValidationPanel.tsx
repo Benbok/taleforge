@@ -4,6 +4,8 @@ interface Props {
   report: ValidationReport | null;
   /** Можно ли публиковать по данным сервера; без этого — только после проверки в этой вкладке. */
   canPublish?: boolean;
+  /** Номер версии, если текущий черновик уже опубликован: повторная публикация ничего не даст. */
+  publishedVersion?: number | null;
   publishIssues: ValidationIssue[] | null;
   publishError: string | null;
   busy: boolean;
@@ -41,6 +43,7 @@ function Issues({ title, issues }: { title: string; issues: ValidationIssue[] })
 export default function ValidationPanel({
   report,
   canPublish: serverAllows,
+  publishedVersion,
   publishIssues,
   publishError,
   busy,
@@ -50,7 +53,7 @@ export default function ValidationPanel({
   const errorCount = (report?.errors ?? []).length;
   const warningCount = (report?.warnings ?? []).length;
   // сервер знает, проверена ли текущая ревизия; проверка в этой вкладке уточняет его ответ
-  const canPublish = report !== null ? errorCount === 0 : !!serverAllows;
+  const canPublish = !publishedVersion && (report !== null ? errorCount === 0 : !!serverAllows);
 
   return (
     <section aria-label="Проверка и публикация" className="flex flex-col gap-5">
@@ -93,8 +96,9 @@ export default function ValidationPanel({
             disabled={busy || !canPublish}
             onClick={onPublish}
           >
-            Опубликовать
+            {publishedVersion ? `Опубликовано · v${publishedVersion}` : "Опубликовать"}
           </button>
+          {publishedVersion ? <span className="text-xs text-muted">Черновик не менялся с публикации. Измените его, чтобы выпустить новую версию.</span> : null}
         </div>
       </div>
 

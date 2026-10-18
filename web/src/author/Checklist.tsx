@@ -8,21 +8,22 @@ interface Props {
 
 /** Что заполнено и чего не хватает. Незаполненный пункт ведёт к своему полю. */
 export default function Checklist({ items, title = "Что заполнено", onJump }: Props) {
-  const ok = items.filter((i) => i.ok).length;
-  const isComplete = ok === items.length && items.length > 0;
+  const mandatory = items.filter((i) => !i.optional);
+  const ok = mandatory.filter((i) => i.ok).length;
+  const isComplete = ok === mandatory.length && mandatory.length > 0;
 
   return (
     <section aria-label={title} className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <div className="mb-2.5 flex items-baseline justify-between gap-3">
         <h3 className="font-heading text-base font-semibold text-ink">{title}</h3>
         <span className={`text-xs font-bold ${isComplete ? "text-ok" : "text-muted"}`}>
-          {ok} из {items.length} {isComplete ? "✓ готово" : ""}
+          {ok} из {mandatory.length} {isComplete ? "✓ готово" : ""}
         </span>
       </div>
       <div className="mb-3.5 h-2 overflow-hidden rounded-full bg-line-soft" aria-hidden="true">
         <div
           className={`h-full rounded-full transition-all duration-300 ${isComplete ? "bg-patina" : "bg-accent"}`}
-          style={{ width: `${(ok / Math.max(items.length, 1)) * 100}%` }}
+          style={{ width: `${(ok / Math.max(mandatory.length, 1)) * 100}%` }}
         />
       </div>
       <ul className="grid gap-1.5 sm:grid-cols-2">

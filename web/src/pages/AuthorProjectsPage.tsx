@@ -85,7 +85,13 @@ export default function AuthorProjectsPage() {
                     <span className="font-heading text-base font-medium text-ink transition-colors group-hover:text-accent">
                       {p.title}
                     </span>
-                    <span className="rounded bg-line-soft px-2 py-0.5 text-xs text-muted">Черновик</span>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs ${
+                        p.status === "published" ? "bg-patina text-on-accent" : p.status === "changed" ? "border border-warn/50 text-warn" : "bg-line-soft text-muted"
+                      }`}
+                    >
+                      {p.status === "published" ? `Опубликовано · v${p.latest_version}` : p.status === "changed" ? `Изменено после v${p.latest_version}` : "Черновик"}
+                    </span>
                   </div>
                   <div className="mt-4 flex items-center justify-between text-xs text-muted">
                     <span>Открыть мастерскую</span>

@@ -103,3 +103,17 @@ def test_publish_blocked_by_stale_dependency_then_v2_after_revalidation(settings
             assert (v1_number, v2.version) == (1, 2) and v1_digest != v2.source_digest
 
     _prepared(settings, body)
+
+
+def test_publishing_unchanged_draft_again_returns_the_same_version(settings, _fast_retry):
+    async def body(maker, pid, cid):
+        async with maker() as s:
+            project = await validated(s, pid)
+            v1 = await publish_project(s, project, project.draft_revision, "p1")
+            await s.commit()
+            again = await publish_project(s, project, project.draft_revision, "p2")  # другой ключ, тот же черновик
+            await s.commit()
+            assert again.id == v1.id
+            assert len(list(await s.scalars(select(AdventureVersion)))) == 1
+
+    _prepared(settings, body)

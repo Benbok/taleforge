@@ -11933,6 +11933,27 @@
       "title": "Id",
       "type": "string"
      },
+     "latest_version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latest Version"
+     },
+     "status": {
+      "default": "draft",
+      "enum": [
+       "draft",
+       "published",
+       "changed"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
      "title": {
       "title": "Title",
       "type": "string"
@@ -11966,6 +11987,27 @@
      },
      "id": {
       "title": "Id",
+      "type": "string"
+     },
+     "latest_version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latest Version"
+     },
+     "status": {
+      "default": "draft",
+      "enum": [
+       "draft",
+       "published",
+       "changed"
+      ],
+      "title": "Status",
       "type": "string"
      },
      "title": {

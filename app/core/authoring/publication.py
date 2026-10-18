@@ -75,6 +75,15 @@ async def publish_project(
     if broken:
         raise PublishBlocked(broken)
     body = bundle.model_dump(mode="json")
+    digest = _digest(body)
+    previous = await session.scalar(
+        select(AdventureVersion)
+        .where(AdventureVersion.project_id == project.id)
+        .order_by(AdventureVersion.version.desc())
+        .limit(1)
+    )
+    if previous is not None and previous.source_digest == digest:
+        return previous  # nothing changed since the last version: publishing again adds no duplicate
     version = AdventureVersion(
         project_id=project.id,
         version=int(
@@ -86,7 +95,7 @@ async def publish_project(
         )
         + 1,
         source_revision=project.draft_revision,
-        source_digest=_digest(body),
+        source_digest=digest,
         publish_request_key=request_key,
         publish_input_digest=request_digest,
         public_summary=_summary(bundle),

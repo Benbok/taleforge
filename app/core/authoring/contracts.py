@@ -33,6 +33,9 @@ class ProjectSummary(Contract):
     title: str
     draft_revision: int
     budget_usd: float | None = None
+    # publication: draft (never published) | published (the current draft is a version) | changed (edited after)
+    status: Literal["draft", "published", "changed"] = "draft"
+    latest_version: int | None = None
 
 
 class ProjectDetail(ProjectSummary):

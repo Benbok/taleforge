@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ApiError } from "../lib/api";
 import type { DraftPatch, EditProposal, PreparationView, StageStatus, ValidationIssue, ValidationReport } from "../lib/api.gen";
 import { authoring, authorKeys, newRequestKey, STAGE_STATE_LABELS } from "../lib/authoring";
-import { done, loreProgress, plotProgress, type ProgressItem } from "../lib/authoringProgress";
+import { done, loreProgress, plotProgress, required, type ProgressItem } from "../lib/authoringProgress";
 import Checklist from "./Checklist";
 import CharacterEditor from "./CharacterEditor";
 import ContentEditor, { type DraftContent } from "./ContentEditor";
@@ -56,7 +56,7 @@ function contentState(items: ProgressItem[], stage: StageStatus | undefined, sta
   if (stage?.status === "queued" || stage?.status === "running") return "running";
   if (stale) return "stale";
   const n = done(items);
-  if (n === items.length) return "done";
+  if (n === required(items).length) return "done";
   if (n > 0) return "partial";
   return stage?.status === "failed" || stage?.status === "blocked" ? "problem" : "empty";
 }
@@ -272,13 +272,13 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       id: "lore",
       title: "Лор мира",
       state: revealed ? contentState(loreItems, stageOf("lore"), stale.has("stage:lore")) : isDone("lore") ? "done" : "empty",
-      note: revealed ? `${done(loreItems)} из ${loreItems.length} разделов` : statusLabel("lore"),
+      note: revealed ? `${done(loreItems)} из ${required(loreItems).length} разделов` : statusLabel("lore"),
     },
     {
       id: "plot",
       title: "Сюжет и NPC",
       state: revealed ? contentState(plotItems, stageOf("plot"), stale.has("stage:plot")) : plotReady ? "done" : "empty",
-      note: revealed ? `${done(plotItems)} из ${plotItems.length} частей` : statusLabel("plot"),
+      note: revealed ? `${done(plotItems)} из ${required(plotItems).length} частей` : statusLabel("plot"),
     },
     {
       id: "intro",
@@ -715,6 +715,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         <ValidationPanel
           report={report}
           canPublish={!!validation?.current && validation.errors === 0}
+          publishedVersion={publishedNow?.version ?? null}
           publishIssues={publishIssues}
           publishError={publishError}
           busy={busy}

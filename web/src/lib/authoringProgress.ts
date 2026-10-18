@@ -6,6 +6,8 @@ export interface ProgressItem {
   label: string;
   ok: boolean;
   detail: string;
+  /** Желательно, но не обязательно: не мешает считать шаг готовым. */
+  optional?: boolean;
 }
 
 type Data = Record<string, unknown> | null | undefined;
@@ -66,10 +68,16 @@ function characters(plan: Data): ProgressItem {
     key: "characters",
     label: "Характеры персонажей",
     ok: people.length > 0 && withCharacter === people.length,
+    optional: true,
     detail: people.length ? `${withCharacter} из ${people.length}, желательно у всех` : "персонажей пока нет",
   };
 }
 
+/** Сколько обязательных пунктов заполнено; необязательные не влияют на готовность шага. */
 export function done(items: ProgressItem[]): number {
-  return items.filter((i) => i.ok).length;
+  return required(items).filter((i) => i.ok).length;
+}
+
+export function required(items: ProgressItem[]): ProgressItem[] {
+  return items.filter((i) => !i.optional);
 }

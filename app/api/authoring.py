@@ -69,12 +69,37 @@ def _redact(report: ValidationReport) -> ValidationReport:
 async def list_projects(session: SessionDep, user: UserDep) -> list[ProjectSummary]:
     if not is_admin(user):
         raise AccessDenied("пространство автора доступно только Admin")
-    rows = await session.scalars(
-        select(AuthorProject)
-        .where(AuthorProject.owner_id == user.id, AuthorProject.archived_at.is_(None))
-        .order_by(AuthorProject.updated_at.desc())
+    from app.db.models import AdventureVersion
+
+    rows = list(
+        await session.scalars(
+            select(AuthorProject)
+            .where(AuthorProject.owner_id == user.id, AuthorProject.archived_at.is_(None))
+            .order_by(AuthorProject.updated_at.desc())
+        )
     )
-    return [ProjectSummary.model_validate(p) for p in rows]
+    latest: dict[str, AdventureVersion] = {}
+    if rows:
+        for v in await session.scalars(
+            select(AdventureVersion).where(AdventureVersion.project_id.in_([p.id for p in rows]))
+        ):
+            if v.project_id not in latest or v.version > latest[v.project_id].version:
+                latest[v.project_id] = v
+    out = []
+    for p in rows:
+        v = latest.get(p.id)
+        status = "draft" if v is None else "published" if v.source_revision == p.draft_revision else "changed"
+        out.append(
+            ProjectSummary(
+                id=p.id,
+                title=p.title,
+                draft_revision=p.draft_revision,
+                budget_usd=p.budget_usd,
+                status=status,
+                latest_version=v.version if v else None,
+            )
+        )
+    return out
 
 
 @router.post("/projects", response_model=ProjectDetail, status_code=201)

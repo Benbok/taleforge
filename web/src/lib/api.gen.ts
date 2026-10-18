@@ -6544,6 +6544,14 @@ export interface components {
             draft_revision: number;
             /** Id */
             id: string;
+            /** Latest Version */
+            latest_version?: number | null;
+            /**
+             * Status
+             * @default draft
+             * @enum {string}
+             */
+            status?: "draft" | "published" | "changed";
             /** Title */
             title: string;
         };
@@ -6555,6 +6563,14 @@ export interface components {
             draft_revision: number;
             /** Id */
             id: string;
+            /** Latest Version */
+            latest_version?: number | null;
+            /**
+             * Status
+             * @default draft
+             * @enum {string}
+             */
+            status?: "draft" | "published" | "changed";
             /** Title */
             title: string;
         };
