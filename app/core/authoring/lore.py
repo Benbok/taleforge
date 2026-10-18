@@ -4,6 +4,7 @@ The model submits lore through a tool call with a schema; the server checks it a
 the errors. The plot stage then receives this lore as input (app/agents/architect.py).
 """
 
+import asyncio
 import json
 import os
 
@@ -14,6 +15,7 @@ from app.db.models import Campaign, LlmCall
 
 TOOL = "submit_world_lore"
 ATTEMPTS = 2
+NETWORK_RETRIES = 3  # an unstable route to the provider drops TLS now and then; retry before giving up
 MAX_TOKENS = 12000
 SYSTEM = (
     "Ты автор мира для настольной ролевой кампании (D&D 5e, на русском). По анкете автора создай подробный, "
@@ -140,21 +142,25 @@ async def generate_lore(svc, world_id: str, job_id: str) -> dict:
     calls: list[LlmCall] = []
     try:
         for _ in range(ATTEMPTS):
-            call = LlmCall(campaign_id=world_id, purpose="lore", model=model, author_job_id=job_id)
-            calls.append(call)
-            try:
-                reply = await svc.llm.complete(
-                    msgs,
-                    model=model,
-                    tools=[tool_spec()],
-                    tool_choice="required",
-                    max_tokens=MAX_TOKENS,
-                    temperature=min(max(temperature, 0.7), 1.0),
-                    api_base=api_base,
-                )
-            except LLMError as exc:
-                call.error = str(exc)[:2000]
-                raise LoreError("llm_unavailable") from exc
+            for retry in range(NETWORK_RETRIES):
+                call = LlmCall(campaign_id=world_id, purpose="lore", model=model, author_job_id=job_id)
+                calls.append(call)
+                try:
+                    reply = await svc.llm.complete(
+                        msgs,
+                        model=model,
+                        tools=[tool_spec()],
+                        tool_choice="required",
+                        max_tokens=MAX_TOKENS,
+                        temperature=min(max(temperature, 0.7), 1.0),
+                        api_base=api_base,
+                    )
+                    break
+                except LLMError as exc:
+                    call.error = str(exc)[:2000]
+                    if retry == NETWORK_RETRIES - 1:
+                        raise LoreError("llm_unavailable") from exc
+                    await asyncio.sleep(2 * (retry + 1))
             call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
             call.cost, call.latency_ms = reply.cost, reply.latency_ms
             for metric, value in reply_metrics(reply).items():

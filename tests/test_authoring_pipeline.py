@@ -213,3 +213,33 @@ def test_plot_prompt_receives_authored_lore(settings):
         assert "Мир автора" in prompt and "Ирса" in prompt and "Кто поёт" in prompt
 
     _with_maker(settings, body)
+
+
+def test_transient_network_error_is_retried(settings, monkeypatch):
+    from app.agents.llm import LLMError
+    from app.core.authoring import lore
+
+    real_sleep = lore.asyncio.sleep
+
+    async def no_wait(*_):
+        await real_sleep(0)
+
+    monkeypatch.setattr(lore.asyncio, "sleep", no_wait)
+
+    class Flaky(Llm):
+        async def complete(self, messages, **kw):
+            self.calls += 1
+            if self.calls == 1:
+                raise LLMError("Cannot connect to host generativelanguage.googleapis.com:443")
+            return await super().complete(messages, **kw)
+
+    async def body(maker, svc, pid):
+        svc.llm = Flaky()
+        receipt = await _request(maker, pid, "lore", "k1")
+        await AuthorRunner(svc).run_due()
+        async with maker() as s:
+            assert (await s.get(AuthorJob, receipt.job_id)).status == "ready"
+            calls = list(await s.scalars(select(LlmCall).where(LlmCall.author_job_id == receipt.job_id)))
+            assert [bool(c.error) for c in calls] == [True, False]
+
+    _run(settings, body)
