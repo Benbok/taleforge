@@ -220,3 +220,32 @@ async def _sync_names(session: AsyncSession, project: AuthorProject, plan: dict)
         loc = next((x for x in plan.get("locations") or [] if x["id"] == node.ref), None)
         if loc is not None and node.name != loc["name"]:
             node.name = loc["name"]
+
+
+async def accept_stale(
+    session: AsyncSession, project: AuthorProject, refs: list[str], expected_revision: int, request_key: str
+) -> EditResult:
+    """The author keeps an existing result as current instead of regenerating it; the choice is journaled."""
+    key = _key(project.id, request_key)
+    done = await session.scalar(
+        select(Event).where(Event.campaign_id == project.workspace_campaign_id, Event.idempotency_key == key)
+    )
+    if done is not None:
+        return EditResult.model_validate(done.payload["result"]).model_copy(update={"event_id": done.id})
+    await author_write(session, project, expected_revision)
+    before = list((project.dependencies or {}).get("stale") or [])
+    unknown = sorted(set(refs) - set(before))
+    if unknown:
+        raise EditError("not_stale", ",".join(unknown))
+    project.dependencies = {**(project.dependencies or {}), "stale": sorted(set(before) - set(refs))}
+    result = EditResult(applied=True, draft_revision=project.draft_revision)
+    event = Event(
+        campaign_id=project.workspace_campaign_id,
+        tool="author_edit",
+        hidden=True,
+        idempotency_key=key,
+        payload={"request_key": request_key, "accepted_stale": sorted(refs), "result": result.model_dump(mode="json")},
+    )
+    session.add(event)
+    await session.flush()
+    return result.model_copy(update={"event_id": event.id})

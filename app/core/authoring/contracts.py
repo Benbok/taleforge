@@ -138,8 +138,76 @@ class ValidationReport(Contract):
     coverage: dict[str, int] = Field(default_factory=dict)
 
 
+class BundleEntity(Contract):
+    ref: str
+    kind: str
+    name: str
+    template_id: str | None = None
+    description: str = ""
+    zone: str | None = None
+    location: str | None = None  # entity ref, never a workspace id
+    state: dict = Field(default_factory=dict)
+
+
+class BundleGeneration(Contract):
+    ref: str
+    target: str
+    phase: str
+    status: str
+    quality: str | None = None
+    generator_version: str | None = None
+    profile_ref: str | None = None
+    source_versions: dict = Field(default_factory=dict)
+    context_digest: str | None = None
+    reservation: dict = Field(default_factory=dict)
+    seed: int | None = None
+    result_digest: str | None = None
+    result_manifest: dict | None = None
+
+
+class BundleAnchor(Contract):
+    anchor_id: str
+    plot_ref: str
+    holder: str | None = None
+    target_location: str | None = None
+    state: str
+    source_snapshot: dict = Field(default_factory=dict)
+    replacement_ref: str | None = None
+
+
+class BundleGeographyNode(Contract):
+    ref: str
+    kind: str
+    name: str
+    plot_ref: str | None = None
+    parent_ref: str | None = None
+    entity: str | None = None
+
+
+class BundleGeographyLink(Contract):
+    ref: str
+    from_node: str
+    to_node: str
+    from_area_ref: str | None = None
+    to_area_ref: str | None = None
+    bidirectional: bool = True
+    kind: str = "path"
+    state: str = "open"
+    hidden: bool = False
+    constraints: dict = Field(default_factory=dict)
+
+
 class AdventureBundle(Contract):
     schema_version: Literal[1] = 1
+    meta: dict = Field(default_factory=dict)
+    brief: dict = Field(default_factory=dict)
+    plot: dict = Field(default_factory=dict)
+    setting: dict = Field(default_factory=dict)
+    entities: list[BundleEntity] = Field(default_factory=list)
+    generations: list[BundleGeneration] = Field(default_factory=list)
+    anchors: list[BundleAnchor] = Field(default_factory=list)
+    geography_nodes: list[BundleGeographyNode] = Field(default_factory=list)
+    geography_links: list[BundleGeographyLink] = Field(default_factory=list)
 
 
 class InstanceOptions(Contract):
