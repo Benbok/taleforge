@@ -184,3 +184,22 @@ it("кнопка «Пересобрать карты» запускает пер
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "*", regenerate: true });
 });
+
+it("«Пересобрать эту карту» пересобирает только показанное место", async () => {
+  const sketch = { shape: "room", cols: 6, rows: 4, party: [1, 1], walls: [], exits: [], features: [], terrain: [], edges: [] };
+  const mock = api(
+    (c) =>
+      c.url.includes("/maps/loc_cave")
+        ? { body: { location_ref: "loc_cave", name: "Пещера", layout_quality: "fallback", areas: [{ area_ref: "main", name: "Вход", sketch, ports: {} }] } }
+        : c.url.endsWith("/prepare")
+          ? { status: 202, body: { job_id: "aj_one", stage: "maps", status: "queued", source_revision: 7 } }
+          : undefined,
+    stages({ lore: { status: "ready" }, plot: { status: "ready" }, geography: { status: "ready" }, materialize: { status: "ready" } }),
+  );
+  localStorage.setItem("author:reveal:ap_1", "1");
+  localStorage.setItem("author:step:ap_1", "maps");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Пересобрать эту карту" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
+  expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "loc_cave", regenerate: true });
+});

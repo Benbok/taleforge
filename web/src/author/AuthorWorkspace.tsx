@@ -93,6 +93,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const [plotErrors, setPlotErrors] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [texts, setTexts] = useState<Record<string, string>>({});
+  const [rebuilding, setRebuilding] = useState<string | null>(null); // место, чью карту пересобирают
 
   useEffect(() => remember(stepKey, step), [step, stepKey]);
 
@@ -133,10 +134,11 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     if ((lastMapsStatus === "queued" || lastMapsStatus === "running") && mapsStatus && mapsStatus !== lastMapsStatus) {
       void client.invalidateQueries({ queryKey: ["author", projectId, "map"] });
       void client.invalidateQueries({ queryKey: authorKeys.project(projectId, "full") });
-      setMessage(mapsStatus === "ready" ? "Карты пересобраны." : `Пересборка карт не удалась (${mapsStatus}). Прежние карты на месте.`);
+      setMessage(mapsStatus === "ready" ? (rebuilding ? "Карта пересобрана." : "Карты пересобраны.") : `Пересборка не удалась (${mapsStatus}). Прежние карты на месте.`);
+      setRebuilding(null);
     }
     setLastMapsStatus(mapsStatus);
-  }, [mapsStatus, lastMapsStatus, client, projectId]);
+  }, [mapsStatus, lastMapsStatus, client, projectId, rebuilding]);
 
   useEffect(() => {
     // на шаге «Карты» сразу открывается карта первого места
@@ -492,19 +494,23 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
                 </button>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                className="btn min-h-11 px-3 text-sm"
-                type="button"
-                disabled={busy || mapsRunning}
-                onClick={() => prepare.mutate({ stage: "maps", regenerate: true, target: location ?? plot.locations?.[0]?.id })}
-              >
-                Пересобрать карту этого места
-              </button>
-              <span className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</span>
-            </div>
             {map.isLoading && <p className="text-sm text-muted">Загрузка карты…</p>}
-            {map.data && <MapPreview key={map.data.location_ref} map={map.data} />}
+            {map.data && (
+              <MapPreview
+                key={map.data.location_ref}
+                map={map.data}
+                rebuild={{
+                  disabled: busy || mapsRunning,
+                  running: mapsRunning && rebuilding === map.data.location_ref,
+                  onRebuild: () => {
+                    const ref = map.data!.location_ref;
+                    setRebuilding(ref);
+                    prepare.mutate({ stage: "maps", regenerate: true, target: ref });
+                  },
+                }}
+              />
+            )}
+            <p className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</p>
           </section>
         ) : hidden)}
         {!locked && revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (

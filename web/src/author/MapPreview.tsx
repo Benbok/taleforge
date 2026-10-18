@@ -6,10 +6,12 @@ import { planOfArea } from "../lib/authoring";
 export interface AuthorMapPreviewProps {
   map: AuthorMapOut;
   onSelect?(areaRef: string): void;
+  /** Пересборка только этой карты; без неё кнопки нет (например, в просмотре географии). */
+  rebuild?: { disabled: boolean; running: boolean; onRebuild(): void };
 }
 
 /** Просмотр подготовленной карты. Данные приходят props'ами: никаких сокет-команд, героя и знаний игрока. */
-export default function MapPreview({ map, onSelect }: AuthorMapPreviewProps) {
+export default function MapPreview({ map, onSelect, rebuild }: AuthorMapPreviewProps) {
   const [areaRef, setAreaRef] = useState(map.areas[0]?.area_ref ?? "");
   const plan = planOfArea(map, areaRef);
   const ports = map.areas.find((a) => a.area_ref === areaRef)?.ports ?? {};
@@ -21,6 +23,11 @@ export default function MapPreview({ map, onSelect }: AuthorMapPreviewProps) {
         <span className="text-sm text-muted">участков: {map.areas.length}</span>
         {map.layout_quality === "normal" && <span className="text-sm text-ok">планировку придумала модель</span>}
         {map.layout_quality === "fallback" && <span className="text-sm text-warn">запасная планировка по шаблону: модель не ответила</span>}
+        {rebuild && (
+          <button className="btn ml-auto min-h-11 px-3 text-sm" type="button" disabled={rebuild.disabled || rebuild.running} onClick={rebuild.onRebuild}>
+            {rebuild.running ? "Пересобираю эту карту…" : "Пересобрать эту карту"}
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Участки">
         {map.areas.map((area) => (
