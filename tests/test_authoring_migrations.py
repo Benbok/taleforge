@@ -169,3 +169,18 @@ def test_foundation_preserves_existing_game_and_children(monkeypatch, tmp_path):
     command.downgrade(cfg, "0033")
     with sqlite3.connect(path) as db:
         assert db.execute("SELECT plot FROM campaign_secrets").fetchone() == ('{"kept":true}',)
+
+
+def test_geography_tables_upgrade_and_downgrade_keep_existing_rows(monkeypatch, tmp_path):
+    path = tmp_path / "geography.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
+    cfg = config()
+    command.upgrade(cfg, "0034")
+    command.upgrade(cfg, "0035")
+    with sqlite3.connect(path) as db:
+        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert {"geography_nodes", "geography_links"} <= tables
+    command.downgrade(cfg, "0034")
+    with sqlite3.connect(path) as db:
+        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "geography_nodes" not in tables and "author_projects" in tables

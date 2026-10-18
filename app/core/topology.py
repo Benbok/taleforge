@@ -20,9 +20,52 @@ class LocationExit:
     room_ref: str | None
     label: str | None
     bearing: str | None
+    route_id: str | None = None
+    route_ref: str | None = None  # авторский географический маршрут, а не Entity-ссылка
 
 
 def location_exits(
+    place: Entity,
+    catalog: CatalogView | None,
+    entities: dict[str, Entity],
+    blueprint_cache: dict[str, Blueprint | None] | None = None,
+    *,
+    geography=None,
+) -> list[LocationExit]:
+    """Соседние места; с ``geography`` добавляются авторские маршруты между конкретными участками."""
+    exits = _base_exits(place, catalog, entities, blueprint_cache)
+    if geography is None:
+        return exits
+    return [*exits, *_route_exits(place, entities, geography)]
+
+
+def _route_exits(place: Entity, entities: dict[str, Entity], geography) -> list[LocationExit]:
+    from app.core.geography.contracts import GeographyError
+    from app.core.geography.ports import resolve_port
+    from app.core.layout import store
+
+    cx = store.complex_of(place)
+    entity_id, area_ref = (cx["root_id"], cx["area_ref"]) if cx else (place.id, None)
+    node = next((n for n in geography.nodes if n.entity_id == entity_id), None)
+    if node is None:
+        return []
+    entity_ids = {n.ref: n.entity_id for n in geography.nodes if n.entity_id}
+    names = {n.ref: n.name for n in geography.nodes}
+    out: list[LocationExit] = []
+    for link in geography.links:
+        for here, there, allowed in ((link.source, link.target, True), (link.target, link.source, link.bidirectional)):
+            if not allowed or here.node_ref != node.ref or here.area_ref not in (None, area_ref):
+                continue
+            try:
+                port = resolve_port(entities, entity_ids, there)
+            except GeographyError:
+                continue  # непроверенный порт не подменяется соседним участком
+            if port.area_id != place.id:
+                out.append(LocationExit(port.area_id, None, names[there.node_ref], None, route_ref=link.ref))
+    return out
+
+
+def _base_exits(
     place: Entity,
     catalog: CatalogView | None,
     entities: dict[str, Entity],

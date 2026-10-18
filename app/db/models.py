@@ -293,6 +293,58 @@ class AuthorJob(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class GeographyNode(Base):
+    """Region or location in a world's geography; a region needs no game Entity."""
+
+    __tablename__ = "geography_nodes"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "ref", name="uq_geography_node_ref"),
+        Index(
+            "uq_geography_node_plot_ref",
+            "campaign_id",
+            "plot_ref",
+            unique=True,
+            sqlite_where=text("plot_ref IS NOT NULL"),
+            postgresql_where=text("plot_ref IS NOT NULL"),
+        ),
+        Index(
+            "uq_geography_node_entity",
+            "campaign_id",
+            "entity_id",
+            unique=True,
+            sqlite_where=text("entity_id IS NOT NULL"),
+            postgresql_where=text("entity_id IS NOT NULL"),
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("gn"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    ref: Mapped[str] = mapped_column(String(64))
+    plot_ref: Mapped[str | None] = mapped_column(String(64))
+    entity_id: Mapped[str | None] = mapped_column(ForeignKey("entities.id", ondelete="SET NULL"))
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("geography_nodes.id", ondelete="SET NULL"))
+    kind: Mapped[str] = mapped_column(String(16))  # region | location
+    name: Mapped[str] = mapped_column(String(128))
+
+
+class GeographyLink(Base):
+    """Permanent route between two concrete areas (parts) of geography nodes."""
+
+    __tablename__ = "geography_links"
+    __table_args__ = (UniqueConstraint("campaign_id", "ref", name="uq_geography_link_ref"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("gl"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    ref: Mapped[str] = mapped_column(String(64))
+    from_node_id: Mapped[str] = mapped_column(ForeignKey("geography_nodes.id", ondelete="CASCADE"))
+    to_node_id: Mapped[str] = mapped_column(ForeignKey("geography_nodes.id", ondelete="CASCADE"))
+    from_area_ref: Mapped[str | None] = mapped_column(String(64))
+    to_area_ref: Mapped[str | None] = mapped_column(String(64))
+    bidirectional: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    kind: Mapped[str] = mapped_column(String(32), default="path", server_default="path")
+    state: Mapped[str] = mapped_column(String(16), default="open", server_default="open")
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    constraints: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
 class SfxSound(Base):
     """Campaign-scoped named cache entry; current_asset_id changes only after a successful render."""
 
