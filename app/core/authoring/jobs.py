@@ -209,5 +209,6 @@ async def stage_view(session: AsyncSession, project_id: str, *, full: bool) -> P
         spent_usd=spent,
         budget_usd=project.budget_usd,
         cost_unknown=unknown,
+        stale=tuple((project.dependencies or {}).get("stale") or ()),
         content=content,
     )

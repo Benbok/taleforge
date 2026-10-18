@@ -6137,6 +6137,11 @@ export interface components {
              * @default []
              */
             stages?: components["schemas"]["StageStatus"][];
+            /**
+             * Stale
+             * @default []
+             */
+            stale?: string[];
         };
         /** PrepareRequest */
         PrepareRequest: {

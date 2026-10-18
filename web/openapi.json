@@ -11103,6 +11103,14 @@
       },
       "title": "Stages",
       "type": "array"
+     },
+     "stale": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Stale",
+      "type": "array"
      }
     },
     "required": [

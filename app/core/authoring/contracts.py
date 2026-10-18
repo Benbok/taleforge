@@ -233,6 +233,7 @@ class PreparationView(Contract):
     spent_usd: float = 0
     budget_usd: float | None = None
     cost_unknown: bool = False
+    stale: tuple[str, ...] = ()  # results the author changed under; publication stays blocked until resolved
     # Содержимое черновика отдаётся только редактору; режим без спойлеров его не включает.
     content: dict | None = None
 

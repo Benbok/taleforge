@@ -7,6 +7,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly data?: unknown,
   ) {
     super(message);
   }
@@ -43,7 +44,7 @@ export async function api<T>(path: string, opts: { method?: string; body?: unkno
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const detail = typeof data.detail === "string" ? data.detail : `ошибка сервера (${res.status})`;
-    throw new ApiError(detail, res.status);
+    throw new ApiError(detail, res.status, data);
   }
   return data as T;
 }
