@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.core.campaigns import NotFound, get_viewer
-from app.db.models import Scene, User
+from app.db.models import Campaign, Scene, User
 from app.gateway.hub import Connection
 from app.tools import rest as rest_tools
 from app.tools.registry import ToolError
@@ -51,7 +51,7 @@ class RestVotes:
     async def resume(self) -> None:
         """После перезапуска: снова завести сроки открытых голосований."""
         async with self.maker() as s:
-            rows = (await s.scalars(select(Scene))).all()
+            rows = (await s.scalars(select(Scene).join(Campaign).where(Campaign.purpose == "game"))).all()
             pending = [(sc.campaign_id, v) for sc in rows for v in ((sc.state or {}).get("rest_votes") or {}).values()]
         for cid, v in pending:
             self._on_vote(cid, {"vote_id": v["id"], "deadline": v["deadline"]})

@@ -26,6 +26,7 @@ from sqlalchemy.orm.util import identity_key
 from app.core.campaigns import Conflict
 from app.db.models import (
     ActiveEffect,
+    AuthorProject,
     Campaign,
     CampaignSecret,
     Character,
@@ -98,16 +99,31 @@ def _acquire(session: Session, campaign_id: str, expected: int | None) -> int | 
     stmt = update(table).where(table.c.id == campaign_id)
     if expected is not None:
         stmt = stmt.where(table.c.world_revision == expected)
-    stmt = stmt.values(world_revision=table.c.world_revision + 1).returning(table.c.world_revision)
-    revision = conn.execute(stmt).scalar()
-    if revision is None:
+    stmt = stmt.values(world_revision=table.c.world_revision + 1).returning(table.c.world_revision, table.c.purpose)
+    changed = conn.execute(stmt).first()
+    if changed is None:
         if expected is None:
             return None  # кампании нет (удаляется): защищать нечего
         raise WorldConflict(campaign_id, expected)
+    revision = changed.world_revision
     guards[campaign_id] = (_innermost(session), revision)
     held = session.identity_map.get(identity_key(Campaign, campaign_id))
     if held is not None:
         set_committed_value(held, "world_revision", revision)
+    # A workspace content mutation invalidates its publication report. Queue and
+    # billing rows are deliberately excluded from _touched, so status is not content.
+    if changed.purpose == "author_workspace":
+        project_table = AuthorProject.__table__
+        project_row = conn.execute(
+            update(project_table)
+            .where(project_table.c.workspace_campaign_id == campaign_id)
+            .values(draft_revision=project_table.c.draft_revision + 1)
+            .returning(project_table.c.id, project_table.c.draft_revision)
+        ).first()
+        if project_row is not None:
+            project = session.identity_map.get(identity_key(AuthorProject, project_row.id))
+            if project is not None:
+                set_committed_value(project, "draft_revision", project_row.draft_revision)
     return revision
 
 

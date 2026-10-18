@@ -177,16 +177,12 @@ class FinishMixin:
                 for entity in ctx.world.entities.values()
                 if entity.location_id
                 and any(
-                    character.id in ctx.narration_viewer_ids
-                    and ctx.world.place_of(character) == entity.location_id
+                    character.id in ctx.narration_viewer_ids and ctx.world.place_of(character) == entity.location_id
                     for character in ctx.world.characters.values()
                 )
             )
             context_subjects.update(
-                value
-                for event in ctx.events
-                for value in (event.actor_id, event.target_id)
-                if value
+                value for event in ctx.events for value in (event.actor_id, event.target_id) if value
             )
             system = await self._system_prompt(s, c, cfg, ctx) + (inputs.get("mood") or "")
             from app.agents.master.optimization import optimization_flags
@@ -397,7 +393,11 @@ class FinishMixin:
         """Ходы с зафиксированными действиями дописываются. При старте сервера ход без checkpoint — от умершего
         процесса, его транзакция не закоммичена: он закрывается как откатившийся."""
         async with self.maker() as s:
-            running = (await s.scalars(select(MasterTurn).where(MasterTurn.status == "running"))).all()
+            running = (
+                await s.scalars(
+                    select(MasterTurn).join(Campaign).where(MasterTurn.status == "running", Campaign.purpose == "game")
+                )
+            ).all()
             todo = []
             dropped: list[tuple[str, Message, list[str]]] = []
             for turn in running:
@@ -444,7 +444,11 @@ class FinishMixin:
                     log.exception("фоновая адаптация сюжета не удалась")
 
         async with self.maker() as s:
-            pending = [sc.campaign_id for sc in await s.scalars(select(Scene)) if (sc.state or {}).get("transits")]
+            pending = [
+                sc.campaign_id
+                for sc in await s.scalars(select(Scene).join(Campaign).where(Campaign.purpose == "game"))
+                if (sc.state or {}).get("transits")
+            ]
         from app.core.layout import transit
 
         for cid in pending:

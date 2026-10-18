@@ -193,10 +193,20 @@ class AdventureModule(Base):
 
 class Campaign(Base):
     __tablename__ = "campaigns"
+    __table_args__ = (
+        Index("uq_campaign_launch_request", "owner_id", "launch_request_key", unique=True),
+        CheckConstraint("purpose IN ('game', 'author_workspace')", name="ck_campaign_purpose"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("c"))
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(128))
+    purpose: Mapped[str] = mapped_column(String(24), default="game", server_default="game")
+    adventure_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("adventure_versions.id", name="fk_campaign_adventure_version", use_alter=True)
+    )
+    launch_request_key: Mapped[str | None] = mapped_column(String(128))
+    launch_input_digest: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), default="lobby")  # lobby | active | paused | ended
     ruleset_id: Mapped[str] = mapped_column(String(32), default="dnd5e")
     ruleset_version: Mapped[str] = mapped_column(String(32))
@@ -219,6 +229,68 @@ class Campaign(Base):
     seats: Mapped[list[Seat]] = relationship(
         back_populates="campaign", cascade="all, delete-orphan", order_by="Seat.position", lazy="selectin"
     )
+
+
+class AuthorProject(Base):
+    __tablename__ = "author_projects"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ap"))
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(128))
+    workspace_campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id"), unique=True)
+    draft_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    budget_usd: Mapped[float | None] = mapped_column(Float)
+    dependencies: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    validation_report: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class AdventureVersion(Base):
+    __tablename__ = "adventure_versions"
+    __table_args__ = (
+        UniqueConstraint("project_id", "version", name="uq_adventure_version"),
+        UniqueConstraint("project_id", "publish_request_key", name="uq_adventure_publish_request"),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("av"))
+    project_id: Mapped[str] = mapped_column(ForeignKey("author_projects.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    source_revision: Mapped[int] = mapped_column(Integer)
+    source_digest: Mapped[str] = mapped_column(String(64))
+    publish_request_key: Mapped[str] = mapped_column(String(128))
+    publish_input_digest: Mapped[str] = mapped_column(String(64))
+    public_summary: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    bundle: Mapped[dict[str, Any]] = mapped_column()
+    validation_report: Mapped[dict[str, Any]] = mapped_column()
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class AuthorJob(Base):
+    __tablename__ = "author_jobs"
+    __table_args__ = (
+        UniqueConstraint("project_id", "request_key", name="uq_author_job_request"),
+        UniqueConstraint("project_id", "stage", "target_ref", "input_digest", name="uq_author_job_input"),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("aj"))
+    project_id: Mapped[str] = mapped_column(ForeignKey("author_projects.id", ondelete="CASCADE"), index=True)
+    stage: Mapped[str] = mapped_column(String(32))
+    target_ref: Mapped[str] = mapped_column(String(128), default="", server_default="")
+    input_digest: Mapped[str] = mapped_column(String(64))
+    source_revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="queued", index=True)
+    request_key: Mapped[str] = mapped_column(String(128))
+    request_digest: Mapped[str] = mapped_column(String(64))
+    lease_token: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    reserved_usd: Mapped[float] = mapped_column(Float, default=0)
+    operation_refs: Mapped[list[Any]] = mapped_column(default=list)
+    result: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
 class SfxSound(Base):
@@ -745,6 +817,7 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
     generation_id: Mapped[str | None] = mapped_column(String(32), index=True)  # строка WorldGenerationState
+    author_job_id: Mapped[str | None] = mapped_column(ForeignKey("author_jobs.id"), index=True)
     tokens_cached: Mapped[int | None] = mapped_column(Integer)
     cost_known: Mapped[bool | None] = mapped_column(Boolean)
     diagnostics: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)

@@ -82,7 +82,9 @@ class StepwiseMixin:
     async def resume_timers(self) -> None:
         """После перезапуска сервера: снова завести таймеры ходов в идущих боях."""
         async with self.maker() as s:
-            rows = (await s.scalars(select(Scene).where(Scene.mode == "combat"))).all()
+            rows = (
+                await s.scalars(select(Scene).join(Campaign).where(Scene.mode == "combat", Campaign.purpose == "game"))
+            ).all()
         for sc in rows:
             deadline = (sc.state or {}).get("deadline")
             if deadline:

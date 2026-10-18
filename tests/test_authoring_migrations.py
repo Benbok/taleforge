@@ -136,3 +136,36 @@ def test_postgres_fresh_migration_chain(monkeypatch, database_url):
     asyncio.run(reset())
     command.upgrade(config(), "head")
     command.check(config())
+
+
+def test_foundation_preserves_existing_game_and_children(monkeypatch, tmp_path):
+    path = tmp_path / "existing-game.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
+    cfg = config()
+    command.upgrade(cfg, "0033")
+    with sqlite3.connect(path) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute(
+            "INSERT INTO users (id, name, password_hash, platform_role, created_at) "
+            "VALUES ('owner', 'Owner', 'unused', 'admin', '2026-10-18')"
+        )
+        db.execute(
+            "INSERT INTO campaigns (id, owner_id, name, status, ruleset_id, ruleset_version, "
+            "public_intro, difficulty, party_size_recommended, settings, brief, last_seq, content_chain, "
+            "created_at, updated_at) VALUES ('game', 'owner', 'Old game', 'active', 'dnd5e', '1', "
+            "'Keep intro', 'normal', 4, '{}', '{}', 12, '[]', '2026-10-18', '2026-10-18')"
+        )
+        db.execute("INSERT INTO campaign_secrets VALUES ('game', '{}', '{\"kept\":true}')")
+    command.upgrade(cfg, "0034")
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT purpose, status, last_seq, public_intro FROM campaigns").fetchone() == (
+            "game",
+            "active",
+            12,
+            "Keep intro",
+        )
+        assert db.execute("SELECT plot FROM campaign_secrets").fetchone() == ('{"kept":true}',)
+        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
+    command.downgrade(cfg, "0033")
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT plot FROM campaign_secrets").fetchone() == ('{"kept":true}',)
