@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { EditProposal } from "../lib/api.gen";
-import LoreEditor, { type Lore } from "./LoreEditor";
+import type { Lore } from "./LoreEditor";
 
 type Obj = { id: string; name: string };
 export interface DraftContent {
@@ -13,14 +13,13 @@ interface Props {
   busy: boolean;
   proposal: EditProposal | null;
   onRename(ref: string, name: string): void;
-  onLore(fields: Record<string, unknown>): void;
   onPropose(instruction: string): void;
   onApplyProposal(): void;
   onDismissProposal(): void;
   affected: string[];
 }
 
-export default function ContentEditor({ content, busy, proposal, onRename, onLore, onPropose, onApplyProposal, onDismissProposal, affected }: Props) {
+export default function ContentEditor({ content, busy, proposal, onRename, onPropose, onApplyProposal, onDismissProposal, affected }: Props) {
   const [names, setNames] = useState<Record<string, string>>({});
   const [ask, setAsk] = useState("");
   const groups: [string, Obj[]][] = [
@@ -29,8 +28,7 @@ export default function ContentEditor({ content, busy, proposal, onRename, onLor
     ["Антагонисты", content.plot?.antagonists ?? []],
   ];
   return (
-    <section aria-label="Редактор содержимого" className="flex flex-col gap-4">
-      <LoreEditor lore={content.setting?.lore ?? {}} busy={busy} onSave={onLore} />
+    <section aria-label="Места, NPC и правки" className="flex flex-col gap-4">
       {groups.map(([title, items]) =>
         items.length ? (
           <div key={title}>

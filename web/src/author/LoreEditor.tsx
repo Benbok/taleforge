@@ -38,10 +38,9 @@ export default function LoreEditor({ lore, busy, onSave }: Props) {
 
   return (
     <section aria-label="Лор мира" className="flex flex-col gap-4">
-      <h2 className="font-heading text-lg text-ink">Лор мира</h2>
       {legacy && <p className="text-sm text-warn" role="status">Это лор старого короткого формата. Нажмите «Новый вариант» у этапа «Лор», чтобы получить подробный.</p>}
       {(legacy ? [["world", "Описание мира"] as [string, string], ...TEXT] : TEXT).map(([key, label]) => (
-        <label key={key} className="flex flex-col gap-1 text-sm">
+        <label key={key} id={`lore-${key}`} className="flex scroll-mt-24 flex-col gap-1 text-sm">
           <span className="text-muted">{label}</span>
           <textarea
             className={`rounded-lg border border-line bg-raised p-2 ${key === "overview" ? "min-h-40" : "min-h-20"}`}
@@ -53,7 +52,7 @@ export default function LoreEditor({ lore, busy, onSave }: Props) {
       {RECORDS.map(([key, label, fields]) => {
         if (key === "factions" && legacyFactions) {
           return (
-            <label key={key} className="flex flex-col gap-1 text-sm">
+            <label key={key} id={`lore-${key}`} className="flex scroll-mt-24 flex-col gap-1 text-sm">
               <span className="text-muted">{label} (по строке)</span>
               <textarea className="min-h-20 rounded-lg border border-line bg-raised p-2" value={(factions as string[]).join("\n")} onChange={(e) => set(key, e.target.value.split("\n"))} />
             </label>
@@ -62,14 +61,14 @@ export default function LoreEditor({ lore, busy, onSave }: Props) {
         const items = (value(key) as Records | undefined) ?? [];
         if (typeof value(key) === "string") {
           return (
-            <label key={key} className="flex flex-col gap-1 text-sm">
+            <label key={key} id={`lore-${key}`} className="flex scroll-mt-24 flex-col gap-1 text-sm">
               <span className="text-muted">{label}</span>
               <textarea className="min-h-20 rounded-lg border border-line bg-raised p-2" value={String(value(key))} readOnly />
             </label>
           );
         }
         return (
-          <fieldset key={key} className="flex flex-col gap-2">
+          <fieldset key={key} id={`lore-${key}`} className="flex scroll-mt-24 flex-col gap-2">
             <legend className="text-sm text-muted">{label}</legend>
             {items.map((item, i) => (
               <div key={i} className="grid gap-2 rounded-lg border border-line p-2 sm:grid-cols-2" aria-label={`${label} ${i + 1}`}>
@@ -91,7 +90,7 @@ export default function LoreEditor({ lore, busy, onSave }: Props) {
         );
       })}
       {LISTS.map(([key, label]) => (
-        <label key={key} className="flex flex-col gap-1 text-sm">
+        <label key={key} id={`lore-${key}`} className="flex scroll-mt-24 flex-col gap-1 text-sm">
           <span className="text-muted">{label} (по строке на пункт)</span>
           <textarea
             className="min-h-20 rounded-lg border border-line bg-raised p-2"
