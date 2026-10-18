@@ -259,6 +259,7 @@ class ItemSpec(Contract):
     template_id: str
     name: str = ""
     key: bool = False
+    container: bool = False  # an authored container; other items may name it in container_ref
     placement: PlacementSpec | None = None
 
 
@@ -272,12 +273,13 @@ class AreaStatus(Contract):
 class MaterializationReport(Contract):
     locations: tuple[AreaStatus, ...] = ()
     actors: tuple[AreaStatus, ...] = ()
+    items: tuple[AreaStatus, ...] = ()
     pending_rows: int = 0
     blocked_rows: int = 0
 
     @property
     def complete(self) -> bool:
-        everything = (*self.locations, *self.actors)
+        everything = (*self.locations, *self.actors, *self.items)
         return bool(everything) and all(a.status == "ready" for a in everything) and not self.pending_rows
 
 

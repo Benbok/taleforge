@@ -93,6 +93,10 @@ def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, li
             parts = {p["ref"] for p in (loc.get("spatial") or {}).get("parts") or []}
             if op.area_ref is not None and parts and op.area_ref not in parts:
                 raise EditError("unknown_part", f"{op.location_ref}/{op.area_ref}")
+            holders = {i["ref"] for i in plan.get("items") or [] if i.get("container")}
+            holders |= {n["id"] for n in plan.get("npcs") or []}
+            if op.container_ref is not None and (op.container_ref not in holders or op.container_ref == op.ref):
+                raise EditError("unknown_container", op.container_ref)
             entry = {
                 "ref": op.ref,
                 "location_ref": op.location_ref,

@@ -70,8 +70,19 @@ async def ensure_actor(ctx, plot_ref: str) -> str:
     return result["entity_id"]
 
 
+def holder_of(ctx, ref: str):
+    """A container_ref names an authored container item or an NPC who carries the item."""
+    found = next((e for e in ctx.world.entities.values() if (e.state or {}).get("item_ref") == ref), None)
+    if found is not None and ((found.state or {}).get("world_object") or {}).get("role") == "container":
+        return found
+    npc = next((x for x in (ctx.world.plot or {}).get("npcs") or [] if x.get("id") == ref), None)
+    return ctx.world.entities.get((npc or {}).get("entity_id") or "")
+
+
 async def ensure_item(ctx, item: dict) -> str:
-    """Put a key item into its concrete area (or container). An item that exists only in text is not prepared."""
+    """Put a key item into its concrete area, an authored container or an NPC's hands.
+
+    An item that exists only in text is not prepared. A container item is created empty and holds others."""
     from app.tools.master.items import _put_in_scene
 
     ref = item["ref"]
@@ -83,34 +94,58 @@ async def ensure_item(ctx, item: dict) -> str:
     )
     if not placement:
         raise MaterializationError("item_not_placed", ref)
-    location = next(
-        (x for x in (ctx.world.plot or {}).get("locations") or [] if x["id"] == placement["location_ref"]), None
-    )
-    root = ctx.world.entities.get((location or {}).get("entity_id") or "")
-    if root is None:
-        raise MaterializationError("home_not_materialized", ref)
-    area_id = (
-        layout_store.area_ids(root).get(placement.get("area_ref") or "", root.id)
-        if placement.get("area_ref")
-        else root.id
-    )
+    holder = None
+    if placement.get("container_ref"):
+        holder = holder_of(ctx, placement["container_ref"])
+        if holder is None:
+            raise MaterializationError("container_missing", ref)
+        area_id = holder.location_id
+    else:
+        location = next(
+            (x for x in (ctx.world.plot or {}).get("locations") or [] if x["id"] == placement["location_ref"]), None
+        )
+        root = ctx.world.entities.get((location or {}).get("entity_id") or "")
+        if root is None:
+            raise MaterializationError("home_not_materialized", ref)
+        area_id = (
+            layout_store.area_ids(root).get(placement.get("area_ref") or "", root.id)
+            if placement.get("area_ref")
+            else root.id
+        )
     if area_id not in ctx.world.entities:
         raise MaterializationError("unresolved_port", ref)
-    if ctx.world.catalog.find(item["template_id"], "item_template") is None:
-        raise MaterializationError("unknown_template", ref)
-    container = placement.get("container_ref")
-    if container and container not in ctx.world.entities:
-        raise MaterializationError("container_missing", ref)
-    entity, _inverse = await _put_in_scene(
-        ctx,
-        item["template_id"],
-        item.get("name") or None,
-        1,
-        "near",
-        place=area_id,
-        container_id=container,
-        force_new=True,
-    )
+    if item.get("container"):
+        # same shape as the create_container tool; the tool itself only accepts places the scene can see
+        from app.tools.master.items import _container_state
+
+        entity = Entity(
+            campaign_id=ctx.campaign.id,
+            kind="object",
+            name=item.get("name") or ref,
+            description=item.get("description") or "",
+            location_id=area_id,
+            zone="near",
+            state={"visual_key": "item:chest", "world_object": _container_state()},
+        )
+        ctx.session.add(entity)
+        await ctx.session.flush()
+        ctx.world.entities[entity.id] = entity
+        await ctx.record(
+            "create_container", target_id=entity.id, payload={"container_id": entity.id, "name": entity.name}
+        )
+    else:
+        if ctx.world.catalog.find(item["template_id"], "item_template") is None:
+            raise MaterializationError("unknown_template", ref)
+        entity, _inverse = await _put_in_scene(
+            ctx,
+            item["template_id"],
+            item.get("name") or None,
+            1,
+            "near",
+            place=area_id,
+            container_id=holder.id if holder is not None else None,
+            force_new=True,
+        )
     entity.state = {**(entity.state or {}), "item_ref": ref}
     return entity.id
 
@@ -167,9 +202,12 @@ async def prepare_world(maker, project_id: str, preparer, dice_factory=Dice) -> 
                 blocked[npc["id"]] = exc.code
 
     await _with_context(maker, campaign_id, dice_factory, actors)
+    await _with_context(maker, campaign_id, dice_factory, place_anchors)
 
     async def items(ctx):
-        for item in list((ctx.world.plot or {}).get("items") or []):
+        items_ = list((ctx.world.plot or {}).get("items") or [])
+        # containers first, so that items placed inside them find their holder
+        for item in sorted(items_, key=lambda x: not x.get("container")):
             try:
                 await ensure_item(ctx, item)
             except MaterializationError as exc:
@@ -178,6 +216,25 @@ async def prepare_world(maker, project_id: str, preparer, dice_factory=Dice) -> 
     await _with_context(maker, campaign_id, dice_factory, items)
     await bind_geography(maker, campaign_id)
     return await report(maker, campaign_id, blocked)
+
+
+async def place_anchors(ctx) -> list[str]:
+    """Plot clue carriers are put into their prepared areas now, not when heroes first walk in."""
+    from app.core import plot_anchors
+
+    made: list[str] = []
+    for loc in (ctx.world.plot or {}).get("locations") or []:
+        root = ctx.world.entities.get(loc.get("entity_id") or "")
+        if root is None:
+            continue
+        for target_id in [*layout_store.area_ids(root).values(), root.id]:
+            target = ctx.world.entities.get(target_id)
+            if target is None:
+                continue
+            phase = "location_geometry" if layout_store.complex_of(target) else "location_layout"
+            row = await storage.find(ctx.session, ctx.campaign.id, target.id, phase)
+            made += await plot_anchors.materialize_late(ctx, target, row.id if row else target.id)
+    return made
 
 
 async def bind_geography(maker, campaign_id: str) -> None:
@@ -251,9 +308,12 @@ async def report(maker, campaign_id: str, blocked: dict[str, str] | None = None)
         for x in plan.get("locations") or []
     )
     actors = tuple(status_of(x["id"], x.get("entity_id"), []) for x in plan.get("npcs") or [])
+    item_ids = {(e.state or {}).get("item_ref"): e.id for e in entities.values() if (e.state or {}).get("item_ref")}
+    items = tuple(status_of(x["ref"], item_ids.get(x["ref"]), []) for x in plan.get("items") or [])
     return MaterializationReport(
         locations=locations,
         actors=actors,
+        items=items,
         pending_rows=sum(r.status in ("unprepared", "preparing") for r in rows),
         blocked_rows=sum(r.status == "blocked" for r in rows),
     )

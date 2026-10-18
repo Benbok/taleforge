@@ -34,7 +34,26 @@ def full_plan():
             "name": "Ржавый ключ",
             "key": True,
             "placement": {"ref": "item_key", "location_ref": "loc_port", "area_ref": "chapel"},
-        }
+        },
+        {
+            "ref": "item_chest",
+            "template_id": "item.torch",
+            "name": "Окованный сундук",
+            "container": True,
+            "placement": {"ref": "item_chest", "location_ref": "loc_port", "area_ref": "nave"},
+        },
+        {
+            "ref": "item_seal",
+            "template_id": "item.torch",
+            "name": "Печать культа",
+            "placement": {"ref": "item_seal", "location_ref": "loc_port", "container_ref": "item_chest"},
+        },
+        {
+            "ref": "item_letter",
+            "template_id": "item.torch",
+            "name": "Письмо смотрителя",
+            "placement": {"ref": "item_letter", "location_ref": "loc_port", "container_ref": "npc_warden"},
+        },
     ]
     return plan
 
@@ -62,7 +81,7 @@ def test_prepared_world_validates_clean_and_report_is_revision_bound(settings, _
             assert not report.errors, report.errors
             assert report.source_revision == project.draft_revision
             assert report.coverage["parts_ready"] == report.coverage["parts_total"] > 0
-            assert report.coverage["routes"] == 3 and report.coverage["items"] == 1
+            assert report.coverage["routes"] == 3 and report.coverage["items"] == 4
 
     _prepared(settings, body)
 
@@ -169,3 +188,32 @@ def test_validation_never_calls_a_model(settings, _fast_retry):
 
 
 _ = asyncio
+
+
+def test_items_go_into_containers_and_npc_hands_and_anchors_are_placed(settings, _fast_retry):
+    async def body(maker, pid, cid):
+        from app.db.models import PlotAnchorBinding
+
+        async with maker() as s:
+            entities = list(await s.scalars(select(Entity).where(Entity.campaign_id == cid)))
+            by_ref = {(e.state or {}).get("item_ref"): e for e in entities if (e.state or {}).get("item_ref")}
+            chest = by_ref["item_chest"]
+            assert chest.state["world_object"]["role"] == "container"
+            assert by_ref["item_seal"].state["world_object"]["container_id"] == chest.id
+            warden = next(e for e in entities if (e.state or {}).get("plot_id") == "npc_warden")
+            assert by_ref["item_letter"].state["world_object"]["container_id"] == warden.id
+            bindings = list(await s.scalars(select(PlotAnchorBinding).where(PlotAnchorBinding.campaign_id == cid)))
+            assert bindings and all(b.state == "materialized" and b.holder_entity_id for b in bindings)
+            carriers = [e for e in entities if (e.state or {}).get("plot_anchor")]
+            assert carriers  # носитель зацепки уже лежит в подготовленном участке
+            project = await s.get(AuthorProject, pid)
+            report = await validate_project(s, project)
+            assert not report.errors, report.errors
+            by_ref["item_seal"].state = {
+                **by_ref["item_seal"].state,
+                "world_object": {**by_ref["item_seal"].state["world_object"], "container_id": None},
+            }
+            report = await validate_project(s, project)
+            assert ("missing_item", "item_seal") in _codes(report)
+
+    _prepared(settings, body)

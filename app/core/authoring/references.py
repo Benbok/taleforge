@@ -13,7 +13,7 @@ TEXT_REF = re.compile(r"\[\[([^|\]]+)\|([^\]]*)\]\]")
 # Entity.state keys copied verbatim: they hold no ids.
 PLAIN_STATE = {
     "attitude", "hp", "hp_max", "plot_id", "role", "secret", "display_name", "item", "item_ref", "qty", "dc",
-    "visual_key", "route_ports", "passages", "unique", "cell", "mask",
+    "visual_key", "route_ports", "passages", "unique", "cell", "mask", "plot_anchor",
 }  # fmt: skip
 ADAPTED_STATE = {"areas", "complex", "blueprint", "sketch", "links", "world_object"}
 
@@ -65,6 +65,17 @@ def _blueprint(raw: dict, refs: RefMap) -> dict:
     return walk(raw)
 
 
+def _feature(feature: dict, ids: dict[str, str]) -> dict:
+    """A placed object's map feature points at its entity and is named after it (``sf_<entity id>``)."""
+    entity_id = feature.get("entity_id")
+    if not entity_id or entity_id not in ids:
+        return feature
+    out = {**feature, "entity_id": ids[entity_id]}
+    if feature.get("id") == f"sf_{entity_id}"[:32]:
+        out["id"] = f"sf_{ids[entity_id]}"[:32]
+    return out
+
+
 def adapt_state(state: dict, refs: RefMap) -> dict:
     out: dict[str, Any] = {}
     for key, value in (state or {}).items():
@@ -79,6 +90,7 @@ def adapt_state(state: dict, refs: RefMap) -> dict:
             sketch["exits"] = [
                 {**x, "to": refs.entities.get(x.get("to"), x.get("to"))} for x in sketch.get("exits") or []
             ]
+            sketch["features"] = [_feature(f, refs.entities) for f in sketch.get("features") or []]
             if isinstance(sketch.get("blueprint"), dict):
                 bp = dict(sketch["blueprint"])
                 bp["root_id"] = refs.entities.get(bp.get("root_id"), bp.get("root_id"))
@@ -147,7 +159,17 @@ def find_leaks(value: Any, source_ids: set[str], path: str = "") -> list[str]:
 
 def restore_state(state: dict, ids: dict[str, str]) -> dict:
     """Inverse of ``adapt_state``: logical refs back to the ids of the new world, only in adapter structures."""
-    return {k: (remap(v, ids) if k in ADAPTED_STATE else v) for k, v in (state or {}).items()}
+    out = {k: (remap(v, ids) if k in ADAPTED_STATE else v) for k, v in (state or {}).items()}
+    if isinstance(out.get("sketch"), dict):
+        logical_of = {new: ref for ref, new in ids.items()}  # entity_id is already restored by remap
+        features = []
+        for f in out["sketch"].get("features") or []:
+            logical = logical_of.get(f.get("entity_id") or "")
+            if logical and f.get("id") == f"sf_{logical}"[:32]:
+                f = {**f, "id": f"sf_{f['entity_id']}"[:32]}
+            features.append(f)
+        out["sketch"] = {**out["sketch"], "features": features}
+    return out
 
 
 def restore_plot(plot: dict, ids: dict[str, str]) -> dict:

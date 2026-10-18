@@ -13,7 +13,7 @@ from app.core.geography import ports
 from app.core.geography.compiler import compile_plan
 from app.core.geography.contracts import GeographyError, RouteEndpoint
 from app.core.layout import store as layout_store
-from app.db.models import AuthorJob, AuthorProject, CampaignSecret, Entity, WorldGenerationState
+from app.db.models import AuthorJob, AuthorProject, CampaignSecret, Entity, PlotAnchorBinding, WorldGenerationState
 
 OPEN_JOBS = ("queued", "running", "blocked", "failed", "stale")
 CLOSED_ROUTE_STATES = ("closed", "locked", "blocked")
@@ -131,10 +131,26 @@ async def validate_project(session: AsyncSession, project: AuthorProject) -> Val
             errors.append(_issue("unplaced_actor", npc["id"]))
 
     items = 0
+    by_item = {(e.state or {}).get("item_ref"): e for e in entities.values() if (e.state or {}).get("item_ref")}
+    npc_entity = {n["id"]: n.get("entity_id") for n in plan.get("npcs") or []}
     for item in plan.get("items") or []:
         items += 1
-        if not any((e.state or {}).get("item_ref") == item["ref"] for e in entities.values()):
+        entity = by_item.get(item["ref"])
+        if entity is None:
             errors.append(_issue("missing_item", item["ref"]))
+            continue
+        holder_ref = (item.get("placement") or {}).get("container_ref")
+        if holder_ref:
+            holder = by_item.get(holder_ref)
+            holder_id = holder.id if holder is not None else npc_entity.get(holder_ref)
+            inside = ((entity.state or {}).get("world_object") or {}).get("container_id")
+            if not holder_id or inside != holder_id:
+                errors.append(_issue("missing_item", item["ref"], holder_ref, message="not in its container"))
+    pending = await session.scalars(
+        select(PlotAnchorBinding).where(PlotAnchorBinding.campaign_id == cid, PlotAnchorBinding.state == "reserved")
+    )
+    for binding in pending:  # a clue that exists only in the plot text is not prepared
+        errors.append(_issue("missing_item", binding.anchor_id, message="plot anchor not placed"))
 
     return ValidationReport(
         source_revision=project.draft_revision,
