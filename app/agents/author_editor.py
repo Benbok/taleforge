@@ -1,7 +1,9 @@
 """Bounded AI editor for author drafts. It only proposes a typed patch; applying goes through apply_edits."""
 
+import hashlib
 import json
 import re
+import uuid
 
 from pydantic import ValidationError
 
@@ -12,7 +14,7 @@ from app.core.authoring.contracts import DraftPatch, EditProposal, EditRequest
 from app.core.authoring.edits import EditError, apply_edits, preview_edit
 from app.core.campaigns import Conflict
 from app.core.llm_diagnostics import reply_metrics
-from app.db.models import AuthorProject, Campaign, CampaignSecret, LlmCall
+from app.db.models import AuthorJob, AuthorProject, Campaign, CampaignSecret, LlmCall
 
 MAX_TOKENS = 2000
 ESTIMATE_USD = 0.05
@@ -58,7 +60,7 @@ async def propose(svc, project_id: str, request: EditRequest) -> EditProposal:
         )
     except LLMError as exc:
         call.error = str(exc)[:2000]
-        await _save(svc, call)
+        await _save(svc, call, project_id, request.base_revision, "failed")
         raise EditError("llm_unavailable") from exc
     call.model, call.tokens_in, call.tokens_out = reply.model, reply.tokens_in, reply.tokens_out
     call.cost, call.latency_ms = reply.cost, reply.latency_ms
@@ -70,9 +72,9 @@ async def propose(svc, project_id: str, request: EditRequest) -> EditProposal:
         proposal = preview_edit(plan, setting, patch)  # the same validator the manual form uses
     except (ValueError, ValidationError, EditError) as exc:
         call.error = "invalid_proposal"
-        await _save(svc, call)
+        await _save(svc, call, project_id, request.base_revision, "failed")
         raise EditError("invalid_proposal") from exc
-    await _save(svc, call)
+    await _save(svc, call, project_id, request.base_revision, "ready")
     return proposal.model_copy(update={"base_revision": request.base_revision})
 
 
@@ -81,7 +83,23 @@ async def apply_proposal(session, project, proposal: EditProposal, request_key: 
     return await apply_edits(session, project, proposal.patch, proposal.base_revision, request_key)
 
 
-async def _save(svc, call: LlmCall) -> None:
+async def _save(svc, call: LlmCall, project_id: str, revision: int, status: str) -> None:
+    """Every editor call is a journaled author job, so its cost counts against the project budget."""
+    key = uuid.uuid4().hex
+    digest = hashlib.sha256(key.encode()).hexdigest()
     async with svc.maker() as s:
+        job = AuthorJob(
+            project_id=project_id,
+            stage="editor",
+            input_digest=digest,
+            source_revision=revision,
+            status=status,
+            request_key=f"editor:{key}",
+            request_digest=digest,
+            error_code=call.error if status != "ready" else None,
+        )
+        s.add(job)
+        await s.flush()
+        call.author_job_id = job.id
         s.add(call)
         await s.commit()

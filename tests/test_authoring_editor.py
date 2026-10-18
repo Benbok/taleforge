@@ -68,7 +68,11 @@ def test_proposal_does_not_mutate_and_apply_uses_the_same_validator(settings):
         assert (await state(maker, pid))[1]["npcs"][0]["name"] == "Лис-старик"
         async with maker() as s:
             call = await s.scalar(select(LlmCall).where(LlmCall.purpose == "author_edit"))
-            assert call is not None and call.error is None
+            assert call is not None and call.error is None and call.author_job_id
+            from app.core.authoring import jobs
+
+            spent, _ = await jobs.spend(s, pid)
+            assert spent > 0  # расход редактора входит в бюджет проекта
 
     _run(settings, body)
 

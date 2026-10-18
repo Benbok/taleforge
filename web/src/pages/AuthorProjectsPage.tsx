@@ -3,8 +3,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CampaignBriefFields from "../components/CampaignBriefFields";
 import Header from "../components/Header";
-import { ApiError } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import type { BriefIn } from "../lib/api.gen";
+import type { Pack } from "../lib/campaign";
 import { authoring, authorKeys } from "../lib/authoring";
 
 export default function AuthorProjectsPage() {
@@ -12,9 +13,20 @@ export default function AuthorProjectsPage() {
   const client = useQueryClient();
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState<BriefIn>({});
+  const [pack, setPack] = useState("");
+  const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs") });
+  const base = (packs.data ?? []).find((p) => p.is_base);
+  const selected = pack || (base ? `${base.id}@${base.version}` : ""); // базовый мир по умолчанию
   const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects });
   const create = useMutation({
-    mutationFn: () => authoring.createProject({ title: title.trim(), brief }),
+    mutationFn: () => {
+      const chosen = (packs.data ?? []).find((p) => `${p.id}@${p.version}` === selected);
+      return authoring.createProject({
+        title: title.trim(),
+        brief,
+        ...(chosen ? { pack_id: chosen.id, pack_version: chosen.version } : {}),
+      });
+    },
     onSuccess: (p) => {
       void client.invalidateQueries({ queryKey: authorKeys.projects });
       navigate(`/author/${p.id}`);
@@ -35,6 +47,14 @@ export default function AuthorProjectsPage() {
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted">Название приключения</span>
             <input className="min-h-11 rounded-lg border border-line bg-surface px-2" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">Мир (пакет контента)</span>
+            <select className="min-h-11 rounded-lg border border-line bg-surface px-2" value={selected} onChange={(e) => setPack(e.target.value)}>
+              {(packs.data ?? []).map((p) => (
+                <option key={`${p.id}@${p.version}`} value={`${p.id}@${p.version}`}>{p.name} · {p.version}</option>
+              ))}
+            </select>
           </label>
           <CampaignBriefFields value={brief} onChange={setBrief} />
           {create.error && <p className="text-sm text-warn" role="alert">{create.error instanceof ApiError ? create.error.message : "не удалось создать проект"}</p>}

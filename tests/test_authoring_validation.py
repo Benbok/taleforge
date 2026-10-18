@@ -217,3 +217,40 @@ def test_items_go_into_containers_and_npc_hands_and_anchors_are_placed(settings,
             assert ("missing_item", "item_seal") in _codes(report)
 
     _prepared(settings, body)
+
+
+def test_only_latest_attempt_of_a_stage_counts(settings, _fast_retry):
+    async def body(maker, pid, cid):
+        from app.db.models import AuthorJob
+
+        async with maker() as s:
+            project = await s.get(AuthorProject, pid)
+            for i, status in enumerate(("failed", "ready")):
+                s.add(
+                    AuthorJob(
+                        project_id=pid,
+                        stage="lore",
+                        input_digest=f"d{i}",
+                        source_revision=1,
+                        status=status,
+                        request_key=f"k{i}",
+                        request_digest="x",
+                    )
+                )
+                await s.flush()
+            s.add(
+                AuthorJob(
+                    project_id=pid,
+                    stage="editor",
+                    input_digest="e",
+                    source_revision=1,
+                    status="failed",
+                    request_key="ed",
+                    request_digest="x",
+                )
+            )
+            await s.flush()
+            report = await validate_project(s, project)
+            assert not [i for i in report.errors if i.code == "preparation_blocked"], report.errors
+
+    _prepared(settings, body)

@@ -52,11 +52,14 @@ async def validate_project(session: AsyncSession, project: AuthorProject) -> Val
     plan, setting = (secret.plot if secret else None) or {}, (secret.setting if secret else None) or {}
     entities = {e.id: e for e in await session.scalars(select(Entity).where(Entity.campaign_id == cid))}
     rows = list(await session.scalars(select(WorldGenerationState).where(WorldGenerationState.campaign_id == cid)))
-    jobs = list(
-        await session.scalars(
-            select(AuthorJob).where(AuthorJob.project_id == project.id, AuthorJob.status.in_(OPEN_JOBS))
-        )
-    )
+    latest: dict[tuple[str, str], AuthorJob] = {}
+    for job in await session.scalars(
+        select(AuthorJob)
+        .where(AuthorJob.project_id == project.id, AuthorJob.stage != "editor")  # editor proposals are not stages
+        .order_by(AuthorJob.created_at, AuthorJob.id)
+    ):
+        latest[(job.stage, job.target_ref)] = job  # a later successful attempt supersedes an earlier failure
+    jobs = [j for j in latest.values() if j.status in OPEN_JOBS]
     errors: list[ValidationIssue] = []
     warnings: list[ValidationIssue] = []
 
