@@ -508,6 +508,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/adventures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Library
+         * @description Own published versions with a public summary; the bundle is never part of a list.
+         */
+        get: operations["library_api_adventures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/adventures/{version_id}/games": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Launch */
+        post: operations["launch_api_adventures__version_id__games_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audio/{track_id}": {
         parameters: {
             query?: never;
@@ -596,6 +633,180 @@ export interface paths {
          * @description Быстрая регистрация игрока: имя и пароль. Приглашение принимается уже после входа.
          */
         post: operations["signup_api_auth_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Projects */
+        get: operations["list_projects_api_author_projects_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_author_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project View */
+        get: operations["project_view_api_author_projects__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/edits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Edits */
+        post: operations["edits_api_author_projects__project_id__edits_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/edits/accept-stale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_api_author_projects__project_id__edits_accept_stale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/edits/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Edits */
+        post: operations["preview_edits_api_author_projects__project_id__edits_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Jobs */
+        get: operations["list_jobs_api_author_projects__project_id__jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/maps/{location_ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Author Map
+         * @description Full authoring map, only on explicit request. Read-only: no visits, no hero, no player knowledge.
+         */
+        get: operations["author_map_api_author_projects__project_id__maps__location_ref__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prepare */
+        post: operations["prepare_api_author_projects__project_id__prepare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish */
+        post: operations["publish_api_author_projects__project_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate */
+        post: operations["validate_api_author_projects__project_id__validate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2302,6 +2513,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptStaleRequest */
+        AcceptStaleRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Refs */
+            refs: string[];
+            /** Request Key */
+            request_key: string;
+        };
         /** AudioAttribution */
         AudioAttribution: {
             /**
@@ -2387,6 +2607,49 @@ export interface components {
             name: string;
             /** User Id */
             user_id: string;
+        };
+        /** AuthorMapArea */
+        AuthorMapArea: {
+            /** Area Ref */
+            area_ref: string;
+            /** Name */
+            name: string;
+            /** Ports */
+            ports?: {
+                [key: string]: unknown;
+            };
+            /** Sketch */
+            sketch: {
+                [key: string]: unknown;
+            };
+        };
+        /** AuthorMapOut */
+        AuthorMapOut: {
+            /** Areas */
+            areas: components["schemas"]["AuthorMapArea"][];
+            /** Location Ref */
+            location_ref: string;
+            /** Name */
+            name: string;
+        };
+        /** AuthorProjectCreate */
+        AuthorProjectCreate: {
+            brief?: components["schemas"]["BriefIn"];
+            /** Budget Usd */
+            budget_usd?: number | null;
+            /**
+             * Difficulty
+             * @default normal
+             * @enum {string}
+             */
+            difficulty?: "easy" | "normal" | "hard" | "deadly";
+            master?: components["schemas"]["MasterIn"];
+            /** Pack Id */
+            pack_id?: string | null;
+            /** Pack Version */
+            pack_version?: string | null;
+            /** Title */
+            title: string;
         };
         /** Bond */
         Bond: {
@@ -3188,6 +3451,75 @@ export interface components {
             };
             /** Speed */
             speed: number;
+        };
+        /** DraftPatch */
+        DraftPatch: {
+            /** Operations */
+            operations?: (components["schemas"]["SetLore"] | components["schemas"]["UpdatePlotObject"] | components["schemas"]["UpdateItem"] | components["schemas"]["SetPlacement"] | components["schemas"]["UpsertRoute"] | components["schemas"]["RemoveObject"] | components["schemas"]["EditMap"])[];
+        };
+        /** EditMap */
+        EditMap: {
+            /** Location Ref */
+            location_ref: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "edit_map";
+            /** Spatial */
+            spatial: {
+                [key: string]: unknown;
+            };
+        };
+        /** EditProposal */
+        EditProposal: {
+            /**
+             * Affected
+             * @default []
+             */
+            affected?: components["schemas"]["ResultRef"][];
+            /** Base Revision */
+            base_revision: number;
+            patch: components["schemas"]["DraftPatch"];
+            /**
+             * Summary
+             * @default
+             */
+            summary?: string;
+        };
+        /** EditRequest */
+        EditRequest: {
+            /** Base Revision */
+            base_revision: number;
+            /** Instruction */
+            instruction: string;
+        };
+        /** EditResult */
+        EditResult: {
+            /**
+             * Affected
+             * @default []
+             */
+            affected?: components["schemas"]["ResultRef"][];
+            /** Applied */
+            applied: boolean;
+            /**
+             * Blocked By
+             * @default []
+             */
+            blocked_by?: components["schemas"]["ResultRef"][];
+            /** Draft Revision */
+            draft_revision: number;
+            /** Event Id */
+            event_id?: string | null;
+        };
+        /** EditsRequest */
+        EditsRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            patch: components["schemas"]["DraftPatch"];
+            /** Request Key */
+            request_key: string;
         };
         /** Empty */
         Empty: Record<string, never>;
@@ -4156,6 +4488,27 @@ export interface components {
              */
             note?: string;
         };
+        /** InstanceOptions */
+        InstanceOptions: {
+            master?: components["schemas"]["MasterIn"];
+            /** Name */
+            name: string;
+            /**
+             * Owner Plays
+             * @default true
+             */
+            owner_plays?: boolean;
+            /**
+             * Players
+             * @default 4
+             */
+            players?: number;
+            /**
+             * Tts Enabled
+             * @default true
+             */
+            tts_enabled?: boolean;
+        };
         /** IntroDraftIn */
         IntroDraftIn: {
             /** Hook Id */
@@ -4225,6 +4578,24 @@ export interface components {
             /** Valid */
             valid: boolean;
         };
+        /** JobOut */
+        JobOut: {
+            /**
+             * Attempt Count
+             * @default 0
+             */
+            attempt_count?: number;
+            /** Error Code */
+            error_code?: string | null;
+            /** Id */
+            id: string;
+            /** Source Revision */
+            source_revision: number;
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+        };
         /** KnowledgeRevealed */
         KnowledgeRevealed: {
             /** Entity Id */
@@ -4236,6 +4607,21 @@ export interface components {
             level?: unknown;
             /** Name */
             name: string | null;
+        };
+        /** LaunchReceipt */
+        LaunchReceipt: {
+            /** Adventure Version Id */
+            adventure_version_id: string;
+            /** Campaign Id */
+            campaign_id: string;
+            /** Url */
+            url: string;
+        };
+        /** LaunchRequest */
+        LaunchRequest: {
+            options: components["schemas"]["InstanceOptions"];
+            /** Request Key */
+            request_key: string;
         };
         /** LibraryHeroIn */
         LibraryHeroIn: {
@@ -5724,6 +6110,50 @@ export interface components {
             /** Structure Id */
             structure_id?: string | null;
         };
+        /** PreparationView */
+        PreparationView: {
+            /** Budget Usd */
+            budget_usd?: number | null;
+            /** Content */
+            content?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Cost Unknown
+             * @default false
+             */
+            cost_unknown?: boolean;
+            /** Draft Revision */
+            draft_revision: number;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Spent Usd
+             * @default 0
+             */
+            spent_usd?: number;
+            /**
+             * Stages
+             * @default []
+             */
+            stages?: components["schemas"]["StageStatus"][];
+        };
+        /** PrepareRequest */
+        PrepareRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+            /** Stage */
+            stage: string;
+            /** Target Ref */
+            target_ref?: string | null;
+        };
         /** PresenceChanged */
         PresenceChanged: {
             /** Seat Id */
@@ -5803,6 +6233,37 @@ export interface components {
             /** Xp */
             xp: number;
         };
+        /** ProjectDetail */
+        ProjectDetail: {
+            brief?: components["schemas"]["BriefIn"];
+            /** Budget Usd */
+            budget_usd?: number | null;
+            /** Draft Revision */
+            draft_revision: number;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** ProjectSummary */
+        ProjectSummary: {
+            /** Budget Usd */
+            budget_usd?: number | null;
+            /** Draft Revision */
+            draft_revision: number;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ProjectView
+         * @description Summary and full are different DTOs: the spoiler-free one has no ``content`` field at all.
+         */
+        ProjectView: {
+            preparation: components["schemas"]["PreparationView"];
+            project: components["schemas"]["ProjectDetail"];
+        };
         /** ProviderActivePatch */
         ProviderActivePatch: {
             /** Provider */
@@ -5826,6 +6287,13 @@ export interface components {
             technical_model: string | null;
             /** Title */
             title: string;
+        };
+        /** PublishRequest */
+        PublishRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Request Key */
+            request_key: string;
         };
         /** ReactionClosed */
         ReactionClosed: {
@@ -5853,6 +6321,16 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+        };
+        /** RemoveObject */
+        RemoveObject: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "remove_object";
+            /** Ref */
+            ref: string;
         };
         /** RestEnded */
         RestEnded: {
@@ -5910,6 +6388,13 @@ export interface components {
             vote_id: string;
             /** Warning */
             warning: string | null;
+        };
+        /** ResultRef */
+        ResultRef: {
+            /** Kind */
+            kind: string;
+            /** Ref */
+            ref: string;
         };
         /** ReviewIn */
         ReviewIn: {
@@ -6072,6 +6557,34 @@ export interface components {
             /** Recap */
             recap: string;
         };
+        /** SetLore */
+        SetLore: {
+            /** Fields */
+            fields: {
+                [key: string]: string | string[];
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_lore";
+        };
+        /** SetPlacement */
+        SetPlacement: {
+            /** Area Ref */
+            area_ref?: string | null;
+            /** Container Ref */
+            container_ref?: string | null;
+            /** Location Ref */
+            location_ref: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_placement";
+            /** Ref */
+            ref: string;
+        };
         /** SfxInput */
         SfxInput: {
             /**
@@ -6153,6 +6666,33 @@ export interface components {
             prepared?: string[] | null;
             /** Spells */
             spells?: string[] | null;
+        };
+        /** StageReceipt */
+        StageReceipt: {
+            /** Job Id */
+            job_id: string;
+            /** Source Revision */
+            source_revision: number;
+            /** Stage */
+            stage: string;
+            /** Status */
+            status: string;
+        };
+        /** StageStatus */
+        StageStatus: {
+            /** Error Code */
+            error_code?: string | null;
+            /** Job Id */
+            job_id?: string | null;
+            /** Source Revision */
+            source_revision?: number | null;
+            /** Stage */
+            stage: string;
+            /**
+             * Status
+             * @default not_requested
+             */
+            status?: string;
         };
         /** StandIn */
         StandIn: {
@@ -6278,6 +6818,58 @@ export interface components {
             /** Move Left Ft */
             move_left_ft: number;
         };
+        /** UpdateItem */
+        UpdateItem: {
+            /** Fields */
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "update_item";
+            /** Ref */
+            ref: string;
+        };
+        /** UpdatePlotObject */
+        UpdatePlotObject: {
+            /** Fields */
+            fields: {
+                [key: string]: string;
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "update_plot_object";
+            /** Ref */
+            ref: string;
+        };
+        /** UpsertRoute */
+        UpsertRoute: {
+            /**
+             * Bidirectional
+             * @default true
+             */
+            bidirectional?: boolean;
+            /** From */
+            from: string;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden?: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "upsert_route";
+            /** Ref */
+            ref: string;
+            /** To */
+            to: string;
+        };
         /** UserCreateIn */
         UserCreateIn: {
             /** Name */
@@ -6324,6 +6916,61 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** ValidationIssue */
+        ValidationIssue: {
+            /** Code */
+            code: string;
+            /**
+             * Message
+             * @default
+             */
+            message?: string;
+            /** Object Ref */
+            object_ref?: string | null;
+            /**
+             * Related Refs
+             * @default []
+             */
+            related_refs?: string[];
+        };
+        /** ValidationReport */
+        ValidationReport: {
+            /** Coverage */
+            coverage?: {
+                [key: string]: number;
+            };
+            /**
+             * Errors
+             * @default []
+             */
+            errors?: components["schemas"]["ValidationIssue"][];
+            /** Source Digest */
+            source_digest: string;
+            /** Source Revision */
+            source_revision: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings?: components["schemas"]["ValidationIssue"][];
+        };
+        /** VersionOut */
+        VersionOut: {
+            /** Id */
+            id: string;
+            /** Project Id */
+            project_id: string;
+            /** Public Summary */
+            public_summary: {
+                [key: string]: unknown;
+            };
+            /** Published At */
+            published_at: string;
+            /** Source Revision */
+            source_revision: number;
+            /** Version */
+            version: number;
         };
         /** Vote */
         Vote: {
@@ -6495,11 +7142,15 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type AcceptStaleRequest = components['schemas']['AcceptStaleRequest'];
 export type AudioAttribution = components['schemas']['AudioAttribution'];
 export type AudioSfxReady = components['schemas']['AudioSfxReady'];
 export type AudioState = components['schemas']['AudioState'];
 export type AudioTrack = components['schemas']['AudioTrack'];
 export type AuthOk = components['schemas']['AuthOk'];
+export type AuthorMapArea = components['schemas']['AuthorMapArea'];
+export type AuthorMapOut = components['schemas']['AuthorMapOut'];
+export type AuthorProjectCreate = components['schemas']['AuthorProjectCreate'];
 export type Bond = components['schemas']['Bond'];
 export type BondAnswerIn = components['schemas']['BondAnswerIn'];
 export type BondsIn = components['schemas']['BondsIn'];
@@ -6529,6 +7180,12 @@ export type CompanionPublic = components['schemas']['CompanionPublic'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type CreatureItem = components['schemas']['CreatureItem'];
 export type Derived = components['schemas']['Derived'];
+export type DraftPatch = components['schemas']['DraftPatch'];
+export type EditMap = components['schemas']['EditMap'];
+export type EditProposal = components['schemas']['EditProposal'];
+export type EditRequest = components['schemas']['EditRequest'];
+export type EditResult = components['schemas']['EditResult'];
+export type EditsRequest = components['schemas']['EditsRequest'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
@@ -6591,12 +7248,16 @@ export type HeroEffect = components['schemas']['HeroEffect'];
 export type HeroPublic = components['schemas']['HeroPublic'];
 export type HeroSheet = components['schemas']['HeroSheet'];
 export type ImportIn = components['schemas']['ImportIn'];
+export type InstanceOptions = components['schemas']['InstanceOptions'];
 export type IntroDraftIn = components['schemas']['IntroDraftIn'];
 export type InventoryRow = components['schemas']['InventoryRow'];
 export type InviteCreateIn = components['schemas']['InviteCreateIn'];
 export type InviteOut = components['schemas']['InviteOut'];
 export type InvitePreviewOut = components['schemas']['InvitePreviewOut'];
+export type JobOut = components['schemas']['JobOut'];
 export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
+export type LaunchReceipt = components['schemas']['LaunchReceipt'];
+export type LaunchRequest = components['schemas']['LaunchRequest'];
 export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
 export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
 export type Lineage = components['schemas']['Lineage'];
@@ -6677,18 +7338,26 @@ export type PersonaIn = components['schemas']['PersonaIn'];
 export type PersonaSettingsIn = components['schemas']['PersonaSettingsIn'];
 export type Place = components['schemas']['Place'];
 export type PlanRequestIn = components['schemas']['PlanRequestIn'];
+export type PreparationView = components['schemas']['PreparationView'];
+export type PrepareRequest = components['schemas']['PrepareRequest'];
 export type PresenceChanged = components['schemas']['PresenceChanged'];
 export type PreviewIn = components['schemas']['PreviewIn'];
 export type ProfileOut = components['schemas']['ProfileOut'];
 export type Progress = components['schemas']['Progress'];
+export type ProjectDetail = components['schemas']['ProjectDetail'];
+export type ProjectSummary = components['schemas']['ProjectSummary'];
+export type ProjectView = components['schemas']['ProjectView'];
 export type ProviderActivePatch = components['schemas']['ProviderActivePatch'];
 export type ProviderOut = components['schemas']['ProviderOut'];
+export type PublishRequest = components['schemas']['PublishRequest'];
 export type ReactionClosed = components['schemas']['ReactionClosed'];
 export type ReactionPrompt = components['schemas']['ReactionPrompt'];
 export type RegisterByInviteIn = components['schemas']['RegisterByInviteIn'];
+export type RemoveObject = components['schemas']['RemoveObject'];
 export type RestEnded = components['schemas']['RestEnded'];
 export type RestHero = components['schemas']['RestHero'];
 export type RestVote = components['schemas']['RestVote'];
+export type ResultRef = components['schemas']['ResultRef'];
 export type ReviewIn = components['schemas']['ReviewIn'];
 export type ScaleItem = components['schemas']['ScaleItem'];
 export type Scene = components['schemas']['Scene'];
@@ -6701,6 +7370,8 @@ export type SeatState = components['schemas']['SeatState'];
 export type SecretsIn = components['schemas']['SecretsIn'];
 export type ServerEvent = components['schemas']['ServerEvent'];
 export type SessionSummary = components['schemas']['SessionSummary'];
+export type SetLore = components['schemas']['SetLore'];
+export type SetPlacement = components['schemas']['SetPlacement'];
 export type SfxInput = components['schemas']['SfxInput'];
 export type SignupIn = components['schemas']['SignupIn'];
 export type SnapshotCampaign = components['schemas']['SnapshotCampaign'];
@@ -6708,6 +7379,8 @@ export type SnapshotMe = components['schemas']['SnapshotMe'];
 export type SnapshotSession = components['schemas']['SnapshotSession'];
 export type SoundPatch = components['schemas']['SoundPatch'];
 export type SpellsIn = components['schemas']['SpellsIn'];
+export type StageReceipt = components['schemas']['StageReceipt'];
+export type StageStatus = components['schemas']['StageStatus'];
 export type StandIn = components['schemas']['StandIn'];
 export type StandInChanged = components['schemas']['StandInChanged'];
 export type StatExplained = components['schemas']['StatExplained'];
@@ -6717,10 +7390,16 @@ export type TokenOut = components['schemas']['TokenOut'];
 export type Turn = components['schemas']['Turn'];
 export type TurnChanged = components['schemas']['TurnChanged'];
 export type TurnEconomy = components['schemas']['TurnEconomy'];
+export type UpdateItem = components['schemas']['UpdateItem'];
+export type UpdatePlotObject = components['schemas']['UpdatePlotObject'];
+export type UpsertRoute = components['schemas']['UpsertRoute'];
 export type UserCreateIn = components['schemas']['UserCreateIn'];
 export type UserOut = components['schemas']['UserOut'];
 export type UserRoleIn = components['schemas']['UserRoleIn'];
 export type ValidationError = components['schemas']['ValidationError'];
+export type ValidationIssue = components['schemas']['ValidationIssue'];
+export type ValidationReport = components['schemas']['ValidationReport'];
+export type VersionOut = components['schemas']['VersionOut'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
 export type WildShapeForm = components['schemas']['WildShapeForm'];
@@ -7778,6 +8457,61 @@ export interface operations {
             };
         };
     };
+    library_api_adventures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"][];
+                };
+            };
+        };
+    };
+    launch_api_adventures__version_id__games_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LaunchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaunchReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     track_file_api_audio__track_id__get: {
         parameters: {
             query?: never;
@@ -7917,6 +8651,363 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_projects_api_author_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"][];
+                };
+            };
+        };
+    };
+    create_api_author_projects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthorProjectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_view_api_author_projects__project_id__get: {
+        parameters: {
+            query?: {
+                view?: "summary" | "full";
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edits_api_author_projects__project_id__edits_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_api_author_projects__project_id__edits_accept_stale_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptStaleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_edits_api_author_projects__project_id__edits_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_api_author_projects__project_id__jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    author_map_api_author_projects__project_id__maps__location_ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                location_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorMapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_api_author_projects__project_id__prepare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepareRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_api_author_projects__project_id__publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_api_author_projects__project_id__validate_post: {
+        parameters: {
+            query?: {
+                view?: "summary" | "full";
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
                 };
             };
             /** @description Validation Error */

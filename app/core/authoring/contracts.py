@@ -280,6 +280,74 @@ class MaterializationReport(Contract):
         return bool(everything) and all(a.status == "ready" for a in everything) and not self.pending_rows
 
 
+class PrepareRequest(Contract):
+    stage: str
+    target_ref: str | None = None
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+    regenerate: bool = False
+
+
+class EditsRequest(Contract):
+    patch: DraftPatch
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class AcceptStaleRequest(Contract):
+    refs: list[str] = Field(min_length=1, max_length=50)
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class PublishRequest(Contract):
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class JobOut(Contract):
+    id: str
+    stage: str
+    status: str
+    error_code: str | None = None
+    source_revision: int
+    attempt_count: int = 0
+
+
+class ProjectView(Contract):
+    """Summary and full are different DTOs: the spoiler-free one has no ``content`` field at all."""
+
+    project: ProjectDetail
+    preparation: PreparationView
+
+
+class VersionOut(Contract):
+    id: str
+    project_id: str
+    version: int
+    source_revision: int
+    public_summary: dict
+    published_at: str
+
+
+class AuthorMapArea(Contract):
+    area_ref: str
+    name: str
+    sketch: dict
+    ports: dict = Field(default_factory=dict)
+
+
+class AuthorMapOut(Contract):
+    location_ref: str
+    name: str
+    areas: list[AuthorMapArea]
+
+
+class LaunchRequest(Contract):
+    options: InstanceOptions
+    request_key: str = Field(min_length=1, max_length=128)
+
+
 class LaunchReceipt(Contract):
     campaign_id: str
     adventure_version_id: str
