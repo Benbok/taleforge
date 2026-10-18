@@ -45,7 +45,7 @@ Text = Field(max_length=2000)
 
 class SetLore(Contract):
     op: Literal["set_lore"]
-    fields: dict[str, str | list[str]]
+    fields: dict[str, str | list[str] | list[dict[str, str]]]
 
 
 class UpdatePlotObject(Contract):

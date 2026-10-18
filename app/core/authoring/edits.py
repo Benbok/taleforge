@@ -28,7 +28,36 @@ from app.core.geography.contracts import GeographyError
 from app.core.layout.spatial import SpatialPlan
 from app.db.models import AuthorProject, CampaignSecret, Entity, Event, GeographyNode
 
-LORE_KEYS = {"world", "factions", "history", "tone", "taboos"}
+LORE_TEXT = {"overview", "era_and_magic", "current_situation", "tone", "world"}  # world: legacy one-line lore
+LORE_STRINGS = {"mysteries", "taboos"}
+LORE_RECORDS = {
+    "regions": {"id", "name", "description"},
+    "history": {"when", "event"},
+    "factions": {"name", "goal", "resources", "relations", "secret"},
+    "figures": {"name", "role", "motive"},
+}
+LORE_KEYS = LORE_TEXT | LORE_STRINGS | set(LORE_RECORDS)
+
+
+def _check_lore_field(key: str, value) -> object:
+    if key in LORE_TEXT:
+        if not isinstance(value, str) or len(value) > 6000:
+            raise EditError("invalid_field", key)
+        return value.strip()
+    if not isinstance(value, list) or len(value) > 20:
+        raise EditError("invalid_field", key)
+    if key in LORE_STRINGS or (key == "factions" and all(isinstance(v, str) for v in value)):
+        if not all(isinstance(v, str) and len(v) <= 600 for v in value):
+            raise EditError("invalid_field", key)
+        return [v.strip() for v in value if v.strip()]
+    allowed = LORE_RECORDS.get(key, set())
+    if not all(
+        isinstance(v, dict) and set(v) <= allowed and all(len(str(x)) <= 1200 for x in v.values()) for v in value
+    ):
+        raise EditError("invalid_field", key)
+    return [{k: str(x).strip() for k, x in v.items()} for v in value]
+
+
 # Editable text fields per plot kind. Structure (id, template_id, status, entity_id, spatial) is not editable here.
 TEXT_FIELDS = {
     "locations": {"name", "mood", "role", "secret"},
@@ -69,7 +98,8 @@ def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, li
         if isinstance(op, SetLore):
             if not set(op.fields) <= LORE_KEYS:
                 raise EditError("unknown_lore_field", ",".join(sorted(set(op.fields) - LORE_KEYS)))
-            setting["lore"] = {**(setting.get("lore") or {}), **op.fields}
+            checked = {key: _check_lore_field(key, value) for key, value in op.fields.items()}
+            setting["lore"] = {**(setting.get("lore") or {}), **checked}
         elif isinstance(op, UpdatePlotObject):
             kind, obj = _find(plan, op.ref)
             if obj is None:

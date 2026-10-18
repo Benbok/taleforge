@@ -101,6 +101,11 @@ async def build_input(s, c: Campaign, note: str = "", structure_id: str | None =
         figures.append(plot.figure_line(e, secret.data.get("text", "") if secret else ""))
     places = [plot.place_line(e) for e in catalog.by_kind("location_template") if "atlas" in tags(e)][:PLACES]
     secret = await s.get(CampaignSecret, c.id)
+    authored = ((secret.setting if secret else None) or {}).get("lore")
+    if authored:  # the author's world is the frame of the plot, ahead of the pack's general lore
+        from app.core.authoring.lore_text import render_lore
+
+        lore_text = "\n".join(["Мир автора (основа сюжета):", render_lore(authored), "", lore_text])
     previous = secret.plot if secret and secret.plot and secret.plot.get("title") else None
     party = sum(1 for x in c.seats if x.role == "player")
     text = plot.plan_input(

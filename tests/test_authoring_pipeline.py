@@ -1,10 +1,9 @@
 import asyncio
-import json
 from types import SimpleNamespace
 
 from sqlalchemy import select
 
-from app.agents.llm import LLMReply
+from app.agents.llm import LLMReply, ToolCall
 from app.core.authoring import jobs
 from app.core.authoring.contracts import AuthorProjectCreate
 from app.core.authoring.projects import author_write, create_project
@@ -13,18 +12,42 @@ from app.db.models import AuthorJob, AuthorProject, CampaignSecret, LlmCall
 from app.db.session import make_engine, make_sessionmaker
 from tests.authoring_helpers import author
 
-LORE = {"world": "Остров туманов", "factions": ["Рыбаки"], "history": "Старое", "tone": "мрачный", "taboos": []}
+OVERVIEW = "Остров туманов. " + "Рыбацкие деревни живут между приливами, а в тумане слышна песня. " * 4
+LORE = {
+    "overview": OVERVIEW,
+    "era_and_magic": "Позднее средневековье, магия редка и пугает.",
+    "regions": [
+        {"id": "reg_coast", "name": "Берег", "description": "Скалы"},
+        {"id": "reg_deep", "name": "Глубь", "description": "Пещеры"},
+    ],
+    "history": [{"when": f"{i} век назад", "event": f"событие {i}"} for i in range(4)],
+    "factions": [
+        {"name": "Рыбаки", "goal": "выжить", "relations": "боятся культа"},
+        {"name": "Культ", "goal": "разбудить спящего", "relations": "враги всех"},
+    ],
+    "figures": [
+        {"name": "Ирса", "role": "жрица", "motive": "голос"},
+        {"name": "Бертольд", "role": "смотритель", "motive": "долг"},
+    ],
+    "current_situation": "Корабли пропадают.",
+    "mysteries": ["Кто поёт", "Что спит"],
+    "tone": "мрачный",
+    "taboos": [],
+}
 
 
 class Llm:
-    def __init__(self, text=None, cost=0.01):
-        self.text = json.dumps(LORE, ensure_ascii=False) if text is None else text
+    def __init__(self, args=None, cost=0.01):
+        self.args = LORE if args is None else args
         self.cost = cost
         self.calls = 0
 
     async def complete(self, messages, **kw):
         self.calls += 1
-        return LLMReply(text=self.text, model="m", tokens_in=10, tokens_out=20, cost=self.cost, cost_known=True)
+        call = ToolCall(id=f"tc{self.calls}", name="submit_world_lore", arguments=self.args)
+        return LLMReply(
+            text="", tool_calls=[call], model="m", tokens_in=10, tokens_out=20, cost=self.cost, cost_known=True
+        )
 
 
 def _run(settings, body, *, budget=1.0, llm=None):
@@ -62,7 +85,7 @@ def test_lore_stage_saves_structured_setting_and_cost(settings):
             assert job.status == "ready", job.error_code
             project = await s.get(AuthorProject, pid)
             secret = await s.get(CampaignSecret, project.workspace_campaign_id)
-            assert secret.setting["lore"]["world"] == "Остров туманов"
+            assert secret.setting["lore"]["overview"] == OVERVIEW
             assert "lore" in project.dependencies
             call = await s.scalar(select(LlmCall).where(LlmCall.author_job_id == job.id))
             assert call.purpose == "lore"
@@ -89,14 +112,14 @@ def test_invalid_lore_fails_without_overwriting_previous(settings):
     async def body(maker, svc, pid):
         await _request(maker, pid, "lore", "k1")
         await AuthorRunner(svc).run_due()
-        svc.llm.text = "не json"
+        svc.llm.args = {"overview": "коротко"}
         receipt = await _request(maker, pid, "lore", "k2", regenerate=True)
         await AuthorRunner(svc).run_due()
         async with maker() as s:
             assert (await s.get(AuthorJob, receipt.job_id)).status == "failed"
             project = await s.get(AuthorProject, pid)
             secret = await s.get(CampaignSecret, project.workspace_campaign_id)
-            assert secret.setting["lore"]["world"] == "Остров туманов"
+            assert secret.setting["lore"]["overview"] == OVERVIEW
 
     _run(settings, body)
 
@@ -159,3 +182,34 @@ def test_edit_during_run_marks_job_stale(settings):
             assert "lore" not in (project.dependencies or {})
 
     _run(settings, body)
+
+
+def test_invalid_lore_is_retried_once_with_errors_and_both_calls_are_billed(settings):
+    async def body(maker, svc, pid):
+        svc.llm.args = {"overview": "коротко"}
+        receipt = await _request(maker, pid, "lore", "k1")
+        await AuthorRunner(svc).run_due()
+        async with maker() as s:
+            assert (await s.get(AuthorJob, receipt.job_id)).error_code == "lore_invalid"
+            calls = list(await s.scalars(select(LlmCall).where(LlmCall.author_job_id == receipt.job_id)))
+            assert len(calls) == 2 and all(c.error for c in calls)
+        assert svc.llm.calls == 2
+
+    _run(settings, body)
+
+
+def test_plot_prompt_receives_authored_lore(settings):
+    from app.agents.architect import build_input
+    from app.db.models import Campaign
+    from tests.test_authoring_materialization import _prepared_project, _with_maker
+
+    pid, cid = _prepared_project(settings)
+
+    async def body(maker):
+        async with maker() as s:
+            (await s.get(CampaignSecret, cid)).setting = {"lore": LORE}
+            await s.commit()
+            prompt, _sid = await build_input(s, await s.get(Campaign, cid))
+        assert "Мир автора" in prompt and "Ирса" in prompt and "Кто поёт" in prompt
+
+    _with_maker(settings, body)

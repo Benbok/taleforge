@@ -48,7 +48,7 @@ export default function StagePanel({ view, busy, onPrepare, onAcceptStale }: Pro
         </div>
       )}
       <p className="text-sm text-muted">
-        Расход: ${(view.spent_usd ?? 0).toFixed(3)}
+        Расход: ${(view.spent_usd ?? 0).toFixed(4)}
         {view.budget_usd != null ? ` из $${view.budget_usd.toFixed(2)}` : ""}
         {view.cost_unknown ? " · стоимость части вызовов провайдер не сообщил (не считается нулём)" : ""}
       </p>

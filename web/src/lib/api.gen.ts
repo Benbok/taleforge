@@ -6571,7 +6571,9 @@ export interface components {
         SetLore: {
             /** Fields */
             fields: {
-                [key: string]: string | string[];
+                [key: string]: string | string[] | {
+                    [key: string]: string;
+                }[];
             };
             /**
              * @description discriminator enum property added by openapi-typescript

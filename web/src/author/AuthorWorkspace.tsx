@@ -123,7 +123,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
             proposal={proposal}
             affected={affected}
             onRename={(ref, name) => edit.mutate({ operations: [{ op: "update_plot_object", ref, fields: { name } }] })}
-            onLore={(fields) => edit.mutate({ operations: [{ op: "set_lore", fields }] })}
+            onLore={(fields) => edit.mutate({ operations: [{ op: "set_lore", fields: fields as never }] })}
             onPropose={(text) => propose.mutate(text)}
             onApplyProposal={() => proposal && edit.mutate(proposal.patch)}
             onDismissProposal={() => setProposal(null)}

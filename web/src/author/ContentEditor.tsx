@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { EditProposal } from "../lib/api.gen";
+import LoreEditor, { type Lore } from "./LoreEditor";
 
 type Obj = { id: string; name: string };
 export interface DraftContent {
-  setting?: { lore?: { world?: string; tone?: string } } & Record<string, unknown>;
+  setting?: { lore?: Lore } & Record<string, unknown>;
   plot?: { locations?: Obj[]; npcs?: Obj[]; antagonists?: Obj[] } & Record<string, unknown>;
 }
 
@@ -12,7 +13,7 @@ interface Props {
   busy: boolean;
   proposal: EditProposal | null;
   onRename(ref: string, name: string): void;
-  onLore(fields: Record<string, string>): void;
+  onLore(fields: Record<string, unknown>): void;
   onPropose(instruction: string): void;
   onApplyProposal(): void;
   onDismissProposal(): void;
@@ -21,7 +22,6 @@ interface Props {
 
 export default function ContentEditor({ content, busy, proposal, onRename, onLore, onPropose, onApplyProposal, onDismissProposal, affected }: Props) {
   const [names, setNames] = useState<Record<string, string>>({});
-  const [world, setWorld] = useState<string | null>(null);
   const [ask, setAsk] = useState("");
   const groups: [string, Obj[]][] = [
     ["Локации", content.plot?.locations ?? []],
@@ -30,11 +30,7 @@ export default function ContentEditor({ content, busy, proposal, onRename, onLor
   ];
   return (
     <section aria-label="Редактор содержимого" className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-muted">Описание мира</span>
-        <textarea className="min-h-24 rounded-lg border border-line bg-raised p-2" value={world ?? content.setting?.lore?.world ?? ""} onChange={(e) => setWorld(e.target.value)} />
-        <button className="btn min-h-11 self-start px-3 text-sm" type="button" disabled={busy || world === null} onClick={() => onLore({ world: world ?? "" })}>Сохранить описание</button>
-      </label>
+      <LoreEditor lore={content.setting?.lore ?? {}} busy={busy} onSave={onLore} />
       {groups.map(([title, items]) =>
         items.length ? (
           <div key={title}>

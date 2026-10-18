@@ -12714,6 +12714,15 @@
           "type": "string"
          },
          "type": "array"
+        },
+        {
+         "items": {
+          "additionalProperties": {
+           "type": "string"
+          },
+          "type": "object"
+         },
+         "type": "array"
         }
        ]
       },
