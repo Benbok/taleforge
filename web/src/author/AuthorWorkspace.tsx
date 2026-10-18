@@ -243,7 +243,8 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       prepare.mutate({ stage: name, regenerate });
     };
     const failed = status === "failed" || status === "blocked";
-    const verb = status === "not_requested" ? (paid ? "Сгенерировать моделью" : "Запустить") : failed || isStale ? "Повторить" : "Новый вариант";
+    const first = name === "geography" ? "Проверить и сохранить географию" : name === "materialize" ? "Создать места, NPC и предметы" : name === "maps" ? "Пересобрать карты" : "Запустить";
+    const verb = status === "not_requested" ? (paid ? "Сгенерировать моделью" : first) : failed || isStale ? "Повторить" : paid ? "Новый вариант" : "Запустить снова";
     return (
       <div className="flex flex-wrap items-center gap-2">
         <span className={`text-sm ${failed ? "text-bad" : "text-muted"}`} role="status">
@@ -386,7 +387,10 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     );
   } else if (step === "geography" || step === "materialize" || step === "maps") {
     const info: Record<string, [string, string]> = {
-      geography: ["География", "Регионы, места и маршруты между конкретными частями мест собираются из каркаса. Бесплатно, без модели."],
+      geography: [
+        "География",
+        "Ниже — регионы, места и маршруты так, как они записаны в каркасе. Кнопка проверяет их (существуют ли места и части, нет ли петель в регионах и дублей маршрутов) и сохраняет как основу для карт. Бесплатно, без модели.",
+      ],
       materialize: ["Места, NPC и предметы", "Создаются все места каркаса с картами участков, жители в своих домах, ключевые предметы и зацепки."],
       maps: ["Карты", "Пересобирает карты мест, которые вы изменили: новая карта заменяет старую только целиком готовой."],
     };
