@@ -127,8 +127,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
                 _fact(
                     f"resource:{hero.id}",
                     "resources",
-                    f"{hero.name} resources: "
-                    + ", ".join(world.item_name(item) for item in inventory),
+                    f"{hero.name} resources: " + ", ".join(world.item_name(item) for item in inventory),
                     subjects=subjects,
                 )
             )
@@ -148,8 +147,7 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             _fact(
                 f"target:{entity.id}",
                 "targets",
-                f"{entity.name} ({entity.id}); kind={entity.kind}; place={place or 'unknown'}; "
-                f"state={state_text}",
+                f"{entity.name} ({entity.id}); kind={entity.kind}; place={place or 'unknown'}; state={state_text}",
                 subjects=subjects,
                 audience=public({entity.id}),
             )
@@ -195,12 +193,16 @@ def collect_context_snapshot(ctx, cfg, *, messages, memory, history) -> tuple[Co
             entity = world.entities.get(exit_.target_id)
             if entity is None and not exit_.room_ref:
                 continue
-            visible = origin in public_places and entity is not None and all(
-                not (entity.state or {}).get("secret")
-                or entity.id in world.revealed.get(hero_id, set())
-                or hero_id in (entity.state or {}).get("visited_by", ())
-                or world.place_of(world.characters[hero_id]) == entity.id
-                for hero_id in viewers or ()
+            visible = (
+                origin in public_places
+                and entity is not None
+                and all(
+                    not (entity.state or {}).get("secret")
+                    or entity.id in world.revealed.get(hero_id, set())
+                    or hero_id in (entity.state or {}).get("visited_by", ())
+                    or world.place_of(world.characters[hero_id]) == entity.id
+                    for hero_id in viewers or ()
+                )
             )
             facts.append(
                 _fact(

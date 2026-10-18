@@ -1,0 +1,411 @@
+{
+ "title": "Туман над Солёной бухтой",
+ "tagline": "В порту пропадают корабли, а в тумане поют.",
+ "tags": [
+  "мистика",
+  "порт",
+  "3–5 сессий"
+ ],
+ "public_intro": "Рыбацкий порт живёт в страхе: корабли уходят в туман и не возвращаются.",
+ "structure_id": "plot.investigation",
+ "conflict": "Культ приманивает корабли песней, чтобы открыть путь тому, что спит под водой.",
+ "stakes": "Порт опустеет, а спящее проснётся.",
+ "antagonists": [
+  {
+   "id": "villain",
+   "name": "Мать Ирса",
+   "template_id": "creature.cult_fanatic",
+   "goal": "Разбудить спящего под бухтой",
+   "methods": "Культ среди портовых, песня в тумане",
+   "weakness": "Без маяка песня не слышна",
+   "secret": "Сама слышит голос и боится его",
+   "threat": [
+    "Пропадает ещё корабль",
+    "Культ захватывает маяк",
+    "Песня звучит днём",
+    "Спящий шевелится"
+   ],
+   "threat_step": 0
+  }
+ ],
+ "locations": [
+  {
+   "id": "loc_port",
+   "name": "Пещера Обвала",
+   "template_id": "location.ruins",
+   "role": "Начало",
+   "mood": "Ветер в разбитых окнах",
+   "secret": "Смотритель порта в культе",
+   "spatial": {
+    "environment": "indoor",
+    "scale": "medium",
+    "parts": [
+     {
+      "ref": "main",
+      "name": "Вход в пещеру",
+      "shape": "cave",
+      "material": "stone"
+     },
+     {
+      "ref": "part_fall",
+      "name": "Обвал",
+      "shape": "cave",
+      "material": "stone"
+     },
+     {
+      "ref": "part_crawl",
+      "name": "Узкий лаз",
+      "shape": "cave",
+      "material": "stone"
+     }
+    ],
+    "approaches": [
+     {
+      "name": "Тропа",
+      "kind": "path"
+     }
+    ],
+    "links": []
+   },
+   "status": "sketch",
+   "region": "reg_hills"
+  },
+  {
+   "id": "loc_tavern",
+   "name": "Гладкие туннели",
+   "template_id": "location.ruins",
+   "role": "Слухи",
+   "mood": "Шумно и пьяно",
+   "secret": "В погребе собирается культ",
+   "status": "sketch",
+   "region": "reg_deep",
+   "spatial": {
+    "environment": "indoor",
+    "scale": "medium",
+    "parts": [
+     {
+      "ref": "part_junction",
+      "name": "Развилка",
+      "shape": "cave",
+      "material": "stone"
+     },
+     {
+      "ref": "part_smooth",
+      "name": "Гладкий коридор",
+      "shape": "cave",
+      "material": "stone"
+     }
+    ],
+    "approaches": [
+     {
+      "name": "Тропа",
+      "kind": "path"
+     }
+    ],
+    "links": []
+   }
+  },
+  {
+   "id": "loc_light",
+   "name": "Зал Ничто",
+   "template_id": "location.ruins",
+   "role": "Логово культа",
+   "mood": "Ветер и крики чаек",
+   "secret": "Линза маяка сделана из кости",
+   "status": "sketch",
+   "region": "reg_void",
+   "spatial": {
+    "environment": "indoor",
+    "scale": "medium",
+    "parts": [
+     {
+      "ref": "main",
+      "name": "Зал Ничто",
+      "shape": "cave",
+      "material": "stone"
+     }
+    ],
+    "approaches": [
+     {
+      "name": "Тропа",
+      "kind": "path"
+     }
+    ],
+    "links": []
+   }
+  },
+  {
+   "id": "loc_crypt",
+   "name": "Затопленный склеп",
+   "template_id": "location.crypt",
+   "role": "Финал",
+   "mood": "Вода по колено",
+   "secret": "Здесь спит древнее",
+   "status": "sketch",
+   "region": "reg_void",
+   "spatial": {
+    "environment": "indoor",
+    "scale": "medium",
+    "parts": [
+     {
+      "ref": "main",
+      "name": "Склеп",
+      "shape": "cave",
+      "material": "stone"
+     }
+    ],
+    "approaches": [
+     {
+      "name": "Тропа",
+      "kind": "path"
+     }
+    ],
+    "links": []
+   }
+  }
+ ],
+ "npcs": [
+  {
+   "id": "npc_warden",
+   "name": "Бертольд",
+   "template_id": "creature.noble",
+   "role": "Смотритель порта",
+   "want": "Сохранить власть",
+   "fear": "Разоблачения",
+   "secret": "Служит культу",
+   "attitude": "Любезен",
+   "look": "Толстяк в бархате",
+   "location_id": "loc_port",
+   "status": "sketch"
+  },
+  {
+   "id": "npc_keeper",
+   "name": "Лис",
+   "template_id": "creature.commoner",
+   "role": "Трактирщик",
+   "want": "Тишины",
+   "fear": "Культа",
+   "secret": "Видел ритуал",
+   "attitude": "Насторожен",
+   "look": "Худой, с бельмом",
+   "location_id": "loc_tavern",
+   "status": "sketch"
+  },
+  {
+   "id": "npc_guard",
+   "name": "Марта",
+   "template_id": "creature.guard",
+   "role": "Стражница",
+   "want": "Найти брата",
+   "fear": "Моря",
+   "secret": "Брат в культе",
+   "attitude": "Ищет помощи",
+   "look": "Рыжая, в кольчуге",
+   "status": "sketch",
+   "location_id": "loc_tavern"
+  }
+ ],
+ "factions": [
+  {
+   "name": "Портовые",
+   "stance": "Боятся и молчат"
+  }
+ ],
+ "acts": [
+  {
+   "id": "act1",
+   "title": "Туман",
+   "goal": "Понять, что с кораблями",
+   "exit": "Найден след к маяку",
+   "nodes": [
+    {
+     "id": "n_arrival",
+     "title": "Пропажа",
+     "summary": "Уходит ещё корабль",
+     "location_id": "loc_port",
+     "status": "sketch"
+    },
+    {
+     "id": "n_rumors",
+     "title": "Слухи",
+     "summary": "В таверне шепчут о песне",
+     "location_id": "loc_tavern",
+     "npc_ids": [
+      "npc_keeper"
+     ],
+     "status": "sketch"
+    }
+   ],
+   "status": "active"
+  },
+  {
+   "id": "act2",
+   "title": "Маяк",
+   "goal": "Остановить песню",
+   "exit": "Культ разбит",
+   "milestone_level": 3,
+   "nodes": [
+    {
+     "id": "n_light",
+     "title": "Маяк",
+     "summary": "Культ на маяке",
+     "location_id": "loc_light",
+     "status": "sketch"
+    },
+    {
+     "id": "n_betrayal",
+     "title": "Измена",
+     "summary": "Смотритель выдаёт себя",
+     "npc_ids": [
+      "npc_warden"
+     ],
+     "status": "sketch"
+    }
+   ],
+   "status": "pending"
+  },
+  {
+   "id": "act3",
+   "title": "Спящий",
+   "goal": "Не дать проснуться",
+   "exit": "Финал",
+   "nodes": [
+    {
+     "id": "n_crypt",
+     "title": "Склеп",
+     "summary": "Ритуал в склепе",
+     "location_id": "loc_crypt",
+     "npc_ids": [
+      "villain"
+     ],
+     "status": "sketch"
+    },
+    {
+     "id": "n_end",
+     "title": "Выбор",
+     "summary": "Запечатать или уничтожить",
+     "status": "sketch"
+    }
+   ],
+   "status": "pending"
+  }
+ ],
+ "reveals": [
+  {
+   "id": "r_cult",
+   "truth": "Корабли губит культ",
+   "node_id": "n_light",
+   "clues": [
+    {
+     "at": "npc_keeper",
+     "text": "Видел ритуал",
+     "id": "clue_4bbfa2d4"
+    },
+    {
+     "at": "loc_port",
+     "text": "Журнал смотрителя подчищен",
+     "carrier": {
+      "name": "Журнал смотрителя",
+      "description": "Страницы вырваны.",
+      "hidden": false
+     },
+     "id": "clue_2c97db5b"
+    },
+    {
+     "at": "npc_guard",
+     "text": "Брат пел ту же песню",
+     "id": "clue_acf36d6d"
+    }
+   ],
+   "revealed": false
+  },
+  {
+   "id": "r_sleeper",
+   "truth": "Под бухтой спит древнее",
+   "node_id": "n_crypt",
+   "clues": [
+    {
+     "at": "loc_light",
+     "text": "Костяная линза",
+     "id": "clue_6a14ddc1"
+    },
+    {
+     "at": "loc_crypt",
+     "text": "Надписи на стенах",
+     "id": "clue_fe087e4a"
+    },
+    {
+     "at": "villain",
+     "text": "Проговаривается в гневе",
+     "id": "clue_8677e502"
+    }
+   ],
+   "revealed": false
+  }
+ ],
+ "endings": [
+  "Спящий запечатан, культ разбит",
+  "Порт покинут, спящий ждёт"
+ ],
+ "opening": {
+  "gear": "kept"
+ },
+ "regions": [
+  {
+   "id": "reg_hills",
+   "name": "Холмы Шёпота"
+  },
+  {
+   "id": "reg_deep",
+   "name": "Глубины",
+   "parent": "reg_hills"
+  },
+  {
+   "id": "reg_void",
+   "name": "Пустота",
+   "parent": "reg_deep"
+  }
+ ],
+ "routes": [
+  {
+   "ref": "r_crawl",
+   "from": "loc_port/part_crawl",
+   "to": "loc_tavern/part_junction"
+  },
+  {
+   "ref": "r_hall",
+   "from": "loc_tavern/part_smooth",
+   "to": "loc_light/main",
+   "bidirectional": false
+  },
+  {
+   "ref": "r_crypt",
+   "from": "loc_light/main",
+   "to": "loc_crypt/main"
+  }
+ ],
+ "items": [
+  {
+   "ref": "item_key",
+   "template_id": "item.torch",
+   "name": "Костяной ключ",
+   "key": true,
+   "placement": {
+    "ref": "item_key",
+    "location_ref": "loc_port",
+    "area_ref": "part_fall"
+   }
+  },
+  {
+   "ref": "item_clue",
+   "template_id": "item.torch",
+   "name": "Записка из пустоты",
+   "key": false,
+   "placement": {
+    "ref": "item_clue",
+    "location_ref": "loc_light",
+    "area_ref": "main"
+   }
+  }
+ ]
+}

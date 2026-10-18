@@ -148,9 +148,7 @@ def upgrade() -> None:
             "fk_campaign_adventure_version", "campaigns", "adventure_versions", ["adventure_version_id"], ["id"]
         )
         op.add_column("llm_calls", sa.Column("author_job_id", sa.String(32), nullable=True))
-        op.create_foreign_key(
-            "fk_llm_author_job", "llm_calls", "author_jobs", ["author_job_id"], ["id"]
-        )
+        op.create_foreign_key("fk_llm_author_job", "llm_calls", "author_jobs", ["author_job_id"], ["id"])
     op.create_index("ix_llm_calls_author_job_id", "llm_calls", ["author_job_id"])
     # ### end Alembic commands ###
 
