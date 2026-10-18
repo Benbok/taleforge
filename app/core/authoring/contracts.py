@@ -352,6 +352,49 @@ class AuthorMapOut(Contract):
     layout_quality: str | None = None  # normal: planned by the model; fallback: deterministic template
 
 
+class OverviewArea(Contract):
+    area_ref: str
+    name: str
+    entry: bool = False
+    secret: bool = False
+    npcs: list[str] = Field(default_factory=list)
+    items: list[str] = Field(default_factory=list)
+
+
+class OverviewPassage(Contract):
+    """A passage inside one place, between two of its areas, or out of the place (``to_area`` is None)."""
+
+    from_area: str
+    to_area: str | None = None
+    name: str = ""
+    kind: str = ""
+    hidden: bool = False
+
+
+class OverviewLocation(Contract):
+    ref: str
+    name: str
+    region: str | None = None
+    areas: list[OverviewArea] = Field(default_factory=list)
+    passages: list[OverviewPassage] = Field(default_factory=list)
+
+
+class OverviewRoute(Contract):
+    ref: str
+    from_ref: str
+    from_area: str | None = None
+    to_ref: str
+    to_area: str | None = None
+    bidirectional: bool = True
+    hidden: bool = False
+
+
+class WorldOverview(Contract):
+    locations: list[OverviewLocation] = Field(default_factory=list)
+    routes: list[OverviewRoute] = Field(default_factory=list)
+    regions: dict[str, str] = Field(default_factory=dict)
+
+
 class LaunchRequest(Contract):
     options: InstanceOptions
     request_key: str = Field(min_length=1, max_length=128)

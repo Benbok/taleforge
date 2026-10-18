@@ -254,3 +254,24 @@ def test_only_latest_attempt_of_a_stage_counts(settings, _fast_retry):
             assert not [i for i in report.errors if i.code == "preparation_blocked"], report.errors
 
     _prepared(settings, body)
+
+
+def test_world_overview_lists_areas_passages_routes_and_residents(settings, _fast_retry):
+    async def body(maker, pid, cid):
+        from app.api.authoring import world_overview
+        from app.db.models import User
+
+        async with maker() as s:
+            project = await s.get(AuthorProject, pid)
+            owner = await s.get(User, project.owner_id)
+            view = await world_overview(pid, s, owner)
+        by_ref = {loc.ref: loc for loc in view.locations}
+        port = by_ref["loc_port"]
+        assert {a.area_ref for a in port.areas} >= {"narthex", "chapel"}
+        assert any(a.entry for a in port.areas) and any(a.secret for a in port.areas)
+        assert port.passages and all(p.from_area for p in port.passages)
+        assert any("Ржавый ключ" in a.items for a in port.areas)  # ключевой предмет виден в своём участке
+        assert any(a.npcs for loc in view.locations for a in loc.areas)
+        assert {r.ref for r in view.routes} >= {"r_port_light", "r_port_tavern"}
+
+    _prepared(settings, body)

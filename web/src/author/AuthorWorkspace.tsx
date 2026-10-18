@@ -13,6 +13,7 @@ import MapPreview from "./MapPreview";
 import StepNav, { type StepInfo, type StepState } from "./StepNav";
 import TaskBox from "./TaskBox";
 import ValidationPanel from "./ValidationPanel";
+import WorldOverview from "./WorldOverview";
 
 const LORE_KEYS = ["overview", "era_and_magic", "regions", "history", "factions", "figures", "current_situation", "mysteries", "tone", "taboos"];
 const PLOT_TEXT: [string, string][] = [
@@ -94,6 +95,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [rebuilding, setRebuilding] = useState<string | null>(null); // место, чью карту пересобирают
+  const [mapView, setMapView] = useState<"world" | "places">("world");
 
   useEffect(() => remember(stepKey, step), [step, stepKey]);
 
@@ -133,6 +135,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     // пересборка закончилась — показываем новую карту без перезагрузки страницы
     if ((lastMapsStatus === "queued" || lastMapsStatus === "running") && mapsStatus && mapsStatus !== lastMapsStatus) {
       void client.invalidateQueries({ queryKey: ["author", projectId, "map"] });
+      void client.invalidateQueries({ queryKey: ["author", projectId, "overview"] });
       void client.invalidateQueries({ queryKey: authorKeys.project(projectId, "full") });
       setMessage(mapsStatus === "ready" ? (rebuilding ? "Карта пересобрана." : "Карты пересобраны.") : `Пересборка не удалась (${mapsStatus}). Прежние карты на месте.`);
       setRebuilding(null);
@@ -145,6 +148,12 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     const locations = (full.data?.preparation.content as { plot?: Plot } | null | undefined)?.plot?.locations;
     if (step === "maps" && !location && locations?.length) setLocation(locations[0].id);
   }, [step, location, full.data]);
+
+  const overview = useQuery({
+    queryKey: ["author", projectId, "overview"],
+    queryFn: () => authoring.overview(projectId),
+    enabled: revealed && step === "maps",
+  });
 
   const refresh = () => client.invalidateQueries({ queryKey: ["author", projectId] });
   const revision = summary.data?.project.draft_revision ?? 0;
@@ -480,6 +489,24 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
         )}
         {!locked && step === "maps" && isDone("materialize") && (revealed ? (
           <section aria-label="Карты мест" className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Вид">
+              {([["world", "Схема мира"], ["places", "Карты мест"]] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  type="button"
+                  aria-selected={mapView === id}
+                  className={`btn min-h-11 px-4 text-sm ${mapView === id ? "btn-primary" : ""}`}
+                  onClick={() => setMapView(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mapView === "world" ? (
+              overview.data ? <WorldOverview overview={overview.data} /> : <p className="text-sm text-muted">Загрузка схемы…</p>
+            ) : (
+            <>
             <h3 className="font-heading text-base text-ink">Карты мест</h3>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Места">
               {(plot.locations ?? []).map((loc) => (
@@ -511,6 +538,8 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
               />
             )}
             <p className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</p>
+            </>
+            )}
           </section>
         ) : hidden)}
         {!locked && revealed && step !== "maps" && (plot.locations ?? []).length > 0 && (

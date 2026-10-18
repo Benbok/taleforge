@@ -10663,6 +10663,190 @@
     "title": "OriginItem",
     "type": "object"
    },
+   "OverviewArea": {
+    "additionalProperties": false,
+    "properties": {
+     "area_ref": {
+      "title": "Area Ref",
+      "type": "string"
+     },
+     "entry": {
+      "default": false,
+      "title": "Entry",
+      "type": "boolean"
+     },
+     "items": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "npcs": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Npcs",
+      "type": "array"
+     },
+     "secret": {
+      "default": false,
+      "title": "Secret",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "area_ref",
+     "name"
+    ],
+    "title": "OverviewArea",
+    "type": "object"
+   },
+   "OverviewLocation": {
+    "additionalProperties": false,
+    "properties": {
+     "areas": {
+      "items": {
+       "$ref": "#/components/schemas/OverviewArea"
+      },
+      "title": "Areas",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "passages": {
+      "items": {
+       "$ref": "#/components/schemas/OverviewPassage"
+      },
+      "title": "Passages",
+      "type": "array"
+     },
+     "ref": {
+      "title": "Ref",
+      "type": "string"
+     },
+     "region": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Region"
+     }
+    },
+    "required": [
+     "ref",
+     "name"
+    ],
+    "title": "OverviewLocation",
+    "type": "object"
+   },
+   "OverviewPassage": {
+    "additionalProperties": false,
+    "description": "A passage inside one place, between two of its areas, or out of the place (``to_area`` is None).",
+    "properties": {
+     "from_area": {
+      "title": "From Area",
+      "type": "string"
+     },
+     "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "kind": {
+      "default": "",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+     },
+     "to_area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To Area"
+     }
+    },
+    "required": [
+     "from_area"
+    ],
+    "title": "OverviewPassage",
+    "type": "object"
+   },
+   "OverviewRoute": {
+    "additionalProperties": false,
+    "properties": {
+     "bidirectional": {
+      "default": true,
+      "title": "Bidirectional",
+      "type": "boolean"
+     },
+     "from_area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "From Area"
+     },
+     "from_ref": {
+      "title": "From Ref",
+      "type": "string"
+     },
+     "hidden": {
+      "default": false,
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "ref": {
+      "title": "Ref",
+      "type": "string"
+     },
+     "to_area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To Area"
+     },
+     "to_ref": {
+      "title": "To Ref",
+      "type": "string"
+     }
+    },
+    "required": [
+     "ref",
+     "from_ref",
+     "to_ref"
+    ],
+    "title": "OverviewRoute",
+    "type": "object"
+   },
    "PackOut": {
     "properties": {
      "counts": {
@@ -14380,6 +14564,34 @@
     "title": "WorldDetail",
     "type": "object"
    },
+   "WorldOverview": {
+    "additionalProperties": false,
+    "properties": {
+     "locations": {
+      "items": {
+       "$ref": "#/components/schemas/OverviewLocation"
+      },
+      "title": "Locations",
+      "type": "array"
+     },
+     "regions": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Regions",
+      "type": "object"
+     },
+     "routes": {
+      "items": {
+       "$ref": "#/components/schemas/OverviewRoute"
+      },
+      "title": "Routes",
+      "type": "array"
+     }
+    },
+    "title": "WorldOverview",
+    "type": "object"
+   },
    "WorldSummary": {
     "properties": {
      "badges": {
@@ -16796,6 +17008,54 @@
      }
     ],
     "summary": "Author Map",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/overview": {
+   "get": {
+    "description": "One picture of the prepared world: places with their areas, passages inside them, routes between them,\nwho and what is where. Full author view, read-only.",
+    "operationId": "world_overview_api_author_projects__project_id__overview_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WorldOverview"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "World Overview",
     "tags": [
      "author"
     ]

@@ -23,6 +23,7 @@ import type {
   StageTask,
   ValidationReport,
   VersionOut,
+  WorldOverview,
 } from "./api.gen";
 
 export type View = "summary" | "full";
@@ -52,6 +53,7 @@ export const authoring = {
   previewEdit: (id: string, body: EditRequest) => api<EditProposal>(`${base(id)}/edits/preview`, { body }),
   applyEdits: (id: string, body: EditsRequest) => api<EditResult>(`${base(id)}/edits`, { body }),
   acceptStale: (id: string, body: AcceptStaleRequest) => api<EditResult>(`${base(id)}/edits/accept-stale`, { body }),
+  overview: (id: string) => api<WorldOverview>(`${base(id)}/overview`),
   getMap: (id: string, ref: string) => api<AuthorMapOut>(`${base(id)}/maps/${encodeURIComponent(ref)}`),
   validate: (id: string, view: View = "summary") =>
     api<ValidationReport>(`${base(id)}/validate?view=${view}`, { method: "POST" }),

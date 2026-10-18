@@ -167,6 +167,7 @@ it("на шаге «Карты» видны карты всех мест и от
   localStorage.setItem("author:reveal:ap_1", "1");
   localStorage.setItem("author:step:ap_1", "maps");
   renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("tab", { name: "Карты мест" }));
   expect(await screen.findByText("запасная планировка по шаблону: модель не ответила")).toBeTruthy();
   expect(screen.getByRole("group", { name: "Места" })).toBeTruthy();
   expect(mock.calls.every((c) => c.method === "GET")).toBe(true);
@@ -199,6 +200,7 @@ it("«Пересобрать эту карту» пересобирает тол
   localStorage.setItem("author:reveal:ap_1", "1");
   localStorage.setItem("author:step:ap_1", "maps");
   renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("tab", { name: "Карты мест" }));
   fireEvent.click(await screen.findByRole("button", { name: "Пересобрать эту карту" }));
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "loc_cave", regenerate: true });

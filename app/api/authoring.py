@@ -33,6 +33,7 @@ from app.core.authoring.contracts import (
     ValidationIssue,
     ValidationReport,
     VersionOut,
+    WorldOverview,
 )
 from app.core.authoring.edits import accept_stale, apply_edits
 from app.core.authoring.projects import create_project, require_project
@@ -244,3 +245,90 @@ async def import_plot(project_id: str, body: ImportPlotRequest, session: Session
         return JSONResponse({"detail": "import_rejected", "errors": exc.errors[:50]}, status_code=409)
     await session.commit()
     return ImportResult.model_validate(result)
+
+
+@router.get("/projects/{project_id}/overview", response_model=WorldOverview)
+async def world_overview(project_id: str, session: SessionDep, user: UserDep) -> WorldOverview:
+    """One picture of the prepared world: places with their areas, passages inside them, routes between them,
+    who and what is where. Full author view, read-only."""
+    from app.core.authoring.contracts import OverviewArea, OverviewLocation, OverviewPassage, OverviewRoute
+    from app.core.geography.compiler import compile_plan
+    from app.core.geography.contracts import GeographyError
+    from app.core.layout import store as layout_store
+    from app.db.models import CampaignSecret
+
+    project = await require_project(session, user, project_id)
+    secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+    plan = (secret.plot if secret else None) or {}
+    entities = {
+        e.id: e
+        for e in await session.scalars(select(Entity).where(Entity.campaign_id == project.workspace_campaign_id))
+    }
+    inside: dict[str, list[Entity]] = {}
+    for e in entities.values():
+        if e.location_id:
+            inside.setdefault(e.location_id, []).append(e)
+
+    def residents(area_id: str) -> tuple[list[str], list[str]]:
+        npcs, items, stack = [], [], list(inside.get(area_id, []))
+        while stack:  # items inside containers and in NPC hands count for the area they are in
+            e = stack.pop()
+            st = e.state or {}
+            if e.kind == "creature":
+                npcs.append(e.name)
+            elif st.get("item_ref") or st.get("plot_anchor"):
+                items.append(e.name)
+            stack.extend(inside.get(e.id, []))
+        return sorted(npcs), sorted(items)
+
+    locations = []
+    for loc in plan.get("locations") or []:
+        root = entities.get(loc.get("entity_id") or "")
+        out = OverviewLocation(ref=loc["id"], name=loc.get("name") or loc["id"], region=loc.get("region"))
+        if root is not None:
+            bp = layout_store.blueprint_of(root)
+            ids = layout_store.area_ids(root)
+            parts = {p.get("ref"): p for p in (loc.get("spatial") or {}).get("parts") or []}
+            for area_ref, area_id in (ids or {"": root.id}).items():
+                area = entities.get(area_id)
+                npcs, items = residents(area_id)
+                out.areas.append(
+                    OverviewArea(
+                        area_ref=area_ref,
+                        name=area.name if area else area_ref,
+                        entry=bool(bp and bp.entry == area_ref),
+                        secret=bool((parts.get(area_ref) or {}).get("secret")),
+                        npcs=npcs,
+                        items=items,
+                    )
+                )
+            for p in bp.passages if bp else ():
+                a, b = p.ends
+                if a.area_ref is None and b.area_ref is None:
+                    continue
+                start, end = (a, b) if a.area_ref else (b, a)
+                out.passages.append(
+                    OverviewPassage(
+                        from_area=start.area_ref, to_area=end.area_ref, name=p.public_name, kind=p.kind, hidden=p.hidden
+                    )
+                )
+        locations.append(out)
+    routes = []
+    try:
+        draft = compile_plan(plan)
+        routes = [
+            OverviewRoute(
+                ref=r.ref,
+                from_ref=r.source.node_ref,
+                from_area=r.source.area_ref,
+                to_ref=r.target.node_ref,
+                to_area=r.target.area_ref,
+                bidirectional=r.bidirectional,
+                hidden=r.hidden,
+            )
+            for r in draft.links
+        ]
+    except GeographyError:
+        pass  # the geography step reports the error; the overview shows what it can
+    regions = {r["id"]: r.get("name") or r["id"] for r in plan.get("regions") or [] if r.get("id")}
+    return WorldOverview(locations=locations, routes=routes, regions=regions)

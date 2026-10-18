@@ -762,6 +762,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/author/projects/{project_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * World Overview
+         * @description One picture of the prepared world: places with their areas, passages inside them, routes between them,
+         *     who and what is where. Full author view, read-only.
+         */
+        get: operations["world_overview_api_author_projects__project_id__overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/plot/import": {
         parameters: {
             query?: never;
@@ -5986,6 +6007,88 @@ export interface components {
             /** Summary */
             summary?: string | null;
         };
+        /** OverviewArea */
+        OverviewArea: {
+            /** Area Ref */
+            area_ref: string;
+            /**
+             * Entry
+             * @default false
+             */
+            entry?: boolean;
+            /** Items */
+            items?: string[];
+            /** Name */
+            name: string;
+            /** Npcs */
+            npcs?: string[];
+            /**
+             * Secret
+             * @default false
+             */
+            secret?: boolean;
+        };
+        /** OverviewLocation */
+        OverviewLocation: {
+            /** Areas */
+            areas?: components["schemas"]["OverviewArea"][];
+            /** Name */
+            name: string;
+            /** Passages */
+            passages?: components["schemas"]["OverviewPassage"][];
+            /** Ref */
+            ref: string;
+            /** Region */
+            region?: string | null;
+        };
+        /**
+         * OverviewPassage
+         * @description A passage inside one place, between two of its areas, or out of the place (``to_area`` is None).
+         */
+        OverviewPassage: {
+            /** From Area */
+            from_area: string;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden?: boolean;
+            /**
+             * Kind
+             * @default
+             */
+            kind?: string;
+            /**
+             * Name
+             * @default
+             */
+            name?: string;
+            /** To Area */
+            to_area?: string | null;
+        };
+        /** OverviewRoute */
+        OverviewRoute: {
+            /**
+             * Bidirectional
+             * @default true
+             */
+            bidirectional?: boolean;
+            /** From Area */
+            from_area?: string | null;
+            /** From Ref */
+            from_ref: string;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden?: boolean;
+            /** Ref */
+            ref: string;
+            /** To Area */
+            to_area?: string | null;
+            /** To Ref */
+            to_ref: string;
+        };
         /** PackOut */
         PackOut: {
             /** Counts */
@@ -7203,6 +7306,17 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** WorldOverview */
+        WorldOverview: {
+            /** Locations */
+            locations?: components["schemas"]["OverviewLocation"][];
+            /** Regions */
+            regions?: {
+                [key: string]: string;
+            };
+            /** Routes */
+            routes?: components["schemas"]["OverviewRoute"][];
+        };
         /** WorldSummary */
         WorldSummary: {
             /** Badges */
@@ -7435,6 +7549,10 @@ export type NoteIn = components['schemas']['NoteIn'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
 export type OriginItem = components['schemas']['OriginItem'];
+export type OverviewArea = components['schemas']['OverviewArea'];
+export type OverviewLocation = components['schemas']['OverviewLocation'];
+export type OverviewPassage = components['schemas']['OverviewPassage'];
+export type OverviewRoute = components['schemas']['OverviewRoute'];
 export type PackOut = components['schemas']['PackOut'];
 export type PartyMember = components['schemas']['PartyMember'];
 export type PartyPart = components['schemas']['PartyPart'];
@@ -7515,6 +7633,7 @@ export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
 export type WildShapeForm = components['schemas']['WildShapeForm'];
 export type WorldDetail = components['schemas']['WorldDetail'];
+export type WorldOverview = components['schemas']['WorldOverview'];
 export type WorldSummary = components['schemas']['WorldSummary'];
 export type $defs = Record<string, never>;
 export interface operations {
@@ -9016,6 +9135,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthorMapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    world_overview_api_author_projects__project_id__overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorldOverview"];
                 };
             };
             /** @description Validation Error */
