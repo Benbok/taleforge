@@ -55,7 +55,8 @@ async def validate_project(session: AsyncSession, project: AuthorProject) -> Val
     latest: dict[tuple[str, str], AuthorJob] = {}
     for job in await session.scalars(
         select(AuthorJob)
-        .where(AuthorJob.project_id == project.id, AuthorJob.stage != "editor")  # editor proposals are not stages
+        # editor proposals are not stages; the recorded intro is optional and never blocks publication
+        .where(AuthorJob.project_id == project.id, AuthorJob.stage.not_in(("editor", "intro")))
         .order_by(AuthorJob.created_at, AuthorJob.id)
     ):
         latest[(job.stage, job.target_ref)] = job  # a later successful attempt supersedes an earlier failure
@@ -64,7 +65,10 @@ async def validate_project(session: AsyncSession, project: AuthorProject) -> Val
     warnings: list[ValidationIssue] = []
 
     for stale in (project.dependencies or {}).get("stale") or []:
-        errors.append(_issue("stale_result", stale))
+        if stale == "stage:intro":  # an outdated intro is not used by games: they write their own
+            warnings.append(_issue("stale_intro", stale))
+        else:
+            errors.append(_issue("stale_result", stale))
     for job in jobs:
         errors.append(_issue("preparation_blocked", job.target_ref or job.stage, message=f"{job.stage}:{job.status}"))
     for row in rows:

@@ -22,6 +22,9 @@ from app.core.authoring.contracts import (
     EditsRequest,
     ImportPlotRequest,
     ImportResult,
+    IntroOut,
+    IntroRequest,
+    IntroTextRequest,
     JobOut,
     PrepareRequest,
     ProjectDetail,
@@ -332,3 +335,75 @@ async def world_overview(project_id: str, session: SessionDep, user: UserDep) ->
         pass  # the geography step reports the error; the overview shows what it can
     regions = {r["id"]: r.get("name") or r["id"] for r in plan.get("regions") or [] if r.get("id")}
     return WorldOverview(locations=locations, routes=routes, regions=regions)
+
+
+def _intro_out(secret, plan: dict, tts) -> IntroOut:
+    from app.agents import prelude
+
+    ready = ((secret.setting if secret else None) or {}).get(prelude.INTRO_KEY) or {}
+    providers = {name: bool(tts is not None and tts.get_engine(name).enabled) for name in ("voicestudio", "gemini")}
+    return IntroOut(
+        text=ready.get("text") or "",
+        voices=[{"id": v["id"], "duration": v.get("duration")} for v in ready.get("voices") or [] if v.get("id")],
+        provider=ready.get("provider"),
+        voice=ready.get("voice"),
+        parts=int(ready.get("parts") or 0),
+        current=bool(ready.get("text")) and ready.get("version") == plan.get("version"),
+        providers=providers,
+    )
+
+
+@router.get("/projects/{project_id}/intro", response_model=IntroOut)
+async def intro_view(project_id: str, request: Request, session: SessionDep, user: UserDep) -> IntroOut:
+    from app.db.models import CampaignSecret
+
+    project = await require_project(session, user, project_id)
+    secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+    return _intro_out(secret, (secret.plot if secret else None) or {}, getattr(request.app.state, "tts", None))
+
+
+@router.post("/projects/{project_id}/intro", response_model=StageReceipt, status_code=202)
+async def intro_prepare(project_id: str, body: IntroRequest, session: SessionDep, user: UserDep) -> StageReceipt:
+    """Write and/or voice the intro as an author job; the chosen source decides the cost."""
+    from app.core.authoring.intro import encode
+
+    project = await require_project(session, user, project_id)
+    receipt = await jobs.request_stage(
+        session,
+        project,
+        "intro",
+        encode(body.provider, body.voice, body.rewrite),
+        body.expected_revision,
+        body.request_key,
+        regenerate=True,
+    )
+    await session.commit()
+    return receipt
+
+
+@router.put("/projects/{project_id}/intro/text", response_model=IntroOut)
+async def intro_text(project_id: str, body: IntroTextRequest, request: Request, session: SessionDep, user: UserDep):
+    from app.core.authoring.intro import drop_voices, set_text
+    from app.core.authoring.projects import author_write
+    from app.db.models import CampaignSecret
+
+    project = await require_project(session, user, project_id)
+    await author_write(session, project, body.expected_revision)
+    old = await set_text(session, project, body.text)
+    await session.commit()
+    media_dir = getattr(request.app.state.master, "media_dir", None)
+    if media_dir:
+        drop_voices(media_dir, project.workspace_campaign_id, old.get("voices"))
+    secret = await session.get(CampaignSecret, project.workspace_campaign_id)
+    return _intro_out(secret, (secret.plot if secret else None) or {}, getattr(request.app.state, "tts", None))
+
+
+@router.get("/projects/{project_id}/intro/voice/{voice_id}")
+async def intro_voice(project_id: str, voice_id: str, request: Request, session: SessionDep, user: UserDep):
+    from fastapi import Response
+
+    from app.core import voice
+
+    project = await require_project(session, user, project_id)
+    meta, audio = voice.read(request.app.state.master.media_dir, project.workspace_campaign_id, voice_id)
+    return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})

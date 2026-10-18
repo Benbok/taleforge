@@ -6161,6 +6161,158 @@
     "title": "IntroDraftIn",
     "type": "object"
    },
+   "IntroOut": {
+    "additionalProperties": false,
+    "properties": {
+     "current": {
+      "default": false,
+      "title": "Current",
+      "type": "boolean"
+     },
+     "parts": {
+      "default": 0,
+      "title": "Parts",
+      "type": "integer"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provider"
+     },
+     "providers": {
+      "additionalProperties": {
+       "type": "boolean"
+      },
+      "title": "Providers",
+      "type": "object"
+     },
+     "text": {
+      "default": "",
+      "title": "Text",
+      "type": "string"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     },
+     "voices": {
+      "items": {
+       "$ref": "#/components/schemas/IntroVoiceOut"
+      },
+      "title": "Voices",
+      "type": "array"
+     }
+    },
+    "title": "IntroOut",
+    "type": "object"
+   },
+   "IntroRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "provider": {
+      "enum": [
+       "voicestudio",
+       "gemini",
+       "none"
+      ],
+      "title": "Provider",
+      "type": "string"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     },
+     "rewrite": {
+      "default": true,
+      "title": "Rewrite",
+      "type": "boolean"
+     },
+     "voice": {
+      "anyOf": [
+       {
+        "maxLength": 128,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice"
+     }
+    },
+    "required": [
+     "provider",
+     "expected_revision",
+     "request_key"
+    ],
+    "title": "IntroRequest",
+    "type": "object"
+   },
+   "IntroTextRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "text": {
+      "maxLength": 8000,
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "text",
+     "expected_revision"
+    ],
+    "title": "IntroTextRequest",
+    "type": "object"
+   },
+   "IntroVoiceOut": {
+    "additionalProperties": false,
+    "properties": {
+     "duration": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "IntroVoiceOut",
+    "type": "object"
+   },
    "InventoryRow": {
     "additionalProperties": false,
     "properties": {
@@ -16900,6 +17052,220 @@
      }
     ],
     "summary": "Preview Edits",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/intro": {
+   "get": {
+    "operationId": "intro_view_api_author_projects__project_id__intro_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntroOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Intro View",
+    "tags": [
+     "author"
+    ]
+   },
+   "post": {
+    "description": "Write and/or voice the intro as an author job; the chosen source decides the cost.",
+    "operationId": "intro_prepare_api_author_projects__project_id__intro_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IntroRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StageReceipt"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Intro Prepare",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/intro/text": {
+   "put": {
+    "operationId": "intro_text_api_author_projects__project_id__intro_text_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IntroTextRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntroOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Intro Text",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/intro/voice/{voice_id}": {
+   "get": {
+    "operationId": "intro_voice_api_author_projects__project_id__intro_voice__voice_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "voice_id",
+      "required": true,
+      "schema": {
+       "title": "Voice Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Intro Voice",
     "tags": [
      "author"
     ]

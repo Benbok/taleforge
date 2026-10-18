@@ -13,6 +13,7 @@ from app.core.authoring.references import find_leaks, restore_plot, restore_stat
 from app.core.campaigns import Conflict, NotFound, create_world
 from app.db.models import (
     AdventureVersion,
+    AuthorProject,
     Campaign,
     CampaignPlan,
     CampaignSecret,
@@ -35,7 +36,12 @@ def _digest(version_id: str, options: InstanceOptions) -> str:
 
 
 async def instantiate_adventure(
-    session: AsyncSession, owner: User, version: AdventureVersion, options: InstanceOptions, request_key: str
+    session: AsyncSession,
+    owner: User,
+    version: AdventureVersion,
+    options: InstanceOptions,
+    request_key: str,
+    media_dir=None,
 ) -> LaunchReceipt:
     digest = _digest(version.id, options)
     same = await session.scalar(
@@ -164,6 +170,7 @@ async def instantiate_adventure(
     secret = await session.get(CampaignSecret, game.id)
     secret.plot = plan
     secret.setting = _restore_blob(bundle.setting, all_ids)
+    await _copy_intro(session, version, game.id, secret, media_dir)
     if plot_module.has_plan(plan):
         session.add(CampaignPlan(campaign_id=game.id, version=1, content=plan, note="published adventure"))
         settings = dict(game.settings or {})
@@ -183,3 +190,19 @@ def _restore_blob(value, ids: dict[str, str]):
     from app.core.authoring.references import remap
 
     return remap(value, ids)
+
+
+async def _copy_intro(session: AsyncSession, version: AdventureVersion, game_id: str, secret, media_dir) -> None:
+    """The recorded intro of the adventure plays in the new game without being written or voiced again."""
+    from app.agents.prelude import INTRO_KEY
+    from app.core.authoring.intro import copy_voices
+
+    ready = dict((secret.setting or {}).get(INTRO_KEY) or {})
+    if not ready.get("voices"):
+        return
+    if media_dir is None:
+        ready["voices"] = []  # no files to copy from: the game voices its intro itself
+    else:
+        project = await session.get(AuthorProject, version.project_id)
+        ready["voices"] = copy_voices(media_dir, project.workspace_campaign_id, game_id, ready["voices"])
+    secret.setting = {**(secret.setting or {}), INTRO_KEY: ready}

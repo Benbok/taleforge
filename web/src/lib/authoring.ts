@@ -11,6 +11,9 @@ import type {
   EditsRequest,
   ImportPlotRequest,
   ImportResult,
+  IntroOut,
+  IntroRequest,
+  IntroTextRequest,
   JobOut,
   LaunchReceipt,
   LaunchRequest,
@@ -53,6 +56,8 @@ export const authoring = {
   previewEdit: (id: string, body: EditRequest) => api<EditProposal>(`${base(id)}/edits/preview`, { body }),
   applyEdits: (id: string, body: EditsRequest) => api<EditResult>(`${base(id)}/edits`, { body }),
   acceptStale: (id: string, body: AcceptStaleRequest) => api<EditResult>(`${base(id)}/edits/accept-stale`, { body }),
+  prepareIntro: (id: string, body: IntroRequest) => api<StageReceipt>(`${base(id)}/intro`, { body }),
+  setIntroText: (id: string, body: IntroTextRequest) => api<IntroOut>(`${base(id)}/intro/text`, { method: "PUT", body }),
   overview: (id: string) => api<WorldOverview>(`${base(id)}/overview`),
   getMap: (id: string, ref: string) => api<AuthorMapOut>(`${base(id)}/maps/${encodeURIComponent(ref)}`),
   validate: (id: string, view: View = "summary") =>
@@ -94,6 +99,7 @@ export const STAGE_LABELS: Record<string, string> = {
   materialize: "Места, NPC и предметы",
   maps: "Карты",
   validate: "Проверка",
+  intro: "Вступление",
 };
 
 export const STAGE_STATE_LABELS: Record<string, string> = {

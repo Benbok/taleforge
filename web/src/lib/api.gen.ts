@@ -725,6 +725,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/author/projects/{project_id}/intro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intro View */
+        get: operations["intro_view_api_author_projects__project_id__intro_get"];
+        put?: never;
+        /**
+         * Intro Prepare
+         * @description Write and/or voice the intro as an author job; the chosen source decides the cost.
+         */
+        post: operations["intro_prepare_api_author_projects__project_id__intro_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/intro/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Intro Text */
+        put: operations["intro_text_api_author_projects__project_id__intro_text_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/intro/voice/{voice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intro Voice */
+        get: operations["intro_voice_api_author_projects__project_id__intro_voice__voice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/jobs": {
         parameters: {
             query?: never;
@@ -4612,6 +4667,67 @@ export interface components {
             /** Voice */
             voice?: string | null;
         };
+        /** IntroOut */
+        IntroOut: {
+            /**
+             * Current
+             * @default false
+             */
+            current?: boolean;
+            /**
+             * Parts
+             * @default 0
+             */
+            parts?: number;
+            /** Provider */
+            provider?: string | null;
+            /** Providers */
+            providers?: {
+                [key: string]: boolean;
+            };
+            /**
+             * Text
+             * @default
+             */
+            text?: string;
+            /** Voice */
+            voice?: string | null;
+            /** Voices */
+            voices?: components["schemas"]["IntroVoiceOut"][];
+        };
+        /** IntroRequest */
+        IntroRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "voicestudio" | "gemini" | "none";
+            /** Request Key */
+            request_key: string;
+            /**
+             * Rewrite
+             * @default true
+             */
+            rewrite?: boolean;
+            /** Voice */
+            voice?: string | null;
+        };
+        /** IntroTextRequest */
+        IntroTextRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Text */
+            text: string;
+        };
+        /** IntroVoiceOut */
+        IntroVoiceOut: {
+            /** Duration */
+            duration?: number | null;
+            /** Id */
+            id: string;
+        };
         /** InventoryRow */
         InventoryRow: {
             /** Equipped */
@@ -7473,6 +7589,10 @@ export type ImportPlotRequest = components['schemas']['ImportPlotRequest'];
 export type ImportResult = components['schemas']['ImportResult'];
 export type InstanceOptions = components['schemas']['InstanceOptions'];
 export type IntroDraftIn = components['schemas']['IntroDraftIn'];
+export type IntroOut = components['schemas']['IntroOut'];
+export type IntroRequest = components['schemas']['IntroRequest'];
+export type IntroTextRequest = components['schemas']['IntroTextRequest'];
+export type IntroVoiceOut = components['schemas']['IntroVoiceOut'];
 export type InventoryRow = components['schemas']['InventoryRow'];
 export type InviteCreateIn = components['schemas']['InviteCreateIn'];
 export type InviteOut = components['schemas']['InviteOut'];
@@ -9072,6 +9192,139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EditProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intro_view_api_author_projects__project_id__intro_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntroOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intro_prepare_api_author_projects__project_id__intro_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntroRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intro_text_api_author_projects__project_id__intro_text_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntroTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntroOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intro_voice_api_author_projects__project_id__intro_voice__voice_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                voice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

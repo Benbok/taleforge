@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -31,7 +31,9 @@ async def library(session: SessionDep, user: UserDep) -> list[VersionOut]:
 
 
 @router.post("/{version_id}/games", response_model=LaunchReceipt, status_code=201)
-async def launch(version_id: str, body: LaunchRequest, session: SessionDep, user: UserDep) -> LaunchReceipt:
+async def launch(
+    version_id: str, body: LaunchRequest, request: Request, session: SessionDep, user: UserDep
+) -> LaunchReceipt:
     row = (
         await session.execute(
             select(AdventureVersion, AuthorProject.owner_id)
@@ -43,7 +45,8 @@ async def launch(version_id: str, body: LaunchRequest, session: SessionDep, user
         raise NotFound("приключение не найдено")  # no hint whether someone else's version exists
     version = row[0]
     try:
-        receipt = await instantiate_adventure(session, user, version, body.options, body.request_key)
+        media_dir = getattr(getattr(request.app.state, "master", None), "media_dir", None)
+        receipt = await instantiate_adventure(session, user, version, body.options, body.request_key, media_dir)
         await session.commit()
     except IntegrityError:  # a parallel request with the same key won: return its game
         await session.rollback()

@@ -12,7 +12,7 @@ from app.core.authoring.contracts import PreparationView, StageReceipt, StageSta
 from app.core.campaigns import Conflict
 from app.db.models import AuthorJob, AuthorProject, Campaign, CampaignSecret, LlmCall
 
-STAGES = ("lore", "plot", "geography", "materialize", "maps", "validate")
+STAGES = ("lore", "plot", "geography", "materialize", "maps", "validate", "intro")
 UPSTREAM = {
     "lore": None,
     "plot": "lore",
@@ -20,9 +20,10 @@ UPSTREAM = {
     "materialize": "geography",
     "maps": "materialize",
     "validate": "maps",
+    "intro": "plot",  # the recorded intro follows the plot: a new plot makes it stale
 }
 # A stage needs the previous one ready. The plot may start from the brief alone; validation runs any time.
-REQUIRED_UPSTREAM = {"geography": "plot", "materialize": "geography", "maps": "materialize"}
+REQUIRED_UPSTREAM = {"geography": "plot", "materialize": "geography", "maps": "materialize", "intro": "plot"}
 
 
 async def missing_upstream(session: AsyncSession, project: AuthorProject, stage: str) -> str | None:

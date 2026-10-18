@@ -395,6 +395,34 @@ class WorldOverview(Contract):
     regions: dict[str, str] = Field(default_factory=dict)
 
 
+class IntroVoiceOut(Contract):
+    id: str
+    duration: float | None = None
+
+
+class IntroOut(Contract):
+    text: str = ""
+    voices: list[IntroVoiceOut] = Field(default_factory=list)
+    provider: str | None = None
+    voice: str | None = None
+    parts: int = 0
+    current: bool = False  # written for the current plot version
+    providers: dict[str, bool] = Field(default_factory=dict)  # source -> available on this server
+
+
+class IntroRequest(Contract):
+    provider: Literal["voicestudio", "gemini", "none"]
+    voice: str | None = Field(default=None, max_length=128)
+    rewrite: bool = True
+    expected_revision: int
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class IntroTextRequest(Contract):
+    text: str = Field(min_length=1, max_length=8000)
+    expected_revision: int
+
+
 class LaunchRequest(Contract):
     options: InstanceOptions
     request_key: str = Field(min_length=1, max_length=128)

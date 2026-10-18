@@ -31,7 +31,7 @@ class StageContext:
 Handler = Callable[[StageContext], Awaitable[dict]]
 
 # Upper estimate reserved before a stage runs; real spend is read back from LlmCall.
-ESTIMATE_USD = {"lore": 0.05, "plot": 0.40}
+ESTIMATE_USD = {"lore": 0.05, "plot": 0.40, "intro": 0.02}
 
 
 def output_digest(result: dict) -> str:
@@ -129,6 +129,18 @@ async def maps_stage(ctx: StageContext) -> dict:
     return {"regenerated": [r["location_ref"] for r in results]}
 
 
+async def intro_stage(ctx: StageContext) -> dict:
+    """Recorded intro: text by the master's model, voice by the source the author picked."""
+    from app.core.authoring.intro import IntroError, prepare
+
+    async with ctx.svc.maker() as s:
+        target = (await s.get(AuthorJob, ctx.job_id)).target_ref
+    try:
+        return await prepare(ctx.svc, ctx.project_id, ctx.world_id, ctx.job_id, target)
+    except IntroError as exc:
+        raise StageError(exc.code) from exc
+
+
 async def geography_stage(ctx: StageContext) -> dict:
     """Compile regions, locations and routes from the plan into stored geography; no materialization."""
     from app.core.geography.compiler import compile_plan
@@ -177,6 +189,7 @@ HANDLERS: dict[str, Handler] = {
     "geography": geography_stage,
     "materialize": materialize_stage,
     "maps": maps_stage,
+    "intro": intro_stage,
     "validate": validate_stage,
 }
 
@@ -208,7 +221,10 @@ async def record_output(session, project: AuthorProject, job: AuthorJob, result:
 def downstream(stage: str) -> list[str]:
     from app.core.authoring.jobs import STAGES
 
-    return [s for s in STAGES[STAGES.index(stage) + 1 :] if s != "validate"] if stage in STAGES else []
+    if stage not in STAGES or stage == "intro":
+        return []
+    built = [s for s in STAGES[STAGES.index(stage) + 1 :] if s not in ("validate", "intro")]
+    return built + (["intro"] if stage == "plot" else [])  # the intro retells the plot, not the maps
 
 
 async def _expected(session, project, job, stage_digest) -> str:

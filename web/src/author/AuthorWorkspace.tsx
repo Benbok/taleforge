@@ -8,6 +8,7 @@ import Checklist from "./Checklist";
 import CharacterEditor from "./CharacterEditor";
 import ContentEditor, { type DraftContent } from "./ContentEditor";
 import GeographyView from "./GeographyView";
+import IntroStep from "./IntroStep";
 import JsonPaste from "./JsonPaste";
 import LoreEditor, { type Lore } from "./LoreEditor";
 import MapPreview from "./MapPreview";
@@ -255,6 +256,20 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       state: revealed ? contentState(plotItems, stageOf("plot"), stale.has("stage:plot")) : plotReady ? "done" : "empty",
       note: revealed ? `${done(plotItems)} из ${plotItems.length} частей` : statusLabel("plot"),
     },
+    {
+      id: "intro",
+      title: "Вступление",
+      ...(() => {
+        const st = stageOf("intro");
+        const status = st?.status ?? "not_requested";
+        if (!plotReady) return { state: "locked" as StepState, note: "после сюжета" };
+        if (status === "queued" || status === "running") return { state: "running" as StepState, note: "готовится" };
+        if (stale.has("stage:intro")) return { state: "stale" as StepState, note: "сюжет изменился" };
+        if (status === "failed") return { state: "problem" as StepState, note: "не получилось" };
+        if (DONE.has(status)) return { state: "done" as StepState, note: "записано" };
+        return { state: "empty" as StepState, note: "необязательно" };
+      })(),
+    },
     ...(
       [
         ["geography", "География", plotReady],
@@ -487,6 +502,30 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
             </div>
             <NextStepFooter nextId="geography" nextTitle="География" />
           </>
+        )}
+      </>
+    );
+  } else if (step === "intro") {
+    const st = stageOf("intro");
+    body = (
+      <>
+        <StepHeader title="Вступление" purpose="Рассказ мастера, с которого начинается каждая игра по приключению. Готовится один раз: текст пишет модель мастера, голос — выбранный источник. Игры берут готовую запись и не платят за неё снова." />
+        {!plotReady ? (
+          <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-4" role="status">
+            <p className="text-sm text-ink-2">Вступление пересказывает завязку сюжета, поэтому нужен готовый каркас.</p>
+            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep("plot")}>Перейти к шагу «Сюжет и NPC»</button>
+          </div>
+        ) : !revealed ? (
+          hidden
+        ) : (
+          <IntroStep
+            projectId={projectId}
+            revision={revision}
+            running={["queued", "running"].includes(st?.status ?? "")}
+            status={st?.status ?? "not_requested"}
+            errorCode={st?.error_code ?? null}
+            onQueued={setMessage}
+          />
         )}
       </>
     );
