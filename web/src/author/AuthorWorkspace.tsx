@@ -5,6 +5,7 @@ import type { DraftPatch, EditProposal, PreparationView, StageStatus, Validation
 import { authoring, authorKeys, newRequestKey, STAGE_STATE_LABELS } from "../lib/authoring";
 import { done, loreProgress, plotProgress, type ProgressItem } from "../lib/authoringProgress";
 import Checklist from "./Checklist";
+import CharacterEditor from "./CharacterEditor";
 import ContentEditor, { type DraftContent } from "./ContentEditor";
 import GeographyView from "./GeographyView";
 import JsonPaste from "./JsonPaste";
@@ -466,6 +467,12 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
                 Сохранить тексты
               </button>
             </fieldset>
+            <CharacterEditor
+              antagonists={(plot.antagonists ?? []) as never}
+              npcs={(plot.npcs ?? []) as never}
+              busy={busy}
+              onSave={(ref, fields) => edit.mutate({ operations: [{ op: "update_plot_object", ref, fields }] })}
+            />
             <div id="plot-locations" className="scroll-mt-24">
               <ContentEditor
                 content={content ?? {}}

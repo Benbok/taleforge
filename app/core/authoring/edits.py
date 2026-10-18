@@ -62,8 +62,21 @@ def _check_lore_field(key: str, value) -> object:
 # Editable text fields per plot kind. Structure (id, template_id, status, entity_id, spatial) is not editable here.
 TEXT_FIELDS = {
     "locations": {"name", "mood", "role", "secret"},
-    "npcs": {"name", "role", "want", "fear", "secret", "attitude", "look"},
-    "antagonists": {"name", "goal", "methods", "weakness", "secret"},
+    "npcs": {
+        "name",
+        "role",
+        "want",
+        "fear",
+        "secret",
+        "attitude",
+        "look",
+        "character",
+        "speech",
+        "knows",
+        "ties",
+        "sways",
+    },
+    "antagonists": {"name", "goal", "methods", "weakness", "secret", "character", "speech", "on_meeting", "if_foiled"},
 }
 ITEM_FIELDS = {"name", "description", "template_id"}
 PLOT_TEXT = {"title", "tagline", "public_intro", "conflict", "stakes"}

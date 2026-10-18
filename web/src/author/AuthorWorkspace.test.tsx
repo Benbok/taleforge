@@ -205,3 +205,18 @@ it("«Пересобрать эту карту» пересобирает тол
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "loc_cave", regenerate: true });
 });
+
+it("характер персонажа сохраняется правкой его полей", async () => {
+  const mock = api((c) => (c.url.endsWith("/edits") ? { body: { applied: true, draft_revision: 8, affected: [], blocked_by: [] } } : undefined));
+  localStorage.setItem("author:reveal:ap_1", "1");
+  localStorage.setItem("author:step:ap_1", "plot");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  const field = await screen.findByLabelText("Характер (2–3 черты): Лис");
+  fireEvent.change(field, { target: { value: "хитёр, труслив" } });
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить характер" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/edits"))).toBe(true));
+  expect(mock.calls.find((c) => c.url.endsWith("/edits"))?.body).toMatchObject({
+    patch: { operations: [{ op: "update_plot_object", ref: "npc_a", fields: { character: "хитёр, труслив" } }] },
+  });
+  expect(screen.getAllByText("Характеры персонажей").length).toBe(2); // чек-лист и раздел редактора
+});

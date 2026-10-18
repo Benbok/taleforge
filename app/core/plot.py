@@ -111,6 +111,11 @@ def tool_spec() -> dict:
         "name": _str("Имя.", 80),
         "template_id": {"type": "string", "description": "id шаблона существа из списка (creature....)."},
     }
+    # Характер основных персонажей: мастер видит его, когда персонаж рядом, и ведёт его одинаково во всех играх.
+    character = {
+        "character": _str("Необязательно: характер в 2–3 чертах.", 200),
+        "speech": _str("Необязательно: манера речи и пример фразы.", 300),
+    }
     schema = {
         "type": "object",
         "properties": {
@@ -133,6 +138,9 @@ def tool_spec() -> dict:
                         "methods": _str("Методы и ресурсы."),
                         "weakness": _str("Слабость."),
                         "secret": _str("Тайна."),
+                        **character,
+                        "on_meeting": _str("Необязательно: как ведёт себя при встрече с героями.", 300),
+                        "if_foiled": _str("Необязательно: что сделает, если план сорвут.", 300),
                         "threat": {
                             "type": "array",
                             "description": "План угрозы: 4–6 шагов, которые антагонист сделает, если его не остановят.",
@@ -204,6 +212,10 @@ def tool_spec() -> dict:
                         "secret": _str("Тайна.", 300),
                         "attitude": _str("Отношение к героям.", 200),
                         "look": _str("Внешность и манера, одной строкой.", 300),
+                        **character,
+                        "knows": _str("Необязательно: что знает — полезное героям и что скрывает.", 300),
+                        "ties": _str("Необязательно: связи с другими NPC и фракциями.", 300),
+                        "sways": _str("Необязательно: что расположит к героям и что оттолкнёт.", 300),
                         "location_id": {"type": "string", "description": "Где его обычно найти: id локации каркаса."},
                     },
                     "required": ["id", "name", "template_id", "role", "want", "fear", "secret", "attitude", "look"],
@@ -795,6 +807,7 @@ def render(plan: dict) -> str:
         lines.append(
             f"Антагонист {a.get('id')} {a.get('name')}: цель — {a.get('goal')}; методы — {a.get('methods')}; "
             f"слабость — {a.get('weakness')}; тайна — {a.get('secret')}. Следующий шаг угрозы: {nxt}"
+            + character_line(a)
             + (f" Уже сделано: {'; '.join(x['step'] for x in a['threat_log'])}." if a.get("threat_log") else "")
         )
     for act in plan.get("acts") or []:
@@ -822,7 +835,7 @@ def render(plan: dict) -> str:
         lines.append(
             f"- {npc.get('id')} {npc.get('name')} [{npc.get('status')}]: {npc.get('role')}; хочет — {npc.get('want')}; "
             f"боится — {npc.get('fear')}; тайна — {npc.get('secret')}; к героям — {npc.get('attitude')}; "
-            f"{npc.get('look')}" + (f" Детали: {npc['details']}" if npc.get("details") else "")
+            f"{npc.get('look')}" + character_line(npc) + (f" Детали: {npc['details']}" if npc.get("details") else "")
         )
     for r in plan.get("reveals") or []:
         clues = "; ".join(clue_line(c) for c in r.get("clues") or [])
@@ -1028,13 +1041,30 @@ def clock(plan: dict, game_time: int, length: str) -> list[tuple[dict, str, str 
     return out
 
 
+CHARACTER_FIELDS = (
+    ("character", "характер"),
+    ("speech", "речь"),
+    ("knows", "знает"),
+    ("ties", "связи"),
+    ("sways", "отношение меняется"),
+    ("on_meeting", "при встрече"),
+    ("if_foiled", "если план сорвут"),
+)
+
+
+def character_line(x: dict) -> str:
+    """Авторский характер персонажа; пусто, если автор его не задал — обычные игры не платят за лишний текст."""
+    parts = [f"{label} — {x[key]}" for key, label in CHARACTER_FIELDS if str(x.get(key) or "").strip()]
+    return (" Характер: " + "; ".join(parts) + ".") if parts else ""
+
+
 def _sketch_line(x: dict, kind: str) -> str:
     if kind == "location":
         body = f"{x.get('role')} {x.get('mood')} Секрет: {x.get('secret')}"
     else:
         body = (
             f"{x.get('role')}; хочет — {x.get('want')}; боится — {x.get('fear')}; тайна — {x.get('secret')}; "
-            f"к героям — {x.get('attitude')}; {x.get('look')}"
+            f"к героям — {x.get('attitude')}; {x.get('look')}" + character_line(x)
         )
     if x.get("status") == "developed":
         ent = f", в реестре {x['entity_id']}" if x.get("entity_id") else ""
@@ -1082,6 +1112,9 @@ def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
     found = [r for r in plan.get("reveals") or [] if r.get("revealed")]
     if found:
         lines.append("Уже раскрыто: " + "; ".join(f"{r['id']} — {r.get('truth')}" for r in found))
+    live_ids = {
+        i for n in (act or {}).get("nodes") or [] if n.get("status") not in CLOSED for i in n.get("npc_ids") or []
+    }
     for a in plan.get("antagonists") or []:
         steps, i = a.get("threat") or [], int(a.get("threat_step") or 0)
         nxt = f"следующий шаг угрозы ({i + 1}/{len(steps)}): {steps[i]}" if i < len(steps) else "план угрозы исполнен"
@@ -1089,6 +1122,7 @@ def now_block(plan: dict, *, location_entity_id: str | None = None) -> str:
         lines.append(
             f"Антагонист {a['id']} {a.get('name')}: цель — {a.get('goal')}; методы — {a.get('methods')}; "
             f"слабость — {a.get('weakness')}; {nxt}.{done}"
+            + (character_line(a) if a.get("id") in live_ids else "")  # характер — только когда он в игре сейчас
         )
     # места и люди рядом: из открытых узлов акта, текущей локации сцены и NPC, которые там живут
     live = [n for n in (act or {}).get("nodes") or [] if n.get("status") not in CLOSED]

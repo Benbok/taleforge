@@ -54,7 +54,20 @@ export function plotProgress(plan: Data): ProgressItem[] {
     count("acts", "Акты", plan, 1, "шт."),
     count("reveals", "Тайны и улики", plan, 1, "шт."),
     count("endings", "Финалы", plan, 1, "шт."),
+    characters(plan),
   ];
+}
+
+function characters(plan: Data): ProgressItem {
+  // характер желателен у антагонистов и NPC: без него мастер придумывает поведение на ходу
+  const people = [...list(plan?.antagonists), ...list(plan?.npcs)].filter((p) => p && typeof p === "object") as Record<string, unknown>[];
+  const withCharacter = people.filter((p) => text(p.character)).length;
+  return {
+    key: "characters",
+    label: "Характеры персонажей",
+    ok: people.length > 0 && withCharacter === people.length,
+    detail: people.length ? `${withCharacter} из ${people.length}, желательно у всех` : "персонажей пока нет",
+  };
 }
 
 export function done(items: ProgressItem[]): number {

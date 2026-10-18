@@ -33,3 +33,41 @@ def test_tool_schema_offers_regions_and_routes():
     props = plot.tool_spec()["function"]["parameters"]["properties"]
     assert "regions" in props and "routes" in props
     assert "region" in props["locations"]["items"]["properties"]
+
+
+def test_character_fields_survive_check_and_reach_the_master_only_when_near():
+    p = good_plan()
+    p["npcs"][0].update(character="угрюм, честен", speech="«Уходите, пока прилив»", knows="где культ")
+    p["antagonists"][0].update(character="фанатична", on_meeting="поёт, не нападает")
+    plan, errors = _check(p)
+    assert not errors, errors
+    npc, villain = plan["npcs"][0], plan["antagonists"][0]
+    assert npc["speech"] == "«Уходите, пока прилив»" and villain["on_meeting"] == "поёт, не нападает"
+    full = plot.render(plan)
+    assert "угрюм, честен" in full and "фанатична" in full  # get_plot показывает всё
+    now = plot.now_block(plan)
+    assert "угрюм, честен" in now  # смотритель живёт в месте открытого узла: он рядом
+    far = good_plan()
+    far["npcs"][-1].update(character="далёкий персонаж", location_id=None)
+    for act in far["acts"]:
+        for node in act.get("nodes") or []:
+            node["npc_ids"] = [i for i in node.get("npc_ids") or [] if i != far["npcs"][-1]["id"]]
+    far_plan, _errors = _check(far)
+    assert "далёкий персонаж" not in plot.now_block(far_plan)  # кто не рядом, тот не стоит токенов
+    assert ("фанатична" in now) == any(
+        villain["id"] in (n.get("npc_ids") or []) for n in plan["acts"][0].get("nodes") or []
+    )
+
+
+def test_plan_without_character_adds_nothing():
+    plan, _errors = _check(good_plan())
+    assert "Характер:" not in plot.now_block(plan) and "Характер:" not in plot.render(plan)
+
+
+def test_schema_offers_character_fields():
+    props = plot.tool_spec()["function"]["parameters"]["properties"]
+    npc = props["npcs"]["items"]["properties"]
+    villain = props["antagonists"]["items"]["properties"]
+    assert {"character", "speech", "knows", "ties", "sways"} <= set(npc)
+    assert {"character", "speech", "on_meeting", "if_foiled"} <= set(villain)
+    assert "character" not in props["npcs"]["items"]["required"]  # необязательные: старые каркасы проходят
