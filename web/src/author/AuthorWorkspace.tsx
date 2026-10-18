@@ -126,6 +126,18 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
     enabled: revealed && !!location,
   });
 
+  const mapsStatus = summary.data?.preparation.stages?.find((x) => x.stage === "maps")?.status;
+  const [lastMapsStatus, setLastMapsStatus] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    // пересборка закончилась — показываем новую карту без перезагрузки страницы
+    if ((lastMapsStatus === "queued" || lastMapsStatus === "running") && mapsStatus && mapsStatus !== lastMapsStatus) {
+      void client.invalidateQueries({ queryKey: ["author", projectId, "map"] });
+      void client.invalidateQueries({ queryKey: authorKeys.project(projectId, "full") });
+      setMessage(mapsStatus === "ready" ? "Карты пересобраны." : `Пересборка карт не удалась (${mapsStatus}). Прежние карты на месте.`);
+    }
+    setLastMapsStatus(mapsStatus);
+  }, [mapsStatus, lastMapsStatus, client, projectId]);
+
   useEffect(() => {
     // на шаге «Карты» сразу открывается карта первого места
     const locations = (full.data?.preparation.content as { plot?: Plot } | null | undefined)?.plot?.locations;
@@ -207,6 +219,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
   const busy = prepare.isPending || edit.isPending || accept.isPending || propose.isPending || validate.isPending || publish.isPending;
   const worldBuilt = isDone("materialize");
   const mapStale = [...stale].filter((r) => !r.startsWith("stage:"));
+  const mapsRunning = ["queued", "running"].includes(stageOf("maps")?.status ?? "");
 
   const loreItems = loreProgress(lore);
   const plotItems = plotProgress(plot);
@@ -431,10 +444,29 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
             <p className="text-sm text-ink-2">Этот шаг откроется, когда будет выполнен шаг «{needTitle}».</p>
             <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep(needId)}>Перейти к шагу «{needTitle}»</button>
           </div>
-        ) : step === "maps" && isDone("materialize") && mapStale.length === 0 && status === "not_requested" ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border border-patina/50 bg-surface p-4" role="status">
-            <p className="text-sm text-ink-2">Все карты созданы на предыдущем шаге и актуальны — пересобирать нечего. Этот шаг нужен, только если вы измените части мест.</p>
-            <button className="btn btn-primary min-h-11 px-4 text-sm" type="button" onClick={() => setStep("review")}>Перейти к проверке</button>
+        ) : step === "maps" && isDone("materialize") ? (
+          <div className="flex flex-col items-start gap-3 rounded-xl border-2 border-accent/60 bg-surface p-4">
+            <p className="text-sm text-ink-2">
+              {mapsRunning
+                ? "Карты пересобираются. Когда закончится, карта ниже обновится сама."
+                : "Карты созданы на предыдущем шаге. Пересоберите их, чтобы получить новые планировки — например, после исправления генератора. Прежняя карта остаётся, пока новая не готова целиком."}
+            </p>
+            {stageOf("maps")?.error_code && !mapsRunning && <p className="text-sm text-bad">Прошлая пересборка не удалась: {stageOf("maps")?.error_code}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="btn btn-primary min-h-11 px-4 text-sm"
+                type="button"
+                disabled={busy || mapsRunning}
+                onClick={() => {
+                  if (window.confirm("Пересобрать карты всех мест? Планировка каждого места — вызов модели.")) {
+                    prepare.mutate({ stage: "maps", regenerate: true, target: "*" });
+                  }
+                }}
+              >
+                {mapsRunning ? "Пересобираю карты…" : "Пересобрать карты"}
+              </button>
+              <button className="btn min-h-11 px-4 text-sm" type="button" onClick={() => setStep("review")}>Перейти к проверке</button>
+            </div>
           </div>
         ) : status === "not_requested" ? (
           <div className="flex flex-col gap-3 rounded-xl border-2 border-accent/60 bg-surface p-4">
@@ -464,22 +496,10 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
               <button
                 className="btn min-h-11 px-3 text-sm"
                 type="button"
-                disabled={busy || stageOf("maps")?.status === "queued" || stageOf("maps")?.status === "running"}
+                disabled={busy || mapsRunning}
                 onClick={() => prepare.mutate({ stage: "maps", regenerate: true, target: location ?? plot.locations?.[0]?.id })}
               >
                 Пересобрать карту этого места
-              </button>
-              <button
-                className="btn min-h-11 px-3 text-sm"
-                type="button"
-                disabled={busy || stageOf("maps")?.status === "queued" || stageOf("maps")?.status === "running"}
-                onClick={() => {
-                  if (window.confirm("Пересобрать карты всех мест? Жители и ключевые предметы переедут на новые карты; каждая планировка — вызов модели.")) {
-                    prepare.mutate({ stage: "maps", regenerate: true, target: "*" });
-                  }
-                }}
-              >
-                Пересобрать все карты
               </button>
               <span className="text-sm text-muted">Прежняя карта остаётся, пока новая не будет полностью готова.</span>
             </div>

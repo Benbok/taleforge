@@ -171,3 +171,16 @@ it("на шаге «Карты» видны карты всех мест и от
   expect(screen.getByRole("group", { name: "Места" })).toBeTruthy();
   expect(mock.calls.every((c) => c.method === "GET")).toBe(true);
 });
+
+it("кнопка «Пересобрать карты» запускает пересборку всех мест", async () => {
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  const mock = api(
+    (c) => (c.url.endsWith("/prepare") ? { status: 202, body: { job_id: "aj_m", stage: "maps", status: "queued", source_revision: 7 } } : undefined),
+    stages({ lore: { status: "ready" }, plot: { status: "ready" }, geography: { status: "ready" }, materialize: { status: "ready" } }),
+  );
+  localStorage.setItem("author:step:ap_1", "maps");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Пересобрать карты" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
+  expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "*", regenerate: true });
+});
