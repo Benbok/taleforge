@@ -16,10 +16,10 @@ export { STAGES } from "./masterStatus";
 /** Лента: новые сообщения не сдвигают экран, если игрок читает старое, — вместо этого кнопка «Новые ↓». */
 export default function ChatFeed({ campaignId }: { campaignId: string }) {
   const { messages, pending, notes, seats, heroes, snapshot, masterStage, types, setTypes } = useGame();
-  const theme = useSession((s) => s.theme);
   const [onlyStory, setOnlyStory] = useState(false);
   const [hideOoc, setHideOoc] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(true);
   const [unseen, setUnseen] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -49,13 +49,44 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
   const shown = chronicleEntries(messages, { onlyStory, hideOoc });
   const last = shown.at(-1)?.message.seq;
 
+  const scrollToBottom = (smooth = false) => {
+    const el = box.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  };
+
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    if (stuck) el.scrollTop = el.scrollHeight;
-    else setUnseen((n) => n + 1);
+    if (stuck || masterStage) {
+      scrollToBottom();
+      const raf = requestAnimationFrame(() => scrollToBottom());
+      const timer = setTimeout(() => scrollToBottom(), 80);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setUnseen((n) => n + 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last, pending.length, notes.length, masterStage]);
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (stuck || masterStage) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stuck, masterStage]);
 
   function onScroll() {
     const el = box.current!;
@@ -65,8 +96,7 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
   }
 
   function toBottom() {
-    const el = box.current!;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    scrollToBottom(true);
     setUnseen(0);
     setStuck(true);
   }
@@ -139,10 +169,9 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
           </div>
         ))}
         {masterStage && STAGES[masterStage] && (
-          <p className="flex items-center gap-2 text-muted" role="status">
-            <Spinner /> {label(theme, `master_status.${masterStage}`, STAGES[masterStage])}
-          </p>
+          <MasterThinkingCard stage={masterStage} />
         )}
+        <div ref={bottomRef} className="h-8 shrink-0" aria-hidden="true" />
       </div>
       {!stuck && unseen > 0 && (
         <button className="btn btn-primary absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs shadow-lg" onClick={toBottom}>
@@ -151,4 +180,122 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
       )}
     </div>
   );
+}
+
+/** Атмосферный индикатор размышления и подготовки ответа мастера */
+function MasterThinkingCard({ stage }: { stage: string }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const theme = useSession((s) => s.theme);
+  const text = label(theme, `master_status.${stage}`, STAGES[stage] ?? "Мастер обдумывает ответ…");
+
+  useEffect(() => {
+    cardRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [stage]);
+
+  return (
+    <div
+      ref={cardRef}
+      className="tf-pop tf-master-thinking my-2 flex max-w-[72ch] shrink-0 flex-col gap-2.5 rounded-xl border p-3.5 shadow-xs sm:p-4"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {/* Аватар мастера с мягкой аурой и динамической иконкой этапа */}
+          <div className="tf-master-aura flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-accent/50 bg-accent/10 shadow-xs">
+            <MasterStageIcon stage={stage} />
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-heading text-xs font-bold tracking-wide text-ink">Мастер</span>
+            <span className="font-mono text-xs text-accent">· {text}</span>
+          </div>
+        </div>
+
+        {/* Пульсирующие руны ожидания */}
+        <div className="flex shrink-0 items-center gap-1 font-mono text-[11px] text-accent/80" aria-hidden="true">
+          <span className="tf-runic-dot delay-0">✦</span>
+          <span className="tf-runic-dot delay-150">✦</span>
+          <span className="tf-runic-dot delay-300">✦</span>
+        </div>
+      </div>
+
+      {/* Призрачные мерцающие строки текста (эффект материализации повествования) */}
+      <div className="flex flex-col gap-2 pt-1" aria-hidden="true">
+        <div className="tf-shimmer-line h-2 w-11/12 rounded-full opacity-60" />
+        <div className="tf-shimmer-line h-2 w-4/5 rounded-full opacity-45" />
+        <div className="tf-shimmer-line h-2 w-3/5 rounded-full opacity-30" />
+      </div>
+    </div>
+  );
+}
+
+function MasterStageIcon({ stage }: { stage: string }) {
+  switch (stage) {
+    case "rolling":
+      return (
+        <svg
+          className="tf-anim-rolling h-3.5 w-3.5 text-accent"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="12 2 21.5 7.5 21.5 16.5 12 22 2.5 16.5 2.5 7.5 12 2" />
+          <polygon points="12 6 18.5 16.5 5.5 16.5 12 6" />
+        </svg>
+      );
+    case "describing":
+      return (
+        <svg
+          className="tf-anim-writing h-3.5 w-3.5 text-accent"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+          <line x1="16" y1="8" x2="2" y2="22" />
+        </svg>
+      );
+    case "remembering":
+      return (
+        <svg
+          className="tf-anim-rune h-3.5 w-3.5 text-accent"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      );
+    case "listening":
+      return (
+        <svg
+          className="h-3.5 w-3.5 animate-pulse text-accent"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+        </svg>
+      );
+    default:
+      return <span className="font-mono text-xs text-accent">✦</span>;
+  }
 }

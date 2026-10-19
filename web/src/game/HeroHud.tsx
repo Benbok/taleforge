@@ -39,7 +39,7 @@ export default function HeroHud() {
 
   return (
     <div
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line/80 bg-surface/95 px-3 py-2 shadow-[0_-2px_8px_rgba(0,0,0,0.12)] backdrop-blur-xs sm:px-4"
+      className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border-t border-line/80 bg-surface/95 px-3 py-1.5 shadow-[0_-2px_8px_rgba(0,0,0,0.12)] backdrop-blur-xs sm:px-4"
       aria-label="Ваш герой"
     >
       {/* Карточка героя: имя и уровень */}

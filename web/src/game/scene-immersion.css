@@ -196,3 +196,137 @@
   .tf-reading-party .tf-sidebar-party, .tf-reading-scene .tf-sidebar-scene { display: flex; }
   .tf-reading-party .tf-sidebar-scene, .tf-reading-scene .tf-sidebar-party { display: none; }
 }
+
+/* Анимация размышления и подготовки ответа мастера */
+.tf-master-thinking {
+  position: relative;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--tf-surface) 96%, transparent),
+    color-mix(in srgb, var(--tf-raised) 92%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--tf-accent) 45%, var(--tf-border));
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--tf-accent) 8%, transparent);
+  overflow: hidden;
+}
+
+.tf-master-thinking::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--tf-accent) 7%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: tf-shimmer 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes tf-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.tf-master-aura {
+  animation: tf-pulse-aura 2.2s ease-in-out infinite;
+}
+
+@keyframes tf-pulse-aura {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--tf-accent) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px color-mix(in srgb, var(--tf-accent) 40%, transparent);
+  }
+}
+
+.tf-runic-dot {
+  animation: tf-runic-pulse 1.4s ease-in-out infinite;
+  display: inline-block;
+}
+.tf-runic-dot.delay-0 { animation-delay: 0s; }
+.tf-runic-dot.delay-150 { animation-delay: 0.25s; }
+.tf-runic-dot.delay-300 { animation-delay: 0.5s; }
+
+@keyframes tf-runic-pulse {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    color: var(--tf-accent);
+  }
+}
+
+.tf-shimmer-line {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--tf-border) 70%, transparent);
+}
+
+.tf-shimmer-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--tf-accent) 35%, transparent),
+    transparent
+  );
+  animation: tf-line-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes tf-line-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes tf-dice-roll {
+  0% { transform: rotate(0deg) scale(0.9); }
+  25% { transform: rotate(-25deg) scale(1.1); }
+  50% { transform: rotate(20deg) scale(0.95); }
+  75% { transform: rotate(-10deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.tf-anim-rolling {
+  animation: tf-dice-roll 1.5s ease-in-out infinite;
+}
+
+@keyframes tf-quill-write {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(2px, -1px) rotate(8deg); }
+  50% { transform: translate(0, 1px) rotate(-4deg); }
+  75% { transform: translate(-2px, -1px) rotate(6deg); }
+}
+
+.tf-anim-writing {
+  animation: tf-quill-write 1.2s ease-in-out infinite;
+}
+
+@keyframes tf-glow-rune {
+  0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 2px transparent); }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px var(--tf-accent)); }
+}
+
+.tf-anim-rune {
+  animation: tf-glow-rune 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-master-aura,
+  .tf-runic-dot,
+  .tf-shimmer-line::after,
+  .tf-anim-rolling,
+  .tf-anim-writing,
+  .tf-anim-rune,
+  .tf-master-thinking::before {
+    animation: none;
+  }
+}
+

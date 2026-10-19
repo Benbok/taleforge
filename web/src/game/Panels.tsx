@@ -229,22 +229,22 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
       {scene.location ? (
         <button
           type="button"
-          className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-line/70 bg-raised/40 p-2.5 text-left transition-all hover:border-accent/60 hover:bg-raised/70"
+          className="group flex w-full items-start justify-between gap-2 rounded-lg border border-line/70 bg-raised/40 p-2.5 text-left transition-all hover:border-accent/60 hover:bg-raised/70"
           onClick={(e) => open(scene.location!.id, scene.location!.name, e.currentTarget)}
           title="Осмотреть текущую локацию"
         >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-place/40 bg-place/10 text-sm font-bold text-place">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-place/40 bg-place/10 text-xs font-bold text-place">
               {TYPE_ICON.location}
             </span>
             <div className="min-w-0">
               <span className="block font-mono text-[9px] uppercase tracking-wider text-muted">Локация</span>
-              <span className="block truncate font-heading text-sm font-bold text-ink transition-colors group-hover:text-accent">
+              <span className="block font-heading text-sm font-bold leading-snug text-ink transition-colors group-hover:text-accent">
                 {scene.location.name}
               </span>
             </div>
           </div>
-          <span className="shrink-0 font-mono text-[10px] text-muted transition-colors group-hover:text-accent">
+          <span className="mt-0.5 shrink-0 font-mono text-[10px] text-muted transition-colors group-hover:text-accent">
             Инфо →
           </span>
         </button>
@@ -301,7 +301,7 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
                   onClick={(ev) => open(e.id, e.name, ev.currentTarget)}
                   title={`Осмотреть: ${e.name}`}
                 >
-                  <div className="flex w-full items-center justify-between gap-2">
+                  <div className="flex w-full items-start justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span
                         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-mono text-xs font-bold"
@@ -313,7 +313,7 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
                         {e.companion_of ? "◇" : TYPE_ICON[t]}
                       </span>
                       <span
-                        className={`truncate font-heading text-xs font-semibold text-ink transition-colors group-hover:text-accent ${
+                        className={`font-heading text-xs font-semibold leading-snug text-ink transition-colors group-hover:text-accent ${
                           acting ? "font-bold" : ""
                         }`}
                       >
@@ -341,19 +341,19 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
                     )}
                   </div>
 
-                  {/* Бейджи статуса, зоны и состояний */}
+                  {/* Бейджи статуса, зоны и состояний на всю ширину карточки */}
                   {(e.zone || e.condition || e.attitude) && (
-                    <div className="flex flex-wrap items-center gap-1 pl-6 text-[10px] font-mono">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1 border-t border-line/30 pt-1 text-[10px] font-mono">
                       {e.zone && (
-                        <span className="rounded border border-line/50 bg-surface/80 px-1.5 py-0.5 text-muted">
+                        <span className="rounded border border-line/50 bg-surface/80 px-1.5 py-0.2 text-muted">
                           📍 {e.zone}
                         </span>
                       )}
                       {e.condition && (
                         <span
-                          className={`rounded border px-1.5 py-0.5 ${
+                          className={`rounded border px-1.5 py-0.2 ${
                             e.condition.includes("ранен") || e.condition.includes("сознан") || e.condition.includes("убит")
-                              ? "border-bad/40 bg-bad/10 text-bad font-semibold"
+                              ? "border-bad/40 bg-bad/10 font-semibold text-bad"
                               : "border-warn/40 bg-warn/10 text-warn"
                           }`}
                         >
@@ -361,12 +361,12 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
                         </span>
                       )}
                       {e.attitude === "hostile" && (
-                        <span className="rounded border border-bad/30 bg-bad/10 px-1.5 py-0.5 text-bad">
+                        <span className="rounded border border-bad/30 bg-bad/10 px-1.5 py-0.2 text-bad">
                           враждебный
                         </span>
                       )}
                       {e.attitude === "friendly" && (
-                        <span className="rounded border border-ok/30 bg-ok/10 px-1.5 py-0.5 text-ok">
+                        <span className="rounded border border-ok/30 bg-ok/10 px-1.5 py-0.2 text-ok">
                           союзник
                         </span>
                       )}

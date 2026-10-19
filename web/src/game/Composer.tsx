@@ -250,13 +250,13 @@ export default function Composer() {
   return (
     <form
       onSubmit={send}
-      className="tf-composer flex flex-col gap-2.5 border-t border-line/80 bg-surface/95 px-3 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur-xs sm:px-4"
+      className="tf-composer flex flex-col gap-1.5 border-t border-line/80 bg-surface/95 px-3 py-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur-xs sm:px-4"
     >
       {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
 
       {/* Табы режима: В игре, Вне игры, Шёпот */}
       <div
-        className="flex flex-wrap gap-1.5 rounded-xl border border-line/70 bg-raised/70 p-1 backdrop-blur-xs"
+        className="flex flex-wrap gap-1 rounded-lg border border-line/70 bg-raised/70 p-0.5 backdrop-blur-xs"
         role="group"
         aria-label="Режим сообщения"
       >
@@ -277,7 +277,7 @@ export default function Composer() {
                   ? "Сообщение видите только вы и мастер"
                   : undefined
             }
-            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:min-h-9 sm:text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`flex min-h-7.5 flex-1 items-center justify-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-all sm:min-h-7.5 disabled:cursor-not-allowed disabled:opacity-40 ${
               messageMode === value
                 ? "border border-accent/40 bg-surface text-accent shadow-xs ring-1 ring-accent/20"
                 : "border border-transparent text-muted hover:bg-surface/50 hover:text-ink"
@@ -308,18 +308,18 @@ export default function Composer() {
 
       {(myTurn || responding || myPending || (turn && !isMaster)) && (
         <div
-          className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm ${
+          className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border px-2.5 py-1 text-xs transition-all ${
             myTurn
               ? "border-accent/40 bg-accent/10 text-accent"
               : responding
-                ? "border-patina/40 bg-patina/10 text-ink-2"
+                ? "border-accent/50 bg-accent/[0.07] text-ink shadow-xs ring-1 ring-accent/20"
                 : "border-line bg-raised text-ink-2"
           }`}
           role="status"
         >
           <span
             aria-hidden="true"
-            className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-patina" : "bg-muted"}`}
+            className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-accent animate-pulse" : "bg-muted"}`}
           />
           <span className="font-semibold">
             {myTurn
@@ -333,19 +333,21 @@ export default function Composer() {
           {turn && <span className="text-muted">· раунд {turn.round}</span>}
           {myTurn && left !== null && <span className={left <= 15 ? "text-warn" : "text-muted"}>· осталось {left} с</span>}
           {responding && !myTurn && (
-            <span className="text-muted">· {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}</span>
+            <span className="text-accent flex items-center gap-1 font-mono text-xs">
+              · {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}
+            </span>
           )}
           {myPending && !myTurn && !responding && (
             <span className="text-muted">· мастер ответит, когда напишут все{wait ? ` или примерно через ${wait} с` : ""}</span>
           )}
           {slowResponse && !myTurn && (
-            <span className="w-full text-sm text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>
+            <span className="w-full text-xs text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>
           )}
         </div>
       )}
 
       {rejected && (
-        <p role="alert" className="tf-pop flex items-start justify-between gap-2 rounded-md border border-bad px-3 py-2 text-bad">
+        <p role="alert" className="tf-pop flex items-start justify-between gap-2 rounded-md border border-bad px-2.5 py-1.5 text-xs text-bad">
           <span>Не отправлено: {rejected.reason}</span>
           <button type="button" className="text-xs underline" onClick={clearRejected}>
             скрыть
@@ -367,7 +369,7 @@ export default function Composer() {
           className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Быстрые действия"
         >
-          <span className="mr-0.5 shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted">
+          <span className="mr-0.5 shrink-0 font-mono text-[9px] uppercase tracking-wider text-muted">
             Быстро:
           </span>
           {quickPrompts.map((p, idx) => (
@@ -378,10 +380,10 @@ export default function Composer() {
                 useDraft.getState().insert(p.text, "action" in p ? p.action : undefined);
                 document.getElementById("tf-composer")?.focus();
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line/70 bg-raised/60 px-2.5 py-1 text-[11px] font-medium text-ink shadow-2xs transition-all hover:border-accent/70 hover:bg-raised active:scale-95"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line/70 bg-raised/60 px-2 py-0.5 text-[10px] font-medium text-ink shadow-2xs transition-all hover:border-accent/70 hover:bg-raised active:scale-95"
               title={p.text}
             >
-              <span aria-hidden="true" className="text-xs">
+              <span aria-hidden="true" className="text-[11px]">
                 {p.icon}
               </span>
               <span>{p.label}</span>
@@ -394,12 +396,12 @@ export default function Composer() {
       <div className="flex items-end gap-2">
         <textarea
           id="tf-composer"
-          className={`field min-h-[2.85rem] min-w-0 flex-1 resize-none rounded-xl border p-2.5 font-ui text-base transition-all sm:text-sm ${
+          className={`field min-h-[2.5rem] min-w-0 flex-1 resize-none rounded-xl border p-2 font-ui text-base transition-all sm:text-sm ${
             whisper
               ? "border-accent/70 bg-accent/[0.04] italic text-ink placeholder:text-accent/50 focus:border-accent focus:ring-1 focus:ring-accent/30"
               : "border-line/80 bg-raised/40 focus:border-accent/80 focus:bg-surface focus:ring-1 focus:ring-accent/30"
           }`}
-          rows={Math.min(6, Math.max(1, text.split("\n").length))}
+          rows={Math.min(5, Math.max(1, text.split("\n").length))}
           value={text}
           placeholder={placeholder}
           maxLength={4000}
@@ -412,14 +414,14 @@ export default function Composer() {
           aria-label="Сообщение"
         />
         {voiceOn && recording && (
-          <button type="button" className="btn h-[2.85rem] rounded-xl px-3" onClick={rec.cancel} title="Не отправлять запись">
+          <button type="button" className="btn h-[2.5rem] rounded-xl px-2.5 text-xs" onClick={rec.cancel} title="Не отправлять запись">
             Отмена
           </button>
         )}
         {voiceOn && (
           <button
             type="button"
-            className={`btn h-[2.85rem] rounded-xl px-3 ${recording ? "border-bad text-bad" : ""}`}
+            className={`btn h-[2.5rem] rounded-xl px-2.5 ${recording ? "border-bad text-bad" : ""}`}
             disabled={rec.state === "starting" || uploading || (!recording && !voiceAllowed)}
             onClick={() => (recording ? rec.stop() : rec.start())}
             aria-pressed={recording}
@@ -427,7 +429,7 @@ export default function Composer() {
             title={recording ? "Остановить и отправить" : (voiceReason ?? "Записать голосовое")}
           >
             {recording ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm">
+              <span className="flex items-center gap-1 font-mono text-xs">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-bad" />■ {clock(rec.seconds)}
               </span>
             ) : uploading || rec.state === "starting" ? (
@@ -440,7 +442,7 @@ export default function Composer() {
         {!recording && (
           <button
             type="submit"
-            className="btn btn-primary group relative flex h-[2.85rem] min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 shadow-xs transition-all disabled:opacity-40"
+            className="btn btn-primary group relative flex h-[2.5rem] min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 shadow-xs transition-all disabled:opacity-40"
             disabled={!hasContent}
             title="Отправить (Enter)"
             aria-label="Отправить сообщение"

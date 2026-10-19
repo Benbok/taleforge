@@ -128,42 +128,43 @@ export default function GamePage() {
       </Header>
 
       {/* Полоса стола кампании: полное название, статус и сгруппированные действия стола */}
-      <div className="border-b border-line bg-surface/85 px-3 py-2 sm:px-6 md:px-8 flex flex-wrap items-center justify-between gap-3 shrink-0 backdrop-blur-xs">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="hidden font-mono text-[10px] uppercase tracking-wider text-accent sm:inline font-semibold">
-            Кампания
-          </span>
-          <h1 className="font-heading text-base sm:text-lg font-bold text-ink leading-tight">
-            {snapshot?.campaign.name ?? card?.name ?? ""}
-          </h1>
-          <span
-            className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[11px] items-center gap-1.5 inline-flex ${
-              live
-                ? "border-patina/50 bg-patina/10 text-patina-hi font-semibold"
-                : "border-line bg-raised text-muted"
-            }`}
-          >
-            {live && <span className="h-1.5 w-1.5 rounded-full bg-patina animate-pulse" />}
-            <span>
-              {live
-                ? "ИДЁТ СЕССИЯ"
-                : snapshot?.campaign.status === "ended"
-                  ? "ЗАВЕРШЕНА"
-                  : snapshot?.campaign.status === "paused"
-                    ? "ПАУЗА"
-                    : status}
+      <div className="border-b border-line bg-surface/85 px-3 py-2 md:px-6 shrink-0 backdrop-blur-xs">
+        <div className="mx-auto flex w-full max-w-[115rem] flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="hidden font-mono text-[10px] uppercase tracking-wider text-accent sm:inline font-semibold">
+              Кампания
             </span>
-          </span>
-        </div>
+            <h1 className="font-heading text-base sm:text-lg font-bold text-ink leading-tight">
+              {snapshot?.campaign.name ?? card?.name ?? ""}
+            </h1>
+            <span
+              className={`shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[11px] items-center gap-1.5 inline-flex ${
+                live
+                  ? "border-patina/50 bg-patina/10 text-patina-hi font-semibold"
+                  : "border-line bg-raised text-muted"
+              }`}
+            >
+              {live && <span className="h-1.5 w-1.5 rounded-full bg-patina animate-pulse" />}
+              <span>
+                {live
+                  ? "ИДЁТ СЕССИЯ"
+                  : snapshot?.campaign.status === "ended"
+                    ? "ЗАВЕРШЕНА"
+                    : snapshot?.campaign.status === "paused"
+                      ? "ПАУЗА"
+                      : status}
+              </span>
+            </span>
+          </div>
 
-        {/* Мобильные компактные кнопки (карта + звук) */}
-        <div className="ml-auto flex items-center gap-1.5 rounded-[10px] border border-line bg-raised/70 p-1 md:hidden shrink-0">
-          <MapButton />
-          <SoundControl />
-        </div>
+          {/* Мобильные компактные кнопки (карта + звук) */}
+          <div className="ml-auto flex items-center gap-1.5 rounded-[10px] border border-line bg-raised/70 p-1 md:hidden shrink-0">
+            <MapButton />
+            <SoundControl />
+          </div>
 
-        {/* Десктопные группы кнопок управления */}
-        <div className="ml-auto hidden items-center gap-2.5 md:flex shrink-0">
+          {/* Десктопные группы кнопок управления */}
+          <div className="ml-auto hidden items-center gap-2.5 md:flex shrink-0">
           {/* Инструменты стола */}
           <div
             className="flex items-center gap-1.5 rounded-[10px] border border-line bg-raised/70 p-1 shrink-0"
@@ -207,6 +208,7 @@ export default function GamePage() {
               </Link>
             </div>
           )}
+        </div>
         </div>
       </div>
 
