@@ -76,7 +76,18 @@ class FinishMixin:
                 if waiting:
                     refs = list(cp.get("operation_refs") or [])
                     unavailable = await self._settle_preparation(cid, refs) if refs else []
-                    from app.core.layout import transit
+                    from app.core.layout import entry, transit
+
+                    await entry.queue_prepared_entries(
+                        self.maker,
+                        self.preparer,
+                        self.dice_factory,
+                        cid,
+                        refs,
+                        turn_id=turn_id,
+                        hero_ids=cp.get("crew"),
+                        bus=self.bus,
+                    )
 
                     await transit.complete_queued(
                         self.maker, self.preparer, self.dice_factory, cid, bus=self.bus, turn_id=turn_id

@@ -69,3 +69,31 @@ describe("MapFeature artwork", () => {
     expect(container.querySelector("image, foreignObject, script")).toBeNull();
   });
 });
+
+
+it.each([
+  ["Письменный стол", "desk"],
+  ["Оскверненный трон", "defiled_throne"],
+  ["Королевский трон", "throne"],
+  ["Стойка с орудиями", "weapon_rack"],
+  ["Стол для инструментов", "tool_table"],
+  ["Стол для пыток", "torture_table"],
+  ["Стол с оружием", "weapon_table"],
+  ["Кресло для допросов", "torture_chair"],
+])("renders legacy %s with its purpose instead of dinner plates", (name, form) => {
+  const feature: SketchFeature = { id: "legacy", name, kind: "furniture", cells: [[0, 0, 1, 1]] };
+  const { container } = render(<svg><MapFeature feature={feature} idPrefix="legacy" /></svg>);
+  expect(container.querySelector('[data-feature-form]')?.getAttribute("data-feature-form")).toBe(form);
+  expect(container.querySelector('[data-table-setting="plates"]')).toBeNull();
+});
+
+it.each(["desk", "throne", "defiled_throne", "torture_table", "tool_table", "weapon_table", "torture_chair"])("renders explicit %s art with stable identity and no dining objects", (form) => {
+  const feature: SketchFeature = { id: "explicit", name: "Object", kind: "furniture", visual_key: `feature:${form}`, cells: [[0, 0, 1, 1]] };
+  const { container, rerender } = render(<svg><MapFeature feature={feature} idPrefix="explicit" /></svg>);
+  expect(container.querySelector(`[data-feature-form="${form}"]`)).not.toBeNull();
+  expect(container.querySelector(`[data-purpose-art="${form}"]`)).not.toBeNull();
+  const original = artwork(container);
+  rerender(<svg><MapFeature feature={{ ...feature, name: "Renamed" }} idPrefix="explicit" /></svg>);
+  expect(artwork(container)).toBe(original);
+  expect(container.querySelector('[data-table-setting="plates"]')).toBeNull();
+});

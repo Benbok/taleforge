@@ -51,6 +51,62 @@ function Artwork({ footprint: f, visual: v, seed, mount }: { footprint: FeatureF
         </g>)}
       </g>;
     }
+    case "torture_table": case "tool_table": case "weapon_table":
+      return <g data-purpose-art={v.form}>
+        <WoodGrain footprint={f} seed={seed} />
+        <path d={f.path} fill="none" stroke="#c4a075" strokeWidth=".09" />
+        <g transform={`translate(${cx} ${cy}) scale(${Math.max(.2, w - .28)} ${Math.max(.2, h - .28)})`}>
+          {v.form === "torture_table" ? <g>
+            <rect x="-.35" y="-.48" width=".7" height=".96" rx=".03" fill="#57432e" stroke="#231d17" strokeWidth=".035" />
+            <path d="M-.18-.45V.45M.04-.45V.45M.25-.45V.45" stroke="#a47a4d" strokeWidth=".014" />
+            {[-.3, .06, .34].map((y) => <g key={y}>
+              <rect x="-.46" y={y} width=".92" height=".075" fill="#342824" stroke="#151615" strokeWidth=".015" />
+              <rect x=".16" y={y - .012} width=".11" height=".1" rx=".012" fill="none" stroke="#b9a576" strokeWidth=".022" />
+              <path d={`M.2 ${y + .04}h.1`} stroke="#c8c6b4" strokeWidth=".012" />
+            </g>)}
+            {[-1, 1].flatMap((side) => [-.4, .4].map((y) => <g key={`${side}-${y}`}>
+              <circle cx={side * .43} cy={y} r=".047" fill="none" stroke="#9d9e8f" strokeWidth=".022" />
+              <path d={`M${side * .43} ${y}l${side * .045} ${y > 0 ? .07 : -.07}`} stroke="#5a6262" strokeWidth=".025" />
+            </g>))}
+          </g> : v.form === "tool_table" ? <g>
+            <rect x="-.43" y="-.39" width=".86" height=".78" rx=".02" fill="#303c3b" stroke="#152020" strokeWidth=".026" />
+            <g transform={`rotate(${variation(seed, x, y) * 12 - 6})`}>
+              <path d="M-.25-.23V.24" stroke="#b7945d" strokeWidth=".055" />
+              <rect x="-.38" y="-.27" width=".26" height=".12" rx=".02" fill="#8b9997" stroke="#c7d1c7" strokeWidth=".018" />
+              <path d="M-.03.27L.13-.19M.19.27L.09-.06M.13-.19L.04-.28M.13-.19L.24-.25" stroke="#bcc8c2" strokeWidth=".03" fill="none" />
+              <path d="M.29.23V-.1" stroke="#d7d8c6" strokeWidth=".028" />
+              <rect x=".26" y=".06" width=".06" height=".22" rx=".015" fill="#b08b51" />
+            </g>
+            <rect x="-.37" y=".34" width=".74" height=".08" fill="#766044" stroke="#c1aa77" strokeWidth=".014" />
+            <path d="M-.3.35v.04M-.2.35v.06M-.1.35v.04M0 .35v.06M.1.35v.04M.2.35v.06M.3.35v.04" stroke="#dac99d" strokeWidth=".012" />
+          </g> : <g>
+            <rect x="-.43" y="-.42" width=".86" height=".84" rx=".025" fill="#4b3d35" stroke="#aa8c62" strokeWidth=".02" />
+            <g transform="rotate(-28)">
+              <path d="M-.17-.4L-.22-.28V.18H-.12V-.28Z" fill="#aebbbc" stroke="#d9e0d3" strokeWidth=".018" />
+              <path d="M-.17-.32V.16" stroke="#596b70" strokeWidth=".014" />
+              <path d="M-.3.19H-.04" stroke="#baa475" strokeWidth=".045" />
+              <path d="M-.17.2V.4" stroke="#795332" strokeWidth=".07" />
+            </g>
+            <g transform="translate(.18 .04) rotate(24)">
+              <path d="M0-.36V.35" stroke="#b18b53" strokeWidth=".055" />
+              <path d="M0-.3Q.32-.43.28-.1L0-.17Z" fill="#91a2a4" stroke="#d0d6c3" strokeWidth=".02" />
+              <path d="M.25-.31Q.3-.2.25-.12" stroke="#e0e3d5" strokeWidth=".02" fill="none" />
+            </g>
+          </g>}
+        </g>
+      </g>;
+    case "torture_chair":
+      return <g data-purpose-art="torture_chair" transform={`translate(${cx} ${cy}) scale(${Math.max(.2, w - .2)} ${Math.max(.2, h - .2)})`}>
+        <rect x="-.34" y="-.45" width=".68" height=".25" rx=".03" fill="#60452f" stroke="#b29c72" strokeWidth=".025" />
+        <rect x="-.27" y="-.18" width=".54" height=".56" rx=".06" fill="#4b3025" stroke="#a98a5a" strokeWidth=".025" />
+        {[-1, 1].map((side) => <g key={side}>
+          <rect x={side > 0 ? .28 : -.43} y="-.13" width=".15" height=".48" fill="#8f693c" stroke="#32291e" strokeWidth=".025" />
+          <circle cx={side * .35} cy=".08" r=".07" fill="none" stroke="#b0b6aa" strokeWidth=".03" />
+          <path d={`M${side * .35} .16v.22`} stroke="#5b6360" strokeWidth=".025" strokeDasharray=".04 .025" />
+        </g>)}
+        <path d="M-.27.04H.27M-.24.31H.24" stroke="#211e1b" strokeWidth=".07" />
+        <rect x=".08" y=".005" width=".085" height=".07" fill="none" stroke="#b9a576" strokeWidth=".02" />
+      </g>;
     case "table": case "counter":
       return <g>
         <WoodGrain footprint={f} seed={seed} />
@@ -59,7 +115,7 @@ function Artwork({ footprint: f, visual: v, seed, mount }: { footprint: FeatureF
         {cells.map(([c, r]) => {
           const turn = variation(seed, c, r);
           return <g key={`${c},${r}`}>
-            {v.form === "table" && turn > .36 && <g transform={`translate(${c + .43} ${r + .45}) rotate(${turn * 28 - 14})`}>
+            {v.form === "table" && turn > .36 && <g data-table-setting="plates" transform={`translate(${c + .43} ${r + .45}) rotate(${turn * 28 - 14})`}>
               <ellipse cx=".025" cy=".045" rx=".21" ry=".18" fill="#201d18" opacity=".45" />
               <circle r=".19" fill="#c9c1a0" stroke="#ece0b8" strokeWidth=".025" />
               <circle r=".13" fill="#9b987e" stroke="#e0d4af" strokeWidth=".02" />
@@ -357,32 +413,42 @@ function Artwork({ footprint: f, visual: v, seed, mount }: { footprint: FeatureF
           </g>;
         }
       })}</g>;
-    case "desk": {
-      const n = variation(seed, x, y);
-      return <g>
+    case "desk":
+      return <g data-purpose-art="desk">
         <WoodGrain footprint={f} seed={seed} />
-        <rect {...frame} rx=".05" fill="none" stroke="#dcb781" strokeWidth=".06" />
-        <rect x={frame.x + .05} y={frame.y + .05} width={frame.width - .1} height={frame.height - .1} rx=".03" fill="none" stroke="#352618" strokeWidth=".03" opacity=".7" />
-        <rect x={cx - Math.min(.38, w * .35)} y={cy - Math.min(.22, h * .35)} width={Math.min(.76, w * .7)} height={Math.min(.44, h * .7)} rx=".03" fill="#262d29" stroke="#5a685e" strokeWidth=".025" />
-        {n < .35 ? <g>
-          <rect x={cx - .28} y={cy - .14} width=".3" height=".24" rx=".02" fill="#ded8b8" stroke="#94876b" strokeWidth=".02" />
-          <path d={`M${cx - .24} ${cy - .08}h.2 M${cx - .24} ${cy - .02}h.2 M${cx - .24} ${cy + .04}h.14`} stroke="#695e47" strokeWidth=".016" />
-          <circle cx={cx + .2} cy={cy - .06} r=".05" fill="#181a1b" stroke={BRASS} strokeWidth=".015" />
-          <path d={`M${cx + .2} ${cy - .06}l.08 -.14`} stroke="#d4cbaf" strokeWidth=".025" strokeLinecap="round" />
-          <rect x={cx + .14} y={cy + .06} width=".16" height=".12" rx=".02" fill="#75352c" stroke="#2b1410" strokeWidth=".015" />
-        </g> : n < .7 ? <g>
-          <rect x={cx - .3} y={cy - .16} width=".42" height=".3" rx=".02" fill="#e8dec3" stroke="#877551" strokeWidth=".02" />
-          <circle cx={cx - .1} cy={cy - .02} r=".08" fill="none" stroke="#a68e63" strokeWidth=".018" strokeDasharray=".03 .03" />
-          <path d={`M${cx - .1} ${cy - .08}v.12 M${cx - .16} ${cy - .02}h.12`} stroke="#8a744e" strokeWidth=".02" />
-          <path d={`M${cx + .2} ${cy - .08}l.06 .2 M${cx + .2} ${cy - .08}l-.06 .2`} stroke={BRASS} strokeWidth=".025" strokeLinecap="round" />
-          <circle cx={cx + .24} cy={cy + .08} r=".045" fill={BRASS} stroke="#3b2b1d" strokeWidth=".015" />
-          <circle cx={cx + .24} cy={cy + .08} r=".02" fill="#ffe3a3" />
-        </g> : <g>
-          <rect x={cx - .24} y={cy - .14} width=".32" height=".26" rx=".02" fill="#523927" stroke="#b08d5b" strokeWidth=".02" />
-          <path d={`M${cx - .08} ${cy - .14}v.26`} stroke="#8f2b2b" strokeWidth=".02" />
-          {[[-.12, .1], [.18, -.06], [.22, .02], [.16, .08]].map(([dx, dy], i) => (
-            <circle key={i} cx={cx + dx} cy={cy + dy} r=".032" fill={BRASS} stroke="#42341b" strokeWidth=".012" />
-          ))}
+        <path d={f.path} fill="none" stroke="#d3ae73" strokeWidth=".08" />
+        <g transform={`translate(${cx} ${cy}) scale(${Math.max(.2, w - .3)} ${Math.max(.2, h - .3)})`}>
+          <rect x="-.44" y="-.34" width=".88" height=".7" rx=".02" fill="#263a35" stroke="#b49d68" strokeWidth=".018" />
+          <g transform={`rotate(${variation(seed, x, y) * 10 - 5})`}>
+            <path d="M-.33-.28L.13-.26L.15.29L-.34.28Q-.3.05-.33-.28Z" fill="#e6d5a4" stroke="#b99b65" strokeWidth=".018" />
+            {[-.17,-.07,.03,.13].map((py, i) => <path key={py} d={`M-.25 ${py}q.08-.025 .15 0h${i % 2 ? .08 : .12}`} stroke="#786747" strokeWidth=".012" fill="none" />)}
+          </g>
+          <rect x=".23" y=".12" width=".12" height=".12" rx=".025" fill="#111c20" stroke="#bdab78" strokeWidth=".02" />
+          <path d="M.25.16L.38-.3" stroke="#d1bd86" strokeWidth=".018" />
+          <path d="M.29-.02Q.19-.22.38-.34Q.44-.13.29-.02Z" fill="#ebe4c9" stroke="#a59672" strokeWidth=".012" />
+          <path d="M.29-.02L.38-.3" stroke="#897e61" strokeWidth=".012" />
+          <rect x=".2" y="-.39" width=".22" height=".12" rx=".012" fill="#7c3b31" stroke="#b49862" strokeWidth=".016" />
+          <path d="M.22-.37H.4" stroke="#decda2" strokeWidth=".016" />
+        </g>
+      </g>;
+    case "throne": case "defiled_throne": {
+      const defiled = v.form === "defiled_throne";
+      return <g data-purpose-art={v.form} transform={`translate(${cx} ${cy}) scale(${Math.max(.2, w - .2)} ${Math.max(.2, h - .2)})`}>
+        <path d="M-.39-.36L-.44-.12V.46H.44V-.12L.39-.36Z" fill="#423c34" stroke="#908573" strokeWidth=".025" />
+        <path d="M-.34-.2V-.37L-.24-.34L-.15-.48L0-.35L.15-.48L.24-.34L.34-.37V-.2Z" fill={defiled ? "#77716c" : "#bca06a"} stroke="#d1b97c" strokeWidth=".022" />
+        <rect x="-.27" y="-.22" width=".54" height=".5" rx=".05" fill={defiled ? "#3c293d" : "#793a32"} stroke="#b49a62" strokeWidth=".025" />
+        <path d="M-.15-.17V.23M0-.17V.23M.15-.17V.23" stroke={defiled ? "#694454" : "#a5634d"} strokeWidth=".012" />
+        {[-1,1].map((side) => <g key={side}>
+          <rect x={side < 0 ? -.42 : .29} y="-.09" width=".13" height=".4" rx=".025" fill="#8b7751" stroke="#d2b77d" strokeWidth=".018" />
+          <circle cx={side * .355} cy=".23" r=".06" fill="#ab8e53" stroke="#e0c686" strokeWidth=".015" />
+          <path d={`M${side * .355} .31v.09`} stroke="#c3a86c" strokeWidth=".04" />
+        </g>)}
+        <path d="M-.22.32H.22M-.26.39H.26" stroke="#b49a62" strokeWidth=".018" />
+        {defiled && <g data-throne-corruption="true">
+          <path d="M-.4-.32L-.24-.14L-.33.02L-.13.12L-.2.4M.31-.35L.2-.12L.32.06L.17.23L.25.43" stroke="#111819" strokeWidth=".045" fill="none" />
+          <path d="M-.39-.05L-.49-.15L-.45.13L-.31.2M.31.17L.48.03L.44.35L.31.28" fill="#302633" stroke="#66536c" strokeWidth=".018" />
+          <path d="M-.13-.07L-.06-.13L0-.07L-.06.02ZM.07.07L.14.02L.2.09L.13.16Z" fill="none" stroke="#9877a2" strokeWidth=".017" />
+          <path d="M-.28-.33L-.18-.28M.04-.38L.12-.29" stroke="#28242c" strokeWidth=".022" />
         </g>}
       </g>;
     }
@@ -422,52 +488,28 @@ function Artwork({ footprint: f, visual: v, seed, mount }: { footprint: FeatureF
       </g>;
     }
     case "weapon_rack": {
-      const n = variation(seed, x, y);
       const horizontal = w >= h;
-      return <g>
-        <WoodGrain footprint={f} seed={seed} />
-        <rect {...frame} rx=".03" fill="none" stroke="#cfa773" strokeWidth=".05" />
-        {horizontal ? (
-          <g>
-            <path d={`M${x + .16} ${y + .22}H${x + w - .16} M${x + .16} ${y + h - .22}H${x + w - .16}`} stroke="#352618" strokeWidth=".06" />
-            {n < .4 ? (
-              Array.from({ length: Math.max(3, Math.floor(w * 2)) }, (_, i) => {
-                const px = x + .28 + (i * (w - .56)) / (Math.max(3, Math.floor(w * 2)) - 1);
-                return <g key={i}>
-                  <path d={`M${px} ${y + .14}V${y + h - .14}`} stroke="#b6bfc7" strokeWidth=".045" />
-                  <path d={`M${px - .06} ${y + .24}H${px + .06}`} stroke={BRASS} strokeWidth=".03" />
-                  <circle cx={px} cy={y + .14} r=".025" fill={BRASS} />
-                </g>;
-              })
-            ) : n < .75 ? (
-              Array.from({ length: Math.max(2, Math.floor(w * 1.5)) }, (_, i) => {
-                const px = x + .3 + (i * (w - .6)) / (Math.max(2, Math.floor(w * 1.5)) - 1);
-                return <g key={i}>
-                  <path d={`M${px} ${y + .12}V${y + h - .12}`} stroke="#6e5033" strokeWidth=".05" />
-                  <path d={`M${px - .04} ${y + .18}L${px} ${y + .1}L${px + .04} ${y + .18}Z`} fill="#d4dde6" stroke="#48535e" strokeWidth=".015" />
-                </g>;
-              })
-            ) : (
-              <g>
-                <path d={`M${cx - .3} ${cy}H${cx + .3}`} stroke="#8a6946" strokeWidth=".06" />
-                <circle cx={cx} cy={cy} r=".2" fill="#5c442c" stroke="#c49b66" strokeWidth=".035" />
-                <circle cx={cx} cy={cy} r=".06" fill={BRASS} stroke="#2b2014" strokeWidth=".02" />
-              </g>
-            )}
-          </g>
-        ) : (
-          <g>
-            <path d={`M${x + .22} ${y + .16}V${y + h - .16} M${x + w - .22} ${y + .16}V${y + h - .16}`} stroke="#352618" strokeWidth=".06" />
-            {Array.from({ length: Math.max(3, Math.floor(h * 2)) }, (_, i) => {
-              const py = y + .28 + (i * (h - .56)) / (Math.max(3, Math.floor(h * 2)) - 1);
-              return <g key={i}>
-                <path d={`M${x + .14} ${py}H${x + w - .14}`} stroke="#b6bfc7" strokeWidth=".045" />
-                <path d={`M${x + .24} ${py - .06}V${py + .06}`} stroke={BRASS} strokeWidth=".03" />
-                <circle cx={x + .14} cy={py} r=".025" fill={BRASS} />
-              </g>;
-            })}
-          </g>
-        )}
+      const length = horizontal ? w : h, depth = horizontal ? h : w;
+      return <g data-purpose-art="weapon_rack" transform={`translate(${cx} ${cy})${horizontal ? "" : " rotate(90)"} scale(${Math.max(.2, length - .2)} ${Math.max(.2, depth - .2)})`}>
+        <rect x="-.47" y="-.43" width=".94" height=".86" rx=".025" fill="#66482f" stroke="#b99260" strokeWidth=".028" />
+        <path d="M-.43-.27H.43M-.43.25H.43" stroke="#bd9665" strokeWidth=".06" />
+        <path d="M-.43-.27H.43M-.43.25H.43" stroke="#3f3023" strokeWidth=".018" />
+        {[-.3, 0, .3].map((px, index) => <g key={px} transform={`translate(${px} 0) rotate(${variation(seed, index, 0) * 10 - 5})`}>
+          <path d="M0-.36V.37" stroke="#b99765" strokeWidth=".035" />
+          {index === 0 ? <g>
+            <path d="M0-.4L-.045-.29V.13H.045V-.29Z" fill="#a6b7b8" stroke="#e2dec6" strokeWidth=".012" />
+            <path d="M-.1.15H.1" stroke="#c7ad70" strokeWidth=".035" />
+            <path d="M0 .17V.34" stroke="#49372c" strokeWidth=".055" />
+          </g> : index === 1 ? <g>
+            <path d="M0-.31Q.17-.41.16-.14L0-.2Z" fill="#9baaad" stroke="#d2d7c7" strokeWidth=".016" />
+            <path d="M0 .08V.32" stroke="#795536" strokeWidth=".055" />
+          </g> : <g>
+            <path d="M0-.3Q.13-.44.12-.21L.04-.1" fill="none" stroke="#c0c8b9" strokeWidth=".035" />
+            <path d="M0-.06V.34" stroke="#45392f" strokeWidth=".055" />
+            <path d="M.06.1V.38" stroke="#b0b6a9" strokeWidth=".018" strokeDasharray=".025 .02" />
+          </g>}
+        </g>)}
+        {[-.43,.43].flatMap((px) => [-.33,.32].map((py) => <circle key={`${px}-${py}`} cx={px} cy={py} r=".015" fill="#252822" />))}
       </g>;
     }
     case "workbench": {
@@ -1063,7 +1105,7 @@ export function MapFeature({ feature, idPrefix, onFeature, torchMounts }: {
   torchMounts?: (WallTorchMount | undefined)[];
 }) {
   const visual = featureVisual(feature);
-  const wood = ["table", "bench", "bed", "counter", "shelf", "barrel", "crate", "chest", "crane", "chair", "desk", "wardrobe", "weapon_rack", "workbench", "cart"].includes(visual.form);
+  const wood = ["throne", "defiled_throne", "torture_table", "tool_table", "weapon_table", "torture_chair", "table", "bench", "bed", "counter", "shelf", "barrel", "crate", "chest", "crane", "chair", "desk", "wardrobe", "weapon_rack", "workbench", "cart"].includes(visual.form);
   const natural = ["tree", "shrub", "reeds", "stump", "log", "mushrooms"].includes(visual.form);
   const loose = natural || ["barrel", "pillar", "rock", "rubble", "crystal", "bones", "net", "mooring", "torch", "glow", "lichen", "nest", "bench", "chair", "anvil", "cauldron", "chandelier", "brazier", "statue", "fountain", "well", "tombstone", "cart", "cage", "carpet", "sack"].includes(visual.form);
   const color = wood ? WOOD : natural ? "#294f38" : ["rock", "rubble", "pillar", "altar", "hearth", "anvil", "forge", "statue", "fountain", "well", "sarcophagus", "tombstone"].includes(visual.form) ? STONE : visual.form === "carpet" ? "#852222" : visual.color;

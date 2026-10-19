@@ -75,12 +75,16 @@ export type FeatureForm = "table" | "bench" | "bed" | "counter" | "shelf" | "bar
   | "chair" | "desk" | "wardrobe" | "weapon_rack" | "workbench" | "anvil" | "forge" | "cauldron"
   | "chandelier" | "brazier" | "statue" | "fountain" | "well" | "sarcophagus" | "tombstone"
   | "cart" | "cage" | "carpet" | "stump" | "log" | "mushrooms" | "sack"
+  | "torture_table" | "tool_table" | "weapon_table" | "torture_chair" | "throne" | "defiled_throne"
   | "hazard" | "token";
 export interface FeatureVisual extends MapVisualPreset { form: FeatureForm; }
 
-/** Explicit artwork keys; localised names and template IDs never select a drawing. */
+/** Stable artwork keys. Legacy furniture without a specialised key is resolved below. */
 export const FEATURE_VARIANTS: Record<string, FeatureVisual> = Object.fromEntries(
   (Object.entries({
+    throne: ["furniture", "Трон"], defiled_throne: ["furniture", "Осквернённый трон"],
+    torture_table: ["furniture", "Пыточный стол"], tool_table: ["furniture", "Инструментальный стол"],
+    weapon_table: ["furniture", "Стол с оружием"], torture_chair: ["furniture", "Кресло для допросов"],
     table: ["furniture", "Стол"], bench: ["furniture", "Скамья"], bed: ["furniture", "Кровать"],
     counter: ["furniture", "Стойка"], shelf: ["furniture", "Стеллаж"], barrel: ["object", "Бочка"],
     crate: ["object", "Ящик"], chest: ["object", "Сундук"], hearth: ["light", "Очаг"], torch: ["light", "Свет"],
@@ -105,8 +109,28 @@ const DEFAULT_FEATURE_FORMS: Record<SketchFeature["kind"], FeatureForm> = {
   furniture: "table", cover: "rock", hazard: "hazard", light: "torch", object: "crate", nature: "shrub",
 };
 
-export function featureVisual(feature: Pick<SketchFeature, "kind" | "visual_key" | "entity_type">): FeatureVisual {
+/** Resolve old furniture lacking a specific key; explicit specialised keys always win. */
+function legacyFurnitureForm(name = ""): FeatureForm | undefined {
+  const text = name.toLocaleLowerCase();
+  if (/трон|throne/.test(text)) return /оскверн|проклят|defiled|cursed|corrupt/.test(text) ? "defiled_throne" : "throne";
+  if (/desk/.test(text) || (/стол/.test(text) && /письмен/.test(text))) return "desk";
+  const restraint = /пыт|допрос|torture|interrogation/.test(text);
+  if (/кресл|стул|chair/.test(text) && restraint) return "torture_chair";
+  if (/стойк|стеллаж|rack/.test(text) && /оруди|оруж|инструмент|weapon|tool/.test(text)) return "weapon_rack";
+  if (/стол|table/.test(text)) {
+    if (restraint) return "torture_table";
+    if (/инструмент|tool|instrument/.test(text)) return "tool_table";
+    if (/оруди|оруж|weapon/.test(text)) return "weapon_table";
+  }
+  return undefined;
+}
+
+export function featureVisual(feature: Pick<SketchFeature, "kind" | "visual_key" | "entity_type"> & { name?: string }): FeatureVisual {
   const key = feature.visual_key;
+  if (feature.kind === "furniture" && (!key || key === "feature:table")) {
+    const legacy = legacyFurnitureForm(feature.name);
+    if (legacy) return FEATURE_VARIANTS[`feature:${legacy}`];
+  }
   if (key && Object.hasOwn(FEATURE_VARIANTS, key)) return FEATURE_VARIANTS[key];
   // Materialised world objects keep the same trusted entity artwork used by map tokens.
   if (key && feature.entity_type && Object.hasOwn(VISUAL_VARIANTS, key)

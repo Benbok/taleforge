@@ -1,4 +1,5 @@
 """Conservative role inference for adapting model-authored location parts."""
+
 from __future__ import annotations
 
 
@@ -6,6 +7,14 @@ def infer_role(ref: str, name: str, purpose: str) -> str | None:
     strong_text = f"{ref} {name}".casefold()
     purpose_text = purpose.casefold()
     checks = (
+        ("prison_cell", ("prison", "prisoner", "jail", "holding_cell", "тюремн", "заключенн", "заключённ")),
+        ("corridor", ("corridor", "коридор")),
+        ("bedroom", ("bedroom", "спальн", "спален", "guest_room")),
+        ("library", ("library", "библиотек", "study", "кабинет")),
+        ("chapel", ("chapel", "shrine", "часовн", "святилищ")),
+        ("smithy", ("smithy", "forge", "кузниц")),
+        ("kitchen", ("kitchen", "кухн")),
+        ("crypt", ("crypt", "крипт", "склеп", "гробниц")),
         ("warehouse", ("warehouse", "склад", "пакгауз", "контрабанд")),
         ("market", ("market", "рынок", "прилав")),
         ("cache", ("cache", "тайник", "схрон")),

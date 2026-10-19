@@ -1211,6 +1211,8 @@ async def move_heroes(
         if ctx.world.scene.location_id != loc.id:
             _reset_positions(ctx, inverse)
         ctx.world.scene.location_id = loc.id
+    placed = grid.place_residents(ctx.world, loc.id, inverse)
+    ctx.changed.update(aid for aid, _ in placed)
     ctx.signals.add("map.changed")
     if moved_companions:
         joined["companions_moved"] = [entity.name for entity in moved_companions]

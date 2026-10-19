@@ -20,6 +20,12 @@ Side = Literal["n", "e", "s", "w"]
 # Unknown saved keys remain valid and use the client's category fallback.
 DETAIL_VISUAL_KEYS = (
     "feature:table",
+    "feature:torture_table",
+    "feature:tool_table",
+    "feature:weapon_table",
+    "feature:torture_chair",
+    "feature:throne",
+    "feature:defiled_throne",
     "feature:bench",
     "feature:bed",
     "feature:counter",
@@ -77,6 +83,32 @@ class DetailIntent(BaseModel):
     solid: bool = Field(False, description="колонна, валун: непроходимая геометрия, не предмет")
     hidden: bool = False
     visual_key: str | None = Field(None, max_length=64)
+
+    @model_validator(mode="after")
+    def _furniture_art(self) -> DetailIntent:
+        if self.visual_key is not None or self.kind != "furniture":
+            return self
+        text = self.name.casefold()
+        restraint = any(word in text for word in ("пыт", "допрос", "torture", "interrogation"))
+        if any(word in text for word in ("трон", "throne")):
+            corrupted = any(word in text for word in ("оскверн", "проклят", "defiled", "cursed", "corrupt"))
+            self.visual_key = "feature:defiled_throne" if corrupted else "feature:throne"
+        elif "desk" in text or ("стол" in text and "письмен" in text):
+            self.visual_key = "feature:desk"
+        elif any(word in text for word in ("кресл", "стул", "chair")) and restraint:
+            self.visual_key = "feature:torture_chair"
+        elif any(word in text for word in ("стойк", "стеллаж", "rack")) and any(
+            word in text for word in ("оруди", "оруж", "инструмент", "weapon", "tool")
+        ):
+            self.visual_key = "feature:weapon_rack"
+        elif any(word in text for word in ("стол", "table")):
+            if restraint:
+                self.visual_key = "feature:torture_table"
+            elif any(word in text for word in ("инструмент", "tool", "instrument")):
+                self.visual_key = "feature:tool_table"
+            elif any(word in text for word in ("оруди", "оруж", "weapon")):
+                self.visual_key = "feature:weapon_table"
+        return self
 
     @field_validator("cells")
     @classmethod

@@ -220,3 +220,28 @@ def test_saved_blueprint_rejects_unknown_lighting_policy():
     raw = build().to_json()
     raw["areas"][0]["lighting"] = "unknown"
     assert any("освещения" in error for error in validate(Blueprint.from_json(raw)))
+
+
+@pytest.mark.parametrize("lighting", ["dim", "dark"])
+@pytest.mark.parametrize("role", ["smithy", "crypt", "tavern", "chapel"])
+@pytest.mark.parametrize("seed", [1, 7, 42, 2026, 8675309])
+def test_dark_role_dressing_never_invents_light_sources(lighting, role, seed):
+    raw = plan(cols=12, rows=12, lighting=lighting, details=[]).model_dump()
+    raw["parts"][0]["role"] = role
+    bp = DeterministicLayoutProvider().propose(LayoutIntent.model_validate(raw), seed=seed, root_id="root")
+    assert not any(d.kind == "light" or d.visual_key == "feature:hearth" for d in bp.area("hall").details)
+
+
+@pytest.mark.parametrize("visual", ["forge", "brazier", "chandelier"])
+def test_darkness_preserves_authored_new_light_sources(visual):
+    details = [
+        {
+            "detail_ref": "fire",
+            "name": "Authored light",
+            "kind": "light",
+            "visual_key": f"feature:{visual}",
+            "cells": [[4, 4, 4, 4]],
+        }
+    ]
+    area = build(lighting="dark", details=details).area("hall")
+    assert next(d for d in area.details if d.detail_ref == "fire").visual_key == f"feature:{visual}"

@@ -15,7 +15,16 @@ PLAIN_STATE = {
     "attitude", "hp", "hp_max", "plot_id", "role", "secret", "display_name", "item", "item_ref", "qty", "dc",
     "visual_key", "route_ports", "passages", "unique", "cell", "mask", "plot_anchor",
 }  # fmt: skip
-ADAPTED_STATE = {"areas", "complex", "blueprint", "sketch", "links", "world_object"}
+ADAPTED_STATE = {
+    "areas",
+    "complex",
+    "blueprint",
+    "sketch",
+    "links",
+    "world_object",
+    "content_reservation",
+    "object_slots",
+}
 
 
 class UnsupportedReference(Exception):
@@ -101,6 +110,8 @@ def adapt_state(state: dict, refs: RefMap) -> dict:
                 {**x, "to": refs.entities.get(x.get("to"), x.get("to"))} if isinstance(x, dict) else x
                 for x in value or []
             ]
+        elif key in {"content_reservation", "object_slots"}:
+            out[key] = remap(value, {**refs.entities, **refs.generations})
         elif key == "world_object":
             wo = dict(value)
             if wo.get("container_id"):

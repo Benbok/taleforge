@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.core.layout.contracts import MAX_AREAS
 from app.core.layout.intent import REF, LayoutIntent
+from app.core.layout.template_roles import infer_role
 
 ROAD_KINDS = ("road", "path")
 APPROACH_SIDES = ("w", "s", "e")
@@ -232,17 +233,18 @@ def _intent(m: Mandate, *, bands: bool, approaches: int) -> LayoutIntent:
     for i, p in enumerate(sp.parts):
         level = -1 if p.below else 0
         outdoor = p.outdoor and level == 0
-        natural = p.shape == "cave" or p.role in {"cliff", "cliffs", "rocky_slope"}
+        role = p.role or infer_role(p.ref, p.name, p.purpose) or ("field" if outdoor else "room")
+        natural = p.shape == "cave" or role in {"cliff", "cliffs", "rocky_slope"}
         d = {
             "part_ref": p.ref,
-            "role": p.role or ("field" if outdoor else "room"),
+            "role": role,
             "name": p.name,
             "public_name": p.name,
             "description": p.purpose,
             "material": p.material,
             "lighting": p.lighting or "normal",
             "environment": "outdoor" if outdoor else "indoor",
-            "shape": p.shape or ("open" if outdoor else "rect"),
+            "shape": p.shape or ("open" if outdoor else "corridor" if role == "corridor" else "rect"),
             "size": "small" if p.secret else sp.scale,
             "level": level,
             "secret": p.secret,

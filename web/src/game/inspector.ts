@@ -6,7 +6,7 @@ interface InspectorState {
   id: string | null;
   label: string;
   anchor: DOMRect | null;
-  open(id: string, label: string, el?: HTMLElement): void;
+  open(id: string, label: string, el?: Element): void;
   close(): void;
 }
 

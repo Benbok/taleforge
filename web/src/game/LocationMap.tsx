@@ -19,7 +19,7 @@ export interface LocationMapSvgProps {
   pickedPassageRef?: string | null;
   onCell?: (areaId: string, cell: [number, number]) => void;
   onPassage?: (exit: SketchExit, areaId: string) => void;
-  onEntity?: (id: string, name: string) => void;
+  onEntity?: (id: string, name: string, anchor: Element) => void;
 }
 
 export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, onPassage, onCell, onEntity }: LocationMapSvgProps) {
@@ -56,7 +56,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
                 )))}
               {isCurrent && onEntity && (liveSketch?.features ?? []).filter((feature) => feature.entity_id).flatMap((feature) =>
                 terrainCells(feature.cells).map(([x, y], index) => (
-                  <rect key={`${feature.entity_id}-${index}`} x={x} y={y} width="1" height="1" fill="transparent" pointerEvents="all" onClick={() => onEntity(feature.entity_id!, feature.name)} />
+                  <rect key={`${feature.entity_id}-${index}`} x={x} y={y} width="1" height="1" fill="transparent" pointerEvents="all" onClick={(event) => onEntity(feature.entity_id!, feature.name, event.currentTarget)} />
                 )))}
             </SketchSurface>
             <title>{area.name}</title>
@@ -71,7 +71,8 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
       {current && tokens.map(({ item, col, row }) => {
         const [x, y] = mechanicalToPlan(current, [col, row], liveSketch?.party ?? current.sketch.party);
         const visual = entityVisual(item.type, item.visual_key);
-        return <g key={item.id} data-token-id={item.id} transform={`translate(${x + .15} ${y + .15})`} onClick={onEntity ? () => onEntity(item.id, item.name) : undefined}>
+        return <g key={item.id} data-token-id={item.id} className={onEntity ? "cursor-pointer" : undefined} transform={`translate(${x + .15} ${y + .15})`} onClick={onEntity ? (event) => onEntity(item.id, item.name, event.currentTarget) : undefined}>
+          {onEntity && <rect x={-.15} y={-.15} width="1" height="1" fill="transparent" pointerEvents="all" />}
           {item.mine && <circle cx=".35" cy=".35" r=".46" fill="var(--tf-surface)" stroke="var(--tf-accent)" strokeWidth=".09" />}
           <MapGlyph name={visual.glyph} width={.7} height={.7} color={visual.color} />
           <title>{item.name}{item.mine ? " — ваш герой" : item.companion_of ? " — спутник" : ""}</title>
@@ -136,7 +137,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map" }: 
             <LocationMapSvg map={map} liveSketch={m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
               onCell={m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
-              onEntity={m ? (id, name) => inspect(id, name) : undefined}
+              onEntity={m ? (id, name, anchor) => inspect(id, name, anchor) : undefined}
               onPassage={(exit) => setPicked(exit)} />
           </div>
         </div>

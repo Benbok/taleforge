@@ -54,7 +54,7 @@ function StatusBadge({ status }: { status: ModuleShort["status"] }) {
 }
 
 /** Готовые приключения: книга PDF и карты → разбор ИИ → проверка админом → публикация в библиотеку. */
-export default function ModulesSection() {
+export default function ImportedAdventures() {
   const qc = useQueryClient();
   const list = useQuery({
     queryKey: ["modules"],
@@ -70,7 +70,7 @@ export default function ModulesSection() {
     <div className="flex flex-col gap-6" aria-label="Готовые приключения">
       <section className="card p-5 sm:p-6 border border-line bg-surface">
         <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-wide text-ink">
-          Готовые приключения
+          Импорт кампаний
         </h2>
         <p className="mt-1 text-sm text-muted max-w-2xl leading-relaxed">
           Загрузите опубликованное приключение в PDF и его карты. ИИ разберёт

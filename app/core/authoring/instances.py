@@ -178,6 +178,15 @@ async def instantiate_adventure(
         settings["poster"] = plot_module.poster(plan)
         game.settings = settings
     await session.flush()
+    from app.content.catalog import campaign_catalog
+    from app.core import positions
+    from app.core.world import load_world
+
+    world = await load_world(session, game, await campaign_catalog(session, game))
+    resident_places = sorted({e.location_id for e in world.entities.values() if e.kind == "creature" and e.location_id})
+    for place_id in resident_places:
+        positions.place_residents(world, place_id)
+    await session.flush()
     foreign = find_leaks(
         {"plot": plan, "setting": secret.setting}, {i for i in (*ids, *gen_ids)}
     )  # logical refs must not survive into the new world

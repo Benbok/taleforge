@@ -283,3 +283,107 @@ def test_stable_roles_select_existing_catalog_profiles(role, profile):
     location = SimpleNamespace(state={"role": role}, template_id=None)
     assert profile_ref_for(location, catalog) == ref
     assert profile_ref_for(location, Catalog({}).view(allow_proposals=False)) == "minimal"
+
+
+@pytest.mark.parametrize("seed", [1, 7, 42, 2026, 966293171])
+@pytest.mark.parametrize("role", ["start", "room", "prison_cell"])
+def test_prison_cell_stays_sparse_without_comfort_furniture(seed, role):
+    raw = {
+        "entry": "cells",
+        "parts": [
+            {
+                "part_ref": "cells",
+                "name": "Камеры заключенных",
+                "public_name": "Камеры заключенных",
+                "role": role,
+                "cols": 8,
+                "rows": 8,
+                "lighting": "dim",
+            }
+        ],
+        "approaches": [{"part_ref": "cells", "side": "w", "kind": "door", "public_name": "Entry"}],
+    }
+    intent = LayoutIntent.model_validate(raw)
+    bp = DeterministicLayoutProvider().propose(intent, seed=seed, root_id="root")
+    area = bp.area("cells")
+    assert area.role == "prison_cell"
+    assert len(area.details) <= 2
+    assert {d.visual_key for d in area.details} <= {"feature:bench", "feature:rubble"}
+    assert reach.reach_errors(build_area(bp, area)) == []
+    assert bp == DeterministicLayoutProvider().propose(intent, seed=seed, root_id="root")
+
+
+@pytest.mark.parametrize("name", ["Unknown chamber", "Неизвестное помещение"])
+def test_unknown_room_does_not_receive_arbitrary_furniture(name):
+    assert _layout("start", name=name, public_name=name).area("room").details == ()
+
+
+@pytest.mark.parametrize("name", ["Мрачный коридор", "Dark corridor"])
+def test_rectangular_corridor_stays_clear_when_model_uses_generic_role(name):
+    assert _layout("room", name=name, public_name=name).area("room").details == ()
+
+
+def test_explicitly_unfurnished_room_preserves_only_authored_details():
+    detail = {"detail_ref": "mark", "name": "Scratch", "visual_key": "feature:rubble", "cells": [[2, 2, 2, 2]]}
+    area = _layout("warehouse", description="Пустой зал без мебели и предметов", details=[detail]).area("room")
+    assert len(area.details) == 1 and area.details[0].detail_ref == "mark"
+
+
+@pytest.mark.parametrize("name,expected", [("Библиотека", "feature:desk"), ("Спальня", "feature:bed")])
+def test_generic_roles_use_specific_room_context(name, expected):
+    area = _layout("start", name=name, public_name=name).area("room")
+    assert expected in {d.visual_key for d in area.details}
+
+
+def test_model_brief_carries_prison_purpose_even_without_authored_role():
+    from app.agents.layout_model import brief
+    from app.core.layout.spatial import SpatialPlan
+
+    mandate = Mandate(
+        place="Тюремный блок",
+        spatial=SpatialPlan.model_validate(
+            {
+                "environment": "indoor",
+                "parts": [{"ref": "cells", "name": "Камеры заключенных", "purpose": "Место пробуждения героев"}],
+                "approaches": [{"name": "Entry", "kind": "door"}],
+            }
+        ),
+    )
+    assert "role=prison_cell" in brief(mandate)
+
+
+@pytest.mark.parametrize("seed", [1, 7, 42, 2026, 111898567])
+def test_prison_fallback_keeps_real_corridor_and_guard_binding(seed):
+    from app.core.layout.spatial import Holder, SpatialPlan, obligations
+
+    mandate = Mandate(
+        place="Тюремный блок",
+        spatial=SpatialPlan.model_validate(
+            {
+                "environment": "indoor",
+                "scale": "small",
+                "parts": [
+                    {
+                        "ref": "cells",
+                        "name": "Камеры заключенных",
+                        "purpose": "Место пробуждения героев",
+                        "required": True,
+                    },
+                    {"ref": "corridor", "name": "Мрачный коридор", "purpose": "Путь наружу"},
+                ],
+                "approaches": [{"name": "Пробуждение на полу", "kind": "gap"}],
+            }
+        ),
+        residents=[Holder(key="npc:npc_dying_guard", name="Раненый стражник")],
+    )
+    for intent in intent_candidates(mandate):
+        assert obligations(intent, mandate) == []
+        bp = DeterministicLayoutProvider().propose(intent, seed=seed, root_id="root")
+        corridor = bp.area("corridor")
+        assert corridor.shape == "corridor" and min(corridor.cols, corridor.rows) <= 2
+        assert corridor.role == "corridor" and corridor.details == ()
+        assert bp.area("cells").role == "prison_cell"
+        assert len(bp.area("cells").details) <= 2
+        assert bp.anchors["npc:npc_dying_guard"] == "cells"
+        for area in bp.areas:
+            assert reach.reach_errors(build_area(bp, area)) == []

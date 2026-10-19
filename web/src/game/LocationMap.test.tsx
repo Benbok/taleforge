@@ -1,8 +1,17 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocationMap } from "./LocationMap";
 import { SketchSurface } from "./SketchSurface";
 import { useMapWindow, type MapLocationPlan, type MapState } from "./map";
+import { useInspector } from "./inspector";
+import EntityPopover from "./EntityPopover";
+import { useGame } from "../stores/game";
+
+afterEach(() => {
+  cleanup();
+  useInspector.getState().close();
+  vi.restoreAllMocks();
+});
 
 const map: MapLocationPlan = {
   root_id: "root", here_id: "current", areas: [
@@ -83,6 +92,32 @@ it("оставляет иконку сущности и опасности на 
 });
 
 describe("единая карта комплекса", () => {
+  it.each(["npc", "item"])("привязывает карточку %s к экранным координатам значка", (kind) => {
+    const sketch = { ...map.areas[0].sketch, features: kind === "item" ? [
+      { id: "chest", entity_id: "target", name: "Сундук", kind: "object" as const, cells: [[1, 1, 1, 1]] },
+    ] : [] };
+    const live = { sketch, scene_view: kind === "npc" ? [
+      { id: "target", name: "Стражник", type: "creature", cell: [1, 1] },
+    ] : [] } as unknown as MapState;
+    useGame.setState({ cards: { target: { id: "target", name: "Цель" } } });
+    useInspector.getState().close();
+    const { container } = render(<><LocationMap map={map} m={live} /><EntityPopover /></>);
+    const target = kind === "npc"
+      ? container.querySelector('[data-token-id="target"]')!
+      : container.querySelector('[data-area-id="current"] rect[width="1"][pointer-events="all"]')!;
+    const bounds = new DOMRect(480, 260, 24, 24);
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue(bounds);
+    // Пустое место в клетке NPC тоже должно открывать карточку.
+    const clickTarget = kind === "npc" ? target.querySelector('rect[pointer-events="all"]') : target;
+    expect(clickTarget).not.toBeNull();
+    fireEvent.click(clickTarget!);
+    expect(useInspector.getState().anchor).toEqual(bounds);
+    const card = screen.getByRole("dialog", { name: "Карточка: Цель" });
+    expect(card.style.left).toBe("480px");
+    expect(card.style.top).toBe("292px");
+    useInspector.getState().close();
+  });
+
   it("рисует текущий и запомненный участок в общих offsets", () => {
     const { container } = render(<LocationMap map={map} />);
     expect(container.querySelectorAll('[data-area-status="remembered"]')).toHaveLength(1);

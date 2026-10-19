@@ -9,6 +9,7 @@ from jsonschema import Draft202012Validator
 from app.agents import layout_model
 from app.agents.llm import LLMError, LLMReply, ScriptedLLM, ToolCall
 from app.core.layout.contracts import LayoutError
+from app.core.layout.intent import DETAIL_VISUAL_KEYS
 from app.core.layout.provider import DeterministicLayoutProvider
 from app.core.world_generation.contracts import Blocked
 from tests.layout_plan_pilot import model_layout, temple_mandate, temple_plan
@@ -49,7 +50,10 @@ def test_model_can_choose_artwork_without_changing_occupied_cells():
     detail_schema = params["properties"]["parts"]["items"]["properties"]["details"]["items"]
     artwork = detail_schema["properties"].get("visual_key")
     assert artwork is not None
-    assert {"feature:bed", "feature:barrel", "feature:lichen", "feature:nest"} <= set(artwork["enum"])
+    # Список ключей — в описании, не в enum: вложенный в parts/details enum из десятков значений Gemini
+    # в режиме tool_choice=required отклоняет целиком (400 INVALID_ARGUMENT).
+    assert "enum" not in artwork
+    assert all(key in artwork["description"] for key in DETAIL_VISUAL_KEYS)
     raw = model_layout(KEYS)
     detail = next(p for p in raw["parts"] if p["part_ref"] == "nave")["details"][0]
     original_cells = detail["cells"]
@@ -58,6 +62,33 @@ def test_model_can_choose_artwork_without_changing_occupied_cells():
     assert intent is not None and retry is None and attempt.error is None
     pillar = next(p for p in intent.parts if p.part_ref == "nave").details[0]
     assert pillar.visual_key == "feature:pillar" and pillar.cells == original_cells
+
+
+def test_unknown_visual_key_is_dropped_not_corrected():
+    raw = model_layout(KEYS)
+    detail = next(p for p in raw["parts"] if p["part_ref"] == "nave")["details"][0]
+    detail["visual_key"] = "feature:dragon_throne"
+    intent, attempt, retry = _ask(ScriptedLLM([{"tool_calls": [(layout_model.TOOL, raw)]}]))
+    assert intent is not None and retry is None and attempt.error is None
+    assert next(p for p in intent.parts if p.part_ref == "nave").details[0].visual_key is None
+
+
+def test_schema_enums_stay_small_for_gemini():
+    """Gemini ограничивает сложность схемы в режиме required: длинные enum внутри вложенных массивов запрещены."""
+
+    def enums(node, path=""):
+        if isinstance(node, dict):
+            if "enum" in node:
+                yield path, len(node["enum"])
+            for key, value in node.items():
+                yield from enums(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for value in node:
+                yield from enums(value, path)
+
+    params = layout_model.spec(temple_mandate())["function"]["parameters"]
+    nested = {path: n for path, n in enums(params["properties"]["parts"]["items"]) if "anchors" not in path}
+    assert nested and max(nested.values()) <= 12, nested
 
 
 def test_parts_limit_is_checked_by_server_not_schema():

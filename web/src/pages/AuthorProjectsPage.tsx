@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import ImportedAdventures from "../author/ImportedAdventures";
 import CampaignBriefFields from "../components/CampaignBriefFields";
 import Header from "../components/Header";
 import { ApiError, api } from "../lib/api";
@@ -10,11 +11,13 @@ import { authoring, authorKeys } from "../lib/authoring";
 
 export default function AuthorProjectsPage() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "import" ? "import" : "projects";
   const client = useQueryClient();
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState<BriefIn>({});
   const [pack, setPack] = useState("");
-  const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs") });
+  const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs"), enabled: tab === "projects" });
 
   const newer = (a: string, b: string) => {
     const pa = a.split(".").map(Number);
@@ -32,7 +35,7 @@ export default function AuthorProjectsPage() {
 
   const base = latest.find((p) => p.is_base);
   const selected = pack || (base ? `${base.id}@${base.version}` : "");
-  const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects });
+  const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects, enabled: tab === "projects" });
 
   const create = useMutation({
     mutationFn: () => {
@@ -66,116 +69,134 @@ export default function AuthorProjectsPage() {
           </p>
         </header>
 
-        <section aria-labelledby="projects-heading" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 id="projects-heading" className="font-heading text-lg text-ink">Ваши проекты</h2>
-            {projects.data && (
-              <span className="text-xs text-muted">Всего: {projects.data.length}</span>
-            )}
-          </div>
+        <nav role="tablist" aria-label="Разделы пространства автора" className="flex flex-wrap gap-2 border-b border-line pb-3">
+          {([["projects", "Мои проекты"], ["import", "Импорт кампаний"]] as const).map(([id, label]) => (
+            <button key={id} id={`author-tab-${id}`} type="button" role="tab"
+              aria-selected={tab === id} aria-controls={`author-panel-${id}`}
+              className={`btn min-h-11 px-4 ${tab === id ? "btn-primary" : "bg-surface text-ink-2"}`}
+              onClick={() => setParams((previous) => { const next = new URLSearchParams(previous); next.set("tab", id); return next; })}>
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div role="tabpanel" id={`author-panel-${tab}`} aria-labelledby={`author-tab-${tab}`} className="flex flex-col gap-8">
+          {tab === "import" ? (
+            <ImportedAdventures />
+          ) : (
+            <>
+              <section aria-labelledby="projects-heading" className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h2 id="projects-heading" className="font-heading text-lg text-ink">Ваши проекты</h2>
+                  {projects.data && (
+                    <span className="text-xs text-muted">Всего: {projects.data.length}</span>
+                  )}
+                </div>
 
-          <ul className="grid gap-3 sm:grid-cols-2" aria-label="Проекты">
-            {(projects.data ?? []).map((p) => (
-              <li key={p.id}>
-                <Link
-                  className="group flex min-h-24 flex-col justify-between rounded-xl border border-line bg-surface p-4 transition-all hover:border-accent/60 hover:bg-raised hover:shadow-md"
-                  to={`/author/${p.id}`}
+                <ul className="grid gap-3 sm:grid-cols-2" aria-label="Проекты">
+                  {(projects.data ?? []).map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        className="group flex min-h-24 flex-col justify-between rounded-xl border border-line bg-surface p-4 transition-all hover:border-accent/60 hover:bg-raised hover:shadow-md"
+                        to={`/author/${p.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-heading text-base font-medium text-ink transition-colors group-hover:text-accent">
+                            {p.title}
+                          </span>
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs ${
+                              p.status === "published" ? "bg-patina text-on-accent" : p.status === "changed" ? "border border-warn/50 text-warn" : "bg-line-soft text-muted"
+                            }`}
+                          >
+                            {p.status === "published" ? `Опубликовано · v${p.latest_version}` : p.status === "changed" ? `Изменено после v${p.latest_version}` : "Черновик"}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between text-xs text-muted">
+                          <span>Открыть мастерскую</span>
+                          <span className="transition-transform group-hover:translate-x-1">→</span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                  {projects.data?.length === 0 && (
+                    <li className="col-span-full rounded-xl border border-dashed border-line bg-surface/50 p-8 text-center">
+                      <p className="font-heading text-base text-ink">У вас пока нет созданных проектов</p>
+                      <p className="mt-1 text-sm text-muted">Заполните форму ниже, чтобы начать разработку первого приключения.</p>
+                    </li>
+                  )}
+                </ul>
+              </section>
+
+              <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+                <div className="mb-4 flex items-center gap-2 border-b border-line-soft pb-3">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">✦</span>
+                  <div>
+                    <h2 className="font-heading text-lg font-semibold text-ink">Создать новое приключение</h2>
+                    <p className="text-xs text-muted">Задайте базовые параметры: сюжет и лор можно будет сгенерировать или вставить на следующем шаге</p>
+                  </div>
+                </div>
+
+                <form
+                  className="flex flex-col gap-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (title.trim() && !create.isPending) create.mutate();
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-heading text-base font-medium text-ink transition-colors group-hover:text-accent">
-                      {p.title}
-                    </span>
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs ${
-                        p.status === "published" ? "bg-patina text-on-accent" : p.status === "changed" ? "border border-warn/50 text-warn" : "bg-line-soft text-muted"
-                      }`}
+                  <label className="flex flex-col gap-1.5 text-sm">
+                    <span className="font-medium text-ink">Название приключения</span>
+                    <input
+                      className="min-h-11 rounded-xl border border-line bg-raised px-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                      placeholder="Например: Тени над Озёрным краем"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1.5 text-sm">
+                    <span className="font-medium text-ink">Базовый мир (пакет контента)</span>
+                    <select
+                      className="min-h-11 rounded-xl border border-line bg-raised px-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
+                      value={selected}
+                      onChange={(e) => setPack(e.target.value)}
                     >
-                      {p.status === "published" ? `Опубликовано · v${p.latest_version}` : p.status === "changed" ? `Изменено после v${p.latest_version}` : "Черновик"}
-                    </span>
+                      {latest.map((p) => (
+                        <option key={`${p.id}@${p.version}`} value={`${p.id}@${p.version}`}>
+                          {p.name} · {p.version} {p.is_base ? "(базовый)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-muted">Определяет правила, доступные расы, бестиарий и стиль повествования.</span>
+                  </label>
+
+                  <div className="rounded-xl border border-line-soft bg-raised/50 p-4">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted">Вводная анкета (необязательно)</span>
+                    <CampaignBriefFields value={brief} onChange={setBrief} />
                   </div>
-                  <div className="mt-4 flex items-center justify-between text-xs text-muted">
-                    <span>Открыть мастерскую</span>
-                    <span className="transition-transform group-hover:translate-x-1">→</span>
+
+                  {create.error && (
+                    <p className="rounded-lg border border-bad/30 bg-ember-bg p-3 text-sm text-bad" role="alert">
+                      {create.error instanceof ApiError ? create.error.message : "не удалось создать проект"}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-xs text-muted">
+                      Обычное создание кампании для игры — на странице <Link className="text-accent underline hover:opacity-80" to="/new">«Новая кампания»</Link>.
+                    </p>
+                    <button
+                      className="btn btn-primary min-h-11 px-6 text-sm font-medium"
+                      type="submit"
+                      disabled={!title.trim() || create.isPending}
+                    >
+                      {create.isPending ? "Создание проекта…" : "Создать проект"}
+                    </button>
                   </div>
-                </Link>
-              </li>
-            ))}
-            {projects.data?.length === 0 && (
-              <li className="col-span-full rounded-xl border border-dashed border-line bg-surface/50 p-8 text-center">
-                <p className="font-heading text-base text-ink">У вас пока нет созданных проектов</p>
-                <p className="mt-1 text-sm text-muted">Заполните форму ниже, чтобы начать разработку первого приключения.</p>
-              </li>
-            )}
-          </ul>
-        </section>
-
-        <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center gap-2 border-b border-line-soft pb-3">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">✦</span>
-            <div>
-              <h2 className="font-heading text-lg font-semibold text-ink">Создать новое приключение</h2>
-              <p className="text-xs text-muted">Задайте базовые параметры: сюжет и лор можно будет сгенерировать или вставить на следующем шаге</p>
-            </div>
-          </div>
-
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (title.trim() && !create.isPending) create.mutate();
-            }}
-          >
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-ink">Название приключения</span>
-              <input
-                className="min-h-11 rounded-xl border border-line bg-raised px-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
-                placeholder="Например: Тени над Озёрным краем"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-ink">Базовый мир (пакет контента)</span>
-              <select
-                className="min-h-11 rounded-xl border border-line bg-raised px-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
-                value={selected}
-                onChange={(e) => setPack(e.target.value)}
-              >
-                {latest.map((p) => (
-                  <option key={`${p.id}@${p.version}`} value={`${p.id}@${p.version}`}>
-                    {p.name} · {p.version} {p.is_base ? "(базовый)" : ""}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-muted">Определяет правила, доступные расы, бестиарий и стиль повествования.</span>
-            </label>
-
-            <div className="rounded-xl border border-line-soft bg-raised/50 p-4">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted">Вводная анкета (необязательно)</span>
-              <CampaignBriefFields value={brief} onChange={setBrief} />
-            </div>
-
-            {create.error && (
-              <p className="rounded-lg border border-bad/30 bg-ember-bg p-3 text-sm text-bad" role="alert">
-                {create.error instanceof ApiError ? create.error.message : "не удалось создать проект"}
-              </p>
-            )}
-
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-muted">
-                Обычное создание кампании для игры — на странице <Link className="text-accent underline hover:opacity-80" to="/new">«Новая кампания»</Link>.
-              </p>
-              <button
-                className="btn btn-primary min-h-11 px-6 text-sm font-medium"
-                type="submit"
-                disabled={!title.trim() || create.isPending}
-              >
-                {create.isPending ? "Создание проекта…" : "Создать проект"}
-              </button>
-            </div>
-          </form>
-        </section>
+                </form>
+              </section>
+            </>
+          )}
+        </div>
       </main>
     </>
   );

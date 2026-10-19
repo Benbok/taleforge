@@ -247,6 +247,50 @@ def grid_deploy(world, place: str | None, ids: list[str]) -> list[tuple[str, tup
     return placed
 
 
+def place_residents(world, place: str, inverse: list | None = None) -> list[tuple[str, tuple[int, int]]]:
+    """Give unpositioned residents real cells on reachable floor, keeping authored positions."""
+    import copy
+
+    from app.core import reach, sketch
+
+    sk = _sketch(world, place)
+    if sk is None:
+        return []
+    origin = anchor(world, place, sk)
+    reserved = {origin} | {cell for exit_ in sk.get("exits", []) for cell in sketch.exit_cells(sk, exit_)}
+    floor = reach.walk_region(sk, origin) - reserved
+    placed = []
+    actors = sorted(
+        (
+            e
+            for e in world.entities.values()
+            if e.kind == "creature" and e.location_id == place and not (e.state or {}).get("dead")
+        ),
+        key=lambda e: e.id,
+    )
+    for actor in actors:
+        pos = pos_of(world, actor.id)
+        if pos.cell is not None:
+            continue
+        start = cell_from_zone(pos)
+        target = (start[0] + origin[0], start[1] + origin[1])
+        for cell in sorted(floor, key=lambda c: (max(abs(c[0] - target[0]), abs(c[1] - target[1])), c)):
+            relative = (cell[0] - origin[0], cell[1] - origin[1])
+            if cell_problem(world, place, relative, actor.id, sk) is not None:
+                continue
+            if inverse is not None:
+                inverse.extend(
+                    [
+                        {"table": "entities", "id": actor.id, "field": "state", "before": copy.deepcopy(actor.state)},
+                        {"table": "entities", "id": actor.id, "field": "zone", "before": actor.zone},
+                    ]
+                )
+            set_cell(world, actor.id, relative)
+            placed.append((actor.id, relative))
+            break
+    return placed
+
+
 def hero_positions(scene) -> dict[str, dict]:
     return dict((scene.state or {}).get("positions") or {})
 

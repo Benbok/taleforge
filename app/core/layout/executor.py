@@ -274,6 +274,16 @@ async def _publish_geometry(ctx, row: WorldGenerationState) -> dict[str, Any]:
         raise Blocked("geometry_invalid", "; ".join(e.errors[:6])) from e
     edit_rev = int((current or {}).get("edit_rev") or 0) + 1
     area.state = {**(area.state or {}), "sketch": {**sk, "auto": True, "edit_rev": edit_rev}}
-    await ctx.record("prepare_geometry", target_id=area.id,
-                     payload={"generation_id": row.id, "area_ref": spec.area_ref}, hidden=True)  # fmt: skip
+    from app.core import positions
+
+    inverse = []
+    placed = positions.place_residents(ctx.world, area.id, inverse)
+    ctx.changed.update(aid for aid, _ in placed)
+    await ctx.record(
+        "prepare_geometry",
+        target_id=area.id,
+        payload={"generation_id": row.id, "area_ref": spec.area_ref},
+        inverse=inverse,
+        hidden=True,
+    )
     return {"schema_version": 1, "phase": "location_geometry", "area_ref": spec.area_ref, "notes": []}

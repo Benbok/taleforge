@@ -19,6 +19,7 @@ from app.agents.world_generator import Attempt
 from app.core.layout.contracts import MAX_SIDE, LayoutError
 from app.core.layout.intent import DETAIL_VISUAL_KEYS, BandIntent, DetailIntent, LayoutIntent, PartIntent
 from app.core.layout.spatial import Mandate, obligations
+from app.core.layout.template_roles import infer_role
 from app.core.world_generation.contracts import Blocked
 
 TOOL = "submit_layout"
@@ -46,7 +47,12 @@ SYSTEM = (
     "Для открытой местности обычно shape=open; corridor — только узкий коридор с min(cols,rows)<=2. "
     "Обычная комната — около 7×8 клеток, большой зал — 10×12, открытый участок — 14×12; "
     "кладовая меньше, коридор остаётся узким. Не сжимай весь комплекс в маленькие комнаты. "
-    "Для обычной части предложи 4–6 характерных деталей, для большого зала 6–8, для коридора 1–2. "
+    "Наполнение следует назначению и описанию части: пустота тоже осмысленна, details=[] допустим. "
+    "Камера заключённых (role=prison_cell) скудная: 0–2 детали, грубые нары или обломки; "
+    "не добавляй стеллажи, кресла, шкафы и удобства без указания в сцене. "
+    "role обозначает назначение (prison_cell, library, kitchen), а не положение start/entry. "
+    "Для обжитой обычной части предложи 4–6 характерных деталей, для большого зала 6–8; "
+    "пустые помещения и коридоры не нужно заполнять ради количества. "
     "Собирай логичные группы: стол со скамьями, кровать с сундуком, стеллажи со штабелями, "
     "скальные островки с мхом. Несколько самостоятельных предметов — отдельные детали. "
     "У каждой детали свой detail_ref, уникальный внутри части (например pillar_1, pillar_2). "
@@ -95,10 +101,14 @@ def spec(m: Mandate) -> dict[str, Any]:
             },
             "name": {"type": "string", "maxLength": 60},
             "kind": {"type": "string", "enum": _enum(DetailIntent, "kind")},
+            # Ключи — в описании, не в enum: вложенный в parts/details enum из десятков значений Gemini
+            # в режиме tool_choice=required отклоняет всю схему (400 INVALID_ARGUMENT). Неизвестный ключ
+            # сервер отбрасывает в to_intent.
             "visual_key": {
                 "type": "string",
-                "enum": list(DETAIL_VISUAL_KEYS),
-                "description": "Рисунок детали. Только внешний вид: не меняет solid или проходимость.",
+                "description": "Рисунок детали, один из: "
+                + ", ".join(DETAIL_VISUAL_KEYS)
+                + ". Только внешний вид: не меняет solid или проходимость.",
             },
             "cells": {
                 "type": "array",
@@ -238,8 +248,11 @@ def _lines(m: Mandate, *, mood: bool, purposes: bool) -> list[str]:
             if on
         ]
         flags.extend((f"environment={'outdoor' if p.outdoor else 'indoor'}", f"secret={str(p.secret).lower()}"))
-        if p.role is not None:
-            flags.append(f"role={p.role}")
+        role = p.role
+        if role is None or role in {"room", "start", "entry", "area", "generic"}:
+            role = infer_role(p.ref, p.name, p.purpose) or role
+        if role is not None:
+            flags.append(f"role={role}")
         if p.lighting is not None:
             flags.append(f"lighting={p.lighting} — задано сценой, сохрани")
         if p.below:
@@ -283,6 +296,10 @@ def to_intent(m: Mandate, args: Any) -> LayoutIntent:
     for ap in args.get("approaches") or []:
         if isinstance(ap, dict) and ap.get("outside_id") is not None:
             raise Blocked("invalid_proposal", "подход: outside_id не задаётся, снаружи — само место")
+    for part in args.get("parts") or []:
+        for detail in (part.get("details") or []) if isinstance(part, dict) else []:
+            if isinstance(detail, dict) and detail.get("visual_key") not in (None, *DETAIL_VISUAL_KEYS):
+                detail["visual_key"] = None  # выдуманный рисунок не стоит корректирующей попытки
     try:
         intent = LayoutIntent.model_validate({**args, "schema_version": 1})
     except ValidationError as e:

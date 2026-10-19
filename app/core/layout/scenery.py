@@ -67,6 +67,11 @@ _PROPS = {
 
 def _motifs(area: Area) -> list[tuple]:
     role = area.role
+    if role in {"prison_cell", "prison", "jail", "cell", "cells", "holding_cell"}:
+        return [
+            (("bench", "Грубые нары", "furniture", (0, 0, 1, 0)),),
+            (("rubble", *_PROPS["rubble"]),),
+        ]
     if area.shape == "cave" or role in {"cave", "grotto", "cavern", "cliff", "cliffs", "rocky_slope"}:
         keys = (
             ("rock", "rubble", "lichen", "crystal")
@@ -104,12 +109,21 @@ def _motifs(area: Area) -> list[tuple]:
         keys = ("hearth", "torch", "barrel", "chair", "chandelier", "carpet")
         return [_SEATING, *[((key, *_PROPS[key]),) for key in keys]]
     else:
-        keys = ("bench", "torch", "shelf", "chair")
+        return []
     return [((key, *_PROPS[key]),) for key in keys]
 
 
 def populate(bp: Blueprint, area: Area) -> Area:
     """Supplement sparse areas, preserving every supplied detail and its artwork."""
+    if area.role in {"room", "start", "entry", "area", "generic"}:
+        role = infer_role(area.area_ref, area.name, area.description)
+        if role is not None:
+            area = replace(area, role=role)
+    if area.role in {"prison", "jail", "cell", "cells", "holding_cell"}:
+        area = replace(area, role="prison_cell")
+    unfurnished = ("без мебели", "без предметов", "полностью пуст", "no furniture", "unfurnished", "empty room")
+    if area.role == "corridor" or any(word in area.description.casefold() for word in unfurnished):
+        return area
     if len(area.details) >= 3 or area.material == "water" or area.shape == "corridor" or min(area.cols, area.rows) < 4:
         return area
     base = geometry.build_area(bp, area)
@@ -130,9 +144,13 @@ def populate(bp: Blueprint, area: Area) -> Area:
     for slot in area.object_slots:
         keep |= rect_cells(slot.cells)
     budget = min(8, len(area.details) + 3 + len(floor) // 32)
+    if area.role == "prison_cell":
+        budget = min(budget, 2)
     motifs = _motifs(area)
     if area.lighting != "normal":
-        motifs = [motif for motif in motifs if not any(p[0] in {"torch", "hearth", "glow"} for p in motif)]
+        motifs = [motif for motif in motifs if not any(p[2] == "light" or p[0] == "hearth" for p in motif)]
+    if not motifs:
+        return area
     anchors = sorted(floor - keep)
     random.Random(geometry.area_seed(bp.seed, area.area_ref)).shuffle(anchors)
     boundary = {
