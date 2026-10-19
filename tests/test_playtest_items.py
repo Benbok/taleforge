@@ -501,3 +501,27 @@ def test_master_can_give_an_unnamed_npc_a_name_once(client, admin, settings):
         assert not clash["ok"] and clash["failure"]["code"] == "name_taken"
 
     play(settings, cid, scenario)
+
+
+def test_question_about_an_npc_name_adds_a_server_hint_to_the_turn(client, admin, settings):
+    # плейтест 19.10: «как тебя зовут?» — мастер вызвал auto_success и отложил ответ; системный промпт он не применил
+    from types import SimpleNamespace
+
+    from app.agents.master.hints import asks_name, name_hint
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        entity = ctx.world.entities[npc]
+        entity.state = {**(entity.state or {}), "attitude": "friendly"}
+        ask = SimpleNamespace(kind="action", content="Как тебя зовут на самом деле? — спросил я стражника")
+        hint = name_hint(ctx, [ask], {})
+        assert "update_entity" in hint and npc in hint
+        assert name_hint(ctx, [SimpleNamespace(kind="action", content="Атакую стражника")], {}) == ""
+        await ok(ctx, "update_entity", {"entity_id": npc, "name": "Гаррет"})
+        assert name_hint(ctx, [ask], {}) == ""  # уже назван: подсказка не повторяется
+
+    play(settings, cid, scenario)
+    assert asks_name("Хватит тебя называть Стражником — как тебя зовут?")
+    assert asks_name("скажи своё имя") and not asks_name("как дела у тебя")
