@@ -15,9 +15,11 @@ from app.api.deps import SessionDep, UserDep
 from app.content.catalog import campaign_catalog
 from app.core import bonds
 from app.core import characters as svc
+from app.core import equipment as equipment_core
 from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
 from app.core.views import CharacterView
+from app.core.world import load_world
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem
 from app.gateway.events import envelope
 
@@ -55,6 +57,13 @@ class ReviewIn(BaseModel):
 async def _view(session, viewer: Viewer, ch: Character) -> dict:
     out = await _sheet_view(session, viewer, ch)
     cat = await campaign_catalog(session, viewer.campaign)
+    if "inventory" in out:
+        world = await load_world(session, viewer.campaign, cat)
+        out["equipment"] = {
+            "can_manage": _can_manage_equipment(viewer, ch),
+            "in_combat": world.in_fight(ch.id),
+            "changes": equipment_core.equipment_state(world, ch.id),
+        }
     for key, kind in (("class", "class"), ("origin", "origin")):
         rec = cat.find((ch.sheet or {}).get(f"{key}_id") or "", kind)
         out[f"{key}_name"] = rec.name if rec else None
@@ -66,6 +75,14 @@ async def _view(session, viewer: Viewer, ch: Character) -> dict:
         else:
             out["review_error"] = None
     return out
+
+
+def _can_manage_equipment(viewer: Viewer, ch: Character) -> bool:
+    return bool(
+        viewer.seat is not None
+        and ch.seat_id == viewer.seat.id
+        and (ch.owner_user_id == viewer.user.id or ch.seat_id in stand_in_seats(viewer.campaign, viewer.user.id))
+    )
 
 
 async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:

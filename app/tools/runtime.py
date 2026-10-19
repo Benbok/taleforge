@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import audio, combat, rolls
+from app.core import equipment as equipment_core
 from app.core.campaigns import master_seat
 from app.core.characters import full_view, public_view
 from app.core.chat import active_session, next_seq
@@ -305,6 +306,11 @@ async def publish_changes(bus, ctx: ToolContext, messages: list[Message], names:
         )
         if ch.seat_id:
             full = full_view(ch, w.catalog, w.inventory.get(ch.id, []), w.effects, w.entities.values())
+            full["equipment"] = {
+                "can_manage": True,
+                "in_combat": w.in_fight(ch.id),
+                "changes": equipment_core.equipment_state(w, ch.id),
+            }
             ev = next((e.id for e in reversed(ctx.events) if i in (e.actor_id, e.target_id)), None)
             await bus.publish(cid, envelope("character.sheet", cid, {"character": full, "event_id": ev}), [ch.seat_id])
     for ev in ctx.events:

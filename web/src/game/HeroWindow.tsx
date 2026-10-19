@@ -16,6 +16,7 @@ import {
 import { attack } from "./quick";
 import Features from "./Features";
 import Spellbook from "./Spellbook";
+import Gear from "./Gear";
 
 type Tab =
   | "stats"
@@ -205,26 +206,6 @@ function Combat({ h }: { h: HeroSheet }) {
         </p>
       )}
     </div>
-  );
-}
-
-function Gear({ h }: { h: HeroSheet }) {
-  if (!h.inventory.length) return <p className="text-muted">Снаряжения нет.</p>;
-  return (
-    <ul className="flex flex-col gap-1">
-      {h.inventory.map((i) => (
-        <li
-          key={i.id}
-          className="flex justify-between gap-2 border-b border-line py-1"
-        >
-          <span>
-            {i.name}
-            {i.qty > 1 ? ` ×${i.qty}` : ""}
-          </span>
-          {i.equipped && <span className="text-xs text-accent">надето</span>}
-        </li>
-      ))}
-    </ul>
   );
 }
 

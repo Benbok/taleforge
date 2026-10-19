@@ -1165,6 +1165,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/characters/{character_id}/equipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change Equipment */
+        put: operations["change_equipment_api_campaigns__campaign_id__characters__character_id__equipment_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/characters/{character_id}/persona": {
         parameters: {
             query?: never;
@@ -3278,6 +3295,7 @@ export interface components {
                 number
             ] | null;
             derived?: components["schemas"]["Derived"];
+            equipment?: components["schemas"]["EquipmentState"];
             /** Errors */
             errors?: string[];
             /** Features */
@@ -3673,6 +3691,60 @@ export interface components {
             chronicle: string;
         } & {
             [key: string]: unknown;
+        };
+        /** EquipmentChangeView */
+        EquipmentChangeView: {
+            /**
+             * Action Cost
+             * @default 0
+             */
+            action_cost?: number;
+            /** Allowed */
+            allowed: boolean;
+            /** Displaced Ids */
+            displaced_ids?: string[];
+            /**
+             * Interaction Count
+             * @default 0
+             */
+            interaction_count?: number;
+            /**
+             * Reason
+             * @default null
+             */
+            reason?: string | null;
+        };
+        /** EquipmentIn */
+        EquipmentIn: {
+            /**
+             * Equipped
+             * @default true
+             */
+            equipped?: boolean;
+            /** Inventory Id */
+            inventory_id: string;
+        };
+        /** EquipmentResponse */
+        EquipmentResponse: {
+            character: components["schemas"]["CharacterView"];
+            economy?: components["schemas"]["TurnEconomy"] | null;
+        };
+        /** EquipmentState */
+        EquipmentState: {
+            /**
+             * Can Manage
+             * @default false
+             */
+            can_manage?: boolean;
+            /** Changes */
+            changes?: {
+                [key: string]: components["schemas"]["EquipmentChangeView"];
+            };
+            /**
+             * In Combat
+             * @default false
+             */
+            in_combat?: boolean;
         };
         /** Error */
         Error: {
@@ -4510,6 +4582,8 @@ export interface components {
             ] | null;
             /** @default null */
             derived?: components["schemas"]["Derived"];
+            /** @default null */
+            equipment?: components["schemas"]["EquipmentState"];
             /**
              * Errors
              * @default null
@@ -4758,6 +4832,38 @@ export interface components {
         };
         /** InventoryRow */
         InventoryRow: {
+            /**
+             * Ac Base
+             * @default null
+             */
+            ac_base?: number | null;
+            /**
+             * Ac Bonus
+             * @default null
+             */
+            ac_bonus?: number | null;
+            /**
+             * Armor Type
+             * @default null
+             */
+            armor_type?: string | null;
+            /**
+             * Category
+             * @default null
+             */
+            category?: string | null;
+            /**
+             * Damage
+             * @default null
+             */
+            damage?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Dex Cap
+             * @default null
+             */
+            dex_cap?: number | null;
             /** Equipped */
             equipped: boolean;
             /** Id */
@@ -4766,8 +4872,15 @@ export interface components {
             item: string;
             /** Name */
             name: string;
+            /** Properties */
+            properties?: string[];
             /** Qty */
             qty: number;
+            /**
+             * Two Handed
+             * @default false
+             */
+            two_handed?: boolean;
         };
         /** InviteCreateIn */
         InviteCreateIn: {
@@ -7199,6 +7312,11 @@ export interface components {
             bonus: boolean;
             /** Disengage */
             disengage: boolean;
+            /**
+             * Interaction Free
+             * @default true
+             */
+            interaction_free?: boolean;
             /** Move Left Ft */
             move_left_ft: number;
         };
@@ -7598,6 +7716,10 @@ export type EditsRequest = components['schemas']['EditsRequest'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
+export type EquipmentChangeView = components['schemas']['EquipmentChangeView'];
+export type EquipmentIn = components['schemas']['EquipmentIn'];
+export type EquipmentResponse = components['schemas']['EquipmentResponse'];
+export type EquipmentState = components['schemas']['EquipmentState'];
 export type Error = components['schemas']['Error'];
 export type Event_audio_sfx_ready = components['schemas']['Event_audio_sfx_ready'];
 export type Event_audio_state = components['schemas']['Event_audio_state'];
@@ -10293,6 +10415,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CharacterView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_equipment_api_campaigns__campaign_id__characters__character_id__equipment_put: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquipmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentResponse"];
                 };
             };
             /** @description Validation Error */

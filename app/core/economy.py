@@ -33,6 +33,7 @@ def _actor_name(world, actor_id: str) -> str:
     actor = world.characters.get(actor_id) or world.entities.get(actor_id)
     return actor.name if actor is not None else actor_id
 
+
 ACTIONS_RU = {
     "attack": "атака",
     "cast": "заклинание",
@@ -76,9 +77,20 @@ def ledger(world, hero_id: str) -> dict[str, Any]:
     """Что герой потратил за этот ход (пустой лист, если ход новый)."""
     mine = ((world.scene.state or {}).get("spent") or {}).get(hero_id) or {}
     if mine.get("turn") != _marker(world):
-        return {"turn": _marker(world), "actions": 0, "extra": 0, "attacks_left": 0, "bonus": False, "dash": 0,
-                "disengage": False, "spells": []}  # fmt: skip
-    return dict(mine)
+        return {
+            "turn": _marker(world),
+            "actions": 0,
+            "extra": 0,
+            "attacks_left": 0,
+            "bonus": False,
+            "dash": 0,
+            "disengage": False,
+            "spells": [],
+            "interaction_used": False,
+        }
+    # Ledgers written before item interactions existed are still valid and
+    # simply have not consumed their free interaction yet.
+    return {**mine, "interaction_used": bool(mine.get("interaction_used", False))}
 
 
 def _save(world, hero_id: str, led: dict) -> None:
@@ -116,6 +128,7 @@ def view(world, hero_id: str) -> dict[str, Any] | None:
         "bonus": not led["bonus"],
         "move_left_ft": max(0, speed * (1 + led["dash"]) - moved),
         "disengage": led["disengage"],
+        "interaction_free": not led.get("interaction_used", False),
     }
 
 
@@ -132,6 +145,7 @@ def line(world, hero_id: str) -> str:
         return ""
     parts = [
         "действие свободно" if v["action"] else "действие потрачено",
+        "взаимодействие с предметом свободно" if v["interaction_free"] else "взаимодействие с предметом потрачено",
         f"ударов в действии атаки ещё {v['attacks_left']}" if v["attacks_left"] else None,
         "бонусное действие свободно" if v["bonus"] else "бонусное действие потрачено",
         f"шагов ещё {v['move_left_ft']} фт",
@@ -156,6 +170,29 @@ def _need_bonus(world, hero_id: str, led: dict, what: str) -> None:
     if led["bonus"]:
         raise ToolError(f"{_actor_name(world, hero_id)}: бонусное действие этого хода уже потрачено ({what})")
     led["bonus"] = True
+
+
+def charge_interaction(ctx: ToolContext, hero_id: str, count: int = 1) -> list[dict]:
+    """Reserve ``count`` item interactions for the active hero turn.
+
+    The first interaction in a turn is free. Every later interaction uses an
+    action. All checks happen on a copy of the ledger, so a failed composite
+    equipment change cannot partially spend the turn.
+    """
+    if count < 1:
+        return []
+    world = ctx.world
+    if not active(world, hero_id):
+        return []
+    before = _snap(ctx)
+    led = ledger(world, hero_id)
+    free = not led.get("interaction_used", False)
+    paid = max(0, count - (1 if free else 0))
+    for _ in range(paid):
+        _need_action(world, hero_id, led, "предмет")
+    led["interaction_used"] = True
+    _save(world, hero_id, led)
+    return [before]
 
 
 def charge_movement(ctx: ToolContext, hero_id: str, feet: int) -> bool:

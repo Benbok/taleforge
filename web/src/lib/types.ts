@@ -182,6 +182,37 @@ export interface TurnEconomy {
   bonus: boolean;
   move_left_ft: number;
   disengage: boolean;
+  interaction_free?: boolean;
+}
+
+export interface InventoryProperties {
+  category?: string | null;
+  damage?: Record<string, string> | null;
+  properties?: string[];
+  armor_type?: string | null;
+  ac_base?: number | null;
+  ac_bonus?: number | null;
+  dex_cap?: number | null;
+  two_handed?: boolean;
+}
+
+export interface EquipmentChange {
+  allowed: boolean;
+  reason?: string | null;
+  action_cost?: number;
+  interaction_count?: number;
+  displaced_ids?: string[];
+}
+
+export interface EquipmentState {
+  can_manage?: boolean;
+  in_combat?: boolean;
+  changes?: Record<string, EquipmentChange>;
+}
+
+export interface EquipmentResponse {
+  character: Partial<Omit<HeroSheet, "spellbook">> & { spellbook?: unknown };
+  economy?: TurnEconomy | null;
 }
 
 export interface SceneEntity {
@@ -370,13 +401,14 @@ export interface HeroSheet extends HeroPublic {
     attacks: HeroAttack[];
     effects: { id: string; template: string; name: string; stacks: number; source?: string | null; reason?: string | null }[];
   };
-  inventory: {
+  inventory: (InventoryProperties & {
     id: string;
     item: string;
     name: string;
     qty: number;
     equipped: boolean;
-  }[];
+  })[];
+  equipment?: EquipmentState;
   /** Опыт: сколько есть, порог текущего уровня и следующего (null — выше расти некуда). */
   progress?: { xp: number; level_xp: number; next_xp: number | null };
   /** Книга заклинаний: у заклинателей. */

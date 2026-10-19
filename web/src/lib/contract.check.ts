@@ -4,7 +4,7 @@
 import type { paths } from "./api.gen";
 import type { CampaignHero } from "./builder";
 import type { Room } from "./campaign";
-import type { CampaignCard, HeroSheet, InvitePreview, User } from "./types";
+import type { CampaignCard, EquipmentResponse, HeroSheet, InvitePreview, User } from "./types";
 
 type Json<R> = R extends { content: { "application/json": infer T } } ? T : never;
 /** Тело успешного ответа маршрута ``P`` на метод ``M``. */
@@ -38,3 +38,5 @@ export const heroFits: CampaignHero = hero;
 declare const sheet: Res<"/api/campaigns/{campaign_id}/characters/{character_id}", "get">;
 // книгу заклинаний сервер пока не описывает (views.py, SheetParts.spellbook): её форма — в lib/spells.ts
 export const sheetFits: Partial<Omit<HeroSheet, "spellbook">> = sheet;
+declare const equipment: Res<"/api/campaigns/{campaign_id}/characters/{character_id}/equipment", "put">;
+export const equipmentFits: EquipmentResponse = equipment;

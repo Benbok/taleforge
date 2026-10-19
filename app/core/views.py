@@ -152,6 +152,37 @@ class InventoryRow(Strict):
     name: str
     qty: int
     equipped: bool
+    category: str | None = None
+    damage: dict[str, str] | None = None
+    properties: list[str] = Field(default_factory=list)
+    armor_type: str | None = None
+    ac_base: int | None = None
+    ac_bonus: int | None = None
+    dex_cap: int | None = None
+    two_handed: bool = False
+
+
+class TurnEconomy(Strict):
+    action: bool
+    attacks_left: int
+    bonus: bool
+    move_left_ft: int
+    disengage: bool
+    interaction_free: bool = True
+
+
+class EquipmentChangeView(Strict):
+    allowed: bool
+    reason: str | None = None
+    action_cost: int = 0
+    interaction_count: int = 0
+    displaced_ids: list[str] = Field(default_factory=list)
+
+
+class EquipmentState(Strict):
+    can_manage: bool = False
+    in_combat: bool = False
+    changes: dict[str, EquipmentChangeView] = Field(default_factory=dict)
 
 
 class SheetParts(BaseModel):
@@ -172,6 +203,7 @@ class SheetParts(BaseModel):
     # книга заклинаний у заклинателей; её форма описана в клиенте (web/src/lib/spells.ts)
     spellbook: dict[str, Any] = absent()
     inventory: list[InventoryRow]
+    equipment: EquipmentState = absent()
     # лист из REST (и его копия игроку по сокету) несёт ещё имена из каталога и состояние проверки
     stand_in: bool = absent()
     errors: list[str] = absent()
@@ -204,6 +236,7 @@ class CharacterView(HeroPublic):
     progress: Progress = absent()
     spellbook: dict[str, Any] = absent()
     inventory: list[InventoryRow] = absent()
+    equipment: EquipmentState = absent()
     stand_in: bool = absent()
     errors: list[str] = absent()
     class_name: str | None = absent()

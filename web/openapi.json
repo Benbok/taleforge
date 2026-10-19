@@ -2073,6 +2073,9 @@
      "derived": {
       "$ref": "#/components/schemas/Derived"
      },
+     "equipment": {
+      "$ref": "#/components/schemas/EquipmentState"
+     },
      "errors": {
       "items": {
        "type": "string"
@@ -3160,6 +3163,113 @@
      "chronicle"
     ],
     "title": "Epilogue",
+    "type": "object"
+   },
+   "EquipmentChangeView": {
+    "additionalProperties": false,
+    "properties": {
+     "action_cost": {
+      "default": 0,
+      "title": "Action Cost",
+      "type": "integer"
+     },
+     "allowed": {
+      "title": "Allowed",
+      "type": "boolean"
+     },
+     "displaced_ids": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Displaced Ids",
+      "type": "array"
+     },
+     "interaction_count": {
+      "default": 0,
+      "title": "Interaction Count",
+      "type": "integer"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reason"
+     }
+    },
+    "required": [
+     "allowed"
+    ],
+    "title": "EquipmentChangeView",
+    "type": "object"
+   },
+   "EquipmentIn": {
+    "properties": {
+     "equipped": {
+      "default": true,
+      "title": "Equipped",
+      "type": "boolean"
+     },
+     "inventory_id": {
+      "title": "Inventory Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "inventory_id"
+    ],
+    "title": "EquipmentIn",
+    "type": "object"
+   },
+   "EquipmentResponse": {
+    "properties": {
+     "character": {
+      "$ref": "#/components/schemas/CharacterView"
+     },
+     "economy": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/TurnEconomy"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "character"
+    ],
+    "title": "EquipmentResponse",
+    "type": "object"
+   },
+   "EquipmentState": {
+    "additionalProperties": false,
+    "properties": {
+     "can_manage": {
+      "default": false,
+      "title": "Can Manage",
+      "type": "boolean"
+     },
+     "changes": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/EquipmentChangeView"
+      },
+      "title": "Changes",
+      "type": "object"
+     },
+     "in_combat": {
+      "default": false,
+      "title": "In Combat",
+      "type": "boolean"
+     }
+    },
+    "title": "EquipmentState",
     "type": "object"
    },
    "Error": {
@@ -5797,6 +5907,10 @@
       "$ref": "#/components/schemas/Derived",
       "default": null
      },
+     "equipment": {
+      "$ref": "#/components/schemas/EquipmentState",
+      "default": null
+     },
      "errors": {
       "default": null,
       "items": {
@@ -6370,6 +6484,81 @@
    "InventoryRow": {
     "additionalProperties": false,
     "properties": {
+     "ac_base": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Ac Base"
+     },
+     "ac_bonus": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Ac Bonus"
+     },
+     "armor_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Armor Type"
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Category"
+     },
+     "damage": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Damage"
+     },
+     "dex_cap": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Dex Cap"
+     },
      "equipped": {
       "title": "Equipped",
       "type": "boolean"
@@ -6386,9 +6575,21 @@
       "title": "Name",
       "type": "string"
      },
+     "properties": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Properties",
+      "type": "array"
+     },
      "qty": {
       "title": "Qty",
       "type": "integer"
+     },
+     "two_handed": {
+      "default": false,
+      "title": "Two Handed",
+      "type": "boolean"
      }
     },
     "required": [
@@ -14141,6 +14342,11 @@
       "title": "Disengage",
       "type": "boolean"
      },
+     "interaction_free": {
+      "default": true,
+      "title": "Interaction Free",
+      "type": "boolean"
+     },
      "move_left_ft": {
       "title": "Move Left Ft",
       "type": "integer"
@@ -19038,6 +19244,88 @@
     "summary": "Claim",
     "tags": [
      "characters"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/{character_id}/equipment": {
+   "put": {
+    "operationId": "change_equipment_api_campaigns__campaign_id__characters__character_id__equipment_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "character_id",
+      "required": true,
+      "schema": {
+       "title": "Character Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EquipmentIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EquipmentResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Change Equipment",
+    "tags": [
+     "equipment"
     ]
    }
   },

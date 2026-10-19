@@ -2,6 +2,8 @@
 """Учёт хода героя в бою (решение Arty 2026-10-05): одно действие, одно бонусное действие, шаги по скорости;
 рывок добавляет скорость, отход снимает атаки по возможности."""
 
+import pytest
+
 from app.core import combat, economy
 from app.tools.movement import hero_step
 from tests.game import import_base, party
@@ -59,13 +61,23 @@ def test_hero_turn_counts_action_bonus_and_moves(client, admin, settings):
         )
 
     fresh, first, second, dash, bonus, again, table, step, far, left = play(settings, cid, [1, 1], turn)
-    assert fresh == {"action": True, "attacks_left": 0, "bonus": True, "move_left_ft": 30, "disengage": False}
+    assert fresh == {
+        "action": True,
+        "attacks_left": 0,
+        "bonus": True,
+        "move_left_ft": 30,
+        "disengage": False,
+        "interaction_free": True,
+    }
     assert first["ok"], first
     assert not second["ok"] and "действие этого хода уже потрачено" in second["error"]
     assert not dash["ok"] and "действие этого хода уже потрачено" in dash["error"]
     assert bonus["ok"] and bonus["result"]["action"] == "отход"
     assert not again["ok"] and "бонусное действие этого хода уже потрачено" in again["error"]
-    assert "Бран, ход героя: действие потрачено, бонусное действие потрачено, шагов ещё 30 фт, отход" in table
+    assert (
+        "Бран, ход героя: действие потрачено, взаимодействие с предметом свободно, "
+        "бонусное действие потрачено, шагов ещё 30 фт, отход" in table
+    )
     assert "confirm_needed" not in step and step["moved_ft"] == 10 and step["left_ft"] == 20
     far, rest = far
     assert "осталось 20 футов" in far and "рывком" not in far
@@ -104,3 +116,36 @@ def test_dash_action_doubles_steps(client, admin, settings):
     dash, run = play(settings, cid, [10, 10], fn)
     assert dash["ok"] and "шагов ещё 60 фт" in dash["result"]["left"]
     assert "confirm_needed" not in run and run["moved_ft"] == 60 and run["left_ft"] == 0
+
+
+def test_item_interaction_first_free_second_uses_action_and_third_refuses(client, admin, settings):
+    import_base(settings)
+    c, _, hero = party(client, admin)
+    cid, hid = c["id"], hero["id"]
+
+    async def setup(ctx):
+        await _ok(ctx, "create_location", {"name": "Площадь", "make_current": True})
+        gob = (await _ok(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"}))[
+            "spawned"
+        ][0]["id"]
+        await _ok(ctx, "set_scene_mode", {"mode": "combat", "participants": [hid, gob]})
+        sc = ctx.world.scene
+        sc.state = {**sc.state, "turn": [x["id"] for x in sc.turn_order].index(hid)}
+
+    play(settings, cid, [], setup)
+
+    async def turn(ctx):
+        first = economy.charge_interaction(ctx, hid)
+        after_first = economy.ledger(ctx.world, hid)
+        second = economy.charge_interaction(ctx, hid)
+        after_second = economy.ledger(ctx.world, hid)
+        before_third = dict(after_second)
+        with pytest.raises(Exception, match="действие этого хода уже потрачено"):
+            economy.charge_interaction(ctx, hid)
+        return first, second, after_first, after_second, economy.ledger(ctx.world, hid), before_third
+
+    first, second, after_first, after_second, after_third, before_third = play(settings, cid, [], turn)
+    assert first and second
+    assert after_first["interaction_used"] is True and after_first["actions"] == 0
+    assert after_second["interaction_used"] is True and after_second["actions"] == 1
+    assert after_third == before_third

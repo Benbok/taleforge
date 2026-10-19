@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.core.scene_presentation import LocationPresentation
-from app.core.views import CompanionPublic, HeroPublic, HeroSheet, absent
+from app.core.views import CompanionPublic, HeroPublic, HeroSheet, TurnEconomy, absent
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False
@@ -55,14 +55,6 @@ class StandIn(_Strict):
 class PendingReply(_Strict):
     id: str
     created_at: str | None
-
-
-class TurnEconomy(_Strict):
-    action: bool
-    attacks_left: int
-    bonus: bool
-    move_left_ft: int
-    disengage: bool
 
 
 class Turn(_Strict):

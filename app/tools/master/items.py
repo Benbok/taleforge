@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.core import economy, reach
 from app.core import positions as grid
 from app.core.character_form import current_form
+from app.core.equipment import set_equipment
 from app.core.object_policy import concealed, hidden_feature, observe, revealed_to
 from app.core.weapon_enchantments import release_weapon
 from app.core.world import is_scene_item
@@ -519,33 +520,7 @@ class EquipArgs(BaseModel):
     ids={"character_id": "characters", "inventory_id": "inventory"},
 )
 async def equip_item(ctx: ToolContext, a: EquipArgs) -> dict:
-    ch = _character(ctx, a.character_id)
-    _can_handle_form(ctx, ch)
-    it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
-    if it is None:
-        raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}")
-    if it.item_template_id == FOUND_ITEM:
-        raise ToolError(f"«{ctx.world.item_name(it)}» нельзя надеть или взять как оружие: это обычная вещь")
-    rec = ctx.world.catalog.get(it.item_template_id, "item_template")
-    inverse = [{"table": "inventory", "id": it.id, "field": "equipped", "before": it.equipped}]
-    if a.equipped and rec.data.get("category") == "armor":
-        kind = rec.data.get("armor_type")
-        for other in ctx.world.inventory.get(ch.id, []):
-            o = ctx.world.catalog.find(other.item_template_id)
-            if other is not it and other.equipped and o and o.data.get("category") == "armor":
-                if (o.data.get("armor_type") == "shield") == (kind == "shield"):
-                    inverse.append({"table": "inventory", "id": other.id, "field": "equipped", "before": True})
-                    other.equipped = False
-    it.equipped = a.equipped
-    if not a.equipped:
-        released = release_weapon(ch, it.id)
-        if released:
-            inverse.append(released)
-    ctx.world.invalidate(ch.id)
-    act = ctx.world.actor(ch.id)
-    result = {"character": ch.name, "item": ctx.world.item_name(it), "equipped": a.equipped, "ac": act.ac}
-    await ctx.record("equip_item", target_id=ch.id, payload=result, inverse=inverse)
-    return result
+    return await set_equipment(ctx, a.character_id, a.inventory_id, a.equipped)
 
 
 # --- предметы в сцене: добыча, которую герои подбирают сами ---

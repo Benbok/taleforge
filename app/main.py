@@ -20,6 +20,7 @@ from app.api import (
     auth,
     campaigns,
     characters,
+    equipment,
     home,
     library,
     models,
@@ -195,6 +196,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(adventures_api.router)
     app.include_router(campaigns.router)
     app.include_router(characters.router)
+    app.include_router(equipment.router)
     app.include_router(home.router)
     app.include_router(library.router)
     app.include_router(models.router)

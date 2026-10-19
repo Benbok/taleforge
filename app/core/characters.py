@@ -16,6 +16,7 @@ from app.content.catalog import CatalogView
 from app.core import bonds
 from app.core import spells as spellbook
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
+from app.core.equipment import inventory_properties
 from app.core.features import sheet_rows, uses_view, wild_shape_forms
 from app.core.world import character_actor, get_scene, lineage_features
 from app.db.models import Campaign, CampaignSecret, Character, ContentPack, Event, InventoryItem, MasterTurn, as_utc
@@ -387,7 +388,13 @@ def preview(data: dict[str, Any], cat: CatalogView, rules: dict) -> dict[str, An
     if caster is not None:
         out["derived"]["spellcasting"] = {**caster.as_dict(), "needs": spellbook.rules.needs(caster)}
     out["inventory"] = [
-        {"item": r.item_template_id, "name": _name(cat, r.item_template_id), "qty": r.qty, "equipped": r.equipped}
+        {
+            "item": r.item_template_id,
+            "name": _name(cat, r.item_template_id),
+            "qty": r.qty,
+            "equipped": r.equipped,
+            **inventory_properties(cat, r.item_template_id),
+        }
         for r in rows
     ]
     return out
@@ -666,6 +673,7 @@ def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], e
             "name": it.display_name or (cat.find(it.item_template_id).name if cat.find(it.item_template_id) else ""),
             "qty": it.qty,
             "equipped": it.equipped,
+            **inventory_properties(cat, it.item_template_id),
         }
         for it in inventory
     ]

@@ -181,7 +181,11 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   setSheet(sheet) {
-    set({ sheet, explained: {} });
+    set((s) => ({
+      sheet,
+      explained: {},
+      heroes: sheet?.id ? { ...s.heroes, [sheet.id]: { ...s.heroes[sheet.id], ...sheet } } : s.heroes,
+    }));
   },
 
   setTypes(t) {

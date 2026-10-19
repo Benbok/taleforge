@@ -118,7 +118,20 @@ export interface Preview {
       needs: { cantrips: number; spells: number; prepared: number };
     };
   } | null;
-  inventory: { item: string; name: string; qty: number; equipped: boolean }[];
+  inventory: {
+    item: string;
+    name: string;
+    qty: number;
+    equipped: boolean;
+    category?: string | null;
+    damage?: { dice: string; type: string } | null;
+    properties?: string[];
+    armor_type?: string | null;
+    ac_base?: number | null;
+    ac_bonus?: number | null;
+    dex_cap?: number | null;
+    two_handed?: boolean;
+  }[];
 }
 
 /** Сохранённый герой (кампании или профиля), из которого открывается конструктор. */
