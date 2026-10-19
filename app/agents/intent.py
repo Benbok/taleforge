@@ -115,6 +115,14 @@ class Intent(BaseModel):
     question: str | None = Field(None, max_length=300, description="уточняющий вопрос игроку при problem=unclear")
 
 
+def arrival_intent(character_id: str) -> dict[str, Any]:
+    """Намерение «осматриваюсь» после перехода по карте — готовое, без разбора моделью. У сообщения, на которое
+    отвечает мастер, всегда должна быть часть заявки: пустые действия оставляют героя в ходе без ссылки, и мастеру
+    нечем закрыть его заявку."""
+    action = IntentAction(verb="inspect", summary="Осмотреться на новом месте")
+    return {**Intent(actions=[action]).model_dump(), "character_id": character_id}
+
+
 @dataclass
 class ParseResult:
     intent: dict[str, Any] | None = None  # сохраняется в сообщении и уходит мастеру

@@ -263,3 +263,16 @@ def test_traverse_refusal_is_sent_after_read_transaction_closes(client, admin, s
     client.portal.call(ws._traverse, client.app, None, conn, {"passage_ref": "in_road_w", "request_id": "refused"})
     assert len(sent) == 1 and sent[0]["payload"]["ok"] is False
     assert transactions == [False]
+
+
+def test_arrival_message_gives_the_master_a_real_action_to_resolve(client, admin, settings):
+    # плейтест 19.10: «Я уже прошёл… Осматриваюсь» сохранялось с пустыми действиями — герой числился в ходе, а
+    # сослаться было не на что: мастер выдумывал source_id="current", и ход каждый раз кончался «действие не выполнено»
+    from app.tools.resolution.requests import bind_message_actions
+
+    cid, heads, hid, _village, _root, ids = _built(client, admin, settings)
+    assert _go(client, heads[0], cid, "in_road_w")["moved"]
+    message = rows(settings, Message, Message.campaign_id == cid, Message.kind == "action")[-1]
+    refs = bind_message_actions(message, hid)
+    assert len(refs) == 1 and refs[0].source_id == message.id and refs[0].actor_id == hid
+    assert [a["verb"] for a in message.intent["actions"]] == ["inspect"]

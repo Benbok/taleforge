@@ -27,6 +27,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.intent import arrival_intent
 from app.agents.stt import STTError
 from app.content.catalog import campaign_catalog
 from app.core import chat, combat, voice
@@ -772,7 +773,7 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
                                 f"Я уже прошёл через «{out['passage']}» и оказался в «{out['area']}». Осматриваюсь.",
                                 app.state.settings.message_max_len,
                             )
-                            turn_message.intent = {"actions": []}
+                            turn_message.intent = arrival_intent(hero.id)
                             turn_message.data = {
                                 **(turn_message.data or {}),
                                 "map_traverse": {
@@ -846,7 +847,7 @@ async def _route(app, user: User, conn: Connection, payload: dict) -> None:
                     f"Я прошёл по пути и оказался в «{area.name}». Осматриваюсь.",
                     app.state.settings.message_max_len,
                 )
-                turn_message.intent = {"actions": []}
+                turn_message.intent = arrival_intent(hero.id)
                 turn_message.data = {**(turn_message.data or {}), "map_travel": {"route_id": ref, "area_id": area.id}}
                 turn_names = await _names(session, viewer.campaign)
             await session.commit()

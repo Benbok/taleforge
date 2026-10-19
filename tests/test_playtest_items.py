@@ -220,7 +220,10 @@ def test_npc_owned_item_cannot_be_taken_without_access(client, admin, settings, 
         elif reason == "other_room":
             await ok(ctx, "create_location", {"name": "Коридор", "make_current": True})
         elif reason == "too_far":
+            # вне боя герой подходит к NPC сам; далеко — только в бою, где подходят своим движением
             positions.set_cell(ctx.world, npc, (8, 0))
+            ctx.world.scene.mode = "combat"
+            ctx.world.scene.turn_order = [{"id": hid}, {"id": npc}]
         elif reason == "wall":
             positions.set_cell(ctx.world, npc, (1, 1))
             room = ctx.world.entities[ctx.world.home()]
@@ -356,3 +359,42 @@ def test_next_context_lists_only_known_npc_possessions(client, admin, settings):
         assert any(i.world_entity_id == uid for i in ctx.world.inventory[hid])
 
     play(settings, cid, verify)
+
+
+async def far_npc(ctx, hid):
+    uid = await coin(ctx, hid)
+    picked = await ok(ctx, "pick_up_item", {"character_id": hid, "entity_id": uid})
+    npc = (
+        await ok(ctx, "spawn_entity", {"creature_template_id": "creature.commoner", "name": "Стражник", "zone": "near"})
+    )["spawned"][0]["id"]
+    positions.set_cell(ctx.world, hid, (0, 0))
+    positions.set_cell(ctx.world, npc, (4, 0))
+    return picked["inventory_id"], npc
+
+
+def test_out_of_combat_hero_walks_up_to_hand_an_item_to_npc(client, admin, settings):
+    # плейтест 19.10: «даю ягоду стражнику» — герой в трёх клетках, боя нет; отказ «подойдите вплотную»
+    # оставлял заявку невыполненной, а подвинуть героя в этом ходе мастеру было нечем
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        inv, npc = await far_npc(ctx, hid)
+        await ok(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": inv})
+        hero, guard = positions.pos_of(ctx.world, hid), positions.pos_of(ctx.world, npc)
+        assert positions.distance(hero, guard) <= 5 and hero.cell != (0, 0)
+
+    play(settings, cid, scenario)
+
+
+def test_in_combat_handing_an_item_still_needs_own_movement(client, admin, settings):
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        inv, npc = await far_npc(ctx, hid)
+        ctx.world.scene.mode = "combat"
+        ctx.world.scene.turn_order = [{"id": hid}, {"id": npc}]
+        result = await execute(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": inv})
+        assert not result["ok"] and "вплотную" in result["error"]
+        assert positions.pos_of(ctx.world, hid).cell == (0, 0)
+
+    play(settings, cid, scenario)

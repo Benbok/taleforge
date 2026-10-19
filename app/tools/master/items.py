@@ -708,8 +708,9 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
             raise ToolError("предмет находится в другой комнате")
         if not read_world_object(container).metadata.get("access", {}).get("open"):
             raise ToolError("контейнер закрыт")
+    approach: list[dict] = []
     if owner is not None:
-        _npc_item_access(ctx, ch, owner, found)
+        approach = _npc_item_access(ctx, ch, owner, found)
         if en.id not in found:
             raise ToolError("вещь владельца ещё не обнаружена")
         if a.how == "stolen":
@@ -733,7 +734,7 @@ async def pick_up_item(ctx: ToolContext, a: PickUpArgs) -> dict:
         raise ToolError(f"здесь лежит только {have} шт. «{en.name}»")
     if en.template_id != FOUND_ITEM:
         ctx.world.catalog.get(en.template_id or "", "item_template")  # шаблон пропал из пакета — брать нечего
-    inverse = (
+    inverse = approach + (
         [
             {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
             {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
@@ -912,20 +913,39 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     return result
 
 
-def _npc_item_access(ctx: ToolContext, ch: Character, npc: Entity, found: frozenset[str]) -> None:
+def _npc_item_access(ctx: ToolContext, ch: Character, npc: Entity, found: frozenset[str]) -> list[dict]:
+    """Передать вещь NPC или взять у него можно только вплотную. Вне боя герой подходит сам, как к контейнеру
+    (``_approach``): клетка меняется, обратная запись — в том же событии. В бою подходят своим движением."""
+    from app.core import combat, steps
+
     if npc.campaign_id != ctx.campaign.id or npc.kind != "creature":
         raise ToolError("получатель должен быть NPC или существом текущей кампании")
     if npc.location_id != ctx.world.place_of(ch) or is_nested(npc):
         raise ToolError("NPC находится в другом месте или недоступен")
     if concealed(npc, ctx.world.entities, found):
         raise ToolError("NPC скрыт: сначала его находят")
-    if grid.distance(grid.pos_of(ctx.world, ch.id), grid.pos_of(ctx.world, npc.id)) > 5:
-        raise ToolError("до NPC не дотянуться: сначала подойдите вплотную")
-    if grid.wall_between(ctx.world, ch.id, npc.id) or grid.pos_of(ctx.world, npc.id).cover == "total":
+    w = ctx.world
+    fighting = combat.in_combat(ctx) and combat.fights(w.scene, w.characters, w.entities, ch.id)
+    inverse: list[dict] = []
+    if grid.distance(grid.pos_of(w, ch.id), grid.pos_of(w, npc.id)) > 5:
+        route = (
+            None
+            if fighting
+            else steps.beside(w, npc.location_id, steps.cell_of(w, ch.id), [steps.cell_of(w, npc.id)], ch.id)
+        )
+        if not route:
+            raise ToolError("до NPC не дотянуться: сначала подойдите вплотную")
+        inverse.append(
+            {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}
+        )
+        grid.set_cell(w, ch.id, route[-1])
+        ctx.changed.add(ch.id)
+    if grid.wall_between(w, ch.id, npc.id) or grid.pos_of(w, npc.id).cover == "total":
         raise ToolError("до NPC не дотянуться: путь закрыт")
-    problem, _ = reach.approach_route(ctx.world, ch.id, npc, fighting=True)
+    problem, _ = reach.approach_route(w, ch.id, npc, fighting=True)
     if problem:
         raise ToolError(problem)
+    return inverse
 
 
 async def _pass_to_npc(ctx: ToolContext, ch: Character, a: PassItemArgs) -> dict:
@@ -933,13 +953,13 @@ async def _pass_to_npc(ctx: ToolContext, ch: Character, a: PassItemArgs) -> dict
     npc = ctx.world.entities.get(a.to_entity_id or "")
     if npc is None:
         raise ToolError("NPC не найден")
-    _npc_item_access(ctx, ch, npc, await revealed_to(ctx.session, ch.id))
+    approach = _npc_item_access(ctx, ch, npc, await revealed_to(ctx.session, ch.id))
     _alive(ctx.world.actor(npc.id), "Получатель")
     it = _own_item(ctx, ch, a.inventory_id)
     name = ctx.world.item_name(it)
     if it.world_entity_id is not None:
         en = _unique_inventory_entity(ctx, it)
-        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        inverse = approach + await _remove_from_inventory(ctx, ch, it, a.qty)
         inverse.extend(
             [
                 {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
@@ -951,7 +971,7 @@ async def _pass_to_npc(ctx: ToolContext, ch: Character, a: PassItemArgs) -> dict
         en.zone = npc.zone
         en.state = _object_state(en, container_id=npc.id)
     else:
-        inverse = await _remove_from_inventory(ctx, ch, it, a.qty)
+        inverse = approach + await _remove_from_inventory(ctx, ch, it, a.qty)
         en, inv = await _put_in_scene(
             ctx,
             it.item_template_id,
