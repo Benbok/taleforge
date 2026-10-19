@@ -621,6 +621,15 @@ class World:
                 )
         return refs
 
+    def item_facts(self, hero_id: str) -> str:
+        """Точные количества вещей героя и отданных им NPC: источник чисел для ответов на вопросы о вещах."""
+        lines = [
+            f"  {r.name} ×{r.qty} — у {'героя' if r.holder_kind == 'hero' else r.holder_name}"
+            + (", надето" if r.equipped else "")
+            for r in self.addressable_items(hero_id)
+        ]
+        return chr(10).join(lines) or "  ничего"
+
     def valid_ids(self) -> dict[str, list[str]]:
         """Допустимые значения полей на этот ход (раздел 7.1, «динамические схемы»)."""
         chars = [c.id for c in self.characters.values() if c.status in PLAYABLE]

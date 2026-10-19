@@ -90,6 +90,7 @@ class WhisperMixin:
                     "whisper.j2",
                     who=_who(m, char_by_seat, names),
                     scene=ctx.world.scene_table(),
+                    items=ctx.world.item_facts(hero.id) if (hero := char_by_seat.get(m.seat_id)) else "",
                     convo=_render_history(list(reversed(seen)), char_by_seat, names),
                     question=m.content,
                 )

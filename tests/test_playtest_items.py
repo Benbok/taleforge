@@ -438,3 +438,18 @@ def test_npc_eats_goodberries_the_hero_already_handed_over(client, admin, settin
         assert ctx.world.entities[held].state["world_object"]["physical"] == "destroyed"
 
     play(settings, cid, scenario)
+
+
+def test_item_facts_list_exact_counts_for_whispers(client, admin, settings):
+    from app.tools.master.items import _add_to_inventory
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        berry, _ = await _add_to_inventory(ctx, ctx.world.characters[hid], "item.goodberry", None, 5)
+        await ok(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": berry, "qty": 4})
+        facts = ctx.world.item_facts(hid)
+        assert "×4 — у " + ctx.world.entities[npc].name in facts and "×1 — у героя" in facts
+
+    play(settings, cid, scenario)
