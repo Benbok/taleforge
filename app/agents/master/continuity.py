@@ -38,6 +38,32 @@ def unconfirmed_item_use(text: str, item_names, attempts) -> list[str]:
     return out
 
 
+_TAKES = re.compile(
+    r"(?<!\w)(?:забира\w+|забра\w+|пак(?:ует|уя|овал\w*)|прячет|спрятал\w*|кладёт|кладет|убира\w+|"
+    r"засовыва\w+|прихватыва\w+|прихвати\w+|складыва\w+|сгребает|сгребая)",
+    re.IGNORECASE,
+)
+_STOWED = re.compile(
+    r"с собой|в карман\w*|по карман\w*|в сумк\w*|в рюкзак\w*|за пазух\w*|в мешок|в мешк\w*", re.IGNORECASE
+)
+_TAKE_TOOLS = {"pick_up_item", "take_item", "keep_found_item", "give_item", "pass_item", "retrieve_object"}
+
+
+def unconfirmed_item_taking(text: str, attempts) -> list[str]:
+    """Предложения, где герой прячет вещь с собой, хотя ни один инструмент подбора в этом ходе не прошёл.
+
+    Предмет попадает в инвентарь только через pick_up_item и родственные вызовы: auto_success или learn_fact ничего
+    не создают, и «беру бумаги с собой» оставляет игрока с пустыми карманами."""
+    if any(a.get("tool") in _TAKE_TOOLS and (a.get("result") or {}).get("ok") for a in attempts or []):
+        return []
+    plain = re.sub(r"\[\[[^|\]]+\|([^\]]+)\]\]", r"\1", text)
+    return [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?…])\s+", plain)
+        if _TAKES.search(sentence) and _STOWED.search(sentence)
+    ]
+
+
 def invented_player_dialogue(text: str, players: dict[str, str], participants: dict[str, str], news: str) -> list[str]:
     """Explicit attributed dialogue needs that player's submitted line.
 

@@ -71,7 +71,7 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
 
     if name == "auto_success":
         # «помогаю ему подняться и идти» вне боя: просто жест, исход не бросается
-        return verb in {"interact", "search", "inspect", "pick_up", "drop", "use_item", "help"}
+        return verb in {"interact", "search", "inspect", "use_item", "help"}
 
     if name == "roll_check":
         check_verbs = {

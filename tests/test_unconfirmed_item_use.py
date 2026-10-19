@@ -47,3 +47,17 @@ def test_feeding_an_npc_is_routed_straight_to_use_item():
 
 def test_parser_is_told_that_ordering_an_npc_to_eat_is_use_item():
     assert "use_item" in intents.PARSER_SYSTEM and "велит, просит или заставляет NPC съесть" in intents.PARSER_SYSTEM
+
+
+def test_stowing_found_items_without_a_pickup_call_is_flagged():
+    from app.agents.master.continuity import unconfirmed_item_taking
+
+    text = (
+        "Пупкинатор с триумфом забирает с собой все улики, аккуратно пакуя компромат по карманам. "
+        "Стражник косится на багаж."
+    )
+    assert len(unconfirmed_item_taking(text, [{"tool": "auto_success", "result": {"ok": True}}])) == 1
+    assert unconfirmed_item_taking(text, [{"tool": "pick_up_item", "result": {"ok": True}}]) == []
+    assert unconfirmed_item_taking(text, [{"tool": "pick_up_item", "result": {"ok": False}}])
+    assert unconfirmed_item_taking("Герой осматривает бумаги и хмурится.", []) == []
+    assert unconfirmed_item_taking("Стражник прячет лицо в ладонях.", []) == []
