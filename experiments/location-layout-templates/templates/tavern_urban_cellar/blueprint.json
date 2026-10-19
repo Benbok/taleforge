@@ -394,54 +394,6 @@
           "solid": false,
           "hidden": false,
           "visual_key": "feature:crate"
-        },
-        {
-          "detail_ref": "decor_0_0",
-          "name": "Скамья",
-          "kind": "furniture",
-          "cells": [
-            [
-              0,
-              0,
-              1,
-              0
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:bench"
-        },
-        {
-          "detail_ref": "decor_1_0",
-          "name": "Светильник",
-          "kind": "light",
-          "cells": [
-            [
-              0,
-              4,
-              0,
-              4
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:torch"
-        },
-        {
-          "detail_ref": "decor_3_0",
-          "name": "Кресло",
-          "kind": "furniture",
-          "cells": [
-            [
-              0,
-              2,
-              0,
-              2
-            ]
-          ],
-          "solid": false,
-          "hidden": false,
-          "visual_key": "feature:chair"
         }
       ],
       "terrain": [],

@@ -645,57 +645,6 @@
             "hidden": false,
             "solid": false,
             "visual_key": "feature:crate"
-          },
-          {
-            "id": "sf_secret_vault_decor_0_0",
-            "name": "Скамья",
-            "kind": "furniture",
-            "cells": [
-              [
-                0,
-                0,
-                1,
-                0
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:bench"
-          },
-          {
-            "id": "sf_secret_vault_decor_1_0",
-            "name": "Светильник",
-            "kind": "light",
-            "cells": [
-              [
-                0,
-                4,
-                0,
-                4
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:torch"
-          },
-          {
-            "id": "sf_secret_vault_decor_3_0",
-            "name": "Кресло",
-            "kind": "furniture",
-            "cells": [
-              [
-                0,
-                2,
-                0,
-                2
-              ]
-            ],
-            "cover": "none",
-            "hidden": false,
-            "solid": false,
-            "visual_key": "feature:chair"
           }
         ],
         "environment": "indoor",
