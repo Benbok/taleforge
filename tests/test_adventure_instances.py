@@ -137,3 +137,33 @@ def test_launch_request_key_is_idempotent_and_conflicts_on_other_options(setting
             assert await s.scalar(select(func.count()).select_from(AdventureVersion)) == 1
 
     _prepared(settings, body)
+
+
+def test_launch_takes_wizard_settings_and_keeps_author_intro_unless_overridden(settings, _fast_retry):
+    async def body(maker, pid, cid):
+        async with maker() as s:
+            project, version, owner = await published(s, pid)
+            wizard = InstanceOptions.model_validate(
+                {
+                    **OPTIONS.model_dump(),
+                    "excluded_themes": ["пауки"],
+                    "creation_rules": {"review": "auto"},
+                    "leveling": "milestone",
+                    "public_intro": "  Своя афиша  ",
+                }
+            )
+            own = await instantiate_adventure(s, owner, version, wizard, "own", flags=("location_layouts_llm",))
+            plain = await instantiate_adventure(s, owner, version, OPTIONS, "plain")
+            await s.commit()
+            game = await s.get(Campaign, own.campaign_id)
+            assert game.public_intro == "Своя афиша"
+            assert game.settings["excluded_themes"] == ["пауки"]
+            assert game.settings["creation_rules"]["review"] == "auto"
+            assert game.settings["leveling"] == "milestone"
+            assert game.settings["location_layouts_llm"] is True
+            default = await s.get(Campaign, plain.campaign_id)
+            assert default.public_intro == (version.bundle["meta"].get("public_intro") or "")
+            assert default.settings["creation_rules"]["review"] == "master"
+            assert default.settings["excluded_themes"] == [] and default.settings["leveling"] == "xp"
+
+    _prepared(settings, body)

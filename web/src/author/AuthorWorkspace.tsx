@@ -12,6 +12,7 @@ import IntroStep from "./IntroStep";
 import JsonPaste from "./JsonPaste";
 import LoreEditor, { type Lore } from "./LoreEditor";
 import MapPreview from "./MapPreview";
+import ProjectTitle from "./ProjectTitle";
 import StepNav, { type StepInfo, type StepState } from "./StepNav";
 import TaskBox from "./TaskBox";
 import ValidationPanel from "./ValidationPanel";
@@ -187,6 +188,15 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       setProposal(null);
       setMessage("Сохранено.");
       void refresh();
+    },
+    onError: fail,
+  });
+  const rename = useMutation({
+    mutationFn: (title: string) => authoring.renameProject(projectId, { title }),
+    onSuccess: () => {
+      setMessage("Название сохранено.");
+      void refresh();
+      void client.invalidateQueries({ queryKey: authorKeys.projects });
     },
     onError: fail,
   });
@@ -509,7 +519,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
               antagonists={(plot.antagonists ?? []) as never}
               npcs={(plot.npcs ?? []) as never}
               busy={busy}
-              onSave={(ref, fields) => edit.mutate({ operations: [{ op: "update_plot_object", ref, fields }] })}
+              onSave={(ref, fields) => edit.mutateAsync({ operations: [{ op: "update_plot_object", ref, fields }] })}
             />
             <div id="plot-locations" className="scroll-mt-24">
               <ContentEditor
@@ -733,7 +743,7 @@ export default function AuthorWorkspace({ projectId }: { projectId: string }) {
       {/* Top Project HUD */}
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-ink">{project.title}</h1>
+          <ProjectTitle title={project.title} busy={rename.isPending} onRename={(title) => rename.mutateAsync(title)} />
           <span className="rounded-full bg-line-soft px-2.5 py-0.5 text-xs font-medium text-muted">
             ревизия {project.draft_revision}
           </span>

@@ -2,6 +2,9 @@ import { useState } from "react";
 
 type Person = Record<string, unknown> & { id: string; name: string };
 
+/** Совпадает с TEXT_LIMIT в app/core/authoring/edits.py. */
+export const FIELD_LIMIT = 2000;
+
 const NPC_FIELDS: [string, string][] = [
   ["character", "Характер (2–3 черты)"],
   ["speech", "Манера речи и пример фразы"],
@@ -20,7 +23,7 @@ interface Props {
   antagonists: Person[];
   npcs: Person[];
   busy: boolean;
-  onSave(ref: string, fields: Record<string, string>): void;
+  onSave(ref: string, fields: Record<string, string>): Promise<unknown>;
 }
 
 /** Характер основных персонажей. Мастер видит его, только когда персонаж рядом, поэтому заполнять стоит главных. */
@@ -48,25 +51,37 @@ export default function CharacterEditor({ antagonists, npcs, busy, onSave }: Pro
               <span className={`ml-auto text-xs ${filled ? "text-ok" : "text-warn"}`}>{filled ? `заполнено ${filled} из ${fields.length}` : "характер не задан"}</span>
             </summary>
             <div className="mt-2 flex flex-col gap-2">
-              {fields.map(([key, label]) => (
-                <label key={key} className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted">{label}</span>
-                  <textarea
-                    aria-label={`${label}: ${person.name}`}
-                    className="min-h-11 rounded-lg border border-line bg-raised p-2"
-                    value={changes[key] ?? String(person[key] ?? "")}
-                    onChange={(e) => setDraft({ ...draft, [person.id]: { ...changes, [key]: e.target.value } })}
-                  />
-                </label>
-              ))}
+              {fields.map(([key, label]) => {
+                const value = changes[key] ?? String(person[key] ?? "");
+                return (
+                  <label key={key} className="flex flex-col gap-1 text-sm">
+                    <span className="flex gap-2 text-muted">
+                      {label}
+                      <span className={`ml-auto text-xs ${value.length >= FIELD_LIMIT ? "text-warn" : ""}`}>
+                        {value.length} / {FIELD_LIMIT}
+                      </span>
+                    </span>
+                    <textarea
+                      aria-label={`${label}: ${person.name}`}
+                      className="min-h-11 rounded-lg border border-line bg-raised p-2"
+                      maxLength={FIELD_LIMIT}
+                      value={value}
+                      onChange={(e) => setDraft({ ...draft, [person.id]: { ...changes, [key]: e.target.value } })}
+                    />
+                  </label>
+                );
+              })}
               <button
                 className="btn btn-primary min-h-11 self-start px-3 text-sm"
                 type="button"
                 disabled={busy || !Object.keys(changes).length}
-                onClick={() => {
-                  onSave(person.id, changes);
-                  setDraft({ ...draft, [person.id]: {} });
-                }}
+                onClick={() =>
+                  // Черновик очищаем только после успешного сохранения, иначе текст пропадёт при ошибке.
+                  onSave(person.id, changes).then(
+                    () => setDraft((d) => ({ ...d, [person.id]: {} })),
+                    () => undefined,
+                  )
+                }
               >
                 Сохранить характер
               </button>

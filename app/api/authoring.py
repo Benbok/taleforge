@@ -16,6 +16,7 @@ from app.core.authoring.contracts import (
     AuthorMapArea,
     AuthorMapOut,
     AuthorProjectCreate,
+    AuthorProjectRename,
     EditProposal,
     EditRequest,
     EditResult,
@@ -107,6 +108,16 @@ async def create(body: AuthorProjectCreate, session: SessionDep, user: UserDep) 
     project = await create_project(session, user, body)
     await session.commit()
     return _detail(project, await session.get(Campaign, project.workspace_campaign_id))
+
+
+@router.patch("/projects/{project_id}", response_model=ProjectDetail)
+async def rename(project_id: str, body: AuthorProjectRename, session: SessionDep, user: UserDep) -> ProjectDetail:
+    """The title is project metadata: renaming keeps the draft revision and the publication status."""
+    project = await require_project(session, user, project_id)
+    world = await session.get(Campaign, project.workspace_campaign_id)
+    project.title = world.name = body.title
+    await session.commit()
+    return _detail(project, world)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectView)
@@ -263,10 +274,11 @@ async def publish(project_id: str, body: PublishRequest, session: SessionDep, us
     return version_out(version)
 
 
-def version_out(version) -> VersionOut:
+def version_out(version, project_title: str | None = None) -> VersionOut:
     return VersionOut(
         id=version.id,
         project_id=version.project_id,
+        project_title=project_title,
         version=version.version,
         source_revision=version.source_revision,
         public_summary=version.public_summary,

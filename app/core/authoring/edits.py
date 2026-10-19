@@ -79,6 +79,7 @@ TEXT_FIELDS = {
     "antagonists": {"name", "goal", "methods", "weakness", "secret", "character", "speech", "on_meeting", "if_foiled"},
 }
 ITEM_FIELDS = {"name", "description", "template_id"}
+TEXT_LIMIT = 2000  # per field of a character, location or item; the web editors share this cap
 PLOT_TEXT = {"title", "tagline", "public_intro", "conflict", "stakes"}
 
 
@@ -98,10 +99,10 @@ def _find(plan: dict, ref: str) -> tuple[str, dict] | tuple[None, None]:
     return None, None
 
 
-def _check_text(value: str, *, name: bool = False) -> str:
+def _check_text(value: str, ref: str, *, name: bool = False) -> str:
     text = value.strip()
-    if len(text) > 500 or (name and not text):
-        raise EditError("invalid_field")
+    if len(text) > TEXT_LIMIT or (name and not text):
+        raise EditError("invalid_field", ref)
     return text
 
 
@@ -129,7 +130,7 @@ def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, li
             if not set(op.fields) <= TEXT_FIELDS[kind]:
                 raise EditError("field_not_editable", op.ref)
             for key, value in op.fields.items():
-                obj[key] = _check_text(value, name=key == "name")
+                obj[key] = _check_text(value, f"{op.ref}.{key}", name=key == "name")
         elif isinstance(op, UpdateItem):
             item = next((i for i in plan.get("items") or [] if i.get("ref") == op.ref), None)
             if item is None:
@@ -137,7 +138,7 @@ def _apply(plan: dict, setting: dict, patch: DraftPatch) -> tuple[dict, dict, li
             if not set(op.fields) <= ITEM_FIELDS:
                 raise EditError("field_not_editable", op.ref)
             for key, value in op.fields.items():
-                item[key] = _check_text(value, name=key in ("name", "template_id"))
+                item[key] = _check_text(value, f"{op.ref}.{key}", name=key in ("name", "template_id"))
         elif isinstance(op, SetPlacement):
             loc = next((x for x in plan.get("locations") or [] if x["id"] == op.location_ref), None)
             if loc is None:

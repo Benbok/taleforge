@@ -162,3 +162,19 @@ def test_validate_redacts_spoilers_publish_blocked_and_unknown_map(client, admin
     assert blocked.status_code == 409 and blocked.json()["detail"] == "publication_blocked"
     assert "bundle" not in blocked.text
     assert client.get(f"/api/author/projects/{pid}/maps/loc_nothing", headers=admin).status_code == 404
+
+
+def test_rename_project_changes_title_only_and_is_owner_only(client, admin, root):
+    project = create(client, admin, title="Старое имя")
+    url = f"/api/author/projects/{project['id']}"
+    r = client.patch(url, json={"title": "  Новое имя  "}, headers=admin)
+    assert r.status_code == 200, r.text
+    assert r.json()["title"] == "Новое имя"
+    assert r.json()["draft_revision"] == project["draft_revision"]  # metadata, not draft content
+    assert client.get(url, headers=admin).json()["project"]["title"] == "Новое имя"
+    assert [p["title"] for p in client.get("/api/author/projects", headers=admin).json()] == ["Новое имя"]
+
+    assert client.patch(url, json={"title": "   "}, headers=admin).status_code == 422
+    assert client.patch(url, json={"title": "x" * 129}, headers=admin).status_code == 422
+    other = second_admin(client, root)
+    assert client.patch(url, json={"title": "Чужое"}, headers=other).status_code in (403, 404)

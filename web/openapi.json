@@ -359,6 +359,22 @@
     "title": "AuthorProjectCreate",
     "type": "object"
    },
+   "AuthorProjectRename": {
+    "additionalProperties": false,
+    "properties": {
+     "title": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "title"
+    ],
+    "title": "AuthorProjectRename",
+    "type": "object"
+   },
    "Bond": {
     "additionalProperties": true,
     "properties": {
@@ -6072,7 +6088,28 @@
    },
    "InstanceOptions": {
     "additionalProperties": false,
+    "description": "The table settings of the campaign wizard; the adventure itself comes from the version.",
     "properties": {
+     "creation_rules": {
+      "$ref": "#/components/schemas/CreationRulesIn"
+     },
+     "excluded_themes": {
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Excluded Themes",
+      "type": "array"
+     },
+     "leveling": {
+      "default": "xp",
+      "enum": [
+       "xp",
+       "milestone"
+      ],
+      "title": "Leveling",
+      "type": "string"
+     },
      "master": {
       "$ref": "#/components/schemas/MasterIn"
      },
@@ -6093,6 +6130,18 @@
       "minimum": 1.0,
       "title": "Players",
       "type": "integer"
+     },
+     "public_intro": {
+      "anyOf": [
+       {
+        "maxLength": 10000,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Intro"
      },
      "tts_enabled": {
       "default": true,
@@ -14455,6 +14504,17 @@
       "title": "Project Id",
       "type": "string"
      },
+     "project_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Title"
+     },
      "public_summary": {
       "additionalProperties": true,
       "title": "Public Summary",
@@ -17003,6 +17063,62 @@
      }
     ],
     "summary": "Project View",
+    "tags": [
+     "author"
+    ]
+   },
+   "patch": {
+    "description": "The title is project metadata: renaming keeps the draft revision and the publication status.",
+    "operationId": "rename_api_author_projects__project_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AuthorProjectRename"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Rename",
     "tags": [
      "author"
     ]

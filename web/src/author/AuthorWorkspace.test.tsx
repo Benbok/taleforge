@@ -221,6 +221,34 @@ it("характер персонажа сохраняется правкой е
   expect(screen.getAllByText("Характеры персонажей").length).toBe(2); // чек-лист и раздел редактора
 });
 
+it("название проекта можно переименовать из шапки", async () => {
+  const mock = api((c) =>
+    c.method === "PATCH" && c.url.endsWith("/projects/ap_1") ? { body: { ...project, title: "Новый остров" } } : undefined,
+  );
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Переименовать" }));
+  const input = screen.getByLabelText("Название проекта") as HTMLInputElement;
+  expect(input.value).toBe("Туманный остров");
+  fireEvent.change(input, { target: { value: "  Новый остров " } });
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+  await waitFor(() => expect(mock.calls.some((c) => c.method === "PATCH")).toBe(true));
+  expect(mock.calls.find((c) => c.method === "PATCH")?.body).toEqual({ title: "Новый остров" });
+  expect(await screen.findByText("Название сохранено.")).toBeTruthy();
+});
+
+it("при ошибке сохранения набранный характер не пропадает, длина поля ограничена", async () => {
+  api((c) => (c.url.endsWith("/edits") ? { status: 409, body: { detail: "invalid_field: npc_a.character" } } : undefined));
+  localStorage.setItem("author:reveal:ap_1", "1");
+  localStorage.setItem("author:step:ap_1", "plot");
+  renderWithClient(<AuthorWorkspace projectId="ap_1" />);
+  const field = (await screen.findByLabelText("Характер (2–3 черты): Лис")) as HTMLTextAreaElement;
+  expect(field.maxLength).toBe(2000);
+  fireEvent.change(field, { target: { value: "хитёр, труслив" } });
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить характер" }));
+  expect(await screen.findByText(/invalid_field: npc_a\.character/)).toBeTruthy();
+  expect(field.value).toBe("хитёр, труслив");
+});
+
 it("проверка и публикация берутся с сервера и не теряются после перезагрузки", async () => {
   const prep = { project_id: "ap_1", draft_revision: 7, stages: stages({ lore: { status: "ready" }, plot: { status: "ready" } }), spent_usd: 0, stale: [] };
   api((c) =>

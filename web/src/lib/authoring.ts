@@ -5,6 +5,7 @@ import type {
   AcceptStaleRequest,
   AuthorMapOut,
   AuthorProjectCreate,
+  AuthorProjectRename,
   EditProposal,
   EditRequest,
   EditResult,
@@ -50,6 +51,7 @@ const base = (id: string) => `/api/author/projects/${id}`;
 export const authoring = {
   listProjects: () => api<ProjectSummary[]>("/api/author/projects"),
   createProject: (body: AuthorProjectCreate) => api<ProjectDetail>("/api/author/projects", { body }),
+  renameProject: (id: string, body: AuthorProjectRename) => api<ProjectDetail>(base(id), { method: "PATCH", body }),
   getProject: (id: string, view: View) => api<ProjectView>(`${base(id)}?view=${view}`),
   prepare: (id: string, body: PrepareRequest) => api<StageReceipt>(`${base(id)}/prepare`, { body }),
   listJobs: (id: string) => api<JobOut[]>(`${base(id)}/jobs`),

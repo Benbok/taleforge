@@ -42,7 +42,9 @@ async def instantiate_adventure(
     options: InstanceOptions,
     request_key: str,
     media_dir=None,
+    flags: tuple[str, ...] = (),
 ) -> LaunchReceipt:
+    """``flags`` — the server's defaults for every new campaign (Settings.new_campaign_flags)."""
     digest = _digest(version.id, options)
     same = await session.scalar(
         select(Campaign).where(Campaign.owner_id == owner.id, Campaign.launch_request_key == request_key)
@@ -59,7 +61,7 @@ async def instantiate_adventure(
         if pack is None:
             raise NotFound("пакет контента версии недоступен")
     # Hero and master settings come from the launch options, never from the author's workbench.
-    flags = {k: v for k, v in (meta.get("flags") or {}).items() if k in LAUNCH_FLAGS}
+    pinned = {k: v for k, v in (meta.get("flags") or {}).items() if k in LAUNCH_FLAGS}
     game = await create_world(
         session,
         owner,
@@ -69,8 +71,15 @@ async def instantiate_adventure(
         difficulty=meta.get("difficulty") or "normal",
         players=options.players,
         master=options.master.model_dump(exclude_none=True),
-        public_intro=meta.get("public_intro") or "",
-        settings={**flags, "tts_enabled": options.tts_enabled},
+        public_intro=(options.public_intro or "").strip() or meta.get("public_intro") or "",
+        settings={
+            **dict.fromkeys(flags, True),
+            **pinned,
+            "tts_enabled": options.tts_enabled,
+            "excluded_themes": options.excluded_themes,
+            "creation_rules": options.creation_rules.model_dump(),
+            "leveling": options.leveling,
+        },
         owner_plays=options.owner_plays,
         brief=bundle.brief,
         purpose="game",

@@ -671,7 +671,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename
+         * @description The title is project metadata: renaming keeps the draft revision and the publication status.
+         */
+        patch: operations["rename_api_author_projects__project_id__patch"];
         trace?: never;
     };
     "/api/author/projects/{project_id}/edits": {
@@ -2769,6 +2773,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** AuthorProjectRename */
+        AuthorProjectRename: {
+            /** Title */
+            title: string;
+        };
         /** Bond */
         Bond: {
             /** Answer */
@@ -4632,8 +4641,20 @@ export interface components {
              */
             source?: string;
         };
-        /** InstanceOptions */
+        /**
+         * InstanceOptions
+         * @description The table settings of the campaign wizard; the adventure itself comes from the version.
+         */
         InstanceOptions: {
+            creation_rules?: components["schemas"]["CreationRulesIn"];
+            /** Excluded Themes */
+            excluded_themes?: string[];
+            /**
+             * Leveling
+             * @default xp
+             * @enum {string}
+             */
+            leveling?: "xp" | "milestone";
             master?: components["schemas"]["MasterIn"];
             /** Name */
             name: string;
@@ -4647,6 +4668,8 @@ export interface components {
              * @default 4
              */
             players?: number;
+            /** Public Intro */
+            public_intro?: string | null;
             /**
              * Tts Enabled
              * @default true
@@ -7333,6 +7356,8 @@ export interface components {
             id: string;
             /** Project Id */
             project_id: string;
+            /** Project Title */
+            project_title?: string | null;
             /** Public Summary */
             public_summary: {
                 [key: string]: unknown;
@@ -7534,6 +7559,7 @@ export type AuthOk = components['schemas']['AuthOk'];
 export type AuthorMapArea = components['schemas']['AuthorMapArea'];
 export type AuthorMapOut = components['schemas']['AuthorMapOut'];
 export type AuthorProjectCreate = components['schemas']['AuthorProjectCreate'];
+export type AuthorProjectRename = components['schemas']['AuthorProjectRename'];
 export type Bond = components['schemas']['Bond'];
 export type BondAnswerIn = components['schemas']['BondAnswerIn'];
 export type BondsIn = components['schemas']['BondsIn'];
@@ -9135,6 +9161,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_api_author_projects__project_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthorProjectRename"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
             /** @description Validation Error */

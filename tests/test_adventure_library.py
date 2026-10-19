@@ -48,6 +48,7 @@ def test_library_lists_only_own_summaries_and_launch_is_idempotent(client, admin
     assert listing.status_code == 200
     items = listing.json()
     assert [i["id"] for i in items] == [version_id] and items[0]["version"] == 1
+    assert items[0]["project_title"] == "W"  # рабочее имя проекта — чтобы автор различал свои приключения
     assert "bundle" not in listing.text and "entities" not in listing.text
     assert "secret" not in str(items[0]["public_summary"]).lower()
 

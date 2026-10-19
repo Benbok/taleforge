@@ -2,9 +2,9 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.api.schemas import BriefIn, MasterIn
+from app.api.schemas import BriefIn, CreationRulesIn, MasterIn
 
 
 class Contract(BaseModel):
@@ -19,6 +19,10 @@ class AuthorProjectCreate(Contract):
     difficulty: Literal["easy", "normal", "hard", "deadly"] = "normal"
     master: MasterIn = Field(default_factory=MasterIn)
     budget_usd: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+
+
+class AuthorProjectRename(Contract):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
 
 
 class StageReceipt(Contract):
@@ -219,11 +223,18 @@ class AdventureBundle(Contract):
 
 
 class InstanceOptions(Contract):
+    """The table settings of the campaign wizard; the adventure itself comes from the version."""
+
     name: str = Field(min_length=1, max_length=128)
     players: int = Field(default=4, ge=1, le=6)
     master: MasterIn = Field(default_factory=MasterIn)
     owner_plays: bool = True
     tts_enabled: bool = True
+    excluded_themes: list[str] = Field(default_factory=list, max_length=20)
+    creation_rules: CreationRulesIn = Field(default_factory=CreationRulesIn)
+    leveling: Literal["xp", "milestone"] = "xp"
+    # Empty keeps the author's public intro.
+    public_intro: str | None = Field(default=None, max_length=10000)
 
 
 class StageStatus(Contract):
@@ -351,6 +362,8 @@ class ProjectView(Contract):
 class VersionOut(Contract):
     id: str
     project_id: str
+    # The author's current name for the project (not part of the snapshot); only in the owner's library.
+    project_title: str | None = None
     version: int
     source_revision: int
     public_summary: dict

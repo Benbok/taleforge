@@ -149,3 +149,23 @@ def test_stale_revision_and_invalid_edits_change_nothing(settings):
         assert await plot_of(s, project) == before
 
     _run(settings, body)
+
+
+def test_character_text_allows_long_fields_and_names_the_rejected_one():
+    from app.core.authoring.edits import TEXT_LIMIT, _apply
+
+    plan = {"npcs": [{"id": "npc_a", "name": "Лис"}]}
+    long_ok = "ж" * TEXT_LIMIT
+    ok = {"op": "update_plot_object", "ref": "npc_a", "fields": {"character": long_ok}}
+    new_plan, _, _ = _apply(plan, {}, patch(ok))
+    assert new_plan["npcs"][0]["character"] == long_ok
+    assert TEXT_LIMIT >= 2000
+
+    too_long = {"op": "update_plot_object", "ref": "npc_a", "fields": {"knows": "ж" * (TEXT_LIMIT + 1)}}
+    with pytest.raises(EditError) as exc:
+        _apply(plan, {}, patch(too_long))
+    assert exc.value.code == "invalid_field" and "npc_a.knows" in str(exc.value)
+
+    with pytest.raises(EditError) as exc:
+        _apply(plan, {}, patch({"op": "update_plot_object", "ref": "npc_a", "fields": {"name": "  "}}))
+    assert "npc_a.name" in str(exc.value)
