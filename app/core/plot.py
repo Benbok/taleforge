@@ -49,6 +49,27 @@ CONFISCATED_HINTS = (
 )
 
 
+# Состояние NPC каркаса в начале: хиты при появлении в мире. 0 хитов без смерти — «при смерти» без сознания.
+CONDITIONS = ("healthy", "wounded", "dying", "unconscious")
+CONDITION_NAMES = {"wounded": "ранен", "dying": "при смерти, в сознании", "unconscious": "без сознания, при смерти"}
+
+
+def start_hp(hp_max: int, condition: str | None) -> int:
+    """Хиты NPC при появлении: здоров — все, ранен — половина, при смерти — 1, без сознания — 0."""
+    if condition == "wounded":
+        return max(1, (hp_max + 1) // 2)
+    if condition == "dying":
+        return min(1, hp_max)
+    if condition == "unconscious":
+        return 0
+    return hp_max
+
+
+def condition_note(x: dict) -> str:
+    name = CONDITION_NAMES.get(str(x.get("condition") or ""))
+    return f" Состояние: {name}." if name else ""
+
+
 def new_clue_id() -> str:
     return f"clue_{secrets.token_hex(4)}"
 
@@ -216,6 +237,13 @@ def tool_spec() -> dict:
                         "knows": _str("Необязательно: что знает — полезное героям и что скрывает.", 300),
                         "ties": _str("Необязательно: связи с другими NPC и фракциями.", 300),
                         "sways": _str("Необязательно: что расположит к героям и что оттолкнёт.", 300),
+                        "condition": {
+                            "type": "string",
+                            "enum": list(CONDITIONS),
+                            "description": "Необязательно: состояние в начале — healthy (по умолчанию), wounded "
+                            "(половина хитов), dying (1 хит: при смерти, но говорит), unconscious (0 хитов, без "
+                            "сознания). Раненый или умирающий по сюжету NPC — не healthy.",
+                        },
                         "location_id": {"type": "string", "description": "Где его обычно найти: id локации каркаса."},
                     },
                     "required": ["id", "name", "template_id", "role", "want", "fear", "secret", "attitude", "look"],
@@ -543,6 +571,8 @@ def check(
         oid = reg("NPC", npc)
         if oid:
             template("creature_template", npc.get("template_id"), f"NPC {oid}", True)
+            if npc.get("condition") is not None and npc["condition"] not in CONDITIONS:
+                errors.append(f"NPC {oid}: condition — одно из {', '.join(CONDITIONS)}")
             state(npc, "status", "sketch")
     for f in plan["factions"]:
         if isinstance(f, dict) and f.get("ref") and catalog.find(str(f["ref"]), "faction") is None:
@@ -835,7 +865,10 @@ def render(plan: dict) -> str:
         lines.append(
             f"- {npc.get('id')} {npc.get('name')} [{npc.get('status')}]: {npc.get('role')}; хочет — {npc.get('want')}; "
             f"боится — {npc.get('fear')}; тайна — {npc.get('secret')}; к героям — {npc.get('attitude')}; "
-            f"{npc.get('look')}" + character_line(npc) + (f" Детали: {npc['details']}" if npc.get("details") else "")
+            f"{npc.get('look')}"
+            + condition_note(npc)
+            + character_line(npc)
+            + (f" Детали: {npc['details']}" if npc.get("details") else "")
         )
     for r in plan.get("reveals") or []:
         clues = "; ".join(clue_line(c) for c in r.get("clues") or [])
@@ -1064,7 +1097,7 @@ def _sketch_line(x: dict, kind: str) -> str:
     else:
         body = (
             f"{x.get('role')}; хочет — {x.get('want')}; боится — {x.get('fear')}; тайна — {x.get('secret')}; "
-            f"к героям — {x.get('attitude')}; {x.get('look')}" + character_line(x)
+            f"к героям — {x.get('attitude')}; {x.get('look')}" + condition_note(x) + character_line(x)
         )
     if x.get("status") == "developed":
         ent = f", в реестре {x['entity_id']}" if x.get("entity_id") else ""

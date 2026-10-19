@@ -244,7 +244,12 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
             name=sketch["name"],
             template_id=rec.id,
             description=sketch.get("look") or "",  # карточка для игроков; что он знает — в каркасе
-            state={"hp": hp, "hp_max": hp, "attitude": a.attitude, "plot_id": sketch["id"]},
+            state={
+                "hp": plot.start_hp(hp, sketch.get("condition")),
+                "hp_max": hp,
+                "attitude": a.attitude,
+                "plot_id": sketch["id"],
+            },
             location_id=ctx.world.place_arg(a.location_id, "появляется NPC") if a.here else home,
             zone="near",
         )
