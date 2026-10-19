@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -225,6 +226,53 @@ def action_target_ids(world: World, ch: Character) -> set[str]:
         for hero in world.characters.values()
         if hero.status in PLAYABLE and world.place_of(hero) == world.place_of(ch)
     } | {entity.id for entity in _scene_targets(world, ch)}
+
+
+_FEED = re.compile(
+    r"(?<!\w)(?:съешь(?:те)?|съесть|ешь|выпей(?:те)?|выпить|проглоти(?:те)?|скушай(?:те)?|глотай(?:те)?|пожуй)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def _stem(word: str) -> str:
+    return word[:-1] if len(word) > 4 else word
+
+
+def feed_command(text: str, world: World, ch: Character) -> ParseResult | None:
+    """Приказ «съешь ягоды» NPC разбирается без модели: есть повелительный глагол, название предмета и получатель.
+
+    Парсер отвечал на такую реплику пустым ``custom``, и мастер ограничивался описанием: плейтест 19.10, ягоды
+    остались целы, хиты не изменились. Предмет может лежать у самого NPC (отданный ранее) или у героя."""
+    if not _FEED.search(text):
+        return None
+    low = text.casefold()
+
+    def named(name: str) -> bool:
+        return any(re.search(r"(?<!\w)" + re.escape(_stem(w)), low) for w in re.findall(r"\w{4,}", name.casefold()))
+
+    items = [r for r in world.addressable_items(ch.id) if named(r.name.split()[-1])]
+    npcs = {e.id: e for e in _scene_targets(world, ch) if e.kind == "creature" and not (e.state or {}).get("dead")}
+    held = [r for r in items if r.holder_kind == "npc" and r.holder_id in npcs]
+    chosen = held or [r for r in items if r.holder_kind == "hero"]
+    if len({r.name for r in chosen}) != 1:
+        return None
+    item = chosen[0]
+    if item.holder_kind == "npc":
+        target = item.holder_id
+    else:
+        called = [e.id for e in npcs.values() if named(e.name)]
+        target = called[0] if len(called) == 1 else next(iter(npcs)) if len(npcs) == 1 else None
+    if target is None:
+        return None
+    return check(
+        {
+            "kind": "action",
+            "confidence": 1.0,
+            "actions": [{"verb": "use_item", "target_id": target, "instrument_id": item.id}],
+        },
+        world,
+        ch,
+    )
 
 
 def card_pickup(text: str, world: World, ch: Character) -> ParseResult | None:

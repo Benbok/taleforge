@@ -43,6 +43,8 @@ class ParsingMixin:
                 return intents.ParseResult()
             if picked := intents.card_pickup(text, ctx.world, ch):
                 return picked
+            if fed := intents.feed_command(text, ctx.world, ch):
+                return fed
             info, values = intents.context_for(ctx.world, ch)
             ch_id, provider, master_seat_id = ch.id, cfg.provider, seat.id
             api_base = (cfg.settings or {}).get("api_base")

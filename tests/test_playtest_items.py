@@ -453,3 +453,29 @@ def test_item_facts_list_exact_counts_for_whispers(client, admin, settings):
         assert "×4 — у " + ctx.world.entities[npc].name in facts and "×1 — у героя" in facts
 
     play(settings, cid, scenario)
+
+
+def test_order_to_eat_held_berries_is_parsed_without_the_model(client, admin, settings):
+    # плейтест 19.10: «Съешь оставшиеся ягоды» стражнику говорю — парсер дал пустой custom, ягоды остались целы
+    from app.agents import intent as intents
+    from app.tools.master.items import _add_to_inventory
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        hero = ctx.world.characters[hid]
+        berry, _ = await _add_to_inventory(ctx, hero, "item.goodberry", None, 5)
+        given = await ok(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": berry, "qty": 4})
+        parsed = intents.feed_command("«Съешь оставшиеся ягоды» стражнику говорю", ctx.world, hero)
+        (action,) = parsed.intent["actions"]
+        assert (action["verb"], action["target_id"], action["instrument_id"]) == ("use_item", npc, given["entity_id"])
+        assert intents.routable_tool_call(parsed.intent, ctx.world) == (
+            "use_item",
+            {"character_id": hid, "inventory_id": given["entity_id"], "target_id": npc},
+        )
+        # без повелительного глагола или без названия предмета разбор остаётся за моделью
+        assert intents.feed_command("Говорю стражнику: хорошая погода", ctx.world, hero) is None
+        assert intents.feed_command("Съешь это, стражник", ctx.world, hero) is None
+
+    play(settings, cid, scenario)
