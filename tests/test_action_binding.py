@@ -273,3 +273,12 @@ def test_feeding_the_recipient_resolves_a_give_part():
     assert not is_action_compatible("use_item", {"inventory_id": "berry", "target_id": "other"}, give)
     assert not is_action_compatible("use_item", {"inventory_id": "rope", "target_id": "npc"}, give)
     assert not is_action_compatible("use_item", {"inventory_id": "berry"}, give)  # съесть самому — не «отдать»
+
+
+def test_helping_an_ally_outside_combat_closes_with_auto_success():
+    # плейтест 19.10: «я тебе помогу, пошли» — часть help не находила инструмент, и ход заканчивался отменой
+    from app.agents.master.action_binding import is_action_compatible
+
+    help_part = {"verb": "help", "target_id": "en_guard"}
+    assert is_action_compatible("auto_success", {"character_id": "ch1", "reason": "помог встать"}, help_part)
+    assert not is_action_compatible("auto_success", {"character_id": "ch1"}, {"verb": "attack"})
