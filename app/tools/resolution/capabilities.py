@@ -32,7 +32,9 @@ CAPABILITIES = {
     "creative.neutral_npc": CapabilitySpec(
         "creative.neutral_npc",
         "noncombat",
-        frozenset({"interact", "talk", "inspect", "search"}),
+        # свободная реплика, которую парсер не отнёс к глаголу (custom), и разговорные приёмы: без допуска мастер
+        # не мог честно закрыть заявку и брал auto_success (плейтест 19.10)
+        frozenset({"interact", "talk", "inspect", "search", "custom", "persuade", "deceive", "intimidate", "help"}),
         frozenset({"neutral_npc", "fact", "story_hook", "deed", "time"}),
         True,
         False,

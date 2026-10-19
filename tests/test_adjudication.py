@@ -256,3 +256,25 @@ def test_grant_constraints(game, change):
                 await adjudicate_action(ctx, args)
 
     play(settings, campaign_id, [], check)
+
+
+@pytest.mark.parametrize(
+    ("verb", "route"),
+    [("custom", "ordinary"), ("persuade", "ordinary"), ("help", "ordinary"), ("attack", "deny"), ("pick_up", "deny")],
+)
+def test_creative_admission_covers_free_talk_but_not_combat_or_pickup(game, verb, route):
+    # плейтест 19.10: «как тебя зовут?» и «беру бумаги» разбирались как custom, творческий допуск отказывал, и мастер
+    # закрывал заявку auto_success без записи; бой и подбор остаются за своими инструментами
+    from app.tools.resolution.creative import validate_creative_proposal
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        await execute(ctx, "create_location", {"name": "Tavern", "make_current": True})
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=campaign_id, status="running"))
+        await ctx.session.flush()
+        ref = await prepare_action(ctx, hero, [{"verb": verb}])
+        proposal = ResolutionProposal(ref=ref, origin="creative", outcome="success", reason="свободная реплика")
+        assert (await validate_creative_proposal(ctx, proposal)).route == route
+
+    play(settings, campaign_id, [], check)
