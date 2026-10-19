@@ -10,37 +10,179 @@
 
 .tf-location-header {
   position: relative;
-  min-height: 132px;
+  min-height: 56px;
   overflow: hidden;
   border-bottom: 1px solid color-mix(in srgb, var(--tf-border) 80%, transparent);
-  background: var(--tf-raised);
+  background: var(--tf-surface);
   isolation: isolate;
-  transition: min-height 400ms ease;
+  transition: min-height 250ms ease, background 250ms ease;
 }
-.tf-location-header.is-combat { min-height: 72px; }
-.tf-location-header.is-collapsed { min-height: 48px; }
-.tf-scene-art { position: absolute; inset: 0; z-index: -3; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
-.tf-scene-art-fallback { position: absolute; inset: 0; z-index: -3; background: radial-gradient(ellipse at 68% 25%, color-mix(in srgb, var(--tf-scene-glow, var(--tf-accent)) 55%, transparent), transparent 55%), linear-gradient(135deg, var(--tf-raised), var(--tf-bg)); }
+.tf-location-header.is-combat { min-height: 44px; }
+.tf-location-header.is-collapsed { min-height: 38px; }
+
+.tf-scene-art {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .32;
+  filter: saturate(0.8) brightness(0.75);
+  transition: opacity 250ms ease;
+}
+.tf-location-header.is-collapsed .tf-scene-art { opacity: .12; }
+
+.tf-scene-art-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background: radial-gradient(ellipse at 70% 30%, color-mix(in srgb, var(--tf-scene-glow, var(--tf-accent)) 30%, transparent), transparent 60%),
+              linear-gradient(135deg, var(--tf-raised), var(--tf-bg));
+  opacity: .5;
+}
 .tf-scene-art-fallback span { position: absolute; bottom: 14%; width: 20%; height: 42%; border: 1px solid color-mix(in srgb, var(--tf-scene-glow, var(--tf-accent)) 40%, transparent); border-radius: 50% 50% 0 0; opacity: .35; }
-.tf-scene-art-fallback span:nth-child(1) { left: 18%; }.tf-scene-art-fallback span:nth-child(2) { left: 48%; height: 58%; }.tf-scene-art-fallback span:nth-child(3) { right: 12%; height: 30%; }
-.tf-location-header__veil { position: absolute; inset: 0; z-index: -2; pointer-events: none; background: linear-gradient(90deg, var(--tf-surface) 0%, color-mix(in srgb, var(--tf-surface) 78%, transparent) 43%, transparent 100%), radial-gradient(ellipse at 70% 0%, var(--tf-scene-glow, var(--tf-accent)) 0%, transparent 55%); opacity: var(--tf-scene-glow-opacity, .14); }
-.tf-location-header__content { position: absolute; left: 1rem; bottom: 1rem; max-width: min(70%, 65ch); padding: .45rem .75rem; border: 1px solid color-mix(in srgb, var(--tf-border) 75%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--tf-surface) 92%, transparent); }
-.tf-location-header__name { display: block; max-width: 100%; overflow: hidden; color: var(--tf-text); font: 600 1.25rem/1.25 var(--tf-font-heading); text-align: left; text-overflow: ellipsis; }
-.tf-location-header__name:hover { color: var(--tf-accent-hi); }
-.tf-location-header__name--empty { margin: 0; }
-.tf-location-header__subtitle { margin: .2rem 0 0; color: var(--tf-muted); font: 500 .68rem/1.2 var(--tf-font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.tf-location-header__toggle { position: absolute; top: .65rem; right: .65rem; min-width: 2rem; min-height: 2rem; border: 1px solid var(--tf-border); border-radius: 6px; background: color-mix(in srgb, var(--tf-surface) 92%, transparent); color: var(--tf-muted); }
-.tf-location-header__toggle:hover { color: var(--tf-accent-hi); border-color: var(--tf-accent); }
-.tf-location-header.is-collapsed .tf-scene-art, .tf-location-header.is-collapsed .tf-location-header__veil { opacity: .42; }
-.tf-location-header.is-collapsed .tf-location-header__content { bottom: .35rem; padding-block: .2rem; }
-.tf-location-header.is-collapsed .tf-location-header__subtitle { display: none; }
-.tf-location-header.is-collapsed .tf-location-header__name { font-size: .95rem; }
+.tf-scene-art-fallback span:nth-child(1) { left: 18%; }
+.tf-scene-art-fallback span:nth-child(2) { left: 48%; height: 58%; }
+.tf-scene-art-fallback span:nth-child(3) { right: 12%; height: 30%; }
+
+.tf-location-header__veil {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg,
+      var(--tf-surface) 0%,
+      color-mix(in srgb, var(--tf-surface) 88%, transparent) 45%,
+      color-mix(in srgb, var(--tf-surface) 60%, transparent) 75%,
+      color-mix(in srgb, var(--tf-surface) 80%, transparent) 100%
+    ),
+    radial-gradient(ellipse at 80% 0%, var(--tf-scene-glow, var(--tf-accent)) 0%, transparent 65%);
+  opacity: .95;
+}
+
+.tf-location-header__body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .45rem 1rem;
+  min-height: inherit;
+}
+
+.tf-location-header__main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .1rem;
+}
+
+.tf-location-header__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font: 700 .58rem/1 var(--tf-font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--tf-accent);
+  opacity: .9;
+}
+.tf-location-header__pin { font-size: .7rem; line-height: 1; }
+
+.tf-location-header__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.tf-location-header__name {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--tf-text);
+  font: 700 1.05rem/1.2 var(--tf-font-heading);
+  text-align: left;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+.tf-location-header__name:hover { color: var(--tf-accent-hi, var(--tf-accent)); }
+.tf-location-header__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tf-location-header__info-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: .95rem;
+  height: .95rem;
+  font-size: .65rem;
+  font-family: var(--tf-font-mono);
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--tf-border) 80%, transparent);
+  color: var(--tf-muted);
+  opacity: .7;
+  transition: all 150ms ease;
+}
+.tf-location-header__name:hover .tf-location-header__info-badge {
+  border-color: var(--tf-accent);
+  color: var(--tf-accent);
+  opacity: 1;
+}
+
+.tf-location-header__name--empty { color: var(--tf-muted); font-weight: 500; cursor: default; margin: 0; }
+
+.tf-location-header__subtitle {
+  display: inline-flex;
+  align-items: center;
+  padding: .15rem .45rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--tf-border) 60%, transparent);
+  background: color-mix(in srgb, var(--tf-raised) 70%, transparent);
+  color: var(--tf-muted);
+  font: 600 .62rem/1 var(--tf-font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tf-location-header__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid color-mix(in srgb, var(--tf-border) 80%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tf-raised) 80%, transparent);
+  color: var(--tf-muted);
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+.tf-location-header__toggle:hover {
+  border-color: var(--tf-accent);
+  color: var(--tf-accent);
+  background: var(--tf-surface);
+}
+.tf-location-header__toggle-icon { font-size: .6rem; line-height: 1; }
+
+.tf-location-header.is-collapsed .tf-location-header__kicker { display: none; }
+.tf-location-header.is-collapsed .tf-location-header__body { padding-block: .25rem; }
+.tf-location-header.is-collapsed .tf-location-header__name { font-size: .9rem; }
+.tf-location-header.is-collapsed .tf-location-header__subtitle { font-size: .58rem; padding: .1rem .35rem; }
+
 @media (max-width: 767px) {
-  .tf-location-header { min-height: 72px; }
-  .tf-location-header.is-combat { min-height: 48px; }
-  .tf-location-header__content { left: .65rem; bottom: .55rem; max-width: 78%; padding: .3rem .55rem; }
-  .tf-location-header__name { font-size: 1rem; }
-  .tf-location-header__toggle { top: .45rem; right: .45rem; }
+  .tf-location-header__body { padding: .4rem .65rem; }
+  .tf-location-header__name { font-size: .95rem; }
 }
 @media (prefers-reduced-motion: reduce) { .tf-location-header { transition: none; } }
 

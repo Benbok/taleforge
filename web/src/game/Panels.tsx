@@ -199,14 +199,23 @@ function Away({ seat }: { seat: SeatState }) {
 export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void } = {}) {
   const scene = useGame((s) => s.scene);
   const open = useInspector((s) => s.open);
-  if (!scene) return <section className="card border border-line bg-surface p-5" aria-label="Сцена">
-    <h2 className="font-heading text-xl font-bold text-ink">История ещё не началась</h2>
-    <p className="mt-2 text-sm leading-relaxed text-muted">Когда мастер опишет сцену, здесь появятся место, персонажи и предметы рядом с отрядом.</p>
-    {onReturnToStory && <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={onReturnToStory}>К истории</button>}
-  </section>;
+  if (!scene)
+    return (
+      <section className="card border border-line bg-surface p-5" aria-label="Сцена">
+        <h2 className="font-heading text-xl font-bold text-ink">История ещё не началась</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Когда мастер опишет сцену, здесь появятся место, персонажи и предметы рядом с отрядом.
+        </p>
+        {onReturnToStory && (
+          <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={onReturnToStory}>
+            К истории
+          </button>
+        )}
+      </section>
+    );
 
   return (
-    <section className="card p-4 sm:p-5 border border-line bg-surface flex flex-col gap-3" aria-label="Сцена">
+    <section className="card flex flex-col gap-3 border border-line bg-surface p-4 sm:p-5" aria-label="Сцена">
       <div className="flex items-center justify-between border-b border-line pb-2.5">
         <h2 className="font-heading text-lg font-bold text-ink">Сцена и окружение</h2>
         {scene.mode === "combat" && (
@@ -216,18 +225,36 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
         )}
       </div>
 
+      {/* Карточка локации */}
       {scene.location ? (
         <button
           type="button"
-          className="mb-1 block text-left font-heading text-base font-bold text-accent hover:underline decoration-dotted"
+          className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-line/70 bg-raised/40 p-2.5 text-left transition-all hover:border-accent/60 hover:bg-raised/70"
           onClick={(e) => open(scene.location!.id, scene.location!.name, e.currentTarget)}
+          title="Осмотреть текущую локацию"
         >
-          {TYPE_ICON.location} {scene.location.name}
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-place/40 bg-place/10 text-sm font-bold text-place">
+              {TYPE_ICON.location}
+            </span>
+            <div className="min-w-0">
+              <span className="block font-mono text-[9px] uppercase tracking-wider text-muted">Локация</span>
+              <span className="block truncate font-heading text-sm font-bold text-ink transition-colors group-hover:text-accent">
+                {scene.location.name}
+              </span>
+            </div>
+          </div>
+          <span className="shrink-0 font-mono text-[10px] text-muted transition-colors group-hover:text-accent">
+            Инфо →
+          </span>
         </button>
       ) : (
-        <p className="font-mono text-xs text-muted">Локация ещё не объявлена мастером.</p>
+        <div className="rounded-lg border border-dashed border-line/70 p-2.5 text-center font-mono text-xs text-muted">
+          Локация ещё не объявлена мастером.
+        </div>
       )}
 
+      {/* Разделение отряда */}
       {scene.party && (
         <div className="rounded-[6px] border border-accent/40 bg-accent/5 px-2.5 py-2 text-xs" role="note">
           <p className="font-semibold text-ink">
@@ -247,31 +274,105 @@ export function ScenePanel({ onReturnToStory }: { onReturnToStory?: () => void }
         </div>
       )}
 
+      {/* Список сущностей сцены в виде интерактивных мини-карточек */}
       {scene.entities.length === 0 ? (
-        <p className="font-mono text-xs text-muted">В поле зрения отряда никого нет.</p>
+        <div className="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line/60 py-6 text-center text-muted">
+          <span className="font-mono text-base opacity-40">◇</span>
+          <p className="font-mono text-xs">В поле зрения отряда никого нет</p>
+        </div>
       ) : (
-        <ul className="flex flex-col gap-1.5 pt-1">
+        <ul className="flex flex-col gap-2 pt-1">
           {scene.entities.map((e) => {
             const t = sceneType(e);
             const acting = scene.turn?.actor_id === e.id;
             return (
-              <li
-                key={e.id}
-                className="flex items-baseline justify-between gap-2 rounded-[6px] border border-line/40 bg-raised/40 px-2.5 py-1"
-              >
+              <li key={e.id}>
                 <button
                   type="button"
-                  className={`truncate text-left text-xs font-medium underline decoration-dotted underline-offset-4 hover:brightness-125 ${
-                    acting ? "font-bold" : ""
+                  className={`group flex w-full flex-col gap-1.5 rounded-lg border p-2.5 text-left transition-all ${
+                    acting
+                      ? "border-accent/80 bg-accent/10 shadow-xs ring-1 ring-accent/30"
+                      : t === "creature"
+                        ? "border-bad/30 bg-bad/5 hover:border-bad/60 hover:bg-bad/10"
+                        : t === "item"
+                          ? "border-item/30 bg-item/5 hover:border-item/60 hover:bg-item/10"
+                          : "border-line/70 bg-raised/40 hover:border-accent/60 hover:bg-raised/70"
                   }`}
-                  style={{ color: TYPE_COLOR[t] }}
                   onClick={(ev) => open(e.id, e.name, ev.currentTarget)}
+                  title={`Осмотреть: ${e.name}`}
                 >
-                  {e.companion_of ? "◇" : TYPE_ICON[t]} {e.name}{e.companion_of ? " · спутник" : ""}
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-mono text-xs font-bold"
+                        style={{
+                          color: TYPE_COLOR[t],
+                          backgroundColor: `color-mix(in srgb, ${TYPE_COLOR[t]} 15%, transparent)`,
+                        }}
+                      >
+                        {e.companion_of ? "◇" : TYPE_ICON[t]}
+                      </span>
+                      <span
+                        className={`truncate font-heading text-xs font-semibold text-ink transition-colors group-hover:text-accent ${
+                          acting ? "font-bold" : ""
+                        }`}
+                      >
+                        {e.name}
+                      </span>
+                      {e.companion_of && (
+                        <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-muted">
+                          спутник
+                        </span>
+                      )}
+                      {e.qty && e.qty > 1 && (
+                        <span className="shrink-0 font-mono text-[10px] text-muted">
+                          ×{e.qty}
+                        </span>
+                      )}
+                    </div>
+                    {acting ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded border border-accent/40 bg-accent/20 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-accent animate-pulse">
+                        ● Ходит
+                      </span>
+                    ) : (
+                      <span className="shrink-0 font-mono text-[10px] text-muted opacity-0 transition-opacity group-hover:opacity-100">
+                        🔍
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Бейджи статуса, зоны и состояний */}
+                  {(e.zone || e.condition || e.attitude) && (
+                    <div className="flex flex-wrap items-center gap-1 pl-6 text-[10px] font-mono">
+                      {e.zone && (
+                        <span className="rounded border border-line/50 bg-surface/80 px-1.5 py-0.5 text-muted">
+                          📍 {e.zone}
+                        </span>
+                      )}
+                      {e.condition && (
+                        <span
+                          className={`rounded border px-1.5 py-0.5 ${
+                            e.condition.includes("ранен") || e.condition.includes("сознан") || e.condition.includes("убит")
+                              ? "border-bad/40 bg-bad/10 text-bad font-semibold"
+                              : "border-warn/40 bg-warn/10 text-warn"
+                          }`}
+                        >
+                          {e.condition}
+                        </span>
+                      )}
+                      {e.attitude === "hostile" && (
+                        <span className="rounded border border-bad/30 bg-bad/10 px-1.5 py-0.5 text-bad">
+                          враждебный
+                        </span>
+                      )}
+                      {e.attitude === "friendly" && (
+                        <span className="rounded border border-ok/30 bg-ok/10 px-1.5 py-0.5 text-ok">
+                          союзник
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </button>
-                <span className="shrink-0 font-mono text-[10px] text-muted">
-                  {[e.condition, e.zone, acting ? "ходит" : null].filter(Boolean).join(" · ")}
-                </span>
               </li>
             );
           })}

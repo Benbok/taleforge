@@ -219,28 +219,79 @@ export default function Composer() {
           : "Что делает ваш герой?"
       : "Только вне игры: начните с //";
 
+  const quickPrompts =
+    messageMode === "whisper"
+      ? [
+          { label: "Спросить мастера", icon: "💭", text: "Спрашиваю мастера: " },
+          { label: "Тайное действие", icon: "🤫", text: "Хочу сделать скрытно от отряда: " },
+          { label: "Проверить знание", icon: "🎲", text: "Что мой персонаж может помнить об этом?" },
+        ]
+      : messageMode === "game"
+        ? [
+            ...(game.scene?.entities ?? []).slice(0, 2).map((e) => ({
+              label: `${e.kind === "item" ? "Осмотреть" : e.attitude === "hostile" ? "К цели:" : "К:"} ${e.name}`,
+              icon: e.kind === "item" ? "◆" : e.attitude === "hostile" ? "⚔" : "💬",
+              text:
+                e.kind === "item"
+                  ? `Осматриваю: ${e.name}`
+                  : e.attitude === "hostile"
+                    ? `Слежу за действиями: ${e.name}`
+                    : `Обращаюсь к: ${e.name} — `,
+              action: { verb: "inspect", target_id: e.id },
+            })),
+            { label: "Осмотреться", icon: "👁️", text: "Внимательно осматриваюсь вокруг." },
+            { label: "Прислушаться", icon: "👂", text: "Прислушиваюсь к звукам и шорохам." },
+            { label: "Исследовать", icon: "🔍", text: "Изучаю детали обстановки: " },
+            { label: "Подойти ближе", icon: "👣", text: "Осторожно приближаюсь... " },
+            { label: "Затаиться", icon: "✋", text: "Пытаюсь затаиться и не привлекать внимания." },
+          ]
+        : [];
+
   return (
-    <form onSubmit={send} className="tf-composer flex flex-col gap-2 border-t border-line bg-surface px-3 py-3 sm:px-4">
+    <form
+      onSubmit={send}
+      className="tf-composer flex flex-col gap-2.5 border-t border-line/80 bg-surface/95 px-3 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur-xs sm:px-4"
+    >
       {standing.length > 0 && <PlayAs seats={standing} value={playAs} />}
-      <div className="flex flex-wrap gap-1 rounded-lg border border-line bg-raised p-1" role="group" aria-label="Режим сообщения">
+
+      {/* Табы режима: В игре, Вне игры, Шёпот */}
+      <div
+        className="flex flex-wrap gap-1.5 rounded-xl border border-line/70 bg-raised/70 p-1 backdrop-blur-xs"
+        role="group"
+        aria-label="Режим сообщения"
+      >
         {([
-          ["game", "В игре", mainOpen],
-          ["ooc", "Вне игры", canOoc],
-          ["whisper", "Шёпот", canWhisper],
-        ] as const).map(([value, label, available]) => (
+          ["game", "В игре", mainOpen, "⚔"],
+          ["ooc", "Вне игры", canOoc, "💬"],
+          ["whisper", "Шёпот", canWhisper, "🗝️"],
+        ] as const).map(([value, tabLabel, available, icon]) => (
           <button
             key={value}
             type="button"
             aria-pressed={messageMode === value}
             disabled={!available || recording || uploading || rec.state === "starting"}
-            title={!available ? blocked[value === "game" ? mainAction : `chat.${value}`] ?? "Сейчас недоступно" : value === "whisper" ? "Сообщение видите только вы и мастер" : undefined}
-            className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors sm:min-h-9 disabled:opacity-40 disabled:cursor-not-allowed ${messageMode === value ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-ink"}`}
+            title={
+              !available
+                ? blocked[value === "game" ? mainAction : `chat.${value}`] ?? "Сейчас недоступно"
+                : value === "whisper"
+                  ? "Сообщение видите только вы и мастер"
+                  : undefined
+            }
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:min-h-9 sm:text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
+              messageMode === value
+                ? "border border-accent/40 bg-surface text-accent shadow-xs ring-1 ring-accent/20"
+                : "border border-transparent text-muted hover:bg-surface/50 hover:text-ink"
+            }`}
             onClick={() => selectMode(value)}
           >
-            {label}
+            <span className="shrink-0 text-xs" aria-hidden="true">
+              {icon}
+            </span>
+            <span>{tabLabel}</span>
           </button>
         ))}
       </div>
+
       {parts.length > 1 && (
         <label className="flex items-center gap-2 text-xs text-muted">
           Отряд разделён, ответ слышат:
@@ -254,19 +305,45 @@ export default function Composer() {
           </select>
         </label>
       )}
+
       {(myTurn || responding || myPending || (turn && !isMaster)) && (
-        <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm ${myTurn ? "border-accent/40 bg-accent/10 text-accent" : responding ? "border-patina/40 bg-patina/10 text-ink-2" : "border-line bg-raised text-ink-2"}`} role="status">
-          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-patina" : "bg-muted"}`} />
+        <div
+          className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-sm ${
+            myTurn
+              ? "border-accent/40 bg-accent/10 text-accent"
+              : responding
+                ? "border-patina/40 bg-patina/10 text-ink-2"
+                : "border-line bg-raised text-ink-2"
+          }`}
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-patina" : "bg-muted"}`}
+          />
           <span className="font-semibold">
-            {myTurn ? "Ваш ход" : responding ? "Мастер отвечает" : myPending ? "Ожидаем остальных игроков" : `Сейчас ход: ${turn?.name}`}
+            {myTurn
+              ? "Ваш ход"
+              : responding
+                ? "Мастер отвечает"
+                : myPending
+                  ? "Ожидаем остальных игроков"
+                  : `Сейчас ход: ${turn?.name}`}
           </span>
           {turn && <span className="text-muted">· раунд {turn.round}</span>}
           {myTurn && left !== null && <span className={left <= 15 ? "text-warn" : "text-muted"}>· осталось {left} с</span>}
-          {responding && !myTurn && <span className="text-muted">· {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}</span>}
-          {myPending && !myTurn && !responding && <span className="text-muted">· мастер ответит, когда напишут все{wait ? ` или примерно через ${wait} с` : ""}</span>}
-          {slowResponse && !myTurn && <span className="w-full text-sm text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>}
+          {responding && !myTurn && (
+            <span className="text-muted">· {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}</span>
+          )}
+          {myPending && !myTurn && !responding && (
+            <span className="text-muted">· мастер ответит, когда напишут все{wait ? ` или примерно через ${wait} с` : ""}</span>
+          )}
+          {slowResponse && !myTurn && (
+            <span className="w-full text-sm text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>
+          )}
         </div>
       )}
+
       {rejected && (
         <p role="alert" className="tf-pop flex items-start justify-between gap-2 rounded-md border border-bad px-3 py-2 text-bad">
           <span>Не отправлено: {rejected.reason}</span>
@@ -275,17 +352,52 @@ export default function Composer() {
           </button>
         </p>
       )}
+
       {notice && !rejected && <p className="tf-pop text-xs text-muted">{notice}</p>}
+
       {(sendError || hint) && (
         <p role={sendError ? "alert" : undefined} className={`text-xs ${sendError || !allowed ? "text-warn" : "text-muted"}`}>
           {sendError ?? hint}
         </p>
       )}
+
+      {/* Быстрые действия / подсказки в один клик */}
+      {quickPrompts.length > 0 && !recording && mainOpen && (
+        <div
+          className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Быстрые действия"
+        >
+          <span className="mr-0.5 shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted">
+            Быстро:
+          </span>
+          {quickPrompts.map((p, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                useDraft.getState().insert(p.text, "action" in p ? p.action : undefined);
+                document.getElementById("tf-composer")?.focus();
+              }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line/70 bg-raised/60 px-2.5 py-1 text-[11px] font-medium text-ink shadow-2xs transition-all hover:border-accent/70 hover:bg-raised active:scale-95"
+              title={p.text}
+            >
+              <span aria-hidden="true" className="text-xs">
+                {p.icon}
+              </span>
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Поле ввода и кнопка отправки с D20 */}
       <div className="flex items-end gap-2">
         <textarea
           id="tf-composer"
-          className={`field min-h-[2.75rem] min-w-0 flex-1 resize-none text-base sm:text-sm transition-colors ${
-            whisper ? "border-accent/70 bg-accent/[0.04] italic text-accent placeholder:text-accent/50" : ""
+          className={`field min-h-[2.85rem] min-w-0 flex-1 resize-none rounded-xl border p-2.5 font-ui text-base transition-all sm:text-sm ${
+            whisper
+              ? "border-accent/70 bg-accent/[0.04] italic text-ink placeholder:text-accent/50 focus:border-accent focus:ring-1 focus:ring-accent/30"
+              : "border-line/80 bg-raised/40 focus:border-accent/80 focus:bg-surface focus:ring-1 focus:ring-accent/30"
           }`}
           rows={Math.min(6, Math.max(1, text.split("\n").length))}
           value={text}
@@ -300,14 +412,14 @@ export default function Composer() {
           aria-label="Сообщение"
         />
         {voiceOn && recording && (
-          <button type="button" className="btn h-[2.75rem] px-3" onClick={rec.cancel} title="Не отправлять запись">
+          <button type="button" className="btn h-[2.85rem] rounded-xl px-3" onClick={rec.cancel} title="Не отправлять запись">
             Отмена
           </button>
         )}
         {voiceOn && (
           <button
             type="button"
-            className={`btn h-[2.75rem] px-3 ${recording ? "border-bad text-bad" : ""}`}
+            className={`btn h-[2.85rem] rounded-xl px-3 ${recording ? "border-bad text-bad" : ""}`}
             disabled={rec.state === "starting" || uploading || (!recording && !voiceAllowed)}
             onClick={() => (recording ? rec.stop() : rec.start())}
             aria-pressed={recording}
@@ -326,12 +438,22 @@ export default function Composer() {
           </button>
         )}
         {!recording && (
-          <button type="submit" className="btn btn-primary h-[2.75rem] min-w-11 shrink-0" disabled={!hasContent} title="Отправить (Enter)" aria-label="Отправить сообщение">
-            <span className="sm:hidden" aria-hidden="true">↑</span>
-            <span className="hidden sm:inline">Отправить</span>
+          <button
+            type="submit"
+            className="btn btn-primary group relative flex h-[2.85rem] min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 shadow-xs transition-all disabled:opacity-40"
+            disabled={!hasContent}
+            title="Отправить (Enter)"
+            aria-label="Отправить сообщение"
+          >
+            <D20Icon className="h-4 w-4 shrink-0 transition-transform group-hover:rotate-12 group-active:scale-95" />
+            <span className="hidden font-heading text-xs font-bold sm:inline">Отправить</span>
+            <span className="text-xs font-bold sm:hidden" aria-hidden="true">
+              ↑
+            </span>
           </button>
         )}
       </div>
+
       {recording && (
         <p className="text-xs text-muted" role="status">
           Идёт запись{whisper ? " шёпота мастеру" : ""}: говорите, затем нажмите ■ — голосовое уйдёт в чат, текст
@@ -350,7 +472,7 @@ export default function Composer() {
         {can("turn.pass") && (
           <button
             type="button"
-            className="btn px-2 py-1 text-xs"
+            className="btn rounded-lg border border-line/70 px-2.5 py-1 text-xs transition-colors hover:border-accent/60"
             onClick={() => {
               if (socket?.send("turn.pass", asSeat)) useGame.setState({ notice: "Пропускаем ход…" });
               else setSendError("Нет связи с сервером: пропустить ход не вышло.");
@@ -359,9 +481,17 @@ export default function Composer() {
             Пропустить ход
           </button>
         )}
-        <span className="ml-auto hidden sm:inline">
-          Речь — в кавычках, «//» — вне игры<span className="hidden sm:inline">. Enter — отправить, Shift+Enter — новая строка</span>
-        </span>
+        <div className="ml-auto hidden items-center gap-2 font-mono text-[11px] sm:flex">
+          <span>
+            <kbd className="rounded border border-line bg-raised px-1 py-0.5 text-[10px]">Enter</kbd> отправить
+          </span>
+          <span>
+            <kbd className="rounded border border-line bg-raised px-1 py-0.5 text-[10px]">Shift+Enter</kbd> перенос
+          </span>
+          <span className="text-faint">|</span>
+          <span>«речь»</span>
+          <span>// вне игры</span>
+        </div>
       </div>
     </form>
   );
@@ -408,6 +538,31 @@ function MicIcon() {
       <rect x="9" y="2" width="6" height="12" rx="3" />
       <path d="M5 10a7 7 0 0 0 14 0" />
       <path d="M12 17v5" />
+    </svg>
+  );
+}
+
+function D20Icon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="12 2 21.5 7.5 21.5 16.5 12 22 2.5 16.5 2.5 7.5 12 2" />
+      <polygon points="12 6 18.5 16.5 5.5 16.5 12 6" />
+      <line x1="12" y1="2" x2="12" y2="6" />
+      <line x1="21.5" y1="7.5" x2="18.5" y2="16.5" />
+      <line x1="2.5" y1="7.5" x2="5.5" y2="16.5" />
+      <line x1="12" y1="22" x2="18.5" y2="16.5" />
+      <line x1="12" y1="22" x2="5.5" y2="16.5" />
+      <line x1="2.5" y1="7.5" x2="12" y2="6" />
+      <line x1="21.5" y1="7.5" x2="12" y2="6" />
     </svg>
   );
 }

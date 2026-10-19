@@ -177,34 +177,72 @@ export default function VoiceClip({ clips, expected, autoPlay }: { clips: VoiceD
         ? "Следующая часть озвучки готовится"
         : "Прослушать голосовое";
   return (
-    <div className="mb-1 flex flex-col gap-1">
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={!clips.length}
-        className="flex w-56 max-w-full items-center gap-2 rounded-full border border-line bg-surface px-2 py-1 text-xs disabled:opacity-70"
-        aria-label={label}
-        title={label}
-      >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] text-bg">
-          {busy || !clips.length ? "…" : state === "playing" ? "❚❚" : "▶"}
-        </span>
-        <span className="relative h-1 flex-1 overflow-hidden rounded-full bg-raised">
-          <span className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${progress * 100}%` }} />
-        </span>
-        <span className="font-mono text-muted">
-          {clock(state === "playing" || done ? done : known)}
-          {pending ? "+" : ""}
-        </span>
-      </button>
-      {!clips.length && <p className="text-xs text-muted">Озвучка готовится…</p>}
+    <div className="my-2 flex max-w-sm flex-col gap-1 rounded-xl border border-line/80 bg-surface/90 p-2.5 shadow-xs backdrop-blur-xs transition-all sm:max-w-md">
+      <div className="flex items-center gap-3">
+        {/* Кнопка воспроизведения / паузы */}
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={!clips.length}
+          className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-xs transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+          aria-label={label}
+          title={label}
+        >
+          {busy || !clips.length ? (
+            <svg className="h-4 w-4 animate-spin text-on-accent" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-85" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : state === "playing" ? (
+            <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+              <rect x="6" y="4" width="4" height="16" rx="1" />
+              <rect x="14" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg className="ml-0.5 h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          )}
+        </button>
+
+        {/* Дорожка и таймкод */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <span className="text-accent">🎙️</span>
+              <span>Озвучка мастера</span>
+              {state === "playing" && (
+                <span className="ml-1 inline-flex h-2.5 items-end gap-0.5" aria-hidden="true">
+                  <span className="h-2 w-0.5 animate-pulse rounded-full bg-accent" />
+                  <span className="h-3 w-0.5 animate-pulse delay-75 rounded-full bg-accent" />
+                  <span className="h-1.5 w-0.5 animate-pulse delay-150 rounded-full bg-accent" />
+                </span>
+              )}
+            </span>
+            <span className="font-mono text-[11px] tabular-nums text-muted">
+              {clock(state === "playing" || done ? done : known)}
+              {pending ? "+" : ""}
+              {known > 0 && <span className="opacity-60"> / {clock(known)}</span>}
+            </span>
+          </div>
+
+          <div className="relative h-1.5 w-full overflow-hidden rounded-full border border-line/40 bg-bg">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent/90 to-accent transition-all duration-150"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {!clips.length && <p className="font-mono text-[11px] text-muted">Озвучка готовится…</p>}
       {pending && clips.length > 0 && (
-        <p className="text-xs text-muted">
-          Озвучено частей: {clips.length} из {total}, остальные готовятся и зазвучат следом
+        <p className="font-mono text-[11px] text-muted">
+          Озвучено частей: {clips.length} из {total}, остальные готовятся
         </p>
       )}
       {error && (
-        <p role="alert" className="text-xs text-warn">
+        <p role="alert" className="font-mono text-xs text-bad">
           {error}
         </p>
       )}

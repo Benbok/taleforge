@@ -21,30 +21,42 @@ export default function LocationHeader({ scene }: { scene: Scene | null }) {
     <section className={`tf-location-header ${collapsed ? "is-collapsed" : ""} ${scene?.mode === "combat" ? "is-combat" : ""}`} aria-label="Текущая локация">
       <SceneArtwork presentation={scene?.presentation} />
       <div className="tf-location-header__veil" />
-      <div className="tf-location-header__content">
-        {location ? (
-          <button
-            type="button"
-            className="tf-location-header__name"
-            title={location.name}
-            onClick={(event: MouseEvent<HTMLButtonElement>) => open(location.id, location.name, event.currentTarget)}
-          >
-            {location.name}
-          </button>
-        ) : (
-          <p className="tf-location-header__name tf-location-header__name--empty">Место ещё не названо</p>
-        )}
-        {subtitle && <p className="tf-location-header__subtitle">{subtitle}</p>}
+      <div className="tf-location-header__body">
+        <div className="tf-location-header__main">
+          <div className="tf-location-header__kicker">
+            <span className="tf-location-header__pin" aria-hidden="true">⌖</span>
+            <span>Текущее место</span>
+          </div>
+          <div className="tf-location-header__row">
+            {location ? (
+              <button
+                type="button"
+                className="tf-location-header__name"
+                title={`Осмотреть: ${location.name}`}
+                onClick={(event: MouseEvent<HTMLButtonElement>) => open(location.id, location.name, event.currentTarget)}
+              >
+                <span className="tf-location-header__title">{location.name}</span>
+                <span className="tf-location-header__info-badge" aria-hidden="true">ⓘ</span>
+              </button>
+            ) : (
+              <p className="tf-location-header__name tf-location-header__name--empty">Место ещё не названо</p>
+            )}
+            {subtitle && <span className="tf-location-header__subtitle">{subtitle}</span>}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="tf-location-header__toggle"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Развернуть шапку" : "Свернуть шапку"}
+          title={collapsed ? "Развернуть шапку локации" : "Свернуть шапку локации"}
+          onClick={toggle}
+        >
+          <span className="tf-location-header__toggle-icon" aria-hidden="true">
+            {collapsed ? "▼" : "▲"}
+          </span>
+        </button>
       </div>
-      <button
-        type="button"
-        className="tf-location-header__toggle"
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? "Развернуть шапку" : "Свернуть шапку"}
-        onClick={toggle}
-      >
-        {collapsed ? "↙" : "↗"}
-      </button>
     </section>
   );
 }
