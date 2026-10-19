@@ -174,3 +174,22 @@ def test_shillelagh_ends_when_item_is_dropped(game):
         assert ench.SHILLELAGH not in ctx.world.characters[hero].resources
 
     play(settings, cid, [], fn)
+
+
+def test_shillelagh_equips_unequipped_weapon_from_inventory(game):
+    settings, cid, hero = game
+
+    async def fn(ctx):
+        await _make_druid(ctx, hero)
+        given = await call(
+            ctx, "give_item", {"character_id": hero, "item_template_id": "item.quarterstaff", "reason": "test"}
+        )
+        staff = given["result"]["inventory_id"]
+        item = next(i for i in ctx.world.inventory[hero] if i.id == staff)
+        assert not item.equipped
+        cast = await call(ctx, "cast_spell", {"caster_id": hero, "spell_id": "spell.shillelagh", "weapon_id": staff})
+        assert cast["ok"], cast
+        assert item.equipped
+        assert ctx.world.characters[hero].resources[ench.SHILLELAGH]["inventory_id"] == staff
+
+    play(settings, cid, [], fn)

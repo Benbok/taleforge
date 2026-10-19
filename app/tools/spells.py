@@ -151,7 +151,11 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
     if a.spell_id == "spell.shillelagh":
         held = [it for it in w.inventory.get(ch.id, []) if it.equipped and it.item_template_id in ELIGIBLE]
         if a.weapon_id:
-            item = next((it for it in held if it.id == a.weapon_id), None)
+            # дубинка или посох из инвентаря берётся в руки самим заклинанием (свободное взаимодействие с предметом)
+            item = next(
+                (it for it in w.inventory.get(ch.id, []) if it.id == a.weapon_id and it.item_template_id in ELIGIBLE),
+                None,
+            )
             if item is None:
                 raise ToolError("Дубинка: выбранное оружие нужно держать в руках (дубинка или боевой посох)")
         elif len(held) == 1:
@@ -172,6 +176,12 @@ async def cast_spell(ctx: ToolContext, a: CastArgs) -> dict:
 
     level = int(spell.get("level", 0))
     turn_inv = economy.charge_spell(ctx, ch.id, ct, level)
+    if chosen_weapon:
+        item = next(it for it in w.inventory[ch.id] if it.id == chosen_weapon)
+        if not item.equipped:
+            turn_inv.append({"table": "inventory", "id": item.id, "field": "equipped", "before": False})
+            item.equipped = True
+            w.invalidate(ch.id)
     res_before = copy.deepcopy(ch.resources or {})
     slot_kind, slot = None, level
     if level > 0 and not a.ritual:
