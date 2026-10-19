@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +38,17 @@ ZONE_FT = {"melee": 5, "near": 30, "far": 120}
 ZONE_NAMES = {"melee": "вплотную", "near": "близко", "far": "далеко"}
 PLAYABLE = ("approved", "active")
 engine = Dnd5eEngine()
+
+
+@dataclass(frozen=True)
+class ItemRef:
+    id: str
+    name: str
+    qty: int
+    holder_kind: Literal["hero", "npc"]
+    holder_id: str
+    holder_name: str
+    equipped: bool = False
 
 
 class WorldError(Exception):
@@ -587,6 +598,29 @@ class World:
         e = self.entities.get(place_id or "")
         return e.name if e else "место не задано"
 
+    def addressable_items(self, hero_id: str | None = None) -> list[ItemRef]:
+        """Единый ответ на «какие предметы можно назвать в заявке»: снаряжение героя и то, что он отдал присутствующим
+        NPC (съесть или выпить это может только получатель). Парсер, допустимые id и привязка берут список отсюда."""
+        heroes = [hero_id] if hero_id else list(self.inventory)
+        refs = [
+            ItemRef(it.id, self.item_name(it), it.qty, "hero", h, self.characters[h].name, it.equipped)
+            for h in heroes
+            if h in self.characters
+            for it in self.inventory.get(h, [])
+        ]
+        owners = {e.id: e for e in self.in_scene_entities() if e.kind == "creature"}
+        for en in self.entities.values():
+            parent = container_parent(en)
+            if (
+                parent in owners
+                and is_scene_item(en)
+                and (en.state or {}).get("world_object", {}).get("physical") != "destroyed"
+            ):
+                refs.append(
+                    ItemRef(en.id, en.name, int((en.state or {}).get("qty") or 1), "npc", parent, owners[parent].name)
+                )
+        return refs
+
     def valid_ids(self) -> dict[str, list[str]]:
         """Допустимые значения полей на этот ход (раздел 7.1, «динамические схемы»)."""
         chars = [c.id for c in self.characters.values() if c.status in PLAYABLE]
@@ -601,6 +635,8 @@ class World:
             # о ком можно узнать факт: герои, места и все сущности мира
             "subjects": chars + [e.id for e in self.entities.values()],
             "inventory": [it.id for items in self.inventory.values() for it in items],
+            # применить можно и то, что герой уже отдал присутствующему NPC (тот ест или пьёт сам)
+            "usable_items": [ref.id for ref in self.addressable_items()],
             # предметы, лежащие в сцене: их можно подобрать
             "scene_items": [e.id for e in self.in_scene_entities() if is_scene_item(e)]
             + [item.id for item, _ in self.visible_container_items()]

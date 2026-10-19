@@ -191,8 +191,13 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
         extra = " мёртв" if st.get("dead") else ""
         kind = "предмет, можно подобрать" if is_scene_item(en) else en.kind
         lines.append(f"{en.id}  {en.name} ({kind}, {ZONE_NAMES.get(en.zone, en.zone)}{extra})")
-    items = world.inventory.get(ch.id, [])
-    inv = [f"{it.id}  {world.item_name(it)}{' [надет]' if it.equipped else ''}" for it in items]
+    refs = world.addressable_items(ch.id)
+    inv = [
+        f"{r.id}  {r.name}{' [надет]' if r.equipped else ''}"
+        if r.holder_kind == "hero"
+        else f"{r.id}  {r.name} ×{r.qty} (у {r.holder_name}, его можно заставить съесть/выпить)"
+        for r in refs
+    ]
     spells = _castable(world, ch)
     sp = [f"{sid}  {name} ({'заговор' if lvl == 0 else f'{lvl}-й круг'})" for sid, name, lvl in spells]
     mode = "бой: за ход одно действие и перемещение" if world.in_fight(ch.id) else "свободный режим"
@@ -203,7 +208,11 @@ def context_for(world: World, ch: Character) -> tuple[str, dict[str, list[str]]]
         + (f"Заклинания героя (для cast — spell_id):\n{chr(10).join(sp)}\n" if sp else "")
         + f"Глаголы: {', '.join(VERBS)}."
     )
-    return text, {"target_id": targets, "instrument_id": [it.id for it in items], "spell_id": [s[0] for s in spells]}
+    return text, {
+        "target_id": targets,
+        "instrument_id": [r.id for r in refs],
+        "spell_id": [s[0] for s in spells],
+    }
 
 
 def _scene_targets(world: World, ch: Character):
@@ -327,7 +336,7 @@ def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResul
         return ParseResult(reject=intent.question or f"Не понял, что делает {ch.name}. Опишите действие точнее.")
 
     valid_targets = action_target_ids(world, ch) if world else set()
-    own = {it.id for it in world.inventory.get(ch.id, [])} if world else set()
+    own = {r.id for r in world.addressable_items(ch.id)} if world else set()
     known = {s[0] for s in _castable(world, ch)} if world else set()
     notes: list[str] = []
     acts: list[dict[str, Any]] = []
@@ -500,9 +509,9 @@ def routable_tool_call(intent: dict[str, Any] | None, world: World | None = None
 
     verb = a.get("verb")
     if world is not None and (target := world.entities.get(a.get("target_id"))):
-        from app.core.world_objects import container_parent
-
         if verb == "pick_up" and is_scene_item(target) and len(intent["actions"]) == 1:
+            from app.core.world_objects import container_parent
+
             parent = world.entities.get(container_parent(target) or "")
             if parent is None or parent.kind == "object":
                 return "pick_up_item", {"character_id": char_id, "entity_id": target.id}

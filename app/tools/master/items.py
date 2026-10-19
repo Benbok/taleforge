@@ -44,12 +44,15 @@ class UseItemArgs(BaseModel):
     "Применяет предмет инвентаря по его шаблону (зелье, расходник). Свиток или формула творит записанное в нём "
     "заклинание по правилам cast_spell без ячейки. Оружие — через resolve_attack.",
     UseItemArgs,
-    ids={"character_id": "characters", "inventory_id": "inventory", "target_id": "combatants"},
+    ids={"character_id": "characters", "inventory_id": "usable_items", "target_id": "combatants"},
 )
 async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     ch = _character(ctx, a.character_id)
     _can_handle_form(ctx, ch)
     it = next((i for i in ctx.world.inventory.get(ch.id, []) if i.id == a.inventory_id), None)
+    held = ctx.world.entities.get(a.inventory_id)
+    if it is None and held is not None and a.target_id and container_parent(held) == a.target_id:
+        return await _use_held_item(ctx, ch, held, a.target_id)
     if it is None:
         raise ToolError(f"у {ch.name} нет предмета {a.inventory_id}: рука нащупывает пустоту")
     if it.expires_at is not None and ctx.world.scene.game_time >= it.expires_at:
@@ -122,6 +125,46 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         **out,
         "consumed": consumed,
         "remaining_qty": max(0, it.qty),
+        "target_status": ctx.world.actor(tgt.id).status(),
+    }
+    await ctx.record("use_item", actor_id=ch.id, target_id=tgt.id, payload=result, dice=dice, inverse=inv)
+    return result
+
+
+async def _use_held_item(ctx: ToolContext, ch: Character, held: Entity, npc_id: str) -> dict:
+    """Съесть или выпить то, что уже лежит у NPC (отданные ему ягоды): применяет получатель, а не герой."""
+    npc = ctx.world.entities.get(npc_id)
+    if npc is None or not is_scene_item(held):
+        raise ToolError("у NPC нет такого предмета")
+    approach = _npc_item_access(ctx, ch, npc, await revealed_to(ctx.session, ch.id))
+    tgt = ctx.world.actor(npc.id)
+    _alive(tgt, "Цель")
+    rec = ctx.world.catalog.get(held.template_id, "item_template")
+    ops = rec.data.get("modifiers") or rec.data.get("use") or []
+    if not ops:
+        raise ToolError(
+            f"у предмета {rec.name} нет механики применения", code="item_use_unsupported", category="unsupported"
+        )
+    before = copy.deepcopy(held.state)
+    inv = [*approach, snapshot(tgt), {"table": "entities", "id": held.id, "field": "state", "before": before}]
+    inv += economy.charge(ctx, ch.id, "use_object")
+    out = await fx.run_ops(ctx, rec.id, ops, tgt, {})
+    consumed = rec.data.get("category") == "consumable" or bool(rec.data.get("consumable"))
+    qty = int((held.state or {}).get("qty") or 1)
+    if consumed:
+        qty -= 1
+        if qty <= 0:
+            held.state = _object_state(held, physical="destroyed")
+        held.state = {**held.state, "qty": max(0, qty)}
+        ctx.changed.add(held.id)
+    dice = out.pop("dice")
+    result = {
+        "user": ch.name,
+        "item": held.name,
+        "target": tgt.name,
+        **out,
+        "consumed": consumed,
+        "remaining_qty": max(0, qty),
         "target_status": ctx.world.actor(tgt.id).status(),
     }
     await ctx.record("use_item", actor_id=ch.id, target_id=tgt.id, payload=result, dice=dice, inverse=inv)

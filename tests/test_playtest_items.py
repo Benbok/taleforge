@@ -413,3 +413,28 @@ def test_out_of_combat_hero_walks_up_to_feed_a_goodberry(client, admin, settings
         assert positions.distance(hero, guard) <= 5 and hero.cell != (0, 0)
 
     play(settings, cid, scenario)
+
+
+def test_npc_eats_goodberries_the_hero_already_handed_over(client, admin, settings):
+    # плейтест 19.10: ягоды отданы стражнику, «съешь оставшиеся» не к чему было привязать
+    from app.tools.master.items import _add_to_inventory
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        berry, _ = await _add_to_inventory(ctx, ctx.world.characters[hid], "item.goodberry", None, 3)
+        given = await ok(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": berry, "qty": 3})
+        held = given["entity_id"]
+        refs = {r.id: r for r in ctx.world.addressable_items(hid)}
+        assert refs[held].holder_kind == "npc" and refs[held].holder_id == npc and refs[held].qty == 3
+        assert held in ctx.world.valid_ids()["usable_items"]
+        first = await ok(ctx, "use_item", {"character_id": hid, "inventory_id": held, "target_id": npc})
+        assert first["remaining_qty"] == 2 and first["target"] == ctx.world.entities[npc].name
+        assert ctx.world.entities[held].state["qty"] == 2
+        await ok(ctx, "use_item", {"character_id": hid, "inventory_id": held, "target_id": npc})
+        last = await ok(ctx, "use_item", {"character_id": hid, "inventory_id": held, "target_id": npc})
+        assert last["remaining_qty"] == 0
+        assert ctx.world.entities[held].state["world_object"]["physical"] == "destroyed"
+
+    play(settings, cid, scenario)
