@@ -60,7 +60,7 @@ def test_context_quality_scenario_executes_complete_game_turn(game_client, setti
         broken_world["message_rows"] = []
     elif scenario["id"] == "unknown_parser":
         with pytest.raises(AssertionError):
-            assert_scenario(scenario, replace(result, rejections=()))
+            assert_scenario(scenario, replace(result, turns=()))
         return
     else:
         baseline_ids = {event["id"] for event in result.world["baseline"]["events"]}
@@ -73,15 +73,11 @@ def test_context_quality_scenario_executes_complete_game_turn(game_client, setti
 
 
 @pytest.mark.parametrize("failure", ["empty", "error", "timeout"])
-@pytest.mark.parametrize("recover_success", [False, True])
-def test_unknown_parser_recovery_variants(game_client, settings, failure, recover_success):
+def test_unknown_parser_failure_keeps_request_for_master(game_client, settings, failure):
+    """Сбой или пустой ответ парсера не теряет заявку и не повторяется: она уходит мастеру как есть (404b9fb)."""
     case = deepcopy(next(c for c in _manifest()["scenarios"] if c["id"] == "unknown_parser"))
-    if recover_success:
-        case["dice"] = [19]
-        case["required_facts_by_role"].update(decide=["request"], narrate=[])
-        case["expected_world"] = {"min_turns": 1, "rejections": 0, "event_tools": ["roll_check"]}
     world = build_scenario(case["id"], game_client, settings, case=case)
-    world.observations.update(parser_failure=failure, recover_success=recover_success)
+    world.observations.update(parser_failure=failure)
     result = run_scenario(case, world, game_client, world.llm)
     assert_scenario(case, result)
-    assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 2
+    assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 1

@@ -339,7 +339,7 @@ def test_invalid_reported_price_cannot_bypass_budget(cost):
 @pytest.mark.parametrize("scenario", ["attack", "miss", "critical", "native", "speech", "unparsed"])
 def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeypatch, scenario):
     """Same scene, dice and purpose-aware scripted model in both flag configurations."""
-    from app.db.models import Campaign, Entity, Event, InventoryItem, LlmCall, MasterTurn
+    from app.db.models import Campaign, Entity, Event, InventoryItem, LlmCall, MasterTurn, Message
     from tests.game import party, run
     from tests.test_combat import _setup
     from tests.test_master import act, rows
@@ -406,9 +406,11 @@ def test_paired_scripted_turn(game_client, admin_g, llm, dice, settings, monkeyp
     if scenario == "unparsed":
         with connect(game_client, player, cid) as (ws, _):
             ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Непонятная заявка."}})
-            rejected = next_of(ws, "message.rejected")
-        assert "уточните" in rejected["payload"]["reason"].lower()
-        assert rows(settings, MasterTurn, MasterTurn.campaign_id == cid) == []
+            accepted = next_of(ws, "message.new")
+        # пустой разбор не отклоняет заявку: она уходит мастеру как свободное действие (404b9fb)
+        assert accepted["payload"]["content"] == "Непонятная заявка."
+        (message,) = rows(settings, Message, Message.kind == "action")
+        assert [a["verb"] for a in message.intent["actions"]] == ["custom"]
         return
     text = act(game_client, player, cid, "Привет!" if scenario == "speech" else "Атакую гоблина длинным мечом.")
     assert text["kind"] == "narration"
