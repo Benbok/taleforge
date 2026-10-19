@@ -45,6 +45,7 @@ from app.agents.master.tool_profiles import (
     profile_tool_names,
     select_tool_profile,
 )
+from app.agents.providers import explain
 from app.core import audio, chat, combat
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq, system_message
@@ -274,6 +275,9 @@ class TurnMixin:
                         if conflict
                         else "Мастер не смог завершить ход. Ничего не изменилось: повторите действие."
                     )
+                    if isinstance(e, LLMError) and not conflict:
+                        reason = explain(str(e))
+                        text = f"Мастер не смог завершить ход: {reason}. Ничего не изменилось, повторите действие."
                     if isinstance(e, LLMQuotaError):
                         text = (
                             "У мастера исчерпан бюджет модели. Ничего не изменилось. "
