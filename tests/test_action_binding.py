@@ -282,3 +282,48 @@ def test_helping_an_ally_outside_combat_closes_with_auto_success():
     help_part = {"verb": "help", "target_id": "en_guard"}
     assert is_action_compatible("auto_success", {"character_id": "ch1", "reason": "помог встать"}, help_part)
     assert not is_action_compatible("auto_success", {"character_id": "ch1"}, {"verb": "attack"})
+
+
+def test_creative_item_tools_bind_to_the_verbs_players_use():
+    # плейтест 19.10: keep_found_item и родственные инструменты не подходили ни к одному глаголу, кроме custom,
+    # и «беру всё с собой» оставалось без пути создать находку (мастер брал auto_success)
+    from app.agents.master.action_binding import is_action_compatible as ok
+
+    for tool in ("keep_found_item", "invent_item", "give_item"):
+        assert all(ok(tool, {"character_id": "c"}, {"verb": v}) for v in ("pick_up", "search", "interact", "inspect"))
+    assert ok("place_item", {}, {"verb": "pick_up"})
+    assert all(ok(t, {}, {"verb": "search"}) for t in ("create_container", "add_landmark"))
+    assert not ok("keep_found_item", {"character_id": "c"}, {"verb": "attack"})
+    assert not ok("create_container", {}, {"verb": "attack"})
+
+
+def test_taking_a_new_find_binds_to_keep_found_item_not_auto_success(game):
+    # плейтест 19.10: «беру все это с собой» — keep_found_item отклонялся как no_matching_action, а auto_success
+    # проходил и закрывал заявку без единого предмета в инвентаре
+    from app.agents.master.action_binding import bind_tool_action
+    from app.tools.registry import ToolError
+    from app.tools.resolution.requests import bind_message_actions
+
+    settings, campaign_id, hero = game
+
+    async def check(ctx):
+        ch = ctx.world.characters[hero]
+        message = Message(
+            campaign_id=campaign_id,
+            seat_id=ch.seat_id,
+            kind="action",
+            seq=204,
+            content="беру бумаги с собой",
+            intent={"confidence": 0.9, "actions": [{"verb": "pick_up"}]},
+        )
+        ctx.session.add(message)
+        await ctx.session.flush()
+        ctx.required_actions = list(bind_message_actions(message, hero))
+
+        kept = await bind_tool_action(ctx, "keep_found_item", {"character_id": hero, "name": "Бумаги"})
+        assert kept is not None and kept.role == "finish"
+        with pytest.raises(ToolError) as refused:
+            await bind_tool_action(ctx, "auto_success", {"character_id": hero, "reason": "взял"})
+        assert refused.value.code == "no_matching_action"
+
+    play(settings, campaign_id, [], check)

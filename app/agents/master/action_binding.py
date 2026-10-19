@@ -131,7 +131,8 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
         return verb in {"move", "dash", "disengage"}
 
     if name in {"give_item", "pass_item"}:
-        return verb == "give"
+        # give_item выдаёт находку или награду из шаблона: игрок заявляет её как «беру», «ищу», «осматриваю»
+        return verb == "give" or (name == "give_item" and verb in {"pick_up", "search", "interact", "inspect"})
 
     if name in {"pick_up_item", "take_item"}:
         return verb == "pick_up"
@@ -147,6 +148,14 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
 
     if name in {"store_object", "retrieve_object", "equip_item"}:
         return verb in {"use_item", "interact", "pick_up"}
+
+    # Творческий путь: находка, которой в мире ещё не было, заводится инструментом, а не пересказом.
+    if name in {"keep_found_item", "invent_item"} and verb in {"pick_up", "search", "interact", "inspect"}:
+        return True
+    if name == "place_item" and verb == "pick_up":
+        return True  # «беру бумаги из тайника»: сначала предмет кладётся в сцену, затем герой его подбирает
+    if name in {"create_container", "add_landmark"}:
+        return verb in {"search", "inspect", "interact"}
 
     if name in {"edit_sketch", "place_item", "learn_fact", "reveal_knowledge"}:
         if name == "edit_sketch" and args.get("action") == "unlock":
