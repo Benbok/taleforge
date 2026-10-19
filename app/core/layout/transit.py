@@ -186,7 +186,7 @@ async def begin(
     lane = _approach(ctx, hero_ids[0], here, end, p, inverse)
     dest_id = store.area_ids(root).get(other.area_ref) if other.area_ref else other.place_id
     dest = w.entities.get(dest_id or "")
-    if dest is None:
+    if dest is None or (other.external and dest.id == root.id):  # «снаружи» без места: у корня нет геометрии
         raise ToolError(f"за «{p.public_name}» пока ничего нет")
     refs = await request_area(ctx, dest, inverse)
     return Request(tuple(hero_ids), passage_ref, root.id, here, dest.id, bp.revision, tuple(refs), lane, by_player)

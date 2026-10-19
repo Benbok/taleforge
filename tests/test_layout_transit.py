@@ -276,3 +276,25 @@ def test_arrival_message_gives_the_master_a_real_action_to_resolve(client, admin
     refs = bind_message_actions(message, hid)
     assert len(refs) == 1 and refs[0].source_id == message.id and refs[0].actor_id == hid
     assert [a["verb"] for a in message.intent["actions"]] == ["inspect"]
+
+
+def test_exit_to_the_bare_complex_root_keeps_the_party_in_the_entry_area(client, admin, settings):
+    cid, heads, hid, _village, root, ids = _built(client, admin, settings)
+    assert _go(client, heads[0], cid, "in_road_w")["moved"]
+
+    async def outside_is_the_root(s):
+        from sqlalchemy.orm.attributes import flag_modified
+
+        entity = await s.get(Entity, root)
+        for passage in entity.state["blueprint"]["passages"]:
+            if passage["passage_ref"] == "in_road_w":
+                for end in passage["ends"]:
+                    if end.get("place_id"):
+                        end["place_id"] = entity.id
+        flag_modified(entity, "state")
+        await s.commit()
+
+    run(settings, outside_is_the_root)
+    out = _go(client, heads[0], cid, "in_road_w")
+    assert not out["ok"] and "пока ничего нет" in out["error"]
+    assert _place(settings, hid) == ids["road"]
