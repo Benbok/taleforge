@@ -172,33 +172,47 @@ export function Token({
     >
       <title>{ariaLabel}</title>
 
+      {/* Зона клика строго по размеру клетки (size × size) */}
+      {onClick && (
+        <rect
+          x={cx - size / 2}
+          y={cy - size / 2}
+          width={size}
+          height={size}
+          fill="transparent"
+          pointerEvents="all"
+        />
+      )}
+
       {(selected || ring) && (
         <circle cx={cx} cy={cy} r={r + (selected ? 3.5 : 2.3)}
           fill="none" stroke={selected ? "var(--tf-accent)" : visual.color}
           strokeWidth={selected ? 1.5 : 1}
           strokeDasharray={selected ? "2.5 2" : undefined}
+          pointerEvents="none"
           className="pointer-events-none"
         />
       )}
       <g className="transition-transform duration-150 group-hover:scale-105 group-focus:scale-105"
         style={{ transformOrigin: `${cx}px ${cy}px` }}
-        opacity={faded ? 0.45 : 1}>
+        opacity={faded ? 0.45 : 1}
+        pointerEvents="none">
         <TokenDisc cx={cx} cy={cy} r={r} shape={visual.shape}
           fill="var(--tf-surface, #17181c)" stroke={visual.color} dashed={dashed} ring={ring} />
         <circle cx={cx} cy={cy} r={r * 0.65} fill={visual.color} fillOpacity={dashed ? 0.06 : 0.14}
-          className="pointer-events-none" />
+          pointerEvents="none" className="pointer-events-none" />
         <MapGlyph name={visual.glyph}
           x={cx - r * 0.77} y={cy - r * 0.77}
           width={r * 1.54} height={r * 1.54}
           color={visual.color}
-          className="pointer-events-none" />
+          pointerEvents="none" className="pointer-events-none" />
       </g>
 
       {label && (
         <text x={cx} y={cy + r + 7} textAnchor="middle" fontSize={7} fontWeight={600}
           fill="var(--color-ink, #ddd)" paintOrder="stroke"
           stroke="var(--color-surface, #17181c)" strokeWidth={2.5}
-          strokeLinejoin="round" className="pointer-events-none select-none">
+          strokeLinejoin="round" pointerEvents="none" className="pointer-events-none select-none">
           {label}
         </text>
       )}
@@ -206,18 +220,19 @@ export function Token({
         <text x={cx + r} y={cy - r + 2} fontSize={7.5}
           fill="var(--color-warn, #d9a441)" paintOrder="stroke"
           stroke="var(--color-surface, #17181c)" strokeWidth={2}
-          strokeLinejoin="round" className="pointer-events-none select-none">
+          strokeLinejoin="round" pointerEvents="none" className="pointer-events-none select-none">
           {badge}
         </text>
       )}
 
-      <g className="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
+      <g pointerEvents="none" className="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100"
         aria-hidden="true">
         <rect x={cx - Math.min(ariaLabel.length * 2.8 + 6, 60)} y={cy - r - 13}
           width={Math.min(ariaLabel.length * 5.6 + 12, 120)} height={11} rx={3}
-          fill="var(--color-surface, #17181c)" stroke={visual.color} strokeWidth={0.8} />
+          fill="var(--color-surface, #17181c)" stroke={visual.color} strokeWidth={0.8}
+          pointerEvents="none" />
         <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize={6.5} fontWeight={600}
-          fill="var(--color-ink, #eee)">
+          fill="var(--color-ink, #eee)" pointerEvents="none">
           {short(ariaLabel, 22)}
         </text>
       </g>

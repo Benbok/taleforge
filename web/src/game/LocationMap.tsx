@@ -73,8 +73,8 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
         const visual = entityVisual(item.type, item.visual_key);
         return <g key={item.id} data-token-id={item.id} className={onEntity ? "cursor-pointer" : undefined} transform={`translate(${x + .15} ${y + .15})`} onClick={onEntity ? (event) => onEntity(item.id, item.name, event.currentTarget) : undefined}>
           {onEntity && <rect x={-.15} y={-.15} width="1" height="1" fill="transparent" pointerEvents="all" />}
-          {item.mine && <circle cx=".35" cy=".35" r=".46" fill="var(--tf-surface)" stroke="var(--tf-accent)" strokeWidth=".09" />}
-          <MapGlyph name={visual.glyph} width={.7} height={.7} color={visual.color} />
+          {item.mine && <circle cx=".35" cy=".35" r=".46" fill="var(--tf-surface)" stroke="var(--tf-accent)" strokeWidth=".09" pointerEvents="none" className="pointer-events-none" />}
+          <MapGlyph name={visual.glyph} width={.7} height={.7} color={visual.color} pointerEvents="none" className="pointer-events-none" />
           <title>{item.name}{item.mine ? " — ваш герой" : item.companion_of ? " — спутник" : ""}</title>
         </g>;
       })}
