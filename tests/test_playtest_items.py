@@ -586,3 +586,56 @@ def test_wound_words_in_a_card_do_not_match_country_or_other_words():
     assert _WOUNDED_LOOK.search("Истекает кровью, доспехи разорваны когтями.")
     assert _WOUNDED_LOOK.search("Тяжёлая рана на боку.")
     assert not _WOUNDED_LOOK.search("Житель дальней страны в дорожном плаще.")
+
+
+def test_master_cannot_repeat_the_use_item_the_server_already_ran_for_a_request(client, admin, settings):
+    # плейтест 19.10: сервер накормил стражника по заявке, мастер вызвал use_item ещё раз — съедено две ягоды
+    from app.db.models import MasterTurn
+    from app.tools.master.items import _add_to_inventory
+    from app.tools.registry import execute
+    from app.tools.resolution.requests import bind_message_actions
+    from tests.resolution_helpers import prepare_actions
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        berry, _ = await _add_to_inventory(ctx, ctx.world.characters[hid], "item.goodberry", None, 6)
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=cid, status="running"))
+        await ctx.session.flush()
+        msg, _refs = await prepare_actions(ctx, hid, [{"verb": "use_item", "target_id": npc, "instrument_id": berry}])
+        ctx.required_actions = bind_message_actions(msg, hid)
+        args = {"character_id": hid, "inventory_id": berry, "target_id": npc}
+        first = await execute(ctx, "use_item", args)
+        assert first["ok"], first
+        again = await execute(ctx, "use_item", args)
+        assert not again["ok"] and again["failure"]["code"] == "use_already_done"
+
+    play(settings, cid, scenario)
+
+
+def test_two_declared_feedings_both_run(client, admin, settings):
+    from app.db.models import MasterTurn
+    from app.tools.master.items import _add_to_inventory
+    from app.tools.registry import execute
+    from app.tools.resolution.requests import bind_message_actions
+    from tests.resolution_helpers import prepare_actions
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        berry, _ = await _add_to_inventory(ctx, ctx.world.characters[hid], "item.goodberry", None, 6)
+        ctx.session.add(MasterTurn(id=ctx.turn_id, campaign_id=cid, status="running"))
+        await ctx.session.flush()
+        feed = {"verb": "use_item", "target_id": npc, "instrument_id": berry}
+        msg, _refs = await prepare_actions(ctx, hid, [feed, feed])
+        ctx.required_actions = bind_message_actions(msg, hid)
+        args = {"character_id": hid, "inventory_id": berry, "target_id": npc}
+        first, second = (ref.model_dump() for ref in ctx.required_actions)
+        assert (await execute(ctx, "use_item", {**args, "action_ref": first}))["ok"]
+        assert (await execute(ctx, "use_item", {**args, "action_ref": second}))["ok"]  # игрок заявил две ягоды
+        third = await execute(ctx, "use_item", {**args, "action_ref": second})
+        assert not third["ok"]
+
+    play(settings, cid, scenario)

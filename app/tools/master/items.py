@@ -78,6 +78,7 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         )
     tgt = ctx.world.actor(a.target_id or ch.id)
     _alive(tgt, "Цель")
+    await _guard_repeat_use(ctx, ch, ctx.world.item_name(it), tgt.id)
     approach: list[dict] = []
     if it.item_template_id == "item.goodberry" and tgt.id != ch.id:
         refusal = "чтобы дать ягоду, сначала подойдите к получателю вплотную"
@@ -132,6 +133,38 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
     return result
 
 
+async def _guard_repeat_use(ctx: ToolContext, ch: Character, item_name: str, target_id: str) -> None:
+    """Одна заявка применяет вещь к цели один раз: повтор мастера после вызова сервера не списывает вторую ягоду.
+
+    Сколько раз можно, решают заявленные части ``use_item``; без привязки к заявке (прямой вызов) ограничения нет,
+    а заявка без такой части (парсер дал ``custom``) допускает одно применение."""
+    refs = [r for r in ctx.required_actions if r.actor_id == ch.id and r.source_kind == "message"]
+    if not refs:
+        return
+    from app.db.models import Message
+
+    declared = 0
+    for ref in refs:
+        message = await ctx.session.get(Message, ref.source_id)
+        bound = ((message.data or {}).get("resolution_actions") or []) if message is not None else []
+        if ref.part < len(bound) and bound[ref.part]["action"].get("verb") == "use_item":
+            declared += 1
+    done = sum(
+        1
+        for e in ctx.events
+        if e.tool == "use_item"
+        and e.actor_id == ch.id
+        and e.target_id == target_id
+        and e.payload.get("item") == item_name
+    )
+    if done >= max(1, declared):
+        raise ToolError(
+            f"«{item_name}» уже применена в этом ходе по заявке игрока: повтор не нужен",
+            code="use_already_done",
+            category="rule_denial",
+        )
+
+
 async def _use_held_item(ctx: ToolContext, ch: Character, held: Entity, npc_id: str) -> dict:
     """Съесть или выпить то, что уже лежит у NPC (отданные ему ягоды): применяет получатель, а не герой."""
     npc = ctx.world.entities.get(npc_id)
@@ -140,6 +173,7 @@ async def _use_held_item(ctx: ToolContext, ch: Character, held: Entity, npc_id: 
     approach = _npc_item_access(ctx, ch, npc, await revealed_to(ctx.session, ch.id))
     tgt = ctx.world.actor(npc.id)
     _alive(tgt, "Цель")
+    await _guard_repeat_use(ctx, ch, held.name, npc.id)
     rec = ctx.world.catalog.get(held.template_id, "item_template")
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
