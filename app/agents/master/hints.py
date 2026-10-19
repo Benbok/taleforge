@@ -13,6 +13,14 @@ _ASKS_NAME = re.compile(
 )
 
 
+_TENDS = re.compile(
+    r"перевяз\w*|останавлива\w*\s+кров\w*|останови\w*\s+кров\w*|накладыва\w*\s+(?:повязк\w*|шин\w*|жгут\w*)|"
+    r"обрабатыва\w*\s+ран\w*|промыва\w*\s+ран\w*|зашива\w*|бинтую|бинтуй\w*",
+    re.IGNORECASE,
+)
+_WOUNDED_LOOK = re.compile(r"кров|ран[аеыиуо]|истека|умира|порван|разорван|искалеч|изранен|окровавлен", re.IGNORECASE)
+
+
 def _stem(word: str) -> str:
     return word[:-1] if len(word) > 4 else word
 
@@ -47,4 +55,31 @@ def name_hint(ctx, new, char_by_seat) -> str:
         "описание), придумай подходящее миру и ДО рассказа вызови update_entity(entity_id=…, name=…): "
         "без вызова имени нет. "
         "Потом опиши ответ NPC: он называется или по характеру отказывается, но не откладывает ответ на потом."
+    )
+
+
+def look_hint(ctx, new, char_by_seat) -> str:
+    """Игрок перевязывает или лечит NPC, чья карточка до сих пор описывает рану: после успеха её нужно обновить."""
+    if adventure.is_module(ctx.campaign):
+        return ""
+    tended = [m for m in new if m.kind in ("action", "speech") and _TENDS.search(m.content or "")]
+    if not tended:
+        return ""
+    hurt = [
+        e
+        for e in ctx.world.in_scene_entities()
+        if e.kind == "creature" and not (e.state or {}).get("dead") and _WOUNDED_LOOK.search(e.description or "")
+    ]
+    if not hurt:
+        return ""
+    text = " ".join((m.content or "").casefold() for m in tended)
+    called = [e for e in hurt if any(_stem(w) in text for w in re.findall(r"\w{4,}", e.name.casefold()))]
+    targets = called or (hurt if len(hurt) == 1 else [])
+    if not targets:
+        return ""
+    cards = "; ".join(f"{e.name} ({e.id}): «{(e.description or '')[:120]}»" for e in targets[:3])
+    return (
+        "\n\nИгрок оказывает помощь раненому NPC, чья карточка ещё описывает рану: " + cards + ". Если помощь удалась "
+        "(проверка или лечение прошли), обнови то, что видят игроки: update_entity(entity_id=…, look=…) с новым "
+        "описанием (повязка, остановленное кровотечение). Без вызова карточка останется прежней."
     )

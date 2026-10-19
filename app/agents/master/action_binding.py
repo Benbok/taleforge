@@ -149,9 +149,19 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
     if name in {"store_object", "retrieve_object", "equip_item"}:
         return verb in {"use_item", "interact", "pick_up"}
 
-    if name == "update_entity" and args.get("name"):
-        # NPC назвался игроку: имя — ответ на реплику, а не отдельная механика
-        return verb in {"talk", "persuade", "deceive", "intimidate", "inspect", "interact", "search", "help"}
+    if name == "update_entity" and (args.get("name") or args.get("look")):
+        # имя NPC и его видимое состояние (перевязали раны) — следствие реплики или помощи, а не отдельная механика
+        return verb in {
+            "talk",
+            "persuade",
+            "deceive",
+            "intimidate",
+            "inspect",
+            "interact",
+            "search",
+            "help",
+            "use_item",
+        }
     # Творческий путь: находка, которой в мире ещё не было, заводится инструментом, а не пересказом.
     if name in {"keep_found_item", "invent_item"} and verb in {"pick_up", "search", "interact", "inspect"}:
         return True

@@ -36,7 +36,7 @@ from app.agents.master.helpers import (
     _turn_messages,
     _unsettled_fails,
 )
-from app.agents.master.hints import name_hint
+from app.agents.master.hints import look_hint, name_hint
 from app.agents.master.optimization import optimization_flags
 from app.agents.master.resolution import action_context_prompt, capture_attempt, permit_repair, resolution_prompt
 from app.agents.master.searches import unresolved_searches
@@ -570,7 +570,7 @@ class TurnMixin:
         route_note = ""
         if routed:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
-        route_note += name_hint(ctx, new, char_by_seat)
+        route_note += name_hint(ctx, new, char_by_seat) + look_hint(ctx, new, char_by_seat)
         return _Routing(
             routed,
             routed_casts,

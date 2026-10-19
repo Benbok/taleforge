@@ -525,3 +525,27 @@ def test_question_about_an_npc_name_adds_a_server_hint_to_the_turn(client, admin
     play(settings, cid, scenario)
     assert asks_name("Хватит тебя называть Стражником — как тебя зовут?")
     assert asks_name("скажи своё имя") and not asks_name("как дела у тебя")
+
+
+def test_tending_a_wounded_npc_updates_the_card_the_players_see(client, admin, settings):
+    # плейтест 19.10: «перевязываю раны» удалось, а в карточке осталось «Истекает кровью»: описание не менялось ничем
+    from types import SimpleNamespace
+
+    from app.agents.master.hints import look_hint
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        entity = ctx.world.entities[npc]
+        entity.description = "Истекает кровью, доспехи разорваны когтями."
+        tend = SimpleNamespace(kind="action", content="перевязываю его раны, чтобы остановить кровотечение")
+        hint = look_hint(ctx, [tend], {})
+        assert "update_entity" in hint and npc in hint and "Истекает кровью" in hint
+        assert look_hint(ctx, [SimpleNamespace(kind="action", content="Осматриваю комнату")], {}) == ""
+        done = await ok(ctx, "update_entity", {"entity_id": npc, "look": "Раны перевязаны, бледен, но дышит ровно."})
+        assert done["look"].startswith("Раны перевязаны")
+        assert ctx.world.entities[npc].description == "Раны перевязаны, бледен, но дышит ровно."
+        assert look_hint(ctx, [tend], {}) == ""  # описание уже не про рану: подсказка не повторяется
+
+    play(settings, cid, scenario)
