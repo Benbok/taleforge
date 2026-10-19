@@ -622,7 +622,6 @@ class TurnMixin:
                     )
                 )
 
-        system = await self._system_prompt(s, c, cfg, ctx)
         convo = _render_history(history, char_by_seat, names)
         news = _render_new(new, char_by_seat, names)
         required = {
@@ -640,6 +639,9 @@ class TurnMixin:
         fighting, hero_turn = routing.fighting, routing.hero_turn
         combat_note, route_note = routing.combat_note, routing.route_note
 
+        # профиль выбирается после маршрутизации: она могла начать бой, тогда нужен полный свод правил
+        profile = select_tool_profile(ctx, new) if flags["tool_profiles"] else None
+        system = await self._system_prompt(s, c, cfg, ctx, profile or "general")
         await self._status(cid, "remembering")
         memory_note = await self._memory_block(s, c, ctx, new)
         resolution_note = await resolution_prompt(ctx)
@@ -721,7 +723,6 @@ class TurnMixin:
         search_retry = False
         failed_transition = False
         invalid_source_stop = False
-        profile = select_tool_profile(ctx, new) if flags["tool_profiles"] else None
         allowed = profile_tool_names(ctx, profile) if profile else decision_tools(ctx)
 
         def id_context_note() -> dict:
@@ -1415,7 +1416,8 @@ class TurnMixin:
         await s.commit()
         return {"ctx": ctx, "messages": whispers, "names": names, "ids": [m.id for m in new], "skipped": False}
 
-    async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext) -> str:
+    async def _system_prompt(self, s, c: Campaign, cfg: AgentConfig, ctx: ToolContext, profile: str = "general") -> str:
+        """``profile`` — профиль инструментов решающей фазы хода: остальные роли получают полный текст правил."""
         from app.agents.master.prompt_context import master_prompt_values
 
-        return render("master_system.j2", **await master_prompt_values(ctx, cfg))
+        return render("master_system.j2", **await master_prompt_values(ctx, cfg), profile=profile)

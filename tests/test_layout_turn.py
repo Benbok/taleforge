@@ -218,9 +218,9 @@ def test_split_party_narration_follows_transiting_crew(game_client, admin_g, llm
     master = game_client.app.state.master
     original = master._system_prompt
 
-    async def spy(s, c, cfg, ctx):
+    async def spy(s, c, cfg, ctx, *args):
         seen.append(ctx.world.scene_places())
-        return await original(s, c, cfg, ctx)
+        return await original(s, c, cfg, ctx, *args)
 
     monkeypatch.setattr(master, "_system_prompt", spy)
     llm.replies += [
