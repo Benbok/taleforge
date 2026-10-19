@@ -549,3 +549,40 @@ def test_tending_a_wounded_npc_updates_the_card_the_players_see(client, admin, s
         assert look_hint(ctx, [tend], {}) == ""  # описание уже не про рану: подсказка не повторяется
 
     play(settings, cid, scenario)
+
+
+def test_compound_request_to_finish_the_berries_and_bandage_keeps_both_parts(client, admin, settings):
+    # плейтест 19.10: «прошу его доесть остаток ягод и перевязываю его раны» — глагола «доесть» не знали, ягоды не
+    # тронуты, а в рассказе у стражника «румянец от ягоды»
+    from app.agents import intent as intents
+    from app.tools.master.items import _add_to_inventory
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        hero = ctx.world.characters[hid]
+        berry, _ = await _add_to_inventory(ctx, hero, "item.goodberry", None, 5)
+        given = await ok(ctx, "pass_item", {"character_id": hid, "to_entity_id": npc, "inventory_id": berry, "qty": 4})
+        text = "Друг, давай подлечим тебя - говорю я и прошу его доесть остаток ягод и перевязываю его раны"
+        parsed = intents.feed_command(text, ctx.world, hero)
+        feed, rest = parsed.intent["actions"]
+        assert (feed["verb"], feed["target_id"], feed["instrument_id"]) == ("use_item", npc, given["entity_id"])
+        assert rest["verb"] == "custom" and "перевязываю" in rest["summary"]
+        # сервер исполняет кормление (часть 0), перевязку оставляет мастеру
+        assert intents.routable_tool_call(parsed.intent, ctx.world) == (
+            "use_item",
+            {"character_id": hid, "inventory_id": given["entity_id"], "target_id": npc},
+        )
+        plain = intents.feed_command("Давай доешь ягоды, стражник", ctx.world, hero)
+        assert [a["verb"] for a in plain.intent["actions"]] == ["use_item"]
+
+    play(settings, cid, scenario)
+
+
+def test_wound_words_in_a_card_do_not_match_country_or_other_words():
+    from app.agents.master.hints import _WOUNDED_LOOK
+
+    assert _WOUNDED_LOOK.search("Истекает кровью, доспехи разорваны когтями.")
+    assert _WOUNDED_LOOK.search("Тяжёлая рана на боку.")
+    assert not _WOUNDED_LOOK.search("Житель дальней страны в дорожном плаще.")

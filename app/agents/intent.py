@@ -229,7 +229,15 @@ def action_target_ids(world: World, ch: Character) -> set[str]:
 
 
 _FEED = re.compile(
-    r"(?<!\w)(?:съешь(?:те)?|съесть|ешь|выпей(?:те)?|выпить|проглоти(?:те)?|скушай(?:те)?|глотай(?:те)?|пожуй)(?!\w)",
+    r"(?<!\w)(?:съешь(?:те)?|съесть|съедай(?:те)?|съедать|доесть|доешь(?:те)?|доедай(?:те)?|доедать|ешь|поешь|"
+    r"выпей(?:те)?|выпить|выпивай(?:те)?|проглоти(?:те)?|скушай(?:те)?|отведай(?:те)?|глотай(?:те)?|пожуй)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+TEND_RE = re.compile(
+    r"перевяз\w*|останавлива\w*\s+кров\w*|останови\w*\s+кров\w*|накладыва\w*\s+(?:повязк\w*|шин\w*|жгут\w*)|"
+    r"обрабатыва\w*\s+ран\w*|промыва\w*\s+ран\w*|зашива\w*|бинтую|бинтуй\w*",
     re.IGNORECASE,
 )
 
@@ -264,15 +272,10 @@ def feed_command(text: str, world: World, ch: Character) -> ParseResult | None:
         target = called[0] if len(called) == 1 else next(iter(npcs)) if len(npcs) == 1 else None
     if target is None:
         return None
-    return check(
-        {
-            "kind": "action",
-            "confidence": 1.0,
-            "actions": [{"verb": "use_item", "target_id": target, "instrument_id": item.id}],
-        },
-        world,
-        ch,
-    )
+    actions = [{"verb": "use_item", "target_id": target, "instrument_id": item.id}]
+    if TEND_RE.search(text):  # «…и перевязываю раны»: остальное решает мастер, кормление исполнит сервер
+        actions.append({"verb": "custom", "summary": text[:160]})
+    return check({"kind": "action", "confidence": 1.0, "actions": actions}, world, ch)
 
 
 def card_pickup(text: str, world: World, ch: Character) -> ParseResult | None:
@@ -550,6 +553,13 @@ def routable_tool_call(intent: dict[str, Any] | None, world: World | None = None
     if not intent or intent.get("confidence", 0) < ROUTE_CONFIDENCE:
         return None
     acts = [a for a in intent.get("actions") or [] if a["verb"] not in MOVE_VERBS]
+    if (
+        len(acts) == 2
+        and acts[0] is intent["actions"][0]
+        and acts[0]["verb"] == "use_item"
+        and acts[1]["verb"] == "custom"
+    ):
+        acts = acts[:1]  # кормление — часть 0, остальное в реплике остаётся мастеру
     if len(acts) != 1:
         return None
     a = acts[0]

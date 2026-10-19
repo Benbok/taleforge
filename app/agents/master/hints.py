@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from app.agents.intent import TEND_RE
 from app.core import adventure
 
 _ASKS_NAME = re.compile(
@@ -13,12 +14,11 @@ _ASKS_NAME = re.compile(
 )
 
 
-_TENDS = re.compile(
-    r"перевяз\w*|останавлива\w*\s+кров\w*|останови\w*\s+кров\w*|накладыва\w*\s+(?:повязк\w*|шин\w*|жгут\w*)|"
-    r"обрабатыва\w*\s+ран\w*|промыва\w*\s+ран\w*|зашива\w*|бинтую|бинтуй\w*",
-    re.IGNORECASE,
-)
-_WOUNDED_LOOK = re.compile(r"кров|ран[аеыиуо]|истека|умира|порван|разорван|искалеч|изранен|окровавлен", re.IGNORECASE)
+_TENDS = TEND_RE
+_WOUNDED_LOOK = re.compile(r"кров|\bран[аеыиуо]|истека|умира|порван|разорван|искалеч|изранен|окровавлен", re.IGNORECASE)
+
+
+_TREATED_LOOK = re.compile(r"перевяз|остановлен|зажил|стабил|бинт|забинт|повязк", re.IGNORECASE)
 
 
 def _stem(word: str) -> str:
@@ -68,7 +68,10 @@ def look_hint(ctx, new, char_by_seat) -> str:
     hurt = [
         e
         for e in ctx.world.in_scene_entities()
-        if e.kind == "creature" and not (e.state or {}).get("dead") and _WOUNDED_LOOK.search(e.description or "")
+        if e.kind == "creature"
+        and not (e.state or {}).get("dead")
+        and _WOUNDED_LOOK.search(e.description or "")
+        and not _TREATED_LOOK.search(e.description or "")
     ]
     if not hurt:
         return ""
