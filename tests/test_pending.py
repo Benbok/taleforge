@@ -266,3 +266,65 @@ def test_empty_batch_is_skipped_without_model(client, admin, settings, llm):
     out = client.portal.call(play)
     assert out["skipped"] and out["messages"] == [] and llm.requests == []
     assert run(settings, lambda s: s.get(MasterTurn, tid)).status == "skipped"
+
+
+def fail_turn(settings, cid, upto, rolled_back=True):
+    """Ход мастера взял реплики до ``upto`` и упал: откатился целиком (сбой модели) или сохранил действия."""
+    from sqlalchemy import select
+
+    async def go(s):
+        trace = {"from_seq": upto, **({"rolled_back": True} if rolled_back else {"narration_failed": "x"})}
+        t = MasterTurn(campaign_id=cid, upto_seq=upto, status="failed", trace=trace)
+        s.add(t)
+        await s.flush()
+        q = select(Message).where(Message.campaign_id == cid, Message.seq <= upto, Message.turn_id.is_(None))
+        for m in await s.scalars(q):
+            if m.kind in ("action", "speech", "whisper"):
+                m.turn_id = t.id
+        await s.commit()
+
+    run(settings, go)
+
+
+def retry(ws, mid):
+    ws.send_json({"type": "message.retry", "payload": {"message_id": mid}})
+    for _ in range(20):
+        e = ws.receive_json()
+        if e["type"] in ("message.rejected", "error") or e["type"] == "message.state" and mid in e["payload"]["ids"]:
+            return e
+    raise AssertionError("нет ответа на повтор")
+
+
+def test_retry_failed_reply_queues_it_again_without_a_copy(client, admin, settings):
+    # плейтест 19.10: сеть до модели оборвалась — реплика «не обработано», игроку приходилось набирать её заново
+    notified = []
+    client.app.state.master.notify = notified.append
+    c, (p1,), _ = party(client, admin)
+    with connect(client, p1, c["id"]) as (ws, _):
+        m = say(ws, "Кормлю стражника ягодой")["payload"]
+        fail_turn(settings, c["id"], m["seq"])
+        notified.clear()
+        e = retry(ws, m["id"])
+        assert e["type"] == "message.state" and e["payload"]["state"] == "pending", e
+    row = run(settings, lambda s: s.get(Message, m["id"]))
+    assert row.turn_id is None and notified == [c["id"]]
+    with connect(client, p1, c["id"]) as (_, snap):
+        mine = [x for x in snap["payload"]["messages"] if x["content"] == "Кормлю стражника ягодой"]
+        assert [x["state"] for x in mine] == ["pending"]
+
+
+@pytest.mark.parametrize("case", ["answered", "saved_actions", "foreign", "another_pending"])
+def test_retry_refused_when_it_would_repeat_or_not_yours(client, admin, settings, case):
+    c, (p1, p2), _ = party(client, admin, players=2)
+    with connect(client, p1, c["id"]) as (ws, _):
+        m = say(ws, "Лезу на стену")["payload"]
+        if case == "answered":
+            add_turn(settings, c["id"], m["seq"], "done")
+        else:
+            fail_turn(settings, c["id"], m["seq"], rolled_back=case != "saved_actions")
+        if case == "another_pending":
+            assert say(ws, "Прыгаю на уступ")["type"] == "message.new"
+    who = p2 if case == "foreign" else p1
+    with connect(client, who, c["id"]) as (ws, _):
+        assert retry(ws, m["id"])["type"] == "message.rejected"
+    assert run(settings, lambda s: s.get(Message, m["id"])).turn_id is not None

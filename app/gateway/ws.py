@@ -8,6 +8,7 @@
 ``reaction.choose``, ``actions.get``, ``entity.inspect``, ``map.get``, ``map.step``, ``map.traverse`` и
 ``stat.explain``.
 ``message.withdraw`` — отменить свою ожидающую реплику (``message.withdrawn`` всем, кто её видел).
+``message.retry`` — повторить свою реплику, ход по которой упал и откатился (``message.state`` pending всем).
 ``actions.get`` — какие действия доступны сейчас (``state.actions``: actions и blocked, app/core/actions.py).
 ``entity.inspect`` — карточка сущности по уровню знаний героя (``entity.card``, только этому сокету).
 ``map.get`` — схема места и карта открытых мест для героя зрителя (``map.state``, app/core/map.py).
@@ -259,6 +260,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "message.withdraw":
                 await _withdraw(app, user, conn, payload)
+                continue
+
+            if kind == "message.retry":
+                await _retry(app, user, conn, payload)
                 continue
 
             if kind == "turn.pass":
@@ -551,6 +556,28 @@ async def _withdraw(app, user: User, conn: Connection, payload: dict) -> None:
     if payload.get("as_seat"):
         actions["as_seat"] = payload["as_seat"]
     await conn.send(envelope("state.actions", conn.campaign_id, actions))
+
+
+async def _retry(app, user: User, conn: Connection, payload: dict) -> None:
+    """Игрок повторяет реплику упавшего хода: та же реплика снова ждёт мастера, мастер начинает ход."""
+    async with app.state.sessionmaker() as session:
+        try:
+            viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            m = await chat.retry_message(
+                session,
+                viewer,
+                str(payload.get("message_id") or ""),
+                gate=lambda kind: combat.gate_message(session, viewer, kind),  # в бою — только в свой ход
+            )
+            await session.commit()
+        except (Conflict, NotFound, AccessDenied) as e:
+            await session.rollback()
+            await conn.send(envelope("message.rejected", conn.campaign_id, {"reason": str(e)}))
+            return
+    await app.state.bus.publish(
+        conn.campaign_id, envelope("message.state", conn.campaign_id, {"ids": [m.id], "state": "pending"}), None
+    )
+    app.state.master.notify(conn.campaign_id)
 
 
 _tasks: set[asyncio.Task] = set()

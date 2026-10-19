@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from sqlalchemy import select, update
@@ -335,6 +336,39 @@ async def message_states(session: AsyncSession, campaign: Campaign, msgs: list[M
         else:
             out[m.id] = TURN_STATES.get(status.get(m.turn_id, "done"), "answered")
     return out
+
+
+async def retry_message(
+    session: AsyncSession, viewer: Viewer, message_id: str, gate: Callable[[str], Awaitable[str | None]] | None = None
+) -> Message:
+    """Игрок повторяет свою реплику, ход по которой упал и откатился целиком (сбой модели или сети): реплика снова
+    ждёт мастера. Разбор остаётся прежним — модель её второй раз не разбирает, копии в чате нет. Ход, сохранивший
+    действия, не повторяется: иначе они применились бы дважды. ``gate`` — проверка права писать (очередь в бою);
+    она идёт до возврата реплики в очередь, иначе приняла бы её за уже ожидающую."""
+    m = await session.get(Message, message_id)
+    seat = viewer.seat
+    game = await active_session(session, viewer.campaign.id)
+    if (
+        m is None
+        or m.campaign_id != viewer.campaign.id
+        or seat is None
+        or m.seat_id != seat.id
+        or m.kind not in ("action", "speech")
+        or game is None
+        or m.session_id != game.id
+        or master_seat(viewer.campaign).occupant_type != "agent"
+    ):
+        raise Conflict("Эту реплику повторить нельзя.")
+    turn = await session.get(MasterTurn, m.turn_id) if m.turn_id else None
+    if turn is None or turn.status != "failed" or not (turn.trace or {}).get("rolled_back"):
+        raise Conflict("Повторить можно только реплику, ход по которой не удался и ничего не изменил.")
+    if await pending_message(session, viewer.campaign, seat.id) is not None:
+        raise Conflict("Ваша другая реплика уже ждёт мастера. Отмените её, чтобы повторить эту.")
+    if gate is not None and (reason := await gate(m.kind)):
+        raise Conflict(reason)
+    m.turn_id = None
+    await session.flush()
+    return m
 
 
 async def withdraw_message(session: AsyncSession, viewer: Viewer, message_id: str) -> Message:

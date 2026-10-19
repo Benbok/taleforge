@@ -18,7 +18,7 @@ function heroName(m: ChatMessage, who: Who): string {
 
 const STATE_TEXT = { pending: "ждёт мастера", processing: "мастер отвечает", answered: "✓", failed: "не обработано" } as const;
 
-/** Статус реплики игрока: видят все, отменить может только автор, пока реплика ждёт хода. */
+/** Статус реплики игрока: видят все; отменить ожидающую или повторить необработанную может только автор. */
 function ReplyStatus({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const socket = useGame((s) => s.socket);
   if (!m.state) return null;
@@ -28,6 +28,16 @@ function ReplyStatus({ m, mine }: { m: ChatMessage; mine: boolean }) {
       {mine && m.state === "pending" && (
         <button type="button" className="underline" onClick={() => socket?.send("message.withdraw", { message_id: m.id })}>
           Отменить
+        </button>
+      )}
+      {mine && m.state === "failed" && (
+        // ход упал (сбой модели или сети) и ничего не изменил: та же реплика снова уходит мастеру, без копии в чате
+        <button
+          type="button"
+          className="rounded border border-warn/50 px-2 py-0.5 font-medium hover:bg-warn/10"
+          onClick={() => socket?.send("message.retry", { message_id: m.id })}
+        >
+          Повторить
         </button>
       )}
     </p>
