@@ -255,7 +255,9 @@ def _castable(world: World, ch: Character) -> list[tuple[str, str, int]]:
     return [(x["id"], x["name"], x["level"]) for x in (b or {}).get("spells", []) if x["prepared"]]
 
 
-def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResult:
+def check(
+    raw: dict[str, Any], world: World | None, ch: Character, extra_targets: frozenset[str] = frozenset()
+) -> ParseResult:
     """Проверка ответа парсера сервером: схема, id, лимит действий, причины отказа (раздел 6)."""
     raw_actions = raw.get("actions") if isinstance(raw, dict) else None
     if isinstance(raw_actions, list) and len(raw_actions) > 8:
@@ -335,7 +337,7 @@ def check(raw: dict[str, Any], world: World | None, ch: Character) -> ParseResul
     if intent.problem == "unclear" or intent.confidence < LOW_CONFIDENCE:
         return ParseResult(reject=intent.question or f"Не понял, что делает {ch.name}. Опишите действие точнее.")
 
-    valid_targets = action_target_ids(world, ch) if world else set()
+    valid_targets = (action_target_ids(world, ch) | extra_targets) if world else set()
     own = {r.id for r in world.addressable_items(ch.id)} if world else set()
     known = {s[0] for s in _castable(world, ch)} if world else set()
     notes: list[str] = []

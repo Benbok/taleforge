@@ -652,9 +652,25 @@ async def _quick_intent(app, campaign_id: str, seat_id: str, quick: dict):
             (x for x in ctx.world.characters.values() if x.seat_id == seat_id and x.status in ("approved", "active")),
             None,
         )
-        parsed = intents.check(raw, ctx.world, ch) if ch is not None else None
+        # по ссылке из рассказа карточка места открывается и без карты: «Идти туда» из неё должно проходить
+        heard = frozenset()
+        if ch is not None:
+            from app.core.inspect import mentioned_to_seat
+
+            asked = {
+                t for a in acts[:8] if isinstance(a, dict) for t in (a.get("target_id"), *(a.get("target_ids") or []))
+            }
+            known = intents.action_target_ids(ctx.world, ch)
+            found = set()
+            for t in asked:
+                e = ctx.world.entities.get(t) if isinstance(t, str) else None
+                if t not in known and e is not None and e.kind == "location":
+                    if await mentioned_to_seat(s, campaign_id, seat_id, t):
+                        found.add(t)
+            heard = frozenset(found)
+        parsed = intents.check(raw, ctx.world, ch, heard) if ch is not None else None
         if parsed is not None and parsed.intent is not None:
-            valid_targets = intents.action_target_ids(ctx.world, ch)
+            valid_targets = intents.action_target_ids(ctx.world, ch) | heard
             for supplied in acts[:8]:
                 targets = [supplied.get("target_id"), *(supplied.get("target_ids") or [])]
                 if any(target and target not in valid_targets for target in targets):

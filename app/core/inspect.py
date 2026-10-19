@@ -70,12 +70,16 @@ async def viewer_hero(session: AsyncSession, viewer: Viewer) -> Character | None
     return (await session.scalars(q)).first()
 
 
-async def _mentioned(session: AsyncSession, viewer: Viewer, entity_id: str) -> bool:
+async def mentioned_to_seat(session: AsyncSession, campaign_id: str, seat_id: str | None, entity_id: str) -> bool:
+    """Сущность названа в сообщении, которое это место видело: по такой ссылке открывается карточка."""
     q = select(Message.visible_to).where(
-        Message.campaign_id == viewer.campaign.id, Message.content.contains(f"[[{entity_id}|")
+        Message.campaign_id == campaign_id, Message.content.contains(f"[[{entity_id}|")
     )
-    seat = viewer.seat.id if viewer.seat else None
-    return any(v is None or seat in v for v in (await session.scalars(q)).all())
+    return any(v is None or seat_id in v for v in (await session.scalars(q)).all())
+
+
+async def _mentioned(session: AsyncSession, viewer: Viewer, entity_id: str) -> bool:
+    return await mentioned_to_seat(session, viewer.campaign.id, viewer.seat.id if viewer.seat else None, entity_id)
 
 
 @dataclass(frozen=True)

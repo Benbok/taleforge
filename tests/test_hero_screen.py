@@ -82,3 +82,37 @@ def test_quick_action_skips_parser_but_not_validation(game_client, admin_g, llm,
     assert llm.parser_requests == []  # модель намерение не разбирала
     (action,) = rows(settings, Message, Message.kind == "action")
     assert action.intent["actions"][0]["target_id"] == goblin and action.intent["actions"][0]["instrument_id"] == sword
+
+
+def test_quick_move_to_a_place_named_in_the_story_is_accepted(game_client, admin_g, llm, settings):
+    # плейтест 19.10: карточка места по ссылке из рассказа открывалась, а «Идти туда» отклонялось как недоступное
+    from app.core.chat import next_seq
+
+    c, (p1,), _ = party(game_client, admin_g)
+    cid = c["id"]
+
+    async def make(s):
+        e = Entity(campaign_id=cid, kind="location", name="Камера Допросов")
+        s.add(e)
+        await s.commit()
+        return e.id
+
+    place = run(settings, make)
+    quick = {"actions": [{"verb": "move", "target_id": place}]}
+    move = {"type": "message.send", "payload": {
+        "kind": "action", "text": "Иду: Камера Допросов", "client_id": "m1", "quick": quick,
+    }}  # fmt: skip
+    with connect(game_client, p1, cid) as (ws, _):
+        ws.send_json(move)
+        assert "недоступен" in next_of(ws, "message.rejected")["payload"]["reason"]
+
+    async def tell(s):
+        s.add(Message(campaign_id=cid, seq=await next_seq(s, cid), kind="narration",
+                      content=f"Впереди дверь в [[{place}|Камера Допросов]]."))  # fmt: skip
+        await s.commit()
+
+    run(settings, tell)
+    llm.replies += [DONE, DONE, {"text": "Вы идёте."}]
+    with connect(game_client, p1, cid) as (ws, _):
+        ws.send_json({**move, "payload": {**move["payload"], "client_id": "m2"}})
+        assert next_of(ws, "message.new")["payload"]["kind"] == "action"
