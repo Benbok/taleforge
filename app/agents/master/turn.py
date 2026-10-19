@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 
 from sqlalchemy import func, select
 
@@ -132,6 +133,21 @@ def _mark_actor_opening(ctx: ToolContext, actor_id: str) -> None:
                 result=ResolutionResult(execution="applied", game_outcome="success"),
             )
     ctx.closed.add(actor_id)
+
+
+@dataclass
+class _Routing:
+    """Итог серверной маршрутизации заявок хода (изменяемые контейнеры общие с остальным ходом)."""
+
+    routed: list[str]
+    routed_casts: dict[tuple[str, str], str]
+    opening_actors: set[str]
+    opening_notes: list[str]
+    blocked_actors: set[str]
+    fighting: bool
+    hero_turn: object
+    combat_note: str
+    route_note: str
 
 
 class TurnMixin:
@@ -379,62 +395,12 @@ class TurnMixin:
         )
         return reply
 
-    async def _play(self, s, cid: str, turn_id: str, calls: list, diagnostics: dict | None = None) -> dict:
-        """Фаза действий хода: всё, что меняет мир, одной транзакцией. Повествование — после её коммита
-        (``_narrate_turn``), по checkpoint, без повторного вызова инструментов."""
-        c = await s.get(Campaign, cid)
-        turn = await s.get(MasterTurn, turn_id)
-        seat = master_seat(c)
-        cfg = await s.get(AgentConfig, seat.agent_config_id)
-        place = (turn.trace or {}).get("place")
-        ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=place)
-        flags = optimization_flags(c.settings or {})
-        if diagnostics is not None:
-            ctx.turn_diagnostics = diagnostics
-        new = await _turn_messages(s, c, turn_id)
-        names = await _names(s, c)
-        if not new:  # все реплики пакета отменены, пока ход начинался: модель не зовём
-            turn.status, turn.finished_at = "skipped", now()
-            await s.commit()
-            return {"ctx": ctx, "messages": [], "names": names, "ids": [], "skipped": True}
-        t0 = ctx.world.enter_clock()  # отряд разделён: ход идёт по часам этой группы
-        before = {p: [h.id for h in hs] for p, hs in ctx.world.groups().items()}  # как стоял отряд до хода
-        crew = ctx.world.crew or {h for hs in before.values() for h in hs}
-        seats = {ch.seat_id for ch in ctx.world.characters.values() if ch.id in crew and ch.seat_id}
-        history = await _history(s, c, new[0].seq, seats if place is not None else None)
-        char_by_seat = {
-            ch.seat_id: ch
-            for ch in ctx.world.characters.values()
-            if ch.seat_id and ch.status in ("approved", "active", "dead")
-        }
-
-        from app.tools.resolution.requests import bind_message_actions
-
-        for message in new:
-            if message.kind == "action" and message.seat_id in char_by_seat:
-                ctx.required_actions.extend(
-                    bind_message_actions(
-                        message,
-                        char_by_seat[message.seat_id].id,
-                        include_speech_request=flags["action_refs"],
-                    )
-                )
-
-        system = await self._system_prompt(s, c, cfg, ctx)
-        convo = _render_history(history, char_by_seat, names)
-        news = _render_new(new, char_by_seat, names)
-        required = {
-            char_by_seat[m.seat_id].id
-            for m in new
-            if m.kind == "action"
-            and m.seat_id in char_by_seat
-            and char_by_seat[m.seat_id].status in ("approved", "active")
-        }
+    async def _route_declared_actions(self, ctx, cid, turn_id, new, required, char_by_seat, trace_calls):
+        """Сервер проводит однозначные заявки сам до модели: начало боя, составные планы, атаки, заклинания,
+        простые предметные вызовы. Модель получает список сделанного и только описывает его."""
         # A declared hostile weapon strike or offensive spell begins initiative
         # before damage, saving the original action for its caster's legal turn.
         # Ordered, unequivocal move+attack and move+cast actions use Action Plans.
-        trace_calls: list[dict] = []
-        ctx.turn_diagnostics["calls"] = trace_calls
         routed: list[str] = []
         # заклинания, уже сотворённые сервером по заявке: (герой, заклинание) -> ключ идемпотентности
         routed_casts: dict[tuple[str, str], str] = {}
@@ -603,6 +569,76 @@ class TurnMixin:
         route_note = ""
         if routed:
             route_note = "\n\nУже сделано сервером (не повторяй эти вызовы):\n- " + "\n- ".join(routed)
+        return _Routing(
+            routed,
+            routed_casts,
+            opening_actors,
+            opening_notes,
+            blocked_actors,
+            fighting,
+            hero_turn,
+            combat_note,
+            route_note,
+        )
+
+    async def _play(self, s, cid: str, turn_id: str, calls: list, diagnostics: dict | None = None) -> dict:
+        """Фаза действий хода: всё, что меняет мир, одной транзакцией. Повествование — после её коммита
+        (``_narrate_turn``), по checkpoint, без повторного вызова инструментов."""
+        c = await s.get(Campaign, cid)
+        turn = await s.get(MasterTurn, turn_id)
+        seat = master_seat(c)
+        cfg = await s.get(AgentConfig, seat.agent_config_id)
+        place = (turn.trace or {}).get("place")
+        ctx = await open_context(s, c, self.dice_factory(), turn_id=turn_id, seat_id=seat.id, focus=place)
+        flags = optimization_flags(c.settings or {})
+        if diagnostics is not None:
+            ctx.turn_diagnostics = diagnostics
+        new = await _turn_messages(s, c, turn_id)
+        names = await _names(s, c)
+        if not new:  # все реплики пакета отменены, пока ход начинался: модель не зовём
+            turn.status, turn.finished_at = "skipped", now()
+            await s.commit()
+            return {"ctx": ctx, "messages": [], "names": names, "ids": [], "skipped": True}
+        t0 = ctx.world.enter_clock()  # отряд разделён: ход идёт по часам этой группы
+        before = {p: [h.id for h in hs] for p, hs in ctx.world.groups().items()}  # как стоял отряд до хода
+        crew = ctx.world.crew or {h for hs in before.values() for h in hs}
+        seats = {ch.seat_id for ch in ctx.world.characters.values() if ch.id in crew and ch.seat_id}
+        history = await _history(s, c, new[0].seq, seats if place is not None else None)
+        char_by_seat = {
+            ch.seat_id: ch
+            for ch in ctx.world.characters.values()
+            if ch.seat_id and ch.status in ("approved", "active", "dead")
+        }
+
+        from app.tools.resolution.requests import bind_message_actions
+
+        for message in new:
+            if message.kind == "action" and message.seat_id in char_by_seat:
+                ctx.required_actions.extend(
+                    bind_message_actions(
+                        message,
+                        char_by_seat[message.seat_id].id,
+                        include_speech_request=flags["action_refs"],
+                    )
+                )
+
+        system = await self._system_prompt(s, c, cfg, ctx)
+        convo = _render_history(history, char_by_seat, names)
+        news = _render_new(new, char_by_seat, names)
+        required = {
+            char_by_seat[m.seat_id].id
+            for m in new
+            if m.kind == "action"
+            and m.seat_id in char_by_seat
+            and char_by_seat[m.seat_id].status in ("approved", "active")
+        }
+        trace_calls: list[dict] = []
+        ctx.turn_diagnostics["calls"] = trace_calls
+        routing = await self._route_declared_actions(ctx, cid, turn_id, new, required, char_by_seat, trace_calls)
+        routed, routed_casts, opening_actors = routing.routed, routing.routed_casts, routing.opening_actors
+        opening_notes, blocked_actors = routing.opening_notes, routing.blocked_actors
+        fighting, hero_turn = routing.fighting, routing.hero_turn
+        combat_note, route_note = routing.combat_note, routing.route_note
 
         await self._status(cid, "remembering")
         memory_note = await self._memory_block(s, c, ctx, new)
