@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import ActionButton from "../components/ActionButton";
+import CanonJournal from "./CanonJournal";
 import PersonaEditor from "../components/PersonaEditor";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
 import { Field } from "../components/Form";
@@ -350,6 +351,8 @@ export default function MasterTab({
         </div>
         <PersonaEditor key={characterRev} base={`/api/campaigns/${campaignId}/master-character`} master />
       </section>
+
+      <CanonJournal campaignId={campaignId} />
     </div>
   );
 }

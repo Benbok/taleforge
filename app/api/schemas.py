@@ -115,6 +115,23 @@ class MasterPersonaOut(Out):
     updated_at: datetime | None = None
 
 
+class CanonEntryOut(Out):
+    """Запись журнала канона: что мастер сам завёл в мир по ходу игры."""
+
+    event_id: str
+    at: datetime | None = None
+    tool: str
+    kind: str
+    name: str
+    subject_id: str | None = None
+    reason: str | None = None
+    turn_id: str | None = None
+
+
+class CanonJournalOut(Out):
+    entries: list[CanonEntryOut]
+
+
 class PersonaChoiceIn(BaseModel):
     """Выбор персоны мастера: своя из профиля (persona_id), встроенная (preset) или настройки напрямую.
     style — дополнение своими словами поверх персоны."""

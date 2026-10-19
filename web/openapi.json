@@ -1599,6 +1599,100 @@
     "title": "CampaignStatusChanged",
     "type": "object"
    },
+   "CanonEntryOut": {
+    "description": "Запись журнала канона: что мастер сам завёл в мир по ходу игры.",
+    "properties": {
+     "at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "At"
+     },
+     "event_id": {
+      "title": "Event Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "subject_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Subject Id"
+     },
+     "tool": {
+      "title": "Tool",
+      "type": "string"
+     },
+     "turn_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Turn Id"
+     }
+    },
+    "required": [
+     "event_id",
+     "at",
+     "tool",
+     "kind",
+     "name",
+     "subject_id",
+     "reason",
+     "turn_id"
+    ],
+    "title": "CanonEntryOut",
+    "type": "object"
+   },
+   "CanonJournalOut": {
+    "properties": {
+     "entries": {
+      "items": {
+       "$ref": "#/components/schemas/CanonEntryOut"
+      },
+      "title": "Entries",
+      "type": "array"
+     }
+    },
+    "required": [
+     "entries"
+    ],
+    "title": "CanonJournalOut",
+    "type": "object"
+   },
    "CardHero": {
     "properties": {
      "id": {
@@ -18512,6 +18606,64 @@
      }
     ],
     "summary": "Next Track",
+    "tags": [
+     "campaigns"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/canon-journal": {
+   "get": {
+    "description": "Что мастер сам завёл в мир: находки, вещи, приметы, контейнеры, придуманные предметы. Владельцу и ведущему.",
+    "operationId": "get_canon_journal_api_campaigns__campaign_id__canon_journal_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CanonJournalOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get Canon Journal",
     "tags": [
      "campaigns"
     ]

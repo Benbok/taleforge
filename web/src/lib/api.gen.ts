@@ -1030,6 +1030,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/canon-journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Canon Journal
+         * @description Что мастер сам завёл в мир: находки, вещи, приметы, контейнеры, придуманные предметы. Владельцу и ведущему.
+         */
+        get: operations["get_canon_journal_api_campaigns__campaign_id__canon_journal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/character-options": {
         parameters: {
             query?: never;
@@ -3161,6 +3181,33 @@ export interface components {
              * @enum {string}
              */
             status: "lobby" | "active" | "paused" | "ended";
+        };
+        /**
+         * CanonEntryOut
+         * @description Запись журнала канона: что мастер сам завёл в мир по ходу игры.
+         */
+        CanonEntryOut: {
+            /** At */
+            at: string | null;
+            /** Event Id */
+            event_id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string | null;
+            /** Subject Id */
+            subject_id: string | null;
+            /** Tool */
+            tool: string;
+            /** Turn Id */
+            turn_id: string | null;
+        };
+        /** CanonJournalOut */
+        CanonJournalOut: {
+            /** Entries */
+            entries: components["schemas"]["CanonEntryOut"][];
         };
         /** CardHero */
         CardHero: {
@@ -7689,6 +7736,8 @@ export type CampaignPatchIn = components['schemas']['CampaignPatchIn'];
 export type CampaignPersonaOut = components['schemas']['CampaignPersonaOut'];
 export type CampaignPlan = components['schemas']['CampaignPlan'];
 export type CampaignStatusChanged = components['schemas']['CampaignStatusChanged'];
+export type CanonEntryOut = components['schemas']['CanonEntryOut'];
+export type CanonJournalOut = components['schemas']['CanonJournalOut'];
 export type CardHero = components['schemas']['CardHero'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
 export type CharacterIn = components['schemas']['CharacterIn'];
@@ -10057,6 +10106,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_canon_journal_api_campaigns__campaign_id__canon_journal_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanonJournalOut"];
                 };
             };
             /** @description Validation Error */

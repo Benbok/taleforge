@@ -38,3 +38,24 @@ def test_journal_lists_what_the_master_created_in_a_real_campaign(client, admin,
 
     assert "Стол пыток" in run(settings, go)
     assert hero["id"]
+
+
+def test_canon_journal_endpoint_is_for_the_owner_only(client, admin, settings):
+    import_base(settings)
+    campaign, _heads, _hero = party(client, admin)
+    cid = campaign["id"]
+
+    async def go(session):
+        ctx = await open_context(
+            session, await session.get(Campaign, cid), QueueDice([]), turn_id="t_canon2", seat_id=None
+        )
+        await ok(ctx, "create_location", {"name": "Камера", "make_current": True})
+        await ok(ctx, "add_landmark", {"name": "Решётка", "zone": "near"})
+        await session.commit()
+
+    run(settings, go)
+    got = client.get(f"/api/campaigns/{cid}/canon-journal", headers=admin)
+    assert got.status_code == 200, got.text
+    assert [e["name"] for e in got.json()["entries"]] == ["Решётка"]
+    assert got.json()["entries"][0]["kind"] == "Примета места"
+    assert client.get(f"/api/campaigns/{cid}/canon-journal").status_code in (401, 403)

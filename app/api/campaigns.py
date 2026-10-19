@@ -17,6 +17,8 @@ from app.api.schemas import (
     CampaignOut,
     CampaignPatchIn,
     CampaignPersonaOut,
+    CanonEntryOut,
+    CanonJournalOut,
     InviteCreateIn,
     InviteOut,
     InvitePreviewOut,
@@ -700,6 +702,18 @@ async def get_master_log(
     if not svc.is_admin(user):
         raise AccessDenied("журнал мастера доступен только администраторам")
     return await master_log.build(session, campaign_id, settings, max(1, min(limit, 100)))
+
+
+@router.get("/campaigns/{campaign_id}/canon-journal")
+async def get_canon_journal(campaign_id: str, user: UserDep, session: SessionDep, limit: int = 100) -> CanonJournalOut:
+    """Что мастер сам завёл в мир: находки, вещи, приметы, контейнеры, придуманные предметы. Владельцу и ведущему."""
+    from app.core.canon_journal import canon_journal
+
+    v = await _viewer(session, user, campaign_id)
+    if not (v.is_owner or v.is_master):
+        raise AccessDenied("журнал канона доступен владельцу и ведущему")
+    entries = await canon_journal(session, campaign_id, max(1, min(limit, 200)))
+    return CanonJournalOut(entries=[CanonEntryOut(**e) for e in entries])
 
 
 # --- Места и участники ---
