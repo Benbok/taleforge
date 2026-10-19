@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core import plot, plot_anchors
-from app.core.world import creature_stats
+from app.core.world import creature_hp, creature_stats
 from app.db.models import CampaignSecret, Entity, PlotAnchorBinding
 from app.tools import progress
 from app.tools.registry import ToolContext, ToolError, tool
@@ -232,7 +232,7 @@ async def develop(ctx: ToolContext, a: DevelopArgs) -> dict:
     else:
         rec = ctx.world.catalog.get(sketch["template_id"], "creature_template")
         creature_stats(rec.data)  # без блока статов существо в мир не выходит
-        hp = int((rec.data.get("hp") or {}).get("average", 1))
+        hp = creature_hp(rec.data, ctx.campaign.difficulty)
         from app.core.layout import store as layout_store
 
         home = layout_store.home_of(

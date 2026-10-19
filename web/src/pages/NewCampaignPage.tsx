@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import CustomSelect, { type SelectOption } from "../components/CustomSelect";
@@ -8,8 +8,13 @@ import Header from "../components/Header";
 import BriefForm from "../cabinet/BriefForm";
 import PersonaPicker from "../cabinet/PersonaPicker";
 import { api } from "../lib/api";
+import type { LaunchReceipt, VersionOut } from "../lib/api.gen";
+import { authoring, authorKeys, newRequestKey } from "../lib/authoring";
 import {
   createBody,
+  isAuthored,
+  latestAdventures,
+  launchBody,
   DIFFICULTY_RU,
   LEVELING_HINT,
   LEVELING_RU,
@@ -56,6 +61,7 @@ export default function NewCampaignPage() {
     queryFn: () => api<PublishedModule[]>("/api/modules"),
     enabled: admin,
   });
+  const library = useQuery({ queryKey: authorKeys.library, queryFn: authoring.library, enabled: admin });
   const personas = useQuery({ queryKey: ["personas"], queryFn: () => api<Persona[]>("/api/me/master-personas"), enabled: admin });
   const presets = useQuery({ queryKey: ["master-presets"], queryFn: () => api<MasterPreset[]>("/api/me/master-presets"), enabled: admin });
   const size = useQuery({
@@ -71,12 +77,30 @@ export default function NewCampaignPage() {
   const go = (step: number) => set({ step: Math.max(0, Math.min(WIZARD_STEPS.length - 1, step)) });
   const problems = stepProblems(draft, draft.step);
   const owner = draft.master === "owner";
+  // Готовое приключение — книга из админки или опубликованное приключение автора.
   const fromBook = draft.source === "module";
-  const book = fromBook ? modules.data?.find((m) => m.id === draft.module_id) : undefined;
+  const authored = isAuthored(draft);
+  const book = fromBook && !authored ? modules.data?.find((m) => m.id === draft.module_id) : undefined;
+  const adventure = authored ? library.data?.find((v) => v.id === draft.adventure_id) : undefined;
+  const readyTitle = book?.title ?? (adventure ? adventureTitle(adventure) : undefined);
+  // Один ключ на одни и те же настройки: повтор после обрыва вернёт ту же игру, а не создаст вторую.
+  const launchKey = useRef<{ body: string; key: string } | null>(null);
 
   async function create() {
     const bad = WIZARD_STEPS.map((_, i) => stepProblems(draft, i)).flat();
     if (bad.length) throw new Error(bad.join("; "));
+    if (authored) {
+      const options = launchBody(draft);
+      const body = JSON.stringify([draft.adventure_id, options]);
+      if (launchKey.current?.body !== body) launchKey.current = { body, key: newRequestKey() };
+      const r = await api<LaunchReceipt>(`/api/adventures/${draft.adventure_id}/games`, {
+        body: { options, request_key: launchKey.current.key },
+      });
+      saveDraft(user.id, null);
+      await qc.invalidateQueries({ queryKey: ["my-campaigns"] });
+      navigate(`/c/${r.campaign_id}/manage`);
+      return;
+    }
     const c = await api<Room>("/api/campaigns", { body: createBody(draft) });
     saveDraft(user.id, null);
     await qc.invalidateQueries({ queryKey: ["my-campaigns"] });
@@ -235,13 +259,15 @@ export default function NewCampaignPage() {
               />
             </Field>
 
-            {(modules.data?.length ?? 0) > 0 && (
+            {(modules.data?.length ?? 0) + (library.data?.length ?? 0) > 0 && (
               <Field
                 label="Сюжет"
                 hint={
-                  fromBook
-                    ? "Мастер ведёт по книге: комнаты, проверки и сокровища берутся из приключения."
-                    : "Сюжетную арку построит ИИ-архитектор по вашей анкете."
+                  authored
+                    ? "Мастер ведёт по вашему приключению: места, карты, персонажи и вступление берутся из опубликованной версии."
+                    : fromBook
+                      ? "Мастер ведёт по книге: комнаты, проверки и сокровища берутся из приключения."
+                      : "Сюжетную арку построит ИИ-архитектор по вашей анкете."
                 }
               >
                 <Segmented
@@ -259,7 +285,9 @@ export default function NewCampaignPage() {
             {fromBook ? (
               <ModulePick
                 modules={modules.data ?? []}
+                adventures={latestAdventures(library.data ?? [], draft.adventure_id)}
                 moduleId={draft.module_id}
+                adventureId={draft.adventure_id}
                 hookId={draft.module_hook}
                 onChange={(patch) => set(patch)}
               />
@@ -277,16 +305,22 @@ export default function NewCampaignPage() {
               </Field>
             )}
 
-            <Field label="Уровень сложности вызовов">
-              <Segmented
-                label="Сложность"
-                value={draft.difficulty}
-                options={Object.entries(DIFFICULTY_RU)}
-                onChange={(v) => set({ difficulty: v, players: null })}
-              />
-            </Field>
+            {authored ? (
+              <p className="text-xs text-muted">
+                Сложность вызовов задал автор: противники и проверки уже рассчитаны в приключении.
+              </p>
+            ) : (
+              <Field label="Уровень сложности вызовов">
+                <Segmented
+                  label="Сложность"
+                  value={draft.difficulty}
+                  options={Object.entries(DIFFICULTY_RU)}
+                  onChange={(v) => set({ difficulty: v, players: null })}
+                />
+              </Field>
+            )}
 
-            {fromBook ? (
+            {fromBook && !authored ? (
               <p className="text-xs text-muted">
                 Рост уровней — по вехам книги: мастер поднимает уровень героям, когда отряд проходит этап приключения.
               </p>
@@ -306,7 +340,9 @@ export default function NewCampaignPage() {
               hint={
                 book?.party_size
                   ? `Приключение рассчитано на отряд из ${book.party_size}.`
-                  : size.data
+                  : authored
+                    ? "От 1 до 6 игроков, по умолчанию 4."
+                    : size.data
                     ? `Для выбранной сложности рекомендуется ${size.data.recommended} игроков (допустимо от ${size.data.min} до ${size.data.max}).`
                     : undefined
               }
@@ -316,7 +352,7 @@ export default function NewCampaignPage() {
                 type="number"
                 min={1}
                 max={6}
-                value={draft.players ?? size.data?.recommended ?? 4}
+                value={draft.players ?? (authored ? 4 : size.data?.recommended) ?? 4}
                 onChange={(e) => set({ players: Number(e.target.value) || null })}
               />
             </Field>
@@ -546,7 +582,7 @@ export default function NewCampaignPage() {
 
             {fromBook ? (
               <p className="rounded-[10px] border border-line bg-raised/50 p-3.5 text-sm text-muted">
-                Сюжет, места и противники берутся из приключения «{book?.title ?? "…"}», анкета архитектору не нужна.
+                Сюжет, места и противники берутся из приключения «{readyTitle ?? "…"}», анкета архитектору не нужна.
                 Запретные темы мастер всё равно обойдёт.
               </p>
             ) : (
@@ -576,9 +612,11 @@ export default function NewCampaignPage() {
             <Field
               label="Публичное вступление (афиша стола)"
               hint={
-                fromBook
-                  ? "Можно оставить пустым: возьмём завязку из книги."
-                  : owner
+                authored
+                  ? "Можно оставить пустым: возьмём вступление автора приключения."
+                  : fromBook
+                    ? "Можно оставить пустым: возьмём завязку из книги."
+                    : owner
                     ? "Её увидят приглашённые игроки."
                     : "Можно оставить пустым: вводную подготовит ИИ-архитектор сюжета."
               }
@@ -611,7 +649,7 @@ export default function NewCampaignPage() {
 
             <div>
               <h3 className="font-heading text-base font-bold text-ink mb-2">Формуляр создаваемой кампании:</h3>
-              <Summary draft={draft} opts={opts.data} packs={packs.data ?? []} book={book} />
+              <Summary draft={draft} opts={opts.data} packs={packs.data ?? []} book={book} adventure={adventure} />
             </div>
           </>
         )}
@@ -701,11 +739,13 @@ function Summary({
   opts,
   packs,
   book,
+  adventure,
 }: {
   draft: CampaignDraft;
   opts: CampaignOptions;
   packs: Pack[];
   book?: PublishedModule;
+  adventure?: VersionOut;
 }) {
   const master =
     draft.master === "owner"
@@ -720,13 +760,15 @@ function Summary({
   const hook = book?.hooks.find((h) => h.id === draft.module_hook)?.title ?? book?.hooks[0]?.title;
   const rows: [string, string][] = [
     ["Название стола", draft.name || "—"],
-    book
-      ? ["Готовое приключение", `«${book.title}»` + (hook ? `, зацепка «${hook}»` : "")]
-      : ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
-    ["Сложность", DIFFICULTY_RU[draft.difficulty] ?? draft.difficulty],
+    adventure
+      ? ["Приключение автора", `«${adventureTitle(adventure)}», версия ${adventure.version}`]
+      : book
+        ? ["Готовое приключение", `«${book.title}»` + (hook ? `, зацепка «${hook}»` : "")]
+        : ["Сеттинг / Пакет", packs.find((p) => p.id === draft.pack_id)?.name ?? "Базовые правила (SRD 5.1)"],
+    ["Сложность", adventure ? "Задана автором" : (DIFFICULTY_RU[draft.difficulty] ?? draft.difficulty)],
     ["Рост уровней", book ? "По вехам книги" : (LEVELING_RU[draft.leveling] ?? draft.leveling)],
     ["Ведущий", master + (persona && draft.master !== "owner" ? ` (${persona})` : "")],
-    ...((book
+    ...((book || adventure
       ? []
       : [
           ["Длительность", b.length ? opts.brief.length[b.length] : "На усмотрение архитектора"],
@@ -746,32 +788,70 @@ function Summary({
   );
 }
 
-/** Выбор приключения из библиотеки и зацепки, с которой герои войдут в историю. */
+function adventureTitle(v: VersionOut): string {
+  return String(v.public_summary.title ?? "") || "Без названия";
+}
+
+/** Выбор готового приключения — своего из пространства автора или книги из админки — и зацепки книги. */
 function ModulePick({
   modules,
+  adventures,
   moduleId,
+  adventureId,
   hookId,
   onChange,
 }: {
   modules: PublishedModule[];
+  adventures: VersionOut[];
   moduleId: string;
+  adventureId: string;
   hookId: string;
   onChange: (patch: Partial<CampaignDraft>) => void;
 }) {
-  const book = modules.find((m) => m.id === moduleId);
-  const options: SelectOption[] = modules.map((m) => {
-    const lv = m.levels?.start ? `уровни ${m.levels.start}–${m.levels.end ?? m.levels.start}` : "";
-    const maps = m.maps ? `карт: ${m.maps}` : "без карт";
-    return { value: m.id, label: m.title, sublabel: [lv, maps].filter(Boolean).join(" · "), badge: "КНИГА", badgeTone: "accent" as const };
-  });
+  const book = adventureId ? undefined : modules.find((m) => m.id === moduleId);
+  const adventure = adventures.find((v) => v.id === adventureId);
+  // Книги и версии живут в разных таблицах: значение в списке несёт вид, чтобы id не пересеклись.
+  const options: SelectOption[] = [
+    ...adventures.map((v) => {
+      const places = Number(v.public_summary.locations) || 0;
+      // Рабочее имя проекта видит только автор: по нему он узнаёт своё приключение в списке.
+      const project = v.project_title && v.project_title !== adventureTitle(v) ? `проект «${v.project_title}»` : "";
+      return {
+        value: `adv:${v.id}`,
+        label: adventureTitle(v),
+        sublabel: [project, `версия ${v.version}`, places ? `мест: ${places}` : ""].filter(Boolean).join(" · "),
+        badge: "АВТОР",
+        badgeTone: "patina" as const,
+      };
+    }),
+    ...modules.map((m) => {
+      const lv = m.levels?.start ? `уровни ${m.levels.start}–${m.levels.end ?? m.levels.start}` : "";
+      const maps = m.maps ? `карт: ${m.maps}` : "без карт";
+      return { value: `book:${m.id}`, label: m.title, sublabel: [lv, maps].filter(Boolean).join(" · "), badge: "КНИГА", badgeTone: "accent" as const };
+    }),
+  ];
+  const value = adventure ? `adv:${adventure.id}` : book ? `book:${book.id}` : "";
+  const hint =
+    book?.summary ||
+    (adventure ? String(adventure.public_summary.tagline ?? "") : "") ||
+    "Ваши опубликованные приключения из пространства автора и книги из админки («Готовые приключения»).";
   const chosen = book?.hooks.find((h) => h.id === hookId) ?? book?.hooks[0];
   return (
     <>
-      <Field label="Приключение" hint={book?.summary || "Опубликованные приключения из админки, вкладка «Готовые приключения»."}>
+      <Field label="Приключение" hint={hint}>
         <CustomSelect
-          value={moduleId}
+          value={value}
           options={[{ value: "", label: "Выберите приключение" }, ...options]}
-          onChange={(val) => onChange({ module_id: val, module_hook: "", players: null })}
+          onChange={(val) => {
+            const cut = val.indexOf(":");
+            const [kind, id] = cut < 0 ? ["", ""] : [val.slice(0, cut), val.slice(cut + 1)];
+            onChange({
+              module_id: kind === "book" ? id : "",
+              adventure_id: kind === "adv" ? id : "",
+              module_hook: "",
+              players: null,
+            });
+          }}
           ariaLabel="Готовое приключение"
         />
       </Field>

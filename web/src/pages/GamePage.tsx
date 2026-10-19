@@ -224,8 +224,8 @@ export default function GamePage() {
       <div
         className={`tf-game-layout mx-auto grid min-h-0 w-full max-w-[115rem] flex-1 gap-3 md:gap-4 px-3 md:px-6 py-3 md:py-4 ${
           master
-            ? "md:grid-cols-[1fr_20rem] lg:grid-cols-[14.5rem_1fr_21rem]"
-            : "md:grid-cols-[1fr_16rem] lg:grid-cols-[14.5rem_1fr_16rem]"
+            ? "md:grid-cols-[1fr_20rem] lg:grid-cols-[15rem_1fr_21rem]"
+            : "md:grid-cols-[1fr_16rem] lg:grid-cols-[15rem_1fr_16rem]"
         }`}
       >
         <aside className="tf-party-sidebar hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">

@@ -271,6 +271,16 @@ def character_actor(
     )
 
 
+# Сложность стола → множитель средних хитов шаблона для существ и NPC, выходящих в мир
+HP_SCALE = {"easy": 0.75, "normal": 1.0, "hard": 1.25, "deadly": 1.5}
+
+
+def creature_hp(template: dict, difficulty: str) -> int:
+    """Максимум хитов нового существа: средние хиты шаблона с поправкой на сложность стола."""
+    base = int((template.get("hp") or {}).get("average", 1))
+    return max(1, int(base * HP_SCALE.get(difficulty, 1.0) + 0.5))
+
+
 def creature_stats(template: dict) -> dict:
     """Числа существа из шаблона (блок статов SRD). Без характеристик и КД существо в бой не выходит."""
     if not template.get("abilities") or template.get("ac") is None or not template.get("hp"):

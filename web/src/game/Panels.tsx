@@ -38,26 +38,30 @@ function CompanionRow({ companion, onOpen }: { companion: CompanionPublic; onOpe
   const hp = companion.hp != null && companion.hp_max ? `${companion.hp} / ${companion.hp_max}` : null;
   const pct = companion.hp != null && companion.hp_max ? Math.max(0, Math.min(100, (companion.hp / companion.hp_max) * 100)) : 0;
   return (
-    <div className="mt-2 ml-2 border-l border-line pl-3" data-testid="companion-row">
-      <button
-        type="button"
-        className="block max-w-full truncate text-left text-sm font-semibold text-ink hover:text-accent transition"
-        onClick={(e) => onOpen(companion.id, companion.name, e.currentTarget)}
-      >
-        ◇ {companion.name} <span className="font-mono text-[10px] text-muted">· спутник</span>
-      </button>
+    <div className="mt-1.5 rounded-[6px] border border-line/50 bg-surface/80 p-1.5" data-testid="companion-row">
+      <div className="flex items-center justify-between gap-1">
+        <button
+          type="button"
+          title={companion.name}
+          className="min-w-0 flex-1 truncate text-left text-xs font-semibold text-ink hover:text-accent transition"
+          onClick={(e) => onOpen(companion.id, companion.name, e.currentTarget)}
+        >
+          ◇ {companion.name}
+        </button>
+        <span className="font-mono text-[9px] text-muted uppercase tracking-wider shrink-0">спутник</span>
+      </div>
       {hp && (
-        <div className="mt-1.5" title={`Хиты ${hp}`}>
+        <div className="mt-1" title={`Хиты ${hp}`}>
           <div className="h-1 overflow-hidden rounded-full bg-raised">
             <div className="h-full bg-patina transition-[width] duration-500" style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-0.5 flex justify-between font-mono text-[10px] text-muted tabular-nums">
+          <div className="mt-0.5 flex justify-between font-mono text-[9px] text-muted tabular-nums">
             <span>HP</span><span>{hp}</span>
           </div>
         </div>
       )}
-      {companion.down && <span className="font-mono text-[10px] text-warn">без сознания</span>}
-      {companion.dead && <span className="font-mono text-[10px] text-bad">пал</span>}
+      {companion.down && <span className="block font-mono text-[10px] text-warn">без сознания</span>}
+      {companion.dead && <span className="block font-mono text-[10px] text-bad">пал</span>}
     </div>
   );
 }
@@ -75,15 +79,15 @@ export function PartyPanel() {
     .sort((a, b) => (a.role === "master" ? -1 : b.role === "master" ? 1 : a.position - b.position));
 
   return (
-    <section className="card p-4 sm:p-5 border border-line bg-surface flex flex-col gap-3" aria-label="Отряд">
-      <div className="flex items-center justify-between border-b border-line pb-2.5">
-        <h2 className="font-heading text-lg font-bold text-ink">Отряд экспедиции</h2>
-        <span className="font-mono text-xs text-muted">
+    <section className="card p-3 sm:p-3.5 border border-line bg-surface flex flex-col gap-2.5" aria-label="Отряд">
+      <div className="flex items-center justify-between gap-2 border-b border-line pb-2">
+        <h2 className="font-heading text-sm sm:text-base font-bold text-ink whitespace-nowrap">Отряд экспедиции</h2>
+        <span className="rounded-full bg-raised/80 px-2 py-0.5 font-mono text-[11px] text-muted shrink-0 whitespace-nowrap">
           {sorted.filter((s) => s.role === "player").length} мест
         </span>
       </div>
 
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2">
         {sorted.map((s) => {
           const h = heroBySeat.get(s.id);
           const acting = !!turn && turn.seat_id === s.id;
@@ -100,10 +104,10 @@ export function PartyPanel() {
           return (
             <li
               key={s.id}
-              className={`flex items-start gap-3 rounded-[10px] p-2 transition ${
+              className={`flex items-start gap-2.5 rounded-[8px] p-2 transition ${
                 acting
-                  ? "bg-accent/10 border border-accent shadow-[0_0_12px_rgba(201,138,75,0.15)] ring-1 ring-accent/40"
-                  : "border border-line/60 bg-raised/40 hover:border-line"
+                  ? "bg-accent/10 border border-accent shadow-[0_0_10px_rgba(201,138,75,0.15)] ring-1 ring-accent/40"
+                  : "border border-line/60 bg-raised/30 hover:border-line"
               }`}
             >
               <Avatar
@@ -111,29 +115,52 @@ export function PartyPanel() {
                 role={s.role}
                 occupant={s.occupant_type}
                 presence={s.occupant_type === "human" ? (s.presence ?? "offline") : null}
+                size={30}
               />
 
-              <span className="min-w-0 flex-1">
-                {h ? (
-                  <button
-                    type="button"
-                    className="block max-w-full truncate text-left font-heading text-base font-bold text-ink hover:text-accent transition"
-                    onClick={(e: MouseEvent<HTMLButtonElement>) => open(h.id, h.name, e.currentTarget)}
-                  >
-                    {title}
-                    {mine && <span className="text-accent font-mono text-xs ml-1">(вы)</span>}
-                    {h.dead && <span className="text-bad font-mono text-xs ml-1">· пал</span>}
-                  </button>
-                ) : (
-                  <span className="block truncate font-heading text-base font-bold text-muted">{title}</span>
-                )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-1.5">
+                  {h ? (
+                    <button
+                      type="button"
+                      title={title}
+                      className="min-w-0 flex-1 text-left font-heading text-sm font-bold text-ink hover:text-accent transition leading-snug break-words"
+                      onClick={(e: MouseEvent<HTMLButtonElement>) => open(h.id, h.name, e.currentTarget)}
+                    >
+                      {title}
+                    </button>
+                  ) : (
+                    <span className="min-w-0 flex-1 font-heading text-sm font-bold text-muted leading-snug break-words" title={title}>
+                      {title}
+                    </span>
+                  )}
+
+                  <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                    {mine && (
+                      <span className="rounded bg-accent/15 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-accent">
+                        вы
+                      </span>
+                    )}
+                    {h?.dead && (
+                      <span className="rounded bg-bad/15 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-bad">
+                        пал
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {s.role === "player" && (s.user_name || s.occupant_type === "agent") && (
-                  <span className="block font-mono text-[11px] text-muted">
-                    {s.occupant_type === "agent" && !s.stand_in ? "ИИ-игрок" : s.user_name}
-                    {h ? ` · ур. ${h.level}` : ""}
-                    {acting ? <span className="text-accent font-semibold"> · ХОДИТ СЕЙЧАС</span> : ""}
-                  </span>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 font-mono text-[11px] text-muted">
+                    <span className="truncate max-w-[110px]" title={s.user_name ?? undefined}>
+                      {s.occupant_type === "agent" && !s.stand_in ? "ИИ-игрок" : s.user_name}
+                    </span>
+                    {h && <span>· ур. {h.level}</span>}
+                    {acting && (
+                      <span className="rounded bg-accent/20 px-1 py-0.2 font-mono text-[10px] font-bold text-accent animate-pulse">
+                        ХОД
+                      </span>
+                    )}
+                  </div>
                 )}
                 <Away seat={s} />
                 {h && !h.dead && <Hp h={h} />}
@@ -143,7 +170,7 @@ export function PartyPanel() {
                 {h?.companions?.map((companion) => (
                   <CompanionRow key={companion.id} companion={companion} onOpen={open} />
                 ))}
-              </span>
+              </div>
             </li>
           );
         })}

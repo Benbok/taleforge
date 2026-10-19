@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cleanBrief, createBody, EMPTY_DRAFT, loadDraft, personaBody, saveDraft, splitThemes, stepProblems } from "./campaign";
+import {
+  cleanBrief,
+  createBody,
+  EMPTY_DRAFT,
+  latestAdventures,
+  launchBody,
+  loadDraft,
+  personaBody,
+  saveDraft,
+  splitThemes,
+  stepProblems,
+} from "./campaign";
 
 describe("создание кампании", () => {
   beforeEach(() => localStorage.clear());
@@ -72,6 +83,48 @@ describe("создание кампании", () => {
     expect(body).toMatchObject({ module_id: "mod1", module_hook: "board", pack_id: null, leveling: "milestone" });
     // выбрали приключение, а потом вернулись к своему сюжету: модуль в запрос не уходит
     expect(createBody({ ...d, source: "plot", module_id: "mod1" })).not.toHaveProperty("module_id");
+  });
+
+  it("приключение автора: настройки стола уходят в запуск версии, пустая афиша остаётся авторской", () => {
+    const d = {
+      ...EMPTY_DRAFT,
+      name: " Вечер ",
+      source: "module" as const,
+      adventure_id: "av_2",
+      players: 3,
+      master: "mp1",
+      persona: "pre:chronicler" as const,
+      review: "auto" as const,
+      excluded: "пауки",
+      leveling: "milestone" as const,
+    };
+    expect(stepProblems(d, 0)).toEqual([]);
+    expect(launchBody(d)).toEqual({
+      name: "Вечер",
+      players: 3,
+      master: { type: "agent", model_profile_id: "mp1", persona_preset: "chronicler" },
+      owner_plays: true,
+      excluded_themes: ["пауки"],
+      creation_rules: { review: "auto" },
+      leveling: "milestone",
+      public_intro: null,
+    });
+    expect(launchBody({ ...d, players: null, public_intro: " Афиша " })).toMatchObject({ players: 4, public_intro: "Афиша" });
+    expect(stepProblems({ ...d, adventure_id: "" }, 0)).toEqual(["Выберите приключение"]);
+  });
+
+  it("в списке по одному приключению на проект, но выбранная старая версия не пропадает", () => {
+    const v = (id: string, project_id: string, version: number) => ({
+      id,
+      project_id,
+      version,
+      source_revision: 1,
+      public_summary: {},
+      published_at: "2026-10-19T10:00:00Z",
+    });
+    const all = [v("av_3", "ap_1", 3), v("av_9", "ap_2", 1), v("av_2", "ap_1", 2)];
+    expect(latestAdventures(all, "").map((x) => x.id)).toEqual(["av_3", "av_9"]);
+    expect(latestAdventures(all, "av_2").map((x) => x.id)).toEqual(["av_3", "av_9", "av_2"]);
   });
 
   it("мелочи", () => {

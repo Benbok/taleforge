@@ -10,7 +10,6 @@ import Home from "./pages/Home";
 import LibraryHeroPage from "./pages/LibraryHeroPage";
 import ManagePage from "./pages/ManagePage";
 import NewCampaignPage from "./pages/NewCampaignPage";
-import NewGamePage from "./pages/NewGamePage";
 import AuthorProjectsPage from "./pages/AuthorProjectsPage";
 import AuthorProjectPage from "./pages/AuthorProjectPage";
 import AdminPage from "./pages/AdminPage";
@@ -42,7 +41,7 @@ export default function App() {
           <Route path="/worlds/:worldId" element={<WorldDetailPage />} />
           <Route path="/c/:id" element={user ? <GamePage /> : <Navigate to="/" replace />} />
           <Route path="/new" element={user ? <NewCampaignPage /> : <Navigate to="/" replace />} />
-          <Route path="/games/new" element={user ? <NewGamePage /> : <Navigate to="/" replace />} />
+          <Route path="/games/new" element={<Navigate to="/new" replace />} />
           <Route path="/author" element={user ? <AuthorProjectsPage /> : <Navigate to="/" replace />} />
           <Route path="/author/:projectId" element={user ? <AuthorProjectPage /> : <Navigate to="/" replace />} />
           <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/" replace />} />

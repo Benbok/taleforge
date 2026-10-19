@@ -1,6 +1,8 @@
 # ruff: noqa: F811 — фикстуры импортируются из соседних модулей
 """Игровой экран (этап 7, часть 2): карточки бросков в чате, карточки сущностей по уровню знаний."""
 
+import pytest
+
 from app.core import rolls
 from app.db.models import Character, Entity, Event, Knowledge, Message
 from tests.game import FIGHTER, ok, party, quiet, run
@@ -77,7 +79,8 @@ def _know(settings, ch, en, level):
     run(settings, go)
 
 
-def test_entity_card_by_knowledge_level(game_client, admin_g, settings):
+@pytest.mark.parametrize("attitude, card_type", [("hostile", "creature"), ("neutral", "npc"), ("friendly", "npc")])
+def test_entity_card_by_knowledge_level(game_client, admin_g, settings, attitude, card_type):
     c, (p1, p2), hero = party(game_client, admin_g, players=2)
     cid = c["id"]
     goblin = _spawn(
@@ -87,7 +90,7 @@ def test_entity_card_by_knowledge_level(game_client, admin_g, settings):
         name="Гоблин-разведчик",
         template_id="creature.goblin",
         description="Мелкий, в грязной коже",
-        state={"hp": 5, "hp_max": 7, "attitude": "hostile", "plot_id": "npc_secret"},
+        state={"hp": 5, "hp_max": 7, "attitude": attitude, "plot_id": "npc_secret"},
     )
     hidden = _spawn(settings, cid, kind="creature", name="Тайный культист", template_id="creature.goblin")
 
@@ -101,13 +104,20 @@ def test_entity_card_by_knowledge_level(game_client, admin_g, settings):
 
     _know(settings, hero["id"], goblin, 0)
     card = inspect(p1, goblin)
-    assert card["level"] == 0 and card["type"] == "creature" and card["description"] == "Мелкий, в грязной коже"
-    assert "stats" not in card and "condition" not in card and card["locked"] == ["наслышан", "изучил", "знает всё"]
+    assert card["level"] == 0 and card["type"] == card_type and card["description"] == "Мелкий, в грязной коже"
+    assert "condition" not in card and card["locked"] == ["наслышан", "изучил", "знает всё"]
+    assert card["stats"]["hp"] == 5 and card["stats"]["hp_max"] == 7 and card["stats"]["ac"] == 15
+    assert card["stats"]["abilities"] == {
+        "Сила": 8, "Ловкость": 14, "Телосложение": 10, "Интеллект": 10, "Мудрость": 8, "Харизма": 8,
+    }
+    assert card["stats"]["speed"] == {"walk": 30}
+    assert "resist" not in card["stats"] and "immune" not in card["stats"]
+    assert "lore" not in card and "habits" not in card and "kind_name" not in card
     assert "npc_secret" not in str(card)
 
     run(settings, lambda s: _raise(s, hero["id"], goblin, 2))
     card = inspect(p1, goblin)
-    assert card["kind_name"] and card["condition"] == "ранен" and card["attacks"] and "stats" not in card
+    assert card["kind_name"] and card["condition"] == "ранен" and card["attacks"] and card["stats"]["hp"] == 5
 
     run(settings, lambda s: _raise(s, hero["id"], goblin, 3))
     card = inspect(p1, goblin)
@@ -120,7 +130,7 @@ def test_entity_card_by_knowledge_level(game_client, admin_g, settings):
     assert "error" in inspect(admin_g, hidden)
 
     types = ok(game_client.get(f"/api/campaigns/{cid}/entity-types?ids={goblin},{hero['id']},en_nope", headers=p2))
-    assert types == {goblin: "creature", hero["id"]: "hero"}
+    assert types == {goblin: card_type, hero["id"]: "hero"}
     hero_card = inspect(p2, hero["id"])
     assert hero_card["type"] == "hero" and hero_card["hero"]["name"] == "Бран"
 

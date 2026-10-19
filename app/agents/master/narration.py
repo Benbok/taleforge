@@ -10,7 +10,7 @@ from app.agents import textcalls, voicing
 from app.agents.llm import LLMError, model_for, parser_model_for
 from app.agents.master.action_progress import public_action_notice
 from app.agents.master.common import MARKUP, render
-from app.agents.master.continuity import invented_player_dialogue, unregistered_named_actors
+from app.agents.master.continuity import invented_player_dialogue, unconfirmed_item_use, unregistered_named_actors
 from app.agents.master.helpers import _check_only, _narration_length, _render_results
 from app.agents.master.outcomes import (
     acted,
@@ -318,6 +318,18 @@ class NarrationMixin:
                 ctx,
                 tool_attempts,
                 notice="Ответ персонажа игрока ещё не получен. Его реплику должен написать сам игрок.",
+            )
+        unconfirmed = unconfirmed_item_use(text, inventory_names.values(), tool_attempts)
+        if unconfirmed:
+            audit["unconfirmed_item_use"] = unconfirmed
+            text = public_factual_fallback(
+                ctx,
+                tool_attempts,
+                notice=(
+                    "Употребление предмета не подтверждено: ничего не съедено и не выпито, здоровье не изменилось. "
+                    "Чтобы накормить кого-то, заявите действие: «даю стражнику ягоду, чтобы он её съел»."
+                ),
+                excluded_names=excluded_fallback_names,
             )
         if outcome == "failed":
             # После окончательного отказа нельзя публиковать свободную прозу модели:

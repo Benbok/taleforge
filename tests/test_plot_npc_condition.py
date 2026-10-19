@@ -40,3 +40,20 @@ def test_dying_npc_is_developed_with_one_hit_point(client, admin, settings):
     state = run(settings, lambda s: s.get(Entity, out["entity_id"])).state
     assert state["hp"] == 1 and state["hp_max"] > 1
     assert "при смерти" in plot.render(p)
+
+
+def test_developed_npc_hit_points_follow_table_difficulty(client, admin, settings):
+    p = temple_plan()
+    warden = next(n for n in p["npcs"] if n["id"] == "npc_warden")
+    warden["condition"] = "wounded"
+    cid = _campaign(client, admin, settings, plan=p)
+
+    async def develop(ctx):
+        ctx.campaign.difficulty = "deadly"
+        rec = ctx.world.catalog.get(warden["template_id"], "creature_template")
+        return rec.data["hp"]["average"], await _ok(ctx, "develop", {"sketch_id": "npc_warden", "details": "-"})
+
+    base, out = _play(settings, cid, develop)
+    state = run(settings, lambda s: s.get(Entity, out["entity_id"])).state
+    assert state["hp_max"] == int(base * 1.5 + 0.5)
+    assert state["hp"] == plot.start_hp(state["hp_max"], "wounded")

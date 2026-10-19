@@ -2,10 +2,10 @@
 
 Сервер отдаёт только то, что открыто герою зрителя в ``knowledge``:
 
-- 0 — видел: имя и внешнее описание;
+- 0 — видел: имя и внешнее описание; у существ также ХП, КБ, характеристики и скорость;
 - 1 — наслышан: добавляются слухи и повадки (описание вида из шаблона, манера поведения);
 - 2 — изучил: примерное здоровье словами, видимые атаки, уязвимости;
-- 3 — знает всё: КБ, хиты, характеристики, скорость, сопротивления — без секретов сюжета.
+- 3 — знает всё: добавляются сопротивления и иммунитеты — без секретов сюжета.
 
 Кроме уровня карточка несёт то, что герой узнал в игре: факты от мастера (``known_facts``, только этого героя)
 и «что вы слышали» — фразы из сообщений, которые видел этот игрок, где упомянута сущность. Карточка другого
@@ -258,7 +258,7 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         "locked": [LEVELS[i] for i in range(level + 1, 4)],  # что ещё можно узнать
     }
     rec = None
-    if e.template_id and level >= 1:
+    if e.template_id and (level >= 1 or e.kind == "creature"):
         catalog = await campaign_catalog(session, viewer.campaign)
         rec = catalog.find(e.template_id)
     data = rec.data if rec else {}
@@ -278,7 +278,7 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         vul = data.get("damage_vulnerabilities") or []
         if vul:
             card["vulnerable"] = [DAMAGE_RU.get(x, x) for x in vul]
-    if e.kind == "creature" and level >= 3 and not memory:
+    if e.kind == "creature" and not memory:
         stats: dict[str, Any] = {"ac": data.get("ac"), "hp": st.get("hp"), "hp_max": st.get("hp_max")}
         abil = data.get("abilities")
         if isinstance(abil, dict) and abil:
@@ -286,7 +286,7 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         if data.get("speed"):
             stats["speed"] = data["speed"]
         for key, word in (("damage_resistances", "resist"), ("damage_immunities", "immune")):
-            if data.get(key):
+            if level >= 3 and data.get(key):
                 stats[word] = [DAMAGE_RU.get(x, x) for x in data[key]]
         card["stats"] = stats
     if e.kind == "object" and not memory:

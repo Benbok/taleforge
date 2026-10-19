@@ -1,5 +1,6 @@
 // Кампания вне игры: создание по шагам, кабинет владельца, настройки мастера. Подписи вариантов приходят
 // с сервера (/api/campaign-options), здесь только типы и то, что собирает запросы.
+import type { InstanceOptions, VersionOut } from "./api.gen";
 
 export interface Seat {
   id: string;
@@ -222,6 +223,8 @@ export interface CampaignDraft {
   /** Откуда сюжет: своя анкета для архитектора или готовое приключение из библиотеки. */
   source: "plot" | "module";
   module_id: string;
+  /** Опубликованное приключение автора (id версии) — вместо книги; запускается как снимок версии. */
+  adventure_id: string;
   /** Зацепка книги для вступления; пусто — первая из книги. */
   module_hook: string;
   pack_id: string;
@@ -248,6 +251,7 @@ export const EMPTY_DRAFT: CampaignDraft = {
   name: "",
   source: "plot",
   module_id: "",
+  adventure_id: "",
   module_hook: "",
   pack_id: "",
   difficulty: "normal",
@@ -309,20 +313,28 @@ export function cleanBrief(b: Brief): Brief {
   return out;
 }
 
+function masterBody(d: CampaignDraft): Record<string, unknown> {
+  if (d.master === "owner") return { type: "owner" };
+  const persona = personaBody(d.persona);
+  return {
+    type: "agent",
+    ...(d.master ? { model_profile_id: d.master } : {}),
+    ...(persona.preset ? { persona_preset: persona.preset } : {}),
+    ...(persona.persona_id ? { persona_id: persona.persona_id } : {}),
+    ...(d.master_style ? { style: d.master_style } : {}),
+    ...(d.master_character ? { character: d.master_character } : {}),
+    ...(d.master_preset_id ? { preset_id: d.master_preset_id } : {}),
+  };
+}
+
+/** Выбрано приключение автора: кампания создаётся запуском его опубликованной версии. */
+export function isAuthored(d: CampaignDraft): boolean {
+  return d.source === "module" && !!d.adventure_id;
+}
+
 export function createBody(d: CampaignDraft): Record<string, unknown> {
   const owner = d.master === "owner";
-  const persona = personaBody(d.persona);
-  const master = owner
-    ? { type: "owner" }
-    : {
-        type: "agent",
-        ...(d.master ? { model_profile_id: d.master } : {}),
-        ...(persona.preset ? { persona_preset: persona.preset } : {}),
-        ...(persona.persona_id ? { persona_id: persona.persona_id } : {}),
-        ...(d.master_style ? { style: d.master_style } : {}),
-        ...(d.master_character ? { character: d.master_character } : {}),
-        ...(d.master_preset_id ? { preset_id: d.master_preset_id } : {}),
-      };
+  const master = masterBody(d);
   const module = d.source === "module" && d.module_id;
   return {
     name: d.name.trim(),
@@ -341,9 +353,32 @@ export function createBody(d: CampaignDraft): Record<string, unknown> {
   };
 }
 
+/** Настройки стола для запуска версии приключения автора. Сюжет, мир и сложность — из версии. */
+export function launchBody(d: CampaignDraft): InstanceOptions {
+  const owner = d.master === "owner";
+  return {
+    name: d.name.trim(),
+    players: d.players ?? 4,
+    master: masterBody(d) as InstanceOptions["master"],
+    owner_plays: !owner && d.owner_plays,
+    excluded_themes: splitThemes(d.excluded),
+    creation_rules: { review: d.review },
+    leveling: d.leveling,
+    public_intro: d.public_intro.trim() || null, // пусто — вступление автора
+  };
+}
+
+/** По одной строке на проект — последняя версия; выбранная раньше старая версия остаётся в списке. */
+export function latestAdventures(versions: VersionOut[], selectedId: string): VersionOut[] {
+  const seen = new Set<string>();
+  const latest = versions.filter((v) => !seen.has(v.project_id) && seen.add(v.project_id));
+  const selected = versions.find((v) => v.id === selectedId);
+  return selected && !latest.includes(selected) ? [...latest, selected] : latest;
+}
+
 /** Что мешает перейти дальше с шага: пустой список — можно. */
 export function stepProblems(d: CampaignDraft, step: number): string[] {
   if (step === 0 && !d.name.trim()) return ["Назовите кампанию"];
-  if (step === 0 && d.source === "module" && !d.module_id) return ["Выберите приключение"];
+  if (step === 0 && d.source === "module" && !d.module_id && !d.adventure_id) return ["Выберите приключение"];
   return [];
 }

@@ -162,7 +162,7 @@ async def authorize_actor_slot(ctx: ToolContext, slot_id: str, args: SpawnArgs) 
     ids={"creature_template_id": "templates:creature_template", "location_id": "places"},
 )
 async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
-    from app.core.world import creature_stats
+    from app.core.world import creature_hp, creature_stats
 
     rec = ctx.world.catalog.get(a.creature_template_id, "creature_template")
     creature_stats(rec.data)  # без блока статов существо в сцену не выходит
@@ -210,7 +210,7 @@ async def spawn_entity(ctx: ToolContext, a: SpawnArgs) -> dict:
                 f"число существ, героев: {b['party']}). Выставьте меньше или слабее. "
                 + _budget_hint(ctx, rec, xp, a.count, place)
             )
-    hp = int((rec.data.get("hp") or {}).get("average", 1))
+    hp = creature_hp(rec.data, ctx.campaign.difficulty)
     cells: list = [None] * a.count
     if a.cell is not None:
         start = grid.to_rel(ctx.world, place, a.cell)

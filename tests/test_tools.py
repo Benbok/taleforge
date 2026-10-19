@@ -151,6 +151,32 @@ def test_potion_and_budget(game):
     assert not big["ok"] and "бюджет" in big["error"]
 
 
+def test_spawned_creature_hit_points_follow_table_difficulty(game):
+    """Средние хиты шаблона (гоблин — 7) масштабируются сложностью стола при появлении существа."""
+    settings, cid, _ = game
+
+    async def fn(ctx):
+        hp = {}
+        for mode in ("easy", "normal", "hard", "deadly"):
+            ctx.campaign.difficulty = mode
+            sp = await call(
+                ctx,
+                "spawn_entity",
+                {"creature_template_id": "creature.goblin", "name": f"Гоблин {mode}", "attitude": "friendly"},
+            )
+            assert sp["ok"], sp
+            st = ctx.world.entities[sp["result"]["spawned"][0]["id"]].state
+            hp[mode] = (st["hp"], st["hp_max"], sp["result"]["hp"])
+        return hp
+
+    assert play(settings, cid, [], fn) == {
+        "easy": (5, 5, 5),
+        "normal": (7, 7, 7),
+        "hard": (9, 9, 9),
+        "deadly": (11, 11, 11),
+    }
+
+
 def test_spawn_uses_existing_table_difficulty_and_rejects_oversized_encounter(game):
     """Бюджет одной и той же встречи зависит от настройки стола; отклонённые враги не появляются."""
     settings, cid, _ = game

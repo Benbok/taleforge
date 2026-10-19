@@ -11,6 +11,33 @@ _SPEAKS = re.compile(
 )
 
 
+_CONSUMES = re.compile(
+    r"(?<!\w)(?:съе[лдс]\w*|проглат\w*|проглот\w*|выпи(?:л|ва)\w*|отправ(?:ля|ил)\w*\s+в\s+рот|жуёт|жует|"
+    r"прожёвыва\w+)",
+    re.IGNORECASE,
+)
+_ITEM_USE_TOOLS = {"use_item", "pass_item", "give_item"}
+
+
+def unconfirmed_item_use(text: str, item_names, attempts) -> list[str]:
+    """Предложения, где съедают или выпивают предмет из снаряжения героев без успешного use_item в этом ходе.
+
+    Описывать употребление можно только после результата инструмента: без него эффект не записан в мир,
+    а игрок решит, что стражник вылечен. Проверка узкая: нужны и слово употребления, и название предмета."""
+    if any(a.get("tool") in _ITEM_USE_TOOLS and (a.get("result") or {}).get("ok") for a in attempts or []):
+        return []
+    stems = {w[:-1] if len(w) > 4 else w for name in item_names for w in re.findall(r"\w{4,}", str(name).casefold())}
+    if not stems:
+        return []
+    plain = re.sub(r"\[\[[^|\]]+\|([^\]]+)\]\]", r"\1", text)
+    out = []
+    for sentence in re.split(r"(?<=[.!?…])\s+", plain):
+        low = sentence.casefold()
+        if _CONSUMES.search(low) and any(re.search(r"(?<!\w)" + re.escape(s), low) for s in stems):
+            out.append(sentence.strip())
+    return out
+
+
 def invented_player_dialogue(text: str, players: dict[str, str], participants: dict[str, str], news: str) -> list[str]:
     """Explicit attributed dialogue needs that player's submitted line.
 

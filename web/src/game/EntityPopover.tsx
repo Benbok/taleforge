@@ -10,7 +10,9 @@ import { signed } from "./hero";
 import { toast } from "../stores/toasts";
 import { computePopoverPosition } from "./popoverPosition";
 
-const STAT_NAMES: Record<string, string> = { ac: "КБ", hp: "Хиты", hp_max: "из", speed: "Скорость" };
+const SPEED_NAMES: Record<string, string> = {
+  walk: "ходьба", fly: "полёт", swim: "плавание", climb: "лазание", burrow: "рытьё",
+};
 
 /** Карточка знаний рядом со словом (на телефоне — снизу во всю ширину). Показывает только открытое герою,
  *  закрытые уровни — строкой «ещё можно узнать». Действие подставляет текст в поле ввода, отправляет игрок. */
@@ -121,14 +123,7 @@ export default function EntityPopover() {
           {card.condition && <p>Состояние: {card.condition}</p>}
           {card.attacks && card.attacks.length > 0 && <p>Оружие: {card.attacks.join(", ")}</p>}
           {card.vulnerable && <p>Уязвим: {card.vulnerable.join(", ")}</p>}
-          {card.stats && (
-            <p className="text-xs">
-              {Object.entries(card.stats)
-                .filter(([k, v]) => v != null && typeof v !== "object" && STAT_NAMES[k])
-                .map(([k, v]) => `${STAT_NAMES[k]} ${v}`)
-                .join(" · ")}
-            </p>
-          )}
+          {card.stats && <EntityStats stats={card.stats} />}
           <Learned facts={card.facts} heard={card.heard} />
           {card.locked && card.locked.length > 0 && (
             <p className="text-xs text-muted">Скрыто: ещё можно узнать ({card.locked.join(", ")})</p>
@@ -152,6 +147,35 @@ export default function EntityPopover() {
         </div>
       )}
       </div>
+    </div>
+  );
+}
+
+function EntityStats({ stats }: { stats: Record<string, unknown> }) {
+  const abilities = stats.abilities && typeof stats.abilities === "object" ? Object.entries(stats.abilities) : [];
+  const speed = typeof stats.speed === "number"
+    ? `${stats.speed} фт.`
+    : stats.speed && typeof stats.speed === "object"
+      ? Object.entries(stats.speed)
+          .filter(([key, value]) => SPEED_NAMES[key] && typeof value === "number")
+          .map(([key, value]) => `${SPEED_NAMES[key]} ${value} фт.`).join(" · ")
+      : null;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-line bg-raised/50 p-3 text-xs">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 font-semibold">
+        {typeof stats.hp === "number" && (
+          <span>ХП {stats.hp}{typeof stats.hp_max === "number" ? ` / ${stats.hp_max}` : ""}</span>
+        )}
+        {typeof stats.ac === "number" && <span>КБ {stats.ac}</span>}
+      </div>
+      {abilities.length > 0 && (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+          {abilities.filter(([, value]) => typeof value === "number").map(([name, value]) => (
+            <span key={name}>{name} {value}</span>
+          ))}
+        </div>
+      )}
+      {speed && <p className="text-muted">Скорость: {speed}</p>}
     </div>
   );
 }

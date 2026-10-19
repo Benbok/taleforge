@@ -31,6 +31,24 @@ it("осмотр по ссылке сохраняет ID выбранного п
   expect(useDraft.getState().quick).toEqual([{ verb: "inspect", target_id: "pyre" }]);
 });
 
+it.each(["npc", "creature"] as const)("показывает ХП, КБ, характеристики и виды скорости в карточке %s", (type) => {
+  useGame.setState({ cards: { guard: {
+    id: "guard", type, name: "Стражник", level: 0,
+    stats: { hp: 0, hp_max: 11, ac: 16, speed: { walk: 30, swim: 15 }, abilities: {
+      Сила: 13, Ловкость: 12, Телосложение: 12, Интеллект: 10, Мудрость: 11, Харизма: 10,
+    } },
+  } } });
+  useInspector.setState({ id: "guard", label: "Стражник", anchor: null });
+  render(<EntityPopover />);
+  expect(screen.getByText("ХП 0 / 11")).toBeTruthy();
+  expect(screen.getByText("КБ 16")).toBeTruthy();
+  for (const label of ["Сила 13", "Ловкость 12", "Телосложение 12", "Интеллект 10", "Мудрость 11", "Харизма 10"]) {
+    expect(screen.getByText(label)).toBeTruthy();
+  }
+  expect(screen.getByText(/ходьба 30/)).toBeTruthy();
+  expect(screen.getByText(/плавание 15/)).toBeTruthy();
+});
+
 describe("контейнер в карточке", () => {
   it("показывает состояние и шлёт те же намерения, что фраза в чате", () => {
     useGame.setState({ actions: ["chat.play"] });
