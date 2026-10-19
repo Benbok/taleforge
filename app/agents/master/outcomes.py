@@ -250,6 +250,10 @@ def failed_item_action(
         tool = entry.get("tool")
         res = entry.get("result") or {}
         failure = res.get("failure") or {}
+        if failure.get("code") == "no_matching_action":
+            # Вызов отклонён до исполнения: игрок такого не заявлял, предмет не трогали. Невыполненную часть
+            # самой заявки назовёт отмена (cancelled_actions), а не эта сводка.
+            continue
         if tool == "use_item" and failure.get("code") == "item_use_unsupported" and ctx is not None:
             args = entry.get("args") or {}
             ref_data = args.get("action_ref") or entry.get("ref")
