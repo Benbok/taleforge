@@ -327,3 +327,11 @@ def test_taking_a_new_find_binds_to_keep_found_item_not_auto_success(game):
         assert refused.value.code == "no_matching_action"
 
     play(settings, campaign_id, [], check)
+
+
+def test_naming_an_npc_binds_to_conversation_verbs():
+    from app.agents.master.action_binding import is_action_compatible as ok
+
+    assert ok("update_entity", {"entity_id": "en", "name": "Гаррет"}, {"verb": "talk"})
+    assert ok("update_entity", {"entity_id": "en", "name": "Гаррет"}, {"verb": "custom"})
+    assert not ok("update_entity", {"entity_id": "en", "name": "Гаррет"}, {"verb": "attack"})

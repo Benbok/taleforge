@@ -271,13 +271,20 @@ class UpdateEntityArgs(BaseModel):
     elevation: Elevation | None = Field(None, description=ELEVATION_HINT)
     cover: Cover | None = Field(None, description=COVER_HINT)
     fled: bool | None = Field(None, description="существо ушло со сцены")
+    name: str | None = Field(
+        None,
+        min_length=2,
+        max_length=60,
+        description="собственное имя существа: оно назвалось или ты придумал ему имя на вопрос игрока; один раз, "
+        "только существам вне готового модуля; имя становится каноном кампании",
+    )
 
 
 @tool(
     "update_entity",
-    "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки. Хиты и статы так "
-    "не меняются. Новое отношение требует успешной социальной roll_check с target_id этой сущности "
-    "либо attitude_basis_event_id подтверждённого события этого хода.",
+    "Меняет нарративные поля сущности: отношение, настроение, зону и сторону на схеме, пометки, собственное имя "
+    "(безымянному NPC, который назвался игроку). Хиты и статы так не меняются. Новое отношение требует успешной "
+    "социальной roll_check с target_id этой сущности либо attitude_basis_event_id подтверждённого события этого хода.",
     UpdateEntityArgs,
     ids={"entity_id": "entities"},
     closes=False,
@@ -293,14 +300,21 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
 
         if object_feature(ctx.world, en) is not None:
             raise ToolError(f"«{en.name}» стоит деталью эскиза: двигай её в эскизе (sketch_place), а не зоной")
+    new_name = _checked_name(ctx, en, a.name) if a.name is not None else None
     inverse = [
         {"table": "entities", "id": en.id, "field": "state", "before": copy.deepcopy(en.state)},
         {"table": "entities", "id": en.id, "field": "zone", "before": en.zone},
         {"table": "entities", "id": en.id, "field": "location_id", "before": en.location_id},
     ]
+    if new_name is not None:
+        inverse.append({"table": "entities", "id": en.id, "field": "name", "before": en.name})
     was = {x.id for x in areas_at(ctx.world, en.id)} if en.kind == "creature" else set()
     st = dict(en.state or {})
     changes = {}
+    if new_name is not None:
+        st["former_name"], st["given_name"] = en.name, True
+        changes["former_name"] = en.name
+        en.name = new_name
     for k in ("attitude", "mood", "note", "bearing", "elevation", "cover"):
         v = getattr(a, k)
         if v is not None:
@@ -324,6 +338,24 @@ async def update_entity(ctx: ToolContext, a: UpdateEntityArgs) -> dict:
         if hit:
             out["areas"] = hit
     return out
+
+
+def _checked_name(ctx: ToolContext, entity: Entity, name: str) -> str:
+    """Имя даётся существу один раз и не повторяет имя другого участника сцены или героя."""
+    from app.core import adventure
+
+    name = " ".join(name.split())
+    if entity.kind != "creature":
+        raise ToolError("собственное имя получают только существа", code="name_not_creature", category="rule_denial")
+    if adventure.is_module(ctx.campaign):
+        raise ToolError("в готовом модуле имена задаёт книга", code="name_in_module", category="rule_denial")
+    if (entity.state or {}).get("given_name"):
+        raise ToolError("у существа уже есть имя: оно не меняется", code="name_already_given", category="rule_denial")
+    taken = {e.name.casefold() for e in ctx.world.entities.values() if e.id != entity.id}
+    taken |= {c.name.casefold() for c in ctx.world.characters.values()}
+    if name.casefold() in taken:
+        raise ToolError(f"имя «{name}» уже занято: выбери другое", code="name_taken", category="invalid_arguments")
+    return name
 
 
 def _attitude_ground(ctx: ToolContext, entity: Entity, args: UpdateEntityArgs) -> None:

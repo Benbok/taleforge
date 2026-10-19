@@ -479,3 +479,25 @@ def test_order_to_eat_held_berries_is_parsed_without_the_model(client, admin, se
         assert intents.feed_command("Съешь это, стражник", ctx.world, hero) is None
 
     play(settings, cid, scenario)
+
+
+def test_master_can_give_an_unnamed_npc_a_name_once(client, admin, settings):
+    # плейтест 19.10: «как тебя зовут на самом деле?» — инструмента дать NPC имя не было, мастер отмалчивался
+    from app.tools.registry import execute
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        old = ctx.world.entities[npc].name
+        done = await ok(ctx, "update_entity", {"entity_id": npc, "name": "Гаррет Вэнс"})
+        assert done["entity"] == "Гаррет Вэнс" and done["former_name"] == old
+        assert ctx.world.entities[npc].name == "Гаррет Вэнс"
+        again = await execute(ctx, "update_entity", {"entity_id": npc, "name": "Иван"})
+        assert not again["ok"] and again["failure"]["code"] == "name_already_given"
+        hero_name = ctx.world.characters[hid].name
+        other = await ok(ctx, "spawn_entity", {"creature_template_id": "creature.commoner", "name": "Торговец"})
+        clash = await execute(ctx, "update_entity", {"entity_id": other["spawned"][0]["id"], "name": hero_name})
+        assert not clash["ok"] and clash["failure"]["code"] == "name_taken"
+
+    play(settings, cid, scenario)
