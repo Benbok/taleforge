@@ -109,6 +109,17 @@ def is_action_compatible(name: str, args: dict, act: dict) -> bool:
         return True
 
     if name == "use_item":
+        if verb == "give":
+            # «даю ягоду раненому» — накормить получателя тем же предметом; применить на себя — не «отдать»
+            return (
+                bool(call_target)
+                and call_target == action_target
+                and act.get("instrument_id")
+                in (
+                    None,
+                    args.get("inventory_id"),
+                )
+            )
         if verb not in {"use_item", "interact"}:
             return False
         if act.get("instrument_id") and args.get("inventory_id") and act["instrument_id"] != args["inventory_id"]:

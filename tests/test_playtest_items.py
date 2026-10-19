@@ -398,3 +398,18 @@ def test_in_combat_handing_an_item_still_needs_own_movement(client, admin, setti
         assert positions.pos_of(ctx.world, hid).cell == (0, 0)
 
     play(settings, cid, scenario)
+
+
+def test_out_of_combat_hero_walks_up_to_feed_a_goodberry(client, admin, settings):
+    from app.tools.master.items import _add_to_inventory
+
+    cid, hid, _ = setup(client, admin, settings)
+
+    async def scenario(ctx):
+        _inv, npc = await far_npc(ctx, hid)
+        berry, _ = await _add_to_inventory(ctx, ctx.world.characters[hid], "item.goodberry", None, 3)
+        await ok(ctx, "use_item", {"character_id": hid, "inventory_id": berry, "target_id": npc})
+        hero, guard = positions.pos_of(ctx.world, hid), positions.pos_of(ctx.world, npc)
+        assert positions.distance(hero, guard) <= 5 and hero.cell != (0, 0)
+
+    play(settings, cid, scenario)

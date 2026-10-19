@@ -94,10 +94,11 @@ def test_goodberry_cast_does_not_heal_npc_and_feeding_requires_reach(wizard_game
         cast = await call(ctx, "cast_spell", {"caster_id": druid, "spell_id": "spell.goodberry", "target_ids": [npc]})
         assert cast["ok"] and ctx.world.actor(npc).hp.current == 1
         inventory_id = cast["result"]["inventory_id"]
+        # в бою к получателю подходят своим движением; вне боя друид подходит сам
+        ctx.world.scene.mode, ctx.world.scene.turn_order = "combat", [{"id": druid}, {"id": npc}]
         too_far = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id, "target_id": npc})
         assert not too_far["ok"] and "вплотную" in too_far["error"]
-        moved = await call(ctx, "update_entity", {"entity_id": npc, "zone": "melee"})
-        assert moved["ok"], moved
+        ctx.world.scene.mode, ctx.world.scene.turn_order = "free", []
         used = await call(ctx, "use_item", {"character_id": druid, "inventory_id": inventory_id, "target_id": npc})
         assert used["ok"] and used["result"]["remaining_qty"] == 9
         assert ctx.world.actor(npc).hp.current == 2

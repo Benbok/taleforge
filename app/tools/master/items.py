@@ -74,14 +74,16 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         )
     tgt = ctx.world.actor(a.target_id or ch.id)
     _alive(tgt, "Цель")
+    approach: list[dict] = []
     if it.item_template_id == "item.goodberry" and tgt.id != ch.id:
-        if (
-            ctx.world.place_of(ch) != ctx.world.actor_place(tgt.id)
-            or ctx.world.distance_ft(ctx.world.actor(ch.id), tgt) > 5
-            or grid.wall_between(ctx.world, ch.id, tgt.id)
-        ):
-            raise ToolError("чтобы дать ягоду, сначала подойдите к получателю вплотную")
+        refusal = "чтобы дать ягоду, сначала подойдите к получателю вплотную"
+        if ctx.world.place_of(ch) != ctx.world.actor_place(tgt.id):
+            raise ToolError(refusal)
+        approach = _step_beside(ctx, ch, tgt.id, refusal)
+        if ctx.world.distance_ft(ctx.world.actor(ch.id), tgt) > 5 or grid.wall_between(ctx.world, ch.id, tgt.id):
+            raise ToolError(refusal)
     inv = [
+        *approach,
         snapshot(tgt),
         {
             "table": "inventory",
@@ -913,11 +915,28 @@ async def pass_item(ctx: ToolContext, a: PassItemArgs) -> dict:
     return result
 
 
+def _step_beside(ctx: ToolContext, ch: Character, target_id: str, refusal: str) -> list[dict]:
+    """Дотянуться до существа рядом: вне боя герой сам подходит к свободной соседней клетке (обратная запись — в
+    том же событии), в бою подходят своим движением — отказ ``refusal``."""
+    from app.core import combat, steps
+
+    w = ctx.world
+    if grid.distance(grid.pos_of(w, ch.id), grid.pos_of(w, target_id)) <= 5:
+        return []
+    fighting = combat.in_combat(ctx) and combat.fights(w.scene, w.characters, w.entities, ch.id)
+    place = w.place_of(ch)
+    route = None if fighting else steps.beside(w, place, steps.cell_of(w, ch.id), [steps.cell_of(w, target_id)], ch.id)
+    if not route:
+        raise ToolError(refusal)
+    inverse = [{"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}]
+    grid.set_cell(w, ch.id, route[-1])
+    ctx.changed.add(ch.id)
+    return inverse
+
+
 def _npc_item_access(ctx: ToolContext, ch: Character, npc: Entity, found: frozenset[str]) -> list[dict]:
     """Передать вещь NPC или взять у него можно только вплотную. Вне боя герой подходит сам, как к контейнеру
     (``_approach``): клетка меняется, обратная запись — в том же событии. В бою подходят своим движением."""
-    from app.core import combat, steps
-
     if npc.campaign_id != ctx.campaign.id or npc.kind != "creature":
         raise ToolError("получатель должен быть NPC или существом текущей кампании")
     if npc.location_id != ctx.world.place_of(ch) or is_nested(npc):
@@ -925,21 +944,7 @@ def _npc_item_access(ctx: ToolContext, ch: Character, npc: Entity, found: frozen
     if concealed(npc, ctx.world.entities, found):
         raise ToolError("NPC скрыт: сначала его находят")
     w = ctx.world
-    fighting = combat.in_combat(ctx) and combat.fights(w.scene, w.characters, w.entities, ch.id)
-    inverse: list[dict] = []
-    if grid.distance(grid.pos_of(w, ch.id), grid.pos_of(w, npc.id)) > 5:
-        route = (
-            None
-            if fighting
-            else steps.beside(w, npc.location_id, steps.cell_of(w, ch.id), [steps.cell_of(w, npc.id)], ch.id)
-        )
-        if not route:
-            raise ToolError("до NPC не дотянуться: сначала подойдите вплотную")
-        inverse.append(
-            {"table": "scenes", "id": ctx.campaign.id, "field": "state", "before": copy.deepcopy(w.scene.state)}
-        )
-        grid.set_cell(w, ch.id, route[-1])
-        ctx.changed.add(ch.id)
+    inverse = _step_beside(ctx, ch, npc.id, "до NPC не дотянуться: сначала подойдите вплотную")
     if grid.wall_between(w, ch.id, npc.id) or grid.pos_of(w, npc.id).cover == "total":
         raise ToolError("до NPC не дотянуться: путь закрыт")
     problem, _ = reach.approach_route(w, ch.id, npc, fighting=True)

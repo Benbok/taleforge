@@ -261,3 +261,15 @@ def test_tool_schema_accepts_metadata_without_handler_field(game):
         assert ctx.current_binding.ref == refs[0]
 
     play(settings, campaign_id, [15], check)
+
+
+def test_feeding_the_recipient_resolves_a_give_part():
+    # плейтест 19.10: «даю ягоду раненому стражнику» — игрок хотел, чтобы тот съел ягоду; use_item на получателя
+    # отклонялся как «нет подходящей заявки», и стражник оставался без лечения
+    from app.agents.master.action_binding import is_action_compatible
+
+    give = {"verb": "give", "target_id": "npc", "instrument_id": "berry"}
+    assert is_action_compatible("use_item", {"inventory_id": "berry", "target_id": "npc"}, give)
+    assert not is_action_compatible("use_item", {"inventory_id": "berry", "target_id": "other"}, give)
+    assert not is_action_compatible("use_item", {"inventory_id": "rope", "target_id": "npc"}, give)
+    assert not is_action_compatible("use_item", {"inventory_id": "berry"}, give)  # съесть самому — не «отдать»
