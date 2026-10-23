@@ -17,6 +17,8 @@ import { attack } from "./quick";
 import Features from "./Features";
 import Spellbook from "./Spellbook";
 import Gear from "./Gear";
+import UniversalHeroCard from '../builder/UniversalHeroCard';
+import { universalCard } from '../lib/universal';
 
 type Tab =
   | "stats"
@@ -430,6 +432,11 @@ export default function HeroWindow() {
   }, [open, hide]);
 
   if (!open || !sheet) return null;
+  const universal = universalCard(sheet);
+  if (universal) return <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4'>
+    <div role='dialog' aria-label='Лист героя' className='w-full max-w-3xl max-h-[90dvh] overflow-y-auto rounded-xl bg-surface'>
+      <button className='btn m-3' onClick={hide}>Закрыть</button><UniversalHeroCard card={universal} />
+    </div></div>;
   const ready = !!sheet.derived;
   return (
     <div

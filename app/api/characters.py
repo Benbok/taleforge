@@ -18,10 +18,12 @@ from app.core import characters as svc
 from app.core import equipment as equipment_core
 from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
+from app.core.universal.state import game_card_of
 from app.core.views import CharacterView
 from app.core.world import load_world
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem
 from app.gateway.events import envelope
+from app.rules.universal.contracts import UniversalGameCard
 
 router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
 
@@ -55,6 +57,8 @@ class ReviewIn(BaseModel):
 
 
 async def _view(session, viewer: Viewer, ch: Character) -> dict:
+    if (ch.sheet or {}).get('rules_version') == 'universal.v1':
+        return game_card_of(ch)
     out = await _sheet_view(session, viewer, ch)
     cat = await campaign_catalog(session, viewer.campaign)
     if "inventory" in out:
@@ -125,7 +129,7 @@ async def character_preview(
 @router.get("/characters", response_model_exclude_unset=True)
 async def list_characters(
     campaign_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> list[CharacterView]:
+) -> list[CharacterView | UniversalGameCard]:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     rows = (await session.scalars(select(Character).where(Character.campaign_id == campaign_id))).all()
     out = []
@@ -153,7 +157,7 @@ async def create_character(
 @router.get("/characters/{character_id}", response_model_exclude_unset=True)
 async def get_character(
     campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> CharacterView:
+) -> CharacterView | UniversalGameCard:
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     return await _view(session, v, await svc.get_character(session, v, character_id))
 
@@ -389,10 +393,15 @@ async def claim(
 @router.post("/characters/from-library/{library_id}", status_code=201, response_model_exclude_unset=True)
 async def from_library(
     campaign_id: str, library_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> CharacterView:
+) -> CharacterView | UniversalGameCard:
     """Копия героя из профиля — черновиком в кампании. Дальше его можно поправить и отправить мастеру."""
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     lc = await lib.get_mine(session, user, library_id)
+    if (lc.sheet or {}).get('rules_version') == 'universal.v1':
+        from app.core.universal.creation import copy_library_hero
+        ch = await copy_library_hero(session, v, lc)
+        await session.commit()
+        return game_card_of(ch)
     source = await lib.Worlds(session).of(lc)
     target = await campaign_catalog(session, v.campaign)
     rules = await svc.creation_rules(session, v.campaign)

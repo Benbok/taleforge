@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import Header from "../components/Header";
 import Builder from "../builder/Builder";
+import UniversalHeroCard from '../builder/UniversalHeroCard';
+import { universalCard } from '../lib/universal';
 import PersonaEditor from "../components/PersonaEditor";
 import { api } from "../lib/api";
 import { HERO_STATUS_RU, type BuilderOptions, type CampaignHero, type LibraryHero } from "../lib/builder";
@@ -45,7 +47,7 @@ export default function CampaignHeroPage() {
   const opts = useQuery({
     queryKey: ["options", id],
     queryFn: () => api<BuilderOptions>(`/api/campaigns/${id}/character-options`),
-    enabled: player,
+    enabled: player && list.isSuccess && !universalCard(mine) && !universalCard(full.data),
   });
 
   const refresh = () =>
@@ -95,6 +97,8 @@ export default function CampaignHeroPage() {
         </ActionButton>
       </section>
     );
+  } else if (universalCard(hero)) {
+    body = <UniversalHeroCard card={universalCard(hero)!} />;
   } else if (hero && hero.status === "submitted") {
     body = <Waiting id={id} hero={hero} onRetry={refresh} />;
   } else if (hero && ["approved", "active"].includes(hero.status)) {
@@ -319,7 +323,7 @@ function Choose({
               sub={[
                 h.origin_name,
                 h.class_name,
-                h.errors.length ? "черновик" : "готов",
+                h.errors?.length ? "черновик" : "готов",
                 // собран для другого мира: чего нет в этом мире, игрок выберет заново в конструкторе
                 (h.pack_id ?? null) !== packId ? `из мира «${h.world_name}», часть выбора придётся заменить` : null,
               ]}
@@ -331,6 +335,7 @@ function Choose({
                   const copy = await api<CampaignHero>(`/api/campaigns/${id}/characters/from-library/${h.id}`, {
                     method: "POST",
                   });
+                  if (universalCard(copy)) return onDone();
                   if (!copy.errors?.length) {
                     const r = await api<{ errors: string[] }>(`/api/campaigns/${id}/characters/${copy.id}/submit`, {
                       method: "POST",

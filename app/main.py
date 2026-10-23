@@ -34,9 +34,9 @@ from app.api import adventures as adventures_api
 from app.api import audio as audio_api
 from app.api import authoring as authoring_api
 from app.api import generation as generation_api
+from app.api import hero_creation as hero_creation_api
 from app.api import modules as modules_api
 from app.api import sfx as sfx_api
-from app.api import hero_creation as hero_creation_api
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core import audio

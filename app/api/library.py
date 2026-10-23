@@ -7,11 +7,10 @@ from pydantic import Field
 
 from app.api.characters import CharacterIn, PreviewIn
 from app.api.deps import SessionDep, UserDep
-from app.core import characters as chars
 from app.core import library as svc
-from app.core.universal.state import card_of, hero_card
 from app.core.campaigns import Conflict
 from app.core.universal.editing import HeroEdit, apply_hero_edit, confirm_edit, propose_hero_edit
+from app.core.universal.state import card_of, hero_card
 from app.rules.universal.contracts import ClosedModel, HeroCard
 
 router = APIRouter(prefix="/api/me", tags=["profile"])

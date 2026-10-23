@@ -1,7 +1,7 @@
 // Проверка на этапе сборки: ответы сервера подходят под типы, которыми их читает клиент. Формы ответов — из
 // контракта сервера (lib/api.gen.ts); если сервер переименует или уберёт поле, которое ждёт клиент, `tsc` упадёт
 // на строке нужного маршрута. Новый тип ответа в клиенте — новая строка здесь.
-import type { paths } from "./api.gen";
+import type { paths, UniversalGameCard } from "./api.gen";
 import type { CampaignHero } from "./builder";
 import type { Room } from "./campaign";
 import type { CampaignCard, EquipmentResponse, HeroSheet, InvitePreview, User } from "./types";
@@ -32,11 +32,11 @@ export const roomFits: Room = room;
 declare const taken: Res<"/api/campaigns/{campaign_id}/seats/take", "post">;
 export const takenFits: Room = taken;
 declare const heroes: Res<"/api/campaigns/{campaign_id}/characters", "get">;
-export const heroesFits: CampaignHero[] = heroes;
+export const heroesFits: (CampaignHero | UniversalGameCard)[] = heroes;
 declare const hero: Res<"/api/campaigns/{campaign_id}/characters/{character_id}", "get">;
-export const heroFits: CampaignHero = hero;
+export const heroFits: CampaignHero | UniversalGameCard = hero;
 declare const sheet: Res<"/api/campaigns/{campaign_id}/characters/{character_id}", "get">;
 // книгу заклинаний сервер пока не описывает (views.py, SheetParts.spellbook): её форма — в lib/spells.ts
-export const sheetFits: Partial<Omit<HeroSheet, "spellbook">> = sheet;
+export const sheetFits: Partial<Omit<HeroSheet, "spellbook">> | UniversalGameCard = sheet;
 declare const equipment: Res<"/api/campaigns/{campaign_id}/characters/{character_id}/equipment", "put">;
 export const equipmentFits: EquipmentResponse = equipment;

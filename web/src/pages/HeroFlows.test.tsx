@@ -118,35 +118,21 @@ it("opens an incompatible library copy with its saved data and submits the same 
   });
 });
 
-it("creates a library hero outside a campaign, updates it after navigation and restores it on reopening", async () => {
-  let stored: LibraryHero | null = null;
+it("resumes a persisted hero dialogue using reads only", async () => {
   const methods: string[] = [];
-  vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
-    if (path === "/api/me/worlds") return response([{ id: null, name: "Базовые правила" }]);
-    if (path === "/api/me/character-options") return response(opts);
-    if (path === "/api/me/character-preview") return response({ errors: [], derived: null, inventory: [] });
-    if (path === "/api/me/characters/lib1" && init.method === "GET") return response(stored);
-    if ((path === "/api/me/characters" && init.method === "POST") ||
-        (path === "/api/me/characters/lib1" && init.method === "PUT")) {
-      const body = JSON.parse(String(init.body));
-      methods.push(init.method);
-      stored = { ...library, name: body.name, sheet: body };
-      return response(stored, init.method === "POST" ? 201 : 200);
-    }
+  const draft = { id: 'hd1', revision: 2, status: 'questions', campaign_id: null,
+    description: { name: 'Бран', identity: 'Странник' }, proposal: null,
+    transcript: [{ role: 'assistant', content: 'Что помогает вам в путешествиях?' }] };
+  vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+    methods.push(init.method!);
+    if (path === '/api/hero-creation/dialogues') return response([draft]);
+    if (path === '/api/hero-creation/dialogues/hd1') return response(draft);
     throw new Error(`Unexpected request: ${init.method} ${path}`);
   });
-  const page = open("/heroes/new");
-  const input = await screen.findByPlaceholderText("Введите имя или прозвище персонажа");
-  fireEvent.change(input, { target: { value: "Бран" } });
-  fireEvent.click(screen.getByRole("button", { name: "Сохранить в библиотеку" }));
-  await screen.findByRole("heading", { name: "Бран", level: 1 });
-  fireEvent.change(screen.getByPlaceholderText("Введите имя или прозвище персонажа"), { target: { value: "Бран Седой" } });
-  fireEvent.click(screen.getByRole("button", { name: "Сохранить в библиотеку" }));
-  await screen.findByRole("heading", { name: "Бран Седой", level: 1 });
-  expect(methods).toEqual(["POST", "PUT"]);
-  page.unmount();
-  open("/heroes/lib1");
-  expect((await screen.findByPlaceholderText("Введите имя или прозвище персонажа") as HTMLInputElement).value).toBe("Бран Седой");
+  open('/heroes/new');
+  fireEvent.click(await screen.findByRole('button', { name: 'Продолжить: Бран' }));
+  expect(await screen.findByText('Что помогает вам в путешествиях?', { exact: false })).toBeTruthy();
+  expect(methods).toEqual(['GET', 'GET']);
 });
 
 it("submits a ready library copy directly without opening an empty builder", async () => {

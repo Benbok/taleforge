@@ -1,6 +1,51 @@
 {
  "components": {
   "schemas": {
+   "AbilityScores": {
+    "additionalProperties": false,
+    "properties": {
+     "cha": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Cha",
+      "type": "string"
+     },
+     "con": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Con",
+      "type": "string"
+     },
+     "dex": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Dex",
+      "type": "string"
+     },
+     "int": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Int",
+      "type": "string"
+     },
+     "str": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Str",
+      "type": "string"
+     },
+     "wis": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Wis",
+      "type": "string"
+     }
+    },
+    "required": [
+     "str",
+     "dex",
+     "con",
+     "int",
+     "wis",
+     "cha"
+    ],
+    "title": "AbilityScores",
+    "type": "object"
+   },
    "AcceptStaleRequest": {
     "additionalProperties": false,
     "properties": {
@@ -30,6 +75,86 @@
      "request_key"
     ],
     "title": "AcceptStaleRequest",
+    "type": "object"
+   },
+   "ActorDerived": {
+    "additionalProperties": false,
+    "properties": {
+     "ac": {
+      "pattern": "^-?(0|[1-9][0-9]*)$",
+      "title": "Ac",
+      "type": "string"
+     },
+     "energy_max": {
+      "additionalProperties": {
+       "pattern": "^(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Energy Max",
+      "type": "object"
+     },
+     "hp_max": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Hp Max",
+      "type": "string"
+     },
+     "modifiers": {
+      "additionalProperties": {
+       "pattern": "^-?(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Modifiers",
+      "type": "object"
+     }
+    },
+    "required": [
+     "hp_max",
+     "energy_max",
+     "ac",
+     "modifiers"
+    ],
+    "title": "ActorDerived",
+    "type": "object"
+   },
+   "AnswerIn": {
+    "additionalProperties": false,
+    "properties": {
+     "answer": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Answer",
+      "type": "string"
+     },
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "expected_revision",
+     "answer"
+    ],
+    "title": "AnswerIn",
     "type": "object"
    },
    "AudioAttribution": {
@@ -2378,6 +2503,28 @@
     "title": "CharacterView",
     "type": "object"
    },
+   "ChatEditIn": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "message": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+     }
+    },
+    "required": [
+     "message",
+     "expected_revision"
+    ],
+    "title": "ChatEditIn",
+    "type": "object"
+   },
    "ChatMessage": {
     "additionalProperties": false,
     "description": "Сообщение чата. ``data`` — свободная форма: карточка броска, голосовая запись, место части отряда.",
@@ -2829,6 +2976,41 @@
     "title": "CompanionPublic",
     "type": "object"
    },
+   "CreationIn": {
+    "additionalProperties": false,
+    "properties": {
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id"
+     },
+     "description": {
+      "$ref": "#/components/schemas/HeroDescription"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     }
+    },
+    "required": [
+     "description"
+    ],
+    "title": "CreationIn",
+    "type": "object"
+   },
    "CreationRulesIn": {
     "description": "Настройки создания персонажа (раздел 5.1).",
     "properties": {
@@ -3062,6 +3244,26 @@
      }
     },
     "title": "DraftPatch",
+    "type": "object"
+   },
+   "EditIn": {
+    "additionalProperties": false,
+    "properties": {
+     "edit": {
+      "$ref": "#/components/schemas/HeroEdit"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key",
+     "edit"
+    ],
+    "title": "EditIn",
     "type": "object"
    },
    "EditMap": {
@@ -5730,6 +5932,204 @@
      "kind"
     ],
     "title": "HeroAttack",
+    "type": "object"
+   },
+   "HeroBudget": {
+    "additionalProperties": false,
+    "properties": {
+     "growth_allocations": {
+      "additionalProperties": {
+       "pattern": "^(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Growth Allocations",
+      "type": "object"
+     },
+     "growth_total": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Growth Total",
+      "type": "string"
+     },
+     "initial_scores": {
+      "$ref": "#/components/schemas/AbilityScores"
+     },
+     "unspent": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Unspent",
+      "type": "string"
+     }
+    },
+    "required": [
+     "initial_scores"
+    ],
+    "title": "HeroBudget",
+    "type": "object"
+   },
+   "HeroCard": {
+    "additionalProperties": false,
+    "properties": {
+     "derived": {
+      "$ref": "#/components/schemas/ActorDerived"
+     },
+     "editable": {
+      "default": true,
+      "title": "Editable",
+      "type": "boolean"
+     },
+     "energies": {
+      "additionalProperties": {
+       "pattern": "^(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Energies",
+      "type": "object"
+     },
+     "equipment": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Equipment",
+      "type": "array"
+     },
+     "hp": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Hp",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "learned_abilities": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Learned Abilities",
+      "type": "array"
+     },
+     "level": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Level",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "sheet": {
+      "$ref": "#/components/schemas/UniversalSheet"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "revision",
+     "level",
+     "sheet",
+     "derived",
+     "hp",
+     "energies"
+    ],
+    "title": "HeroCard",
+    "type": "object"
+   },
+   "HeroDescription": {
+    "additionalProperties": false,
+    "properties": {
+     "appearance": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "Appearance",
+      "type": "string"
+     },
+     "capabilities": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "Capabilities",
+      "type": "string"
+     },
+     "identity": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Identity",
+      "type": "string"
+     },
+     "name": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Name",
+      "type": "string"
+     },
+     "personality": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "Personality",
+      "type": "string"
+     }
+    },
+    "required": [
+     "identity"
+    ],
+    "title": "HeroDescription",
+    "type": "object"
+   },
+   "HeroEdit": {
+    "additionalProperties": false,
+    "properties": {
+     "base_scores": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AbilityScores"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "description_patch": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "title": "Description Patch",
+      "type": "object"
+     },
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "expected_revision"
+    ],
+    "title": "HeroEdit",
     "type": "object"
    },
    "HeroEffect": {
@@ -12649,6 +13049,22 @@
     "title": "RemoveObject",
     "type": "object"
    },
+   "RequestKey": {
+    "additionalProperties": false,
+    "properties": {
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "RequestKey",
+    "type": "object"
+   },
    "RestEnded": {
     "additionalProperties": false,
     "properties": {
@@ -12887,6 +13303,21 @@
      "approve"
     ],
     "title": "ReviewIn",
+    "type": "object"
+   },
+   "RevisionIn": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "expected_revision"
+    ],
+    "title": "RevisionIn",
     "type": "object"
    },
    "ScaleItem": {
@@ -14454,6 +14885,171 @@
      "disengage"
     ],
     "title": "TurnEconomy",
+    "type": "object"
+   },
+   "UniversalGameCard": {
+    "additionalProperties": false,
+    "properties": {
+     "derived": {
+      "$ref": "#/components/schemas/ActorDerived"
+     },
+     "editable": {
+      "const": false,
+      "default": false,
+      "title": "Editable",
+      "type": "boolean"
+     },
+     "energies": {
+      "additionalProperties": {
+       "pattern": "^(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Energies",
+      "type": "object"
+     },
+     "equipment": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Equipment",
+      "type": "array"
+     },
+     "hp": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Hp",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "learned_abilities": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Learned Abilities",
+      "type": "array"
+     },
+     "level": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Level",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "seat_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seat Id"
+     },
+     "sheet": {
+      "$ref": "#/components/schemas/UniversalSheet"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "revision",
+     "level",
+     "sheet",
+     "derived",
+     "hp",
+     "energies",
+     "seat_id",
+     "status"
+    ],
+    "title": "UniversalGameCard",
+    "type": "object"
+   },
+   "UniversalSheet": {
+    "additionalProperties": false,
+    "properties": {
+     "abilities": {
+      "$ref": "#/components/schemas/AbilityScores"
+     },
+     "budget": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HeroBudget"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "description": {
+      "$ref": "#/components/schemas/HeroDescription"
+     },
+     "level": {
+      "default": "1",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Level",
+      "type": "string"
+     },
+     "rules_version": {
+      "const": "universal.v1",
+      "default": "universal.v1",
+      "title": "Rules Version",
+      "type": "string"
+     },
+     "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+     },
+     "trained": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Trained",
+      "type": "array"
+     },
+     "unspent_points": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Unspent Points",
+      "type": "string"
+     },
+     "xp": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Xp",
+      "type": "string"
+     }
+    },
+    "required": [
+     "abilities",
+     "description"
+    ],
+    "title": "UniversalSheet",
     "type": "object"
    },
    "UpdateItem": {
@@ -18846,7 +19442,14 @@
        "application/json": {
         "schema": {
          "items": {
-          "$ref": "#/components/schemas/CharacterView"
+          "anyOf": [
+           {
+            "$ref": "#/components/schemas/CharacterView"
+           },
+           {
+            "$ref": "#/components/schemas/UniversalGameCard"
+           }
+          ]
          },
          "title": "Response List Characters Api Campaigns  Campaign Id  Characters Get",
          "type": "array"
@@ -18993,7 +19596,15 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/CharacterView"
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/CharacterView"
+          },
+          {
+           "$ref": "#/components/schemas/UniversalGameCard"
+          }
+         ],
+         "title": "Response From Library Api Campaigns  Campaign Id  Characters From Library  Library Id  Post"
         }
        }
       },
@@ -19065,7 +19676,15 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/CharacterView"
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/CharacterView"
+          },
+          {
+           "$ref": "#/components/schemas/UniversalGameCard"
+          }
+         ],
+         "title": "Response Get Character Api Campaigns  Campaign Id  Characters  Character Id  Get"
         }
        }
       },
@@ -22961,6 +23580,250 @@
     "summary": "Health"
    }
   },
+  "/api/hero-creation/dialogues": {
+   "get": {
+    "operationId": "pending_api_hero_creation_dialogues_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response Pending Api Hero Creation Dialogues Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Pending",
+    "tags": [
+     "hero-workshop"
+    ]
+   },
+   "post": {
+    "operationId": "start_api_hero_creation_dialogues_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CreationIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Start Api Hero Creation Dialogues Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Start",
+    "tags": [
+     "hero-workshop"
+    ]
+   }
+  },
+  "/api/hero-creation/dialogues/{dialogue_id}": {
+   "get": {
+    "operationId": "get_api_hero_creation_dialogues__dialogue_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dialogue_id",
+      "required": true,
+      "schema": {
+       "title": "Dialogue Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Api Hero Creation Dialogues  Dialogue Id  Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get",
+    "tags": [
+     "hero-workshop"
+    ]
+   }
+  },
+  "/api/hero-creation/dialogues/{dialogue_id}/answers": {
+   "post": {
+    "operationId": "answer_api_hero_creation_dialogues__dialogue_id__answers_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dialogue_id",
+      "required": true,
+      "schema": {
+       "title": "Dialogue Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnswerIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Answer Api Hero Creation Dialogues  Dialogue Id  Answers Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Answer",
+    "tags": [
+     "hero-workshop"
+    ]
+   }
+  },
+  "/api/hero-creation/dialogues/{dialogue_id}/confirm": {
+   "post": {
+    "operationId": "confirm_api_hero_creation_dialogues__dialogue_id__confirm_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dialogue_id",
+      "required": true,
+      "schema": {
+       "title": "Dialogue Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RevisionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Confirm Api Hero Creation Dialogues  Dialogue Id  Confirm Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Confirm",
+    "tags": [
+     "hero-workshop"
+    ]
+   }
+  },
   "/api/invites/{token}": {
    "get": {
     "description": "Без входа: что за кампания и есть ли места. Скрытых данных здесь нет.",
@@ -23242,8 +24105,7 @@
        "application/json": {
         "schema": {
          "items": {
-          "additionalProperties": true,
-          "type": "object"
+          "$ref": "#/components/schemas/HeroCard"
          },
          "title": "Response List Heroes Api Me Characters Get",
          "type": "array"
@@ -23368,9 +24230,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Hero Api Me Characters  Library Id  Get",
-         "type": "object"
+         "$ref": "#/components/schemas/HeroCard"
         }
        }
       },
@@ -23393,6 +24253,61 @@
      }
     ],
     "summary": "Get Hero",
+    "tags": [
+     "profile"
+    ]
+   },
+   "patch": {
+    "operationId": "edit_hero_api_me_characters__library_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_id",
+      "required": true,
+      "schema": {
+       "title": "Library Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EditIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HeroCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Edit Hero",
     "tags": [
      "profile"
     ]
@@ -23450,6 +24365,131 @@
      }
     ],
     "summary": "Update Hero",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/me/characters/{library_id}/edit-proposals": {
+   "post": {
+    "operationId": "propose_api_me_characters__library_id__edit_proposals_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_id",
+      "required": true,
+      "schema": {
+       "title": "Library Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ChatEditIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Propose Api Me Characters  Library Id  Edit Proposals Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Propose",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/me/characters/{library_id}/edit-proposals/{proposal_id}/confirm": {
+   "post": {
+    "operationId": "confirm_api_me_characters__library_id__edit_proposals__proposal_id__confirm_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_id",
+      "required": true,
+      "schema": {
+       "title": "Library Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "proposal_id",
+      "required": true,
+      "schema": {
+       "title": "Proposal Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RequestKey"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HeroCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Confirm",
     "tags": [
      "profile"
     ]

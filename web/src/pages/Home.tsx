@@ -560,7 +560,7 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
         <div className="card p-12 text-center text-muted">
           <p className="text-lg">У вас пока нет созданных героев.</p>
           <p className="mt-1 text-sm">
-            Соберите первого персонажа, настроив его происхождение, класс и снаряжение.
+            Опишите первого героя и обсудите его замысел с мастером.
           </p>
           <Link to="/heroes/new" className="btn btn-primary mt-4 min-h-11 inline-flex">
             Создать первого героя
@@ -592,7 +592,7 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
                       .filter(Boolean)
                       .join(" · ") || "Черновик"}
                   </span>
-                  {h.errors.length > 0 && (
+                  {h.errors?.length > 0 && (
                     <span className="mt-1 text-xs text-bad">
                       {h.errors.length} незаполненных параметров
                     </span>

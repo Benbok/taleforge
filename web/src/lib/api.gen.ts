@@ -2100,6 +2100,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/hero-creation/dialogues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending */
+        get: operations["pending_api_hero_creation_dialogues_get"];
+        put?: never;
+        /** Start */
+        post: operations["start_api_hero_creation_dialogues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hero-creation/dialogues/{dialogue_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get */
+        get: operations["get_api_hero_creation_dialogues__dialogue_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hero-creation/dialogues/{dialogue_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer */
+        post: operations["answer_api_hero_creation_dialogues__dialogue_id__answers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hero-creation/dialogues/{dialogue_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm */
+        post: operations["confirm_api_hero_creation_dialogues__dialogue_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invites/{token}": {
         parameters: {
             query?: never;
@@ -2246,6 +2315,41 @@ export interface paths {
          * @description Удаляется только герой профиля; его копии в кампаниях остаются.
          */
         delete: operations["delete_hero_api_me_characters__library_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit Hero */
+        patch: operations["edit_hero_api_me_characters__library_id__patch"];
+        trace?: never;
+    };
+    "/api/me/characters/{library_id}/edit-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose */
+        post: operations["propose_api_me_characters__library_id__edit_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/characters/{library_id}/edit-proposals/{proposal_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm */
+        post: operations["confirm_api_me_characters__library_id__edit_proposals__proposal_id__confirm_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2670,6 +2774,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AbilityScores */
+        AbilityScores: {
+            /** Cha */
+            cha: string;
+            /** Con */
+            con: string;
+            /** Dex */
+            dex: string;
+            /** Int */
+            int: string;
+            /** Str */
+            str: string;
+            /** Wis */
+            wis: string;
+        };
         /** AcceptStaleRequest */
         AcceptStaleRequest: {
             /** Expected Revision */
@@ -2678,6 +2797,28 @@ export interface components {
             refs: string[];
             /** Request Key */
             request_key: string;
+        };
+        /** ActorDerived */
+        ActorDerived: {
+            /** Ac */
+            ac: string;
+            /** Energy Max */
+            energy_max: {
+                [key: string]: string;
+            };
+            /** Hp Max */
+            hp_max: string;
+            /** Modifiers */
+            modifiers: {
+                [key: string]: string;
+            };
+        };
+        /** AnswerIn */
+        AnswerIn: {
+            /** Answer */
+            answer: string;
+            /** Expected Revision */
+            expected_revision: number;
         };
         /** AudioAttribution */
         AudioAttribution: {
@@ -3410,6 +3551,13 @@ export interface components {
             /** Wild Shape Forms */
             wild_shape_forms?: components["schemas"]["WildShapeForm"][];
         };
+        /** ChatEditIn */
+        ChatEditIn: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Message */
+            message: string;
+        };
         /**
          * ChatMessage
          * @description Сообщение чата. ``data`` — свободная форма: карточка броска, голосовая запись, место части отряда.
@@ -3572,6 +3720,14 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** CreationIn */
+        CreationIn: {
+            /** Campaign Id */
+            campaign_id?: string | null;
+            description: components["schemas"]["HeroDescription"];
+            /** Target Id */
+            target_id?: string | null;
+        };
         /**
          * CreationRulesIn
          * @description Настройки создания персонажа (раздел 5.1).
@@ -3648,6 +3804,12 @@ export interface components {
         DraftPatch: {
             /** Operations */
             operations?: (components["schemas"]["SetLore"] | components["schemas"]["SetPlotText"] | components["schemas"]["UpdatePlotObject"] | components["schemas"]["UpdateItem"] | components["schemas"]["SetPlacement"] | components["schemas"]["UpsertRoute"] | components["schemas"]["RemoveObject"] | components["schemas"]["EditMap"])[];
+        };
+        /** EditIn */
+        EditIn: {
+            edit: components["schemas"]["HeroEdit"];
+            /** Request Key */
+            request_key: string;
         };
         /** EditMap */
         EditMap: {
@@ -4540,6 +4702,91 @@ export interface components {
             reach_ft?: number;
         } & {
             [key: string]: unknown;
+        };
+        /** HeroBudget */
+        HeroBudget: {
+            /** Growth Allocations */
+            growth_allocations?: {
+                [key: string]: string;
+            };
+            /**
+             * Growth Total
+             * @default 0
+             */
+            growth_total?: string;
+            initial_scores: components["schemas"]["AbilityScores"];
+            /**
+             * Unspent
+             * @default 0
+             */
+            unspent?: string;
+        };
+        /** HeroCard */
+        HeroCard: {
+            derived: components["schemas"]["ActorDerived"];
+            /**
+             * Editable
+             * @default true
+             */
+            editable?: boolean;
+            /** Energies */
+            energies: {
+                [key: string]: string;
+            };
+            /** Equipment */
+            equipment?: {
+                [key: string]: unknown;
+            }[];
+            /** Hp */
+            hp: string;
+            /** Id */
+            id: string;
+            /** Learned Abilities */
+            learned_abilities?: {
+                [key: string]: unknown;
+            }[];
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Revision */
+            revision: number;
+            sheet: components["schemas"]["UniversalSheet"];
+        };
+        /** HeroDescription */
+        HeroDescription: {
+            /**
+             * Appearance
+             * @default
+             */
+            appearance?: string;
+            /**
+             * Capabilities
+             * @default
+             */
+            capabilities?: string;
+            /** Identity */
+            identity: string;
+            /**
+             * Name
+             * @default
+             */
+            name?: string;
+            /**
+             * Personality
+             * @default
+             */
+            personality?: string;
+        };
+        /** HeroEdit */
+        HeroEdit: {
+            base_scores?: components["schemas"]["AbilityScores"] | null;
+            /** Description Patch */
+            description_patch?: {
+                [key: string]: string;
+            };
+            /** Expected Revision */
+            expected_revision: number;
         };
         /** HeroEffect */
         HeroEffect: {
@@ -6847,6 +7094,11 @@ export interface components {
             /** Ref */
             ref: string;
         };
+        /** RequestKey */
+        RequestKey: {
+            /** Request Key */
+            request_key: string;
+        };
         /** RestEnded */
         RestEnded: {
             /** Vote Id */
@@ -6920,6 +7172,11 @@ export interface components {
              * @default
              */
             comment?: string;
+        };
+        /** RevisionIn */
+        RevisionIn: {
+            /** Expected Revision */
+            expected_revision: number;
         };
         /** ScaleItem */
         ScaleItem: {
@@ -7367,6 +7624,78 @@ export interface components {
             /** Move Left Ft */
             move_left_ft: number;
         };
+        /** UniversalGameCard */
+        UniversalGameCard: {
+            derived: components["schemas"]["ActorDerived"];
+            /**
+             * Editable
+             * @default false
+             * @constant
+             */
+            editable?: false;
+            /** Energies */
+            energies: {
+                [key: string]: string;
+            };
+            /** Equipment */
+            equipment?: {
+                [key: string]: unknown;
+            }[];
+            /** Hp */
+            hp: string;
+            /** Id */
+            id: string;
+            /** Learned Abilities */
+            learned_abilities?: {
+                [key: string]: unknown;
+            }[];
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Revision */
+            revision: number;
+            /** Seat Id */
+            seat_id: string | null;
+            sheet: components["schemas"]["UniversalSheet"];
+            /** Status */
+            status: string;
+        };
+        /** UniversalSheet */
+        UniversalSheet: {
+            abilities: components["schemas"]["AbilityScores"];
+            budget?: components["schemas"]["HeroBudget"] | null;
+            description: components["schemas"]["HeroDescription"];
+            /**
+             * Level
+             * @default 1
+             */
+            level?: string;
+            /**
+             * Rules Version
+             * @default universal.v1
+             * @constant
+             */
+            rules_version?: "universal.v1";
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version?: 1;
+            /** Trained */
+            trained?: string[];
+            /**
+             * Unspent Points
+             * @default 0
+             */
+            unspent_points?: string;
+            /**
+             * Xp
+             * @default 0
+             */
+            xp?: string;
+        };
         /** UpdateItem */
         UpdateItem: {
             /** Fields */
@@ -7715,7 +8044,10 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type AbilityScores = components['schemas']['AbilityScores'];
 export type AcceptStaleRequest = components['schemas']['AcceptStaleRequest'];
+export type ActorDerived = components['schemas']['ActorDerived'];
+export type AnswerIn = components['schemas']['AnswerIn'];
 export type AudioAttribution = components['schemas']['AudioAttribution'];
 export type AudioSfxReady = components['schemas']['AudioSfxReady'];
 export type AudioState = components['schemas']['AudioState'];
@@ -7747,16 +8079,19 @@ export type CharacterReviewed = components['schemas']['CharacterReviewed'];
 export type CharacterSheet = components['schemas']['CharacterSheet'];
 export type CharacterUpdated = components['schemas']['CharacterUpdated'];
 export type CharacterView = components['schemas']['CharacterView'];
+export type ChatEditIn = components['schemas']['ChatEditIn'];
 export type ChatMessage = components['schemas']['ChatMessage'];
 export type ClassFeature = components['schemas']['ClassFeature'];
 export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
 export type ClassItem = components['schemas']['ClassItem'];
 export type ClockItem = components['schemas']['ClockItem'];
 export type CompanionPublic = components['schemas']['CompanionPublic'];
+export type CreationIn = components['schemas']['CreationIn'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type CreatureItem = components['schemas']['CreatureItem'];
 export type Derived = components['schemas']['Derived'];
 export type DraftPatch = components['schemas']['DraftPatch'];
+export type EditIn = components['schemas']['EditIn'];
 export type EditMap = components['schemas']['EditMap'];
 export type EditProposal = components['schemas']['EditProposal'];
 export type EditRequest = components['schemas']['EditRequest'];
@@ -7824,6 +8159,10 @@ export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
 export type Grid = components['schemas']['Grid'];
 export type HTTPValidationError = components['schemas']['HTTPValidationError'];
 export type HeroAttack = components['schemas']['HeroAttack'];
+export type HeroBudget = components['schemas']['HeroBudget'];
+export type HeroCard = components['schemas']['HeroCard'];
+export type HeroDescription = components['schemas']['HeroDescription'];
+export type HeroEdit = components['schemas']['HeroEdit'];
 export type HeroEffect = components['schemas']['HeroEffect'];
 export type HeroPublic = components['schemas']['HeroPublic'];
 export type HeroSheet = components['schemas']['HeroSheet'];
@@ -7945,11 +8284,13 @@ export type ReactionClosed = components['schemas']['ReactionClosed'];
 export type ReactionPrompt = components['schemas']['ReactionPrompt'];
 export type RegisterByInviteIn = components['schemas']['RegisterByInviteIn'];
 export type RemoveObject = components['schemas']['RemoveObject'];
+export type RequestKey = components['schemas']['RequestKey'];
 export type RestEnded = components['schemas']['RestEnded'];
 export type RestHero = components['schemas']['RestHero'];
 export type RestVote = components['schemas']['RestVote'];
 export type ResultRef = components['schemas']['ResultRef'];
 export type ReviewIn = components['schemas']['ReviewIn'];
+export type RevisionIn = components['schemas']['RevisionIn'];
 export type ScaleItem = components['schemas']['ScaleItem'];
 export type Scene = components['schemas']['Scene'];
 export type SceneContext = components['schemas']['SceneContext'];
@@ -7983,6 +8324,8 @@ export type TokenOut = components['schemas']['TokenOut'];
 export type Turn = components['schemas']['Turn'];
 export type TurnChanged = components['schemas']['TurnChanged'];
 export type TurnEconomy = components['schemas']['TurnEconomy'];
+export type UniversalGameCard = components['schemas']['UniversalGameCard'];
+export type UniversalSheet = components['schemas']['UniversalSheet'];
 export type UpdateItem = components['schemas']['UpdateItem'];
 export type UpdatePlotObject = components['schemas']['UpdatePlotObject'];
 export type UpsertRoute = components['schemas']['UpsertRoute'];
@@ -10245,7 +10588,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CharacterView"][];
+                    "application/json": (components["schemas"]["CharacterView"] | components["schemas"]["UniversalGameCard"])[];
                 };
             };
             /** @description Validation Error */
@@ -10316,7 +10659,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CharacterView"];
+                    "application/json": components["schemas"]["CharacterView"] | components["schemas"]["UniversalGameCard"];
                 };
             };
             /** @description Validation Error */
@@ -10350,7 +10693,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CharacterView"];
+                    "application/json": components["schemas"]["CharacterView"] | components["schemas"]["UniversalGameCard"];
                 };
             };
             /** @description Validation Error */
@@ -12542,6 +12885,170 @@ export interface operations {
             };
         };
     };
+    pending_api_hero_creation_dialogues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    start_api_hero_creation_dialogues_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_api_hero_creation_dialogues__dialogue_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dialogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_api_hero_creation_dialogues__dialogue_id__answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dialogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_hero_creation_dialogues__dialogue_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dialogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     preview_invite_api_invites__token__get: {
         parameters: {
             query?: never;
@@ -12740,9 +13247,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["HeroCard"][];
                 };
             };
         };
@@ -12799,9 +13304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["HeroCard"];
                 };
             };
             /** @description Validation Error */
@@ -12869,6 +13372,114 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_hero_api_me_characters__library_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeroCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_api_me_characters__library_id__edit_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_me_characters__library_id__edit_proposals__proposal_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestKey"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeroCard"];
+                };
             };
             /** @description Validation Error */
             422: {

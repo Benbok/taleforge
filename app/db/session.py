@@ -24,7 +24,9 @@ async def verify_universal_schema(engine: AsyncEngine) -> None:
             command.upgrade(config, "head")
             return
         if not {"hero_dialogues", "hero_edit_receipts", "library_characters"} <= tables:
-            raise RuntimeError("Expected a universal database; configure a NEW DATABASE_URL and run alembic upgrade head")
+            raise RuntimeError(
+                "Expected a universal database; configure a NEW DATABASE_URL and run alembic upgrade head"
+            )
         columns = {c["name"] for c in inspect(connection).get_columns("library_characters")}
         if "revision" not in columns:
             raise RuntimeError("Expected universal hero revisions; run alembic upgrade head")

@@ -8,7 +8,9 @@ import { api } from "../lib/api";
 import { HERO_STATUS_RU, type BuilderOptions, type LibraryHero, type World } from "../lib/builder";
 
 /** Герой профиля: собирается для мира (или по базовым правилам) и потом копируется в любую кампанию. */
-export default function LibraryHeroPage() {
+export { default } from '../builder/HeroWorkshop';
+
+export function LegacyLibraryHeroPage() {
   const param = useParams().hid;
   const hid = param === "new" ? undefined : param;
   const qc = useQueryClient();
