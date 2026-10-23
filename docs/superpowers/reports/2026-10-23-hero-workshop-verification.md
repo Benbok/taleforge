@@ -141,3 +141,11 @@ Two real creation requests were recorded as `invalid_proposal` despite successfu
 The tool now names `str`, `dex`, `con`, `int`, `wis`, `cha` as required explanation properties. Server validation still enforces the exact starting array and nonempty explanations. Invalid responses now record safe validation paths/types/messages in the application log and LLM audit diagnostics, excluding response input, hero text and secrets.
 
 Two regressions failed before this fix and passed afterwards. The complete creation/editing/workshop group passed **13/13**, ruff passed, and the generated API contract remained current. A single live verification with `gemini-3.5-flash-lite` returned six explanations and passed validation; the saved draft and hero were not mutated by either diagnostic call. The existing `taleforge-app-1` container was restarted to activate the fix, and HTTP health passed. This verifies the observed live failure case, not general model quality.
+
+## Delete saved drafts — 2026-10-23
+
+At the user's request, pending creation records now have a confirmed Delete action both in the workshop list and in the opened dialogue. Deleting an opened draft returns to the creation form. The API deletes only the owner's unconfirmed creation draft at the requested revision. Foreign drafts are hidden, stale revisions conflict, and confirmed dialogue records cannot remove a created hero. An in-flight model response cannot restore a deleted draft.
+
+The new deletion and UI regressions were observed failing before implementation. Final verification: **52/52** focused backend/API/contract checks, **333/333** frontend tests, build and ruff passed. The full focused run also exposed Alembic's embedded logging configuration disabling application loggers; a failing regression was added and embedded migrations now preserve the application's logging configuration.
+
+`taleforge-app-1` was restarted on the existing port 8000. A temporary smoke draft in PostgreSQL returned DELETE 204 and subsequent GET 404. Only that temporary verification record was deleted; user records were left for the user to manage. No LLM calls were needed for deletion checks.

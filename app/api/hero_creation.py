@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request, Response
 from pydantic import Field
 from sqlalchemy import select
 
@@ -50,6 +50,14 @@ async def start(body: CreationIn, user: UserDep, session: SessionDep, request: R
 @router.get("/{dialogue_id}")
 async def get(dialogue_id: str, user: UserDep, session: SessionDep) -> dict:
     return creation.dialogue_view(await creation.load_dialogue(session, user.id, dialogue_id))
+
+
+@router.delete("/{dialogue_id}", status_code=204)
+async def delete_draft(
+    dialogue_id: str, user: UserDep, session: SessionDep, expected_revision: int = Query(ge=1)
+) -> Response:
+    await creation.delete_dialogue(session, user.id, dialogue_id, expected_revision)
+    return Response(status_code=204)
 
 
 @router.post("/{dialogue_id}/answers")

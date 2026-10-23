@@ -23658,6 +23658,54 @@
    }
   },
   "/api/hero-creation/dialogues/{dialogue_id}": {
+   "delete": {
+    "operationId": "delete_draft_api_hero_creation_dialogues__dialogue_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "dialogue_id",
+      "required": true,
+      "schema": {
+       "title": "Dialogue Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "expected_revision",
+      "required": true,
+      "schema": {
+       "minimum": 1,
+       "title": "Expected Revision",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Delete Draft",
+    "tags": [
+     "hero-workshop"
+    ]
+   },
    "get": {
     "operationId": "get_api_hero_creation_dialogues__dialogue_id__get",
     "parameters": [

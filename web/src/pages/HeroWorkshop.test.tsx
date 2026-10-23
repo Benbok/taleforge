@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LibraryHeroPage from './LibraryHeroPage';
@@ -22,7 +22,54 @@ function open(path = '/heroes/new') {
     <Route path='/c/:id/hero' element={<CampaignHeroPage />} />
   </Routes></MemoryRouter></QueryClientProvider>);
 }
-afterEach(() => { cleanup(); clients.splice(0).forEach(q => q.clear()); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); clients.splice(0).forEach(q => q.clear()); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+it('confirms deleting only the selected saved draft and keeps it deleted after reopening', async () => {
+  let drafts = [{ id: 'hd1', revision: 2, status: 'ready', description, campaign_id: null },
+    { id: 'hd2', revision: 1, status: 'questions', description: { ...description, name: 'Бран' }, campaign_id: null }];
+  const deleted: string[] = [];
+  vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+    if (path === '/api/hero-creation/dialogues' && init.method === 'GET') return response(drafts);
+    if (path === '/api/hero-creation/dialogues/hd1?expected_revision=2' && init.method === 'DELETE') {
+      deleted.push('hd1'); drafts = drafts.filter(d => d.id !== 'hd1');
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`Unexpected ${init.method} ${path}`);
+  });
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const page = open();
+  const row = await screen.findByRole('article', { name: 'Черновик: Ива' });
+  fireEvent.click(within(row).getByRole('button', { name: 'Удалить' }));
+  expect(deleted).toEqual([]);
+  confirm.mockReturnValue(true);
+  fireEvent.click(within(row).getByRole('button', { name: 'Удалить' }));
+  await waitFor(() => expect(screen.queryByRole('article', { name: 'Черновик: Ива' })).toBeNull());
+  expect(deleted).toEqual(['hd1']);
+  expect(screen.getByRole('button', { name: 'Продолжить: Бран' })).toBeTruthy();
+  page.unmount(); open();
+  expect(await screen.findByRole('button', { name: 'Продолжить: Бран' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Продолжить: Ива' })).toBeNull();
+});
+
+it('deletes an opened draft and returns to the creation form', async () => {
+  const draft = { id: 'hd1', revision: 2, status: 'ready', description, transcript: [],
+    proposal: { abilities, explanations }, campaign_id: null, hero_id: null };
+  let deleted = false;
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+    if (path === '/api/hero-creation/dialogues/hd1' && init.method === 'GET') return response(draft);
+    if (path === '/api/hero-creation/dialogues/hd1?expected_revision=2' && init.method === 'DELETE') {
+      deleted = true; return new Response(null, { status: 204 });
+    }
+    if (path === '/api/hero-creation/dialogues') return response([]);
+    throw new Error(`Unexpected ${init.method} ${path}`);
+  });
+  open('/heroes/new?dialogue=hd1');
+  fireEvent.click(await screen.findByRole('button', { name: 'Удалить' }));
+  expect(await screen.findByRole('button', { name: 'Обсудить с мастером' })).toBeTruthy();
+  expect(deleted).toBe(true);
+  expect(screen.queryByRole('heading', { name: 'Беседа с мастером' })).toBeNull();
+});
 
 it('creates, previews manual and chat changes, confirms, and reloads the same hero', async () => {
   let card = structuredClone(original);

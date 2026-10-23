@@ -2,8 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { abilityKeys, abilityNames, type HeroDialogue } from '../lib/universal';
+import DeleteHeroDraft from './DeleteHeroDraft';
 
-export default function HeroCreationDialogue({ id, onCreated }: { id: string; onCreated: (id: string) => void }) {
+export default function HeroCreationDialogue({ id, onCreated, onDeleted }: { id: string; onCreated: (id: string) => void; onDeleted?: () => void }) {
   const qc = useQueryClient();
   const query = useQuery({ queryKey: ['hero-dialogue', id], queryFn: () => api<HeroDialogue>(`/api/hero-creation/dialogues/${id}`) });
   const [answer, setAnswer] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -39,5 +40,8 @@ export default function HeroCreationDialogue({ id, onCreated }: { id: string; on
     </>}
     {busy && <p role='status'>Мастер готовит ответ…</p>}{error && <p role='alert'>{error}</p>}
     {error && <button className='btn' onClick={() => void query.refetch()}>Обновить предложение</button>}
+    {['questions', 'ready'].includes(draft.status) && <div className='border-t border-line pt-4'>
+      <DeleteHeroDraft draft={draft} onDeleted={onDeleted} disabled={busy} />
+    </div>}
   </section>;
 }

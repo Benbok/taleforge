@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 
 from app.agents.hero_creation import ask_hero
 from app.core.campaigns import AccessDenied, Conflict, NotFound, get_viewer
@@ -18,6 +18,26 @@ async def load_dialogue(session, owner_id: str, dialogue_id: str) -> HeroDialogu
     if draft is None:
         raise NotFound("черновик не найден")
     return draft
+
+
+async def delete_dialogue(session, owner_id: str, dialogue_id: str, expected_revision: int) -> None:
+    draft = await load_dialogue(session, owner_id, dialogue_id)
+    if draft.status not in ("questions", "ready"):
+        raise Conflict("Герой уже создан; его можно удалить из библиотеки.")
+    if draft.revision != expected_revision:
+        raise Conflict("Черновик изменился; обновите запись перед удалением.")
+    result = await session.execute(
+        delete(HeroDialogue).where(
+            HeroDialogue.id == dialogue_id,
+            HeroDialogue.owner_user_id == owner_id,
+            HeroDialogue.revision == expected_revision,
+            HeroDialogue.status.in_(("questions", "ready")),
+        )
+    )
+    if result.rowcount != 1:
+        await session.rollback()
+        raise Conflict("Черновик изменился; обновите запись перед удалением.")
+    await session.commit()
 
 
 def dialogue_view(draft: HeroDialogue) -> dict:

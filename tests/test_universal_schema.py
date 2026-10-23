@@ -1,5 +1,6 @@
 import asyncio
 import io
+import logging
 import re
 import runpy
 from types import SimpleNamespace
@@ -16,6 +17,23 @@ def test_fresh_schema_has_one_head():
     heads = ScriptDirectory.from_config(Config("alembic.ini")).get_heads()
     assert len(heads) == 1
     assert ScriptDirectory.from_config(Config("alembic.ini")).get_base() == "universal_0001"
+
+
+def test_embedded_migrations_preserve_application_logging(tmp_path):
+    from app.db.session import verify_universal_schema
+
+    logger = logging.getLogger("taleforge.schema_startup_probe")
+    logger.disabled = False
+
+    async def run():
+        engine = make_engine(f"sqlite+aiosqlite:///{tmp_path / 'logging.db'}")
+        try:
+            await verify_universal_schema(engine)
+            assert not logger.disabled
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
 
 
 def test_baseline_boolean_defaults_compile_for_postgresql(monkeypatch):
