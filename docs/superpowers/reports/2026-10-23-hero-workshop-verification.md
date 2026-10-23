@@ -32,7 +32,21 @@ Nodes 2–6 are not implemented at this checkpoint. The plan requires the user t
 - Chrome: actual local HTTP server, real React UI and SQL database. Creation → manual preview/confirmation → chat preview/confirmation → navigation reload passed. Screenshot: [workshop](2026-10-23-hero-workshop.png).
 - `graphify update .`: completed after implementation; large HTML visualization was skipped automatically, while graph JSON/report were updated.
 
-The Chrome run used **ScriptedLLM**, not a live provider. Live model quality and PostgreSQL have not been verified. No deployment or publishing was performed.
+The Chrome run used **ScriptedLLM**, not a live provider. Live model quality and the complete PostgreSQL test suite have not been verified. PostgreSQL Docker startup was subsequently checked as recorded below. No public publishing was performed.
+
+## Docker launch in the existing stack — 2026-10-23
+
+At the user's request, the existing `taleforge` Compose project was switched to this branch on **http://localhost:8000**. Services retain the names `taleforge-app-1` and `taleforge-sfx-1`; their source mounts point to this feature worktree. Existing PostgreSQL, Redis, STT and tunnel containers were retained. The old `taleforge` database remains intact; the new schema is in `taleforge_universal` inside the same PostgreSQL container. Existing administrator/model settings are loaded from the main checkout's `.env` without copying or printing secrets.
+
+The actual PostgreSQL migration exposed two SQLite-generated numeric boolean defaults in the initial baseline. Both now use portable `sa.true()`. The drift check also found the cyclic campaign/adventure-version foreign key omitted by PostgreSQL `CREATE TABLE` with `use_alter=True`; additive revision `universal_0002` creates it after both tables exist. Both regressions failed before their fixes and passed afterwards; the SQLite schema/state suite passed **6/6**. Actual PostgreSQL `alembic upgrade head`, `alembic check`, HTTP health, the new OpenAPI paths, administrator authentication and the universal library GET all passed. The existing administrator row survived the additive upgrade. No live LLM calls were made by these checks.
+
+The local override is `.superpowers/docker-compose.current.yml` (ignored, contains local paths but no secrets). From this feature worktree the repeatable command is:
+
+```powershell
+docker compose --env-file ../../.env -f ../../docker-compose.yml -f .superpowers/docker-compose.current.yml -p taleforge up -d --no-build --no-deps app sfx
+```
+
+The app image was built from this branch. The SFX service uses its existing dependency image with this branch mounted at `/srv/app`; its prepared model cache is reused offline. A separate-port project was not started. Docker build context now excludes `.superpowers`, `.worktrees` and `graphify-out`.
 
 ## Independent review
 
@@ -117,3 +131,5 @@ The remaining **20** failures exercise superseded contracts: **16** demand histo
 - `tests/test_profile.py::test_library_hero_copied_into_campaign`
 - `tests/test_worlds.py::test_copy_into_other_world_names_what_to_replace`
 - `tests/test_worlds.py::test_library_hero_built_for_world`
+
+Docker follow-up verification: the complete focused workshop/API/contract set passed **45/45** after the PostgreSQL fixes. Existing app authentication remained valid after container recreation. The new schema is at universal_0002; the old taleforge database still exists.

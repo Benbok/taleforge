@@ -1,4 +1,8 @@
 import asyncio
+import io
+import re
+import runpy
+from types import SimpleNamespace
 
 import pytest
 from alembic.config import Config
@@ -10,7 +14,44 @@ from app.db.session import make_engine
 
 def test_fresh_schema_has_one_head():
     heads = ScriptDirectory.from_config(Config("alembic.ini")).get_heads()
-    assert heads == ["universal_0001"]
+    assert len(heads) == 1
+    assert ScriptDirectory.from_config(Config("alembic.ini")).get_base() == "universal_0001"
+
+
+def test_baseline_boolean_defaults_compile_for_postgresql(monkeypatch):
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    # The baseline checks for existing tables; an offline compiler has no catalog.
+    monkeypatch.setattr("sqlalchemy.inspect", lambda _: SimpleNamespace(get_table_names=lambda: []))
+    output = io.StringIO()
+    context = MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": output})
+    migration = runpy.run_path("alembic/versions/0001_universal_initial.py")
+    with Operations.context(context):
+        migration["upgrade"]()
+    sql = output.getvalue()
+    assert re.search(r"menu_music_enabled BOOLEAN DEFAULT true", sql, re.I)
+    assert not re.search(r"BOOLEAN DEFAULT [01]\b", sql, re.I)
+
+
+def test_postgresql_upgrade_creates_deferred_adventure_foreign_key(monkeypatch):
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    monkeypatch.setattr(
+        "sqlalchemy.inspect", lambda _: SimpleNamespace(get_table_names=lambda: [], get_foreign_keys=lambda table: [])
+    )
+    output = io.StringIO()
+    context = MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": output})
+    baseline = runpy.run_path("alembic/versions/0001_universal_initial.py")
+    deferred_fk = runpy.run_path("alembic/versions/0002_universal_deferred_fk.py")
+    with Operations.context(context):
+        baseline["upgrade"]()
+        deferred_fk["upgrade"]()
+    assert (
+        "ALTER TABLE campaigns ADD CONSTRAINT fk_campaign_adventure_version "
+        "FOREIGN KEY(adventure_version_id) REFERENCES adventure_versions (id)"
+    ) in output.getvalue()
 
 
 def test_nonempty_legacy_schema_is_rejected_before_writes(tmp_path):
