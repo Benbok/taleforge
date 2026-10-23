@@ -1,13 +1,14 @@
 import { formatCount } from '../lib/counts';
 import { abilityKeys, abilityNames, type HeroCard } from '../lib/universal';
-import PortraitImage from '../components/PortraitImage';
+import type { ReactNode } from 'react';
+import PortraitPreview from '../components/PortraitPreview';
 
-export default function UniversalHeroCard({ card }: { card: HeroCard }) {
+export default function UniversalHeroCard({ card, portraitActions }: { card: HeroCard; portraitActions?: ReactNode }) {
   const description = card.sheet.description;
   return <section className='card flex flex-col gap-4 p-5' aria-label='Сохранённая карточка'>
     <header className='flex flex-wrap items-center gap-5'>
-      {card.portrait_url && <div className='h-40 w-40 overflow-hidden rounded-2xl border border-line bg-bg sm:h-48 sm:w-48'><PortraitImage key={card.portrait_url} url={card.portrait_url} name={card.name} /></div>}
-      <div><h2 className='font-heading text-2xl'>{card.name}</h2>
+      {card.portrait_url && <PortraitPreview key={card.portrait_url} url={card.portrait_url} name={card.name} />}
+      <div className='min-w-0 flex-1'><div className='flex flex-wrap items-start gap-x-5 gap-y-3'><h2 className='break-words font-heading text-2xl'>{card.name}</h2>{portraitActions}</div>
       <p className='mt-2 text-sm text-muted'>Уровень {formatCount(card.level)} · Опыт {formatCount(card.sheet.xp ?? '0')}</p></div></header>
     <p className='whitespace-pre-wrap'>{description.identity}</p>
     {description.appearance && <p className='whitespace-pre-wrap'>Внешность: {description.appearance}</p>}

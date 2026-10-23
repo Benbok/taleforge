@@ -99,9 +99,8 @@ export default function CampaignHeroPage() {
       </section>
     );
   } else if (universalCard(hero)) {
-    body = <><UniversalHeroCard card={universalCard(hero)!} />
-      <HeroPortraitStudio card={universalCard(hero)!} endpoint={`/api/campaigns/${id}/characters/${hero!.id}/portrait`} onSaved={() => { void refresh(); }} />
-    </>;
+    body = <UniversalHeroCard card={universalCard(hero)!} portraitActions={
+      <HeroPortraitStudio card={universalCard(hero)!} endpoint={`/api/campaigns/${id}/characters/${hero!.id}/portrait`} onSaved={() => { void refresh(); }} />} />;
   } else if (hero && hero.status === "submitted") {
     body = <Waiting id={id} hero={hero} onRetry={refresh} />;
   } else if (hero && ["approved", "active"].includes(hero.status)) {

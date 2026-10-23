@@ -140,6 +140,8 @@ it('creates, previews manual and chat changes, confirms, and reloads the same he
   expect(await screen.findByText('Слаба')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Подтвердить героя' }));
   expect(await screen.findByRole('heading', { name: 'Ива', level: 2 })).toBeTruthy();
+  expect(within(screen.getByRole('heading', { name: 'Ива', level: 2 }).closest('header')!)
+    .getByRole('button', { name: 'Создать портрет' })).toBeTruthy();
   expect(screen.queryByRole('spinbutton')).toBeNull();
   fireEvent.change(screen.getByLabelText('Как он выглядит?'), { target: { value: 'Зелёный плащ' } });
   fireEvent.change(screen.getByLabelText('Сила: значение'), { target: { value: '12' } });
