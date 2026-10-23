@@ -6,6 +6,7 @@ venv/
 .pytest_cache/
 .ruff_cache/
 .superpowers/
+.worktrees/
 .mypy_cache/
 *.egg-info/
 dist/
