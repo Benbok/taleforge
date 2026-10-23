@@ -9,6 +9,8 @@ from app.api.characters import CharacterIn, PreviewIn
 from app.api.deps import SessionDep, UserDep
 from app.core import characters as chars
 from app.core import library as svc
+from app.core.universal.state import card_of, hero_card
+from app.rules.universal.contracts import HeroCard
 
 router = APIRouter(prefix="/api/me", tags=["profile"])
 
@@ -41,10 +43,9 @@ async def character_preview(body: LibraryPreviewIn, user: UserDep, session: Sess
     return chars.preview(body.model_dump(exclude_none=True), w.cat, w.rules)
 
 
-@router.get("/characters")
+@router.get("/characters", response_model=list[HeroCard])
 async def list_heroes(user: UserDep, session: SessionDep) -> list[dict]:
-    ws = svc.Worlds(session)
-    return [svc.view(lc, await ws.of(lc)) for lc in await svc.list_mine(session, user)]
+    return [card_of(lc) for lc in await svc.list_mine(session, user)]
 
 
 @router.post("/characters", status_code=201)
@@ -56,10 +57,9 @@ async def create_hero(body: LibraryHeroIn, user: UserDep, session: SessionDep) -
     return svc.view(lc, await svc.Worlds(session).of(lc))
 
 
-@router.get("/characters/{library_id}")
+@router.get("/characters/{library_id}", response_model=HeroCard)
 async def get_hero(library_id: str, user: UserDep, session: SessionDep) -> dict:
-    lc = await svc.get_mine(session, user, library_id)
-    return await svc.detail(session, lc, await svc.Worlds(session).of(lc))
+    return await hero_card(session, user.id, library_id)
 
 
 @router.put("/characters/{library_id}")
