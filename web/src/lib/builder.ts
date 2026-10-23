@@ -359,6 +359,7 @@ export interface CampaignHero extends SavedHero {
 
 /** Герой из профиля игрока. */
 export interface LibraryHero extends SavedHero {
+  portrait_url?: string | null;
   class_name: string | null;
   origin_name: string | null;
   /** Мир, для которого собран герой: null — базовые правила D&D 5e. */

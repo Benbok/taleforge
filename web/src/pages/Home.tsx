@@ -8,6 +8,7 @@ import Header from "../components/Header";
 import LeviathanEchoArt from "../components/LeviathanEchoArt";
 import DndHeroArt from "../components/DndHeroArt";
 import Avatar, { hue, initials } from "../components/Avatar";
+import PortraitImage from '../components/PortraitImage';
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
 import type { WorldSummary } from "../lib/worlds";
@@ -215,10 +216,11 @@ export default function Home() {
                       className="flex items-center gap-3.5 px-4 py-3 text-ink no-underline transition hover:bg-raised"
                     >
                       <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-patina font-semibold text-sm"
+                        className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-patina font-semibold text-sm"
                         style={{ background: `hsl(${hue(h.name)} 35% 32%)` }}
                       >
                         {initials(h.name)}
+                        {h.portrait_url && <span className='absolute inset-0'><PortraitImage key={h.portrait_url} url={h.portrait_url} name={h.name || 'Без имени'} /></span>}
                       </span>
                       <div className="flex flex-1 flex-col min-w-0">
                         <span className="truncate font-semibold text-sm">
@@ -575,10 +577,11 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
             >
               <div className="flex items-start gap-3.5">
                 <span
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-accent text-base font-semibold"
+                  className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-accent text-base font-semibold"
                   style={{ background: `hsl(${hue(h.name)} 35% 32%)` }}
                 >
                   {initials(h.name)}
+                  {h.portrait_url && <span className='absolute inset-0'><PortraitImage key={h.portrait_url} url={h.portrait_url} name={h.name || 'Без имени'} /></span>}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <Link
