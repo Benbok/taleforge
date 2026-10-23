@@ -1,6 +1,7 @@
 """Description-based hero guidance. Model output is a proposal, never saved power."""
 
 import json
+import logging
 
 from pydantic import ValidationError, model_validator
 
@@ -9,6 +10,8 @@ from app.core.campaigns import Conflict, default_model_profile
 from app.core.llm_diagnostics import reply_metrics
 from app.db.models import LlmCall
 from app.rules.universal.contracts import ClosedModel, HeroDescription, StartingAllocationProposal
+
+log = logging.getLogger(__name__)
 
 
 class GuidedResult(ClosedModel):
@@ -92,11 +95,24 @@ async def ask_hero(
         call = next((c for c in reply.tool_calls if c.name == "propose_hero"), None)
         result = GuidedResult.model_validate(call.arguments if call else json.loads(reply.text))
     except (LLMError, ValueError, ValidationError) as exc:
+        reason = "invalid_proposal" if reply else "provider_error"
+        diagnostics = {"reason": reason, "exception_type": type(exc).__name__}
+        if isinstance(exc, ValidationError):
+            diagnostics["validation_errors"] = exc.errors(
+                include_input=False,
+                include_context=False,
+                include_url=False,
+            )
+        if reply is not None:
+            diagnostics["finish_reason"] = reply.finish_reason
+            diagnostics["blocked"] = reply.blocked
+        log.warning("Hero guidance %s: %s", reason, json.dumps(diagnostics, ensure_ascii=False))
         session.add(
             LlmCall(
                 purpose=purpose,
                 model=reply.model or model if reply else model,
-                error="invalid_proposal" if reply else "provider_error",
+                error=reason,
+                diagnostics=diagnostics,
                 **_metrics(reply),
             )
         )

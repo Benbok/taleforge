@@ -133,3 +133,11 @@ The remaining **20** failures exercise superseded contracts: **16** demand histo
 - `tests/test_worlds.py::test_library_hero_built_for_world`
 
 Docker follow-up verification: the complete focused workshop/API/contract set passed **45/45** after the PostgreSQL fixes. Existing app authentication remained valid after container recreation. The new schema is at universal_0002; the old taleforge database still exists.
+
+## Live Gemini creation failure — 2026-10-23
+
+Two real creation requests were recorded as `invalid_proposal` despite successful provider responses. One bounded diagnostic reproduction found a valid score permutation but `explanations: {}`. The tool schema exposed explanations as an arbitrary dictionary, so the provider received no explicit six-field requirement. Server validation correctly refused the incomplete proposal.
+
+The tool now names `str`, `dex`, `con`, `int`, `wis`, `cha` as required explanation properties. Server validation still enforces the exact starting array and nonempty explanations. Invalid responses now record safe validation paths/types/messages in the application log and LLM audit diagnostics, excluding response input, hero text and secrets.
+
+Two regressions failed before this fix and passed afterwards. The complete creation/editing/workshop group passed **13/13**, ruff passed, and the generated API contract remained current. A single live verification with `gemini-3.5-flash-lite` returned six explanations and passed validation; the saved draft and hero were not mutated by either diagnostic call. The existing `taleforge-app-1` container was restarted to activate the fix, and HTTP health passed. This verifies the observed live failure case, not general model quality.

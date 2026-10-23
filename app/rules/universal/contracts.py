@@ -11,6 +11,20 @@ ABILITY_KEYS: tuple[AbilityKey, ...] = ("str", "dex", "con", "int", "wis", "cha"
 ENERGY_KEYS: tuple[EnergyKey, ...] = ("str", "dex", "int", "wis", "cha")
 START_ARRAY = (8, 10, 12, 13, 14, 15)
 
+# Tool providers need named properties; an arbitrary string dictionary can be
+# serialized as an empty object even when the server requires all six entries.
+AbilityExplanations = Annotated[
+    dict[AbilityKey, str],
+    WithJsonSchema(
+        {
+            "type": "object",
+            "properties": {key: {"type": "string", "minLength": 1} for key in ABILITY_KEYS},
+            "required": list(ABILITY_KEYS),
+            "additionalProperties": False,
+        }
+    ),
+]
+
 
 def exact_int(value):
     if type(value) is int:
@@ -64,7 +78,7 @@ class HeroDescription(ClosedModel):
 
 class StartingAllocationProposal(ClosedModel):
     abilities: AbilityScores
-    explanations: dict[AbilityKey, str]
+    explanations: AbilityExplanations
 
     @model_validator(mode="after")
     def exact_allocation(self):

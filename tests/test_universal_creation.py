@@ -95,6 +95,42 @@ def test_model_cannot_inflate_array(client, root):
     assert len(client.get(BASE, headers=root).json()) == 1
 
 
+def test_provider_schema_requires_six_named_explanations(client, root):
+    def reply(messages, tools):
+        schema = tools[0]["function"]["parameters"]
+        explanations = schema["$defs"]["StartingAllocationProposal"]["properties"]["explanations"]
+        assert set(explanations.get("properties", {})) == {"str", "dex", "con", "int", "wis", "cha"}
+        assert set(explanations.get("required", [])) == {"str", "dex", "con", "int", "wis", "cha"}
+        assert explanations["additionalProperties"] is False
+        return ready_reply()
+
+    set_replies(client, [reply])
+    result = client.post(BASE, headers=root, json={"description": DESCRIPTION})
+    assert result.status_code == 201, result.text
+    assert result.json()["status"] == "ready"
+    assert len(result.json()["proposal"]["explanations"]) == 6
+
+
+def test_invalid_proposal_logs_reason_without_description(client, root, caplog):
+    import logging
+
+    private = {"identity": "PRIVATE-SENTINEL", "name": "PRIVATE-SENTINEL"}
+    set_replies(client, [ready_reply(description=private, proposal={**PROPOSAL, "explanations": {}})])
+    with caplog.at_level(logging.WARNING, logger="app.agents.hero_creation"):
+        result = client.post(BASE, headers=root, json={"description": private})
+    assert result.status_code == 409
+    assert "invalid_proposal" in caplog.text
+    assert "PRIVATE-SENTINEL" not in caplog.text
+
+    async def check():
+        async with client.app.state.sessionmaker() as session:
+            row = await session.scalar(select(LlmCall).where(LlmCall.purpose == "hero_creation"))
+            assert row.diagnostics["validation_errors"][0]["loc"] == ["proposal"]
+            assert "PRIVATE-SENTINEL" not in str(row.diagnostics)
+
+    asyncio.run(check())
+
+
 def test_direct_campaign_and_admin_premade_start_at_level_one(client, root):
     from app.db.models import Character
     from tests.test_api import make_campaign
