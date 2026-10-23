@@ -1,4 +1,46 @@
 @import "tailwindcss";
+
+/* Hero workshop: the same surfaces and accents in both application themes. */
+.workshop-masthead {
+  background: radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--tf-accent) 13%, transparent), transparent 65%), var(--tf-surface);
+}
+.workshop-emblem { position: absolute; right: 1.5rem; top: -.75rem; font: 13rem/1 Georgia, serif; color: var(--tf-accent); opacity: .12; pointer-events: none; }
+.workshop-step { display: flex; flex: 1; align-items: center; gap: .6rem; color: var(--tf-muted); font-size: .75rem; }
+.workshop-step-number { display: grid; place-items: center; flex-shrink: 0; width: 2rem; height: 2rem; border: 1px solid var(--tf-border); border-radius: 50%; font-size: .65rem; font-weight: 600; }
+.workshop-step.is-current { color: var(--tf-text); }
+.workshop-step.is-current .workshop-step-number { color: var(--tf-accent); border-color: var(--tf-accent); background: color-mix(in srgb, var(--tf-accent) 9%, transparent); }
+.workshop-step.is-done .workshop-step-number { color: var(--tf-patina); border-color: var(--tf-patina); }
+.workshop-progress { width: 5rem; height: 5rem; flex-shrink: 0; border-radius: 50%; padding: 5px; }
+.workshop-progress > span { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--tf-surface); color: var(--tf-patina); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.workshop-progress small { margin-left: 2px; font-size: .8rem; }
+.workshop-check { width: 1.25rem; height: 1.25rem; display: grid; place-items: center; border: 1px solid var(--tf-border); border-radius: 50%; font-size: .7rem; flex-shrink: 0; }
+.workshop-check.is-filled { color: var(--tf-patina); border-color: var(--tf-patina); background: color-mix(in srgb, var(--tf-patina) 10%, transparent); }
+.workshop-rule-number { display: grid; place-items: center; width: 2rem; height: 2.25rem; flex-shrink: 0; border: 1px solid var(--tf-border); border-radius: .5rem; color: var(--tf-accent); font: 1.2rem Georgia, serif; }
+.workshop-page .workshop-field { line-height: 1.6; font-size: .875rem; padding: .8rem 1rem; transition: border-color .15s, box-shadow .15s; }
+.workshop-page .workshop-field:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tf-accent) 13%, transparent); }
+.workshop-page textarea.workshop-field { resize: vertical; }
+.workshop-page .workshop-submit { min-height: 2.9rem; padding-inline: 1.4rem; }
+.workshop-tip summary:focus-visible, .workshop-draft button:focus-visible { outline: 2px solid var(--tf-accent); outline-offset: 4px; }
+.workshop-draft { transition: border-color .15s; }
+.workshop-draft:hover { border-color: var(--tf-patina); }
+.workshop-notice { border: 1px solid var(--tf-border); border-radius: .75rem; padding: .9rem 1rem; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.workshop-notice[role="alert"] { border-color: var(--tf-bad); }
+.workshop-status { border: 1px solid var(--tf-border); border-radius: 2rem; padding: .4rem .75rem; font-size: .7rem; color: var(--tf-patina); }
+.workshop-message { max-width: 90%; align-self: flex-start; border: 1px solid var(--tf-border); border-radius: .25rem 1rem 1rem 1rem; padding: 1.2rem; background: var(--tf-bg); overflow-wrap: anywhere; }
+.workshop-message.is-user { align-self: flex-end; border-radius: 1rem .25rem 1rem 1rem; background: color-mix(in srgb, var(--tf-accent) 6%, var(--tf-surface)); }
+.workshop-proposal { background: color-mix(in srgb, var(--tf-patina) 5%, var(--tf-bg)); }
+@media (min-width: 1024px) { .workshop-companion { position: sticky; top: 6rem; } }
+@media (max-width: 639px) {
+  .workshop-step { flex-direction: column; align-items: flex-start; font-size: .7rem; gap: .5rem; }
+  .workshop-emblem { right: -.5rem; font-size: 11rem; }
+  .workshop-companion { order: -1; padding: 1.25rem; }
+  .workshop-companion .workshop-progress { width: 3.5rem; height: 3.5rem; padding: 4px; }
+  .workshop-companion .workshop-progress > span { font-size: 1.2rem; }
+  .workshop-companion > p { margin-top: .75rem; }
+  .workshop-companion > div:last-of-type, .workshop-companion > p:last-child { display: none; }
+  .workshop-companion ul { display: none; }
+  .workshop-message { max-width: 100%; }
+}
 @import "./game/scene-immersion.css";
 
 @font-face {

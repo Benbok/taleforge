@@ -24,6 +24,44 @@ function open(path = '/heroes/new') {
 }
 afterEach(() => { cleanup(); clients.splice(0).forEach(q => q.clear()); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
+it('counts nonblank description fields without requiring optional details to start', async () => {
+  vi.stubGlobal('fetch', async () => response([]));
+  open();
+  const progress = screen.getByRole('progressbar', { name: 'Заполненность описания' });
+  const submit = screen.getByRole('button', { name: 'Обсудить с мастером' }) as HTMLButtonElement;
+  expect(progress.getAttribute('aria-valuenow')).toBe('0');
+  expect(submit.disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText('Имя героя'), { target: { value: '   ' } });
+  expect(progress.getAttribute('aria-valuenow')).toBe('0');
+  fireEvent.change(screen.getByLabelText('Кто ваш герой?'), { target: { value: 'Травница' } });
+  expect(progress.getAttribute('aria-valuenow')).toBe('20');
+  expect(submit.disabled).toBe(false);
+  for (const label of ['Имя героя', 'Как он выглядит?', 'Какой у него характер?', 'Что он умеет?']) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value: 'Деталь' } });
+  }
+  expect(progress.getAttribute('aria-valuenow')).toBe('100');
+  fireEvent.change(screen.getByLabelText('Кто ваш герой?'), { target: { value: ' ' } });
+  expect(progress.getAttribute('aria-valuenow')).toBe('80');
+  expect(submit.disabled).toBe(true);
+  await screen.findByText('Каким будет ваш герой?');
+});
+
+it('offers field examples and expandable hints while preserving entered text', async () => {
+  vi.stubGlobal('fetch', async () => response([]));
+  open();
+  const identity = screen.getByLabelText('Кто ваш герой?') as HTMLTextAreaElement;
+  expect(identity.placeholder).toContain('Травница');
+  expect(identity.getAttribute('aria-describedby')).toBeTruthy();
+  fireEvent.change(identity, { target: { value: 'Мой собственный замысел' } });
+  const hint = screen.getByText('Подсказка: кто ваш герой');
+  fireEvent.click(hint);
+  expect(hint.closest('details')?.open).toBe(true);
+  expect(screen.getByText(/Начните с простой связки/)).toBeTruthy();
+  expect(identity.value).toBe('Мой собственный замысел');
+  expect(screen.getByRole('list', { name: 'Этапы создания героя' }).querySelector('[aria-current="step"]')?.textContent).toContain('Замысел');
+  await screen.findByText('Каким будет ваш герой?');
+});
+
 it('confirms deleting only the selected saved draft and keeps it deleted after reopening', async () => {
   let drafts = [{ id: 'hd1', revision: 2, status: 'ready', description, campaign_id: null },
     { id: 'hd2', revision: 1, status: 'questions', description: { ...description, name: 'Бран' }, campaign_id: null }];

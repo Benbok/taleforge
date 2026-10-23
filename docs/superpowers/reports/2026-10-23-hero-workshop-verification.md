@@ -149,3 +149,11 @@ At the user's request, pending creation records now have a confirmed Delete acti
 The new deletion and UI regressions were observed failing before implementation. Final verification: **52/52** focused backend/API/contract checks, **333/333** frontend tests, build and ruff passed. The full focused run also exposed Alembic's embedded logging configuration disabling application loggers; a failing regression was added and embedded migrations now preserve the application's logging configuration.
 
 `taleforge-app-1` was restarted on the existing port 8000. A temporary smoke draft in PostgreSQL returned DELETE 204 and subsequent GET 404. Only that temporary verification record was deleted; user records were left for the user to manage. No LLM calls were needed for deletion checks.
+
+## Workshop presentation and guidance — 2026-10-23
+
+The workshop now presents the three creation stages, field examples and expandable keyboard-accessible hints, optional-field labels, and a description completion ring with a checklist. Completion counts the five trimmed nonempty description fields (20% each). Only identity is required to start; completion does not change hero mechanics. The dialogue uses separate message bubbles and a responsive six-ability proposal grid. Saved drafts have clear continuation statuses and retain confirmed deletion.
+
+Verification: **335/335 frontend tests**, including completion/whitespace/optional-field and hint text-preservation checks; TypeScript and production build passed. Existing build warnings about the large bundle and mixed static/dynamic API import remain. Chrome checks covered the form and dialogue at 1440px and 390px with no horizontal overflow, the actual light/dark theme toggle, and starting a ScriptedLLM conversation at 20% completeness. No live model calls were made. The production assets are served through the existing container's branch bind mount at port 8000. Graphify was updated.
+
+Visual references: [desktop](2026-10-23-hero-workshop-design-desktop.png), [mobile](2026-10-23-hero-workshop-design-mobile.png).

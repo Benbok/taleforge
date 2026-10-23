@@ -1,21 +1,35 @@
+import { useId } from 'react';
 import type { HeroDescription } from '../lib/universal';
 
-const fields = [
-  ['name', 'Имя героя'], ['identity', 'Кто ваш герой?'], ['appearance', 'Как он выглядит?'],
-  ['personality', 'Какой у него характер?'], ['capabilities', 'Что он умеет?'],
+export const descriptionFields = [
+  { key: 'name', label: 'Имя героя', hint: 'Имя, прозвище или то, как его знают в мире.', example: 'Например, Ива по прозвищу Лесная', tip: 'Имя можно придумать позже или попросить мастера предложить его в беседе.' },
+  { key: 'identity', label: 'Кто ваш герой?', hint: 'Главное о герое: откуда он, чем живёт и к чему стремится.', example: 'Травница, которая покинула родной лес, чтобы найти пропавшего наставника…', tip: 'Начните с простой связки: кто он + чего хочет + что ему мешает. Достаточно пары предложений.' },
+  { key: 'appearance', label: 'Как он выглядит?', hint: 'Одна-две детали, по которым героя легко представить.', example: 'Зелёный плащ, растрёпанные волосы и посох с живыми побегами…', tip: 'Одежда, жест, голос или заметная привычка сделают образ живым. Дорожный посох в описании не добавляет предмет в снаряжение.' },
+  { key: 'personality', label: 'Какой у него характер?', hint: 'Что он ценит, чего боится и как относится к другим.', example: 'Добра к незнакомцам, упряма в спорах и боится подвести друзей…', tip: 'Небольшое противоречие помогает в игре: смелый, но суеверный; суровый, но заботливый.' },
+  { key: 'capabilities', label: 'Что он умеет?', hint: 'Опыт, таланты и задуманные возможности героя.', example: 'Знает целебные травы, читает следы и мечтает управлять лозами…', tip: 'Можно описать и то, чему герой хочет научиться. Мастер поможет связать замысел со стартовыми характеристиками; приёмы раскрываются в игре.' },
 ] as const;
 
 export default function HeroDescriptionForm({ value, onChange, disabled = false }: {
   value: HeroDescription; onChange: (value: HeroDescription) => void; disabled?: boolean;
 }) {
-  return <div className='grid gap-4 sm:grid-cols-2'>{fields.map(([key, label]) =>
-    <label key={key} className={`flex flex-col gap-1 text-sm ${key === 'identity' ? 'sm:col-span-2' : ''}`}>
-      <span>{label}</span>
-      {key === 'name' ? <input className='field' value={value[key] ?? ''} disabled={disabled} maxLength={64}
-        onChange={event => onChange({ ...value, [key]: event.target.value })} /> :
-        <textarea className='field min-h-24' value={value[key] ?? ''} disabled={disabled} maxLength={4000}
-          required={key === 'identity'} onChange={event => onChange({ ...value, [key]: event.target.value })} />}
-    </label>)}
-    <p className='text-xs text-muted sm:col-span-2'>Достаточно описать, кто ваш герой. Желаемые возможности обсуждаются с мастером и раскрываются в игре.</p>
+  const prefix = useId();
+  return <div className='grid gap-6 sm:grid-cols-2'>{descriptionFields.map(({ key, label, hint, example, tip }) => {
+    const id = `${prefix}-${key}`;
+    return <div key={key} className={`flex min-w-0 flex-col gap-2 ${key === 'name' || key === 'identity' || key === 'capabilities' ? 'sm:col-span-2' : ''}`}>
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <label htmlFor={id} className='text-sm font-semibold'>{label}</label>
+        <span className={`text-xs ${key === 'identity' ? 'text-accent' : 'text-muted'}`}>{key === 'identity' ? 'Для начала беседы' : 'Необязательно'}</span>
+      </div>
+      <p id={`${id}-hint`} className='text-xs leading-relaxed text-muted'>{hint}</p>
+      {key === 'name' ? <input id={id} aria-describedby={`${id}-hint`} className='field workshop-field' placeholder={example}
+        value={value[key] ?? ''} disabled={disabled} maxLength={64} onChange={event => onChange({ ...value, [key]: event.target.value })} /> :
+        <textarea id={id} aria-describedby={`${id}-hint`} className={`field workshop-field ${key === 'identity' ? 'min-h-32' : 'min-h-28'}`}
+          placeholder={example} value={value[key] ?? ''} disabled={disabled} maxLength={4000} required={key === 'identity'}
+          onChange={event => onChange({ ...value, [key]: event.target.value })} />}
+      <details className='workshop-tip text-xs text-muted'><summary className='w-fit cursor-pointer rounded py-1 text-patina'>Подсказка: {label.toLowerCase().replace('?', '')}</summary>
+        <p className='mt-1 border-l-2 border-patina pl-3 leading-relaxed'>{tip}</p></details>
+    </div>;
+  })}
+    <p className='text-xs leading-relaxed text-muted sm:col-span-2'>Достаточно описать, кто ваш герой. Желаемые возможности обсуждаются с мастером и раскрываются в игре.</p>
   </div>;
 }
