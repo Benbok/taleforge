@@ -48,4 +48,72 @@ No minor findings were deferred by this review. The review intentionally did not
 
 The user still needs to view the working workshop. The local demo is `http://127.0.0.1:8723/heroes/new` while the demo process is running; its model is scripted. To run the regular app in this workspace, configure a new `DATABASE_URL` (default `sqlite+aiosqlite:///./taleforge-universal.db`), persistent `JWT_SECRET`, and model settings, then run `python -m uvicorn app.main:app`. Do not point it at the old database. The new frontend build is present locally.
 
-The complete backend test run was also launched; its result and any legacy-contract failures are recorded below when it finishes. Focused Node 1 checks above are distinct from the full legacy suite.
+## Complete backend suite and baseline comparison
+
+`python -m pytest -n 4 -q --tb=line`: **2477 passed, 47 failed, 24 skipped** (16m32s).
+This broad run started before the final review fixes. The final focused 43-test run and final frontend checks above cover those fixes. The full backend suite is **not green**.
+
+The failures were separated using a clean archive of base commit `cf57f12`, extracted inside this feature workspace without copying the main checkout's uncommitted files or environment:
+
+`python -m pytest -n 4 tests/test_layout_quality.py tests/test_layout_furnish.py::test_generated_furnishing_is_bound_to_area_cells tests/test_adventure_snapshot.py::test_export_has_maps_ports_anchors_geography_and_no_workspace_ids -q --tb=line`
+
+The baseline comparison produced **27 failed, 87 passed**. Its 27 failing test IDs exactly match the feature run's map/detail/export failures. They are pre-existing; their code was not changed in this node. They include missing deterministic map details, missing generated furnishing, and an exported binding ID.
+
+The remaining **20** failures exercise superseded contracts: **16** demand historical revision IDs and preservation/downgrade of legacy game data, and **4** expect the D&D library builder/world selector/preview paths. The approved fresh-baseline and descriptive-workshop decisions intentionally replace those behaviors. Their test retirement belongs with Tasks 25–26; they are retained and explicitly reported here rather than skipped or silently removed. New-schema preservation and new workshop behavior have separate passing tests.
+
+### Pre-existing failures reproduced on cf57f12
+
+
+- `tests/test_adventure_snapshot.py::test_export_has_maps_ports_anchors_geography_and_no_workspace_ids`
+- `tests/test_layout_furnish.py::test_generated_furnishing_is_bound_to_area_cells`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.drowned_abyss_tail]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.drowned_flooded_womb]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.drowned_lighthouse]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.drowned_throat]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_bell_monastery]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_bell_tower_no_ringer]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_echolite_heart]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_hospital_mercy]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_jelly_fields]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_league_archive]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_nameless]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_tower_17]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.hook_unceasing]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.landmark_treasury]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.landmark_veche_bell]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.old_mother_heart]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.old_mother_skull]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.old_mother_womb]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.rib_forest_skull_chapel]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer_ascension]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer_choirs]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer_neck_cells]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer_reliquary]`
+- `tests/test_layout_quality.py::test_base_templates_have_populated_reachable_maps[location.whisperer_vault]`
+
+### Retired migration-contract failures
+
+- `tests/test_authoring_migrations.py::test_foundation_preserves_existing_game_and_children`
+- `tests/test_authoring_migrations.py::test_geography_tables_upgrade_and_downgrade_keep_existing_rows`
+- `tests/test_authoring_migrations.py::test_upgrade_repairs_ambiguous_0031[False-False]`
+- `tests/test_authoring_migrations.py::test_upgrade_repairs_ambiguous_0031[False-True]`
+- `tests/test_authoring_migrations.py::test_upgrade_repairs_ambiguous_0031[True-False]`
+- `tests/test_authoring_migrations.py::test_upgrade_repairs_ambiguous_0031[True-True]`
+- `tests/test_layout_store.py::test_sqlite_alembic_layout_phases_upgrade_and_downgrade`
+- `tests/test_llm_accounting.py::test_llm_call_migration_upgrade_and_downgrade`
+- `tests/test_llm_accounting.py::test_usage_coverage_migration_preserves_historical_unknown`
+- `tests/test_map_memory.py::test_map_memory_sqlite_upgrade_downgrade`
+- `tests/test_map_migrations.py::test_location_map_migrations_match_metadata`
+- `tests/test_menu_music.py::test_menu_music_migration_is_reversible_for_existing_user`
+- `tests/test_narrative_migrations.py::test_sqlite_alembic_narrative_foundation_upgrade_and_downgrade`
+- `tests/test_sfx.py::test_sfx_migration_allows_multiple_playbacks_per_turn`
+- `tests/test_sfx.py::test_sfx_migration_upgrade_and_downgrade`
+- `tests/test_world_objects.py::test_sqlite_alembic_world_objects_upgrade_and_downgrade`
+
+### Retired library-contract failures
+
+- `tests/test_builder.py::test_library_preview`
+- `tests/test_profile.py::test_library_hero_copied_into_campaign`
+- `tests/test_worlds.py::test_copy_into_other_world_names_what_to_replace`
+- `tests/test_worlds.py::test_library_hero_built_for_world`

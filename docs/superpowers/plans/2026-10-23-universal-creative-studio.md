@@ -10,6 +10,10 @@
 
 **Spec:** [Approved design and subsequent clarifications](../specs/2026-10-23-universal-creative-studio-design.md)
 
+## Execution checkpoint — 2026-10-23
+
+Node 1 (Tasks 1–5) is implemented on `feature/universal-creative-studio` in `.worktrees/universal-creative-studio`. Its checks and independent review fixes are recorded in the [verification report](../reports/2026-10-23-hero-workshop-verification.md). The user-facing workshop still awaits the user's viewing before Node 2. Nodes 2–6 have not started. The full legacy backend suite remains red; exact failures and a clean-base comparison are in the report. No merge or deployment has been performed.
+
 ## Global Constraints
 
 - Единая универсальная система, без классов, обязательных каталогов рас/заклинаний, клеточной тактики и короткого/длительного отдыха.
