@@ -228,6 +228,8 @@ async def create_draft(session: AsyncSession, viewer: Viewer, data: dict[str, An
 
 
 def _apply(ch: Character, data: dict[str, Any]) -> None:
+    if (ch.sheet or {}).get('rules_version') == 'universal.v1':
+        raise Conflict('Готовая игровая карточка изменяется только игровыми событиями и распределением очков.')
     sheet = dict(ch.sheet or {})
     for k in SHEET_FIELDS:
         if k in data and data[k] is not None:
