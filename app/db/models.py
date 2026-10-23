@@ -536,6 +536,8 @@ class Character(Base):
     seat_id: Mapped[str | None] = mapped_column(ForeignKey("seats.id", ondelete="SET NULL"))
     owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     name: Mapped[str] = mapped_column(String(64))
+    portrait_id: Mapped[str | None] = mapped_column(String(32))
+    portrait_job_id: Mapped[str | None] = mapped_column(String(32))
     # draft | submitted | approved | active | dead | retired (раздел 5.1); premade — заготовка владельца без игрока
     status: Mapped[str] = mapped_column(String(16), default="draft")
     creation_method: Mapped[str] = mapped_column(String(16), default="builder")  # builder | pregen
@@ -561,6 +563,8 @@ class LibraryCharacter(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("lc"))
     owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(64))
+    portrait_id: Mapped[str | None] = mapped_column(String(32))
+    portrait_job_id: Mapped[str | None] = mapped_column(String(32))
     revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     sheet: Mapped[dict[str, Any]] = mapped_column(default=dict)
     public_bio: Mapped[str] = mapped_column(Text, default="")
@@ -568,6 +572,21 @@ class LibraryCharacter(Base):
     personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class HeroPortrait(Base):
+    """Immutable media plus a durable, once-only generation receipt. Copies share immutable bytes."""
+
+    __tablename__ = 'hero_portraits'
+    __table_args__ = (UniqueConstraint('owner_user_id', 'request_key'),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id('hp'))
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    target_id: Mapped[str] = mapped_column(String(32))
+    request_key: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(16), default='pending')
+    mime: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class HeroDialogue(Base):

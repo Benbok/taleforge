@@ -1,6 +1,7 @@
 import type { Presence } from "../lib/types";
+import PortraitImage from './PortraitImage';
 
-// Портрет до этапа картинок — инициалы в цвете героя (умолчание по открытому вопросу документа дизайна).
+// Initials remain visible while protected portrait media loads or if it cannot be read.
 
 const PRESENCE: Record<string, string> = { online: "в сети", reconnecting: "переподключается", offline: "не в сети" };
 
@@ -22,12 +23,14 @@ export default function Avatar({
   occupant,
   presence,
   size = 32,
+  portraitUrl,
 }: {
   name: string | null | undefined;
   role: "master" | "player";
   occupant: "human" | "agent" | "empty";
   presence: Presence;
   size?: number;
+  portraitUrl?: string | null;
 }) {
   const title = [
     role === "master" ? "Мастер" : null,
@@ -41,7 +44,7 @@ export default function Avatar({
   return (
     <span className="relative inline-flex" title={title} aria-label={title}>
       <span
-        className={`inline-flex items-center justify-center rounded-full text-xs font-semibold ${
+        className={`relative inline-flex items-center justify-center overflow-hidden rounded-full text-xs font-semibold ${
           empty ? "border border-dashed border-line text-muted" : "text-white"
         } ${role === "master" ? "ring-2 ring-accent" : ""}`}
         style={{
@@ -51,6 +54,7 @@ export default function Avatar({
         }}
       >
         {empty ? "+" : occupant === "agent" && role === "master" ? "ИИ" : initials(name)}
+        {!empty && portraitUrl && <span className='absolute inset-0'><PortraitImage key={portraitUrl} url={portraitUrl} name={name ?? 'Герой'} /></span>}
       </span>
       {presence && (
         <span

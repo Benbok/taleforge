@@ -590,11 +590,13 @@ async def review_state(session: AsyncSession, ch: Character) -> dict:
 
 def public_view(ch: Character, entities=()) -> dict:
     from app.core.companions import companion_is_active, companion_record, public_companion
+    from app.core.universal.portraits import portrait_url
 
     res = ch.resources or {}
     return {
         "id": ch.id,
         "name": ch.name,
+        "portrait_url": portrait_url(ch.portrait_id),
         "seat_id": ch.seat_id,
         "status": ch.status,
         "public_bio": ch.public_bio,

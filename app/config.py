@@ -101,6 +101,7 @@ class Settings:
 
     # Две модели на провайдера: основная пишет повествование, техническая — парсер, решение хода, сводки, эмоции
     llm_provider: str = "gemini"
+    portrait_model: str = "gemini-3.1-flash-lite-image"
     decide_model: str = "technical"  # фаза решения хода (выбор инструментов и бросков): technical или main
     gemini_main_model: str = "gemini-2.5-flash"
     gemini_technical_model: str = "gemini-2.5-flash-lite"
@@ -117,6 +118,7 @@ class Settings:
             secret = secrets.token_urlsafe(32)
         return cls(
             database_url=_env("DATABASE_URL", cls.database_url),
+            portrait_model=_env("PORTRAIT_MODEL", cls.portrait_model),
             redis_url=_env("REDIS_URL"),
             jwt_secret=secret,
             jwt_ttl_hours=int(_env("JWT_TTL_HOURS", str(cls.jwt_ttl_hours))),

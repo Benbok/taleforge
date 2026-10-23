@@ -19,6 +19,14 @@ const env = (type: string, payload: object, seq: number | null = null): Envelope
 describe("хранилище игры", () => {
   beforeEach(() => useGame.getState().reset());
 
+  it('обновляет портрет отряда и открытого листа одним серверным событием', () => {
+    const g = useGame.getState;
+    g().apply(env('character.sheet', { character: { id: 'h1', name: 'Ива', portrait_url: '/api/portraits/old' } }));
+    g().apply(env('character.updated', { character: { id: 'h1', name: 'Ива', portrait_url: '/api/portraits/new' } }));
+    expect(g().heroes.h1.portrait_url).toBe('/api/portraits/new');
+    expect(g().sheet?.portrait_url).toBe('/api/portraits/new');
+  });
+
   it("сливает сообщения по seq без повторов и держит порядок", () => {
     const out = mergeMessages([msg(1), msg(3)], [msg(2), msg(3, "новое")]);
     expect(out.map((m) => m.seq)).toEqual([1, 2, 3]);

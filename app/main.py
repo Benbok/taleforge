@@ -36,6 +36,7 @@ from app.api import authoring as authoring_api
 from app.api import generation as generation_api
 from app.api import hero_creation as hero_creation_api
 from app.api import modules as modules_api
+from app.api import portraits as portraits_api
 from app.api import sfx as sfx_api
 from app.api.errors import validation_handler
 from app.config import Settings
@@ -117,6 +118,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.tts = TTSManager(settings)
         effective_llm = llm or LiteLLMClient()
         app.state.hero_llm = effective_llm
+        from app.agents.portraits import GeminiPortraitGenerator
+
+        app.state.portraits = GeminiPortraitGenerator(settings.portrait_model)
+        app.state.portrait_media_dir = settings.media_dir
         app.state.coordination = InMemoryCoordination()
         app.state.narrative_jobs = SqlNarrativeJobs(app.state.sessionmaker)
         app.state.narrative_reader = DbNarrativeReader(
@@ -207,6 +212,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(home.router)
     app.include_router(library.router)
     app.include_router(hero_creation_api.router)
+    app.include_router(portraits_api.router)
     app.include_router(models.router)
     app.include_router(modules_api.router)
     app.include_router(generation_api.router)

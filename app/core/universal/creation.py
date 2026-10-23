@@ -192,6 +192,7 @@ async def copy_library_hero(session, viewer, original):
         campaign_id=viewer.campaign.id,
         seat_id=seat_id,
         name=original.name,
+        portrait_id=original.portrait_id,
         status="approved",
         creation_method="description",
         sheet={**sheet.model_dump(mode="json"), "source_library_id": original.id},

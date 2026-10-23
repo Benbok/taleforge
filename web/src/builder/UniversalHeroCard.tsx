@@ -1,11 +1,14 @@
 import { formatCount } from '../lib/counts';
 import { abilityKeys, abilityNames, type HeroCard } from '../lib/universal';
+import PortraitImage from '../components/PortraitImage';
 
 export default function UniversalHeroCard({ card }: { card: HeroCard }) {
   const description = card.sheet.description;
   return <section className='card flex flex-col gap-4 p-5' aria-label='Сохранённая карточка'>
-    <header><h2 className='font-heading text-2xl'>{card.name}</h2>
-      <p className='text-sm text-muted'>Уровень {formatCount(card.level)} · Опыт {formatCount(card.sheet.xp ?? '0')}</p></header>
+    <header className='flex flex-wrap items-center gap-5'>
+      {card.portrait_url && <div className='h-40 w-40 overflow-hidden rounded-2xl border border-line bg-bg sm:h-48 sm:w-48'><PortraitImage key={card.portrait_url} url={card.portrait_url} name={card.name} /></div>}
+      <div><h2 className='font-heading text-2xl'>{card.name}</h2>
+      <p className='mt-2 text-sm text-muted'>Уровень {formatCount(card.level)} · Опыт {formatCount(card.sheet.xp ?? '0')}</p></div></header>
     <p className='whitespace-pre-wrap'>{description.identity}</p>
     {description.appearance && <p className='whitespace-pre-wrap'>Внешность: {description.appearance}</p>}
     {description.personality && <p className='whitespace-pre-wrap'>Характер: {description.personality}</p>}

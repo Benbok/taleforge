@@ -5,6 +5,7 @@ import ActionButton from "../components/ActionButton";
 import Header from "../components/Header";
 import Builder from "../builder/Builder";
 import UniversalHeroCard from '../builder/UniversalHeroCard';
+import HeroPortraitStudio from '../builder/HeroPortraitStudio';
 import { universalCard } from '../lib/universal';
 import PersonaEditor from "../components/PersonaEditor";
 import { api } from "../lib/api";
@@ -98,7 +99,9 @@ export default function CampaignHeroPage() {
       </section>
     );
   } else if (universalCard(hero)) {
-    body = <UniversalHeroCard card={universalCard(hero)!} />;
+    body = <><UniversalHeroCard card={universalCard(hero)!} />
+      <HeroPortraitStudio card={universalCard(hero)!} endpoint={`/api/campaigns/${id}/characters/${hero!.id}/portrait`} onSaved={() => { void refresh(); }} />
+    </>;
   } else if (hero && hero.status === "submitted") {
     body = <Waiting id={id} hero={hero} onRetry={refresh} />;
   } else if (hero && ["approved", "active"].includes(hero.status)) {

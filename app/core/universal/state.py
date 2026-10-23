@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.campaigns import NotFound
+from app.core.universal.portraits import portrait_url
 from app.db.models import LibraryCharacter
 
 
@@ -26,6 +27,7 @@ def card_of(hero: LibraryCharacter) -> dict:
     return HeroCard(
         id=hero.id,
         name=sheet.description.name or hero.name,
+        portrait_url=portrait_url(hero.portrait_id),
         revision=hero.revision,
         level=sheet.level,
         sheet=sheet,
@@ -50,6 +52,7 @@ def game_card_of(hero) -> dict:
     return UniversalGameCard(
         id=hero.id,
         name=hero.name,
+        portrait_url=portrait_url(hero.portrait_id),
         revision=1,
         level=sheet.level,
         sheet=sheet,

@@ -10,6 +10,7 @@ import HeroCardEditor from './HeroCardEditor';
 import UniversalHeroCard from './UniversalHeroCard';
 import DeleteHeroDraft from './DeleteHeroDraft';
 import HeroDescriptionProgress from './HeroDescriptionProgress';
+import HeroPortraitStudio from './HeroPortraitStudio';
 
 export default function HeroWorkshop() {
   const { hid } = useParams();
@@ -45,6 +46,7 @@ export default function HeroWorkshop() {
       </header>
       {hero.error && <p role='alert'>{hero.error.message}</p>}
       {id ? hero.data ? <><UniversalHeroCard card={hero.data} />
+        <HeroPortraitStudio card={hero.data} endpoint={`/api/me/characters/${id}/portrait`} onSaved={card => { qc.setQueryData(['library', id], card); void qc.invalidateQueries({ queryKey: ['library'], exact: true }); }} />
         <HeroCardEditor key={hero.data.id} card={hero.data} onReload={() => void hero.refetch()} onSaved={card => { qc.setQueryData(['library', id], card); void qc.invalidateQueries({ queryKey: ['library'], exact: true }); }} />
       </> : <p>Загружаю карточку…</p> : dialogueId ? <HeroCreationDialogue id={dialogueId} onCreated={created} onDeleted={() => setSearch({})} /> : <>
         <div className='grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]'>

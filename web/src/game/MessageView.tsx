@@ -93,7 +93,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   return (
     <div className={`tf-pop flex max-w-[76ch] gap-3 ${mine ? "ml-auto" : ""}`}>
       <div className="shrink-0 pt-0.5">
-        <Avatar name={name} role="player" occupant={ai ? "agent" : "human"} presence={null} size={32} />
+        <Avatar name={name} portraitUrl={m.seat_id ? who.heroBySeat[m.seat_id]?.portrait_url : null} role="player" occupant={ai ? "agent" : "human"} presence={null} size={32} />
       </div>
       <div
         className={`min-w-0 flex-1 rounded-[12px] p-3 sm:p-3.5 transition-colors ${

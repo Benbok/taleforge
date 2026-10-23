@@ -126,6 +126,7 @@ class ActorDerived(ClosedModel):
 class HeroCard(ClosedModel):
     id: str
     name: str
+    portrait_url: str | None = None
     revision: int
     level: Count
     sheet: UniversalSheet

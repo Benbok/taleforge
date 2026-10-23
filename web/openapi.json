@@ -2380,6 +2380,17 @@
       "title": "Personality",
       "type": "object"
      },
+     "portrait_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Portrait Url"
+     },
      "private_backstory": {
       "title": "Private Backstory",
       "type": "string"
@@ -6039,6 +6050,17 @@
       "title": "Name",
       "type": "string"
      },
+     "portrait_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Portrait Url"
+     },
      "revision": {
       "title": "Revision",
       "type": "integer"
@@ -6284,6 +6306,18 @@
       ],
       "title": "Origin Id"
      },
+     "portrait_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Portrait Url"
+     },
      "public_bio": {
       "title": "Public Bio",
       "type": "string"
@@ -6493,6 +6527,18 @@
       "additionalProperties": true,
       "title": "Personality",
       "type": "object"
+     },
+     "portrait_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Portrait Url"
      },
      "private_backstory": {
       "default": null,
@@ -12215,6 +12261,28 @@
     "title": "PlanRequestIn",
     "type": "object"
    },
+   "PortraitIn": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key",
+     "expected_revision"
+    ],
+    "title": "PortraitIn",
+    "type": "object"
+   },
    "PreparationView": {
     "additionalProperties": false,
     "properties": {
@@ -14949,6 +15017,17 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "portrait_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Portrait Url"
      },
      "revision": {
       "title": "Revision",
@@ -21056,6 +21135,72 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/characters/{hero_id}/portrait": {
+   "post": {
+    "operationId": "game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PortraitIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UniversalGameCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Game Portrait",
+    "tags": [
+     "portraits"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/entity-types": {
    "get": {
     "description": "Типы сущностей из разметки ``[[id|текст]]`` — чтобы подчеркнуть слово цветом типа до клика.",
@@ -24220,6 +24365,63 @@
     ]
    }
   },
+  "/api/me/characters/{hero_id}/portrait": {
+   "post": {
+    "operationId": "library_portrait_api_me_characters__hero_id__portrait_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PortraitIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HeroCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Library Portrait",
+    "tags": [
+     "portraits"
+    ]
+   }
+  },
   "/api/me/characters/{library_id}": {
    "delete": {
     "description": "Удаляется только герой профиля; его копии в кампаниях остаются.",
@@ -25400,6 +25602,51 @@
     "summary": "Recommend Party",
     "tags": [
      "campaigns"
+    ]
+   }
+  },
+  "/api/portraits/{portrait_id}": {
+   "get": {
+    "operationId": "portrait_api_portraits__portrait_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "portrait_id",
+      "required": true,
+      "schema": {
+       "title": "Portrait Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Portrait",
+    "tags": [
+     "portraits"
     ]
    }
   },

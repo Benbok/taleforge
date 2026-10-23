@@ -45,6 +45,7 @@ class HeroPublic(Strict):
 
     id: str
     name: str
+    portrait_url: str | None = None
     seat_id: str | None
     status: str
     public_bio: str

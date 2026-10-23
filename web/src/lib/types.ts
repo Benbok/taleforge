@@ -288,6 +288,7 @@ export interface SessionSummary {
 export interface HeroPublic {
   id: string;
   name: string;
+  portrait_url?: string | null;
   seat_id: string | null;
   status: string;
   level: number;

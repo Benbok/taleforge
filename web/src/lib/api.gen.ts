@@ -1412,6 +1412,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/characters/{hero_id}/portrait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Game Portrait */
+        post: operations["game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/entity-types": {
         parameters: {
             query?: never;
@@ -2299,6 +2316,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/characters/{hero_id}/portrait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Library Portrait */
+        post: operations["library_portrait_api_me_characters__hero_id__portrait_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/characters/{library_id}": {
         parameters: {
             query?: never;
@@ -2646,6 +2680,23 @@ export interface paths {
          * @description Рекомендация размера отряда для мастера создания кампании (раздел 5.2).
          */
         get: operations["recommend_party_api_party_size_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portraits/{portrait_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Portrait */
+        get: operations["portrait_api_portraits__portrait_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3510,6 +3561,8 @@ export interface components {
             personality?: {
                 [key: string]: unknown;
             };
+            /** Portrait Url */
+            portrait_url?: string | null;
             /** Private Backstory */
             private_backstory?: string;
             progress?: components["schemas"]["Progress"];
@@ -4750,6 +4803,8 @@ export interface components {
             level: string;
             /** Name */
             name: string;
+            /** Portrait Url */
+            portrait_url?: string | null;
             /** Revision */
             revision: number;
             sheet: components["schemas"]["UniversalSheet"];
@@ -4840,6 +4895,11 @@ export interface components {
             name: string;
             /** Origin Id */
             origin_id: string | null;
+            /**
+             * Portrait Url
+             * @default null
+             */
+            portrait_url?: string | null;
             /** Public Bio */
             public_bio: string;
             /** Seat Id */
@@ -4914,6 +4974,11 @@ export interface components {
             personality: {
                 [key: string]: unknown;
             };
+            /**
+             * Portrait Url
+             * @default null
+             */
+            portrait_url?: string | null;
             /**
              * Private Backstory
              * @default null
@@ -6838,6 +6903,13 @@ export interface components {
             /** Structure Id */
             structure_id?: string | null;
         };
+        /** PortraitIn */
+        PortraitIn: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Request Key */
+            request_key: string;
+        };
         /** PreparationView */
         PreparationView: {
             /** Budget Usd */
@@ -7654,6 +7726,8 @@ export interface components {
             level: string;
             /** Name */
             name: string;
+            /** Portrait Url */
+            portrait_url?: string | null;
             /** Revision */
             revision: number;
             /** Seat Id */
@@ -8268,6 +8342,7 @@ export type PersonaIn = components['schemas']['PersonaIn'];
 export type PersonaSettingsIn = components['schemas']['PersonaSettingsIn'];
 export type Place = components['schemas']['Place'];
 export type PlanRequestIn = components['schemas']['PlanRequestIn'];
+export type PortraitIn = components['schemas']['PortraitIn'];
 export type PreparationView = components['schemas']['PreparationView'];
 export type PrepareRequest = components['schemas']['PrepareRequest'];
 export type PresenceChanged = components['schemas']['PresenceChanged'];
@@ -11343,6 +11418,42 @@ export interface operations {
             };
         };
     };
+    game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                hero_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortraitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversalGameCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     entity_types_api_campaigns__campaign_id__entity_types_get: {
         parameters: {
             query: {
@@ -13319,6 +13430,41 @@ export interface operations {
             };
         };
     };
+    library_portrait_api_me_characters__hero_id__portrait_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hero_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortraitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeroCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_hero_api_me_characters__library_id__get: {
         parameters: {
             query?: never;
@@ -14100,6 +14246,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portrait_api_portraits__portrait_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portrait_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

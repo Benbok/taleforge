@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { initials } from "../components/Avatar";
+import PortraitImage from '../components/PortraitImage';
 import type { OrderEntry, SceneEntity } from "../lib/types";
 import { useGame } from "../stores/game";
 import { byZone, myTurn, ringState, TONE_COLOR, turnLeft, useTurnClock, ZONES } from "./combat";
@@ -41,6 +42,7 @@ const SIDE_COLOR = { hero: "var(--tf-accent)", enemy: "var(--tf-entity-creature)
 function Token({ e, acting, mine }: { e: OrderEntry; acting: boolean; mine: boolean }) {
   const open = useInspector((s) => s.open);
   const turn = useGame((s) => s.turn);
+  const portraitUrl = useGame(s => s.heroes[e.id]?.portrait_url);
   const clock = useTurnClock(acting ? turn : null);
   const secs = clock ? Math.ceil(clock.left) : null;
   return (
@@ -54,10 +56,11 @@ function Token({ e, acting, mine }: { e: OrderEntry; acting: boolean; mine: bool
         <span className="relative flex h-11 w-11 items-center justify-center">
           {clock && <TurnRing left={clock.left} total={clock.total} />}
           <span
-            className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold"
+            className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 text-xs font-semibold"
             style={{ borderColor: SIDE_COLOR[e.side], color: SIDE_COLOR[e.side] }}
           >
             {initials(e.name)}
+            {portraitUrl && <span className='absolute inset-0'><PortraitImage key={portraitUrl} url={portraitUrl} name={e.name} /></span>}
           </span>
         </span>
         <span className={`line-clamp-2 w-full break-words text-xs leading-tight ${acting ? "font-semibold" : ""}`}>

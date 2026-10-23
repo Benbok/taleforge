@@ -112,6 +112,7 @@ export function PartyPanel() {
             >
               <Avatar
                 name={h?.name ?? s.user_name}
+                portraitUrl={h?.portrait_url}
                 role={s.role}
                 occupant={s.occupant_type}
                 presence={s.occupant_type === "human" ? (s.presence ?? "offline") : null}

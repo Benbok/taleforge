@@ -43,7 +43,8 @@ export async function api<T>(path: string, opts: { method?: string; body?: unkno
   if (res.status === 204) return null as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const detail = typeof data.detail === "string" ? data.detail : `ошибка сервера (${res.status})`;
+    const detail = typeof data.detail === "string" ? data.detail :
+      typeof data.detail?.message === "string" ? data.detail.message : `ошибка сервера (${res.status})`;
     throw new ApiError(detail, res.status, data);
   }
   return data as T;

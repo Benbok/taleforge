@@ -30,6 +30,8 @@ async def verify_universal_schema(engine: AsyncEngine) -> None:
         columns = {c["name"] for c in inspect(connection).get_columns("library_characters")}
         if "revision" not in columns:
             raise RuntimeError("Expected universal hero revisions; run alembic upgrade head")
+        if "hero_portraits" not in tables or not {"portrait_id", "portrait_job_id"} <= columns:
+            raise RuntimeError("Expected hero portrait storage; run alembic upgrade head")
 
     async with engine.begin() as connection:
         await connection.run_sync(verify)

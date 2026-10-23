@@ -402,7 +402,8 @@ export const useGame = create<GameState>((set, get) => ({
       }
       case "character.updated": {
         const h: HeroPublic = e.payload.character;
-        if (h?.id) set((s) => ({ heroes: { ...s.heroes, [h.id]: h } }));
+        if (h?.id) set((s) => ({ heroes: { ...s.heroes, [h.id]: h },
+          ...(s.sheet?.id === h.id ? { sheet: { ...s.sheet, portrait_url: h.portrait_url } } : {}) }));
         return;
       }
       case "entity.card": {
