@@ -38,7 +38,9 @@ async def run_online() -> None:
     await engine.dispose()
 
 
-if context.is_offline_mode():
+if config.attributes.get("connection") is not None:
+    _run(config.attributes["connection"])
+elif context.is_offline_mode():
     run_offline()
 else:
     asyncio.run(run_online())

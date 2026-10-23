@@ -51,7 +51,7 @@ def _flags(raw: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Settings:
-    database_url: str = "sqlite+aiosqlite:///./taleforge.db"
+    database_url: str = "sqlite+aiosqlite:///./taleforge-universal.db"
     redis_url: str | None = None
     jwt_secret: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     jwt_ttl_hours: int = 24 * 30

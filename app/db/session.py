@@ -2,10 +2,35 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 _READS = {"SELECT", "PRAGMA", "EXPLAIN"}
+
+
+async def verify_universal_schema(engine: AsyncEngine) -> None:
+    """Reject legacy storage before bootstrap writes; initialize only an empty database."""
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    def verify(connection):
+        tables = set(inspect(connection).get_table_names()) - {"alembic_version"}
+        if not tables:
+            config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
+            config.set_main_option("script_location", str(Path(__file__).resolve().parents[2] / "alembic"))
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+            return
+        if not {"hero_dialogues", "hero_edit_receipts", "library_characters"} <= tables:
+            raise RuntimeError("Expected a universal database; configure a NEW DATABASE_URL and run alembic upgrade head")
+        columns = {c["name"] for c in inspect(connection).get_columns("library_characters")}
+        if "revision" not in columns:
+            raise RuntimeError("Expected universal hero revisions; run alembic upgrade head")
+
+    async with engine.begin() as connection:
+        await connection.run_sync(verify)
 
 
 def make_engine(url: str) -> AsyncEngine:

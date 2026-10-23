@@ -561,12 +561,42 @@ class LibraryCharacter(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("lc"))
     owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     sheet: Mapped[dict[str, Any]] = mapped_column(default=dict)
     public_bio: Mapped[str] = mapped_column(Text, default="")
     private_backstory: Mapped[str] = mapped_column(Text, default="")
     personality: Mapped[dict[str, Any]] = mapped_column(default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class HeroDialogue(Base):
+    """Creation drafts and revision-bound editing proposals, independent of chat history."""
+
+    __tablename__ = "hero_dialogues"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("hd"))
+    owner_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    campaign_id: Mapped[str | None] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"))
+    target_id: Mapped[str | None] = mapped_column(String(32))
+    hero_id: Mapped[str | None] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(16), default="questions")
+    description: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    transcript: Mapped[list[Any]] = mapped_column(default=list)
+    proposal: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class HeroEditReceipt(Base):
+    __tablename__ = "hero_edit_receipts"
+    __table_args__ = (UniqueConstraint("hero_id", "request_key"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("he"))
+    hero_id: Mapped[str] = mapped_column(ForeignKey("library_characters.id", ondelete="CASCADE"))
+    request_key: Mapped[str] = mapped_column(String(128))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    result: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
 class InventoryItem(Base):

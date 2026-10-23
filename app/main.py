@@ -42,7 +42,7 @@ from app.core import audio
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.core.security import hash_password
 from app.db.models import User
-from app.db.session import make_engine, make_sessionmaker
+from app.db.session import make_engine, make_sessionmaker, verify_universal_schema
 from app.gateway import ws
 from app.gateway.hub import Hub, MemoryBus, RedisBus
 from app.gateway.presence import Presence
@@ -82,6 +82,11 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         engine = make_engine(settings.database_url)
+        try:
+            await verify_universal_schema(engine)
+        except BaseException:
+            await engine.dispose()
+            raise
         app.state.engine = engine
         app.state.sessionmaker = make_sessionmaker(engine, info={"settings": settings})
         app.state.hub = hub = Hub()
