@@ -262,7 +262,8 @@ async def run_universal_turn(service, cid, place=None):
                         if admission.profile is None:
                             raise ValueError("Ability requires bounded profile")
                         profile = admission.profile
-                        if profile.resource_key != profile.attribute:
+                        ordinary_check = profile.kind == "check" and profile.resource_key is None
+                        if not ordinary_check and profile.resource_key != profile.attribute:
                             raise ValueError("Magic requires matching energy pool")
                     # Renaming an equivalent realized ability cannot create a new rules identity.
                     candidate = profile.model_dump(exclude={"id", "revision"})
