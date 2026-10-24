@@ -14599,6 +14599,164 @@
     "title": "StandInChanged",
     "type": "object"
    },
+   "StartingArmor": {
+    "additionalProperties": false,
+    "properties": {
+     "defense_bonus": {
+      "default": "1",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Defense Bonus",
+      "type": "string"
+     },
+     "description": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+     },
+     "equipped": {
+      "const": true,
+      "default": true,
+      "title": "Equipped",
+      "type": "boolean"
+     },
+     "kind": {
+      "const": "armor",
+      "default": "armor",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "quantity": {
+      "default": "1",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Quantity",
+      "type": "string"
+     },
+     "reason": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+     },
+     "status": {
+      "const": "common",
+      "default": "common",
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "description",
+     "reason"
+    ],
+    "title": "StartingArmor",
+    "type": "object"
+   },
+   "StartingEquipment": {
+    "additionalProperties": false,
+    "properties": {
+     "armor": {
+      "$ref": "#/components/schemas/StartingArmor"
+     },
+     "weapon": {
+      "$ref": "#/components/schemas/StartingWeapon"
+     }
+    },
+    "required": [
+     "weapon",
+     "armor"
+    ],
+    "title": "StartingEquipment",
+    "type": "object"
+   },
+   "StartingWeapon": {
+    "additionalProperties": false,
+    "properties": {
+     "attack_ability": {
+      "enum": [
+       "str",
+       "dex"
+      ],
+      "title": "Attack Ability",
+      "type": "string"
+     },
+     "attack_bonus": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Attack Bonus",
+      "type": "string"
+     },
+     "damage_bonus": {
+      "default": "0",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Damage Bonus",
+      "type": "string"
+     },
+     "damage_dice": {
+      "const": "1d6",
+      "default": "1d6",
+      "title": "Damage Dice",
+      "type": "string"
+     },
+     "description": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+     },
+     "equipped": {
+      "const": true,
+      "default": true,
+      "title": "Equipped",
+      "type": "boolean"
+     },
+     "kind": {
+      "const": "weapon",
+      "default": "weapon",
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "quantity": {
+      "default": "1",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "title": "Quantity",
+      "type": "string"
+     },
+     "reason": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+     },
+     "status": {
+      "const": "common",
+      "default": "common",
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "description",
+     "reason",
+     "attack_ability"
+    ],
+    "title": "StartingWeapon",
+    "type": "object"
+   },
    "StatExplained": {
     "additionalProperties": true,
     "properties": {
@@ -15103,6 +15261,16 @@
       "default": 1,
       "title": "Schema Version",
       "type": "integer"
+     },
+     "starting_equipment": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StartingEquipment"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "trained": {
       "items": {

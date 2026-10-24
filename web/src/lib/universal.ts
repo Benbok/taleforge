@@ -3,6 +3,7 @@ import type { components } from './api.gen';
 export type HeroCard = components['schemas']['HeroCard'];
 export type HeroDescription = components['schemas']['HeroDescription'];
 export type HeroEdit = components['schemas']['HeroEdit'];
+export type StartingEquipment = components['schemas']['StartingEquipment'];
 export type AbilityKey = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
 export const abilityNames: Record<AbilityKey, string> = {
   str: 'Сила', dex: 'Ловкость', con: 'Телосложение', int: 'Интеллект', wis: 'Мудрость', cha: 'Харизма',
@@ -13,7 +14,7 @@ export interface HeroDialogue {
   id: string; revision: number; status: string; description: HeroDescription;
   campaign_id: string | null; hero_id: string | null;
   transcript: { role: string; content?: string }[];
-  proposal: { abilities: Record<AbilityKey, string>; explanations: Record<AbilityKey, string> } | null;
+  proposal: { abilities: Record<AbilityKey, string>; explanations: Record<AbilityKey, string>; equipment?: StartingEquipment | null } | null;
 }
 export interface EditProposal { id: string; edit: HeroEdit; explanations: Record<AbilityKey, string> }
 

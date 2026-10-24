@@ -7,6 +7,16 @@ def validate_starting_scores(scores: AbilityScores) -> AbilityScores:
     return scores
 
 
+def starting_defense_bonuses(sheet: UniversalSheet) -> list[int]:
+    return [sheet.starting_equipment.armor.defense_bonus] if sheet.starting_equipment else []
+
+
+def starting_items(sheet: UniversalSheet) -> list[dict]:
+    if not sheet.starting_equipment:
+        return []
+    return [item.model_dump(mode="json") for item in (sheet.starting_equipment.weapon, sheet.starting_equipment.armor)]
+
+
 def derive(sheet: UniversalSheet, defense_bonuses: list[int]) -> ActorDerived:
     scores = sheet.abilities.model_dump()
     mods = {key: (value - 10) // 2 for key, value in scores.items()}

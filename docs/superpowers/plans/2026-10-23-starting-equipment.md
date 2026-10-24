@@ -1,0 +1,7 @@
+# Starting equipment in hero creation
+
+The master proposes exactly one ordinary weapon and one ordinary armor based on the description, together with starting scores and before confirmation. Each item has a name, appearance and explanation of its fit. The server fixes quantity=1, equipped=true and common status. A weapon uses STR or DEX, 1d6 base damage and zero attack/damage bonuses. Armor adds exactly 1 to card defense. Text cannot grant powers or override these bounds.
+
+Save the accepted equipment in the universal sheet; derive item cards and defense from that saved profile. Manual/chat description edits preserve the profile. Campaign creation and independent library copying retain it. Existing heroes without a profile remain readable; an old unconfirmed proposal must obtain a master equipment proposal before confirmation. No automatic model calls or silent retroactive equipment generation.
+
+Reuse the existing JSON storage, revision checks, one-time confirmation and model accounting. Extend tool schema and prompt, validate equipment before saving a ready proposal, show its description/properties/reasons before and after confirmation, and verify copy/edit/replay safety. Scripted models only in tests. This is the starting-set addition requested by the user; general inventory changes, combat execution, item removal and new gear acquisition remain in the later inventory/combat node.

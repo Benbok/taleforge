@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.campaigns import NotFound
 from app.core.universal.portraits import portrait_url
 from app.db.models import LibraryCharacter
+from app.rules.universal.mechanics import starting_defense_bonuses, starting_items
 
 
 async def load_library_hero(session: AsyncSession, owner_id: str, hero_id: str) -> LibraryCharacter:
@@ -23,7 +24,7 @@ def card_of(hero: LibraryCharacter) -> dict:
     from app.rules.universal.mechanics import derive
 
     sheet = UniversalSheet.model_validate(hero.sheet)
-    derived = derive(sheet, [])
+    derived = derive(sheet, starting_defense_bonuses(sheet))
     return HeroCard(
         id=hero.id,
         name=sheet.description.name or hero.name,
@@ -34,6 +35,7 @@ def card_of(hero: LibraryCharacter) -> dict:
         derived=derived,
         hp=derived.hp_max,
         energies=derived.energy_max,
+        equipment=starting_items(sheet),
     ).model_dump(mode="json")
 
 
@@ -48,7 +50,7 @@ def game_card_of(hero) -> dict:
     data = dict(hero.sheet)
     data.pop("source_library_id", None)
     sheet = UniversalSheet.model_validate(data)
-    derived = derive(sheet, [])
+    derived = derive(sheet, starting_defense_bonuses(sheet))
     return UniversalGameCard(
         id=hero.id,
         name=hero.name,
@@ -61,4 +63,5 @@ def game_card_of(hero) -> dict:
         energies=hero.resources.get("energies", derived.energy_max),
         seat_id=hero.seat_id,
         status=hero.status,
+        equipment=starting_items(sheet),
     ).model_dump(mode="json")

@@ -9,27 +9,81 @@ export const descriptionFields = [
   { key: 'capabilities', label: 'Что он умеет?', hint: 'Опыт, таланты и задуманные возможности героя.', example: 'Знает целебные травы, читает следы и мечтает управлять лозами…', tip: 'Можно описать и то, чему герой хочет научиться. Мастер поможет связать замысел со стартовыми характеристиками; приёмы раскрываются в игре.' },
 ] as const;
 
-export default function HeroDescriptionForm({ value, onChange, disabled = false }: {
-  value: HeroDescription; onChange: (value: HeroDescription) => void; disabled?: boolean;
+export default function HeroDescriptionForm({
+  value,
+  onChange,
+  disabled = false,
+}: {
+  value: HeroDescription;
+  onChange: (value: HeroDescription) => void;
+  disabled?: boolean;
 }) {
   const prefix = useId();
-  return <div className='grid gap-6 sm:grid-cols-2'>{descriptionFields.map(({ key, label, hint, example, tip }) => {
-    const id = `${prefix}-${key}`;
-    return <div key={key} className={`flex min-w-0 flex-col gap-2 ${key === 'name' || key === 'identity' || key === 'capabilities' ? 'sm:col-span-2' : ''}`}>
-      <div className='flex flex-wrap items-center justify-between gap-2'>
-        <label htmlFor={id} className='text-sm font-semibold'>{label}</label>
-        <span className={`text-xs ${key === 'identity' ? 'text-accent' : 'text-muted'}`}>{key === 'identity' ? 'Для начала беседы' : 'Необязательно'}</span>
-      </div>
-      <p id={`${id}-hint`} className='text-xs leading-relaxed text-muted'>{hint}</p>
-      {key === 'name' ? <input id={id} aria-describedby={`${id}-hint`} className='field workshop-field' placeholder={example}
-        value={value[key] ?? ''} disabled={disabled} maxLength={64} onChange={event => onChange({ ...value, [key]: event.target.value })} /> :
-        <textarea id={id} aria-describedby={`${id}-hint`} className={`field workshop-field ${key === 'identity' ? 'min-h-32' : 'min-h-28'}`}
-          placeholder={example} value={value[key] ?? ''} disabled={disabled} maxLength={4000} required={key === 'identity'}
-          onChange={event => onChange({ ...value, [key]: event.target.value })} />}
-      <details className='workshop-tip text-xs text-muted'><summary className='w-fit cursor-pointer rounded py-1 text-patina'>Подсказка: {label.toLowerCase().replace('?', '')}</summary>
-        <p className='mt-1 border-l-2 border-patina pl-3 leading-relaxed'>{tip}</p></details>
-    </div>;
-  })}
-    <p className='text-xs leading-relaxed text-muted sm:col-span-2'>Достаточно описать, кто ваш герой. Желаемые возможности обсуждаются с мастером и раскрываются в игре.</p>
-  </div>;
+  return (
+    <div className='grid gap-6 sm:grid-cols-2'>
+      {descriptionFields.map(({ key, label, hint, example, tip }) => {
+        const id = `${prefix}-${key}`;
+        const isCore = key === 'identity';
+        return (
+          <div
+            key={key}
+            className={`flex min-w-0 flex-col gap-2 ${
+              key === 'name' || isCore || key === 'capabilities' ? 'sm:col-span-2' : ''
+            } ${isCore ? 'rounded-2xl border border-accent/40 bg-surface-2/40 p-4 md:p-5 shadow-sm' : ''}`}
+          >
+            <div className='flex flex-wrap items-center justify-between gap-2'>
+              <label htmlFor={id} className={`text-sm font-semibold ${isCore ? 'text-accent' : 'text-ink'}`}>
+                {label}
+              </label>
+              <span
+                className={`text-xs ${
+                  isCore
+                    ? 'rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 font-medium text-accent'
+                    : 'text-muted'
+                }`}
+              >
+                {isCore ? 'Обязательно для старта' : 'Необязательно'}
+              </span>
+            </div>
+            <p id={`${id}-hint`} className='text-xs leading-relaxed text-muted'>
+              {hint}
+            </p>
+            {key === 'name' ? (
+              <input
+                id={id}
+                aria-describedby={`${id}-hint`}
+                className='field workshop-field font-medium'
+                placeholder={example}
+                value={value[key] ?? ''}
+                disabled={disabled}
+                maxLength={64}
+                onChange={event => onChange({ ...value, [key]: event.target.value })}
+              />
+            ) : (
+              <textarea
+                id={id}
+                aria-describedby={`${id}-hint`}
+                className={`field workshop-field ${isCore ? 'min-h-32' : 'min-h-28'}`}
+                placeholder={example}
+                value={value[key] ?? ''}
+                disabled={disabled}
+                maxLength={4000}
+                required={isCore}
+                onChange={event => onChange({ ...value, [key]: event.target.value })}
+              />
+            )}
+            <details className='workshop-tip text-xs text-muted'>
+              <summary className='w-fit cursor-pointer rounded py-1 text-patina font-medium transition-colors hover:underline'>
+                Подсказка: {label.toLowerCase().replace('?', '')}
+              </summary>
+              <p className='mt-1 border-l-2 border-patina pl-3 leading-relaxed'>{tip}</p>
+            </details>
+          </div>
+        );
+      })}
+      <p className='text-xs leading-relaxed text-muted sm:col-span-2'>
+        Достаточно описать, кто ваш герой. Желаемые возможности обсуждаются с мастером и раскрываются в игре.
+      </p>
+    </div>
+  );
 }

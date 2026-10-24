@@ -45,7 +45,7 @@ def test_edit_replay_stale_revision_and_protected_fields(client, root):
     body = {"edit": edit, "request_key": "once"}
     first = client.patch(url, headers=root, json=body)
     assert first.status_code == 200, first.text
-    assert first.json()["derived"]["ac"] == "11"
+    assert first.json()["derived"]["ac"] == "12"
     assert client.patch(url, headers=root, json=body).json() == first.json()
     assert client.patch(url, headers=root, json={**body, "request_key": "stale"}).status_code == 409
     assert (

@@ -4,6 +4,7 @@ from app.agents.hero_creation import ask_hero
 from app.core.campaigns import AccessDenied, Conflict, NotFound, get_viewer
 from app.db.models import Character, HeroDialogue, LibraryCharacter, User, new_id
 from app.rules.universal.contracts import HeroBudget, HeroDescription, StartingAllocationProposal, UniversalSheet
+from app.rules.universal.mechanics import starting_defense_bonuses
 
 
 async def load_dialogue(session, owner_id: str, dialogue_id: str) -> HeroDialogue:
@@ -135,10 +136,15 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
     if draft.status != "ready" or draft.revision != expected_revision:
         raise Conflict("подтвердите актуальное готовое предложение")
     proposal = StartingAllocationProposal.model_validate(draft.proposal)
+    if proposal.equipment is None:
+        raise Conflict("У этого черновика ещё нет стартового снаряжения. Попросите мастера подобрать оружие и броню.")
     description = HeroDescription.model_validate(draft.description)
     seat_id = await _campaign_target(session, owner_id, draft.campaign_id, draft.target_id)
     sheet = UniversalSheet(
-        abilities=proposal.abilities, description=description, budget=HeroBudget(initial_scores=proposal.abilities)
+        abilities=proposal.abilities,
+        description=description,
+        budget=HeroBudget(initial_scores=proposal.abilities),
+        starting_equipment=proposal.equipment,
     )
     hero_id = new_id("ch" if draft.campaign_id else "lc")
     changed = await session.execute(
@@ -162,7 +168,7 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
     if draft.campaign_id:
         from app.rules.universal.mechanics import derive
 
-        derived = derive(sheet, [])
+        derived = derive(sheet, starting_defense_bonuses(sheet))
         session.add(
             Character(
                 **data,
@@ -186,7 +192,7 @@ async def copy_library_hero(session, viewer, original):
     seat_id = await _campaign_target(session, viewer.user.id, viewer.campaign.id, None)
     # Re-validate the base, then serialize a separate object; no mutable JSON is shared.
     sheet = editable_sheet(original)
-    derived = derive(sheet, [])
+    derived = derive(sheet, starting_defense_bonuses(sheet))
     copied = Character(
         owner_user_id=viewer.user.id,
         campaign_id=viewer.campaign.id,

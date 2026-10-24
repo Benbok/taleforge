@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import CampaignCardView from "../components/CampaignCardView";
 import Recap from "../components/Recap";
@@ -20,7 +20,31 @@ export default function Home() {
   const user = useSession((s) => s.user)!;
   const isAdmin = user.platform_role !== "player";
 
-  const [activeTab, setActiveTab] = useState<"tables" | "heroes" | "worlds">("tables");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam === "heroes" || tabParam === "worlds" ? tabParam : "tables";
+  const [activeTab, setActiveTabState] = useState<"tables" | "heroes" | "worlds">(initialTab);
+
+  useEffect(() => {
+    if (tabParam === "heroes" || tabParam === "worlds") {
+      setActiveTabState(tabParam);
+    } else if (!tabParam) {
+      setActiveTabState("tables");
+    }
+  }, [tabParam]);
+
+  const setActiveTab = (tab: "tables" | "heroes" | "worlds") => {
+    setActiveTabState(tab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (tab === "tables") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
   const [filter, setFilter] = useState<"all" | "master" | "player">("all");
 
   const cardsQuery = useQuery({

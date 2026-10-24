@@ -12,6 +12,15 @@ DESCRIPTION = dict(
 )
 PROPOSAL = dict(
     abilities=SCORES,
+    equipment={
+        "weapon": {
+            "name": "Посох травницы",
+            "description": "Прочный дорожный посох.",
+            "reason": "Подходит лесной путешественнице.",
+            "attack_ability": "str",
+        },
+        "armor": {"name": "Стёганый жилет", "description": "Защитный дорожный жилет.", "reason": "Защищает в походах."},
+    },
     explanations={
         "str": "Физически слаба",
         "dex": "Координация в походах",

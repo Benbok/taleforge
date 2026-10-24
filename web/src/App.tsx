@@ -48,6 +48,7 @@ export default function App() {
           <Route path="/admin" element={user ? <AdminPage /> : <Navigate to="/" replace />} />
           <Route path="/c/:id/manage" element={user ? <ManagePage /> : <Navigate to="/" replace />} />
           <Route path="/c/:id/hero" element={user ? <CampaignHeroPage /> : <Navigate to="/" replace />} />
+          <Route path="/heroes" element={<Navigate to="/?tab=heroes" replace />} />
           <Route path="/heroes/:hid" element={user ? <LibraryHeroPage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

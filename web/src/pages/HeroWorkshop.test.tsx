@@ -8,6 +8,10 @@ import CampaignHeroPage from './CampaignHeroPage';
 const description = { name: 'Ива', identity: 'Маг растений', appearance: '', personality: '', capabilities: 'Лозы' };
 const abilities = { str: '8', dex: '12', con: '14', int: '13', wis: '15', cha: '10' };
 const explanations = { str: 'Слаба', dex: 'Координация', con: 'Походы', int: 'Знания', wis: 'Магия', cha: 'Общение' };
+const equipment = {
+  weapon: { kind: 'weapon', name: 'Посох травницы', description: 'Дорожный посох', reason: 'Для лесных походов', attack_ability: 'str', damage_dice: '1d6' },
+  armor: { kind: 'armor', name: 'Стёганый жилет', description: 'Дорожная защита', reason: 'Для путешествий', defense_bonus: '1' },
+};
 const original = { id: 'lc1', name: 'Ива', revision: 1, level: '1', editable: true,
   sheet: { description, abilities, xp: '0', trained: [], rules_version: 'universal.v1' },
   derived: { hp_max: '24', ac: '13', modifiers: { str: '-1', dex: '1', con: '2', int: '1', wis: '2', cha: '0' },
@@ -91,7 +95,7 @@ it('confirms deleting only the selected saved draft and keeps it deleted after r
 
 it('deletes an opened draft and returns to the creation form', async () => {
   const draft = { id: 'hd1', revision: 2, status: 'ready', description, transcript: [],
-    proposal: { abilities, explanations }, campaign_id: null, hero_id: null };
+    proposal: { abilities, explanations, equipment }, campaign_id: null, hero_id: null };
   let deleted = false;
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
@@ -112,7 +116,7 @@ it('deletes an opened draft and returns to the creation form', async () => {
 it('creates, previews manual and chat changes, confirms, and reloads the same hero', async () => {
   let card = structuredClone(original);
   const draft = { id: 'hd1', revision: 2, status: 'ready', description,
-    proposal: { abilities, explanations }, transcript: [], campaign_id: null, hero_id: null };
+    proposal: { abilities, explanations, equipment }, transcript: [], campaign_id: null, hero_id: null };
   vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
     const method = init.method;
     if (path === '/api/hero-creation/dialogues' && method === 'GET') return response([]);
@@ -138,6 +142,8 @@ it('creates, previews manual and chat changes, confirms, and reloads the same he
   fireEvent.change(await screen.findByLabelText('Кто ваш герой?'), { target: { value: 'Маг растений' } });
   fireEvent.click(screen.getByRole('button', { name: 'Обсудить с мастером' }));
   expect(await screen.findByText('Слаба')).toBeTruthy();
+  expect(screen.getByText('Посох травницы')).toBeTruthy();
+  expect(screen.getByText('Стёганый жилет')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Подтвердить героя' }));
   expect(await screen.findByRole('heading', { name: 'Ива', level: 2 })).toBeTruthy();
   expect(within(screen.getByRole('heading', { name: 'Ива', level: 2 }).closest('header')!)

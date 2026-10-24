@@ -27,8 +27,12 @@
 .workshop-notice[role="alert"] { border-color: var(--tf-bad); }
 .workshop-status { border: 1px solid var(--tf-border); border-radius: 2rem; padding: .4rem .75rem; font-size: .7rem; color: var(--tf-patina); }
 .workshop-message { max-width: 90%; align-self: flex-start; border: 1px solid var(--tf-border); border-radius: .25rem 1rem 1rem 1rem; padding: 1.2rem; background: var(--tf-bg); overflow-wrap: anywhere; }
-.workshop-message.is-user { align-self: flex-end; border-radius: 1rem .25rem 1rem 1rem; background: color-mix(in srgb, var(--tf-accent) 6%, var(--tf-surface)); }
+.workshop-message.is-master { background: color-mix(in srgb, var(--tf-surface-2) 65%, var(--tf-bg)); border-left: 3px solid var(--tf-patina); }
+.workshop-message.is-user { align-self: flex-end; border-radius: 1rem .25rem 1rem 1rem; background: color-mix(in srgb, var(--tf-accent) 7%, var(--tf-surface)); border-color: color-mix(in srgb, var(--tf-accent) 25%, var(--tf-border)); }
 .workshop-proposal { background: color-mix(in srgb, var(--tf-patina) 5%, var(--tf-bg)); }
+.hero-card-sheet { background: radial-gradient(ellipse at 95% 5%, color-mix(in srgb, var(--tf-accent) 7%, transparent), transparent 60%), var(--tf-surface); }
+.hero-stat-card { transition: border-color .15s, transform .15s; }
+.hero-stat-card:hover { transform: translateY(-1px); }
 @media (min-width: 1024px) { .workshop-companion { position: sticky; top: 6rem; } }
 @media (max-width: 639px) {
   .workshop-step { flex-direction: column; align-items: flex-start; font-size: .7rem; gap: .5rem; }

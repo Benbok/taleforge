@@ -76,9 +76,43 @@ class HeroDescription(ClosedModel):
         return self
 
 
+class StartingItem(ClosedModel):
+    name: str = Field(min_length=1, max_length=64)
+    description: str = Field(min_length=1, max_length=512)
+    reason: str = Field(min_length=1, max_length=512)
+    status: Literal["common"] = "common"
+    quantity: Count = Field(default=1, ge=1, le=1)
+    equipped: Literal[True] = True
+
+    @model_validator(mode="after")
+    def meaningful_item(self):
+        if not all(value.strip() for value in (self.name, self.description, self.reason)):
+            raise ValueError("нужны название, описание и объяснение выбора предмета")
+        return self
+
+
+class StartingWeapon(StartingItem):
+    kind: Literal["weapon"] = "weapon"
+    attack_ability: Literal["str", "dex"]
+    damage_dice: Literal["1d6"] = "1d6"
+    attack_bonus: Count = Field(default=0, le=0)
+    damage_bonus: Count = Field(default=0, le=0)
+
+
+class StartingArmor(StartingItem):
+    kind: Literal["armor"] = "armor"
+    defense_bonus: Count = Field(default=1, ge=1, le=1)
+
+
+class StartingEquipment(ClosedModel):
+    weapon: StartingWeapon
+    armor: StartingArmor
+
+
 class StartingAllocationProposal(ClosedModel):
     abilities: AbilityScores
     explanations: AbilityExplanations
+    equipment: StartingEquipment | None = None
 
     @model_validator(mode="after")
     def exact_allocation(self):
@@ -114,6 +148,7 @@ class UniversalSheet(ClosedModel):
     trained: list[str] = Field(default_factory=list)
     unspent_points: Count = 0
     budget: HeroBudget | None = None
+    starting_equipment: StartingEquipment | None = None
 
 
 class ActorDerived(ClosedModel):

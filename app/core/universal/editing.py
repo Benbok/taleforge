@@ -96,7 +96,11 @@ async def apply_hero_edit(session, owner_id: str, library_id: str, edit: HeroEdi
     description = HeroDescription.model_validate({**sheet.description.model_dump(), **edit.description_patch})
     scores = validate_starting_scores(edit.base_scores or sheet.abilities)
     sheet = UniversalSheet(
-        description=description, abilities=scores, trained=sheet.trained, budget=HeroBudget(initial_scores=scores)
+        description=description,
+        abilities=scores,
+        trained=sheet.trained,
+        budget=HeroBudget(initial_scores=scores),
+        starting_equipment=sheet.starting_equipment,
     )
     changed = await session.execute(
         update(LibraryCharacter)

@@ -7589,6 +7589,101 @@ export interface components {
             seat_id: string;
             stand_in: components["schemas"]["StandIn"] | null;
         };
+        /** StartingArmor */
+        StartingArmor: {
+            /**
+             * Defense Bonus
+             * @default 1
+             */
+            defense_bonus?: string;
+            /** Description */
+            description: string;
+            /**
+             * Equipped
+             * @default true
+             * @constant
+             */
+            equipped?: true;
+            /**
+             * Kind
+             * @default armor
+             * @constant
+             */
+            kind?: "armor";
+            /** Name */
+            name: string;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity?: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @default common
+             * @constant
+             */
+            status?: "common";
+        };
+        /** StartingEquipment */
+        StartingEquipment: {
+            armor: components["schemas"]["StartingArmor"];
+            weapon: components["schemas"]["StartingWeapon"];
+        };
+        /** StartingWeapon */
+        StartingWeapon: {
+            /**
+             * Attack Ability
+             * @enum {string}
+             */
+            attack_ability: "str" | "dex";
+            /**
+             * Attack Bonus
+             * @default 0
+             */
+            attack_bonus?: string;
+            /**
+             * Damage Bonus
+             * @default 0
+             */
+            damage_bonus?: string;
+            /**
+             * Damage Dice
+             * @default 1d6
+             * @constant
+             */
+            damage_dice?: "1d6";
+            /** Description */
+            description: string;
+            /**
+             * Equipped
+             * @default true
+             * @constant
+             */
+            equipped?: true;
+            /**
+             * Kind
+             * @default weapon
+             * @constant
+             */
+            kind?: "weapon";
+            /** Name */
+            name: string;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity?: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @default common
+             * @constant
+             */
+            status?: "common";
+        };
         /** StatExplained */
         StatExplained: {
             /** Character Id */
@@ -7758,6 +7853,7 @@ export interface components {
              * @constant
              */
             schema_version?: 1;
+            starting_equipment?: components["schemas"]["StartingEquipment"] | null;
             /** Trained */
             trained?: string[];
             /**
@@ -8393,6 +8489,9 @@ export type StageStatus = components['schemas']['StageStatus'];
 export type StageTask = components['schemas']['StageTask'];
 export type StandIn = components['schemas']['StandIn'];
 export type StandInChanged = components['schemas']['StandInChanged'];
+export type StartingArmor = components['schemas']['StartingArmor'];
+export type StartingEquipment = components['schemas']['StartingEquipment'];
+export type StartingWeapon = components['schemas']['StartingWeapon'];
 export type StatExplained = components['schemas']['StatExplained'];
 export type StateActions = components['schemas']['StateActions'];
 export type StateSnapshot = components['schemas']['StateSnapshot'];
