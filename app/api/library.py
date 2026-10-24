@@ -37,19 +37,44 @@ class ChatEditIn(ClosedModel):
     expected_revision: int = Field(ge=1)
 
 
-@router.patch('/characters/{library_id}', response_model=HeroCard)
+class EquipmentIn(ClosedModel):
+    expected_revision: int = Field(ge=1)
+
+
+@router.post("/characters/{library_id}/equipment-proposals", status_code=201)
+async def propose_equipment(
+    library_id: str,
+    body: EquipmentIn,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+) -> dict:
+    draft = await propose_hero_edit(
+        session,
+        user.id,
+        library_id,
+        "Подбери новый стартовый набор по моему описанию: одно обычное оружие и одну обычную броню.",
+        body.expected_revision,
+        llm=request.app.state.hero_llm,
+        equipment_only=True,
+    )
+    return dict(id=draft.id, edit=draft.proposal)
+
+
+@router.patch("/characters/{library_id}", response_model=HeroCard)
 async def edit_hero(library_id: str, body: EditIn, user: UserDep, session: SessionDep) -> dict:
     return await apply_hero_edit(session, user.id, library_id, body.edit, body.request_key)
 
 
-@router.post('/characters/{library_id}/edit-proposals', status_code=201)
+@router.post("/characters/{library_id}/edit-proposals", status_code=201)
 async def propose(library_id: str, body: ChatEditIn, user: UserDep, session: SessionDep, request: Request) -> dict:
-    draft = await propose_hero_edit(session, user.id, library_id, body.message, body.expected_revision,
-                                    llm=request.app.state.hero_llm)
-    return dict(id=draft.id, edit=draft.proposal, explanations=draft.transcript[-1]['explanations'])
+    draft = await propose_hero_edit(
+        session, user.id, library_id, body.message, body.expected_revision, llm=request.app.state.hero_llm
+    )
+    return dict(id=draft.id, edit=draft.proposal, explanations=draft.transcript[-1]["explanations"])
 
 
-@router.post('/characters/{library_id}/edit-proposals/{proposal_id}/confirm', response_model=HeroCard)
+@router.post("/characters/{library_id}/edit-proposals/{proposal_id}/confirm", response_model=HeroCard)
 async def confirm(library_id: str, proposal_id: str, body: RequestKey, user: UserDep, session: SessionDep) -> dict:
     return await confirm_edit(session, user.id, library_id, proposal_id, body.request_key)
 
@@ -63,13 +88,13 @@ async def list_worlds(user: UserDep, session: SessionDep) -> list[dict]:
 @router.get("/character-options")
 async def character_options(user: UserDep, session: SessionDep, pack: str | None = None) -> dict:
     """Варианты конструктора для мира героя: без pack — базовые правила SRD, иначе классы и происхождения мира."""
-    raise Conflict('Герой создаётся из описания через диалог с мастером.')
+    raise Conflict("Герой создаётся из описания через диалог с мастером.")
 
 
 @router.post("/character-preview")
 async def character_preview(body: LibraryPreviewIn, user: UserDep, session: SessionDep) -> dict:
     """Живой лист героя профиля по правилам его мира: ничего не сохраняет."""
-    raise Conflict('Используйте универсальную карточку героя.')
+    raise Conflict("Используйте универсальную карточку героя.")
 
 
 @router.get("/characters", response_model=list[HeroCard])
@@ -79,7 +104,7 @@ async def list_heroes(user: UserDep, session: SessionDep) -> list[dict]:
 
 @router.post("/characters", status_code=201)
 async def create_hero(body: LibraryHeroIn, user: UserDep, session: SessionDep) -> dict:
-    raise Conflict('Создайте героя через диалог с мастером.')
+    raise Conflict("Создайте героя через диалог с мастером.")
 
 
 @router.get("/characters/{library_id}", response_model=HeroCard)
@@ -89,7 +114,7 @@ async def get_hero(library_id: str, user: UserDep, session: SessionDep) -> dict:
 
 @router.put("/characters/{library_id}")
 async def update_hero(library_id: str, body: LibraryHeroIn, user: UserDep, session: SessionDep) -> dict:
-    raise Conflict('Используйте редактор базовой карточки с подтверждением версии.')
+    raise Conflict("Используйте редактор базовой карточки с подтверждением версии.")
 
 
 @router.delete("/characters/{library_id}", status_code=204)
@@ -102,4 +127,4 @@ async def delete_hero(library_id: str, user: UserDep, session: SessionDep) -> Re
 
 @router.post("/characters/{library_id}/roll-abilities")
 async def roll_abilities(library_id: str, user: UserDep, session: SessionDep, request: Request) -> dict:
-    raise Conflict('Допустима только перестановка набора 15, 14, 13, 12, 10, 8.')
+    raise Conflict("Допустима только перестановка набора 15, 14, 13, 12, 10, 8.")

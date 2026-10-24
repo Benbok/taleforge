@@ -3587,24 +3587,6 @@
     "title": "EquipmentChangeView",
     "type": "object"
    },
-   "EquipmentIn": {
-    "properties": {
-     "equipped": {
-      "default": true,
-      "title": "Equipped",
-      "type": "boolean"
-     },
-     "inventory_id": {
-      "title": "Inventory Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "inventory_id"
-    ],
-    "title": "EquipmentIn",
-    "type": "object"
-   },
    "EquipmentResponse": {
     "properties": {
      "character": {
@@ -6218,6 +6200,18 @@
       "minimum": 1.0,
       "title": "Expected Revision",
       "type": "integer"
+     },
+     "starting_equipment": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starting Equipment"
      }
     },
     "required": [
@@ -16421,6 +16415,39 @@
     ],
     "title": "WorldSummary",
     "type": "object"
+   },
+   "app__api__equipment__EquipmentIn": {
+    "properties": {
+     "equipped": {
+      "default": true,
+      "title": "Equipped",
+      "type": "boolean"
+     },
+     "inventory_id": {
+      "title": "Inventory Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "inventory_id"
+    ],
+    "title": "EquipmentIn",
+    "type": "object"
+   },
+   "app__api__library__EquipmentIn": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "expected_revision"
+    ],
+    "title": "EquipmentIn",
+    "type": "object"
    }
   },
   "securitySchemes": {
@@ -20857,7 +20884,7 @@
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/EquipmentIn"
+        "$ref": "#/components/schemas/app__api__equipment__EquipmentIn"
        }
       }
      },
@@ -25457,6 +25484,65 @@
      }
     ],
     "summary": "Confirm",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/me/characters/{library_id}/equipment-proposals": {
+   "post": {
+    "operationId": "propose_equipment_api_me_characters__library_id__equipment_proposals_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_id",
+      "required": true,
+      "schema": {
+       "title": "Library Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/app__api__library__EquipmentIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Propose Equipment Api Me Characters  Library Id  Equipment Proposals Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Propose Equipment",
     "tags": [
      "profile"
     ]

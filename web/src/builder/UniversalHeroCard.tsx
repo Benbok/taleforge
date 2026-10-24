@@ -12,7 +12,9 @@ const energyThemes: Record<string, { color: string; label: string }> = {
   cha: { color: 'var(--tf-accent)', label: 'Сила воли и влияние' },
 };
 
-export default function UniversalHeroCard({ card, portraitActions }: { card: HeroCard; portraitActions?: ReactNode }) {
+export default function UniversalHeroCard({ card, portraitActions, equipmentActions }: {
+  card: HeroCard; portraitActions?: ReactNode; equipmentActions?: ReactNode;
+}) {
   const description = card.sheet.description;
   const hpCur = Number(card.hp);
   const hpMax = Math.max(1, Number(card.derived.hp_max));
@@ -209,6 +211,7 @@ export default function UniversalHeroCard({ card, portraitActions }: { card: Her
           ) : (
             <p className='text-sm leading-relaxed text-muted'>Пока нет снаряжения</p>
           )}
+          {equipmentActions}
         </div>
 
         <div className='rounded-xl border border-line bg-surface p-4 flex flex-col gap-2'>

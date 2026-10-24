@@ -33,3 +33,9 @@ Balance remains provisional: see [numerical report](2026-10-24-universal-balance
 Implementation decisions: ordinary checks use an explicit profile kind; partial composite realization does not teach; learned profiles pin immutable definitions. Critical attack failure uses a predeclared bounded self-damage consequence of 1 HP. Old engine files remain physically present for later cleanup, but cannot be selected through `get_engine`.
 
 Additional execution decisions: migration numbering follows existing portraits (`0004`); actor persistence/resolution/discovery share one transaction owner; compatible library copies also require confirmation; the node uses one integrated commit because contracts and runtime depend on each other. Native PowerShell replaced the unavailable Git Bash for the plan ledger. Agent thread limits prevented a further fresh final reviewer; math, studio and cross-boundary reviews plus root regression checks were completed. These choices cost extra confirmation/review effort or rework if revised; no merge, push or workspace removal was performed.
+
+## Equipment regeneration follow-up
+
+The saved hero card originally exposed creation-time equipment only, with no regeneration action. Added a visible library equipment control: “Создать снаряжение” for older heroes with no saved items, otherwise “Пересоздать снаряжение”. The master proposes one bounded weapon and armor; explicit confirmation replaces library equipment with revision/replay checks. Description, scores and existing campaign copies remain unchanged; errors retain old items. No equipment editor is exposed on game cards.
+
+Verification:18 targeted backend tests and347 frontend tests passed; production build, contracts, Ruff and AST update passed. Authenticated Chrome inspected the running Docker app and found the creation button on the existing older hero card. No paid generation was invoked.

@@ -11,6 +11,7 @@ import UniversalHeroCard from './UniversalHeroCard';
 import DeleteHeroDraft from './DeleteHeroDraft';
 import HeroDescriptionProgress from './HeroDescriptionProgress';
 import HeroPortraitStudio from './HeroPortraitStudio';
+import HeroEquipmentStudio from './HeroEquipmentStudio';
 
 export default function HeroWorkshop() {
   const { hid } = useParams();
@@ -79,6 +80,10 @@ export default function HeroWorkshop() {
           <>
             <UniversalHeroCard
               card={hero.data}
+              equipmentActions={<HeroEquipmentStudio card={hero.data} onSaved={card => {
+                qc.setQueryData(['library', id], card);
+                void qc.invalidateQueries({ queryKey: ['library'], exact: true });
+              }} />}
               portraitActions={
                 <HeroPortraitStudio
                   card={hero.data}

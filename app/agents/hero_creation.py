@@ -54,7 +54,7 @@ async def ask_hero(
     model = model_for(profile.provider, profile.model) if profile else model_for()
     api_base = profile.api_base if profile else None
     prompt = PROMPT
-    if purpose == "hero_creation":
+    if purpose in ("hero_creation", "hero_equipment"):
         prompt += (
             "\nВ каждом готовом proposal обязательно заполни equipment: ровно weapon и armor. "
             "Подбери одно обычное стартовое оружие и одну обычную броню по описанию героя. "
@@ -64,12 +64,18 @@ async def ask_hero(
             "Вещи сразу экипированы. Не добавляй магические эффекты, особые силы, дополнительные предметы "
             "или изменение характеристик через текст описания. При вопросе proposal=null, снаряжение подберёшь позже."
         )
-    if current_abilities is not None:
+    if current_abilities is not None and purpose != "hero_equipment":
         prompt += (
             "\nЭто правка сохранённого базового героя. Его текущие характеристики переданы в current_abilities. "
             "Сохраняй их распределение, если пользователь явно не просит изменить характеристики. "
             "Перестановки выполняй относительно текущих значений. Не меняй остальные поля без запроса."
             " Снаряжение сохранено отдельно: не создавай новый набор, верни equipment=null."
+        )
+    if purpose == "hero_equipment":
+        prompt += (
+            "\nПересоздай только стартовое снаряжение по сохранённому описанию героя: одно обычное оружие "
+            "и одну обычную броню. Предложи другой подходящий набор. Верни equipment в proposal. "
+            "Сохрани описание и current_abilities без изменений; уровень и освоенные способности не меняются."
         )
     if world_context:
         prompt += (
@@ -117,7 +123,7 @@ async def ask_hero(
             raise ValueError("incomplete response")
         call = next((c for c in reply.tool_calls if c.name == "propose_hero"), None)
         result = GuidedResult.model_validate(call.arguments if call else json.loads(reply.text))
-        if purpose == "hero_creation" and result.proposal and result.proposal.equipment is None:
+        if purpose in ("hero_creation", "hero_equipment") and result.proposal and result.proposal.equipment is None:
             raise ValueError("в готовом предложении нужны одно оружие и одна броня")
     except (LLMError, ValueError, ValidationError) as exc:
         reason = "invalid_proposal" if reply else "provider_error"

@@ -2459,6 +2459,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/characters/{library_id}/equipment-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose Equipment */
+        post: operations["propose_equipment_api_me_characters__library_id__equipment_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/characters/{library_id}/roll-abilities": {
         parameters: {
             query?: never;
@@ -4067,16 +4084,6 @@ export interface components {
              */
             reason?: string | null;
         };
-        /** EquipmentIn */
-        EquipmentIn: {
-            /**
-             * Equipped
-             * @default true
-             */
-            equipped?: boolean;
-            /** Inventory Id */
-            inventory_id: string;
-        };
         /** EquipmentResponse */
         EquipmentResponse: {
             character: components["schemas"]["CharacterView"];
@@ -4933,6 +4940,10 @@ export interface components {
             };
             /** Expected Revision */
             expected_revision: number;
+            /** Starting Equipment */
+            starting_equipment?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** HeroEffect */
         HeroEffect: {
@@ -8409,6 +8420,21 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** EquipmentIn */
+        app__api__equipment__EquipmentIn: {
+            /**
+             * Equipped
+             * @default true
+             */
+            equipped?: boolean;
+            /** Inventory Id */
+            inventory_id: string;
+        };
+        /** EquipmentIn */
+        app__api__library__EquipmentIn: {
+            /** Expected Revision */
+            expected_revision: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -8474,7 +8500,6 @@ export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
 export type EquipmentChangeView = components['schemas']['EquipmentChangeView'];
-export type EquipmentIn = components['schemas']['EquipmentIn'];
 export type EquipmentResponse = components['schemas']['EquipmentResponse'];
 export type EquipmentState = components['schemas']['EquipmentState'];
 export type Error = components['schemas']['Error'];
@@ -8724,6 +8749,8 @@ export type WildShapeForm = components['schemas']['WildShapeForm'];
 export type WorldDetail = components['schemas']['WorldDetail'];
 export type WorldOverview = components['schemas']['WorldOverview'];
 export type WorldSummary = components['schemas']['WorldSummary'];
+export type app__api__equipment__EquipmentIn = components['schemas']['app__api__equipment__EquipmentIn'];
+export type app__api__library__EquipmentIn = components['schemas']['app__api__library__EquipmentIn'];
 export type $defs = Record<string, never>;
 export interface operations {
     admin_audio_api_admin_audio_get: {
@@ -11420,7 +11447,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EquipmentIn"];
+                "application/json": components["schemas"]["app__api__equipment__EquipmentIn"];
             };
         };
         responses: {
@@ -14134,6 +14161,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeroCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_equipment_api_me_characters__library_id__equipment_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__api__library__EquipmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

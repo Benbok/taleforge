@@ -8,17 +8,27 @@ from app.agents.hero_creation import ask_hero
 from app.core.campaigns import Conflict, NotFound
 from app.core.universal.state import card_of, load_library_hero
 from app.db.models import HeroDialogue, HeroEditReceipt, LibraryCharacter
-from app.rules.universal.contracts import AbilityScores, ClosedModel, HeroBudget, HeroDescription, UniversalSheet
+from app.rules.universal.contracts import (
+    AbilityScores,
+    ClosedModel,
+    HeroBudget,
+    HeroDescription,
+    StartingEquipment,
+    UniversalSheet,
+)
 from app.rules.universal.mechanics import validate_starting_scores
 
 
 class HeroEdit(ClosedModel):
     description_patch: dict[str, str] = Field(default_factory=dict)
     base_scores: AbilityScores | None = None
+    starting_equipment: dict | None = None
     expected_revision: int = Field(ge=1)
 
     @model_validator(mode="after")
     def bounded_edit(self):
+        if self.starting_equipment is not None:
+            self.starting_equipment = StartingEquipment.model_validate(self.starting_equipment).model_dump(mode="json")
         if set(self.description_patch) - set(HeroDescription.model_fields):
             raise ValueError("можно менять только описательные поля героя")
         HeroDescription.model_validate({"identity": "_", **self.description_patch})
@@ -38,7 +48,7 @@ def editable_sheet(hero):
 
 
 async def propose_hero_edit(
-    session, owner_id: str, library_id: str, message: str, expected_revision: int, *, llm
+    session, owner_id: str, library_id: str, message: str, expected_revision: int, *, llm, equipment_only: bool = False
 ) -> HeroDialogue:
     hero = await load_library_hero(session, owner_id, library_id)
     sheet = editable_sheet(hero)
@@ -49,19 +59,22 @@ async def propose_hero_edit(
         llm,
         sheet.description.model_dump(),
         [dict(role="user", content=message)],
-        purpose="hero_edit",
+        purpose="hero_equipment" if equipment_only else "hero_edit",
         current_abilities=sheet.abilities.model_dump(mode="json"),
     )
     if result.proposal is None:
         raise Conflict(result.question)
+    if equipment_only and result.proposal.equipment is None:
+        raise Conflict("Мастер не подготовил оружие и броню. Прежнее снаряжение сохранено.")
     hero = await session.scalar(
         select(LibraryCharacter).where(LibraryCharacter.id == library_id).execution_options(populate_existing=True)
     )
     if hero is None or hero.revision != expected_revision:
         raise Conflict("карточка изменилась; загрузите новую версию")
     edit = HeroEdit(
-        description_patch=result.description.model_dump(),
-        base_scores=result.proposal.abilities,
+        description_patch={} if equipment_only else result.description.model_dump(),
+        base_scores=None if equipment_only else result.proposal.abilities,
+        starting_equipment=result.proposal.equipment.model_dump(mode="json") if equipment_only else None,
         expected_revision=expected_revision,
     )
     draft = HeroDialogue(
@@ -100,7 +113,7 @@ async def apply_hero_edit(session, owner_id: str, library_id: str, edit: HeroEdi
         abilities=scores,
         trained=sheet.trained,
         budget=HeroBudget(initial_scores=scores),
-        starting_equipment=sheet.starting_equipment,
+        starting_equipment=edit.starting_equipment or sheet.starting_equipment,
     )
     changed = await session.execute(
         update(LibraryCharacter)
