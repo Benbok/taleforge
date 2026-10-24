@@ -57,7 +57,7 @@ class ReviewIn(BaseModel):
 
 
 async def _view(session, viewer: Viewer, ch: Character) -> dict:
-    if (ch.sheet or {}).get('rules_version') == 'universal.v1':
+    if (ch.sheet or {}).get("rules_version") == "universal.v1":
         return game_card_of(ch)
     out = await _sheet_view(session, viewer, ch)
     cat = await campaign_catalog(session, viewer.campaign)
@@ -397,8 +397,9 @@ async def from_library(
     """Копия героя из профиля — черновиком в кампании. Дальше его можно поправить и отправить мастеру."""
     v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
     lc = await lib.get_mine(session, user, library_id)
-    if (lc.sheet or {}).get('rules_version') == 'universal.v1':
+    if (lc.sheet or {}).get("rules_version") == "universal.v1":
         from app.core.universal.creation import copy_library_hero
+
         ch = await copy_library_hero(session, v, lc)
         await session.commit()
         return game_card_of(ch)
@@ -666,3 +667,16 @@ async def patch_note(
     persona.edit_note(n, body.text, body.cause, body.reverted)
     await session.commit()
     return await _persona_out(session, campaign_id, ch, mine)
+
+
+@router.post("/characters/from-library/{library_id}/admission", status_code=201)
+async def library_admission(
+    campaign_id: str, library_id: str, user: UserDep, session: SessionDep, request: Request, as_seat: str | None = None
+) -> dict:
+    from app.core.universal.admission import start_admission
+    from app.core.universal.creation import dialogue_view
+
+    viewer = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    original = await lib.get_mine(session, user, library_id)
+    draft = await start_admission(session, viewer, original, llm=request.app.state.hero_llm)
+    return dialogue_view(draft)

@@ -6,7 +6,9 @@ import Header from "../components/Header";
 import Builder from "../builder/Builder";
 import UniversalHeroCard from '../builder/UniversalHeroCard';
 import HeroPortraitStudio from '../builder/HeroPortraitStudio';
-import { universalCard } from '../lib/universal';
+import { universalCard, emptyDescription, type HeroDialogue } from '../lib/universal';
+import HeroCreationDialogue from '../builder/HeroCreationDialogue';
+import HeroDescriptionForm from '../builder/HeroDescriptionForm';
 import PersonaEditor from "../components/PersonaEditor";
 import { api } from "../lib/api";
 import { HERO_STATUS_RU, type BuilderOptions, type CampaignHero, type LibraryHero } from "../lib/builder";
@@ -17,6 +19,7 @@ interface Room {
   my_seat_id: string | null;
   my_role: string | null;
   pack_id: string | null;
+  ruleset_id?: string;
 }
 
 /** Герой в кампании: выбрать готового, взять из профиля или собрать; дальше — проверка мастером. */
@@ -48,7 +51,7 @@ export default function CampaignHeroPage() {
   const opts = useQuery({
     queryKey: ["options", id],
     queryFn: () => api<BuilderOptions>(`/api/campaigns/${id}/character-options`),
-    enabled: player && list.isSuccess && !universalCard(mine) && !universalCard(full.data),
+    enabled: player && room.data?.ruleset_id !== "universal" && list.isSuccess && !universalCard(mine) && !universalCard(full.data),
   });
 
   const refresh = () =>
@@ -146,6 +149,8 @@ export default function CampaignHeroPage() {
         </section>
       </div>
     );
+  } else if (room.data?.ruleset_id === "universal" && !hero) {
+    body = <UniversalAdmission id={id} library={library.data ?? []} onDone={refresh} />;
   } else if (building || hero) {
     // черновик уже есть (в том числе копия героя из другого мира без класса) — только доработка в конструкторе
     body = (
@@ -457,4 +462,34 @@ function Pick({
       <div className="pt-2">{children}</div>
     </div>
   );
+}
+
+
+function UniversalAdmission({ id, library, onDone }: { id: string; library: LibraryHero[]; onDone: () => Promise<unknown> }) {
+  const [dialogueId, setDialogueId] = useState<string | null>(null);
+  const [description, setDescription] = useState(emptyDescription);
+  const pending = useQuery({ queryKey: ['hero-drafts'], queryFn: () => api<HeroDialogue[]>('/api/hero-creation/dialogues') });
+  const drafts = (pending.data ?? []).filter(draft => draft.campaign_id === id && ['questions', 'ready'].includes(draft.status));
+  const active = dialogueId ?? drafts[0]?.id;
+  const finish = () => { setDialogueId(null); void pending.refetch(); void onDone(); };
+  if (active) return <HeroCreationDialogue id={active} onCreated={finish} onDeleted={() => { setDialogueId(null); void pending.refetch(); }} />;
+  return <div className="flex flex-col gap-5">
+    <section className="card p-5 flex flex-col gap-4">
+      <h2 className="font-heading text-xl">????? ????? ????? ????</h2>
+      <p className="text-sm text-muted">?????? ?????? ??????? ? ???????? ????. ????? ??????? ? ???? ????? ?????? ?????????????.</p>
+      <HeroDescriptionForm value={description} onChange={setDescription} />
+      <ActionButton primary disabled={!description.identity.trim()} run={async () => {
+        const draft = await api<HeroDialogue>('/api/hero-creation/dialogues', { body: { description, campaign_id: id } });
+        setDialogueId(draft.id);
+      }}>???????? ????? ? ????????</ActionButton>
+    </section>
+    <section className="card p-5 flex flex-col gap-3">
+      <h2 className="font-heading text-xl">????? ????? ?? ??????????</h2>
+      <p className="text-sm text-muted">????????? ????????? ?????? ? ???? ????. ???????????? ????? ???????????.</p>
+      {library.filter(hero => universalCard(hero)).map(hero => <ActionButton key={hero.id} run={async () => {
+        const draft = await api<HeroDialogue>(`/api/campaigns/${id}/characters/from-library/${hero.id}/admission`, { method: 'POST' });
+        setDialogueId(draft.id);
+      }}>{hero.name}: ???????? ?????????</ActionButton>)}
+    </section>
+  </div>;
 }

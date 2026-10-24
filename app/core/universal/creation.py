@@ -98,7 +98,21 @@ async def answer_dialogue(
     history = list(draft.transcript)
     if answer:
         history.append(dict(role="user", content=answer))
-    result = await ask_hero(session, llm, draft.description, history)
+    from app.core.universal.admission import admission_source, world_context
+
+    context = await world_context(session, draft.campaign_id)
+    admitting = bool(draft.campaign_id and draft.target_id and draft.target_id != "premade")
+    source = await admission_source(session, draft) if admitting else None
+    kwargs = {"world_context": context} if context else {}
+    if source:
+        kwargs.update(purpose="hero_admission", current_abilities=source.abilities.model_dump(mode="json"))
+    result = await ask_hero(session, llm, draft.description, history, **kwargs)
+    if admitting:
+        source = await admission_source(session, draft)
+    if source and result.proposal:
+        result.proposal = result.proposal.model_copy(
+            update={"abilities": source.abilities, "equipment": source.starting_equipment}
+        )
     history.append(
         dict(
             role="assistant",
@@ -139,13 +153,21 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
     if proposal.equipment is None:
         raise Conflict("У этого черновика ещё нет стартового снаряжения. Попросите мастера подобрать оружие и броню.")
     description = HeroDescription.model_validate(draft.description)
-    seat_id = await _campaign_target(session, owner_id, draft.campaign_id, draft.target_id)
+    admitting = bool(draft.campaign_id and draft.target_id and draft.target_id != "premade")
+    source = None
+    if admitting:
+        from app.core.universal.admission import admission_source
+
+        source = await admission_source(session, draft)
+    seat_id = await _campaign_target(session, owner_id, draft.campaign_id, None if admitting else draft.target_id)
     sheet = UniversalSheet(
         abilities=proposal.abilities,
         description=description,
         budget=HeroBudget(initial_scores=proposal.abilities),
         starting_equipment=proposal.equipment,
     )
+    if source:
+        sheet = source.model_copy(update={"description": description})
     hero_id = new_id("ch" if draft.campaign_id else "lc")
     changed = await session.execute(
         update(HeroDialogue)
@@ -169,12 +191,20 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
         from app.rules.universal.mechanics import derive
 
         derived = derive(sheet, starting_defense_bonuses(sheet))
+        from app.db.models import Campaign
+
+        campaign = await session.get(Campaign, draft.campaign_id)
+        if admitting:
+            original = await session.get(LibraryCharacter, draft.target_id)
+            data["portrait_id"] = original.portrait_id
+            data["sheet"]["source_library_id"] = draft.target_id
         session.add(
             Character(
                 **data,
                 campaign_id=draft.campaign_id,
                 seat_id=seat_id,
-                status="premade" if draft.target_id else "approved",
+                status="premade" if draft.target_id == "premade" else "approved",
+                location_id=(campaign.settings or {}).get("studio_entry_location_id"),
                 creation_method="description",
                 resources=dict(hp=str(derived.hp_max), energies={k: str(v) for k, v in derived.energy_max.items()}),
             )
@@ -186,9 +216,12 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
 
 
 async def copy_library_hero(session, viewer, original):
+    from app.core.universal.admission import world_context
     from app.core.universal.editing import editable_sheet
     from app.rules.universal.mechanics import derive
 
+    if await world_context(session, viewer.campaign.id):
+        raise Conflict("Review and explicitly confirm the world adaptation before joining.")
     seat_id = await _campaign_target(session, viewer.user.id, viewer.campaign.id, None)
     # Re-validate the base, then serialize a separate object; no mutable JSON is shared.
     sheet = editable_sheet(original)
@@ -199,6 +232,7 @@ async def copy_library_hero(session, viewer, original):
         seat_id=seat_id,
         name=original.name,
         portrait_id=original.portrait_id,
+        location_id=(viewer.campaign.settings or {}).get("studio_entry_location_id"),
         status="approved",
         creation_method="description",
         sheet={**sheet.model_dump(mode="json"), "source_library_id": original.id},

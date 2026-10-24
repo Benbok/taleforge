@@ -77,7 +77,13 @@ async def _snapshot(
         c.id,
         {
             "protocol": PROTOCOL_VERSION,
-            "campaign": {"id": c.id, "name": c.name, "status": c.status, "public_intro": c.public_intro},
+            "campaign": {
+                "id": c.id,
+                "name": c.name,
+                "status": c.status,
+                "public_intro": c.public_intro,
+                "ruleset_id": c.ruleset_id,
+            },
             "session": {"id": game.id, "started_at": game.started_at.isoformat()} if game else None,
             "me": {
                 "user_id": viewer.user.id,
@@ -142,6 +148,11 @@ async def _heroes(session: AsyncSession, campaign_id: str) -> list[dict]:
 
 async def _scene(session: AsyncSession, c: Campaign, viewer) -> dict:
     """Первичный снимок сцены использует ту же проекцию, что и очередной scene.updated."""
+    if c.ruleset_id == "universal":
+        from app.core.universal.scene import universal_scene
+
+        return await universal_scene(session, c, viewer)
+
     from sqlalchemy import select
 
     from app.core.inspect import viewer_hero
@@ -446,6 +457,7 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
     if kind in ("auto", "action") and text.strip().startswith(chat.OOC_PREFIX):
         kind = "ooc"
     parsed = None
+    universal = False
     if kind in ("auto", "action") and text.strip():
         async with maker() as session:
             try:
@@ -455,13 +467,14 @@ async def _send(app, user: User, conn: Connection, payload: dict) -> None:
                 return
             if kind == "auto":
                 kind = "narration" if viewer.is_master else "action" if viewer.is_player else "ooc"
+            universal = viewer.campaign.ruleset_id == "universal"
             reason = await combat.gate_message(session, viewer, kind, mark=False)
             seat_id = viewer.seat.id if viewer.seat and viewer.is_player else None
             await session.rollback()
         if reason and kind == "action":
             await reject(reason)
             return
-        if kind == "action" and seat_id and len(text) <= settings.message_max_len:
+        if kind == "action" and seat_id and len(text) <= settings.message_max_len and not universal:
             quick = payload.get("quick")
             if isinstance(quick, dict):
                 parsed = await _quick_intent(app, conn.campaign_id, seat_id, quick)
@@ -577,7 +590,11 @@ async def _retry(app, user: User, conn: Connection, payload: dict) -> None:
     await app.state.bus.publish(
         conn.campaign_id, envelope("message.state", conn.campaign_id, {"ids": [m.id], "state": "pending"}), None
     )
-    app.state.master.notify(conn.campaign_id)
+    if viewer.campaign.ruleset_id == "universal":
+        # The source keeps its turn_id/receipt, so the pending-message collector cannot find it.
+        app.state.master._spawn(app.state.master.run_turn(conn.campaign_id))
+    else:
+        app.state.master.notify(conn.campaign_id)
 
 
 _tasks: set[asyncio.Task] = set()

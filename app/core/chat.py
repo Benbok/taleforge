@@ -360,6 +360,13 @@ async def retry_message(
     ):
         raise Conflict("Эту реплику повторить нельзя.")
     turn = await session.get(MasterTurn, m.turn_id) if m.turn_id else None
+    if turn is not None and turn.status == "failed" and (turn.trace or {}).get("universal"):
+        if gate is not None and (reason := await gate(m.kind)):
+            raise Conflict(reason)
+        # Resume original admissions and receipts: never detach a saved Universal action.
+        turn.trace = {**turn.trace, "recovery_attempts": 0}
+        await session.flush()
+        return m
     if turn is None or turn.status != "failed" or not (turn.trace or {}).get("rolled_back"):
         raise Conflict("Повторить можно только реплику, ход по которой не удался и ничего не изменил.")
     if await pending_message(session, viewer.campaign, seat.id) is not None:

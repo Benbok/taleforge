@@ -896,6 +896,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/author/projects/{project_id}/studio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Studio */
+        get: operations["get_studio_api_author_projects__project_id__studio_get"];
+        /** Put Studio */
+        put: operations["put_studio_api_author_projects__project_id__studio_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/studio/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Studio Accept */
+        post: operations["studio_accept_api_author_projects__project_id__studio_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/studio/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Studio Review */
+        post: operations["studio_review_api_author_projects__project_id__studio_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/tasks/{stage}": {
         parameters: {
             query?: never;
@@ -1119,6 +1171,23 @@ export interface paths {
          * @description Копия героя из профиля — черновиком в кампании. Дальше его можно поправить и отправить мастеру.
          */
         post: operations["from_library_api_campaigns__campaign_id__characters_from_library__library_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/characters/from-library/{library_id}/admission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Library Admission */
+        post: operations["library_admission_api_campaigns__campaign_id__characters_from_library__library_id__admission_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3000,6 +3069,7 @@ export interface components {
             pack_id?: string | null;
             /** Pack Version */
             pack_version?: string | null;
+            studio?: components["schemas"]["StudioFields"] | null;
             /** Title */
             title: string;
         };
@@ -3491,8 +3561,11 @@ export interface components {
              * @default null
              */
             attempt_id?: string;
-            /** @default null */
-            character?: components["schemas"]["HeroSheet"];
+            /**
+             * Character
+             * @default null
+             */
+            character?: components["schemas"]["HeroSheet"] | components["schemas"]["UniversalGameCard"];
             /** Comment */
             comment: string | null;
             /** Status */
@@ -3500,7 +3573,8 @@ export interface components {
         };
         /** CharacterSheet */
         CharacterSheet: {
-            character: components["schemas"]["HeroSheet"];
+            /** Character */
+            character: components["schemas"]["HeroSheet"] | components["schemas"]["UniversalGameCard"];
             /**
              * Event Id
              * @default null
@@ -3773,6 +3847,22 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** CreationDialogue */
+        CreationDialogue: {
+            /** Notes */
+            notes?: string[];
+            /** Project Id */
+            project_id: string;
+            /** Question */
+            question?: string | null;
+            /** Source Revision */
+            source_revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "questions" | "ready";
         };
         /** CreationIn */
         CreationIn: {
@@ -6887,6 +6977,11 @@ export interface components {
         };
         /** Place */
         Place: {
+            /**
+             * Description
+             * @default null
+             */
+            description?: string;
             /** Id */
             id: string;
             /** Name */
@@ -7049,6 +7144,11 @@ export interface components {
             id: string;
             /** Latest Version */
             latest_version?: number | null;
+            /**
+             * Ruleset Id
+             * @default dnd5e
+             */
+            ruleset_id?: string;
             /**
              * Status
              * @default draft
@@ -7485,6 +7585,11 @@ export interface components {
             /** Public Intro */
             public_intro: string;
             /**
+             * Ruleset Id
+             * @default dnd5e
+             */
+            ruleset_id?: string;
+            /**
              * Status
              * @enum {string}
              */
@@ -7747,6 +7852,97 @@ export interface components {
             /** Votes */
             votes: components["schemas"]["Vote"][];
         };
+        /**
+         * StudioFields
+         * @description Author-owned world facts. Only public_text is intended for players before play.
+         */
+        StudioFields: {
+            /**
+             * Difficulty
+             * @default normal
+             * @enum {string}
+             */
+            difficulty?: "easy" | "normal" | "hard" | "deadly";
+            /** Excluded Themes */
+            excluded_themes?: string[];
+            /**
+             * History
+             * @default
+             */
+            history?: string;
+            /**
+             * Inhabitants
+             * @default
+             */
+            inhabitants?: string;
+            /**
+             * Laws
+             * @default
+             */
+            laws?: string;
+            /**
+             * Powers
+             * @default
+             */
+            powers?: string;
+            /**
+             * Premise
+             * @default
+             */
+            premise?: string;
+            /**
+             * Public Text
+             * @default
+             */
+            public_text?: string;
+            /**
+             * Secret Text
+             * @default
+             */
+            secret_text?: string;
+            /**
+             * Start
+             * @default
+             */
+            start?: string;
+            /**
+             * Style
+             * @default
+             */
+            style?: string;
+            /** Title */
+            title: string;
+            /**
+             * World
+             * @default
+             */
+            world?: string;
+        };
+        /** StudioReviewRequest */
+        StudioReviewRequest: {
+            /**
+             * Answer
+             * @default
+             */
+            answer?: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** StudioSaveRequest */
+        StudioSaveRequest: {
+            /** Expected Revision */
+            expected_revision: number;
+            fields: components["schemas"]["StudioFields"];
+        };
+        /** StudioView */
+        StudioView: {
+            /** Draft Revision */
+            draft_revision: number;
+            fields: components["schemas"]["StudioFields"];
+            /** Project Id */
+            project_id: string;
+            review?: components["schemas"]["CreationDialogue"] | null;
+        };
         /** TokenOut */
         TokenOut: {
             /** Token */
@@ -7821,7 +8017,10 @@ export interface components {
             level: string;
             /** Name */
             name: string;
-            /** Portrait Url */
+            /**
+             * Portrait Url
+             * @default null
+             */
             portrait_url?: string | null;
             /** Revision */
             revision: number;
@@ -7834,6 +8033,7 @@ export interface components {
         /** UniversalSheet */
         UniversalSheet: {
             abilities: components["schemas"]["AbilityScores"];
+            /** @default null */
             budget?: components["schemas"]["HeroBudget"] | null;
             description: components["schemas"]["HeroDescription"];
             /**
@@ -7853,6 +8053,7 @@ export interface components {
              * @constant
              */
             schema_version?: 1;
+            /** @default null */
             starting_equipment?: components["schemas"]["StartingEquipment"] | null;
             /** Trained */
             trained?: string[];
@@ -8257,6 +8458,7 @@ export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
 export type ClassItem = components['schemas']['ClassItem'];
 export type ClockItem = components['schemas']['ClockItem'];
 export type CompanionPublic = components['schemas']['CompanionPublic'];
+export type CreationDialogue = components['schemas']['CreationDialogue'];
 export type CreationIn = components['schemas']['CreationIn'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type CreatureItem = components['schemas']['CreatureItem'];
@@ -8495,6 +8697,10 @@ export type StartingWeapon = components['schemas']['StartingWeapon'];
 export type StatExplained = components['schemas']['StatExplained'];
 export type StateActions = components['schemas']['StateActions'];
 export type StateSnapshot = components['schemas']['StateSnapshot'];
+export type StudioFields = components['schemas']['StudioFields'];
+export type StudioReviewRequest = components['schemas']['StudioReviewRequest'];
+export type StudioSaveRequest = components['schemas']['StudioSaveRequest'];
+export type StudioView = components['schemas']['StudioView'];
 export type TokenOut = components['schemas']['TokenOut'];
 export type Turn = components['schemas']['Turn'];
 export type TurnChanged = components['schemas']['TurnChanged'];
@@ -10335,6 +10541,142 @@ export interface operations {
             };
         };
     };
+    get_studio_api_author_projects__project_id__studio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_studio_api_author_projects__project_id__studio_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudioSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    studio_accept_api_author_projects__project_id__studio_accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    studio_review_api_author_projects__project_id__studio_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudioReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreationDialogue"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stage_task_api_author_projects__project_id__tasks__stage__get: {
         parameters: {
             query?: never;
@@ -10835,6 +11177,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CharacterView"] | components["schemas"]["UniversalGameCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    library_admission_api_campaigns__campaign_id__characters_from_library__library_id__admission_post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

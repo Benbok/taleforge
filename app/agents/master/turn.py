@@ -176,6 +176,13 @@ class TurnMixin:
                 self._audience.pop(cid, None)
 
     async def _run_turn(self, cid: str, place: str | None = None) -> str | None:
+        async with self.maker() as universal_session:
+            campaign = await universal_session.get(Campaign, cid)
+            is_universal = campaign is not None and campaign.ruleset_id == "universal"
+        if is_universal:
+            from app.agents.master.universal import run_universal_turn
+
+            return await run_universal_turn(self, cid, place)
         async with self.maker() as s:
             c = await s.get(Campaign, cid)
             if c is None:

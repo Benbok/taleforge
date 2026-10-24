@@ -11,7 +11,51 @@ class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
 
+class StudioFields(Contract):
+    """Author-owned world facts. Only public_text is intended for players before play."""
+
+    title: str = Field(min_length=1, max_length=128)
+    premise: str = Field(default="", max_length=8000)
+    world: str = Field(default="", max_length=16000)
+    laws: str = Field(default="", max_length=16000)
+    inhabitants: str = Field(default="", max_length=8000)
+    powers: str = Field(default="", max_length=8000)
+    history: str = Field(default="", max_length=16000)
+    start: str = Field(default="", max_length=8000)
+    style: str = Field(default="", max_length=4000)
+    difficulty: Literal["easy", "normal", "hard", "deadly"] = "normal"
+    excluded_themes: list[str] = Field(default_factory=list, max_length=20)
+    public_text: str = Field(default="", max_length=8000)
+    secret_text: str = Field(default="", max_length=16000)
+
+
+class CreationDialogue(Contract):
+    project_id: str
+    source_revision: int
+    status: Literal["questions", "ready"]
+    question: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class StudioView(Contract):
+    project_id: str
+    draft_revision: int
+    fields: StudioFields
+    review: CreationDialogue | None = None
+
+
+class StudioSaveRequest(Contract):
+    expected_revision: int = Field(ge=1)
+    fields: StudioFields
+
+
+class StudioReviewRequest(Contract):
+    expected_revision: int = Field(ge=1)
+    answer: str = Field(default="", max_length=8000)
+
+
 class AuthorProjectCreate(Contract):
+    studio: StudioFields | None = None
     title: str = Field(min_length=1, max_length=128)
     brief: BriefIn = Field(default_factory=BriefIn)
     pack_id: str | None = None
@@ -43,6 +87,7 @@ class ProjectSummary(Contract):
 
 
 class ProjectDetail(ProjectSummary):
+    ruleset_id: str = "dnd5e"
     brief: BriefIn = Field(default_factory=BriefIn)
 
 

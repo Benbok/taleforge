@@ -406,12 +406,21 @@ class FinishMixin:
         async with self.maker() as s:
             running = (
                 await s.scalars(
-                    select(MasterTurn).join(Campaign).where(MasterTurn.status == "running", Campaign.purpose == "game")
+                    select(MasterTurn)
+                    .join(Campaign)
+                    .where(MasterTurn.status.in_(("running", "failed")), Campaign.purpose == "game")
                 )
             ).all()
             todo = []
+            universal = set()
             dropped: list[tuple[str, Message, list[str]]] = []
             for turn in running:
+                if (turn.trace or {}).get("universal"):
+                    if (turn.trace or {}).get("recovery_attempts", 0) < 2:
+                        universal.add(turn.campaign_id)
+                    continue
+                if turn.status != "running":
+                    continue
                 if checkpoint.resumable(turn.generation_checkpoint):
                     todo.append((turn.campaign_id, turn.id))
                     continue
@@ -432,6 +441,22 @@ class FinishMixin:
         for cid, msg, ids in dropped:
             await publish_message(self.bus, msg)
             await self._states(cid, ids, "failed")
+        for cid in universal:
+            if self.turn_lock(cid).locked():
+                continue
+            try:
+                recovered_id = await self.run_turn(cid)
+                if recovered_id:
+                    async with self.maker() as recovery_session:
+                        recovered = await recovery_session.get(MasterTurn, recovered_id)
+                        if recovered is not None and recovered.status == "failed":
+                            recovered.trace = {
+                                **recovered.trace,
+                                "recovery_attempts": recovered.trace.get("recovery_attempts", 0) + 1,
+                            }
+                            await recovery_session.commit()
+            except Exception:
+                log.exception("universal turn recovery failed for %s", cid)
         for cid, turn_id in todo:
             if self.turn_lock(cid).locked():
                 continue  # свой ход кампания допишет сама

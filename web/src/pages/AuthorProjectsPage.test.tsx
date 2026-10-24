@@ -37,8 +37,28 @@ it("redirects the old admin bookmark to the author import tab", async () => {
     <Route path="/admin" element={<AdminPage />} />
     <Route path="/author" element={<AuthorProjectsPage />} />
   </Routes>, undefined, "/admin?tab=modules");
-  expect(await screen.findByRole("heading", { name: "Пространство автора" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Творческая студия" })).toBeTruthy();
   await waitFor(() => expect(screen.getByRole("tab", { name: "Импорт кампаний" }).getAttribute("aria-selected")).toBe("true"));
   expect(await screen.findByLabelText("Книга приключения")).toBeTruthy();
   expect(mock.calls.every((c) => c.method === "GET")).toBe(true);
+});
+
+it("creates a universal world with an empty catalogue", async () => {
+  const mock = mockApi(({ url, method }) => {
+    if (url === "/api/author/projects" && method === "POST") return { status: 201, body: { id: "ap_world" } };
+    if (url === "/api/author/projects") return { body: [] };
+    return undefined;
+  });
+  renderWithClient(<Routes>
+    <Route path="/author" element={<AuthorProjectsPage />} />
+    <Route path="/author/:id" element={<p>Мир открыт</p>} />
+  </Routes>, undefined, "/author");
+  fireEvent.change(screen.getByLabelText("Название приключения"), { target: { value: "Острова" } });
+  fireEvent.change(screen.getByLabelText("Замысел мира"), { target: { value: "Исследовать гавань" } });
+  fireEvent.click(screen.getByRole("button", { name: "Создать проект" }));
+  await screen.findByText("Мир открыт");
+  const sent = mock.calls.find(c => c.method === "POST")!.body as { studio: { premise: string }; pack_id?: string };
+  expect(sent.studio.premise).toBe("Исследовать гавань");
+  expect(sent.pack_id).toBeUndefined();
+  expect(mock.calls.some(c => c.url === "/api/packs")).toBe(false);
 });

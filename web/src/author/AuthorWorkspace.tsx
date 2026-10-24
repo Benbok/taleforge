@@ -17,6 +17,7 @@ import StepNav, { type StepInfo, type StepState } from "./StepNav";
 import TaskBox from "./TaskBox";
 import ValidationPanel from "./ValidationPanel";
 import WorldOverview from "./WorldOverview";
+import UniversalWorldStudio from "./UniversalWorldStudio";
 
 const LORE_KEYS = ["overview", "era_and_magic", "regions", "history", "factions", "figures", "current_situation", "mysteries", "tone", "taboos"];
 const PLOT_TEXT: [string, string][] = [
@@ -86,6 +87,12 @@ function StepHeader({ title, purpose, children }: { title: string; purpose: stri
 }
 
 export default function AuthorWorkspace({ projectId }: { projectId: string }) {
+  const project = useQuery({ queryKey: authorKeys.project(projectId, "summary"), queryFn: () => authoring.getProject(projectId, "summary") });
+  if ((project.data?.project as { ruleset_id?: string } | undefined)?.ruleset_id === "universal") return <UniversalWorldStudio projectId={projectId} />;
+  return <LegacyAuthorWorkspace projectId={projectId} />;
+}
+
+function LegacyAuthorWorkspace({ projectId }: { projectId: string }) {
   const client = useQueryClient();
   const revealKey = `author:reveal:${projectId}`;
   const stepKey = `author:step:${projectId}`;

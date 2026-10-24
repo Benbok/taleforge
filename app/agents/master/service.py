@@ -135,6 +135,10 @@ class MasterService(
         async def run() -> None:
             await self._status(campaign_id, "describing")
             try:
+                from app.agents.master.universal_lifecycle import open_universal_session
+
+                if await open_universal_session(self, campaign_id, session_id):
+                    return
                 # 0. Приветствие мастера игрокам отдельным голосовым (один раз, перед первой игрой)
                 await self.greet(campaign_id)
                 # 1. Интро всей кампании (только один раз в самом начале)
@@ -160,6 +164,10 @@ class MasterService(
         async def run() -> None:
             # сначала сводка сессии: эпилог и зацепка опираются на неё, а запись по очереди не спорит за базу
             await self._safe(self.summarize(campaign_id, "session", session_id=session_id), "сводка сессии")
+            async with self.maker() as s:
+                c = await s.get(Campaign, campaign_id)
+                if c and c.ruleset_id == "universal":
+                    return
             await self._safe(
                 character.chronicle(self, campaign_id, "сессия закончилась", session_id=session_id), "летопись"
             )

@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import ConnectionBanner from "../components/ConnectionBanner";
 import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
+import UniversalAdventure from "../game/UniversalAdventure";
 import LocationHeader from "../game/LocationHeader";
 import { sceneLighting } from "../game/scenePresentation";
 import { loadReadingMode, saveReadingMode } from "../game/scenePreferences";
@@ -105,6 +106,8 @@ export default function GamePage() {
   const mode = useSession((s) => s.mode);
   const lighting = sceneLighting(scene?.presentation, mode, scene?.mode === "combat");
   const manage = !!card?.is_owner || master;
+
+  if (snapshot?.campaign.ruleset_id === "universal") return <UniversalAdventure campaignId={id} />;
 
   const side = (
     <>

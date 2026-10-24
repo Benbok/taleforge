@@ -30,6 +30,16 @@ import type {
   WorldOverview,
 } from "./api.gen";
 
+export type StudioFields = {
+  title: string; premise: string; world: string; laws: string; inhabitants: string;
+  powers: string; history: string; start: string; style: string;
+  difficulty: "easy" | "normal" | "hard" | "deadly"; excluded_themes: string[];
+  public_text: string; secret_text: string;
+};
+export type CreationDialogue = { project_id: string; source_revision: number; status: "questions" | "ready"; question?: string | null; notes: string[] };
+export type StudioView = { project_id: string; draft_revision: number; fields: StudioFields; review?: CreationDialogue | null };
+export const emptyStudio = (title: string): StudioFields => ({ title, premise: "", world: "", laws: "", inhabitants: "", powers: "", history: "", start: "", style: "", difficulty: "normal", excluded_themes: [], public_text: "", secret_text: "" });
+
 export type View = "summary" | "full";
 
 export const authorKeys = {
@@ -49,8 +59,12 @@ export function newRequestKey(): string {
 const base = (id: string) => `/api/author/projects/${id}`;
 
 export const authoring = {
+  getStudio: (id: string) => api<StudioView>(`${base(id)}/studio`),
+  saveStudio: (id: string, expected_revision: number, fields: StudioFields) => api<StudioView>(`${base(id)}/studio`, { method: "PUT", body: { expected_revision, fields } }),
+  reviewStudio: (id: string, expected_revision: number, answer = "") => api<CreationDialogue>(`${base(id)}/studio/review`, { body: { expected_revision, answer } }),
+  acceptStudio: (id: string, expected_revision: number, request_key: string) => api<VersionOut>(`${base(id)}/studio/accept`, { body: { expected_revision, request_key } }),
   listProjects: () => api<ProjectSummary[]>("/api/author/projects"),
-  createProject: (body: AuthorProjectCreate) => api<ProjectDetail>("/api/author/projects", { body }),
+  createProject: (body: AuthorProjectCreate & { studio?: StudioFields }) => api<ProjectDetail>("/api/author/projects", { body }),
   renameProject: (id: string, body: AuthorProjectRename) => api<ProjectDetail>(base(id), { method: "PATCH", body }),
   getProject: (id: string, view: View) => api<ProjectView>(`${base(id)}?view=${view}`),
   prepare: (id: string, body: PrepareRequest) => api<StageReceipt>(`${base(id)}/prepare`, { body }),

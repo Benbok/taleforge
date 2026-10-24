@@ -471,6 +471,16 @@
       ],
       "title": "Pack Version"
      },
+     "studio": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StudioFields"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "title": {
       "maxLength": 128,
       "minLength": 1,
@@ -2153,8 +2163,16 @@
       "type": "string"
      },
      "character": {
-      "$ref": "#/components/schemas/HeroSheet",
-      "default": null
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HeroSheet"
+       },
+       {
+        "$ref": "#/components/schemas/UniversalGameCard"
+       }
+      ],
+      "default": null,
+      "title": "Character"
      },
      "comment": {
       "anyOf": [
@@ -2183,7 +2201,15 @@
     "additionalProperties": false,
     "properties": {
      "character": {
-      "$ref": "#/components/schemas/HeroSheet"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HeroSheet"
+       },
+       {
+        "$ref": "#/components/schemas/UniversalGameCard"
+       }
+      ],
+      "title": "Character"
      },
      "event_id": {
       "anyOf": [
@@ -2985,6 +3011,52 @@
      "dead"
     ],
     "title": "CompanionPublic",
+    "type": "object"
+   },
+   "CreationDialogue": {
+    "additionalProperties": false,
+    "properties": {
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "string"
+     },
+     "question": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Question"
+     },
+     "source_revision": {
+      "title": "Source Revision",
+      "type": "integer"
+     },
+     "status": {
+      "enum": [
+       "questions",
+       "ready"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "project_id",
+     "source_revision",
+     "status"
+    ],
+    "title": "CreationDialogue",
     "type": "object"
    },
    "CreationIn": {
@@ -5967,7 +6039,7 @@
       "type": "object"
      },
      "growth_total": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Growth Total",
       "type": "string"
@@ -5976,7 +6048,7 @@
       "$ref": "#/components/schemas/AbilityScores"
      },
      "unspent": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Unspent",
       "type": "string"
@@ -12221,6 +12293,11 @@
    "Place": {
     "additionalProperties": false,
     "properties": {
+     "description": {
+      "default": null,
+      "title": "Description",
+      "type": "string"
+     },
      "id": {
       "title": "Id",
       "type": "string"
@@ -12755,6 +12832,11 @@
        }
       ],
       "title": "Latest Version"
+     },
+     "ruleset_id": {
+      "default": "dnd5e",
+      "title": "Ruleset Id",
+      "type": "string"
      },
      "status": {
       "default": "draft",
@@ -14259,6 +14341,11 @@
       "title": "Public Intro",
       "type": "string"
      },
+     "ruleset_id": {
+      "default": "dnd5e",
+      "title": "Ruleset Id",
+      "type": "string"
+     },
      "status": {
       "enum": [
        "lobby",
@@ -14603,7 +14690,7 @@
     "additionalProperties": false,
     "properties": {
      "defense_bonus": {
-      "default": "1",
+      "default": 1,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Defense Bonus",
       "type": "string"
@@ -14633,7 +14720,7 @@
       "type": "string"
      },
      "quantity": {
-      "default": "1",
+      "default": 1,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Quantity",
       "type": "string"
@@ -14688,13 +14775,13 @@
       "type": "string"
      },
      "attack_bonus": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Attack Bonus",
       "type": "string"
      },
      "damage_bonus": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Damage Bonus",
       "type": "string"
@@ -14730,7 +14817,7 @@
       "type": "string"
      },
      "quantity": {
-      "default": "1",
+      "default": 1,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Quantity",
       "type": "string"
@@ -14980,6 +15067,175 @@
     "title": "StateSnapshot",
     "type": "object"
    },
+   "StudioFields": {
+    "additionalProperties": false,
+    "description": "Author-owned world facts. Only public_text is intended for players before play.",
+    "properties": {
+     "difficulty": {
+      "default": "normal",
+      "enum": [
+       "easy",
+       "normal",
+       "hard",
+       "deadly"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+     },
+     "excluded_themes": {
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Excluded Themes",
+      "type": "array"
+     },
+     "history": {
+      "default": "",
+      "maxLength": 16000,
+      "title": "History",
+      "type": "string"
+     },
+     "inhabitants": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Inhabitants",
+      "type": "string"
+     },
+     "laws": {
+      "default": "",
+      "maxLength": 16000,
+      "title": "Laws",
+      "type": "string"
+     },
+     "powers": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Powers",
+      "type": "string"
+     },
+     "premise": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Premise",
+      "type": "string"
+     },
+     "public_text": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Public Text",
+      "type": "string"
+     },
+     "secret_text": {
+      "default": "",
+      "maxLength": 16000,
+      "title": "Secret Text",
+      "type": "string"
+     },
+     "start": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Start",
+      "type": "string"
+     },
+     "style": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "Style",
+      "type": "string"
+     },
+     "title": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+     },
+     "world": {
+      "default": "",
+      "maxLength": 16000,
+      "title": "World",
+      "type": "string"
+     }
+    },
+    "required": [
+     "title"
+    ],
+    "title": "StudioFields",
+    "type": "object"
+   },
+   "StudioReviewRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "answer": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Answer",
+      "type": "string"
+     },
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "expected_revision"
+    ],
+    "title": "StudioReviewRequest",
+    "type": "object"
+   },
+   "StudioSaveRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "fields": {
+      "$ref": "#/components/schemas/StudioFields"
+     }
+    },
+    "required": [
+     "expected_revision",
+     "fields"
+    ],
+    "title": "StudioSaveRequest",
+    "type": "object"
+   },
+   "StudioView": {
+    "additionalProperties": false,
+    "properties": {
+     "draft_revision": {
+      "title": "Draft Revision",
+      "type": "integer"
+     },
+     "fields": {
+      "$ref": "#/components/schemas/StudioFields"
+     },
+     "project_id": {
+      "title": "Project Id",
+      "type": "string"
+     },
+     "review": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CreationDialogue"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "project_id",
+     "draft_revision",
+     "fields"
+    ],
+    "title": "StudioView",
+    "type": "object"
+   },
    "TokenOut": {
     "properties": {
      "token": {
@@ -15185,6 +15441,7 @@
         "type": "null"
        }
       ],
+      "default": null,
       "title": "Portrait Url"
      },
      "revision": {
@@ -15239,13 +15496,14 @@
        {
         "type": "null"
        }
-      ]
+      ],
+      "default": null
      },
      "description": {
       "$ref": "#/components/schemas/HeroDescription"
      },
      "level": {
-      "default": "1",
+      "default": 1,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Level",
       "type": "string"
@@ -15270,7 +15528,8 @@
        {
         "type": "null"
        }
-      ]
+      ],
+      "default": null
      },
      "trained": {
       "items": {
@@ -15280,13 +15539,13 @@
       "type": "array"
      },
      "unspent_points": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Unspent Points",
       "type": "string"
      },
      "xp": {
-      "default": "0",
+      "default": 0,
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Xp",
       "type": "string"
@@ -18980,6 +19239,222 @@
     ]
    }
   },
+  "/api/author/projects/{project_id}/studio": {
+   "get": {
+    "operationId": "get_studio_api_author_projects__project_id__studio_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StudioView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get Studio",
+    "tags": [
+     "author"
+    ]
+   },
+   "put": {
+    "operationId": "put_studio_api_author_projects__project_id__studio_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StudioSaveRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StudioView"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Put Studio",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/studio/accept": {
+   "post": {
+    "operationId": "studio_accept_api_author_projects__project_id__studio_accept_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PublishRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Studio Accept",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/studio/review": {
+   "post": {
+    "operationId": "studio_review_api_author_projects__project_id__studio_review_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StudioReviewRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CreationDialogue"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Studio Review",
+    "tags": [
+     "author"
+    ]
+   }
+  },
   "/api/author/projects/{project_id}/tasks/{stage}": {
    "get": {
     "description": "The stage's prompt and answer schema, to run it by hand in any outside model. Read-only, no model call.",
@@ -19874,6 +20349,80 @@
      }
     ],
     "summary": "From Library",
+    "tags": [
+     "characters"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/from-library/{library_id}/admission": {
+   "post": {
+    "operationId": "library_admission_api_campaigns__campaign_id__characters_from_library__library_id__admission_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "library_id",
+      "required": true,
+      "schema": {
+       "title": "Library Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Library Admission Api Campaigns  Campaign Id  Characters From Library  Library Id  Admission Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Library Admission",
     "tags": [
      "characters"
     ]

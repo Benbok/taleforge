@@ -45,6 +45,8 @@ async def create_project(session: AsyncSession, owner: User, request: AuthorProj
     if not is_admin(owner):
         raise AccessDenied("проекты создаёт только Admin")
     pack = None
+    if request.studio is not None and request.pack_id:
+        raise Conflict("universal_studio_does_not_use_content_packs")
     if request.pack_id:
         if not request.pack_version:
             raise Conflict("укажите версию пакета")
@@ -83,4 +85,8 @@ async def create_project(session: AsyncSession, owner: User, request: AuthorProj
     )
     session.add(project)
     await session.flush()
+    if request.studio is not None:
+        from app.core.authoring.studio import save_studio
+
+        await save_studio(session, project, project.draft_revision, request.studio)
     return project

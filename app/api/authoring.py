@@ -17,6 +17,7 @@ from app.core.authoring.contracts import (
     AuthorMapOut,
     AuthorProjectCreate,
     AuthorProjectRename,
+    CreationDialogue,
     EditProposal,
     EditRequest,
     EditResult,
@@ -34,6 +35,9 @@ from app.core.authoring.contracts import (
     PublishRequest,
     StageReceipt,
     StageTask,
+    StudioReviewRequest,
+    StudioSaveRequest,
+    StudioView,
     ValidationIssue,
     ValidationReport,
     VersionOut,
@@ -57,6 +61,7 @@ def _detail(project: AuthorProject, world: Campaign) -> ProjectDetail:
         draft_revision=project.draft_revision,
         budget_usd=project.budget_usd,
         brief=world.brief or {},
+        ruleset_id=world.ruleset_id,
     )
 
 
@@ -468,3 +473,41 @@ async def intro_voice(project_id: str, voice_id: str, request: Request, session:
     project = await require_project(session, user, project_id)
     meta, audio = voice.read(request.app.state.master.media_dir, project.workspace_campaign_id, voice_id)
     return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.get("/projects/{project_id}/studio", response_model=StudioView)
+async def get_studio(project_id: str, session: SessionDep, user: UserDep):
+    from app.core.authoring.studio import studio_view
+
+    return studio_view(await require_project(session, user, project_id))
+
+
+@router.put("/projects/{project_id}/studio", response_model=StudioView)
+async def put_studio(project_id: str, body: StudioSaveRequest, session: SessionDep, user: UserDep):
+    from app.core.authoring.studio import save_studio
+
+    project = await require_project(session, user, project_id)
+    result = await save_studio(session, project, body.expected_revision, body.fields)
+    await session.commit()
+    return result
+
+
+@router.post("/projects/{project_id}/studio/review", response_model=CreationDialogue)
+async def studio_review(
+    project_id: str, body: StudioReviewRequest, request: Request, session: SessionDep, user: UserDep
+):
+    from app.core.authoring.studio import review_project
+
+    llm = getattr(request.app.state, "studio_llm", request.app.state.hero_llm)
+    result = await review_project(session, project_id, user.id, body.expected_revision, llm=llm, answer=body.answer)
+    await session.commit()
+    return result
+
+
+@router.post("/projects/{project_id}/studio/accept", response_model=VersionOut, status_code=201)
+async def studio_accept(project_id: str, body: PublishRequest, session: SessionDep, user: UserDep):
+    from app.core.authoring.studio import accept_project
+
+    result = await accept_project(session, project_id, user.id, body.expected_revision, body.request_key)
+    await session.commit()
+    return version_out(result)

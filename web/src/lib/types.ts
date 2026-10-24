@@ -260,7 +260,7 @@ export interface PartyPart {
 export interface Scene {
   mode: "free" | "combat";
   round: number;
-  location: { id: string; name: string } | null;
+  location: { id: string; name: string; description?: string } | null;
   presentation?: LocationPresentation | null;
   /** Есть, только когда отряд разделился. */
   party?: PartyPart[];
@@ -543,6 +543,7 @@ export interface AudioState {
 export interface Snapshot {
   protocol: number;
   campaign: {
+    ruleset_id?: string;
     id: string;
     name: string;
     status: CampaignStatus;

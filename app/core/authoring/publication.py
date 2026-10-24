@@ -26,6 +26,13 @@ def _digest(payload: dict) -> str:
 
 
 def _summary(bundle) -> dict:
+    if bundle.meta.get("ruleset_id") == "universal":
+        return {
+            "title": bundle.meta.get("name"),
+            "intro": bundle.meta.get("public_intro") or "",
+            "ruleset": "universal",
+            "difficulty": bundle.meta.get("difficulty"),
+        }
     plot = bundle.plot
     return {
         "title": plot.get("title") or bundle.meta.get("name"),
@@ -61,8 +68,11 @@ async def publish_project(
     if locked is None:
         raise Conflict("stale_revision")
     await session.refresh(project)
+    from app.core.authoring.studio import studio_fields
+
+    fields = studio_fields(project)
     stored = project.validation_report
-    if not stored or stored.get("source_revision") != project.draft_revision:
+    if fields is None and (not stored or stored.get("source_revision") != project.draft_revision):
         raise Conflict("validation_required")  # an old report never authorizes a changed draft
     report = await validate_project(session, project)
     if report.errors:
@@ -71,6 +81,42 @@ async def publish_project(
         bundle = await export_bundle(session, project)
     except SnapshotError as exc:
         raise PublishBlocked((ValidationIssue(code=exc.code, object_ref=exc.where),)) from exc
+    if fields is not None:
+        from app.core.authoring.contracts import BundleEntity, BundleGeographyNode
+
+        # A concrete entry scene is enough to start exploration; optional generated content stays in the bundle.
+        bundle.entities.append(
+            BundleEntity(
+                ref="studio_entry",
+                kind="location",
+                name=fields.title,
+                description=fields.start,
+                state={"studio_entry": True},
+            )
+        )
+        bundle.geography_nodes.append(
+            BundleGeographyNode(ref="studio_entry", kind="location", name=fields.title, entity="studio_entry")
+        )
+        bundle.plot = {
+            **bundle.plot,
+            "title": fields.title,
+            "public_intro": fields.public_text,
+            "locations": [
+                *(bundle.plot.get("locations") or []),
+                {"id": "studio_entry", "name": fields.title, "description": fields.start, "entity_id": "studio_entry"},
+            ],
+        }
+        bundle.meta["studio_entry_ref"] = "studio_entry"
+        bundle.meta.update(
+            ruleset_id="universal",
+            ruleset_version="1",
+            name=fields.title,
+            public_intro=fields.public_text,
+            pack_id=None,
+            pack_version=None,
+            content_chain=[],
+        )
+        bundle.setting["studio"] = fields.model_dump(mode="json")
     broken = validate_bundle(bundle)
     if broken:
         raise PublishBlocked(broken)

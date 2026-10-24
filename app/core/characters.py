@@ -228,8 +228,8 @@ async def create_draft(session: AsyncSession, viewer: Viewer, data: dict[str, An
 
 
 def _apply(ch: Character, data: dict[str, Any]) -> None:
-    if (ch.sheet or {}).get('rules_version') == 'universal.v1':
-        raise Conflict('Готовая игровая карточка изменяется только игровыми событиями и распределением очков.')
+    if (ch.sheet or {}).get("rules_version") == "universal.v1":
+        raise Conflict("Готовая игровая карточка изменяется только игровыми событиями и распределением очков.")
     sheet = dict(ch.sheet or {})
     for k in SHEET_FIELDS:
         if k in data and data[k] is not None:
@@ -618,6 +618,10 @@ def public_view(ch: Character, entities=()) -> dict:
 
 
 def full_view(ch: Character, cat: CatalogView, inventory: list[InventoryItem], effects: list, entities=()) -> dict:
+    if (ch.sheet or {}).get("rules_version") == "universal.v1":
+        from app.core.universal.state import game_card_of
+
+        return game_card_of(ch)
     out = {
         **public_view(ch, entities),
         "sheet": ch.sheet,

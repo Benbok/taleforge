@@ -59,6 +59,11 @@ class WhisperMixin:
         return None
 
     async def _answer_whisper(self, cid: str, mid: str) -> str | None:
+        from app.agents.master.universal_lifecycle import answer_universal_whisper
+
+        handled, result = await answer_universal_whisper(self, cid, mid)
+        if handled:
+            return result
         calls: list[LlmCall] = []
         await self._states(cid, [mid], "processing")
         reply_msg = error = None

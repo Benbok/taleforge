@@ -577,14 +577,14 @@ class LibraryCharacter(Base):
 class HeroPortrait(Base):
     """Immutable media plus a durable, once-only generation receipt. Copies share immutable bytes."""
 
-    __tablename__ = 'hero_portraits'
-    __table_args__ = (UniqueConstraint('owner_user_id', 'request_key'),)
+    __tablename__ = "hero_portraits"
+    __table_args__ = (UniqueConstraint("owner_user_id", "request_key"),)
 
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id('hp'))
-    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey('users.id', ondelete='SET NULL'))
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("hp"))
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     target_id: Mapped[str] = mapped_column(String(32))
     request_key: Mapped[str] = mapped_column(String(128))
-    status: Mapped[str] = mapped_column(String(16), default='pending')
+    status: Mapped[str] = mapped_column(String(16), default="pending")
     mime: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -1044,3 +1044,28 @@ class NarrativeWork(Base):
     receipt_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class RuntimeProfile(Base):
+    """Immutable numeric admission, scoped to one saved campaign."""
+
+    __tablename__ = "runtime_profiles"
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    ref: Mapped[str] = mapped_column(String(128), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    definition: Mapped[dict[str, Any]] = mapped_column(default=dict)
+
+
+class HeroAbility(Base):
+    __tablename__ = "hero_abilities"
+    __table_args__ = (UniqueConstraint("character_id", "profile_ref"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ha"))
+    character_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    profile_ref: Mapped[str] = mapped_column(String(128))
+    profile_revision: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(128))
+    definition: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    source_event_id: Mapped[str] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

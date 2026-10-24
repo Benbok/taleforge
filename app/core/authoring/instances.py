@@ -84,12 +84,19 @@ async def instantiate_adventure(
         brief=bundle.brief,
         purpose="game",
     )
+    if meta.get("ruleset_id") == "universal":
+        game.ruleset_id = "universal"
     game.content_chain = list(meta.get("content_chain") or [])  # the version's pinned content, not today's latest
     game.adventure_version_id = version.id
     game.launch_request_key = request_key
     game.launch_input_digest = digest
 
     ids = {e.ref: new_id("en") for e in bundle.entities}
+    if game.ruleset_id == "universal":
+        entry = ids.get(meta.get("studio_entry_ref", ""))
+        if not entry:
+            raise Conflict("Authored world has no valid starting location.")
+        game.settings = {**game.settings, "studio_entry_location_id": entry}
     gen_ids = {g.ref: new_id("wg") for g in bundle.generations}
     all_ids = {**ids, **gen_ids}
     for e in bundle.entities:
@@ -176,6 +183,8 @@ async def instantiate_adventure(
             )
         )
     plan = restore_plot(bundle.plot, ids)
+    if game.ruleset_id == "universal":
+        plan = _restore_blob(plan, ids)
     secret = await session.get(CampaignSecret, game.id)
     secret.plot = plan
     secret.setting = _restore_blob(bundle.setting, all_ids)
@@ -191,10 +200,13 @@ async def instantiate_adventure(
     from app.core import positions
     from app.core.world import load_world
 
-    world = await load_world(session, game, await campaign_catalog(session, game))
-    resident_places = sorted({e.location_id for e in world.entities.values() if e.kind == "creature" and e.location_id})
-    for place_id in resident_places:
-        positions.place_residents(world, place_id)
+    if game.ruleset_id != "universal":
+        world = await load_world(session, game, await campaign_catalog(session, game))
+        resident_places = sorted(
+            {e.location_id for e in world.entities.values() if e.kind == "creature" and e.location_id}
+        )
+        for place_id in resident_places:
+            positions.place_residents(world, place_id)
     await session.flush()
     foreign = find_leaks(
         {"plot": plan, "setting": secret.setting}, {i for i in (*ids, *gen_ids)}

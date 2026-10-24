@@ -51,6 +51,25 @@ def game_card_of(hero) -> dict:
     data.pop("source_library_id", None)
     sheet = UniversalSheet.model_validate(data)
     derived = derive(sheet, starting_defense_bonuses(sheet))
+    learned = []
+    for item in (hero.resources or {}).get("learned_abilities", []):
+        view = dict(item)
+        if item.get("profile"):
+            from app.rules.universal.profiles import ProfileSpec, resource_cost
+
+            profile = ProfileSpec.model_validate(item["profile"])
+            view.update(
+                description=item.get("description") or item.get("name", ""),
+                cost=str(resource_cost(profile, sheet.level)),
+                resource_key=profile.resource_key or (profile.attribute if profile.attribute != "con" else None),
+                limits={
+                    "targets": str(profile.target_count),
+                    "duration": str(profile.duration),
+                    "intensity": profile.intensity,
+                    "conditions": profile.use_conditions,
+                },
+            )
+        learned.append(view)
     return UniversalGameCard(
         id=hero.id,
         name=hero.name,
@@ -64,4 +83,5 @@ def game_card_of(hero) -> dict:
         seat_id=hero.seat_id,
         status=hero.status,
         equipment=starting_items(sheet),
+        learned_abilities=learned,
     ).model_dump(mode="json")

@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.core.scene_presentation import LocationPresentation
 from app.core.views import CompanionPublic, HeroPublic, HeroSheet, TurnEconomy, absent
+from app.rules.universal.contracts import UniversalGameCard
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
 STRICT = False
@@ -170,6 +171,7 @@ class PartyPart(_Strict):
 class Place(_Strict):
     id: str
     name: str
+    description: str = absent()
 
 
 class Scene(_Open):
@@ -235,6 +237,7 @@ class SnapshotCampaign(_Strict):
     name: str
     status: Literal["lobby", "active", "paused", "ended"]
     public_intro: str
+    ruleset_id: str = "dnd5e"
 
 
 class SnapshotSession(_Strict):
@@ -330,12 +333,12 @@ class CharacterReviewStarted(_Strict):
 class CharacterReviewed(_Strict):
     status: str
     comment: str | None
-    character: HeroSheet = absent()
+    character: HeroSheet | UniversalGameCard = absent()
     attempt_id: str = absent()
 
 
 class CharacterSheet(_Strict):
-    character: HeroSheet
+    character: HeroSheet | UniversalGameCard
     event_id: str | None = absent()
 
 

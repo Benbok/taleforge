@@ -2,12 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ImportedAdventures from "../author/ImportedAdventures";
-import CampaignBriefFields from "../components/CampaignBriefFields";
 import Header from "../components/Header";
-import { ApiError, api } from "../lib/api";
-import type { BriefIn } from "../lib/api.gen";
-import type { Pack } from "../lib/campaign";
-import { authoring, authorKeys } from "../lib/authoring";
+import { ApiError } from "../lib/api";
+import { authoring, authorKeys, emptyStudio } from "../lib/authoring";
 
 export default function AuthorProjectsPage() {
   const navigate = useNavigate();
@@ -15,37 +12,11 @@ export default function AuthorProjectsPage() {
   const tab = params.get("tab") === "import" ? "import" : "projects";
   const client = useQueryClient();
   const [title, setTitle] = useState("");
-  const [brief, setBrief] = useState<BriefIn>({});
-  const [pack, setPack] = useState("");
-  const packs = useQuery({ queryKey: ["packs"], queryFn: () => api<Pack[]>("/api/packs"), enabled: tab === "projects" });
-
-  const newer = (a: string, b: string) => {
-    const pa = a.split(".").map(Number);
-    const pb = b.split(".").map(Number);
-    for (let i = 0; i < Math.max(pa.length, pb.length); i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
-    return false;
-  };
-
-  const latest = Object.values(
-    (packs.data ?? []).reduce<Record<string, Pack>>((acc, p) => {
-      if (!acc[p.id] || newer(p.version, acc[p.id].version)) acc[p.id] = p;
-      return acc;
-    }, {}),
-  ).filter((p) => !p.id.startsWith("campaign."));
-
-  const base = latest.find((p) => p.is_base);
-  const selected = pack || (base ? `${base.id}@${base.version}` : "");
+  const [premise, setPremise] = useState("");
   const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects, enabled: tab === "projects" });
 
   const create = useMutation({
-    mutationFn: () => {
-      const chosen = latest.find((p) => `${p.id}@${p.version}` === selected);
-      return authoring.createProject({
-        title: title.trim(),
-        brief,
-        ...(chosen ? { pack_id: chosen.id, pack_version: chosen.version } : {}),
-      });
-    },
+    mutationFn: () => authoring.createProject({ title: title.trim(), studio: { ...emptyStudio(title.trim()), premise } }),
     onSuccess: (p) => {
       void client.invalidateQueries({ queryKey: authorKeys.projects });
       navigate(`/author/${p.id}`);
@@ -62,10 +33,10 @@ export default function AuthorProjectsPage() {
             <span>•</span>
             <span>Story Studio</span>
           </div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-ink">Пространство автора</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-ink">Творческая студия</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-ink-2">
-            Здесь создаются авторские сюжеты, локации и карты для настольных ролевых приключений.
-            Вы можете генерировать мир целиком, подключать внешние языковые модели или детально редактировать каждый элемент вручную.
+            Создавайте собственные миры для ролевых приключений.
+            Опишите законы и начало мира, обсудите их с мастером и сохраните версию для игры.
           </p>
         </header>
 
@@ -132,7 +103,7 @@ export default function AuthorProjectsPage() {
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">✦</span>
                   <div>
                     <h2 className="font-heading text-lg font-semibold text-ink">Создать новое приключение</h2>
-                    <p className="text-xs text-muted">Задайте базовые параметры: сюжет и лор можно будет сгенерировать или вставить на следующем шаге</p>
+                    <p className="text-xs text-muted">Задайте название и замысел. Остальные поля мира вы заполните в студии.</p>
                   </div>
                 </div>
 
@@ -153,26 +124,9 @@ export default function AuthorProjectsPage() {
                     />
                   </label>
 
-                  <label className="flex flex-col gap-1.5 text-sm">
-                    <span className="font-medium text-ink">Базовый мир (пакет контента)</span>
-                    <select
-                      className="min-h-11 rounded-xl border border-line bg-raised px-3 text-sm text-ink transition-colors focus:border-accent focus:outline-none"
-                      value={selected}
-                      onChange={(e) => setPack(e.target.value)}
-                    >
-                      {latest.map((p) => (
-                        <option key={`${p.id}@${p.version}`} value={`${p.id}@${p.version}`}>
-                          {p.name} · {p.version} {p.is_base ? "(базовый)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-xs text-muted">Определяет правила, доступные расы, бестиарий и стиль повествования.</span>
+                  <label className="flex flex-col gap-1.5 text-sm"><span className="font-medium text-ink">Замысел мира</span>
+                    <textarea className="rounded-xl border border-line bg-raised p-3 text-ink" value={premise} onChange={e => setPremise(e.target.value)} rows={3} />
                   </label>
-
-                  <div className="rounded-xl border border-line-soft bg-raised/50 p-4">
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted">Вводная анкета (необязательно)</span>
-                    <CampaignBriefFields value={brief} onChange={setBrief} />
-                  </div>
 
                   {create.error && (
                     <p className="rounded-lg border border-bad/30 bg-ember-bg p-3 text-sm text-bad" role="alert">

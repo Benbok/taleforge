@@ -70,8 +70,12 @@ class RecallMixin:
                 if not rows or (kind == "rolling" and not force and len(rows) < every):
                     return None
                 cfg = await s.get(AgentConfig, seat.agent_config_id)
-                ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
-                char_by_seat = {ch.seat_id: ch for ch in ctx.world.characters.values() if ch.seat_id}
+                if c.ruleset_id == "universal":
+                    chars = await s.scalars(select(Character).where(Character.campaign_id == cid))
+                    char_by_seat = {ch.seat_id: ch for ch in chars if ch.seat_id}
+                else:
+                    ctx = await open_context(s, c, self.dice_factory(), turn_id=None, seat_id=seat.id)
+                    char_by_seat = {ch.seat_id: ch for ch in ctx.world.characters.values() if ch.seat_id}
                 names = await _names(s, c)
                 prompt = memory.summary_input(prev, rows, lambda m: _who(m, char_by_seat, names))
                 upto = rows[-1].seq

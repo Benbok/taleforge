@@ -47,6 +47,10 @@ def _reach(links, start: str, *, conditions: bool) -> set[str]:
 
 
 async def validate_project(session: AsyncSession, project: AuthorProject) -> ValidationReport:
+    from app.core.authoring.studio import studio_fields, validate_studio
+
+    if studio_fields(project) is not None:
+        return validate_studio(project)
     cid = project.workspace_campaign_id
     secret = await session.get(CampaignSecret, cid)
     plan, setting = (secret.plot if secret else None) or {}, (secret.setting if secret else None) or {}
