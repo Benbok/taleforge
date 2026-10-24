@@ -36,6 +36,11 @@ def test_library_admission_requires_confirmed_copy_and_preserves_original(client
     response = client.post(f"/api/campaigns/{cid}/characters/from-library/{library_id}/admission", headers=root)
     assert response.status_code == 201, response.text
     draft = response.json()
+    assert all(message["role"] in ("user", "assistant") for message in draft["transcript"])
+    assert "Adapt only this campaign copy" not in response.text
+    reloaded = client.get(f"/api/hero-creation/dialogues/{draft['id']}", headers=root)
+    assert "source_revision" not in reloaded.text
+    assert "Adapt only this campaign copy" not in reloaded.text
     assert "No supernatural powers" in str(client.app.state.hero_llm.requests)
 
     async def count():

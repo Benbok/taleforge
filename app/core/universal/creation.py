@@ -42,10 +42,12 @@ async def delete_dialogue(session, owner_id: str, dialogue_id: str, expected_rev
 
 
 def dialogue_view(draft: HeroDialogue) -> dict:
-    return {
+    view = {
         key: getattr(draft, key)
         for key in ("id", "revision", "status", "description", "transcript", "proposal", "hero_id", "campaign_id")
     }
+    view["transcript"] = [message for message in draft.transcript if message.get("role") in ("user", "assistant")]
+    return view
 
 
 async def _campaign_target(session, owner_id, campaign_id, target_id):

@@ -19,6 +19,19 @@ const original = { id: 'lc1', name: 'Ива', revision: 1, level: '1', editable:
   hp: '24', energies: { str: '18', dex: '22', int: '23', wis: '25', cha: '20' }, equipment: [], learned_abilities: [] };
 const clients: QueryClient[] = [];
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
+
+it('не показывает служебные инструкции как реплики мастера в сохранённой беседе', async () => {
+  const draft = { id: 'hd1', revision: 2, status: 'questions', description,
+    proposal: null, campaign_id: null, hero_id: null,
+    transcript: [
+      { role: 'system', content: 'Adapt only this campaign copy; preserve starting scores and equipment.' },
+      { role: 'assistant', content: 'Как герой использует свои знания в этом мире?' },
+    ] };
+  vi.stubGlobal('fetch', async () => response(draft));
+  open('/heroes/new?dialogue=hd1');
+  expect(await screen.findByText('Как герой использует свои знания в этом мире?')).toBeTruthy();
+  expect(screen.queryByText(/Adapt only this campaign copy/)).toBeNull();
+});
 function open(path = '/heroes/new') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(qc);
   return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><Routes>

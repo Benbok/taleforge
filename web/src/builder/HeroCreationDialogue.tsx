@@ -90,7 +90,7 @@ export default function HeroCreationDialogue({
 
       {/* Лента сообщений: диалог с мастером */}
       <div className='flex flex-col gap-4'>
-        {draft.transcript.map((message, index) => {
+        {draft.transcript.filter(message => message.role === 'user' || message.role === 'assistant').map((message, index) => {
           const isUser = message.role === 'user';
           return (
             <div
