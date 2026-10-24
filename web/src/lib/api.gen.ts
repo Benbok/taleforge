@@ -7843,6 +7843,11 @@ export interface components {
             collect_window_sec: number;
             /** Heroes */
             heroes: components["schemas"]["HeroPublic"][];
+            /**
+             * Master Stage
+             * @default null
+             */
+            master_stage?: string | null;
             me: components["schemas"]["SnapshotMe"];
             /** Messages */
             messages: components["schemas"]["ChatMessage"][];

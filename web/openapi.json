@@ -14944,6 +14944,18 @@
       "title": "Heroes",
       "type": "array"
      },
+     "master_stage": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Master Stage"
+     },
      "me": {
       "$ref": "#/components/schemas/SnapshotMe"
      },

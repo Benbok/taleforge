@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 from sqlalchemy import func, select
 
-from app.agents.llm import model_for
+from app.agents.llm import decide_model_for, model_for
 from app.agents.master.helpers import _batches
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session, next_seq
@@ -61,7 +61,10 @@ async def _call(service, campaign, turn, purpose, payload):
             else None
         )
         api_base = (cfg.settings or {}).get("api_base") if cfg else None
-        model = model_for(cfg.provider, cfg.model) if cfg else model_for()
+        if cfg is None or cfg.provider == "env" or cfg.model == "env":
+            model = decide_model_for() if purpose == "decide" else model_for()
+        else:
+            model = model_for(cfg.provider, cfg.model)
         temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
     reply = await service.llm.complete(payload, model=model, api_base=api_base, temperature=temperature)
     async with service.maker() as s:
@@ -138,8 +141,11 @@ async def run_universal_turn(service, cid, place=None):
         await s.commit()
         tid, trace = turn.id, dict(turn.trace)
     ids = trace["sources"]
+    if trace.get("audience") is not None:
+        service._audience[cid] = trace["audience"]
     await service._states(cid, ids, "processing")
     try:
+        await service._status(cid, "listening")
         for mid in ids:
             if mid in trace["outcomes"]:
                 continue
@@ -277,6 +283,7 @@ async def run_universal_turn(service, cid, place=None):
                         difficulty=admission.difficulty,
                     )
                     # Resolution performs campaign/seat/target/resource authorization itself.
+                    await service._status(cid, "rolling")
                     result = await resolve_action(
                         ResolutionContext(
                             s, cid, seat.user_id, seat.id, hero.id, service.dice_factory(), frozenset(allowed_targets)
@@ -300,6 +307,7 @@ async def run_universal_turn(service, cid, place=None):
             saved_narration = (
                 await s.get(Message, saved_turn.narration_message_id) if saved_turn.narration_message_id else None
             )
+        await service._status(cid, "describing")
         text = (
             saved_narration.content
             if saved_narration
@@ -395,3 +403,5 @@ async def run_universal_turn(service, cid, place=None):
             await s.commit()
         await service._states(cid, ids, "failed")
         return tid
+    finally:
+        await service._status(cid, "idle")

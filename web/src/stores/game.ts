@@ -196,9 +196,10 @@ export const useGame = create<GameState>((set, get) => ({
     // e.payload сужается по e.type: формы событий приходят из контракта сервера (lib/api.gen.ts)
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, rest_votes, ...rest } =
+        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, rest_votes, master_stage, ...rest } =
           e.payload;
         set((s) => ({
+          masterStage: master_stage ?? null,
           votes: votes ?? [],
           restVotes: rest_votes ?? [],
           playAs: s.playAs && rest.me?.stand_in_for?.includes(s.playAs) ? s.playAs : null,

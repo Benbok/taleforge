@@ -77,6 +77,7 @@ async def _snapshot(
         c.id,
         {
             "protocol": PROTOCOL_VERSION,
+            "master_stage": master.current_stage(c.id, seat_id) if master is not None else None,
             "campaign": {
                 "id": c.id,
                 "name": c.name,
@@ -254,6 +255,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     # снимок уходит первым: события, опубликованные после добавления в hub, ждут замка отправки
                     await conn.send_lock.acquire()
                     hub.add(conn)
+                    # Status can change while the old connection is detached and the snapshot reads DB.
+                    # Refresh after registration: subsequent status events now wait behind this snapshot.
+                    snap["payload"]["master_stage"] = app.state.master.current_stage(conn.campaign_id, conn.seat_id)
                 try:
                     await ws.send_json(snap)
                 finally:

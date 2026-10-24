@@ -92,6 +92,14 @@ class MasterService(
         self.players = None  # app/agents/player.py: ИИ-игроки (раздел 5.2)
         self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
         self._audience: dict[str, list[str]] = {}  # кто видит идущий ход, если отряд разделён
+        self._stages: dict[str, tuple[str, list[str] | None]] = {}
+
+    def current_stage(self, campaign_id: str, seat_id: str | None) -> str | None:
+        current = self._stages.get(campaign_id)
+        if current is None:
+            return None
+        stage, audience = current
+        return stage if audience is None or seat_id in audience else None
 
     def turn_lock(self, cid: str) -> asyncio.Lock:
         """Замок хода кампании: под ним идут ход мастера, ходы существ и запись итогов озвучки."""

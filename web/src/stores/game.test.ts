@@ -19,6 +19,17 @@ const env = (type: string, payload: object, seq: number | null = null): Envelope
 describe("хранилище игры", () => {
   beforeEach(() => useGame.getState().reset());
 
+  it('снимок сбрасывает потерянный idle и восстанавливает действительно работающего мастера', () => {
+    const g = useGame.getState;
+    g().apply(env('master.status', { stage: 'describing' }));
+    g().apply(env('state.snapshot', { messages: [], seats: [], replay: true }));
+    expect(g().masterStage).toBeNull();
+    g().apply(env('state.snapshot', { messages: [], seats: [], replay: true, master_stage: 'rolling' }));
+    expect(g().masterStage).toBe('rolling');
+    g().apply(env('master.status', { stage: 'idle' }));
+    expect(g().masterStage).toBeNull();
+  });
+
   it('обновляет портрет отряда и открытого листа одним серверным событием', () => {
     const g = useGame.getState;
     g().apply(env('character.sheet', { character: { id: 'h1', name: 'Ива', portrait_url: '/api/portraits/old' } }));

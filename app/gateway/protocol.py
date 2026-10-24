@@ -258,6 +258,7 @@ class SnapshotMe(_Strict):
 
 class StateSnapshot(_Strict):
     protocol: int
+    master_stage: str | None = None
     campaign: SnapshotCampaign
     session: SnapshotSession | None
     me: SnapshotMe

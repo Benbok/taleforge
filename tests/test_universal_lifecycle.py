@@ -9,6 +9,26 @@ from tests.test_universal_master import Bus, Provider, prepare
 from tests.test_universal_resolution import setup
 
 
+def test_master_status_is_scoped_and_cleared_after_session_intro(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        service = MasterService(maker, Bus(), Provider([]))
+        service._audience["c"] = ["seat"]
+        await service._status("c", "rolling")
+        assert service.current_stage("c", "seat") == "rolling"
+        assert service.current_stage("c", "foreign-seat") is None
+        await service._status("c", "idle")
+        assert service.current_stage("c", "seat") is None
+        service._audience.pop("c")
+        service.schedule_session_open("c", "game")
+        await service.wait_idle("c")
+        assert service.current_stage("c", "seat") is None
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_session_intro_is_saved_once_without_catalog_or_model(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)

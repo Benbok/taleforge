@@ -15,6 +15,39 @@ from tests.test_universal_resolution import setup
 
 def test_universal_engine_selection():
     assert type(get_engine("universal")).__name__ == "UniversalEngine"
+
+
+def test_new_campaign_env_agent_resolves_real_main_and_technical_models(tmp_path):
+    from app.agents.llm import decide_model_for, model_for
+    from app.core.campaigns import agent_for_master
+
+    class RecordingProvider(Provider):
+        def __init__(self):
+            super().__init__([dict(kind="narrative", reason="Look around"), "Вы стоите у ворот."])
+            self.models = []
+
+        async def complete(self, messages, **kwargs):
+            self.models.append(kwargs["model"])
+            return await super().complete(messages, **kwargs)
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            config = await agent_for_master(s, {"type": "agent"})
+            s.add(config)
+            await s.flush()
+            (await s.get(Seat, "master")).agent_config_id = config.id
+            await s.commit()
+        provider = RecordingProvider()
+        service = MasterService(maker, Bus(), provider)
+        tid = await service.run_turn("c")
+        assert provider.models == [decide_model_for(), model_for()]
+        async with maker() as s:
+            assert (await s.get(MasterTurn, tid)).status == "done"
+        await engine.dispose()
+
+    asyncio.run(run())
     with pytest.raises(KeyError):
         get_engine("dnd5e")
 
@@ -79,7 +112,9 @@ def test_paid_action_restart_preserves_receipt_and_private_boundary(tmp_path):
             profile=dict(id="sight", attribute="wis", kind="check", resource_key="wis"),
         )
         first = Provider([proposal, RuntimeError("narrator down")])
-        tid = await MasterService(maker, Bus(), first).run_turn("c")
+        first_service = MasterService(maker, Bus(), first)
+        tid = await first_service.run_turn("c")
+        assert first_service.current_stage("c", "seat") is None
         async with maker() as s:
             t = await s.get(MasterTurn, tid)
             assert t.status == "failed", t.trace

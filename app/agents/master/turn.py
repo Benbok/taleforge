@@ -157,6 +157,10 @@ class TurnMixin:
     # --- ход ---
 
     async def _status(self, cid: str, stage: str) -> None:
+        if stage == "idle":
+            self._stages.pop(cid, None)
+        else:
+            self._stages[cid] = (stage, self._audience.get(cid))
         # ход группы разделившегося отряда: «мастер думает» видят только её игроки
         await self.bus.publish(cid, envelope("master.status", cid, {"stage": stage}), self._audience.get(cid))
 
