@@ -20,6 +20,7 @@ from app.rules.universal.contracts import (
     SignedCount,
     UniversalSheet,
 )
+from app.rules.universal.failures import ActionFailure
 
 ItemStatus = Literal["common", "rare", "unique", "epic"]
 Intensity = Literal["light", "normal", "strong"]
@@ -149,6 +150,7 @@ class ActionOutcome(ClosedModel):
     critical: bool = False
     critical_failure: bool = False
     rolls: list[int] = Field(default_factory=list)
+    failure: ActionFailure | None = None
 
 
 def validate_profile(profile: ProfileSpec | dict) -> ProfileSpec:

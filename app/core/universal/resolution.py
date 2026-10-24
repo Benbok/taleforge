@@ -2,70 +2,40 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
-
-from pydantic import Field
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 
 from app.core.campaigns import AccessDenied, NotFound
-from app.core.universal.profiles import actor_row, get_profile, load_actor, save_actor
-from app.db.models import Campaign, Character, Event, HeroAbility, RuntimeProfile, Seat
-from app.rules.universal.contracts import ClosedModel, Count
+from app.core.universal.contracts import ProposedAction
+from app.core.universal.contracts import ActionRef as ActionRef
+from app.core.universal.contracts import ResolutionContext as ResolutionContext
+from app.core.universal.profiles import save_actor
+from app.core.universal.validation import authorize_actor, validate_action
+from app.db.models import Campaign, Event
+from app.rules.universal.failures import ActionValidationError, action_failure, reject
 from app.rules.universal.mechanics import derive, starting_defense_bonuses
 from app.rules.universal.profiles import (
     ActionOutcome,
     EffectOutcome,
     EffectSpec,
-    ProfileSpec,
-    bind_resistance,
     damage_amount,
     resolve_attack,
     resolve_check,
     resolve_resistance,
-    resource_cost,
     restore,
-    validate_profile,
 )
-
-
-class ActionRef(ClosedModel):
-    profile_id: str = Field(min_length=1, max_length=128)
-    revision: Count = Field(ge=1)
-
-
-class ProposedAction(ClosedModel):
-    ref: ActionRef
-    actor_id: str
-    targets: list[str] = Field(default_factory=list, max_length=100)
-    profile: ProfileSpec
-    operations: list[EffectSpec] = Field(default_factory=list, max_length=16)
-    reason: str = Field(default="", max_length=4000)
-    difficulty: int = Field(default=12, ge=1, le=40, strict=True)
-    edge: Literal["normal", "advantage", "disadvantage"] = "normal"
-    critical_failure_consequence: Literal["self_damage_1"] = "self_damage_1"
-
-
-@dataclass
-class ResolutionContext:
-    session: object
-    campaign_id: str
-    user_id: str
-    seat_id: str
-    actor_id: str
-    dice: object
-    allowed_target_ids: frozenset[str] | None = None
 
 
 async def resolve_action(ctx, proposal: ProposedAction, request_key: str) -> ActionOutcome:
     if not request_key or len(request_key) > 64:
-        return ActionOutcome(status="denied")
+        return ActionOutcome(status="denied", failure=action_failure("invalid_proposal"))
     try:
         proposal = ProposedAction.model_validate(proposal.model_dump())
         async with ctx.session.begin_nested():
             return await _execute(ctx, proposal, request_key)
+    except ActionValidationError as exc:
+        return ActionOutcome(status="denied", failure=exc.failure)
     except (AccessDenied, NotFound, ValueError):
-        return ActionOutcome(status="denied")
+        return ActionOutcome(status="denied", failure=action_failure("invalid_proposal"))
 
 
 class _RecordingDice:
@@ -91,18 +61,7 @@ async def _execute(ctx, p, key):
     await s.execute(
         update(Campaign).where(Campaign.id == ctx.campaign_id).values(world_revision=Campaign.world_revision)
     )
-    row = await actor_row(s, ctx.campaign_id, p.actor_id, refresh=True)
-    seat = await s.get(Seat, ctx.seat_id, populate_existing=True)
-    if (
-        p.actor_id != ctx.actor_id
-        or not isinstance(row, Character)
-        or row.seat_id != ctx.seat_id
-        or row.status not in {"active", "approved"}
-        or seat is None
-        or seat.campaign_id != ctx.campaign_id
-        or ctx.user_id not in {seat.user_id, seat.stand_in_user_id}
-    ):
-        raise AccessDenied("actor seat is not controlled by this user")
+    await authorize_actor(ctx, p, require_active=False)
     previous = await s.scalar(select(Event).where(Event.campaign_id == ctx.campaign_id, Event.idempotency_key == key))
     if previous:
         if (
@@ -110,70 +69,11 @@ async def _execute(ctx, p, key):
             or previous.actor_id != p.actor_id
             or previous.payload["proposal"] != p.model_dump(mode="json")
         ):
-            raise AccessDenied("idempotency key already belongs to another action")
+            reject("invalid_proposal")
         return ActionOutcome.model_validate(previous.payload["outcome"]).model_copy(update={"status": "repeated"})
-    profile = await get_profile(s, ctx.campaign_id, p.ref.profile_id, p.ref.revision)
-    latest = await s.scalar(
-        select(func.max(RuntimeProfile.revision)).where(
-            RuntimeProfile.campaign_id == ctx.campaign_id, RuntimeProfile.ref == p.ref.profile_id
-        )
-    )
-    # A learned ability pins its immutable rules even as new admissions evolve.
-    learned = await s.scalar(
-        select(HeroAbility).where(
-            HeroAbility.campaign_id == ctx.campaign_id,
-            HeroAbility.character_id == p.actor_id,
-            HeroAbility.profile_ref == p.ref.profile_id,
-            HeroAbility.profile_revision == p.ref.revision,
-        )
-    )
-    pinned = learned is not None and learned.definition == profile.model_dump(mode="json")
-    if (
-        (latest != p.ref.revision and not pinned)
-        or profile != validate_profile(p.profile)
-        or profile.id != p.ref.profile_id
-        or p.operations != profile.effects
-    ):
-        raise AccessDenied("stale profile or operations outside admitted budget")
-    if profile.duration != 1 or any(e.clock != "immediate" for e in profile.effects):
-        raise AccessDenied("scheduled effects require the combat duration runtime")
-    if profile.item_id is not None or profile.use_conditions:
-        raise AccessDenied("item and conditional profiles require explicit runtime support")
-    sheet, resources = await load_actor(s, ctx.campaign_id, p.actor_id)
-    if profile.trained and profile.id not in sheet.trained:
-        raise AccessDenied("training must be confirmed in the saved sheet")
-    if profile.resource_key is not None and profile.resource_key != profile.attribute:
-        raise AccessDenied("paid energy must match the acting attribute")
-    if profile.use_kind == "weapon_basic":
-        weapon = sheet.starting_equipment.weapon if sheet.starting_equipment else None
-        if weapon is None or profile.attribute != weapon.attack_ability or profile.base_dice != weapon.damage_dice:
-            raise AccessDenied("basic attack requires admitted equipped starting weapon")
-    ids = p.targets or ([p.actor_id] if profile.kind == "narrative" else [])
-    if not ids or len(ids) != len(set(ids)) or len(ids) != profile.target_count:
-        raise AccessDenied("target count differs from paid profile")
-    targets = {}
-    for target in ids:
-        target_row = await actor_row(s, ctx.campaign_id, target, refresh=True)
-        if ctx.allowed_target_ids is not None and target not in ctx.allowed_target_ids and target != p.actor_id:
-            raise AccessDenied("target outside admitted scene")
-        if target_row.location_id != row.location_id:
-            raise AccessDenied("target is outside actor location")
-        targets[target] = await load_actor(s, ctx.campaign_id, target)
-    cost = resource_cost(profile, sheet.level)
-    energy = profile.resource_key or (profile.attribute if profile.attribute != "con" else None)
-    if cost and (energy is None or resources.energies[energy] < cost):
-        raise AccessDenied("insufficient energy")
-    # Fix all resistance DCs before any dice are rolled.
-    effects = []
-    for effect in profile.effects:
-        if effect.source_id and effect.source_id != p.actor_id or effect.target_id and effect.target_id not in ids:
-            raise AccessDenied("foreign effect source or target")
-        resistance = (
-            bind_resistance(effect.resistance, getattr(sheet.abilities, effect.resistance.source_attribute))
-            if effect.resistance
-            else None
-        )
-        effects.append(effect.model_copy(update={"resistance": resistance}))
+    state = await validate_action(ctx, p)
+    sheet, resources, profile = state.sheet, state.resources, state.profile
+    targets, effects, cost, energy = state.targets, state.effects, state.cost, state.energy
     if cost:
         resources.energies[energy] -= cost
     # Shared object for self target prevents damage/restoration overwriting the debit.
