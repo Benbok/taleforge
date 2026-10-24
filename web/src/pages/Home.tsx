@@ -619,9 +619,9 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
                       .filter(Boolean)
                       .join(" · ") || "Черновик"}
                   </span>
-                  {h.errors?.length > 0 && (
+                  {(h.errors?.length ?? 0) > 0 && (
                     <span className="mt-1 text-xs text-bad">
-                      {h.errors.length} незаполненных параметров
+                      {h.errors?.length ?? 0} незаполненных параметров
                     </span>
                   )}
                 </div>
