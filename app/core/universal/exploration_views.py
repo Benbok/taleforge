@@ -10,6 +10,11 @@ from app.core.universal.state import game_card_of
 
 async def exploration_game_card(session, hero):
     card = game_card_of(hero, learned=await learned_abilities(session, hero.id))
+    from app.core.universal.inventory import actor_derived, item_view, owned_items
+
+    card["derived"] = (await actor_derived(session, hero.campaign_id, hero.id)).model_dump(mode="json")
+    if (hero.resources or {}).get("inventory_initialized"):
+        card["equipment"] = [item_view(row) for row in await owned_items(session, hero.campaign_id, hero.id)]
     labels = {
         "change_form": "Форма куста",
         "camouflage": "Маскировка",
