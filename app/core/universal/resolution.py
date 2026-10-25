@@ -100,6 +100,8 @@ async def _execute(ctx, p, key):
                     difficulty=defense - profile.attack_bonus,
                     success=hit.success,
                     kind="attack",
+                    critical=hit.critical,
+                    critical_failure=hit.critical_failure,
                 )
             )
             if result.natural is None:
@@ -110,6 +112,8 @@ async def _execute(ctx, p, key):
                     hit.critical_failure,
                 )
             result.rolls.extend(hit.rolls)
+            result.critical |= hit.critical
+            result.critical_failure |= hit.critical_failure
             result.success = result.success and hit.success
             amount = min(target_resources.hp, hit.damage)
             result.damage += amount
@@ -135,6 +139,8 @@ async def _execute(ctx, p, key):
             )
             result.success = result.success and check.success
             result.natural, result.total = check.natural, check.total
+            result.critical |= check.critical
+            result.critical_failure |= check.critical_failure
             result.checks.append(
                 CheckProof(
                     target_id=target,
@@ -145,6 +151,8 @@ async def _execute(ctx, p, key):
                     difficulty=p.difficulty,
                     success=check.success,
                     mode=p.edge,
+                    critical=check.critical,
+                    critical_failure=check.critical_failure,
                 )
             )
             result.rolls.extend(check.rolls)
@@ -180,6 +188,8 @@ async def _execute(ctx, p, key):
                         difficulty=outcome.difficulty,
                         success=not outcome.applied,
                         kind="resistance",
+                        critical=outcome.natural == 20,
+                        critical_failure=outcome.natural == 1,
                     )
                 )
             if not outcome.applied:
@@ -202,7 +212,7 @@ async def _execute(ctx, p, key):
             elif effect.kind != "narrative":
                 target_resources.effects.append(applied)
             result.public_effects.append(applied)
-    if result.critical_failure:
+    if result.critical_failure and profile.kind == "damage":
         # Fixed before rolling, bounded and saved in the same receipt as the miss.
         harm = min(1, resources.hp)
         resources.hp -= harm
@@ -214,8 +224,13 @@ async def _execute(ctx, p, key):
         await save_actor(s, ctx.campaign_id, target, target_sheet, target_resources)
     result.rolls = dice.rolls
     result.draws = dice.draws
-    if profile.kind == 'check' and p.check_outcomes is not None:
-        result.description = p.check_outcomes.success if result.success else p.check_outcomes.failure
+    if profile.kind == "check" and p.check_outcomes is not None:
+        if result.success and result.critical:
+            result.description = p.check_outcomes.critical_success or f"Критический успех: {p.check_outcomes.success}"
+        elif not result.success and result.critical_failure:
+            result.description = p.check_outcomes.critical_failure or f"Критический провал: {p.check_outcomes.failure}"
+        else:
+            result.description = p.check_outcomes.success if result.success else p.check_outcomes.failure
     event = Event(
         campaign_id=ctx.campaign_id,
         tool="universal_action",

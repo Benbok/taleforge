@@ -59,9 +59,23 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         tool="universal_action",
         title=title,
         who=actor.name if actor else None,
-        outcome="success" if result.success else "fail",
+        outcome=(
+            "crit_success"
+            if result.success and result.critical
+            else "crit_fail"
+            if not result.success and result.critical_failure
+            else "success"
+            if result.success
+            else "fail"
+        ),
         universal_proof=proof,
     )
+    outcome_word = {
+        "crit_success": "критический успех",
+        "crit_fail": "критический провал",
+        "success": "успех",
+        "fail": "провал",
+    }[data["outcome"]]
     message = Message(
         id=message_id,
         campaign_id=campaign_id,
@@ -70,7 +84,7 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         seq=await next_seq(session, campaign_id),
         kind="roll",
         visible_to=audience,
-        content=f"{title}: {'успех' if result.success else 'провал'}",
+        content=f"{title}: {outcome_word}",
         data=data,
     )
     session.add(message)

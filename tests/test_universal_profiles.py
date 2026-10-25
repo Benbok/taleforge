@@ -41,14 +41,14 @@ def test_resistance_examples_have_exact_binding_probabilities_and_no_training():
         outcomes = [rules.resolve_resistance(FixedDice([die]), "enemy", "vine", score, spec) for die in range(1, 21)]
         assert sum(x.applied for x in outcomes) == count
         assert outcomes[-1].total == 20 + (score - 10) // 2
-    assert rules.resolve_resistance(FixedDice([20]), "enemy", "vine", 1, spec).applied
+    assert not rules.resolve_resistance(FixedDice([20]), "enemy", "vine", 1, spec).applied
 
 
-def test_checks_use_trained_and_edge_but_do_not_inherit_attack_autosuccess():
+def test_checks_use_trained_and_edge_and_natural_twenty_is_critical_success():
     assert rules.resolve_check(FixedDice([10]), 14, True, 14, "normal").success
     assert rules.resolve_check(FixedDice([2, 17]), 14, False, 19, "advantage").success
     assert not rules.resolve_check(FixedDice([2, 17]), 14, False, 19, "disadvantage").success
-    assert not rules.resolve_check(FixedDice([20]), 14, False, 99, "normal").success
+    assert rules.resolve_check(FixedDice([20]), 14, False, 99, "normal").success
 
 
 def test_cost_prices_intensity_targets_duration_and_components():

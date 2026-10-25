@@ -15,6 +15,8 @@ from tests.test_universal_resolution import setup
 CONSEQUENCES = {
     "success": "Из тёмного тоннеля впереди различим сухой костяной стук приближающихся шагов.",
     "failure": "Среди шорохов не удаётся разобрать источник звука.",
+    "critical_success": "Стук шагов из тоннеля впереди различим особенно отчётливо, даже сквозь окружающий шум.",
+    "critical_failure": "Шорохи отвлекают внимание: не удаётся определить ни направление, ни источник стука.",
 }
 
 
@@ -105,6 +107,8 @@ def test_check_result_links_are_limited_to_public_scene_references(tmp_path):
                     check_outcomes={
                         "success": "В Серой Глотке слышен [[private-place|стук]].",
                         "failure": "Звук неразличим.",
+                        "critical_success": "В Серой Глотке стук различим особенно отчётливо.",
+                        "critical_failure": "Шум сбивает внимание: не удаётся определить направление звука.",
                     },
                 ),
                 "Вы слышите стук.",

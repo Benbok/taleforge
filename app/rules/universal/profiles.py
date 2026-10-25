@@ -153,6 +153,8 @@ class CheckProof(ClosedModel):
     success: bool
     mode: Literal["normal", "advantage", "disadvantage"] = "normal"
     kind: Literal["check", "attack", "resistance"] = "check"
+    critical: bool = False
+    critical_failure: bool = False
 
 
 class CheckNarration(ClosedModel):
@@ -160,12 +162,21 @@ class CheckNarration(ClosedModel):
     failure: str = Field(
         min_length=1, max_length=4000, description="Concrete failure result, no invented world prohibition."
     )
+    critical_success: str | None = Field(default=None, min_length=1, max_length=4000)
+    critical_failure: str | None = Field(default=None, min_length=1, max_length=4000)
 
     @model_validator(mode="after")
     def distinct_results(self):
         self.success, self.failure = self.success.strip(), self.failure.strip()
         if not self.success or not self.failure or self.success == self.failure:
             raise ValueError("A check needs distinct, nonempty success and failure results")
+        for critical, regular in [("critical_success", self.success), ("critical_failure", self.failure)]:
+            value = getattr(self, critical)
+            if value is not None:
+                value = value.strip()
+                if not value or value == regular:
+                    raise ValueError("Critical consequences must be nonempty and distinct from ordinary results")
+                setattr(self, critical, value)
         return self
 
 
@@ -226,15 +237,14 @@ def resolve_resistance(
     score = _integer(target_attribute, 1)
     if resistance.difficulty is None:
         raise ValueError("resistance DC must be fixed from source score before rolling")
-    natural = dice.d20()
-    total = natural + (score - 10) // 2
+    check = resolve_check(dice, score, False, resistance.difficulty)
     return EffectOutcome(
         effect_id=effect_id,
         target_id=target_id,
-        natural=natural,
-        total=total,
+        natural=check.natural,
+        total=check.total,
         difficulty=resistance.difficulty,
-        applied=total < resistance.difficulty,
+        applied=not check.success,
     )
 
 
@@ -248,7 +258,14 @@ def resolve_check(dice, attribute: int, trained: bool, difficulty: int, edge: st
         rolls.append(dice.d20())
     natural = min(rolls) if edge == "disadvantage" else max(rolls)
     total = natural + (score - 10) // 2 + (2 if trained else 0)
-    return ActionOutcome(success=total >= difficulty, natural=natural, total=total, rolls=rolls)
+    return ActionOutcome(
+        success=natural == 20 or (natural != 1 and total >= difficulty),
+        natural=natural,
+        total=total,
+        rolls=rolls,
+        critical=natural == 20,
+        critical_failure=natural == 1,
+    )
 
 
 def damage_amount(

@@ -3,6 +3,8 @@ import { abilityNames, type AbilityKey } from '../lib/universal';
 import RichText from './RichText';
 
 export default function UniversalRollProof({ card, proof }: { card: RollCard; proof: UniversalRollEvidence }) {
+  const failed = ['fail', 'crit_fail', 'miss', 'fumble'].includes(card.outcome);
+  const label = card.outcome === 'crit_success' ? 'Критический успех' : card.outcome === 'crit_fail' ? 'Критический провал' : failed ? 'Провал' : 'Успех';
   return (
     <section className='tf-pop mx-auto w-full max-w-xl rounded-xl border border-line bg-surface p-4 shadow-sm' aria-label={card.title}>
       <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -10,8 +12,8 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
           <p className='text-[10px] font-semibold uppercase tracking-wider text-patina'>Бросок сервера · {card.who ?? 'Герой'}</p>
           <h3 className='font-heading font-semibold text-ink'>{card.title}</h3>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${card.outcome === 'fail' ? 'border-bad/40 text-bad' : 'border-ok/40 text-ok'}`}>
-          {card.outcome === 'fail' ? 'Провал' : 'Успех'}
+        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${failed ? 'border-bad/40 text-bad' : 'border-ok/40 text-ok'}`}>
+          {label}
         </span>
       </div>
       <div className='mt-3 flex flex-wrap gap-2' aria-label='Выпавшие кубики'>
@@ -29,7 +31,7 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
           <div key={index} className='mt-3 rounded-lg border border-line bg-bg/50 px-3 py-2 text-sm'>
             <div className='flex flex-wrap items-center justify-between gap-2'>
               <span className='font-mono font-semibold text-ink'>{equation}</span>
-              <span className={check.success ? 'text-ok' : 'text-bad'}>{check.success ? 'Успех' : 'Провал'}</span>
+              <span className={check.success ? 'text-ok' : 'text-bad'}>{check.critical ? 'Критический успех' : check.critical_failure ? 'Критический провал' : check.success ? 'Успех' : 'Провал'}</span>
             </div>
             <p className='mt-1 text-xs text-muted'>
               {check.kind === 'resistance' ? 'Сопротивление · ' : ''}
@@ -38,6 +40,9 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
               {check.difficulty != null ? ` · Сложность ${check.difficulty}` : ''}
               {check.mode === 'advantage' ? ' · преимущество' : check.mode === 'disadvantage' ? ' · помеха' : ''}
             </p>
+            {(check.critical || check.critical_failure) && <p className='mt-1 text-xs text-muted'>
+              Натуральная {check.critical ? '20' : '1'} — {check.critical ? 'критический успех' : 'критический провал'} независимо от суммы и сложности.
+            </p>}
           </div>
         );
       })}

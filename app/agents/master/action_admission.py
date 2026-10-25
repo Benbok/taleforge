@@ -32,6 +32,9 @@ SYSTEM = (
     " direction or other discernible detail; if there is nothing new, explicitly say what is and is not discernible."
     " Use only public scene/history facts for these results. Never expose private world notes, invent numeric changes,"
     " grant items, or claim unsupported persistent effects. Do not refer to the as-yet-unrolled dice."
+    " Natural 20 is critical success and natural 1 is critical failure, irrespective of total/DC."
+    " Also supply check_outcomes.critical_success (a stronger immediate result) and .critical_failure"
+    " (a concrete immediate setback). Stay within public facts and supported mechanics."
 )
 
 
@@ -83,7 +86,7 @@ async def obtain_prepared_action(service, campaign, tid, mid, trace, context, sc
                     intent.check_outcomes = type(intent.check_outcomes).model_validate(
                         {
                             key: link_scene_text(value, context["scene"])
-                            for key, value in intent.check_outcomes.model_dump().items()
+                            for key, value in intent.check_outcomes.model_dump(exclude_none=True).items()
                         }
                     )
                 previous = intent.model_dump(mode="json", exclude={"reason"})
@@ -95,7 +98,11 @@ async def obtain_prepared_action(service, campaign, tid, mid, trace, context, sc
                         and isinstance(intent, ActionIntent)
                         and result.proposal
                         and result.proposal.profile.kind == "check"
-                        and result.proposal.check_outcomes is None
+                        and (
+                            result.proposal.check_outcomes is None
+                            or result.proposal.check_outcomes.critical_success is None
+                            or result.proposal.check_outcomes.critical_failure is None
+                        )
                     ):
                         raise ActionValidationError("missing_check_outcomes")
                     if result.proposal and result.proposal.reason == mid:

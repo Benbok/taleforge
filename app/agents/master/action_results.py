@@ -20,7 +20,9 @@ def public_outcome(result, reason):
     outcome = {**result.model_dump(mode="json", exclude={"private_effects", "checks", "draws"}), "reason": reason}
     if not result.success:
         outcome["failure"] = ActionFailure(
-            category="roll_failed", code="roll_failed", message="Проверка не удалась."
+            category="roll_failed",
+            code="critical_roll_failed" if result.critical_failure else "roll_failed",
+            message="Критический провал проверки." if result.critical_failure else "Проверка не удалась.",
         ).model_dump()
     return outcome
 

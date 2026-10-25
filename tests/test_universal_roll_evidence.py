@@ -23,7 +23,12 @@ def test_roll_card_is_actual_saved_evidence_and_survives_narrator_restart(tmp_pa
                     kind="ordinary_check",
                     attribute="wis",
                     difficulty=12,
-                    check_outcomes=dict(success="Различимы шаги.", failure="Звуки неразличимы."),
+                    check_outcomes=dict(
+                        success="Различимы шаги.",
+                        failure="Звуки неразличимы.",
+                        critical_success="Шаги различимы особенно отчётливо.",
+                        critical_failure="Шорохи сбивают внимание, направление звуков неразличимо.",
+                    ),
                 ),
                 RuntimeError("offline"),
             ]

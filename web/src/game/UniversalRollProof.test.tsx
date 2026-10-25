@@ -5,6 +5,18 @@ import type { RollCard } from '../lib/types';
 
 afterEach(cleanup);
 
+it.each([['crit_success', 20, true, false, 'Критический успех'], ['crit_fail', 1, false, true, 'Критический провал']] as const)(
+  'displays %s for the actual natural die', (outcome, natural, critical, critical_failure, label) => {
+    const card = { tool: 'universal_action', title: 'Проверка: Мудрость', outcome, universal_proof: {
+      receipt_id: 'critical', source_id: 'm', revision: '1', cost: '0', damage: '0', draws: [{ sides: 20, value: natural }],
+      checks: [{ natural, modifier: '2', total: String(natural + 2), difficulty: '12', success: critical,
+        target_id: 'hero', attribute: 'wis', kind: 'check', mode: 'normal', critical, critical_failure }],
+    } } as RollCard;
+    render(<RollCardView card={card} />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  },
+);
+
 it('shows the real die, modifier, total, threshold and outcome without opening details', () => {
   const card = {
     tool: 'universal_action', title: 'Проверка: Мудрость', outcome: 'fail',

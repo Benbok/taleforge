@@ -48,7 +48,12 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
                 dict(
                     kind="ordinary_check",
                     difficulty=1,
-                    check_outcomes=dict(success="Получается высечь искру.", failure="Искра не появляется."),
+                    check_outcomes=dict(
+                        success="Получается высечь искру.",
+                        failure="Искра не появляется.",
+                        critical_success="Получается высечь яркую искру с первого удара.",
+                        critical_failure="Камень выскальзывает, попытка высечь искру сорвана.",
+                    ),
                 ),
                 RuntimeError("narrator offline"),
             ]
@@ -80,7 +85,12 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
                     name="Факел",
                     attribute="dex",
                     difficulty=10,
-                    check_outcomes=dict(success="Получается высечь искру.", failure="Искра не появляется."),
+                    check_outcomes=dict(
+                        success="Получается высечь искру.",
+                        failure="Искра не появляется.",
+                        critical_success="Получается высечь яркую искру с первого удара.",
+                        critical_failure="Камень выскальзывает, попытка высечь искру сорвана.",
+                    ),
                 ),
                 "Вы пытаетесь высечь искру.",
             ]
