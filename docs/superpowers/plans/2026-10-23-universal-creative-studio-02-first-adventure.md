@@ -15,6 +15,10 @@
 
 Tasks 6–12 implemented and verified together. See [verification evidence and explicit limits](../reports/2026-10-24-first-adventure-verification.md). A single integrated Node2 checkpoint replaces the task-level commit suggestions below. Full provider-driven user playthrough is the acceptance step before Node3.
 
+## Дополнение исследования — проект 2026-10-25
+
+Пользовательское тестирование выявило разрыв между ordinary_check, магическим намерением, состоянием мира и освоением. [Дизайн этапа2А](../specs/2026-10-25-exploration-magic-design.md) расширяет Tasks8–11 типизированными небоевыми эффектами, явной ценой любой магии и освоением нечисловых/automatic-способностей. Это новая приёмка перед боем; прежние готовые функции и данные сохраняются. Ни одно расширение не считается реализованным по факту составления документа.
+
 ## Global Constraints
 
 - 6 характеристик; 5 энергий; HP = 10 + CON + 6*(L-1); класс не требуется.
