@@ -72,6 +72,14 @@ async def _snapshot(
     seat_id = viewer.seat.id if viewer.seat else None
     last = None if game else await memory.latest(session, c.id)
     scene = await _scene(session, c, viewer)
+    from app.core.universal.references import project_history
+
+    message_payloads = await project_history(
+        session,
+        c,
+        msgs,
+        [chat.message_payload(m, names, states.get(m.id), effects=effects) for m in msgs],
+    )
     return envelope(
         "state.snapshot",
         c.id,
@@ -117,7 +125,7 @@ async def _snapshot(
             "scene": scene,
             "audio": await _audio(session, c, viewer),
             **await available(session, viewer),  # actions и blocked: какие кнопки показать этому участнику
-            "messages": [chat.message_payload(m, names, states.get(m.id), effects=effects) for m in msgs],
+            "messages": message_payloads,
             "replay": last_seq is not None,
             "collect_window_sec": int((c.settings or {}).get("collect_window_sec", 60)),
         },

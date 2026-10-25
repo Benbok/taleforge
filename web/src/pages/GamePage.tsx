@@ -107,7 +107,7 @@ export default function GamePage() {
   const lighting = sceneLighting(scene?.presentation, mode, scene?.mode === "combat");
   const manage = !!card?.is_owner || master;
 
-  if (snapshot?.campaign.ruleset_id === "universal") return <UniversalAdventure campaignId={id} />;
+  if (snapshot?.campaign.ruleset_id === "universal") return <><UniversalAdventure campaignId={id} /><EntityPopover /></>;
 
   const side = (
     <>

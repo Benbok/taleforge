@@ -32,7 +32,7 @@ from app.core.characters import public_view
 from app.core.object_policy import concealed, revealed_to
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
 from app.core.world import get_scene
-from app.db.models import Character, Entity, Knowledge, KnownFact, Message
+from app.db.models import Character, Entity, Knowledge, KnownFact, MasterTurn, Message
 
 LEVELS = {0: "видел", 1: "наслышан", 2: "изучил", 3: "знает всё"}
 # манера поведения из шаблона (behavior.profile); заметки и ярлыки шаблона могут раскрывать тайны — их не показываем
@@ -75,7 +75,25 @@ async def mentioned_to_seat(session: AsyncSession, campaign_id: str, seat_id: st
     q = select(Message.visible_to).where(
         Message.campaign_id == campaign_id, Message.content.contains(f"[[{entity_id}|")
     )
-    return any(v is None or seat_id in v for v in (await session.scalars(q)).all())
+    if any(v is None or seat_id in v for v in (await session.scalars(q)).all()):
+        return True
+    return await _location_memory(session, campaign_id, seat_id, entity_id) is not None
+
+
+async def _location_memory(session, campaign_id, seat_id, entity_id):
+    query = (
+        select(Message, MasterTurn.trace)
+        .outerjoin(MasterTurn, MasterTurn.narration_message_id == Message.id)
+        .where(Message.campaign_id == campaign_id, Message.kind.in_(("narration", "whisper")))
+        .order_by(Message.seq.desc())
+    )
+    for message, trace in (await session.execute(query)).all():
+        if message.visible_to is not None and seat_id not in message.visible_to:
+            continue
+        place = ((trace or {}).get("scene") or {}).get("location") or (message.data or {}).get("location_ref") or {}
+        if place.get("id") == entity_id:
+            return {key: place.get(key) for key in ("name", "description")}
+    return None
 
 
 async def _mentioned(session: AsyncSession, viewer: Viewer, entity_id: str) -> bool:
@@ -110,17 +128,23 @@ async def level_for(session: AsyncSession, viewer: Viewer, e: Entity) -> Sight |
     scene = await get_scene(session, viewer.campaign.id)
     spot = (hero.location_id if hero is not None else None) or scene.location_id  # своё место героя
     here = bool(spot) and (e.id == spot or e.location_id == spot)
-    memory = hidden or (e.kind == "object" and not here)
+    location_memory = viewer.campaign.ruleset_id == "universal" and e.kind == "location" and not here
+    memory = hidden or (e.kind == "object" and not here) or location_memory
+    observed = (
+        await _location_memory(session, viewer.campaign.id, viewer.seat.id if viewer.seat else None, e.id)
+        if location_memory
+        else None
+    )
     row = await session.get(Knowledge, (hero.id, e.id)) if hero is not None else None
     if row is not None:
-        return Sight(row.level, memory, row.observed_snapshot if memory else None)
+        return Sight(row.level, memory, (row.observed_snapshot or observed) if memory else None)
     if hidden or memory:
         fact = None
         if hero is not None:
             q = select(KnownFact.id).where(KnownFact.character_id == hero.id, KnownFact.subject_id == e.id)
             fact = await session.scalar(q.limit(1))
-        if fact is not None or await _mentioned(session, viewer, e.id):
-            return Sight(0, True)
+        if fact is not None or observed is not None or await _mentioned(session, viewer, e.id):
+            return Sight(0, True, observed)
         return None
     if here or await _mentioned(session, viewer, e.id):
         return Sight(0)
@@ -146,8 +170,10 @@ def _sentence_about(content: str, subject_id: str) -> str | None:
     return None
 
 
-async def heard(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[str]:
+async def heard(session: AsyncSession, viewer: Viewer, subject_id: str, *, complete=False) -> list[str]:
     """Что этот игрок слышал о сущности: последние фразы из видимых ему сообщений мастера, по порядку."""
+    if complete:
+        return await _location_observations(session, viewer, subject_id)
     q = (
         select(Message.content, Message.visible_to)
         .where(
@@ -156,20 +182,62 @@ async def heard(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[
             Message.content.contains(f"[[{subject_id}|"),
         )
         .order_by(Message.seq.desc())
-        .limit(40)
     )
+    if not complete:
+        q = q.limit(40)
     seat = viewer.seat.id if viewer.seat else None
     master = viewer.seat is not None and viewer.seat.role == "master"
     out: list[str] = []
     for content, visible_to in (await session.execute(q)).all():
         if visible_to is not None and not master and seat not in visible_to:
             continue  # чужой шёпот
-        s = _sentence_about(content, subject_id)
-        if s and s not in out:
-            out.append(s)
-        if len(out) >= HEARD_LIMIT:
+        observations = (
+            [_plain(part).strip() for part in SENTENCE.split(content) if f"[[{subject_id}|" in part]
+            if complete
+            else [_sentence_about(content, subject_id)]
+        )
+        for observation in reversed(observations):
+            if observation and observation not in out:
+                out.append(observation)
+        if not complete and len(out) >= HEARD_LIMIT:
             break
     return list(reversed(out))
+
+
+async def _location_observations(session, viewer, subject_id):
+    query = (
+        select(Message, MasterTurn.trace)
+        .outerjoin(MasterTurn, MasterTurn.narration_message_id == Message.id)
+        .where(Message.campaign_id == viewer.campaign.id, Message.kind.in_(("narration", "whisper")))
+        .order_by(Message.seq)
+    )
+    seat_id = viewer.seat.id if viewer.seat else None
+    observations = []
+    for message, trace in (await session.execute(query)).all():
+        if message.visible_to is not None and not viewer.is_master and seat_id not in message.visible_to:
+            continue
+        data, trace = message.data or {}, trace or {}
+        place = data.get("location_ref") or (trace.get("scene") or {}).get("location") or {}
+        # Technical notices do not become observations about the fictional place.
+        outcomes = list(trace.get("outcomes", {}).values())
+        if outcomes and all(o.get("failure") and o["failure"]["category"] != "roll_failed" for o in outcomes):
+            continue
+        if place.get("id") == subject_id:
+            content = _plain(message.content)
+            for outcome in outcomes:
+                failure = outcome.get("failure") or {}
+                if failure.get("category") != "roll_failed" and failure.get("message"):
+                    content = content.replace(failure["message"], "")
+            sentences = SENTENCE.split(content)
+        else:
+            sentences = [
+                _plain(sentence) for sentence in SENTENCE.split(message.content) if f"[[{subject_id}|" in sentence
+            ]
+        for sentence in sentences:
+            observation = sentence.strip()
+            if observation and observation not in observations:
+                observations.append(observation)
+    return observations
 
 
 async def facts(session: AsyncSession, viewer: Viewer, subject_id: str) -> list[str]:
@@ -301,7 +369,12 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
             card["container"] = box
     card.update(await canon(session, viewer, (e.id, e.template_id)))
     card["facts"] = await facts(session, viewer, e.id)
-    card["heard"] = await heard(session, viewer, e.id)
+    card["heard"] = await heard(
+        session,
+        viewer,
+        e.id,
+        complete=viewer.campaign.ruleset_id == "universal" and e.kind == "location",
+    )
     return card
 
 

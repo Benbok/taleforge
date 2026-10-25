@@ -37,7 +37,15 @@ def _stem(token: str) -> str:
 
 def _pattern(alias: str) -> str:
     words = alias.split()
-    parts = [_stem(w) + f"[{LETTERS}]{{0,3}}" for w in words]
+    parts = [
+        (
+            re.escape(w.lower()[:-2])
+            if i < len(words) - 1 and len(w) > 4 and w.lower().endswith(ADJ_ENDINGS)
+            else _stem(w)
+        )
+        + f"[{LETTERS}]{{0,3}}"
+        for i, w in enumerate(words)
+    ]
     return r"(?<![\w-])" + r"\s+".join(parts) + r"(?![\w-])"
 
 

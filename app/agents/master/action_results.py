@@ -17,7 +17,7 @@ def failed_outcome(failure):
 def public_outcome(result, reason):
     if result.failure:
         return failed_outcome(result.failure)
-    outcome = {**result.model_dump(mode="json", exclude={"private_effects"}), "reason": reason}
+    outcome = {**result.model_dump(mode="json", exclude={"private_effects", "checks", "draws"}), "reason": reason}
     if not result.success:
         outcome["failure"] = ActionFailure(
             category="roll_failed", code="roll_failed", message="Проверка не удалась."

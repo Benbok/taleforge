@@ -15,6 +15,8 @@ from app.rules.universal.failures import ActionValidationError, action_failure, 
 from app.rules.universal.mechanics import derive, starting_defense_bonuses
 from app.rules.universal.profiles import (
     ActionOutcome,
+    CheckProof,
+    DieProof,
     EffectOutcome,
     EffectSpec,
     damage_amount,
@@ -42,15 +44,18 @@ class _RecordingDice:
     def __init__(self, dice):
         self.dice = dice
         self.rolls = []
+        self.draws = []
 
     def d20(self):
         result = self.dice.d20()
         self.rolls.append(result)
+        self.draws.append(DieProof(sides=20, value=result))
         return result
 
     def die(self, sides):
         result = self.dice.die(sides)
         self.rolls.append(result)
+        self.draws.append(DieProof(sides=sides, value=result))
         return result
 
 
@@ -83,7 +88,20 @@ async def _execute(ctx, p, key):
     result = ActionOutcome(success=True, cost=cost)
     for target, (target_sheet, target_resources) in targets.items():
         if profile.kind == "damage":
-            hit = resolve_attack(dice, sheet, derive(target_sheet, starting_defense_bonuses(target_sheet)).ac, profile)
+            defense = derive(target_sheet, starting_defense_bonuses(target_sheet)).ac
+            hit = resolve_attack(dice, sheet, defense, profile)
+            result.checks.append(
+                CheckProof(
+                    target_id=target,
+                    attribute=profile.attribute,
+                    natural=hit.natural,
+                    total=hit.total,
+                    modifier=hit.total - hit.natural,
+                    difficulty=defense - profile.attack_bonus,
+                    success=hit.success,
+                    kind="attack",
+                )
+            )
             if result.natural is None:
                 result.natural, result.total, result.critical, result.critical_failure = (
                     hit.natural,
@@ -117,6 +135,18 @@ async def _execute(ctx, p, key):
             )
             result.success = result.success and check.success
             result.natural, result.total = check.natural, check.total
+            result.checks.append(
+                CheckProof(
+                    target_id=target,
+                    attribute=profile.attribute,
+                    natural=check.natural,
+                    total=check.total,
+                    modifier=check.total - check.natural,
+                    difficulty=p.difficulty,
+                    success=check.success,
+                    mode=p.edge,
+                )
+            )
             result.rolls.extend(check.rolls)
             result.effect_outcomes.append(EffectOutcome(effect_id="primary", target_id=target, applied=check.success))
             if not check.success:
@@ -139,6 +169,19 @@ async def _execute(ctx, p, key):
             result.effect_outcomes.append(outcome)
             if outcome.natural:
                 result.rolls.append(outcome.natural)
+                result.checks.append(
+                    CheckProof(
+                        target_id=target,
+                        effect_id=effect.id,
+                        attribute=effect.resistance.attribute,
+                        natural=outcome.natural,
+                        total=outcome.total,
+                        modifier=outcome.total - outcome.natural,
+                        difficulty=outcome.difficulty,
+                        success=not outcome.applied,
+                        kind="resistance",
+                    )
+                )
             if not outcome.applied:
                 continue
             if effect.kind == "damage":
@@ -170,6 +213,7 @@ async def _execute(ctx, p, key):
     for target, (target_sheet, target_resources) in targets.items():
         await save_actor(s, ctx.campaign_id, target, target_sheet, target_resources)
     result.rolls = dice.rolls
+    result.draws = dice.draws
     event = Event(
         campaign_id=ctx.campaign_id,
         tool="universal_action",

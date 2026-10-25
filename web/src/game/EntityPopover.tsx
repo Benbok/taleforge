@@ -22,6 +22,15 @@ export default function EntityPopover() {
   const insert = useDraft((s) => s.insert);
   const ref = useRef<HTMLDivElement>(null);
   const [, setWinSize] = useState({ w: 0, h: 0 });
+  const narrationVersion = useGame((s) => s.messages.filter(m => m.kind === 'narration').map(m => `${m.id}:${m.content}`).join('\n'));
+  const observed = useRef({ id, narrationVersion });
+
+  useEffect(() => {
+    if (id && card?.type === 'location' && observed.current.id === id && observed.current.narrationVersion !== narrationVersion) {
+      useGame.getState().socket?.send('entity.inspect', { entity_id: id });
+    }
+    observed.current = { id, narrationVersion };
+  }, [id, card?.type, narrationVersion]);
 
   useEffect(() => {
     if (!id) return;

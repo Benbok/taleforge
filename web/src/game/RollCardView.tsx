@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RollCard } from "../lib/types";
+import UniversalRollProof from './UniversalRollProof';
 
 const OUTCOME: Record<string, { text: string; cls: string }> = {
   success: { text: "Успех", cls: "text-ok" },
@@ -20,6 +21,7 @@ export default function RollCardView({ card }: { card: RollCard }) {
   const [open, setOpen] = useState(false);
   const out = OUTCOME[card.outcome];
   const roll = card.roll;
+  if (card.universal_proof) return <UniversalRollProof card={card} proof={card.universal_proof} />;
   return (
     <div className="tf-pop mx-auto w-full max-w-md">
       <button

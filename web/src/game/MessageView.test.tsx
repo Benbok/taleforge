@@ -36,6 +36,14 @@ it("does not offer to retry someone else's reply", () => {
   expect(screen.queryByRole("button", { name: "Повторить" })).toBeNull();
 });
 
+it('opens the location from party narration even when its text has no place name', () => {
+  const message = { ...failed, kind: 'narration', whisper: true, scope: 'party', state: null,
+    content: 'У тоннеля появился мост.', data: { location_ref: { id: 'gorge', name: 'Серая Глотка' } },
+  } as ChatMessage;
+  render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: 'seat_me' }} />);
+  expect(screen.getByRole('button', { name: 'Серая Глотка' })).toBeTruthy();
+});
+
 it("explains a transient provider failure and keeps the retry button", () => {
   const message = { ...failed, data: { action_failure: {
     category: "internal_error", code: "provider_error", message: "Провайдер модели не смог ответить.", retryable: true,

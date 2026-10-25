@@ -15,7 +15,9 @@ from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session, next_seq
 from app.core.universal.action_intents import LegacyAdmission
 from app.core.universal.profiles import load_actor
+from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.resolution import ResolutionContext, resolve_action
+from app.core.universal.rolls import ensure_roll_message
 from app.db.models import (
     AgentConfig,
     Campaign,
@@ -172,6 +174,11 @@ async def run_universal_turn(service, cid, place=None):
         await service._status(cid, "listening")
         for mid in ids:
             if mid in trace["outcomes"]:
+                async with service.maker() as s:
+                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    await s.commit()
+                if card:
+                    await publish_message(service.bus, card)
                 continue
             async with service.maker() as s:
                 msg = await s.get(Message, mid)
@@ -252,7 +259,10 @@ async def run_universal_turn(service, cid, place=None):
                         ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
                     )
                     outcome = public_outcome(result, compiled.public_reason)
+                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
                     await s.commit()
+                if card:
+                    await publish_message(service.bus, card)
             trace["outcomes"][mid] = outcome
             async with service.maker() as s:
                 t = await s.get(MasterTurn, tid)
@@ -286,6 +296,11 @@ async def run_universal_turn(service, cid, place=None):
                             "Never invent rolls, costs, healing, numeric changes or reasons for failure. "
                             "A failed roll is a failed attempt, not a new world prohibition. "
                             "Only world_denial can establish an action is impossible by world laws."
+                            " Dice are shown in separate server cards; do not repeat numbers or rolls in the prose."
+                            " Mark places and visible entities as [[id|name in the required grammatical case]]."
+                            " Use scene.location.id for the current place, including its descriptive names "
+                            "from the public description."
+                            " Never invent reference IDs or link hidden places."
                         ),
                     },
                     {
@@ -302,11 +317,16 @@ async def run_universal_turn(service, cid, place=None):
                 m = Message(
                     campaign_id=cid,
                     session_id=game.id,
+                    turn_id=tid,
                     kind="narration",
-                    content=text,
+                    content=link_scene_text(text, trace.get("scene", {})),
                     seq=await next_seq(s, cid),
                     visible_to=trace.get("audience"),
-                    data={"universal": True},
+                    data={
+                        "universal": True,
+                        "location_ref": location_reference(trace.get("scene", {})),
+                        "scope": "party" if trace.get("audience") is not None else "public",
+                    },
                 )
                 s.add(m)
                 await s.flush()

@@ -106,6 +106,7 @@ export interface ChatMessage {
         voice_parts?: number;
         whisper_reply?: string;
         action_failure?: { category: string; code: string; message: string; retryable?: boolean };
+        location_ref?: { id: string; name: string } | null;
         place?: string;
         scene_context?: SceneContext | null;
         scope?: "public" | "party" | "private" | null;
@@ -132,6 +133,7 @@ export interface LocationPresentation {
 }
 
 export interface RollCard {
+  universal_proof?: UniversalRollEvidence;
   tool: string;
   title: string;
   who?: string | null;
@@ -164,6 +166,24 @@ export interface RollCard {
   order?: { id: string; name: string | null; initiative: number }[];
   track?: { successes: number; failures: number };
   notes?: string[];
+}
+
+export interface UniversalRollEvidence {
+  receipt_id: string;
+  source_id: string;
+  revision: string;
+  cost: string;
+  damage: string;
+  resource_key?: string | null;
+  draws: { sides: number; value: number }[];
+  checks: {
+    target_id: string; target_name?: string; effect_id?: string; attribute: string;
+    natural: number; modifier: string; total: string; difficulty: string | null;
+    success: boolean; kind: 'check' | 'attack' | 'resistance'; mode: string;
+  }[];
+  legacy?: boolean;
+  legacy_draws?: number[];
+  legacy_total?: string;
 }
 
 export interface Turn {

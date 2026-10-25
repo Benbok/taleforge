@@ -137,6 +137,24 @@ class EffectOutcome(ClosedModel):
     difficulty: SignedCount | None = None
 
 
+class DieProof(ClosedModel):
+    sides: int = Field(ge=2, strict=True)
+    value: int = Field(ge=1, strict=True)
+
+
+class CheckProof(ClosedModel):
+    target_id: str
+    effect_id: str = "primary"
+    attribute: AbilityKey
+    natural: int = Field(ge=1, le=20, strict=True)
+    modifier: SignedCount
+    total: SignedCount
+    difficulty: SignedCount | None = None
+    success: bool
+    mode: Literal["normal", "advantage", "disadvantage"] = "normal"
+    kind: Literal["check", "attack", "resistance"] = "check"
+
+
 class ActionOutcome(ClosedModel):
     status: Literal["applied", "denied", "repeated", "failed"] = "applied"
     success: bool = False
@@ -151,6 +169,8 @@ class ActionOutcome(ClosedModel):
     critical_failure: bool = False
     rolls: list[int] = Field(default_factory=list)
     failure: ActionFailure | None = None
+    checks: list[CheckProof] = Field(default_factory=list)
+    draws: list[DieProof] = Field(default_factory=list)
 
 
 def validate_profile(profile: ProfileSpec | dict) -> ProfileSpec:

@@ -43,27 +43,29 @@ Interfaces: ActionIntent/EffectIntent, legacy admission adapter; prepare_action(
 
 Files: new agents/master/action_admission.py and action_results.py; modify agents/master/universal.py; tests/test_universal_action_pipeline.py.
 Interfaces: obtain_prepared_action with at most one persisted repair; public_turn_view/render technical failures from saved outcomes.
-- [ ] Write and run failing malformed proposal, repair budget/restart, firefly unsupported, provider failure and no-double-debit tests.
-- [ ] Wire the canonical compiler, record only validated executable admissions, preserve existing receipts and saved decisions.
-- [ ] Keep technical failures out of fictional narration; typed public failure metadata survives reconnect.
-- [ ] Run full universal backend regression and legacy transport tests; commit this task.
+- [x] Write and run failing malformed proposal, repair budget/restart, firefly unsupported, provider failure and no-double-debit tests.
+- [x] Wire the canonical compiler, record only validated executable admissions, preserve existing receipts and saved decisions.
+- [x] Keep technical failures out of fictional narration; typed public failure metadata survives reconnect.
+- [x] Run full universal backend regression and legacy transport tests; commit this task (085acd2).
 
 ### Task 4: UI, integration and review
 
 Files: game/MessageView.tsx, lib/types.ts; corresponding tests; contracts and verification report.
-- [ ] Verify handled refusals show their actual reason rather than a success checkmark; preserve existing valid-message rendering.
-- [ ] Regenerate contracts; run frontend tests/typecheck/build and real read-only browser/Docker smoke.
-- [ ] Run final review, refresh graphify, record outcomes and limitations; commit and leave the branch in place.
+- [x] Verify handled refusals show their actual reason rather than a success checkmark; preserve existing valid-message rendering.
+- [x] Regenerate contracts; run frontend tests/typecheck/build and real read-only browser/Docker smoke.
+- [x] Run final review, refresh graphify, record outcomes and limitations; commit and leave the branch in place.
 
 ### Task 5: Actual roll evidence (user extension, October 25)
 
 Spec: ../specs/2026-10-25-roll-evidence-and-location-knowledge-design.md.
-- [ ] Record per-check and per-die proof in Universal receipts; project one stable chat card per receipt in the same transaction.
-- [ ] Display die faces, modifiers, totals, DCs and outcomes using exact counts; keep hidden defenses private.
-- [ ] Verify ordinary/multiple-target rolls, recovery, no duplicate cards and frontend rendering.
+- [x] Record per-check and per-die proof in Universal receipts; project one stable chat card per receipt in the same transaction.
+- [x] Display die faces, modifiers, totals, DCs and outcomes using exact counts; keep hidden defenses private.
+- [x] Verify ordinary/multiple-target rolls, recovery, no duplicate cards and frontend rendering.
 
 ### Task 6: Location references and cumulative public knowledge
 
-- [ ] Link public places in Universal narration/intro using existing markup and current scene references.
-- [ ] Mount the knowledge inspector; refresh location cards and retain all hero-visible observations.
-- [ ] Verify location links, accumulating knowledge, private observation isolation and read-only browser smoke.
+- [x] Link public places in Universal narration/intro using existing markup and current scene references.
+- [x] Mount the knowledge inspector; refresh location cards and retain all hero-visible observations.
+- [x] Verify location links, accumulating knowledge, private observation isolation and read-only browser smoke.
+
+Verification: ../reports/2026-10-25-action-boundary-and-game-evidence-verification.md.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useGame } from "../stores/game";
 import { useDraft } from "./draft";
 import { useInspector } from "./inspector";
@@ -47,6 +47,23 @@ it.each(["npc", "creature"] as const)("показывает ХП, КБ, хара
   }
   expect(screen.getByText(/ходьба 30/)).toBeTruthy();
   expect(screen.getByText(/плавание 15/)).toBeTruthy();
+});
+
+it('refreshes an open location card when new narration arrives', () => {
+  const send = vi.fn(() => true);
+  useGame.setState({
+    messages: [], socket: { send } as never,
+    cards: { gorge: { id: 'gorge', type: 'location', name: 'Серая Глотка', heard: ['Сырой туман.'] } },
+  });
+  useInspector.getState().open('gorge', 'Серая Глотка');
+  expect(send).toHaveBeenCalledWith('entity.inspect', { entity_id: 'gorge' });
+  render(<EntityPopover />);
+  send.mockClear();
+  act(() => useGame.getState().apply({ type: 'message.new', campaign_id: 'c', seq: 2, payload: {
+    id: 'new-story', seq: 2, kind: 'narration', content: 'Слышны шаги.', seat_id: null,
+    author: null, whisper: false, created_at: null,
+  } } as never));
+  expect(send).toHaveBeenCalledWith('entity.inspect', { entity_id: 'gorge' });
 });
 
 describe("контейнер в карточке", () => {

@@ -4,6 +4,7 @@ import json
 
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import next_seq
+from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.scene import universal_scene
 from app.db.models import Campaign, Entity, Message, User
 from app.gateway.events import publish_message
@@ -21,14 +22,15 @@ async def open_universal_session(service, cid, session_id):
             text = "\n\n".join(x for x in (c.public_intro, entry.description if entry else "") if x)
             if not text:
                 return True
+            framing = {"location": {"id": entry.id, "name": entry.name}} if entry else {}
             msg = Message(
                 campaign_id=cid,
                 session_id=session_id,
                 kind="narration",
                 seat_id=master_seat(c).id,
                 seq=await next_seq(s, cid),
-                content=text,
-                data={"universal": True, "intro": True},
+                content=link_scene_text(text, framing),
+                data={"universal": True, "intro": True, "location_ref": location_reference(framing)},
             )
             s.add(msg)
             await s.flush()
@@ -87,8 +89,8 @@ async def answer_universal_whisper(service, cid, mid):
             seat_id=master_seat(c).id,
             visible_to=[seat.id, master_seat(c).id],
             seq=await next_seq(s, cid),
-            content=text,
-            data={"whisper_reply": mid},
+            content=link_scene_text(text, scene),
+            data={"whisper_reply": mid, "location_ref": location_reference(scene)},
         )
         s.add(msg)
         await s.commit()
