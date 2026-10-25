@@ -27,17 +27,17 @@
 
 Files: new rules/universal/failures.py; core/universal/contracts.py and validation.py; modify core/universal/resolution.py; tests/test_universal_action_validation.py.
 Interfaces: ActionFailure, ActionValidationError; ActionRef/ProposedAction/ResolutionContext remain import-compatible; capabilities()->dict; validate_action(ctx,proposal,require_saved_profile=True)->ActionState.
-- [ ] Write and run failing consistency, typed-failure, ordinary-check and unsupported-duration tests.
-- [ ] Extract shared checks and target/ownership/resource validation, invoke them from atomic resolution.
-- [ ] Run targeted math/resolution/discovery regressions; commit this task.
+- [x] Write and run failing consistency, typed-failure, ordinary-check and unsupported-duration tests.
+- [x] Extract shared checks and target/ownership/resource validation, invoke them from atomic resolution.
+- [x] Run targeted math/resolution/discovery regressions; commit this task (70359db).
 
 ### Task 2: Semantic intent and canonical compiler
 
 Files: new core/universal/action_intents.py and preparation.py; tests/test_universal_action_preparation.py.
 Interfaces: ActionIntent/EffectIntent, legacy admission adapter; prepare_action(ctx,intent,source_id,known)->PreparedAction; no model I/O in validation transactions.
-- [ ] Write and run failing canonical type, bounded effect, target scope, known-reference and legacy-read tests.
-- [ ] Compile semantic choices into bounded server profiles; validate before immutable profile persistence; expose one capability registry.
-- [ ] Run preparation/shared-validation regressions; commit this task.
+- [x] Write and run failing canonical type, bounded effect, target scope, known-reference and legacy-read tests.
+- [x] Compile semantic choices into bounded server profiles; validate before immutable profile persistence; expose one capability registry.
+- [x] Run preparation/shared-validation regressions; commit this task (117e689).
 
 ### Task 3: Durable admission, repair and factual narration
 
@@ -54,3 +54,16 @@ Files: game/MessageView.tsx, lib/types.ts; corresponding tests; contracts and ve
 - [ ] Verify handled refusals show their actual reason rather than a success checkmark; preserve existing valid-message rendering.
 - [ ] Regenerate contracts; run frontend tests/typecheck/build and real read-only browser/Docker smoke.
 - [ ] Run final review, refresh graphify, record outcomes and limitations; commit and leave the branch in place.
+
+### Task 5: Actual roll evidence (user extension, October 25)
+
+Spec: ../specs/2026-10-25-roll-evidence-and-location-knowledge-design.md.
+- [ ] Record per-check and per-die proof in Universal receipts; project one stable chat card per receipt in the same transaction.
+- [ ] Display die faces, modifiers, totals, DCs and outcomes using exact counts; keep hidden defenses private.
+- [ ] Verify ordinary/multiple-target rolls, recovery, no duplicate cards and frontend rendering.
+
+### Task 6: Location references and cumulative public knowledge
+
+- [ ] Link public places in Universal narration/intro using existing markup and current scene references.
+- [ ] Mount the knowledge inspector; refresh location cards and retain all hero-visible observations.
+- [ ] Verify location links, accumulating knowledge, private observation isolation and read-only browser smoke.

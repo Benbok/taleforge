@@ -5,8 +5,8 @@ from __future__ import annotations
 from sqlalchemy import select, update
 
 from app.core.campaigns import AccessDenied, NotFound
-from app.core.universal.contracts import ProposedAction
 from app.core.universal.contracts import ActionRef as ActionRef
+from app.core.universal.contracts import ProposedAction
 from app.core.universal.contracts import ResolutionContext as ResolutionContext
 from app.core.universal.profiles import save_actor
 from app.core.universal.validation import authorize_actor, validate_action
@@ -67,7 +67,8 @@ async def _execute(ctx, p, key):
         if (
             previous.tool != "universal_action"
             or previous.actor_id != p.actor_id
-            or previous.payload["proposal"] != p.model_dump(mode="json")
+            or ProposedAction.model_validate(previous.payload["proposal"]).model_dump(mode="json")
+            != p.model_dump(mode="json")
         ):
             reject("invalid_proposal")
         return ActionOutcome.model_validate(previous.payload["outcome"]).model_copy(update={"status": "repeated"})

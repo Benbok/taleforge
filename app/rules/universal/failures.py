@@ -53,6 +53,15 @@ _FAILURES = {
         "Правила действия изменились; требуется новое подтверждение. Ресурсы не потрачены.",
     ),
     "internal_error": ("internal_error", "Не удалось обработать действие из-за технического сбоя. Повторите попытку."),
+    "provider_error": (
+        "internal_error",
+        "Провайдер модели не смог ответить. Действие сохранено; попробуйте повторить позже.",
+    ),
+    "narration_unavailable": (
+        "internal_error",
+        "Результат действия сохранён, но ответ мастера задержан из-за технического сбоя. "
+        "Повтор восстанавливает ответ без повторного применения действия.",
+    ),
 }
 
 
@@ -70,6 +79,12 @@ class ActionValidationError(ValueError):
     def __init__(self, code: str):
         self.failure = action_failure(code)
         super().__init__(code)
+
+
+class ActionModelError(RuntimeError):
+    def __init__(self):
+        self.failure = action_failure("provider_error")
+        super().__init__("provider_error")
 
 
 def reject(code: str):

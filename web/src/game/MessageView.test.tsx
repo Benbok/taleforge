@@ -35,3 +35,23 @@ it("does not offer to retry someone else's reply", () => {
   render(<MessageView m={failed} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_other" }} />);
   expect(screen.queryByRole("button", { name: "Повторить" })).toBeNull();
 });
+
+it("explains a transient provider failure and keeps the retry button", () => {
+  const message = { ...failed, data: { action_failure: {
+    category: "internal_error", code: "provider_error", message: "Провайдер модели не смог ответить.", retryable: true,
+  } } } as ChatMessage;
+  render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  expect(screen.getByText("Провайдер модели не смог ответить.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Повторить" })).toBeTruthy();
+});
+
+it("shows a handled technical refusal instead of a success checkmark", () => {
+  const message = { ...failed, state: 'answered', data: { action_failure: {
+    category: 'unsupported_capability', code: 'unsupported_duration',
+    message: 'Длительные эффекты пока не поддерживаются движком. Ресурсы не потрачены.',
+  } } } as ChatMessage;
+  render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: 'seat_me' }} />);
+  expect(screen.getByRole('status').textContent).toContain('не поддерживаются движком');
+  expect(screen.queryByText('✓')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Повторить' })).toBeNull();
+});

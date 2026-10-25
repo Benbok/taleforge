@@ -22,16 +22,22 @@ const STATE_TEXT = { pending: "ждёт мастера", processing: "масте
 function ReplyStatus({ m, mine }: { m: ChatMessage; mine: boolean }) {
   const socket = useGame((s) => s.socket);
   if (!m.state) return null;
+  const failure = m.data?.action_failure;
+  if (m.state === "answered" && failure) {
+    return <p className="mt-1 text-xs text-warn" role="status">
+      {failure.message}
+    </p>;
+  }
   return (
     <p className={`mt-1 flex items-center gap-2 text-xs ${m.state === "failed" ? "text-warn" : "text-muted"}`}>
-      <span>{STATE_TEXT[m.state]}</span>
+      <span>{m.state === "failed" && failure ? failure.message : STATE_TEXT[m.state]}</span>
       {mine && m.state === "pending" && (
         <button type="button" className="underline" onClick={() => socket?.send("message.withdraw", { message_id: m.id })}>
           Отменить
         </button>
       )}
       {mine && m.state === "failed" && (
-        // ход упал (сбой модели или сети) и ничего не изменил: та же реплика снова уходит мастеру, без копии в чате
+        // Сервер восстанавливает тот же ход по сохранённым решениям и квитанциям.
         <button
           type="button"
           className="rounded border border-warn/50 px-2 py-0.5 font-medium hover:bg-warn/10"

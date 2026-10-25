@@ -105,6 +105,7 @@ export interface ChatMessage {
         voices?: VoiceData[];
         voice_parts?: number;
         whisper_reply?: string;
+        action_failure?: { category: string; code: string; message: string; retryable?: boolean };
         place?: string;
         scene_context?: SceneContext | null;
         scope?: "public" | "party" | "private" | null;

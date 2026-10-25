@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from typing import Literal
 
 from pydantic import Field
 from sqlalchemy import select
@@ -9,7 +10,7 @@ from sqlalchemy import select
 from app.core.universal.action_intents import ActionCategory, ActionIntent, LegacyAdmission
 from app.core.universal.contracts import ActionRef, ProposedAction
 from app.core.universal.profiles import get_profile, load_actor, put_profile
-from app.core.universal.validation import validate_action
+from app.core.universal.validation import capabilities, validate_action
 from app.db.models import HeroAbility
 from app.rules.universal.contracts import ClosedModel
 from app.rules.universal.failures import ActionFailure, action_failure, reject
@@ -17,7 +18,7 @@ from app.rules.universal.profiles import EffectSpec, ProfileSpec, ResistanceSpec
 
 
 class PreparedAction(ClosedModel):
-    version: int = 1
+    version: Literal[1] = 1
     category: ActionCategory
     public_reason: str = ""
     proposal: ProposedAction | None = None
@@ -35,11 +36,17 @@ def _effect(kind, index, attribute, intensity, resistance_attribute=None):
     return EffectSpec(id=f"component-{index}", kind=kind, value=value, resistance=resistance)
 
 
-def _compile_profile(intent: ActionIntent, source_id, sheet):
-    if intent.duration != 1 or intent.clock != "immediate":
+def _validate_intent_capabilities(intent):
+    policy = capabilities()
+    if intent.duration > policy["max_duration"] or intent.clock not in policy["clocks"]:
         reject("unsupported_duration")
-    if intent.target_scope == "scene" or intent.effect == "narrative" and intent.kind == "ability":
+    if intent.target_scope not in policy["target_scopes"] or intent.effect == "narrative" and intent.kind == "ability":
         reject("unsupported_profile")
+    if intent.base_dice not in policy["dice"]:
+        reject("unsupported_item")
+
+
+def _compile_profile(intent: ActionIntent, source_id, sheet):
     if intent.kind == "ordinary_check":
         if intent.effect != "check" or intent.extra_effects or intent.intensity != "normal":
             reject("invalid_proposal")
@@ -59,8 +66,6 @@ def _compile_profile(intent: ActionIntent, source_id, sheet):
         )
     if intent.attribute == "con":
         reject("invalid_proposal")
-    if intent.base_dice == "1d8":
-        reject("unsupported_item")
     kind = intent.effect
     effects = []
     if kind in {"cannot_act", "cannot_move", "cannot_target"}:
@@ -114,6 +119,8 @@ async def prepare_action(ctx, intent, source_id):
             reject("invalid_proposal")
         return PreparedAction(category="narrative", public_reason=public_reason)
     sheet, _ = await load_actor(s, ctx.campaign_id, ctx.actor_id)
+    if isinstance(intent, ActionIntent):
+        _validate_intent_capabilities(intent)
     known = list(
         await s.scalars(
             select(HeroAbility).where(
@@ -133,6 +140,23 @@ async def prepare_action(ctx, intent, source_id):
         if learned is None:
             reject("not_allowed")
         profile = await get_profile(s, ctx.campaign_id, learned.profile_ref, learned.profile_revision)
+        if isinstance(intent, ActionIntent):
+            requested = intent.model_fields_set
+            expected_effect = profile.effects[0].kind if profile.kind in {"control", "defense"} else profile.kind
+            if (
+                intent.extra_effects
+                or "attribute" in requested
+                and intent.attribute != profile.attribute
+                or "effect" in requested
+                and intent.effect != expected_effect
+                or "intensity" in requested
+                and intent.intensity != profile.intensity
+                or "base_dice" in requested
+                and intent.base_dice != profile.base_dice
+            ):
+                reject("invalid_proposal")
+        elif intent.profile is not None and intent.profile != profile:
+            reject("invalid_proposal")
     elif isinstance(intent, LegacyAdmission):
         profile = (
             ProfileSpec(id="check-" + source_id, attribute=intent.attribute, kind="check")
@@ -144,6 +168,8 @@ async def prepare_action(ctx, intent, source_id):
     else:
         profile = _compile_profile(intent, source_id, sheet)
     # Canonical category comes from compiled rules, never an outer model label.
+    if profile.kind in {"damage", "control"} and not intent.targets:
+        reject("invalid_targets")
     category = (
         "weapon_attack"
         if profile.use_kind == "weapon_basic"

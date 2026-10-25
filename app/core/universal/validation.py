@@ -26,6 +26,7 @@ def capabilities():
             "check_bonus",
             "defense_bonus",
         ],
+        profile_kinds=["check", "damage", "heal", "control", "defense"],
         clocks=["immediate"],
         max_duration=1,
         target_scopes=["self", "actors"],
@@ -80,7 +81,8 @@ async def validate_action(ctx, proposal, *, require_saved_profile=True):
     row = await authorize_actor(ctx, p)
     if profile.id != p.ref.profile_id or profile.revision != p.ref.revision or p.operations != profile.effects:
         reject("invalid_proposal")
-    if require_saved_profile:
+    saved_row = await s.get(RuntimeProfile, (ctx.campaign_id, profile.id, profile.revision))
+    if require_saved_profile or saved_row is not None:
         try:
             saved = await get_profile(s, ctx.campaign_id, p.ref.profile_id, p.ref.revision)
         except NotFound:
@@ -101,11 +103,17 @@ async def validate_action(ctx, proposal, *, require_saved_profile=True):
         pinned = learned is not None and learned.definition == profile.model_dump(mode="json")
         if saved != profile or latest != profile.revision and not pinned:
             reject("stale_profile")
-    if profile.duration != 1 or any(e.clock != "immediate" for e in profile.effects):
+    policy = capabilities()
+    if profile.duration > policy["max_duration"] or any(e.clock not in policy["clocks"] for e in profile.effects):
         reject("unsupported_duration")
-    if profile.item_id is not None or profile.use_conditions:
+    if (
+        profile.item_id is not None
+        and not policy["item_profiles"]
+        or profile.use_conditions
+        and not policy["conditions"]
+    ):
         reject("unsupported_item")
-    if profile.kind == "narrative":
+    if profile.kind not in policy["profile_kinds"]:
         reject("unsupported_profile")
     sheet, resources = await load_actor(s, ctx.campaign_id, p.actor_id)
     if profile.trained and profile.id not in sheet.trained:
