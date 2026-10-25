@@ -1,14 +1,17 @@
 import asyncio
 
+import pytest
 from sqlalchemy import func, select
 
-from app.core.universal.clock import clock_view
+from app.core.campaigns import AccessDenied
+from app.core.universal.clock import clock_view, complete_step
 from app.core.universal.exploration_resolution import resolve_exploration
 from app.core.universal.interpretation import compile_exploration
+from app.core.universal.objects import accessible, object_state
 from app.core.universal.resolution import ResolutionContext
 from app.db.models import Character, Entity, Event, HeroAbility, Message, RuntimeProfile
 from app.rules.dice import FixedDice
-from app.rules.universal.exploration import EffectIntentV2, IntentReview, IntentV2
+from app.rules.universal.exploration import EffectIntentV2, InsufficientEnergy, IntentReview, IntentV2
 from app.rules.universal.profiles import CheckNarration
 from tests.test_universal_resolution import setup
 
@@ -204,5 +207,127 @@ def test_a_failed_check_is_described_by_the_outcome_the_model_wrote_for_it(tmp_p
                 assert not result.success
                 assert result.description == expected  # not the same blank line for every failure
             await engine.dispose()
+
+    asyncio.run(run())
+
+
+def structure(scale="large", lifetime="permanent", **extra):
+    return IntentV2(
+        name="Мост",
+        source="supernatural",
+        player_request="supernatural",
+        resolution="automatic",
+        effects=[
+            EffectIntentV2(
+                kind="create_object",
+                template="structure",
+                scale=scale,
+                lifetime=lifetime,
+                label="Каменный мост",
+                appearance="Широкий мост из серого камня.",
+                **extra,
+            )
+        ],
+    )
+
+
+async def build(ctx, session, intent, mid="m", seq=1):
+    session.add(
+        Message(id=mid, campaign_id="c", seq=seq, seat_id="seat", author_user_id="u", kind="action", content="Строю")
+    )
+    await session.flush()
+    action = await compile_exploration(
+        ctx, intent, IntentReview(verdict="pass"), dict(source_message_id=mid, source_text="Строю", evidence="")
+    )
+    return action, await resolve_exploration(ctx, action, mid)
+
+
+def test_a_structure_is_remembered_priced_and_not_built_twice(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await run_low(maker, "24")
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            action, result = await build(ctx, s, structure())
+            assert result.status == "applied" and result.cost == 12
+            rows = list(await s.scalars(select(Entity).where(Entity.kind == "object")))
+            assert len(rows) == 1 and rows[0].name == "Каменный мост"
+            state = object_state(rows[0])
+            assert state.template == "structure" and state.owner_id is None and state.scale == "large"
+            energy = (await s.get(Character, "hero")).resources["energies"]["wis"]
+            assert energy == "14"  # 24 - 12 + 2 of the step's regeneration
+            assert (await resolve_exploration(ctx, action, "m")).status == "repeated"
+            assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "object")) == 1
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == energy
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_another_hero_in_the_place_can_use_the_structure_and_one_elsewhere_cannot(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            await build(ctx, s, structure())
+            row = await s.scalar(select(Entity).where(Entity.kind == "object"))
+            other = await s.get(Character, "target")
+            assert accessible(row, other).template == "structure"
+            other.location_id = "elsewhere"
+            with pytest.raises(AccessDenied):
+                accessible(row, other)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_timed_structure_vanishes_when_its_eighteen_seconds_pass(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            await build(ctx, s, structure("medium", "timed"))
+            row = await s.scalar(select(Entity).where(Entity.kind == "object"))
+            assert not object_state(row).expired
+            await complete_step(s, "c", "later", 24)
+            await s.refresh(row)
+            assert object_state(row).expired
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_huge_creation_the_hero_cannot_afford_is_refused_with_numbers_and_builds_nothing(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await run_low(maker, "7")
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            with pytest.raises(InsufficientEnergy, match="нужно 24, есть 7"):
+                await build(ctx, s, structure("huge"))
+            assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "object")) == 0
+            assert await s.scalar(select(func.count()).select_from(Event)) == 0
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_structure_cannot_be_picked_up_or_poured(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            await build(ctx, s, structure())
+            row = await s.scalar(select(Entity).where(Entity.kind == "object"))
+            take = IntentV2(
+                source="mundane",
+                player_request="ordinary",
+                resolution="automatic",
+                effects=[EffectIntentV2(kind="take", object_id=row.id)],
+            )
+            _, result = await build(ctx, s, take, "m2", 2)
+            assert result.status == "denied" and result.failure is not None
+            assert object_state(row).owner_id is None  # the structure stays where it was built
+        await engine.dispose()
 
     asyncio.run(run())

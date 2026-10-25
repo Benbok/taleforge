@@ -10,13 +10,13 @@ from app.core.campaigns import AccessDenied
 from app.core.universal.profiles import load_actor, save_actor
 from app.db.models import Character, Entity
 from app.rules.universal.contracts import ClosedModel, Count
-from app.rules.universal.exploration import EffectChange, EffectIntentV2, IntroductionV2
+from app.rules.universal.exploration import EffectChange, EffectIntentV2, IntroductionV2, Scale, Sturdiness
 from app.rules.universal.mechanics import derive, starting_defense_bonuses
 
 
 class ObjectState(ClosedModel):
     schema_version: Literal[2] = 2
-    template: Literal["vessel", "wood_source", "water_source", "energy_tonic"]
+    template: Literal["vessel", "wood_source", "water_source", "energy_tonic", "structure"]
     owner_id: str | None = None
     material: Literal["wood", "plant", "stone"] = "wood"
     amount: Count = 1
@@ -28,6 +28,11 @@ class ObjectState(ClosedModel):
     energy_pool: Literal["wis"] | None = None
     restore_amount: Count = Field(default=0, le=1)
     source_event_id: str | None = None
+    scale: Scale = "tiny"
+    sturdiness: Sturdiness = "ordinary"
+    leads_to: str = Field(default="", max_length=128)
+    leads_view: str = Field(default="", max_length=300)
+    leads_to_location_id: str | None = None
 
 
 def object_state(row):
@@ -43,7 +48,7 @@ def ordinary_object_view(entity):
         id=entity.id,
         name=entity.name,
         location_id=entity.location_id,
-        **object_state(entity).model_dump(mode="json", exclude={"source_event_id"}),
+        **object_state(entity).model_dump(mode="json", exclude={"source_event_id", "leads_to_location_id"}),
     )
 
 
@@ -60,7 +65,8 @@ def accessible(row, actor, *, held=False):
         raise AccessDenied("Предмет недоступен")
     if state.owner_id not in {None, actor.id} or (held and state.owner_id != actor.id):
         raise AccessDenied("Предмет не принадлежит герою")
-    if state.owner_id is None and row.location_id != actor.location_id:
+    here = actor.location_id in {row.location_id, state.leads_to_location_id}  # both ends of a crossing
+    if state.owner_id is None and not here:
         raise AccessDenied("Предмет находится в другом месте")
     return state
 
@@ -132,11 +138,42 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
     ):
         raise AccessDenied("Неверная область операции")
     if op.kind == "create_object":
-        if op.template != "vessel" or op.quantity != 1:
-            raise ValueError("Создаётся только один обычный сосуд")
+        if op.template not in {"vessel", "structure"} or op.quantity != 1:
+            raise ValueError("Создаётся один предмет или одна постройка")
         key = "en_" + hashlib.sha256(f"{source_event.id}:{component}".encode()).hexdigest()[:24]
         row = await s.get(Entity, key)
         if row is None:
+            if op.template == "structure":
+                # Anything the world's laws and the hero's strength allow; the place owns it, so others may use it.
+                state = ObjectState(
+                    template="structure",
+                    owner_id=None,
+                    material=op.material,
+                    temporary=op.lifetime == "timed",
+                    source_event_id=source_event.id,
+                    scale=op.scale,
+                    sturdiness=op.sturdiness,
+                    leads_to=op.leads_to,
+                    leads_view=op.leads_view,
+                )
+                row = Entity(
+                    id=key,
+                    campaign_id=ctx.campaign_id,
+                    kind="object",
+                    name=op.label or "Постройка",
+                    description=op.appearance,
+                    location_id=actor.location_id,
+                    state={},
+                )
+                store(row, state)
+                s.add(row)
+                await s.flush()
+                return EffectChange(
+                    kind="object_created",
+                    subject_id=row.id,
+                    description=f"Создано: {row.name}.",
+                    data=ordinary_object_view(row),
+                )
             if op.source_id:
                 material = await s.get(Entity, op.source_id)
                 source = accessible(material, actor)
@@ -173,6 +210,8 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
     row = await s.get(Entity, op.object_id or "")
     state = accessible(row, actor, held=op.kind in {"give", "place", "fill", "pour", "empty", "consume"})
     data = {}
+    if state.template == "structure" and op.kind in {"take", "give", "place", "fill", "pour", "empty"}:
+        raise ValueError("Постройку нельзя переносить, передавать или наполнять")
     if op.kind == "take":
         state.owner_id = actor.id
     elif op.kind == "place":
