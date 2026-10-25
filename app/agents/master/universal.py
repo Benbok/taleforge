@@ -51,13 +51,26 @@ async def _call(service, campaign, turn, purpose, payload):
         )
         api_base = (cfg.settings or {}).get("api_base") if cfg else None
         if cfg is None or cfg.provider == "env" or cfg.model == "env":
-            model = decide_model_for() if purpose == "decide" else model_for()
+            model = (
+                decide_model_for()
+                if purpose in {"decide", "exploration_decide", "intent_review", "narration_review"}
+                else model_for()
+            )
         else:
             model = model_for(cfg.provider, cfg.model)
         temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
     options = {}
-    if purpose == "decide":
+    if purpose in {"decide", "exploration_decide", "intent_review", "narration_review"}:
+        from app.agents.master.exploration import NarrationReview
         from app.core.universal.action_intents import ActionIntent
+        from app.rules.universal.exploration import IntentReview, IntentV2
+
+        schema = {
+            "decide": ActionIntent,
+            "exploration_decide": IntentV2,
+            "intent_review": IntentReview,
+            "narration_review": NarrationReview,
+        }[purpose]
 
         options = dict(
             tools=[
@@ -66,7 +79,7 @@ async def _call(service, campaign, turn, purpose, payload):
                     "function": {
                         "name": "submit_action",
                         "description": "Semantic intent for server validation",
-                        "parameters": ActionIntent.model_json_schema(),
+                        "parameters": schema.model_json_schema(),
                     },
                 }
             ],
@@ -103,9 +116,7 @@ async def _call(service, campaign, turn, purpose, payload):
             )
         )
         await s.commit()
-    action_call = (
-        next((call for call in reply.tool_calls if call.name == "submit_action"), None) if purpose == "decide" else None
-    )
+    action_call = next((call for call in reply.tool_calls if call.name == "submit_action"), None) if options else None
     if action_call is not None and not reply.blocked:
         return json.dumps(action_call.arguments, ensure_ascii=False)
     if reply.blocked or not reply.text.strip():
@@ -204,6 +215,15 @@ async def run_universal_turn(service, cid, place=None):
                 public_scene = await universal_scene(s, c, Viewer(user, c, seat))
                 known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
                 history = await recent_history(s, c, msg.seq - 1, trace.get("audience"), public_scene)
+                from app.core.universal.objects import visible_objects
+                from app.core.universal.perception import actor_constraints, established_evidence
+                from app.db.models import Event
+
+                evidence = await established_evidence(s, cid, hero.id)
+                objects = await visible_objects(s, cid, hero.id)
+                constraints = await actor_constraints(s, cid, hero.id)
+                receipt = await s.scalar(select(Event).where(Event.campaign_id == cid, Event.idempotency_key == mid))
+                old_receipt = receipt is not None and receipt.payload.get("schema_version") != 2
                 allowed_targets = {e["id"] for e in public_scene.get("entities", [])}
                 allowed_targets.add(hero.id)
                 visible_heroes = await s.scalars(
@@ -222,6 +242,9 @@ async def run_universal_turn(service, cid, place=None):
                     scene=public_scene,
                     history=history,
                     source=msg.content,
+                    established_evidence=evidence,
+                    objects=objects,
+                    constraints=constraints,
                     known_abilities=[
                         dict(name=a.name, profile_id=a.profile_ref, revision=a.profile_revision, profile=a.definition)
                         for a in known
@@ -239,13 +262,33 @@ async def run_universal_turn(service, cid, place=None):
             async def ask(payload):
                 return await _call(service, c, tid, "decide", payload)
 
-            compiled = await obtain_prepared_action(service, c, tid, mid, trace, context, scope, ask)
+            old_prepared = trace.get("prepared", {}).get(mid)
+            old_admission = trace.get("admissions", {}).get(mid)
+            legacy = mid not in trace.get("exploration_bindings", {}) and (
+                old_receipt
+                or (old_prepared is not None and old_prepared.get("version") == 1)
+                or (old_admission is not None and old_admission.get("schema_version") != 2)
+            )
+            if legacy:
+                compiled = await obtain_prepared_action(service, c, tid, mid, trace, context, scope, ask)
+            else:
+                from app.agents.master.exploration import obtain_exploration_action
+
+                async def ask_v2(purpose, payload):
+                    return await _call(service, c, tid, purpose, payload)
+
+                compiled = await obtain_exploration_action(service, c, tid, mid, trace, context, scope, ask_v2)
             trace["scene"] = public_scene
             outcome = prepared_outcome(compiled)
             if compiled.proposal is not None:
                 async with service.maker() as s:
                     await service._status(cid, "rolling")
-                    result = await resolve_action(
+                    resolver = resolve_action
+                    if getattr(compiled, "schema_version", None) == 2:
+                        from app.core.universal.exploration_resolution import resolve_exploration
+
+                        resolver = resolve_exploration
+                    result = await resolver(
                         ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
                     )
                     outcome = public_outcome(result, compiled.public_reason)
@@ -274,25 +317,35 @@ async def run_universal_turn(service, cid, place=None):
         elif not story:
             text = "\n\n".join(notices)
         else:
-            text = await _call(
-                service,
-                c,
-                tid,
-                "narrate",
-                [
-                    {
-                        "role": "system",
-                        "content": NARRATION_SYSTEM,
-                    },
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            {"outcomes": story, "scene": trace.get("scene", {}), "recent_history": history},
-                            ensure_ascii=False,
-                        ),
-                    },
-                ],
-            )
+            if any(o.get("schema_version") == 2 for o in story.values()):
+                from app.agents.master.exploration import reviewed_narration
+
+                async def ask_narration(purpose, payload):
+                    return await _call(service, c, tid, purpose, payload)
+
+                text = await reviewed_narration(
+                    service, c, tid, trace, story, trace.get("scene", {}), history, ask_narration
+                )
+            else:
+                text = await _call(
+                    service,
+                    c,
+                    tid,
+                    "narrate",
+                    [
+                        {
+                            "role": "system",
+                            "content": NARRATION_SYSTEM,
+                        },
+                        {
+                            "role": "user",
+                            "content": json.dumps(
+                                {"outcomes": story, "scene": trace.get("scene", {}), "recent_history": history},
+                                ensure_ascii=False,
+                            ),
+                        },
+                    ],
+                )
             if notices:
                 text += "\n\n" + "\n\n".join(notices)
         async with service.maker() as s:
@@ -310,6 +363,7 @@ async def run_universal_turn(service, cid, place=None):
                         "universal": True,
                         "location_ref": location_reference(trace.get("scene", {})),
                         "scope": "party" if trace.get("audience") is not None else "public",
+                        "location_id": (trace.get("scene", {}).get("location") or {}).get("id"),
                     },
                 )
                 s.add(m)

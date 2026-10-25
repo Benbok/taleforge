@@ -6,7 +6,7 @@ from app.core.chat import message_payload
 from app.core.inspect import entity_card
 from app.core.universal.references import project_history
 from app.db.models import Campaign, Character, Entity, MasterTurn, Message, User
-from tests.test_universal_master import Bus, Provider, prepare
+from tests.test_universal_master import Bus, Provider, prepare, seed_legacy
 from tests.test_universal_resolution import setup
 
 
@@ -23,6 +23,7 @@ def test_narration_links_known_location_and_drops_unknown_references(tmp_path):
         await prepare(maker)
         await place(maker)
         provider = Provider([dict(kind="narrative"), "Среди обломков Серой Глотки слышится [[private-place|стук]]."])
+        await seed_legacy(maker, provider.replies.pop(0))
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)
@@ -102,7 +103,8 @@ def test_location_reference_remains_accessible_after_leaving_without_revealing_n
         engine, maker = await setup(tmp_path)
         await prepare(maker)
         await place(maker)
-        await MasterService(maker, Bus(), Provider([dict(kind="narrative"), "У тоннеля появился мост."])).run_turn("c")
+        await seed_legacy(maker, dict(kind="narrative"))
+        await MasterService(maker, Bus(), Provider(["У тоннеля появился мост."])).run_turn("c")
         async with maker() as s:
             (await s.get(Character, "hero")).location_id = "elsewhere"
             (await s.get(Entity, "gorge")).description = "SECRET-UNOBSERVED-CHANGE"

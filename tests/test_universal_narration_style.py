@@ -58,9 +58,16 @@ def test_narration_has_visible_story_context_and_preserves_literary_paragraphs(t
             "Сизая пыль тихо оседает на разбитые камни. За стеной тумана темнеет проём тоннеля.\n\n"
             "Сухой стук звучит оттуда всё отчётливее; короткие удары отзываются под каменными сводами."
         )
-        provider = Provider([dict(kind="narrative"), prose])
+        provider = Provider(
+            [
+                dict(schema_version=2, source="mundane", resolution="automatic", effects=[dict(kind="observe")]),
+                dict(verdict="pass"),
+                prose,
+                dict(verdict="pass"),
+            ]
+        )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
-        payload = json.loads(provider.prompts[-1][-1]["content"])
+        payload = json.loads(provider.prompts[-2][-1]["content"])
         assert payload["recent_history"] == ["На камнях осела сизая пыль.", "Из тоннеля слышится сухой стук."]
         decision = json.loads(provider.prompts[0][-1]["content"])
         assert decision["history"] == payload["recent_history"]

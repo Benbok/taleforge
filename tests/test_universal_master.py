@@ -23,7 +23,14 @@ def test_new_campaign_env_agent_resolves_real_main_and_technical_models(tmp_path
 
     class RecordingProvider(Provider):
         def __init__(self):
-            super().__init__([dict(kind="narrative", reason="Look around"), "Вы стоите у ворот."])
+            super().__init__(
+                [
+                    dict(schema_version=2, source="mundane", resolution="automatic", effects=[dict(kind="observe")]),
+                    dict(verdict="pass"),
+                    "Вы стоите у ворот.",
+                    dict(verdict="pass"),
+                ]
+            )
             self.models = []
 
         async def complete(self, messages, **kwargs):
@@ -42,7 +49,7 @@ def test_new_campaign_env_agent_resolves_real_main_and_technical_models(tmp_path
         provider = RecordingProvider()
         service = MasterService(maker, Bus(), provider)
         tid = await service.run_turn("c")
-        assert provider.models == [decide_model_for(), model_for()]
+        assert provider.models == [decide_model_for(), decide_model_for(), model_for(), decide_model_for()]
         async with maker() as s:
             assert (await s.get(MasterTurn, tid)).status == "done"
         await engine.dispose()
@@ -101,6 +108,28 @@ async def prepare(maker):
         await s.commit()
 
 
+async def seed_legacy(maker, admission):
+    """Explicit persisted V1 trace: compatibility only, never a fresh V2 decision."""
+    async with maker() as s:
+        turn = MasterTurn(
+            campaign_id="c",
+            session_id="game",
+            upto_seq=1,
+            trace={
+                "universal": True,
+                "sources": ["source"],
+                "audience": None,
+                "admissions": {"source": admission},
+                "outcomes": {},
+                "scene": {},
+            },
+        )
+        s.add(turn)
+        await s.flush()
+        (await s.get(Message, "source")).turn_id = turn.id
+        await s.commit()
+
+
 def test_paid_action_restart_preserves_receipt_and_private_boundary(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
@@ -111,7 +140,8 @@ def test_paid_action_restart_preserves_receipt_and_private_boundary(tmp_path):
             difficulty=1,
             profile=dict(id="sight", attribute="wis", kind="check", resource_key="wis"),
         )
-        first = Provider([proposal, RuntimeError("narrator down")])
+        await seed_legacy(maker, proposal)
+        first = Provider([RuntimeError("narrator down")])
         first_service = MasterService(maker, Bus(), first)
         tid = await first_service.run_turn("c")
         assert first_service.current_stage("c", "seat") is None
@@ -146,7 +176,8 @@ def test_free_and_denied_actions_preserve_energy(tmp_path, admission):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
-        service = MasterService(maker, Bus(), Provider([admission, admission["reason"]]))
+        await seed_legacy(maker, admission)
+        service = MasterService(maker, Bus(), Provider([admission["reason"]]))
         tid = await service.run_turn("c")
         async with maker() as s:
             t = await s.get(MasterTurn, tid)
@@ -175,6 +206,7 @@ def test_hidden_target_cannot_be_granted_by_model(tmp_path):
                 "No visible target can be reached.",
             ]
         )
+        await seed_legacy(maker, provider.replies.pop(0))
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             t = await s.get(MasterTurn, tid)
@@ -203,6 +235,7 @@ def test_receipt_recovers_after_commit_before_trace_write(tmp_path):
                 "Vines reveal the path.",
             ]
         )
+        await seed_legacy(maker, provider.replies.pop(0))
         service = MasterService(maker, Bus(), provider)
         tid = await service.run_turn("c")
         async with maker() as s:
@@ -232,7 +265,8 @@ def test_startup_recovery_uses_saved_paid_outcome(tmp_path):
             difficulty=1,
             profile=dict(id="sight", attribute="wis", kind="check", resource_key="wis"),
         )
-        tid = await MasterService(maker, Bus(), Provider([admission, RuntimeError("offline")])).run_turn("c")
+        await seed_legacy(maker, admission)
+        tid = await MasterService(maker, Bus(), Provider([RuntimeError("offline")])).run_turn("c")
         resumed = MasterService(maker, Bus(), Provider(["The saved vines reveal the path."]))
 
         class QuietPreparer:
@@ -266,7 +300,8 @@ def test_automatic_retries_bounded_and_explicit_retry_preserves_receipt(tmp_path
             difficulty=1,
             profile=dict(id="sight", attribute="wis", kind="check", resource_key="wis"),
         )
-        tid = await MasterService(maker, Bus(), Provider([admission, RuntimeError("offline")])).run_turn("c")
+        await seed_legacy(maker, admission)
+        tid = await MasterService(maker, Bus(), Provider([RuntimeError("offline")])).run_turn("c")
         failing = Provider([RuntimeError("offline"), RuntimeError("offline")])
         service = MasterService(maker, Bus(), failing)
 

@@ -46,7 +46,10 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
         first = Provider(
             [
                 dict(
-                    kind="ordinary_check",
+                    schema_version=2,
+                    source="mundane",
+                    resolution="check",
+                    effects=[dict(kind="observe")],
                     difficulty=1,
                     check_outcomes=dict(
                         success="Получается высечь искру.",
@@ -55,6 +58,7 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
                         critical_failure="Камень выскальзывает, попытка высечь искру сорвана.",
                     ),
                 ),
+                dict(verdict="pass"),
                 RuntimeError("narrator offline"),
             ]
         )
@@ -62,7 +66,10 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
         async with maker() as s:
             assert (await s.get(Message, "source")).data["action_failure"]["code"] == "narration_unavailable"
         await MasterService(
-            maker, Bus(), Provider(["Вы зажигаете факел."]), dice_factory=lambda: FixedDice([])
+            maker,
+            Bus(),
+            Provider(["Новых подтверждённых деталей не обнаружено.", dict(verdict="pass")]),
+            dice_factory=lambda: FixedDice([]),
         ).run_turn("c")
         async with maker() as s:
             assert (await s.get(MasterTurn, tid)).status == "done"
@@ -79,9 +86,19 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
         await prepare(maker)
         provider = Provider(
             [
-                dict(kind="ordinary_check", name="Факел", targets=["environment"]),
                 dict(
-                    kind="ordinary_check",
+                    schema_version=2,
+                    source="mundane",
+                    resolution="automatic",
+                    effects=[dict(kind="observe")],
+                    targets=["environment"],
+                ),
+                dict(verdict="pass"),
+                dict(
+                    schema_version=2,
+                    source="mundane",
+                    resolution="check",
+                    effects=[dict(kind="observe")],
                     name="Факел",
                     attribute="dex",
                     difficulty=10,
@@ -92,7 +109,9 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
                         critical_failure="Камень выскальзывает, попытка высечь искру сорвана.",
                     ),
                 ),
+                dict(verdict="pass"),
                 "Вы пытаетесь высечь искру.",
+                dict(verdict="pass"),
             ]
         )
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([14])).run_turn("c")
@@ -100,32 +119,31 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
             turn = await s.get(MasterTurn, tid)
             assert turn.status == "done", turn.trace.get("error")
             assert turn.trace["proposal_attempts"]["source"] == 2
-            assert turn.trace["prepared"]["source"]["category"] == "ordinary_check"
-            assert len(list(await s.scalars(select(RuntimeProfile)))) == 1
+            assert turn.trace["prepared"]["source"]["category"] == "exploration"
+            assert len(list(await s.scalars(select(RuntimeProfile)))) == 0
             assert len(list(await s.scalars(select(Event)))) == 1
             assert (await load_actor(s, "c", "hero"))[1].energies["dex"] == 20
-        assert len(provider.prompts) == 3
+        assert len(provider.prompts) == 6
         await engine.dispose()
 
     asyncio.run(run())
 
 
-def test_unsupported_firefly_duration_is_not_a_fictional_magic_failure(tmp_path):
+def test_unsupported_combat_effect_is_not_a_fictional_magic_failure(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
         provider = Provider(
             [
                 dict(
-                    kind="ability",
+                    schema_version=2,
+                    source="supernatural",
+                    resolution="automatic",
+                    effects=[dict(kind="cannot_move")],
                     name="Светлячки",
                     attribute="wis",
-                    effect="narrative",
-                    duration=3,
-                    clock="turn",
-                    target_scope="scene",
                 ),
-                dict(kind="unsupported", public_reason="Для светлячков нужен длительный эффект."),
+                dict(verdict="unsupported"),
             ]
         )
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([])).run_turn("c")

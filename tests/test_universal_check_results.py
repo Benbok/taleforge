@@ -9,7 +9,7 @@ from app.core.inspect import entity_card
 from app.db.models import Campaign, Event, MasterTurn, Message, User
 from app.rules.dice import FixedDice
 from tests.test_universal_location_knowledge import place
-from tests.test_universal_master import Bus, Provider, prepare
+from tests.test_universal_master import Bus, Provider, prepare, seed_legacy
 from tests.test_universal_resolution import setup
 
 CONSEQUENCES = {
@@ -33,7 +33,8 @@ def test_check_saves_selected_consequence_and_shows_it_even_if_narrator_repeats_
             public_reason="Герой прислушивается к звукам.",
             check_outcomes=CONSEQUENCES,
         )
-        provider = Provider([proposal, "Герой прислушивается к звукам."])
+        await seed_legacy(maker, proposal)
+        provider = Provider(["Герой прислушивается к звукам."])
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([roll])).run_turn("c")
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)
@@ -59,9 +60,18 @@ def test_missing_concrete_result_is_repaired_before_rolling(tmp_path):
         await prepare(maker)
         provider = Provider(
             [
-                dict(kind="ordinary_check", public_reason="Герой прислушивается."),
-                dict(kind="ordinary_check", check_outcomes=CONSEQUENCES),
+                dict(schema_version=2, source="mundane", resolution="check", effects=[dict(kind="observe")]),
+                dict(verdict="pass"),
+                dict(
+                    schema_version=2,
+                    source="mundane",
+                    resolution="check",
+                    effects=[dict(kind="observe")],
+                    check_outcomes=CONSEQUENCES,
+                ),
+                dict(verdict="pass"),
                 "Вы различаете шаги.",
+                dict(verdict="pass"),
             ]
         )
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([15])).run_turn("c")
@@ -79,7 +89,8 @@ def test_narrator_restart_keeps_the_same_concrete_result_without_another_roll(tm
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
-        first = Provider([dict(kind="ordinary_check", check_outcomes=CONSEQUENCES), RuntimeError("offline")])
+        await seed_legacy(maker, dict(kind="ordinary_check", check_outcomes=CONSEQUENCES))
+        first = Provider([RuntimeError("offline")])
         tid = await MasterService(maker, Bus(), first, dice_factory=lambda: FixedDice([15])).run_turn("c")
         await MasterService(maker, Bus(), Provider(["Вы слышите шаги."]), dice_factory=lambda: FixedDice([])).run_turn(
             "c"
@@ -114,6 +125,7 @@ def test_check_result_links_are_limited_to_public_scene_references(tmp_path):
                 "Вы слышите стук.",
             ]
         )
+        await seed_legacy(maker, provider.replies.pop(0))
         await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([15])).run_turn("c")
         async with maker() as s:
             event = await s.scalar(select(Event))

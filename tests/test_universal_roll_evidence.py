@@ -9,7 +9,7 @@ from app.core.universal.resolution import ResolutionContext, resolve_action
 from app.core.universal.rolls import ensure_roll_message
 from app.db.models import Event, MasterTurn, Message
 from app.rules.dice import FixedDice
-from tests.test_universal_master import Bus, Provider, prepare
+from tests.test_universal_master import Bus, Provider, prepare, seed_legacy
 from tests.test_universal_resolution import setup
 
 
@@ -33,6 +33,7 @@ def test_roll_card_is_actual_saved_evidence_and_survives_narrator_restart(tmp_pa
                 RuntimeError("offline"),
             ]
         )
+        await seed_legacy(maker, provider.replies.pop(0))
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([9])).run_turn("c")
         async with maker() as s:
             cards = list(await s.scalars(select(Message).where(Message.kind == "roll")))

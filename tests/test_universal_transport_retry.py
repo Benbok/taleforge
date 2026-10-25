@@ -6,7 +6,7 @@ from app.core.universal.profiles import load_actor
 from app.db.models import MasterTurn, User
 from app.gateway.ws import _retry
 from app.rules.dice import FixedDice
-from tests.test_universal_master import Bus, Provider, prepare
+from tests.test_universal_master import Bus, Provider, prepare, seed_legacy
 from tests.test_universal_resolution import setup
 
 
@@ -20,8 +20,9 @@ def test_websocket_retry_dispatches_original_turn_without_pending_source(tmp_pat
             difficulty=1,
             profile=dict(id="sight", attribute="wis", kind="check", resource_key="wis"),
         )
+        await seed_legacy(maker, proposal)
         service = MasterService(
-            maker, Bus(), Provider([proposal, RuntimeError("narrator failed")]), dice_factory=lambda: FixedDice([10])
+            maker, Bus(), Provider([RuntimeError("narrator failed")]), dice_factory=lambda: FixedDice([10])
         )
         tid = await service.run_turn("c")
         async with maker() as s:

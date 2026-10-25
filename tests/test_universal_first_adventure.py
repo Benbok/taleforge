@@ -94,8 +94,16 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
         assert wait_message_result(ws, client_id="investigate")["type"] == "message.new"
     free = Provider(
         [
-            {"kind": "check", "reason": "Inspect the old gate", "attribute": "int", "difficulty": 1},
+            dict(
+                schema_version=2,
+                source="mundane",
+                resolution="automatic",
+                attribute="int",
+                effects=[dict(kind="observe")],
+            ),
+            dict(verdict="pass"),
             "The gate bears a fresh trail.",
+            dict(verdict="pass"),
         ]
     )
     free_service = MasterService(maker, Bus(), free, dice_factory=lambda: FixedDice([10]))
@@ -111,14 +119,18 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
         )
         assert wait_message_result(ws, client_id="vine")["type"] == "message.new"
     ability = {
-        "kind": "ability",
-        "reason": "Vine sight",
-        "public_reason": "Vines reveal the trail.",
-        "difficulty": 1,
-        "profile": {"id": "vine-sight", "attribute": "wis", "kind": "check", "resource_key": "wis"},
+        "schema_version": 2,
+        "name": "Vine sight",
+        "source": "supernatural",
+        "resolution": "automatic",
+        "intensity": "light",
+        "effects": [dict(kind="illumination")],
     }
     failed = MasterService(
-        maker, Bus(), Provider([ability, RuntimeError("narrator unavailable")]), dice_factory=lambda: FixedDice([10])
+        maker,
+        Bus(),
+        Provider([ability, dict(verdict="pass"), RuntimeError("narrator unavailable")]),
+        dice_factory=lambda: FixedDice([10]),
     )
     tid = asyncio.run(failed.run_turn(cid))
     sheet, debited, events, learned = asyncio.run(inspect(maker))
@@ -135,7 +147,7 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
     # Reopen the same persisted database through a fresh engine/maker and master service.
     restarted_engine = make_engine(settings.database_url)
     restarted_maker = make_sessionmaker(restarted_engine)
-    narrator = Provider(["Vines trace the hidden path beyond the gate."])
+    narrator = Provider(["Vines trace the hidden path beyond the gate.", dict(verdict="pass")])
     restarted = MasterService(restarted_maker, Bus(), narrator, dice_factory=lambda: FixedDice([10]))
     assert asyncio.run(restarted.run_turn(cid)) == tid
     assert asyncio.run(restarted.run_turn(cid)) is None

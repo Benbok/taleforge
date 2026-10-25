@@ -105,11 +105,11 @@
 
 **Files:** Create agents/master/exploration.py, tests/test_exploration_master.py; modify master/universal.py, action admission/calls/narration and roll projection at explicit version boundaries.
 **Interfaces:** obtain_exploration_action(...)->PreparedExploration; review_intent(...)->IntentReview; review_narration(...)->NarrationReview; ensure_roll_message branches on saved payload schema_version; existing V1 read adapter only for saved rows.
-- [ ] RED: fresh old-format magic cannot bypass V2; saved V1 receipt still recovers; failed/ambiguous semantic review never rolls/debits; review/repair budget survives restart; narration cannot add form/item/hidden fact absent actual changes; no live-model tests; automatic spell card contains no invented d20.
-- [ ] Run pipeline tests; expected missing integration.
-- [ ] Force closed V2 tool schema for fresh decisions. Persist source/plan binding, review and bounded one-repair budget before external I/O. Review new/changed or conflicting intents; known exact definitions reuse existing semantics. Narrate saved facts plus audience-safe context; review contradictory prose with at most one repair, then factual fallback without replaying actions. Update deterministic provider fixtures to current wire format; seed explicit old traces for compatibility tests.
-- [ ] Run all universal/exploration master, lifecycle, replay and transport regressions; expected green.
-- [ ] Commit task7.
+- [x] RED: fresh old-format magic cannot bypass V2; saved V1 receipt still recovers; failed/ambiguous semantic review never rolls/debits; review/repair budget survives restart; narration cannot add form/item/hidden fact absent actual changes; no live-model tests; automatic spell card contains no invented d20.
+- [x] Run pipeline tests; expected missing integration.
+- [x] Force closed V2 tool schema for fresh decisions. Persist source/plan binding, review and bounded one-repair budget before external I/O. Review new/changed or conflicting intents; known exact definitions reuse existing semantics. Narrate saved facts plus audience-safe context; review contradictory prose with at most one repair, then factual fallback without replaying actions. Update deterministic provider fixtures to current wire format; seed explicit old traces for compatibility tests.
+- [x] Run all universal/exploration master, lifecycle, replay and transport regressions; expected green.
+- [x] Commit task7.
 
 ### Task 8: Player projections, UI, acceptance and deployment
 
