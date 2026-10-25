@@ -170,3 +170,25 @@ async def dismiss_effect(session, campaign_id, actor_id, effect_id):
         await expire_effects(session, campaign_id, int((await clock_view(session, campaign_id))["game_seconds"]))
     )
     return changes
+
+
+async def scope_changes(ctx, changes):
+    """Global clock changes are stored fully, but narration sees only the acting audience's facts."""
+    actor = await ctx.session.get(Character, ctx.actor_id)
+    result = []
+    for change in changes:
+        if change.kind in {"effect_ended", "object_expired"} and change.subject_id != ctx.actor_id:
+            row = await ctx.session.get(Entity, change.subject_id)
+            state = row.state.get("exploration", {}) if row else {}
+            visible = (
+                actor is not None
+                and row is not None
+                and row.campaign_id == ctx.campaign_id
+                and not row.state.get("hidden")
+                and state.get("owner_id") in {None, ctx.actor_id}
+                and row.location_id == actor.location_id
+            )
+            if not visible:
+                change = change.model_copy(update={"private": True})
+        result.append(change)
+    return result

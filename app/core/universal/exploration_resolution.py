@@ -29,7 +29,11 @@ def public_exploration_facts(outcome):
 
 
 async def record_exploration_ability(session, actor, action, outcome, event):
-    if not outcome.success or action.definition.source != "supernatural":
+    if (
+        not outcome.success
+        or action.definition.source != "supernatural"
+        or any(not e.applied for e in outcome.effect_outcomes)
+    ):
         return None
     if (
         event.actor_id != actor.id
@@ -106,7 +110,8 @@ async def _execute(ctx, action, key):
         if (
             previous.tool != "universal_action"
             or previous.actor_id != action.actor_id
-            or previous.payload.get("proposal") != action.model_dump(mode="json")
+            or ExplorationAction.model_validate(previous.payload["proposal"]).model_dump(mode="json")
+            != action.model_dump(mode="json")
         ):
             raise ValueError("Ключ квитанции уже занят")
         return ExplorationOutcome.model_validate(previous.payload["outcome"]).model_copy(update={"status": "repeated"})
@@ -169,10 +174,16 @@ async def _execute(ctx, action, key):
     )
     s.add(event)
     await s.flush()
+    from app.core.universal.combat_actions import COMBAT_KINDS, combat_action
+
+    if any(op.kind in COMBAT_KINDS for op in action.operations):
+        await combat_action(ctx, action, event, result, now)
     if result.success:
         result.changes.extend(await _objects(ctx, action, event))
         created = iter([c for c in result.changes if c.kind == "object_created"])
         for index, op in enumerate(action.operations):
+            if op.kind in COMBAT_KINDS:
+                continue
             target = action.actor_id
             if op.kind == "create_object":
                 target = next(created).subject_id
@@ -219,23 +230,44 @@ async def _execute(ctx, action, key):
     step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds)
     result.game_seconds = int(step.ended_seconds)
     result.changes.extend(EffectChange.model_validate(c) for c in step.changes)
-    from app.core.universal.effects import active_effects
     from app.core.universal.perception import assess_detection, observe_known_scene
 
     if result.success:
         for op in action.operations:
             if op.kind == "observe":
                 result.changes.extend(await observe_known_scene(ctx, op.aspect))
-    if any(e["kind"] == "camouflage" for e in await active_effects(s, ctx.campaign_id, action.actor_id)):
-        for observer in await s.scalars(
-            select(Entity).where(
-                Entity.campaign_id == ctx.campaign_id,
-                Entity.kind == "creature",
-                Entity.location_id == state.actor.location_id,
-            )
-        ):
-            if "exploration_observer" in observer.state:
-                result.changes.append(await assess_detection(ctx, observer.id, action.actor_id, key))
+    for observer in await s.scalars(
+        select(Entity).where(
+            Entity.campaign_id == ctx.campaign_id,
+            Entity.kind == "creature",
+            Entity.location_id == state.actor.location_id,
+        )
+    ):
+        if "exploration_observer" in observer.state:
+            detection = await assess_detection(ctx, observer.id, action.actor_id, key)
+            result.changes.append(detection)
+            if not detection.private and detection.data.get("natural") is not None:
+                data = detection.data
+                result.rolls.extend(data["rolls"])
+                result.draws.extend(DieProof(sides=20, value=v) for v in data["rolls"])
+                result.checks.append(
+                    CheckProof(
+                        target_id=action.actor_id,
+                        effect_id="detection",
+                        attribute="dex",
+                        natural=data["natural"],
+                        total=int(data["total"]),
+                        modifier=int(data["total"]) - data["natural"],
+                        difficulty=None,
+                        success=data["concealed"],
+                        mode=data["mode"],
+                        critical=data["critical"],
+                        critical_failure=data["critical_failure"],
+                    )
+                )
+    from app.core.universal.effects import scope_changes
+
+    result.changes = await scope_changes(ctx, result.changes)
     result.description = " ".join(c.description for c in result.changes if not c.private) or _outcome_hint(
         action, result
     )

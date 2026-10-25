@@ -13,6 +13,11 @@ from app.rules.universal.profiles import ActionOutcome, CheckNarration
 SourceKind = Literal["mundane", "supernatural", "item"]
 ResolutionKind = Literal["automatic", "check", "attack", "resistance"]
 EffectKind = Literal[
+    "weapon_attack",
+    "equip",
+    "unequip",
+    "guard",
+    "damage_over_time",
     "observe",
     "speak",
     "wait",
@@ -53,6 +58,8 @@ class FormBlocked(ValueError):
 
 TIMED_KINDS = frozenset(
     {
+        "guard",
+        "damage_over_time",
         "illumination",
         "camouflage",
         "change_form",
@@ -66,6 +73,10 @@ TIMED_KINDS = frozenset(
 )
 ORDINARY_KINDS = frozenset(
     {
+        "weapon_attack",
+        "equip",
+        "unequip",
+        "guard",
         "observe",
         "speak",
         "move",
@@ -83,6 +94,7 @@ ORDINARY_KINDS = frozenset(
 )
 MAGIC_KINDS = frozenset(
     {
+        "damage_over_time",
         "cosmetic",
         "illumination",
         "camouflage",
@@ -124,6 +136,7 @@ class EffectIntentV2(ClosedModel):
     capacity_ml: int = Field(default=300, ge=1, le=2000, strict=True)
     amount: Count = Field(default=300, ge=1, le=1_000_000)
     quantity: int = Field(default=1, ge=1, le=10, strict=True)
+    resistance_attribute: AbilityKey | None = None
 
     @model_validator(mode="after")
     def lifetime_supported(self):
@@ -138,6 +151,7 @@ class IntroductionV2(ClosedModel):
     name: str = Field(min_length=1, max_length=128)
     evidence_quote: str = Field(min_length=1, max_length=1000)
     amount: Count = Field(default=1000, ge=1, le=1_000_000)
+    awareness: Literal["watching_actor", "unknown"] = "watching_actor"
 
 
 class AbilityDefinitionV2(ClosedModel):
@@ -238,6 +252,9 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         "required_by",
     }
     meaningful = {
+        "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
+        "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
+        "cannot_target": {"lifetime", "quantity", "resistance_attribute"},
         "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
         "change_form": {"form", "quantity"},
         "observe": {"aspect"},

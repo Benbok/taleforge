@@ -42,10 +42,10 @@
 
 **Files:** rules/universal/combat.py; core/universal/combat_actions.py; extend exploration contracts/compiler/resolver/effects/perception; tests/test_universal_combat_actions.py.
 **Interfaces:** combat_action(ctx,action,event)->ExplorationOutcome changes; scoped_targets(...); effective_actor(...); initialize_combatant(...); hostile candidates are persisted actors grounded in existing scene evidence.
-- [ ] RED: actual attack/damage/heal, damage+resisted binding independent; weapon bonuses affect their own terms; control blocks movement/acting/targeting; exact numbers and natural20/1. Hidden/foreign/stale targets reject before dice. Existing ordinary observation remains free.
-- [ ] Run combat-action tests; expected missing capabilities.
-- [ ] Extend V2 operations for weapon/equip/guard and periodic damage; attribute, power and resistance are compiled, never arbitrary final damage. Reuse existing pure numeric math. Directly witnessed forms cannot erase identity; expose cancellable effect IDs to decision context; vanished objects cannot reappear as observations. Scope global expiration changes before public projection.
-- [ ] Run V2 master/resolution/perception/privacy suites; commit.
+- [x] RED: actual attack/damage/heal, damage+resisted binding independent; weapon bonuses affect their own terms; control blocks movement/acting/targeting; exact numbers and natural20/1. Hidden/foreign/stale targets reject before dice. Existing ordinary observation remains free.
+- [x] Run combat-action tests; expected missing capabilities.
+- [x] Extend V2 operations for weapon/equip/guard and periodic damage; attribute, power and resistance are compiled, never arbitrary final damage. Reuse existing pure numeric math. Directly witnessed forms cannot erase identity; expose cancellable effect IDs to decision context; vanished objects cannot reappear as observations. Scope global expiration changes before public projection.
+- [x] Run V2 master/resolution/perception/privacy suites; commit.
 
 ### Task 3: Durable single enemy response and shared clock
 

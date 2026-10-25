@@ -72,6 +72,12 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if any(i.evidence_quote not in evidence for i in intent.introductions):
         raise ValueError("Предмет или наблюдатель не подтверждён известной обстановкой")
     targets = intent.targets or [ctx.actor_id]
+    if any(op.kind == "weapon_attack" for op in intent.effects):
+        from app.core.universal.inventory import _owned
+
+        weapon = next(op for op in intent.effects if op.kind == "weapon_attack")
+        _, _, state = await _owned(ctx.session, ctx.campaign_id, ctx.actor_id, weapon.object_id or "")
+        intent.attribute = state.profile.attribute
     definition = AbilityDefinitionV2(
         name=intent.name or ("Магия" if intent.source == "supernatural" else "Действие"),
         source=intent.source,
@@ -141,9 +147,31 @@ async def validate_exploration(ctx, action):
     if any(e["kind"] == "change_form" for e in await active_effects(ctx.session, ctx.campaign_id, actor.id)):
         if any(op.kind not in {"observe", "wait", "hold_breath", "dismiss"} for op in a.operations):
             raise FormBlocked("В форме куста нельзя говорить, двигаться или действовать руками; сначала снимите форму.")
-    # Stage2A targets self/held props. Opposed combat remains the next stage.
-    if a.targets != [ctx.actor_id] or a.resolution not in {"automatic", "check"}:
+    from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets
+
+    combat = any(op.kind in COMBAT_KINDS for op in a.operations)
+    current = await effective_actor(ctx.session, ctx.campaign_id, a.actor_id)
+    if resources.hp <= 0 or current["cannot_act"]:
+        raise ValueError("Герой сейчас не может действовать")
+    if current["cannot_move"] and any(op.kind == "move" for op in a.operations):
+        raise ValueError("Эффект запрещает двигаться")
+    if (not combat and a.targets != [ctx.actor_id]) or a.resolution not in {
+        "automatic",
+        "check",
+        "attack",
+        "resistance",
+    }:
         raise ValueError("Недоступная цель или тип разрешения")
+    if combat:
+        await scoped_targets(ctx, a)
+        if current["cannot_target"] and any(
+            op.kind in {"damage", "weapon_attack", "cannot_move", "cannot_act", "cannot_target"} for op in a.operations
+        ):
+            raise ValueError("Эффект запрещает выбирать цель")
+        if any(op.kind in {"damage", "weapon_attack"} for op in a.operations) and a.resolution != "attack":
+            raise ValueError("Атака требует серверного броска попадания")
+    elif a.resolution not in {"automatic", "check"}:
+        raise ValueError("Обычное действие не является атакой")
     if a.resolution == "check" and (
         a.check_outcomes is None or any(not value for value in a.check_outcomes.model_dump().values())
     ):
@@ -162,9 +190,7 @@ async def validate_exploration(ctx, action):
     if len(refs) != len(a.introductions):
         raise ValueError("Повтор ссылки на предмет")
     for index, op in enumerate(a.operations):
-        if op.kind in {"cannot_move", "cannot_act", "cannot_target", "check_bonus", "defense_bonus", "damage", "heal"}:
-            raise ValueError("Боевой компонент относится к следующему этапу")
-        if op.target_id and op.kind != "pour" and op.target_id != a.actor_id:
+        if op.target_id and op.kind != "pour" and op.target_id not in a.targets:
             raise ValueError("Недоступная цель компонента")
         if op.kind == "create_object" and (op.template != "vessel" or op.quantity != 1):
             raise ValueError("Создаётся один обычный сосуд")
@@ -175,7 +201,18 @@ async def validate_exploration(ctx, action):
             if ref in refs:
                 continue
             obj = await ctx.session.get(Entity, ref)
-            accessible(obj, actor)
+            if obj is not None and "universal_item" in obj.state:
+                from app.core.universal.inventory import _owned
+
+                if op.kind not in {"weapon_attack", "equip", "unequip", "consume"}:
+                    raise ValueError("Снаряжение не является обычным материалом")
+                _, _, item = await _owned(ctx.session, ctx.campaign_id, a.actor_id, ref)
+                if op.kind == "weapon_attack" and (
+                    item.profile.kind != "weapon" or not item.equipped or item.profile.attribute != a.attribute
+                ):
+                    raise ValueError("Нужно надетое оружие и его характеристика")
+            else:
+                accessible(obj, actor)
         if op.kind == "create_object":
             refs.add(f"created:{index}")
     return ValidatedExploration(actor, sheet, resources)

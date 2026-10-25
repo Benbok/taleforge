@@ -54,7 +54,13 @@ async def introduce_observer(ctx, spec):
             name=spec.name,
             description=spec.evidence_quote,
             location_id=actor.location_id,
-            state={"exploration_observer": {"wis": "10", "notices": {}}, "cover_available": True},
+            state={
+                "exploration_observer": {
+                    "wis": "10",
+                    "notices": {actor.id: "witness"} if spec.awareness == "watching_actor" else {},
+                },
+                "cover_available": False,
+            },
         )
         ctx.session.add(row)
         await ctx.session.flush()
@@ -134,8 +140,9 @@ async def assess_detection(ctx, observer_id, actor_id, source_key):
     )
     sheet, _ = await load_actor(s, ctx.campaign_id, actor_id)
     difficulty = 10 + (int(state["wis"]) - 10) // 2
-    check = resolve_check(ctx.dice, sheet.abilities.dex, False, difficulty, edge)
-    concealed = check.success and not witness
+    cover = observer.state.get("cover_available", False) or any(e["kind"] == "change_form" for e in effects)
+    check = resolve_check(ctx.dice, sheet.abilities.dex, False, difficulty, edge) if cover and not witness else None
+    concealed = bool(check and check.success)
     observer.state = {
         **observer.state,
         "exploration_observer": {
@@ -159,12 +166,12 @@ async def assess_detection(ctx, observer_id, actor_id, source_key):
         data=dict(
             observer_id=observer.id,
             concealed=concealed,
-            natural=check.natural,
-            rolls=check.rolls,
-            total=str(check.total),
+            natural=check.natural if check else None,
+            rolls=check.rolls if check else [],
+            total=str(check.total) if check else None,
             mode=edge,
-            critical=check.critical,
-            critical_failure=check.critical_failure,
+            critical=check.critical if check else False,
+            critical_failure=check.critical_failure if check else False,
         ),
     )
     s.add(
@@ -193,6 +200,15 @@ async def observe_known_scene(ctx, aspect):
         if row.state.get("hidden") or row.state.get("visibility") in {"hidden", "private"}:
             continue
         if "exploration" in row.state and row.state["exploration"].get("owner_id") not in {None, actor.id}:
+            continue
+        if "exploration" in row.state and (
+            row.state["exploration"].get("expired") or int(row.state["exploration"].get("amount", "0")) < 1
+        ):
+            continue
+        if "universal_item" in row.state and (
+            row.state["universal_item"].get("owner_id") != actor.id
+            or int(row.state["universal_item"].get("quantity", "0")) < 1
+        ):
             continue
         if row.state.get("requires_light") and not light["magical_light"]:
             continue
