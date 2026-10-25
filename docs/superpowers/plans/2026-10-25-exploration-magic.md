@@ -55,11 +55,11 @@
 
 **Files:** Create migration0005, core/universal/{definitions,clock,effects}.py, tests/test_exploration_clock.py and test_exploration_migration.py; modify models.
 **Interfaces:** admit_definition(session,cid,definition)->AbilityDefinitionV2; load_definition(session,cid,ref,revision); complete_step(session,cid,source_key,elapsed_seconds)->GameStep; start_effect(...)->RuntimeEffect; active_effects(session,cid,target)->list; dismiss_effect(...).
-- [ ] RED: migrate universal_0004 with existing hero/Event to head without data loss; cast at t6 with18s remaining, next6s→12; replay unchanged; very large game seconds stay exact; reads cannot tick; expiration/dismissal removes only own effects.
-- [ ] Run new storage tests; expected missing storage/migration.
-- [ ] Add UniversalClock, UniversalStep and UniversalEffect tables. Time/sequence/deadlines use decimal-string storage to avoid SQLite integer overflow. Serialize through existing Campaign update lock, use unique(campaign_id,source_key). New effects apply at casting-step end; close an already completed step without reapplying. Definition rows immutable and campaign scoped.
-- [ ] Run migration/clock tests and existing resolution/replay tests; expected green.
-- [ ] Commit task2.
+- [x] RED: migrate universal_0004 with existing hero/Event to head without data loss; cast at t6 with18s remaining, next6s→12; replay unchanged; very large game seconds stay exact; reads cannot tick; expiration/dismissal removes only own effects.
+- [x] Run new storage tests; expected missing storage/migration.
+- [x] Add UniversalClock, UniversalStep and UniversalEffect tables. Time/sequence/deadlines use decimal-string storage to avoid SQLite integer overflow. Serialize through existing Campaign update lock, use unique(campaign_id,source_key). New effects apply at casting-step end; close an already completed step without reapplying. Definition rows immutable and campaign scoped.
+- [x] Run migration/clock tests and existing resolution/replay tests; expected green.
+- [x] Commit task2.
 
 ### Task 3: Real ordinary objects, materials, containers and energy consumables
 

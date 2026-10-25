@@ -1057,6 +1057,44 @@ class RuntimeProfile(Base):
     definition: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
+class UniversalClock(Base):
+    """Exact game time; never wall time or client message count."""
+
+    __tablename__ = "universal_clocks"
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True)
+    game_seconds: Mapped[str] = mapped_column(Text, default="0")
+    step_index: Mapped[str] = mapped_column(Text, default="0")
+
+
+class UniversalStep(Base):
+    __tablename__ = "universal_steps"
+    __table_args__ = (UniqueConstraint("campaign_id", "source_key"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("gs"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    source_key: Mapped[str] = mapped_column(String(128))
+    sequence: Mapped[str] = mapped_column(Text)
+    started_seconds: Mapped[str] = mapped_column(Text)
+    ended_seconds: Mapped[str] = mapped_column(Text)
+    elapsed_seconds: Mapped[str] = mapped_column(Text)
+    changes: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class UniversalEffect(Base):
+    __tablename__ = "universal_effects"
+    __table_args__ = (UniqueConstraint("campaign_id", "source_event_id", "target_id", "component"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ue"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    source_actor_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"))
+    source_event_id: Mapped[str] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+    target_id: Mapped[str] = mapped_column(String(32), index=True)
+    component: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONType)
+    starts_seconds: Mapped[str] = mapped_column(Text)
+    ends_seconds: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+
+
 class HeroAbility(Base):
     __tablename__ = "hero_abilities"
     __table_args__ = (UniqueConstraint("character_id", "profile_ref"),)
