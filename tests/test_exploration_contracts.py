@@ -220,3 +220,58 @@ def test_acts_with_no_uncertain_outcome_never_need_a_roll_and_numbers_are_made_e
     assert "elapsed_game_seconds" not in clean_model_intent(
         base("move", elapsed_game_seconds=2.5)
     )  # the default applies
+
+
+def creation(scale=None, *, sturdiness=None, lifetime="permanent", **extra):
+    fields = {"kind": "create_object", "template": "structure", "lifetime": lifetime, **extra}
+    if scale:
+        fields["scale"] = scale
+    if sturdiness:
+        fields["sturdiness"] = sturdiness
+    return AbilityDefinitionV2(name="Создание", source="supernatural", effects=[EffectIntentV2(**fields)])
+
+
+def test_creation_price_follows_the_models_scale_and_sturdiness():
+    prices = {s: exploration_cost(creation(s), 1) for s in ("tiny", "small", "medium", "large", "huge")}
+    assert prices == {"tiny": 1, "small": 3, "medium": 6, "large": 12, "huge": 24}
+    assert exploration_cost(creation("large", sturdiness="sturdy"), 1) == 24
+    assert exploration_cost(creation("large", sturdiness="fragile"), 1) == 12
+    assert exploration_cost(creation("huge"), 2) == 48
+    assert exploration_cost(creation("huge", lifetime="timed"), 1) == 72  # three six-second units
+    cup = AbilityDefinitionV2(
+        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="permanent")]
+    )
+    assert exploration_cost(cup, 1) == 1  # a creation with no stated scale is the old cup
+
+
+def test_leads_to_is_for_large_creations_only():
+    with pytest.raises(ValidationError):
+        creation("small", leads_to="Другой берег")
+    assert creation("large", leads_to="Другой берег", leads_view="Тёмный уступ").effects[0].leads_to == "Другой берег"
+    assert creation("huge", leads_to="Другой берег").effects[0].scale == "huge"
+
+
+def test_scale_and_sturdiness_change_the_identity_of_a_creation_but_a_label_does_not():
+    assert definition_key(creation("tiny")) != definition_key(creation("huge"))
+    assert definition_key(creation("large")) != definition_key(creation("large", sturdiness="sturdy"))
+    assert definition_key(creation("large", label="Мост")) == definition_key(creation("large", label="Переправа"))
+    cup = AbilityDefinitionV2(
+        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="permanent")]
+    )
+    assert definition_key(cup).startswith("ability2-")  # defaults stay out of the key, so a learned cup keeps its id
+
+
+def test_the_tolerant_parser_keeps_the_scale_and_drops_a_destination_a_small_creation_cannot_have():
+    from app.rules.universal.exploration import clean_model_intent
+
+    raw = {
+        "schema_version": 2,
+        "source": "supernatural",
+        "effects": [
+            {"kind": "create_object", "template": "structure", "scale": "small", "leads_to": "Берег", "form": "vessel"}
+        ],
+    }
+    effect = clean_model_intent(raw)["effects"][0]
+    assert effect["scale"] == "small" and "leads_to" not in effect and "form" not in effect
+    big = clean_model_intent({**raw, "effects": [{**raw["effects"][0], "scale": "huge"}]})["effects"][0]
+    assert big["leads_to"] == "Берег"

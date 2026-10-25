@@ -39,7 +39,12 @@ EffectKind = Literal[
     "check_bonus",
     "defense_bonus",
 ]
-ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer"]
+ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure"]
+Scale = Literal["tiny", "small", "medium", "large", "huge"]
+Sturdiness = Literal["fragile", "ordinary", "sturdy"]
+# Energy per hero level for creating something of this size; the model judges the size, the server counts.
+SCALE_PRICE = {"tiny": 1, "small": 3, "medium": 6, "large": 12, "huge": 24}
+LEADS_SCALES = frozenset({"large", "huge"})
 DEFAULT_EFFECT_SECONDS = 18
 
 
@@ -124,11 +129,17 @@ class EffectIntentV2(ClosedModel):
     capacity_ml: int = Field(default=300, ge=1, le=2000, strict=True)
     amount: Count = Field(default=300, ge=1, le=1_000_000)
     quantity: int = Field(default=1, ge=1, le=10, strict=True)
+    scale: Scale = "tiny"
+    sturdiness: Sturdiness = "ordinary"
+    leads_to: str = Field(default="", max_length=128)
+    leads_view: str = Field(default="", max_length=300)
 
     @model_validator(mode="after")
     def lifetime_supported(self):
         if self.lifetime == "permanent" and self.kind != "create_object":
             raise ValueError("Only a created ordinary object may be a permanent result")
+        if self.leads_to and self.scale not in LEADS_SCALES:
+            raise ValueError("Only a large or huge creation can lead to another place")
         return self
 
 
@@ -238,17 +249,31 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         "required_by",
     }
     meaningful = {
-        "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+        "create_object": {
+            "template",
+            "material",
+            "capacity_ml",
+            "lifetime",
+            "quantity",
+            "scale",
+            "sturdiness",
+            "leads_to",
+        },
         "change_form": {"form", "quantity"},
         "observe": {"aspect"},
         "fill": {"amount"},
         "pour": {"amount"},
         "consume": {"amount"},
     }
+    defaults = {"scale": "tiny", "sturdiness": "ordinary", "leads_to": ""}
     data["effects"] = [
-        effect.model_dump(
-            mode="json", include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}), exclude=bindings
-        )
+        {
+            k: v
+            for k, v in effect.model_dump(
+                mode="json", include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}), exclude=bindings
+            ).items()
+            if defaults.get(k, object()) != v
+        }
         for effect in definition.effects
     ]
     if not any(e.kind in TIMED_KINDS or e.lifetime == "timed" for e in definition.effects):
@@ -256,13 +281,20 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
     return "ability2-" + hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:24]
 
 
+def effect_price(effect: EffectIntentV2, definition: AbilityDefinitionV2, level: int) -> int:
+    """Energy for one start of this effect, before duration units: a creation costs by its size and strength,
+    anything else by the spell's intensity."""
+    if effect.kind == "create_object":
+        return SCALE_PRICE[effect.scale] * (2 if effect.sturdiness == "sturdy" else 1) * level
+    return {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
+
+
 def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
     if type(level) is not int or level < 1:
         raise ValueError("Level must be a positive exact integer")
     if definition.source != "supernatural":
         return 0
-    base = {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
-    units = 0
+    total = 0
     has_form = any(effect.kind == "change_form" for effect in definition.effects)
     for effect in definition.effects:
         if effect.kind == "hold_breath":
@@ -271,8 +303,10 @@ def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
             continue  # Camouflage of a changed form belongs to that form and is not paid twice.
         timed = effect.kind in TIMED_KINDS or effect.lifetime == "timed"
         duration = (definition.duration_seconds + 5) // 6 if timed else 1
-        units += duration * effect.quantity
-    return base * max(1, units) * definition.target_count
+        total += effect_price(effect, definition, level) * duration * effect.quantity
+    if not total:  # only auxiliary effects: the spell still costs one start at its intensity
+        total = {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
+    return total * definition.target_count
 
 
 # Fields of an effect that mean something for each kind; the model fills the rest with plausible filler.
@@ -280,7 +314,17 @@ _BINDINGS = frozenset(
     {"kind", "required_by", "target_id", "source_id", "object_id", "recipient_id", "effect_id", "label", "appearance"}
 )
 _RELEVANT = {
-    "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+    "create_object": {
+        "template",
+        "material",
+        "capacity_ml",
+        "lifetime",
+        "quantity",
+        "scale",
+        "sturdiness",
+        "leads_to",
+        "leads_view",
+    },
     "change_form": {"form", "lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
     "fill": {"amount"},
@@ -331,6 +375,8 @@ def clean_model_intent(raw):
         known = set(EffectIntentV2.model_fields)
         if kind == "create_object":
             keep = keep - {"object_id"}  # the new object is this effect's result, not something to point at
+            if effect.get("scale") not in LEADS_SCALES:
+                keep = keep - {"leads_to", "leads_view"}  # only a large creation can lead somewhere
         mended = {k: v for k, v in effect.items() if not _empty(v) and (k in keep or k not in known)}
         if str(mended.get("amount", "1")).strip() in {"0", "-0"}:
             mended.pop("amount")  # "nothing" is how a model says it was not given an amount
