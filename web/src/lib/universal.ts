@@ -9,6 +9,13 @@ export const abilityNames: Record<AbilityKey, string> = {
   str: 'Сила', dex: 'Ловкость', con: 'Телосложение', int: 'Интеллект', wis: 'Мудрость', cha: 'Харизма',
 };
 export const abilityKeys = Object.keys(abilityNames) as AbilityKey[];
+export const energyThemes: Record<string, { color: string; label: string; short: string }> = {
+  str: { color: 'var(--tf-ember)', label: 'Физический ресурс', short: 'СИЛ' },
+  dex: { color: 'var(--tf-patina)', label: 'Импульс и реакция', short: 'ЛОВ' },
+  int: { color: 'color-mix(in srgb, #38bdf8 70%, var(--tf-accent))', label: 'Концентрация', short: 'ИНТ' },
+  wis: { color: 'color-mix(in srgb, #a855f7 70%, var(--tf-patina))', label: 'Интуиция и дух', short: 'МДР' },
+  cha: { color: 'var(--tf-accent)', label: 'Сила воли и влияние', short: 'ХАР' },
+};
 export const emptyDescription: HeroDescription = { name: '', identity: '', appearance: '', personality: '', capabilities: '' };
 export interface HeroDialogue {
   id: string; revision: number; status: string; description: HeroDescription;

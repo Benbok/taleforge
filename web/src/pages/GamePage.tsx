@@ -5,6 +5,7 @@ import ConnectionBanner from "../components/ConnectionBanner";
 import Header from "../components/Header";
 import ChatFeed from "../game/ChatFeed";
 import UniversalAdventure from "../game/UniversalAdventure";
+import type { ExplorationState } from "../game/ExplorationPanel";
 import LocationHeader from "../game/LocationHeader";
 import { sceneLighting } from "../game/scenePresentation";
 import { loadReadingMode, saveReadingMode } from "../game/scenePreferences";
@@ -66,6 +67,7 @@ export default function GamePage() {
   useGameSocket(id);
   useTurnAlerts();
   const snapshot = useGame((s) => s.snapshot);
+  const exploration = useGame((s) => (s.sheet as unknown as { exploration?: ExplorationState } | null)?.exploration);
   const scene = useGame((s) => s.scene);
   const setTheme = useSession((s) => s.setTheme);
   const [tab, setTab] = useState<Tab>("chat");
@@ -107,7 +109,7 @@ export default function GamePage() {
   const lighting = sceneLighting(scene?.presentation, mode, scene?.mode === "combat");
   const manage = !!card?.is_owner || master;
 
-  if (snapshot?.campaign.ruleset_id === "universal") return <><UniversalAdventure campaignId={id} /><EntityPopover /></>;
+  if (snapshot?.campaign.ruleset_id === "universal") return <><UniversalAdventure campaignId={id} exploration={exploration} canManage={manage} /><EntityPopover /></>;
 
   const side = (
     <>

@@ -433,10 +433,39 @@ export default function HeroWindow() {
 
   if (!open || !sheet) return null;
   const universal = universalCard(sheet);
-  if (universal) return <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4'>
-    <div role='dialog' aria-label='Лист героя' className='w-full max-w-3xl max-h-[90dvh] overflow-y-auto rounded-xl bg-surface'>
-      <button className='btn m-3' onClick={hide}>Закрыть</button><UniversalHeroCard card={universal} />
-    </div></div>;
+  if (universal) return (
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-xs md:p-6'
+      role='dialog'
+      aria-modal='true'
+      aria-label='Лист героя'
+      onMouseDown={e => e.target === e.currentTarget && hide()}
+    >
+      <div className='flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl'>
+        <header className='flex items-center justify-between border-b border-line px-5 py-3.5 bg-surface-2/40'>
+          <div className='min-w-0'>
+            <h2 className='truncate font-heading text-lg font-bold text-ink'>
+              {universal.name} · Полная карточка героя
+            </h2>
+            <p className='text-xs text-muted'>
+              Уровень {universal.level} · Универсальная система v1
+            </p>
+          </div>
+          <button
+            type='button'
+            className='flex h-8 w-8 items-center justify-center rounded-lg border border-line text-lg leading-none text-muted hover:border-accent hover:text-ink transition-colors'
+            onClick={hide}
+            aria-label='Закрыть'
+          >
+            ×
+          </button>
+        </header>
+        <div className='min-h-0 flex-1 overflow-y-auto p-4 md:p-6'>
+          <UniversalHeroCard card={universal} />
+        </div>
+      </div>
+    </div>
+  );
   const ready = !!sheet.derived;
   return (
     <div

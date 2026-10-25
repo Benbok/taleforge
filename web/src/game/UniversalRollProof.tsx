@@ -6,10 +6,10 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
   const failed = ['fail', 'crit_fail', 'miss', 'fumble'].includes(card.outcome);
   const label = card.outcome === 'crit_success' ? 'Критический успех' : card.outcome === 'crit_fail' ? 'Критический провал' : failed ? 'Провал' : 'Успех';
   return (
-    <section className='tf-pop mx-auto w-full max-w-xl rounded-xl border border-line bg-surface p-4 shadow-sm' aria-label={card.title}>
+    <section className='tf-pop tf-roll-proof mx-auto w-full max-w-xl rounded-xl border border-line bg-surface p-4 shadow-sm' aria-label={card.title}>
       <div className='flex flex-wrap items-center justify-between gap-2'>
         <div>
-          <p className='text-[10px] font-semibold uppercase tracking-wider text-patina'>Бросок сервера · {card.who ?? 'Герой'}</p>
+          <p className='text-[10px] font-semibold uppercase tracking-wider text-patina'>{proof.automatic ? 'Результат сервера' : 'Бросок сервера'} · {card.who ?? 'Герой'}</p>
           <h3 className='font-heading font-semibold text-ink'>{card.title}</h3>
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${failed ? 'border-bad/40 text-bad' : 'border-ok/40 text-ok'}`}>
@@ -48,6 +48,7 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
       })}
       {proof.legacy && <p className='mt-2 text-xs text-muted'>Ранее сохранённые броски: {proof.legacy_draws?.join(', ')}{proof.legacy_total ? ` · итог ${proof.legacy_total}` : ''}. Подробный разбор в старой квитанции отсутствует.</p>}
       <p className='mt-3 text-xs text-muted'>Энергия: {proof.cost === '0' ? 'не потрачена' : `−${proof.cost}`}{proof.damage !== '0' ? ` · Урон: ${proof.damage}` : ''}</p>
+      {proof.source_kind === 'supernatural' && <p className='mt-1 text-xs text-patina'>Магия · {proof.automatic ? 'Без проверки кубиком' : 'С проверкой'}{proof.ability_ref ? ' · Способность изучена' : ''}</p>}
       {proof.description && <div className='mt-3 rounded-lg border border-patina/30 bg-patina/5 p-3 text-sm leading-relaxed'>
         <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-patina'>Результат действия</p>
         <RichText text={proof.description} />

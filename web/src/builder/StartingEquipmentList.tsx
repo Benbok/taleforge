@@ -1,10 +1,82 @@
 export default function StartingEquipmentList({ items }: { items: Record<string, unknown>[] }) {
-  return <ul className='grid gap-3 sm:grid-cols-2' aria-label='Стартовое снаряжение'>{items.map((item, index) =>
-    <li key={index} className='rounded-xl border border-line bg-surface-2 p-3'>
-      <p className='text-xs font-semibold uppercase tracking-wider text-patina'>{item.kind === 'weapon' ? 'Оружие' : item.kind === 'armor' ? 'Броня' : 'Снаряжение'} · обычное</p>
-      <p className='mt-1 text-sm font-semibold text-ink'>{String(item.name ?? '')}</p>
-      <p className='mt-2 text-xs leading-relaxed text-muted'>{String(item.description ?? '')}</p>
-      <p className='mt-2 text-xs text-accent'>{item.kind === 'weapon' ? `Базовый урон ${String(item.damage_dice ?? '1d6')} · ${item.attack_ability === 'dex' ? 'Ловкость' : 'Сила'}` : `Защита +${String(item.defense_bonus ?? '1')}`}</p>
-      {!!item.reason && <p className='mt-2 border-t border-line-soft pt-2 text-xs leading-relaxed text-muted'>{String(item.reason)}</p>}
-    </li>)}</ul>;
+  if (!items || !items.length) return null;
+
+  return (
+    <ul className='flex flex-col gap-2' aria-label='Стартовое снаряжение'>
+      {items.map((item, index) => {
+        const kind = String(item.kind ?? 'gear');
+        const kindLabel = kind === 'weapon' ? 'Оружие' : kind === 'armor' ? 'Броня' : 'Снаряжение';
+        const kindIcon = kind === 'weapon' ? '⚔' : kind === 'armor' ? '🛡' : '🎒';
+        const statBadge = kind === 'weapon'
+          ? `${String(item.damage_dice ?? '1d6')} · ${item.attack_ability === 'dex' ? 'Ловкость' : 'Сила'}`
+          : kind === 'armor'
+            ? `+${String(item.defense_bonus ?? '1')} КД`
+            : null;
+        const hasDetails = Boolean(item.description || item.reason || kind === 'weapon' || kind === 'armor');
+
+        return (
+          <li key={index}>
+            <details className='group rounded-xl border border-line bg-surface-2/40 transition-colors hover:border-line-soft overflow-hidden'>
+              <summary className='flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 select-none hover:bg-surface-2/80 transition-colors'>
+                <div className='flex items-center gap-2.5 min-w-0'>
+                  <span
+                    className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-xs'
+                    aria-hidden='true'
+                  >
+                    {kindIcon}
+                  </span>
+                  <div className='min-w-0 flex items-baseline gap-2 flex-wrap'>
+                    <span className='font-medium text-sm text-ink truncate'>
+                      {String(item.name ?? '')}
+                    </span>
+                    <span className='text-[11px] text-muted'>
+                      {kindLabel}
+                    </span>
+                  </div>
+                </div>
+
+                <div className='flex items-center gap-2 shrink-0'>
+                  {statBadge && (
+                    <span className='rounded bg-surface border border-line-soft px-2 py-0.5 font-mono text-[11px] font-semibold text-accent'>
+                      {statBadge}
+                    </span>
+                  )}
+                  {hasDetails && (
+                    <span className='text-xs text-muted transition-transform group-open:rotate-180'>
+                      ▼
+                    </span>
+                  )}
+                </div>
+              </summary>
+
+              {hasDetails && (
+                <div className='border-t border-line-soft bg-surface/60 px-3.5 py-2.5 space-y-2 text-xs'>
+                  {item.description ? (
+                    <p className='leading-relaxed text-ink-2'>{String(item.description)}</p>
+                  ) : null}
+
+                  {kind === 'weapon' ? (
+                    <p className='text-accent font-medium'>
+                      Базовый урон {String(item.damage_dice ?? '1d6')} · {item.attack_ability === 'dex' ? 'Ловкость' : 'Сила'}
+                    </p>
+                  ) : kind === 'armor' ? (
+                    <p className='text-accent font-medium'>
+                      Защита +{String(item.defense_bonus ?? '1')}
+                    </p>
+                  ) : null}
+
+                  {item.reason ? (
+                    <div className='border-t border-line-soft pt-1.5 text-muted leading-relaxed'>
+                      <span className='font-semibold text-patina'>Обоснование: </span>
+                      {String(item.reason)}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </details>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }

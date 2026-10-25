@@ -15412,6 +15412,19 @@
       "title": "Equipment",
       "type": "array"
      },
+     "exploration": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Exploration"
+     },
      "hp": {
       "pattern": "^(0|[1-9][0-9]*)$",
       "title": "Hp",

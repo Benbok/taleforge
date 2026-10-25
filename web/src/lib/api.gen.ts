@@ -8021,6 +8021,13 @@ export interface components {
             equipment?: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Exploration
+             * @default null
+             */
+            exploration?: {
+                [key: string]: unknown;
+            } | null;
             /** Hp */
             hp: string;
             /** Id */

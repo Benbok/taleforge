@@ -28,6 +28,8 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
   const navigate = useNavigate();
   const opts = useQuery({ queryKey: ["campaign-options"], queryFn: () => api<CampaignOptions>("/api/campaign-options") });
   const st = room.settings;
+  // Универсальная игра пока не читает эти настройки: бой, опыт и случайные встречи — следующие этапы.
+  const universal = room.ruleset_id === "universal";
   const [f, setF] = useState({
     name: room.name,
     public_intro: room.public_intro,
@@ -94,6 +96,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           />
         </Field>
 
+        {!universal && (
         <Field label="Сложность вызовов">
           <Segmented
             label="Сложность"
@@ -102,7 +105,9 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             onChange={(difficulty) => set({ difficulty })}
           />
         </Field>
+        )}
 
+        {!universal && (
         <Field label="Рост уровней" hint={LEVELING_HINT[f.leveling]}>
           <Segmented
             label="Рост уровней"
@@ -111,7 +116,9 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             onChange={(v) => set({ leveling: v as "xp" | "milestone" })}
           />
         </Field>
+        )}
 
+        {!universal && (
         <Field label="Случайности в пути" hint={RANDOM_HINT[f.random_events]}>
           <Segmented
             label="Случайности в пути"
@@ -120,8 +127,10 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             onChange={(v) => set({ random_events: v as "auto" | "manual" })}
           />
         </Field>
+        )}
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={`grid gap-4 ${universal ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+          {!universal && (
           <Field label="Время на ход в бою (сек)" hint="От 30 до 300 секунд.">
             <input
               className="field font-mono text-sm"
@@ -132,6 +141,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
               onChange={(e) => set({ turn_timeout_sec: Number(e.target.value) })}
             />
           </Field>
+          )}
 
           <Field label="Окно сбора реплик (сек)" hint="Пауза перед ответом мастера, 0 — мгновенно.">
             <input
@@ -155,6 +165,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           </Field>
         </div>
 
+        {!universal && (
         <Field label="Запретные темы" hint="Укажите через запятую: мастер гарантированно не коснётся этих тем.">
           <input
             className="field text-sm"
@@ -162,6 +173,7 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
             onChange={(e) => set({ excluded: e.target.value })}
           />
         </Field>
+        )}
       </section>
 
       {/* Sound */}

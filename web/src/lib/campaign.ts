@@ -27,6 +27,7 @@ export interface Room {
   status: string;
   owner_id: string;
   is_owner: boolean;
+  ruleset_id?: string;
   my_seat_id: string | null;
   my_role: "master" | "player" | null;
   pack_id: string | null;

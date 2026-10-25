@@ -330,3 +330,139 @@
   }
 }
 
+
+/* ========================================================
+   Настройка размера шрифта и плотности чата (A- / A / A+)
+   ======================================================== */
+
+.tf-narration-card {
+  background: color-mix(in srgb, var(--tf-surface-2, #181b1f) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-line, #2d3139) 70%, transparent);
+  border-left: 3px solid var(--tf-accent, #d97706);
+}
+.tf-narration-party {
+  border-left-color: var(--tf-patina, #2dd4bf) !important;
+}
+
+/* --- Компактный режим (A−): высокая информационная плотность --- */
+.tf-chat-font-small .tf-story-feed {
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+  padding-left: 0.85rem !important;
+  padding-right: 0.85rem !important;
+  gap: 0.55rem !important;
+}
+.tf-chat-font-small .tf-story-feed > div:last-child {
+  height: 0.5rem !important;
+}
+.tf-chat-font-small .tf-narration-card {
+  padding: 0.55rem 0.75rem !important;
+  border-radius: 9px !important;
+}
+.tf-chat-font-small .tf-narration-card .tf-narration-header {
+  margin-bottom: 0.25rem !important;
+  padding-bottom: 0.2rem !important;
+}
+.tf-chat-font-small .tf-narration-card .tf-narration-header span {
+  font-size: 0.7rem !important;
+}
+.tf-chat-font-small .tf-narration-text {
+  font-size: 15px !important;
+  line-height: 1.48 !important;
+}
+.tf-chat-font-small .tf-narration-text p {
+  margin-bottom: 0.4rem !important;
+}
+.tf-chat-font-small .tf-message-body {
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+}
+.tf-chat-font-small .tf-message-bubble {
+  padding: 0.45rem 0.65rem !important;
+  border-radius: 9px !important;
+}
+.tf-chat-font-small .tf-message-avatar {
+  transform: scale(0.85);
+  transform-origin: top left;
+}
+.tf-chat-font-small .tf-message-header {
+  margin-bottom: 0.2rem !important;
+  gap: 0.35rem !important;
+}
+.tf-chat-font-small .tf-message-header span {
+  font-size: 0.75rem !important;
+}
+.tf-chat-font-small .tf-whisper-box {
+  padding: 0.45rem 0.65rem !important;
+}
+.tf-chat-font-small .tf-roll-proof {
+  padding: 0.6rem 0.75rem !important;
+}
+.tf-chat-font-small .tf-chronicle-divider {
+  margin: 0.35rem 0 !important;
+}
+.tf-chat-font-small .tf-composer {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  gap: 0.25rem !important;
+}
+.tf-chat-font-small .tf-composer textarea {
+  min-height: 2.2rem !important;
+  padding: 0.35rem 0.55rem !important;
+  font-size: 0.825rem !important;
+}
+.tf-chat-font-small .tf-quick-btn {
+  height: 2.2rem !important;
+  width: 2.2rem !important;
+}
+.tf-chat-font-small .tf-composer-hints {
+  display: none !important;
+}
+.tf-chat-font-small .tf-composer-effects {
+  padding: 0.2rem 0.5rem !important;
+  gap: 0.35rem !important;
+  font-size: 0.75rem !important;
+}
+.tf-chat-font-small .tf-composer-effects div {
+  padding-top: 0.1rem !important;
+  padding-bottom: 0.1rem !important;
+}
+
+/* --- Обычный режим (A): сбалансированный комфортный вид --- */
+.tf-chat-font-medium .tf-story-feed {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+  gap: 1rem !important;
+}
+.tf-chat-font-medium .tf-story-feed > div:last-child {
+  height: 1.25rem !important;
+}
+.tf-chat-font-medium .tf-narration-text {
+  font-size: 18px !important;
+  line-height: 1.58 !important;
+}
+.tf-chat-font-medium .tf-message-body {
+  font-size: 15px !important;
+  line-height: 1.52 !important;
+}
+.tf-chat-font-medium .tf-message-bubble {
+  padding: 0.65rem 0.85rem !important;
+}
+.tf-chat-font-medium .tf-chronicle-divider {
+  margin: 0.5rem 0 !important;
+}
+
+/* --- Крупный режим (A+): просторный кинематографичный вид --- */
+.tf-chat-font-large .tf-story-feed {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+  gap: 1.5rem !important;
+}
+.tf-chat-font-large .tf-narration-text {
+  font-size: 22px !important;
+  line-height: 1.65 !important;
+}
+.tf-chat-font-large .tf-message-body {
+  font-size: 16.5px !important;
+  line-height: 1.6 !important;
+}

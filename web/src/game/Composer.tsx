@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { api } from "../lib/api";
 import type { ChatMessage, PartyPart } from "../lib/types";
+import type { ExplorationState } from "./ExplorationPanel";
 import { standInFor, useGame } from "../stores/game";
 import { useDraft } from "./draft";
 import { clock, MAX_RECORD_SEC, uploadVoice, useRecorder } from "./voice";
 import { STAGES } from "./masterStatus";
-import { label } from "../lib/theme";
-import { useSession } from "../stores/session";
 
 let counter = 0;
 const clientId = () => `c${Date.now().toString(36)}${(counter++).toString(36)}`;
@@ -59,7 +58,6 @@ export default function Composer() {
   const { socket, connection, turn, rejected, notice, snapshot, restored, clearRestored, addPending, clearRejected } = game;
   const { text, whisper, quick, setText, setWhisper } = useDraft();
   const [sendError, setSendError] = useState<string | null>(null);
-  const theme = useSession((state) => state.theme);
   const responding = !!game.masterStage && !!STAGES[game.masterStage];
   const [responseStarted, setResponseStarted] = useState<number | null>(null);
   useEffect(() => { setResponseStarted(responding ? Date.now() : null); }, [responding]);
@@ -103,6 +101,41 @@ export default function Composer() {
     staleTime: 5 * 60_000,
   }).data?.enabled;
   const [uploading, setUploading] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const quickMenuContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showQuickMenu) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (quickMenuContainerRef.current && !quickMenuContainerRef.current.contains(e.target as Node)) {
+        setShowQuickMenu(false);
+      }
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setShowQuickMenu(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showQuickMenu]);
+
+  // Активные эффекты, превращения и временные состояния героя
+  const sheet = game.sheet as unknown as {
+    exploration?: ExplorationState;
+    derived?: {
+      effects?: { id: string; template: string; name: string; stacks: number; reason?: string | null }[];
+    };
+  } | null;
+  const exploration = sheet?.exploration;
+  const isBush = exploration?.constraints?.form === "plant_bush";
+  const expEffects = exploration?.effects ?? [];
+  const derivedEffects = (sheet?.derived?.effects ?? []).filter(
+    (e) => !expEffects.some((x) => x.id === e.id || x.label === e.name)
+  );
+  const hasExpEffects = expEffects.length > 0;
   const rec = useRecorder((blob, seconds) => void sendVoice(blob, seconds));
 
   // отменённая реплика возвращается в поле, чтобы её поправить
@@ -306,44 +339,39 @@ export default function Composer() {
         </label>
       )}
 
-      {(myTurn || responding || myPending || (turn && !isMaster)) && (
+      {/* Статус хода в бою или ожидание других игроков отряда */}
+      {(myTurn || (myPending && !responding) || (turn && !isMaster)) && (
         <div
           className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border px-2.5 py-1 text-xs transition-all ${
             myTurn
               ? "border-accent/40 bg-accent/10 text-accent"
-              : responding
-                ? "border-accent/50 bg-accent/[0.07] text-ink shadow-xs ring-1 ring-accent/20"
-                : "border-line bg-raised text-ink-2"
+              : "border-line bg-raised text-ink-2"
           }`}
           role="status"
         >
           <span
             aria-hidden="true"
-            className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : responding ? "bg-accent animate-pulse" : "bg-muted"}`}
+            className={`h-2 w-2 shrink-0 rounded-full ${myTurn ? "bg-accent" : "bg-muted"}`}
           />
           <span className="font-semibold">
             {myTurn
               ? "Ваш ход"
-              : responding
-                ? "Мастер отвечает"
-                : myPending
-                  ? "Ожидаем остальных игроков"
-                  : `Сейчас ход: ${turn?.name}`}
+              : myPending
+                ? "Ожидаем остальных игроков"
+                : `Сейчас ход: ${turn?.name}`}
           </span>
           {turn && <span className="text-muted">· раунд {turn.round}</span>}
           {myTurn && left !== null && <span className={left <= 15 ? "text-warn" : "text-muted"}>· осталось {left} с</span>}
-          {responding && !myTurn && (
-            <span className="text-accent flex items-center gap-1 font-mono text-xs">
-              · {label(theme, `master_status.${game.masterStage}`, STAGES[game.masterStage!])}
-            </span>
-          )}
-          {myPending && !myTurn && !responding && (
+          {myPending && !myTurn && (
             <span className="text-muted">· мастер ответит, когда напишут все{wait ? ` или примерно через ${wait} с` : ""}</span>
           )}
-          {slowResponse && !myTurn && (
-            <span className="w-full text-xs text-muted">Ответ занимает больше времени. Повторно отправлять реплику не нужно.</span>
-          )}
         </div>
+      )}
+
+      {slowResponse && (
+        <p className="text-xs text-muted" role="status">
+          Ответ занимает больше времени. Повторно отправлять реплику не нужно.
+        </p>
       )}
 
       {rejected && (
@@ -363,37 +391,122 @@ export default function Composer() {
         </p>
       )}
 
-      {/* Быстрые действия / подсказки в один клик */}
-      {quickPrompts.length > 0 && !recording && mainOpen && (
+      {/* Активные эффекты и состояния героя над строкой ввода */}
+      {(hasExpEffects || isBush || derivedEffects.length > 0) && (
         <div
-          className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Быстрые действия"
+          className="tf-composer-effects flex flex-wrap items-center gap-1.5 rounded-lg border border-line-soft bg-surface-2/40 px-2.5 py-1.5 text-xs"
+          aria-label="Активные эффекты героя"
         >
-          <span className="mr-0.5 shrink-0 font-mono text-[9px] uppercase tracking-wider text-muted">
-            Быстро:
-          </span>
-          {quickPrompts.map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                useDraft.getState().insert(p.text, "action" in p ? p.action : undefined);
-                document.getElementById("tf-composer")?.focus();
-              }}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line/70 bg-raised/60 px-2 py-0.5 text-[10px] font-medium text-ink shadow-2xs transition-all hover:border-accent/70 hover:bg-raised active:scale-95"
-              title={p.text}
+          <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-patina mr-1 shrink-0">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" aria-hidden="true" />
+            <span>Эффекты:</span>
+          </div>
+
+          {isBush && (
+            <div
+              className="inline-flex items-center gap-1.5 rounded-md border border-accent/50 bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent shadow-xs"
+              title="Вы в форме куста: нельзя двигаться, говорить и действовать руками. Чтобы снять досрочно, напишите мастеру."
             >
-              <span aria-hidden="true" className="text-[11px]">
-                {p.icon}
-              </span>
-              <span>{p.label}</span>
-            </button>
+              <span aria-hidden="true">🌿</span>
+              <span>Форма куста</span>
+              <span className="text-[10px] font-normal text-ink-2 hidden sm:inline">· без движений и речи</span>
+            </div>
+          )}
+
+          {expEffects.map((ef) => (
+            <div
+              key={ef.id}
+              className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-0.5 text-xs text-ink shadow-2xs hover:border-accent/60 transition-colors"
+              title={
+                ef.kind === "camouflage"
+                  ? "Помогает скрываться при наличии укрытия. Свидетели помнят героя."
+                  : ef.kind === "illumination"
+                  ? "Освещает место, помогая рассмотреть доступные детали."
+                  : ef.label
+              }
+            >
+              <span className="text-accent text-[11px]" aria-hidden="true">✦</span>
+              <span className="font-medium">{ef.label}</span>
+              {ef.remaining_seconds && (
+                <span className="inline-flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.2 font-mono text-[10px] font-bold text-accent whitespace-nowrap">
+                  <span className="text-[9px]">⏱</span>
+                  <span>{ef.remaining_seconds} с</span>
+                </span>
+              )}
+            </div>
+          ))}
+
+          {derivedEffects.map((ef) => (
+            <div
+              key={ef.id}
+              className="inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 text-xs text-ink shadow-2xs"
+              title={ef.reason || ef.name}
+            >
+              <span className="text-patina text-[11px]" aria-hidden="true">✦</span>
+              <span className="font-medium">{ef.name}</span>
+              {ef.stacks > 1 && (
+                <span className="rounded bg-patina/10 px-1 font-mono text-[10px] font-bold text-patina">
+                  ×{ef.stacks}
+                </span>
+              )}
+            </div>
           ))}
         </div>
       )}
 
-      {/* Поле ввода и кнопка отправки с D20 */}
+      {/* Поле ввода с кнопкой быстрых действий ⚡ и отправкой */}
       <div className="flex items-end gap-2">
+        {quickPrompts.length > 0 && !recording && mainOpen && (
+          <div ref={quickMenuContainerRef} className="relative shrink-0">
+            <button
+              type="button"
+              className={`tf-quick-btn btn h-[2.5rem] w-[2.5rem] rounded-xl p-0 flex items-center justify-center transition-all ${
+                showQuickMenu
+                  ? "border-accent bg-accent/20 text-accent ring-1 ring-accent/30 shadow-xs"
+                  : "border-line/80 bg-raised/50 text-muted hover:border-accent/60 hover:text-ink"
+              }`}
+              onClick={() => setShowQuickMenu((v) => !v)}
+              title="Быстрые действия (осмотреться, затаиться...)"
+              aria-label="Быстрые действия"
+              aria-haspopup="menu"
+              aria-expanded={showQuickMenu}
+            >
+              <span aria-hidden="true" className="text-sm">⚡</span>
+            </button>
+            {showQuickMenu && (
+              <div
+                className="tf-pop absolute bottom-full left-0 mb-2 z-30 min-w-[13.5rem] max-w-[18rem] rounded-xl border border-line bg-surface p-1.5 shadow-xl backdrop-blur-md"
+                role="menu"
+                aria-label="Быстрые действия"
+              >
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-patina border-b border-line-soft/50 mb-1 flex items-center justify-between">
+                  <span>Быстрые действия</span>
+                  <span className="text-[9px] text-muted font-normal lowercase">Esc</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {quickPrompts.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        useDraft.getState().insert(p.text, "action" in p ? p.action : undefined);
+                        setShowQuickMenu(false);
+                        document.getElementById("tf-composer")?.focus();
+                      }}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-ink hover:bg-raised/90 hover:text-accent transition-colors"
+                      title={p.text}
+                    >
+                      <span aria-hidden="true" className="text-sm shrink-0">{p.icon}</span>
+                      <span className="font-medium truncate">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <textarea
           id="tf-composer"
           className={`field min-h-[2.5rem] min-w-0 flex-1 resize-none rounded-xl border p-2 font-ui text-base transition-all sm:text-sm ${
@@ -483,7 +596,7 @@ export default function Composer() {
             Пропустить ход
           </button>
         )}
-        <div className="ml-auto hidden items-center gap-2 font-mono text-[11px] sm:flex">
+        <div className="tf-composer-hints ml-auto hidden items-center gap-2 font-mono text-[11px] sm:flex">
           <span>
             <kbd className="rounded border border-line bg-raised px-1 py-0.5 text-[10px]">Enter</kbd> отправить
           </span>

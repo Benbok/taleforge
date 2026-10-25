@@ -30,11 +30,11 @@ it("кнопка отправки сохраняет ID объекта из ка
 });
 
 describe("статус ответа мастера", () => {
-  it("заменяет ожидание игроков при начале ответа", () => {
+  it("скрывает ожидание игроков при начале ответа и не дублирует статус мастера над полем", () => {
     open();
     expect(screen.getByText("Ожидаем остальных игроков")).toBeDefined();
     act(() => useGame.setState({ masterStage: "describing" }));
-    expect(screen.getByText("Мастер отвечает")).toBeDefined();
+    expect(screen.queryByText("Мастер отвечает")).toBeNull();
     expect(screen.queryByText("Ожидаем остальных игроков")).toBeNull();
   });
   it("показывает пояснение после 30 секунд и убирает его после ответа", () => {
@@ -47,4 +47,46 @@ describe("статус ответа мастера", () => {
     act(() => useGame.setState({ masterStage: null, myPending: null }));
     expect(screen.queryByText(/Ответ занимает больше времени/)).toBeNull();
   });
+});
+
+it("показывает активные эффекты, форму куста и оставшееся время над полем ввода", () => {
+  useGame.setState({
+    sheet: {
+      name: "Ива",
+      exploration: {
+        game_seconds: "24",
+        effects: [
+          { id: "camouflage", kind: "camouflage", label: "Маскировка в тени руин", remaining_seconds: "18" },
+          { id: "light", kind: "illumination", label: "Светлячки", remaining_seconds: "45" },
+        ],
+        constraints: { form: "plant_bush", can_speak: false },
+      },
+    } as never,
+    myPending: null,
+  });
+  open();
+  expect(screen.getByText("Маскировка в тени руин")).toBeDefined();
+  expect(screen.getByText(/18 с/)).toBeDefined();
+  expect(screen.getByText("Светлячки")).toBeDefined();
+  expect(screen.getByText(/45 с/)).toBeDefined();
+  expect(screen.getByText("Форма куста")).toBeDefined();
+});
+
+it("открывает меню быстрых действий по кнопке ⚡ и вставляет выбранное действие", () => {
+  open();
+  const boltBtn = screen.getByRole("button", { name: "Быстрые действия" });
+  expect(boltBtn).toBeDefined();
+  expect(screen.queryByRole("menu")).toBeNull();
+
+  // Открываем меню
+  fireEvent.click(boltBtn);
+  expect(screen.getByRole("menu")).toBeDefined();
+
+  // Выбираем действие "Осмотреться"
+  const inspectBtn = screen.getByRole("menuitem", { name: /Осмотреться/ });
+  fireEvent.click(inspectBtn);
+
+  // Меню закрылось, текст подставился в draft
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(useDraft.getState().text).toContain("Внимательно осматриваюсь вокруг");
 });

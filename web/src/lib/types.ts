@@ -169,6 +169,11 @@ export interface RollCard {
 }
 
 export interface UniversalRollEvidence {
+  source_kind?: 'mundane' | 'supernatural' | 'item';
+  automatic?: boolean;
+  changes?: { kind: string; subject_id: string; description: string; data?: Record<string, unknown> }[];
+  ability_ref?: string | null;
+  game_seconds?: string;
   description?: string | null;
   receipt_id: string;
   source_id: string;

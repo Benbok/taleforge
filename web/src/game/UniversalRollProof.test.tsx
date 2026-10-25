@@ -5,6 +5,17 @@ import type { RollCard } from '../lib/types';
 
 afterEach(cleanup);
 
+it('shows a paid automatic spell and learning without inventing a die', () => {
+  const card = { tool: 'universal_action', title: 'Искры', outcome: 'success', universal_proof: {
+    receipt_id: 'auto', source_id: 'm', revision: '1', cost: '1', damage: '0', draws: [], checks: [],
+    source_kind: 'supernatural', automatic: true, ability_ref: 'sparks',
+  } } as RollCard;
+  render(<RollCardView card={card} />);
+  expect(screen.getByText(/Результат сервера/)).toBeTruthy();
+  expect(screen.getByText(/Способность изучена/)).toBeTruthy();
+  expect(screen.queryByText('d20')).toBeNull();
+});
+
 it.each([['crit_success', 20, true, false, 'Критический успех'], ['crit_fail', 1, false, true, 'Критический провал']] as const)(
   'displays %s for the actual natural die', (outcome, natural, critical, critical_failure, label) => {
     const card = { tool: 'universal_action', title: 'Проверка: Мудрость', outcome, universal_proof: {

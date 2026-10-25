@@ -55,11 +55,30 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "roll" && m.data) return <RollCardView card={m.data} />;
   if (m.kind === "narration" && (!m.whisper || m.scope === 'party')) {
     return (
-      <div className={`tf-pop w-full min-w-0 break-words whitespace-pre-line font-narration text-[20px] leading-[1.65] sm:text-[22px] ${m.scope === "party" ? "tf-narration-party" : ""}`}>
-        {(m.data?.voice || m.data?.voice_parts) && (
-          <VoiceClip clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])} expected={m.data.voice_parts} autoPlay={m.fresh} />
-        )}
-        <RichText text={m.content} />
+      <div
+        className={`tf-pop tf-narration-card w-full min-w-0 max-w-[84ch] rounded-xl border border-line-soft/80 border-l-[3px] border-l-accent/90 bg-surface-2/45 p-3.5 sm:p-4.5 shadow-2xs transition-colors ${
+          m.scope === "party" ? "tf-narration-party" : ""
+        }`}
+      >
+        <div className="tf-narration-header flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-line-soft/40">
+          <div className="flex items-center gap-1.5 font-heading text-xs font-semibold uppercase tracking-wider text-accent">
+            <span aria-hidden="true" className="text-xs">🖋️</span>
+            <span>Мастер</span>
+            {m.scope === "party" && (
+              <span className="font-mono text-[10px] text-patina lowercase">· для группы</span>
+            )}
+          </div>
+          {(m.data?.voice || m.data?.voice_parts) && (
+            <VoiceClip
+              clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])}
+              expected={m.data.voice_parts}
+              autoPlay={m.fresh}
+            />
+          )}
+        </div>
+        <div className="tf-narration-text break-words whitespace-pre-line font-narration text-[19px] leading-[1.65] sm:text-[21px] text-ink">
+          <RichText text={m.content} />
+        </div>
       </div>
     );
   }
@@ -80,13 +99,13 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.whisper) {
     const fromMaster = m.kind === "narration";
     return (
-      <div className="tf-pop max-w-[76ch] rounded-[10px] border border-dashed border-accent/40 bg-surface/80 p-3 sm:p-4">
+      <div className="tf-pop tf-whisper-box max-w-[76ch] rounded-[10px] border border-dashed border-accent/40 bg-surface/80 p-3 sm:p-4">
         <p className="mb-1.5 text-xs text-muted">
           {fromMaster ? (m.data?.whisper_reply ? "Мастер отвечает на ваш шёпот" : "Шёпот мастера") : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}
         </p>
         {m.data?.voice && <VoiceClip clips={[m.data.voice]} autoPlay={m.fresh && fromMaster} />}
-        <p className="font-narration text-[16px] leading-relaxed text-ink">
+        <p className="tf-message-body font-narration text-[16px] leading-relaxed text-ink">
           <RichText text={m.content} />
         </p>
         {!fromMaster && <ReplyStatus m={m} mine={m.seat_id === who.mySeat} />}
@@ -98,28 +117,28 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   const ai = !!m.data?.ai; // говорит ИИ-игрок или ИИ за ушедшего игрока
   return (
     <div className={`tf-pop flex max-w-[76ch] gap-3 ${mine ? "ml-auto" : ""}`}>
-      <div className="shrink-0 pt-0.5">
+      <div className="shrink-0 pt-0.5 tf-message-avatar">
         <Avatar name={name} portraitUrl={m.seat_id ? who.heroBySeat[m.seat_id]?.portrait_url : null} role="player" occupant={ai ? "agent" : "human"} presence={null} size={32} />
       </div>
       <div
-        className={`min-w-0 flex-1 rounded-[12px] p-3 sm:p-3.5 transition-colors ${
+        className={`tf-message-bubble min-w-0 flex-1 rounded-[12px] p-3 sm:p-3.5 transition-colors ${
           mine
             ? "border border-accent/40 bg-raised/90 shadow-xs ring-1 ring-accent/15"
             : "border border-line/80 bg-surface shadow-xs"
         }`}
       >
-        <div className="flex items-center gap-2 mb-1.5">
+        <div className="tf-message-header flex items-center gap-2 mb-1.5">
           <span className="font-heading font-semibold text-sm text-ink">{name}</span>
           {mine && <span className="font-mono text-[10px] text-accent uppercase tracking-wider font-semibold">(вы)</span>}
           {ai && <span className="font-mono text-[10px] text-muted" title="Реплику написал ИИ">· ИИ</span>}
         </div>
         {m.data?.voice && <VoiceClip clips={[m.data.voice]} />}
         {m.kind === "speech" ? (
-          <p className="font-narration text-[16px] sm:text-[17px] leading-[1.6] text-ink italic">
+          <p className="tf-message-body font-narration text-[16px] sm:text-[17px] leading-[1.6] text-ink italic">
             «{m.content.replace(/^["«]|["»]$/g, "")}»
           </p>
         ) : (
-          <p className="font-narration text-[15px] sm:text-[16px] leading-[1.6] text-ink-2 whitespace-pre-line">
+          <p className="tf-message-body font-narration text-[15px] sm:text-[16px] leading-[1.6] text-ink-2 whitespace-pre-line">
             {m.content}
           </p>
         )}

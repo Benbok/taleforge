@@ -64,3 +64,10 @@ it("shows a handled technical refusal instead of a success checkmark", () => {
   expect(screen.queryByText('✓')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Повторить' })).toBeNull();
 });
+
+it("renders master narration in a distinct chronicle card with master heading", () => {
+  const narration = { id: "n1", seq: 1, kind: "narration", content: "Лязг приближающейся нежити...", whisper: false } as ChatMessage;
+  render(<MessageView m={narration} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  expect(screen.getByText("Мастер")).toBeTruthy();
+  expect(screen.getByText("Лязг приближающейся нежити...")).toBeTruthy();
+});
