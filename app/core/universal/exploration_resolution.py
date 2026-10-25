@@ -236,10 +236,8 @@ async def _execute(ctx, action, key):
         ):
             if "exploration_observer" in observer.state:
                 result.changes.append(await assess_detection(ctx, observer.id, action.actor_id, key))
-    result.description = " ".join(c.description for c in result.changes if not c.private) or (
-        "Проверка успешна; новых подтверждённых наблюдений нет."
-        if result.success
-        else "Попытка не удалась; задуманные эффекты не возникли."
+    result.description = " ".join(c.description for c in result.changes if not c.private) or _outcome_hint(
+        action, result
     )
     event.payload = dict(
         schema_version=2, proposal=action.model_dump(mode="json"), outcome=result.model_dump(mode="json")
@@ -250,3 +248,20 @@ async def _execute(ctx, action, key):
         event.payload = {**event.payload, "outcome": result.model_dump(mode="json")}
     await s.flush()
     return result
+
+
+def _outcome_hint(action, result):
+    """With nothing changed in the world, the outcome the model wrote for this result is all there is to tell."""
+    hints = action.check_outcomes
+    if action.resolution == "check" and hints is not None:
+        if result.success:
+            text = (hints.critical_success if result.critical else None) or hints.success
+        else:
+            text = (hints.critical_failure if result.critical_failure else None) or hints.failure
+        if text:
+            return text
+    return (
+        "Проверка успешна; новых подтверждённых наблюдений нет."
+        if result.success
+        else "Попытка не удалась; задуманные эффекты не возникли."
+    )

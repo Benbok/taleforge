@@ -69,3 +69,154 @@ def test_no_free_magic_from_empty_or_nonnumeric_effect_lists():
     with pytest.raises(ValidationError):
         AbilityDefinitionV2(name="Пусто", source="supernatural", effects=[])
     assert exploration_cost(definition("speak"), 1) >= 1
+
+
+def test_camouflage_is_part_of_the_form_and_not_charged_twice():
+    def spell(*kinds):
+        return AbilityDefinitionV2(
+            name="Куст",
+            source="supernatural",
+            intensity="normal",
+            duration_seconds=18,
+            effects=[
+                EffectIntentV2(kind=kind, **({"form": "plant_bush"} if kind == "change_form" else {})) for kind in kinds
+            ],
+        )
+
+    assert exploration_cost(spell("change_form"), 1) == 9
+    assert exploration_cost(spell("change_form", "camouflage"), 1) == 9
+    assert exploration_cost(spell("camouflage"), 1) == 9  # on its own it is still a paid effect
+    assert exploration_cost(spell("change_form", "illumination"), 1) == 18
+
+
+def test_model_filler_for_unrelated_effect_fields_is_dropped_before_validation():
+    from app.rules.universal.exploration import clean_model_intent
+
+    def parsed(*effects, **top):
+        return IntentV2.model_validate(
+            clean_model_intent(
+                {"schema_version": 2, "source": "mundane", "resolution": "automatic", **top, "effects": list(effects)}
+            )
+        )
+
+    cup = parsed(
+        {"kind": "create_object", "template": "vessel", "material": "wood", "form": "vessel", "lifetime": "permanent"}
+    )
+    assert cup.effects[0].lifetime == "permanent" and cup.effects[0].material == "wood"  # relevant fields stay
+    fill = parsed(
+        {
+            "kind": "fill",
+            "amount": "200",
+            "form": "vessel",
+            "material": "stone",
+            "lifetime": "permanent",
+            "target_id": None,
+        }
+    )
+    assert fill.effects[0].lifetime == "instant" and fill.effects[0].amount == 200
+    bush = parsed({"kind": "change_form", "form": "plant_bush", "template": "vessel"})
+    assert bush.effects[0].form == "plant_bush"
+    assert parsed({"kind": "observe", "aspect": "hearing", "form": "vessel"}).effects[0].aspect == "hearing"
+    assert parsed({"kind": "move"}, targets=["loc1"]).targets == []  # stage 2A acts on the hero alone
+    with pytest.raises(ValidationError):  # a wrong value in a field that does matter is still refused
+        parsed({"kind": "change_form", "form": "vessel"})
+    with pytest.raises(ValidationError):  # unknown fields are not silently swallowed
+        parsed({"kind": "move", "invented": 1})
+
+
+def test_obvious_slips_in_the_models_own_bookkeeping_are_mended_without_changing_meaning():
+    from app.rules.universal.exploration import clean_model_intent
+
+    def base(**top):
+        return {"schema_version": 2, "source": "supernatural", "resolution": "automatic", **top}
+
+    # a requirement the model forgot to link to the effect of the same kind
+    unlinked = clean_model_intent(
+        base(
+            requirements=[{"id": "r1", "quote": "свет", "effect": "illumination"}],
+            effects=[{"kind": "illumination", "required_by": []}],
+        )
+    )
+    assert unlinked["effects"][0]["required_by"] == ["r1"]
+    # no effect of that kind exists: the gap is real and stays for the server to refuse
+    gap = clean_model_intent(
+        base(requirements=[{"id": "r1", "quote": "x", "effect": "heal"}], effects=[{"kind": "cosmetic"}])
+    )
+    assert not gap["effects"][0].get("required_by")
+    # duplicate requirement ids and links to nothing
+    twin = clean_model_intent(
+        base(
+            requirements=[
+                {"id": "ch_1", "quote": "куст", "effect": "change_form"},
+                {"id": "ch_1", "quote": "тень", "effect": "camouflage"},
+            ],
+            effects=[
+                {"kind": "change_form", "required_by": ["ch_1", "ghost"]},
+                {"kind": "camouflage", "required_by": []},
+            ],
+        )
+    )
+    ids = [r["id"] for r in twin["requirements"]]
+    assert len(set(ids)) == 2 and "ghost" not in twin["effects"][0]["required_by"]
+    assert twin["effects"][1]["required_by"] == [ids[1]]
+    # an ordinary action with nothing mechanical in it still passes as waiting
+    assert clean_model_intent(base(source="mundane", effects=[]))["effects"] == [{"kind": "wait"}]
+    assert clean_model_intent(base(effects=[]))["effects"] == []  # a spell with no effect is not invented
+    # pretending is acting, not magic; a claimed spell keeps its magic for the review to weigh
+    pretend = clean_model_intent(base(source="mundane", player_request="pretend", effects=[{"kind": "cosmetic"}]))
+    assert pretend["effects"] == [{"kind": "wait"}]
+    claimed = clean_model_intent(base(source="mundane", player_request="supernatural", effects=[{"kind": "cosmetic"}]))
+    assert claimed["effects"][0]["kind"] == "cosmetic"
+    # where the hero walks, places or looks is the story's business, not a target of the effect
+    walking = clean_model_intent(base(source="mundane", effects=[{"kind": "move", "target_id": "loc1"}]))
+    assert "target_id" not in walking["effects"][0]
+    pouring = clean_model_intent(base(source="mundane", effects=[{"kind": "pour", "target_id": "ob_cup"}]))
+    assert pouring["effects"][0]["target_id"] == "ob_cup"  # for pouring it is the vessel
+
+
+def test_null_spelled_as_text_and_a_made_up_name_for_the_object_being_created_are_dropped():
+    from app.rules.universal.exploration import clean_model_intent
+
+    seen = clean_model_intent(
+        {
+            "schema_version": 2,
+            "source": "mundane",
+            "effects": [{"kind": "observe", "object_id": "null", "label": "None"}],
+        }
+    )
+    assert "object_id" not in seen["effects"][0] and "label" not in seen["effects"][0]
+    made = clean_model_intent(
+        {"schema_version": 2, "source": "supernatural", "effects": [{"kind": "create_object", "object_id": "mug_1"}]}
+    )
+    assert "object_id" not in made["effects"][0]  # the cup is the result of this effect, not a thing to point at
+
+
+def test_a_zero_amount_means_the_amount_was_not_given():
+    from app.rules.universal.exploration import clean_model_intent
+
+    drink = clean_model_intent(
+        {"schema_version": 2, "source": "mundane", "effects": [{"kind": "consume", "amount": "0"}]}
+    )
+    assert "amount" not in drink["effects"][0]
+    assert IntentV2.model_validate(drink).effects[0].amount == 300
+    kept = clean_model_intent(
+        {"schema_version": 2, "source": "mundane", "effects": [{"kind": "consume", "amount": "50"}]}
+    )
+    assert kept["effects"][0]["amount"] == "50"
+
+
+def test_acts_with_no_uncertain_outcome_never_need_a_roll_and_numbers_are_made_exact():
+    from app.rules.universal.exploration import clean_model_intent
+
+    def base(kind, **top):
+        return {"schema_version": 2, "source": "mundane", "resolution": "check", "effects": [{"kind": kind}], **top}
+
+    for kind in ("move", "speak", "wait", "hold_breath"):
+        assert clean_model_intent(base(kind))["resolution"] == "automatic"
+    assert clean_model_intent(base("observe"))["resolution"] == "check"  # a search may be a real risk
+    assert clean_model_intent(base("move", source="supernatural"))["resolution"] == "check"
+    assert clean_model_intent(base("move", elapsed_game_seconds=6.0))["elapsed_game_seconds"] == "6"
+    assert clean_model_intent(base("move", elapsed_game_seconds="12.0"))["elapsed_game_seconds"] == "12"
+    assert "elapsed_game_seconds" not in clean_model_intent(
+        base("move", elapsed_game_seconds=2.5)
+    )  # the default applies

@@ -19,6 +19,19 @@ async def universal_scene(session, campaign, viewer):
     }
     hero = None if viewer.is_master else await viewer_hero(session, viewer)
     hero_id = hero.id if hero else None
+    if not viewer.is_master:
+        # V2 owner inventory and expired props are never scene loot for another player.
+        entities = {
+            key: entity
+            for key, entity in entities.items()
+            if not (
+                entity.state.get("exploration")
+                and (
+                    entity.state["exploration"].get("expired")
+                    or entity.state["exploration"].get("owner_id") is not None
+                )
+            )
+        }
     found = await revealed_to(session, hero_id)
     view = visible_scene(scene, entities, characters, hero_id=hero_id, is_master=viewer.is_master, revealed=found)
     payload = scene_payload(scene, entities, characters, view)
@@ -26,4 +39,8 @@ async def universal_scene(session, campaign, viewer):
     if location is not None:
         payload["location"]["name"] = public_location_name(campaign, location)
         payload["location"]["description"] = location.description
+    if hero:
+        from app.core.universal.perception import illumination_view
+
+        payload["exploration_light"] = await illumination_view(session, campaign.id, hero.id)
     return payload

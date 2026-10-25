@@ -104,3 +104,29 @@ def test_concurrent_step_completion_advances_once(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_recasting_an_active_effect_renews_it_instead_of_stacking(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            for name in ("first", "second", "other"):
+                s.add(Event(id=name, campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
+            await s.flush()
+            light = EffectIntentV2(kind="illumination", lifetime="timed")
+            first = await start_effect(s, "c", "hero", "hero", "first", "0", light, 0, 18)
+            await complete_step(s, "c", "a", 6)
+            assert (await active_effects(s, "c", "hero"))[0]["remaining_seconds"] == "12"
+            second = await start_effect(s, "c", "hero", "hero", "second", "0", light, 12, 18)
+            other = await start_effect(
+                s, "c", "hero", "hero", "other", "0", EffectIntentV2(kind="camouflage", lifetime="timed"), 12, 18
+            )
+            await complete_step(s, "c", "b", 6)
+            active = {e["id"]: e["remaining_seconds"] for e in await active_effects(s, "c", "hero")}
+            assert active == {second.id: "18", other.id: "18"}
+            await complete_step(s, "c", "c", 6)
+            ids = [e["id"] for e in await active_effects(s, "c", "hero")]
+            assert first.id not in ids and ids.count(second.id) == 1
+        await engine.dispose()
+
+    asyncio.run(run())

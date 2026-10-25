@@ -43,7 +43,7 @@ async def hero_card(session: AsyncSession, owner_id: str, hero_id: str) -> dict:
     return card_of(await load_library_hero(session, owner_id, hero_id))
 
 
-def game_card_of(hero) -> dict:
+def game_card_of(hero, *, learned=None) -> dict:
     from app.rules.universal.contracts import UniversalGameCard, UniversalSheet
     from app.rules.universal.mechanics import derive
 
@@ -51,8 +51,9 @@ def game_card_of(hero) -> dict:
     data.pop("source_library_id", None)
     sheet = UniversalSheet.model_validate(data)
     derived = derive(sheet, starting_defense_bonuses(sheet))
+    saved_abilities = (hero.resources or {}).get("learned_abilities", []) if learned is None else learned
     learned = []
-    for item in (hero.resources or {}).get("learned_abilities", []):
+    for item in saved_abilities:
         view = dict(item)
         if (item.get("profile") or {}).get("schema_version") == 2:
             from app.rules.universal.exploration import AbilityDefinitionV2, exploration_cost

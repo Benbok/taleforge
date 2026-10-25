@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.content.catalog import campaign_catalog
 from app.core import adventure
-from app.core.campaigns import Viewer
+from app.core.campaigns import AccessDenied, Viewer
 from app.core.characters import public_view
 from app.core.object_policy import concealed, revealed_to
 from app.core.rolls import ABILITY_RU, DAMAGE_RU
@@ -307,6 +307,19 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
     e = await session.get(Entity, entity_id)
     if e is None or e.campaign_id != viewer.campaign.id:
         raise InspectError("такого в мире нет")
+    ordinary = None
+    if e.state.get("exploration"):
+        from app.core.universal.objects import accessible, ordinary_object_view
+
+        if not viewer.is_master:
+            hero = await viewer_hero(session, viewer)
+            try:
+                if hero is None:
+                    raise ValueError("Нет героя")
+                accessible(e, hero)
+            except (AccessDenied, ValueError):
+                raise InspectError("такого в мире нет") from None
+        ordinary = ordinary_object_view(e)
     sight = await level_for(session, viewer, e)
     if sight is None:
         raise InspectError("такого в мире нет")
@@ -334,6 +347,8 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
         "description": description,
         "locked": [LEVELS[i] for i in range(level + 1, 4)],  # что ещё можно узнать
     }
+    if ordinary is not None and not memory:
+        card["ordinary_object"] = ordinary
     rec = None
     if e.template_id and (level >= 1 or e.kind == "creature"):
         catalog = await campaign_catalog(session, viewer.campaign)

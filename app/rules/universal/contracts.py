@@ -177,3 +177,4 @@ class UniversalGameCard(HeroCard):
     seat_id: str | None
     status: str
     editable: Literal[False] = False
+    exploration: dict | None = None

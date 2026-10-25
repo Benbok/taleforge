@@ -25,9 +25,12 @@ async def established_evidence(session, campaign_id, actor_id):
         .limit(20)
     ):
         data = message.data or {}
-        if (message.visible_to is None or actor.seat_id in message.visible_to) and data.get(
-            "location_id"
-        ) == actor.location_id:
+        if data.get("whisper_reply") or data.get("scope") == "private":
+            continue
+        if message.visible_to is not None and (actor.seat_id not in message.visible_to or data.get("scope") != "party"):
+            continue
+        place = data.get("location_id") or (data.get("location_ref") or {}).get("id")
+        if actor.location_id is not None and place == actor.location_id:
             parts.append(message.content)
     return "\n".join(parts)
 
@@ -122,7 +125,13 @@ async def assess_detection(ctx, observer_id, actor_id, source_key):
     state = observer.state["exploration_observer"]
     witness = state.get("notices", {}).get(actor_id) in {"witness", "detected"}
     effects = await active_effects(s, ctx.campaign_id, actor_id)
-    edge = stealth_edge(effects, dict(cover=observer.state.get("cover_available", True), direct_witness=witness))
+    edge = stealth_edge(
+        effects,
+        dict(
+            cover=observer.state.get("cover_available", False) or any(e["kind"] == "change_form" for e in effects),
+            direct_witness=witness,
+        ),
+    )
     sheet, _ = await load_actor(s, ctx.campaign_id, actor_id)
     difficulty = 10 + (int(state["wis"]) - 10) // 2
     check = resolve_check(ctx.dice, sheet.abilities.dex, False, difficulty, edge)

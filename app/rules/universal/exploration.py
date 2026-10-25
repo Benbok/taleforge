@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -16,6 +17,7 @@ EffectKind = Literal[
     "speak",
     "wait",
     "hold_breath",
+    "move",
     "cosmetic",
     "illumination",
     "camouflage",
@@ -38,6 +40,17 @@ EffectKind = Literal[
     "defense_bonus",
 ]
 ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer"]
+DEFAULT_EFFECT_SECONDS = 18
+
+
+class InsufficientEnergy(ValueError):
+    """The hero cannot pay for this spell; the numbers help the model choose less and explain the refusal."""
+
+
+class FormBlocked(ValueError):
+    """The hero's current form forbids the action; the reason is safe and useful to show the player."""
+
+
 TIMED_KINDS = frozenset(
     {
         "illumination",
@@ -52,7 +65,21 @@ TIMED_KINDS = frozenset(
     }
 )
 ORDINARY_KINDS = frozenset(
-    {"observe", "speak", "wait", "hold_breath", "take", "place", "give", "fill", "pour", "empty", "consume", "dismiss"}
+    {
+        "observe",
+        "speak",
+        "move",
+        "wait",
+        "hold_breath",
+        "take",
+        "place",
+        "give",
+        "fill",
+        "pour",
+        "empty",
+        "consume",
+        "dismiss",
+    }
 )
 MAGIC_KINDS = frozenset(
     {
@@ -137,6 +164,8 @@ class IntentV2(ClosedModel):
     schema_version: Literal[2] = 2
     name: str = Field(default="", max_length=128)
     source: SourceKind
+    # The model's own reading of the player's words; anything but "ordinary" gets an independent review.
+    player_request: Literal["ordinary", "supernatural", "pretend", "unclear"] = "unclear"
     delivery: Literal["ordinary", "spell", "innate", "item"] = "ordinary"
     resolution: ResolutionKind = "check"
     attribute: AbilityKey = "wis"
@@ -234,13 +263,128 @@ def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
         return 0
     base = {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
     units = 0
+    has_form = any(effect.kind == "change_form" for effect in definition.effects)
     for effect in definition.effects:
         if effect.kind == "hold_breath":
             continue  # Physical auxiliary action is not a second spell.
+        if effect.kind == "camouflage" and has_form:
+            continue  # Camouflage of a changed form belongs to that form and is not paid twice.
         timed = effect.kind in TIMED_KINDS or effect.lifetime == "timed"
         duration = (definition.duration_seconds + 5) // 6 if timed else 1
         units += duration * effect.quantity
     return base * max(1, units) * definition.target_count
+
+
+# Fields of an effect that mean something for each kind; the model fills the rest with plausible filler.
+_BINDINGS = frozenset(
+    {"kind", "required_by", "target_id", "source_id", "object_id", "recipient_id", "effect_id", "label", "appearance"}
+)
+_RELEVANT = {
+    "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+    "change_form": {"form", "lifetime", "quantity"},
+    "observe": {"aspect", "lifetime"},
+    "fill": {"amount"},
+    "pour": {"amount"},
+    "consume": {"amount"},
+}
+_LIFETIME_KINDS = TIMED_KINDS | {"cosmetic"}
+
+
+_SELF_ACTS = frozenset({"move", "place", "observe", "speak", "wait", "take", "hold_breath"})
+_NO_RISK = frozenset({"move", "speak", "wait", "hold_breath"})
+
+
+def _exact_count(value):
+    """A whole number as text, however the model wrote it (6, 6.0, "6.0"); None when it is not a whole number."""
+    try:
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return str(int(number)) if number == number.to_integral_value() else None
+
+
+def _empty(value):
+    """A missing value as a model spells it: null, or the word "null" in quotes."""
+    return value is None or (isinstance(value, str) and value.strip().lower() in {"null", "none"})
+
+
+def clean_model_intent(raw):
+    """Mend what the model got wrong in its own bookkeeping, so only a real problem of meaning is refused.
+
+    The effect is one flat record with fields for every kind, and a model tends to fill them all (a cup with
+    form "vessel", a poured drink with lifetime "permanent"). Fields foreign to the effect's kind are dropped
+    and the defaults apply; the identity of an ability is computed from the meaningful fields only, so nothing
+    changes in meaning. Slips in the cross references are mended too: a requirement the model forgot to link
+    is linked to the effect of its own kind, a repeated requirement id is made unique, a link to nothing is
+    dropped. Whether the words are really covered stays for the independent review and the compiler.
+    Stage 2A acts on the hero alone, so listed targets are dropped."""
+    if not isinstance(raw, dict):
+        return raw
+    cleaned = {k: v for k, v in raw.items() if not _empty(v) and k != "targets"}
+    effects = []
+    for effect in raw.get("effects") or []:
+        if not isinstance(effect, dict):
+            effects.append(effect)
+            continue
+        kind = effect.get("kind")
+        keep = _BINDINGS | _RELEVANT.get(kind, {"lifetime", "quantity"} if kind in _LIFETIME_KINDS else set())
+        known = set(EffectIntentV2.model_fields)
+        if kind == "create_object":
+            keep = keep - {"object_id"}  # the new object is this effect's result, not something to point at
+        mended = {k: v for k, v in effect.items() if not _empty(v) and (k in keep or k not in known)}
+        if str(mended.get("amount", "1")).strip() in {"0", "-0"}:
+            mended.pop("amount")  # "nothing" is how a model says it was not given an amount
+        effects.append(mended)
+    # Where the hero walks, places or looks is the story's business, not a target of the effect.
+    for effect in effects:
+        if isinstance(effect, dict) and effect.get("kind") in _SELF_ACTS:
+            effect.pop("target_id", None)
+    claim = cleaned.get("player_request")
+    if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
+        # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
+        effects = [e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS)] or (
+            [{"kind": "wait"}] if effects else []
+        )
+    if not effects and cleaned.get("source") == "mundane":
+        effects = [{"kind": "wait"}]
+    if (
+        cleaned.get("source") == "mundane"
+        and effects
+        and all(isinstance(e, dict) and e.get("kind") in _NO_RISK for e in effects)
+    ):
+        cleaned["resolution"] = "automatic"  # walking, speaking or waiting has no uncertain outcome to roll for
+    for key in ("elapsed_game_seconds", "duration_seconds"):
+        if key in cleaned:
+            exact = _exact_count(cleaned[key])
+            if exact is None:
+                cleaned.pop(key)
+            else:
+                cleaned[key] = exact
+    requirements = []
+    seen = set()
+    for index, requirement in enumerate(cleaned.get("requirements") or []):
+        if isinstance(requirement, dict) and requirement.get("id") in seen:
+            requirement = {**requirement, "id": f"{requirement['id']}_{index + 1}"}
+        if isinstance(requirement, dict):
+            seen.add(requirement.get("id"))
+        requirements.append(requirement)
+    if requirements:
+        cleaned["requirements"] = requirements
+    valid = {r["id"] for r in requirements if isinstance(r, dict) and r.get("id")}
+    for effect in effects:
+        if isinstance(effect, dict) and isinstance(effect.get("required_by"), list):
+            effect["required_by"] = [x for x in effect["required_by"] if x in valid]
+    for requirement in requirements:
+        if not isinstance(requirement, dict) or not requirement.get("id"):
+            continue
+        if any(isinstance(e, dict) and requirement["id"] in (e.get("required_by") or []) for e in effects):
+            continue
+        match = next((e for e in effects if isinstance(e, dict) and e.get("kind") == requirement.get("effect")), None)
+        if match is not None:
+            match["required_by"] = [*(match.get("required_by") or []), requirement["id"]]
+    if "effects" in raw or effects:
+        cleaned["effects"] = effects
+    return cleaned
 
 
 def exploration_capabilities():
@@ -249,8 +393,7 @@ def exploration_capabilities():
         ordinary_effects=sorted(ORDINARY_KINDS),
         supernatural_effects=sorted(MAGIC_KINDS),
         default_action_seconds="6",
-        default_effect_seconds="18",
-        max_effect_seconds="600",
+        default_effect_seconds=str(DEFAULT_EFFECT_SECONDS),
         every_supernatural_use_costs_energy=True,
         forms=["plant_bush"],
         object_templates=["vessel", "wood_source", "water_source", "energy_tonic", "observer"],

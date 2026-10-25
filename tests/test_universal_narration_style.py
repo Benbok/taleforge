@@ -60,8 +60,13 @@ def test_narration_has_visible_story_context_and_preserves_literary_paragraphs(t
         )
         provider = Provider(
             [
-                dict(schema_version=2, source="mundane", resolution="automatic", effects=[dict(kind="observe")]),
-                dict(verdict="pass"),
+                dict(
+                    schema_version=2,
+                    source="mundane",
+                    player_request="ordinary",
+                    resolution="automatic",
+                    effects=[dict(kind="observe")],
+                ),
                 prose,
                 dict(verdict="pass"),
             ]

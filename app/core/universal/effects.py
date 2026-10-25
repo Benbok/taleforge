@@ -6,6 +6,8 @@ from app.core.campaigns import AccessDenied, Conflict
 from app.db.models import Character, Entity, Event, UniversalEffect
 from app.rules.universal.exploration import EffectChange, EffectIntentV2
 
+RENEWABLE_KINDS = frozenset({"change_form", "camouflage", "illumination"})
+
 
 async def start_effect(
     session,
@@ -67,6 +69,20 @@ async def start_effect(
     )
     session.add(effect)
     await session.flush()
+    if spec.kind in RENEWABLE_KINDS:
+        # Casting the same effect again renews it: the earlier one ends exactly where the new one begins.
+        earlier = await session.scalars(
+            select(UniversalEffect).where(
+                UniversalEffect.campaign_id == campaign_id,
+                UniversalEffect.target_id == target_id,
+                UniversalEffect.status == "active",
+                UniversalEffect.id != effect.id,
+            )
+        )
+        for row in earlier:
+            if row.definition["kind"] == spec.kind and int(row.ends_seconds) > starts_seconds:
+                row.ends_seconds = str(max(starts_seconds, int(row.starts_seconds)))
+        await session.flush()
     return effect
 
 

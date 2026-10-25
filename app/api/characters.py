@@ -58,7 +58,11 @@ class ReviewIn(BaseModel):
 
 async def _view(session, viewer: Viewer, ch: Character) -> dict:
     if (ch.sheet or {}).get("rules_version") == "universal.v1":
-        return game_card_of(ch)
+        if not viewer.is_master and (viewer.seat is None or viewer.seat.id != ch.seat_id):
+            return svc.public_view(ch)
+        from app.core.universal.exploration_views import exploration_game_card
+
+        return await exploration_game_card(session, ch)
     out = await _sheet_view(session, viewer, ch)
     cat = await campaign_catalog(session, viewer.campaign)
     if "inventory" in out:

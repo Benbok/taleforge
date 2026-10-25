@@ -48,6 +48,7 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
                 dict(
                     schema_version=2,
                     source="mundane",
+                    player_request="ordinary",
                     resolution="check",
                     effects=[dict(kind="observe")],
                     difficulty=1,
@@ -80,7 +81,7 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
     asyncio.run(run())
 
 
-def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
+def test_invalid_proposal_is_repaired_once_before_profile_is_saved(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
@@ -89,14 +90,15 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
                 dict(
                     schema_version=2,
                     source="mundane",
+                    player_request="ordinary",
                     resolution="automatic",
-                    effects=[dict(kind="observe")],
-                    targets=["environment"],
+                    requirements=[dict(id="r1", quote="высечь искру", effect="observe")],
+                    effects=[dict(kind="wait")],
                 ),
-                dict(verdict="pass"),
                 dict(
                     schema_version=2,
                     source="mundane",
+                    player_request="ordinary",
                     resolution="check",
                     effects=[dict(kind="observe")],
                     name="Факел",
@@ -109,7 +111,6 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
                         critical_failure="Камень выскальзывает, попытка высечь искру сорвана.",
                     ),
                 ),
-                dict(verdict="pass"),
                 "Вы пытаетесь высечь искру.",
                 dict(verdict="pass"),
             ]
@@ -123,7 +124,7 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
             assert len(list(await s.scalars(select(RuntimeProfile)))) == 0
             assert len(list(await s.scalars(select(Event)))) == 1
             assert (await load_actor(s, "c", "hero"))[1].energies["dex"] == 20
-        assert len(provider.prompts) == 6
+        assert len(provider.prompts) == 4
         await engine.dispose()
 
     asyncio.run(run())

@@ -5,15 +5,20 @@ from dataclasses import dataclass
 
 from sqlalchemy import select
 
+from app.core.campaigns import NotFound
 from app.core.universal.definitions import load_definition
 from app.core.universal.objects import accessible
 from app.core.universal.profiles import load_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, HeroAbility
 from app.rules.universal.exploration import (
+    DEFAULT_EFFECT_SECONDS,
     MAGIC_KINDS,
+    ORDINARY_KINDS,
     AbilityDefinitionV2,
     ExplorationAction,
+    FormBlocked,
+    InsufficientEnergy,
     IntentReview,
     IntentV2,
     definition_key,
@@ -27,6 +32,16 @@ def needs_intent_review(source, intent, known=False):
         not known
         or intent.source == "supernatural"
         or any(word in source.casefold() for word in ("маг", "каст", "заклин", "превращ", "свет", "колд"))
+    )
+
+
+def is_plain_action(intent):
+    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed."""
+    return (
+        intent.player_request == "ordinary"
+        and intent.source == "mundane"
+        and not intent.introductions
+        and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
     )
 
 
@@ -64,12 +79,16 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         attribute=intent.attribute,
         intensity=intent.intensity,
         target_count=len(targets),
-        duration_seconds=intent.duration_seconds,
+        duration_seconds=DEFAULT_EFFECT_SECONDS,  # one fixed term; the player renews or dismisses instead
         effects=intent.effects,
     )
     definition.id = definition_key(definition)
-    if intent.known_profile_id:
-        saved = await load_definition(ctx.session, ctx.campaign_id, intent.known_profile_id, intent.known_revision)
+    # A known reference only carries the name and revision of a learned spell; an ordinary free action ignores it.
+    if intent.known_profile_id and intent.source == "supernatural":
+        try:
+            saved = await load_definition(ctx.session, ctx.campaign_id, intent.known_profile_id, intent.known_revision)
+        except NotFound:
+            raise ValueError("known_profile_id не принадлежит изученной способности: оставь его пустым") from None
         learned = await ctx.session.scalar(
             select(HeroAbility).where(
                 HeroAbility.campaign_id == ctx.campaign_id,
@@ -79,7 +98,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
             )
         )
         if learned is None or definition.id != saved.id:
-            raise ValueError("Изученное определение изменено")
+            raise ValueError("Изученное определение изменено: оставь known_profile_id пустым для нового заклинания")
         # Keep this use's bindings, retain the original ability's name and revision.
         definition.name, definition.revision = saved.name, saved.revision
     sheet, _ = await load_actor(ctx.session, ctx.campaign_id, ctx.actor_id)
@@ -116,6 +135,12 @@ async def validate_exploration(ctx, action):
         or a.cost != exploration_cost(a.definition, sheet.level)
     ):
         raise ValueError("Несогласованное определение действия")
+    # Persistent form restrictions come first: they explain the refusal better than energy or targets do.
+    from app.core.universal.effects import active_effects
+
+    if any(e["kind"] == "change_form" for e in await active_effects(ctx.session, ctx.campaign_id, actor.id)):
+        if any(op.kind not in {"observe", "wait", "hold_breath", "dismiss"} for op in a.operations):
+            raise FormBlocked("В форме куста нельзя говорить, двигаться или действовать руками; сначала снимите форму.")
     # Stage2A targets self/held props. Opposed combat remains the next stage.
     if a.targets != [ctx.actor_id] or a.resolution not in {"automatic", "check"}:
         raise ValueError("Недоступная цель или тип разрешения")
@@ -124,8 +149,11 @@ async def validate_exploration(ctx, action):
     ):
         raise ValueError("Нужны четыре подсказки исходов проверки")
     if a.definition.source == "supernatural":
-        if a.cost < 1 or resources.energies.get(a.attribute, 0) < a.cost:
-            raise ValueError("Недостаточно энергии")
+        have = resources.energies.get(a.attribute, 0)
+        if a.cost < 1:
+            raise ValueError("Сверхъестественное действие должно иметь положительную цену")
+        if have < a.cost:
+            raise InsufficientEnergy(f"Недостаточно энергии: нужно {a.cost}, есть {have}")
     elif any(op.kind in MAGIC_KINDS for op in a.operations):
         raise ValueError("Сверхъестественное действие не может быть бесплатным")
     if a.elapsed_game_seconds > 3600 or a.elapsed_game_seconds < 1:
@@ -150,10 +178,4 @@ async def validate_exploration(ctx, action):
             accessible(obj, actor)
         if op.kind == "create_object":
             refs.add(f"created:{index}")
-    # Persistent form restrictions are shared by compiler and transactional executor.
-    from app.core.universal.effects import active_effects
-
-    if any(e["kind"] == "change_form" for e in await active_effects(ctx.session, ctx.campaign_id, actor.id)):
-        if any(op.kind not in {"observe", "wait", "hold_breath", "dismiss"} for op in a.operations):
-            raise ValueError("В форме куста нельзя говорить, двигаться или действовать руками; сначала снимите форму")
     return ValidatedExploration(actor, sheet, resources)

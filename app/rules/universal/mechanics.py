@@ -26,3 +26,14 @@ def derive(sheet: UniversalSheet, defense_bonuses: list[int]) -> ActorDerived:
         ac=12 + mods["dex"] + sum(defense_bonuses),
         modifiers=mods,
     )
+
+
+STEP_SECONDS = 6  # one short game step; a longer action restores once per started step
+
+
+def energy_regen(pool_max: int) -> int:
+    """Energy a pool gets back per game step: about a twelfth of the pool, rounded, at least one.
+
+    A larger pool (a higher ability or level) therefore recovers faster, and a simple spell paid in
+    one sitting returns in a handful of steps, while consumables still restore a whole pool at once."""
+    return max(1, (pool_max + 6) // 12)

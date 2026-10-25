@@ -40,6 +40,9 @@ async def complete_step(session, campaign_id, source_key, elapsed_seconds):
     from app.core.universal.effects import expire_effects
 
     changes = await expire_effects(session, campaign_id, end)
+    from app.core.universal.regeneration import regenerate_energy
+
+    await regenerate_energy(session, campaign_id, elapsed_seconds)
     step = UniversalStep(
         campaign_id=campaign_id,
         source_key=source_key,

@@ -60,16 +60,21 @@ def test_missing_concrete_result_is_repaired_before_rolling(tmp_path):
         await prepare(maker)
         provider = Provider(
             [
-                dict(schema_version=2, source="mundane", resolution="check", effects=[dict(kind="observe")]),
-                dict(verdict="pass"),
                 dict(
                     schema_version=2,
                     source="mundane",
+                    player_request="ordinary",
+                    resolution="check",
+                    effects=[dict(kind="observe")],
+                ),
+                dict(
+                    schema_version=2,
+                    source="mundane",
+                    player_request="ordinary",
                     resolution="check",
                     effects=[dict(kind="observe")],
                     check_outcomes=CONSEQUENCES,
                 ),
-                dict(verdict="pass"),
                 "Вы различаете шаги.",
                 dict(verdict="pass"),
             ]

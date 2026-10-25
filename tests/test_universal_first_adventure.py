@@ -97,11 +97,11 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
             dict(
                 schema_version=2,
                 source="mundane",
+                player_request="ordinary",
                 resolution="automatic",
                 attribute="int",
                 effects=[dict(kind="observe")],
             ),
-            dict(verdict="pass"),
             "The gate bears a fresh trail.",
             dict(verdict="pass"),
         ]
@@ -134,7 +134,11 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
     )
     tid = asyncio.run(failed.run_turn(cid))
     sheet, debited, events, learned = asyncio.run(inspect(maker))
-    assert debited.energies["wis"] == before_resources.energies["wis"] - 3
+    from app.rules.universal.mechanics import derive, energy_regen, starting_defense_bonuses
+
+    top = derive(sheet, starting_defense_bonuses(sheet)).energy_max["wis"]
+    # the price 3, then the energy the six seconds of that step give back, never above the pool
+    assert debited.energies["wis"] == min(top, before_resources.energies["wis"] - 3 + energy_regen(top))
     assert len(events) == 2 and len(learned) == 1
 
     async def assert_failed():

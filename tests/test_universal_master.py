@@ -25,8 +25,13 @@ def test_new_campaign_env_agent_resolves_real_main_and_technical_models(tmp_path
         def __init__(self):
             super().__init__(
                 [
-                    dict(schema_version=2, source="mundane", resolution="automatic", effects=[dict(kind="observe")]),
-                    dict(verdict="pass"),
+                    dict(
+                        schema_version=2,
+                        source="mundane",
+                        player_request="ordinary",
+                        resolution="automatic",
+                        effects=[dict(kind="observe")],
+                    ),
                     "Вы стоите у ворот.",
                     dict(verdict="pass"),
                 ]
@@ -49,7 +54,7 @@ def test_new_campaign_env_agent_resolves_real_main_and_technical_models(tmp_path
         provider = RecordingProvider()
         service = MasterService(maker, Bus(), provider)
         tid = await service.run_turn("c")
-        assert provider.models == [decide_model_for(), decide_model_for(), model_for(), decide_model_for()]
+        assert provider.models == [decide_model_for(), model_for(), decide_model_for()]
         async with maker() as s:
             assert (await s.get(MasterTurn, tid)).status == "done"
         await engine.dispose()

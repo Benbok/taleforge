@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from time import monotonic
 
 from sqlalchemy import func, select
@@ -11,6 +12,7 @@ from app.agents.llm import decide_model_for, model_for
 from app.agents.master.action_admission import obtain_prepared_action
 from app.agents.master.action_results import mark_source, narration_parts, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
+from app.agents.master.universal_mood import mood_note
 from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
 from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer, master_seat
@@ -38,6 +40,26 @@ from app.rules.universal.failures import ActionModelError, action_failure
 Admission = LegacyAdmission
 
 
+log = logging.getLogger(__name__)
+
+STRUCTURED_MAX_TOKENS = 16384
+NARRATION_MAX_TOKENS = 8192
+
+
+def provider_schema(model) -> dict:
+    """Tool schema for the provider. Gemini answers 400 to array length limits on larger closed schemas,
+    so they are left out here; the server still enforces every limit when it validates the reply."""
+
+    def strip(node):
+        if isinstance(node, dict):
+            return {k: strip(v) for k, v in node.items() if k not in {"minItems", "maxItems"}}
+        if isinstance(node, list):
+            return [strip(v) for v in node]
+        return node
+
+    return strip(model.model_json_schema())
+
+
 async def _call(service, campaign, turn, purpose, payload):
     async with service.maker() as s:
         spent = await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == campaign.id)) or 0
@@ -59,7 +81,7 @@ async def _call(service, campaign, turn, purpose, payload):
         else:
             model = model_for(cfg.provider, cfg.model)
         temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
-    options = {}
+    options = {"max_tokens": NARRATION_MAX_TOKENS}  # reasoning shares this budget with the text
     if purpose in {"decide", "exploration_decide", "intent_review", "narration_review"}:
         from app.agents.master.exploration import NarrationReview
         from app.core.universal.action_intents import ActionIntent
@@ -79,11 +101,13 @@ async def _call(service, campaign, turn, purpose, payload):
                     "function": {
                         "name": "submit_action",
                         "description": "Semantic intent for server validation",
-                        "parameters": schema.model_json_schema(),
+                        "parameters": provider_schema(schema),
                     },
                 }
             ],
             tool_choice={"type": "function", "function": {"name": "submit_action"}},
+            # A thinking model spends this budget on reasoning first; a cut-off tool call is no answer at all.
+            max_tokens=STRUCTURED_MAX_TOKENS,
         )
     started = monotonic()
     try:
@@ -116,7 +140,9 @@ async def _call(service, campaign, turn, purpose, payload):
             )
         )
         await s.commit()
-    action_call = next((call for call in reply.tool_calls if call.name == "submit_action"), None) if options else None
+    action_call = (
+        next((call for call in reply.tool_calls if call.name == "submit_action"), None) if "tools" in options else None
+    )
     if action_call is not None and not reply.blocked:
         return json.dumps(action_call.arguments, ensure_ascii=False)
     if reply.blocked or not reply.text.strip():
@@ -222,6 +248,17 @@ async def run_universal_turn(service, cid, place=None):
                 evidence = await established_evidence(s, cid, hero.id)
                 objects = await visible_objects(s, cid, hero.id)
                 constraints = await actor_constraints(s, cid, hero.id)
+                from app.core.universal.effects import active_effects
+
+                running = [
+                    dict(
+                        id=e["id"],
+                        kind=e["kind"],
+                        label=e["definition"].get("label") or e["kind"],
+                        remaining_seconds=e["remaining_seconds"],
+                    )
+                    for e in await active_effects(s, cid, hero.id)
+                ]
                 receipt = await s.scalar(select(Event).where(Event.campaign_id == cid, Event.idempotency_key == mid))
                 old_receipt = receipt is not None and receipt.payload.get("schema_version") != 2
                 allowed_targets = {e["id"] for e in public_scene.get("entities", [])}
@@ -245,6 +282,7 @@ async def run_universal_turn(service, cid, place=None):
                     established_evidence=evidence,
                     objects=objects,
                     constraints=constraints,
+                    active_effects=running,
                     known_abilities=[
                         dict(name=a.name, profile_id=a.profile_ref, revision=a.profile_revision, profile=a.definition)
                         for a in known
@@ -312,6 +350,7 @@ async def run_universal_turn(service, cid, place=None):
             history = await recent_history(s, c, saved_turn.upto_seq, trace.get("audience"), trace.get("scene", {}))
         await service._status(cid, "describing")
         story, notices = narration_parts(trace["outcomes"])
+        tone = await mood_note(service, c, tid, trace) if story and not saved_narration else ""
         if saved_narration:
             text = saved_narration.content
         elif not story:
@@ -324,7 +363,7 @@ async def run_universal_turn(service, cid, place=None):
                     return await _call(service, c, tid, purpose, payload)
 
                 text = await reviewed_narration(
-                    service, c, tid, trace, story, trace.get("scene", {}), history, ask_narration
+                    service, c, tid, trace, story, trace.get("scene", {}), history, ask_narration, tone
                 )
             else:
                 text = await _call(
@@ -335,7 +374,7 @@ async def run_universal_turn(service, cid, place=None):
                     [
                         {
                             "role": "system",
-                            "content": NARRATION_SYSTEM,
+                            "content": NARRATION_SYSTEM + ("\n\n" + tone if tone else ""),
                         },
                         {
                             "role": "user",
@@ -377,25 +416,27 @@ async def run_universal_turn(service, cid, place=None):
                 if source is not None:
                     mark_source(source, trace["outcomes"][mid])
             await s.commit()
-        from app.agents import voicing
+        from app.agents import voiceover, voicing
 
         channel = service._tts_for(c, voicing.TEXT)
-        if channel and not (m.data or {}).get("audio"):
+        if channel and not (m.data or {}).get("voice"):
             try:
                 audio = await service.tts.voice_for_narration(
                     service.media_dir, cid, m.content, provider=channel.provider, voice_name=channel.voice
                 )
                 async with service.maker() as s:
                     voiced = await s.get(Message, m.id)
-                    voiced.data = {**voiced.data, "audio": audio}
+                    if audio:
+                        # The chat's player reads voices/voice/voice_parts, as the old master wrote them.
+                        voiced.data = {**voiced.data, **voiceover.data_of([audio], 1)}
                     await s.commit()
                     m = voiced
             except Exception:
-                pass  # Optional voice failure never replays saved actions.
+                log.exception("master text voice failed")  # optional: never replays saved actions
         await publish_message(service.bus, m)
         from app.core.characters import public_view
+        from app.core.universal.exploration_views import exploration_game_card
         from app.core.universal.scene import universal_scene
-        from app.core.universal.state import game_card_of
 
         async with service.maker() as s:
             campaign = await s.get(Campaign, cid)
@@ -410,7 +451,9 @@ async def run_universal_turn(service, cid, place=None):
                 )
                 if changed.seat_id:
                     await service.bus.publish(
-                        cid, envelope("character.sheet", cid, {"character": game_card_of(changed)}), [changed.seat_id]
+                        cid,
+                        envelope("character.sheet", cid, {"character": await exploration_game_card(s, changed)}),
+                        [changed.seat_id],
                     )
             for player in campaign.seats:
                 if player.role != "player" or not player.user_id:

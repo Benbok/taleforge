@@ -43,9 +43,18 @@ async def prepare(s, ctx, kind="cosmetic", source="supernatural", resolution="au
     )
 
 
+async def run_low(maker, wis="10"):
+    """Start from a pool well below its top, so a payment is not hidden by the cap that regeneration respects."""
+    async with maker() as s:
+        hero = await s.get(Character, "hero")
+        hero.resources = {**hero.resources, "energies": {**hero.resources["energies"], "wis": wis}}
+        await s.commit()
+
+
 def test_paid_automatic_cup_learns_once_and_replays_without_time_or_energy(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
+        await run_low(maker)
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             action = await prepare(s, ctx, "create_object")
@@ -55,7 +64,8 @@ def test_paid_automatic_cup_learns_once_and_replays_without_time_or_energy(tmp_p
             assert await s.scalar(select(func.count()).select_from(Entity)) == 1
             assert await s.scalar(select(func.count()).select_from(HeroAbility)) == 1
             assert (await resolve_exploration(ctx, action, "m")).status == "repeated"
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "23"
+            # 10, minus the price 1, plus the 2 the six seconds of this step give back; the replay adds nothing
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "11"
             assert (await clock_view(s, "c"))["game_seconds"] == "6"
             await s.commit()
         async with maker() as s:
@@ -70,13 +80,14 @@ def test_paid_automatic_cup_learns_once_and_replays_without_time_or_energy(tmp_p
 def test_failed_attempt_spends_but_does_not_apply_or_learn(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
+        await run_low(maker)
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([1]))
             action = await prepare(s, ctx, resolution="check")
             result = await resolve_exploration(ctx, action, "m")
             assert result.status == "applied" and not result.success and result.cost == 1
             assert result.critical_failure and not result.ability_ref
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "23"
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "11"  # 10 - 1 + 2 of regeneration
             assert (await s.get(Character, "hero")).resources["hp"] == "22"
             assert not result.changes
         await engine.dispose()
@@ -130,5 +141,68 @@ def test_failure_between_components_rolls_back_debit_objects_and_clock(tmp_path,
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
             assert (await clock_view(s, "c"))["game_seconds"] == "0"
         await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_dismissing_an_effect_early_is_free_and_gives_no_energy_back(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await run_low(maker)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            action = await prepare(s, ctx, "illumination")
+            cast = await resolve_exploration(ctx, action, "m")
+            assert cast.status == "applied" and cast.cost == 3
+            spent = (await s.get(Character, "hero")).resources["energies"]["wis"]
+            assert spent == "9"  # 10 - 3 + 2 of regeneration
+            effect_id = next(c.data["effect_id"] for c in cast.changes if c.kind == "illumination")
+            s.add(
+                Message(
+                    id="m2",
+                    campaign_id="c",
+                    seq=2,
+                    seat_id="seat",
+                    author_user_id="u",
+                    kind="action",
+                    content="Гашу свет",
+                )
+            )
+            await s.flush()
+            dismiss = await compile_exploration(
+                ctx,
+                IntentV2(
+                    source="mundane",
+                    resolution="automatic",
+                    effects=[EffectIntentV2(kind="dismiss", effect_id=effect_id)],
+                ),
+                IntentReview(verdict="pass"),
+                dict(source_message_id="m2", source_text="Гашу свет", evidence=""),
+            )
+            result = await resolve_exploration(ctx, dismiss, "m2")
+            assert result.status == "applied" and result.cost == 0
+            # only the passing six seconds give energy back (+2); dismissing refunds none of the price
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "11"
+            from app.core.universal.effects import active_effects
+
+            assert not await active_effects(s, "c", "hero")
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_failed_check_is_described_by_the_outcome_the_model_wrote_for_it(tmp_path):
+    async def run():
+        for dice, expected in (([4], "Провал проверки."), ([1], "Особый провал.")):
+            folder = tmp_path / f"d{dice[0]}"
+            folder.mkdir()
+            engine, maker = await setup(folder)
+            async with maker() as s:
+                ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice(dice))
+                action = await prepare(s, ctx, "observe", source="mundane", resolution="check")
+                result = await resolve_exploration(ctx, action, "m")
+                assert not result.success
+                assert result.description == expected  # not the same blank line for every failure
+            await engine.dispose()
 
     asyncio.run(run())
