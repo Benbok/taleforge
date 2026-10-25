@@ -172,3 +172,23 @@ def test_crossing_is_blocked_in_bush_form(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_hero_grows_a_bridge_and_walks_to_the_far_side(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await origin(maker)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            _, built = await build(ctx, s, bridge())
+            assert built.cost == 12
+            row = await the_object(s)
+            ctx.dice = FixedDice([15])  # 15 + 2 beats the difficulty of 12
+            _, crossed = await build(ctx, s, walk(row.id, "check"), "m2", 2)
+            assert crossed.success and crossed.cost == 0
+            assert await location_of(s) != "loc_origin"
+            # the price once, then only the six seconds of each of the two steps give energy back
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "16"
+        await engine.dispose()
+
+    asyncio.run(run())

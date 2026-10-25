@@ -386,6 +386,8 @@ def clean_model_intent(raw):
         if isinstance(effect, dict) and effect.get("kind") in _SELF_ACTS:
             effect.pop("target_id", None)
     claim = cleaned.get("player_request")
+    if claim == "pretend":
+        cleaned["source"] = "mundane"  # pretending to cast is acting, whatever the model labelled it
     if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
         # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
         effects = [e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS)] or (

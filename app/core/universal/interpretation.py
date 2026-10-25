@@ -35,13 +35,17 @@ def needs_intent_review(source, intent, known=False):
     )
 
 
-def is_plain_action(intent):
-    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed."""
+def is_plain_action(intent, *, crossable=False):
+    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed.
+
+    Where a structure that leads somewhere stands, a walk that names none is not plain: the player may have
+    meant to cross it, and only the review can tell."""
     return (
         intent.player_request == "ordinary"
         and intent.source == "mundane"
         and not intent.introductions
         and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
+        and not (crossable and any(e.kind == "move" and not e.object_id for e in intent.effects))
     )
 
 

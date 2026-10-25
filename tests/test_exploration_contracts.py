@@ -287,3 +287,26 @@ def test_a_walk_over_a_remembered_structure_keeps_its_check_while_plain_walking_
 
     assert walking()["resolution"] == "automatic"
     assert walking(object_id="en_bridge")["resolution"] == "check"
+
+
+def test_pretending_to_cast_is_ordinary_acting_even_when_the_model_labels_it_supernatural():
+    from app.rules.universal.exploration import clean_model_intent
+
+    pretend = clean_model_intent(
+        {
+            "schema_version": 2,
+            "source": "supernatural",
+            "player_request": "pretend",
+            "effects": [{"kind": "cosmetic"}],
+        }
+    )
+    assert pretend["source"] == "mundane" and pretend["effects"] == [{"kind": "wait"}]
+    claimed = clean_model_intent(
+        {
+            "schema_version": 2,
+            "source": "supernatural",
+            "player_request": "supernatural",
+            "effects": [{"kind": "cosmetic"}],
+        }
+    )
+    assert claimed["source"] == "supernatural" and claimed["effects"][0]["kind"] == "cosmetic"

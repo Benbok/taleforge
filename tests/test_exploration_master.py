@@ -477,3 +477,20 @@ def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_th
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_walk_that_names_no_structure_is_reviewed_where_a_crossable_one_stands():
+    from app.core.universal.interpretation import is_plain_action
+    from app.rules.universal.exploration import EffectIntentV2, IntentV2
+
+    def walk(**effect):
+        return IntentV2(
+            source="mundane",
+            player_request="ordinary",
+            resolution="automatic",
+            effects=[EffectIntentV2(kind="move", **effect)],
+        )
+
+    assert is_plain_action(walk())  # no bridge around: plain walking
+    assert not is_plain_action(walk(), crossable=True)  # a bridge stands here and the walk names none: ask the reviewer
+    assert is_plain_action(walk(object_id="en_bridge"), crossable=True)

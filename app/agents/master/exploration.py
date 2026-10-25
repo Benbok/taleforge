@@ -59,12 +59,17 @@ SYSTEM = (
     "(выйти из формы, погасить свет) — бесплатное обычное действие: source=mundane, player_request=ordinary, "
     "effects=[{kind: dismiss, effect_id: <id из active_effects>}]; никогда не оформляй это новым заклинанием, "
     "ресурс при этом не возвращается. "
+    "dismiss — только когда игрок прямо просит снять, погасить или выйти из эффекта; «иду», «говорю» "
+    "в форме куста — это move или speak, а не снятие формы. "
     "Свободное создание: игрок может создать любой предмет или постройку (create_object, template=structure, "
     "для обычной кружки template=vessel), ограничивает лишь цена и world_laws. Сам оцени размер scale: tiny — "
     "кружка или веточка, small — лиана или стул, medium — лестница или стена, large — мост, башня, huge — "
     "замок, плотина; оцени прочность sturdiness (fragile, ordinary, sturdy). Чем больше и прочнее, тем дороже, "
     "не занижай размер ради дешевизны. leads_to и leads_view указывай только для large или huge, которые "
     "реально ведут в новое место (мост на другой берег): коротко назови, куда ведёт, и что оттуда видно. "
+    "Если герой идёт по запомненной постройке из objects (template=structure), оформи move с object_id этой "
+    "постройки; если она может подвести (fragile, временная, перегруженная), resolution=check и сам назначь "
+    "difficulty по её прочности, а прочную можно пройти без проверки. "
     "Не нарушай world_laws. Для постоянного результата lifetime=permanent, для временного timed. "
     "Если constraints запрещают действие (например, герой в форме куста), всё равно выбери его настоящий вид "
     "(move, speak, take…): сервер сам откажет и объяснит причину; не подменяй его другим действием. "
@@ -104,6 +109,8 @@ REVIEW = (
     "это mismatch. Unsupported существенный эффект — unsupported, неоднозначность — clarify. "
     "Для создания (create_object) проверь, что размер scale правдоподобен для описанного: мост через пропасть "
     "не tiny, кружка не huge; при несоответствии verdict=mismatch и в message назови, каким должен быть размер. "
+    "Если создание по смыслу ведёт в другое место (мост, лестница наверх, тоннель), у него должен быть leads_to, "
+    "иначе mismatch. Если source говорит о переходе по постройке из objects, а в move нет её object_id, это mismatch. "
     "Создание не должно нарушать world_laws и раскрывать скрытое. "
     "Не раскрывай private/world. Не разрешай introductions, если evidence не подтверждает предмет/наблюдателя "
     "и его свойства; восстанавливающий настой требует явного подтверждения, обычное питьё энергию не даёт."
@@ -188,7 +195,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         try:
             intent = IntentV2.model_validate(raw)
             review_key = hashlib.sha256((binding + json.dumps(raw, sort_keys=True)).encode()).hexdigest()
-            if review_key not in reviews and is_plain_action(intent):
+            crossable = any(
+                o.get("template") == "structure" and o.get("leads_to") for o in context.get("objects") or []
+            )
+            if review_key not in reviews and is_plain_action(intent, crossable=crossable):
                 reviews[review_key] = IntentReview(
                     verdict="pass", covered_requirements=[r.id for r in intent.requirements]
                 ).model_dump(mode="json")
